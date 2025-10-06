@@ -1,0 +1,480 @@
+# Claude Code Project Configuration
+
+This file contains project-specific configuration and guidelines for Claude Code working on the DeepL CLI project.
+
+## Project Overview
+
+DeepL CLI is a next-generation command-line interface for the DeepL API that integrates translation, writing enhancement (DeepL Write API), and developer workflow automation.
+
+**Key Features:**
+- Translation with context-aware preservation
+- Writing enhancement with grammar/style suggestions
+- Watch mode for real-time translation
+- Modern TUI (Terminal User Interface)
+- Team collaboration features
+- CI/CD integration
+
+## Development Philosophy
+
+### Test-Driven Development (TDD)
+
+**IMPORTANT: This project follows a strict TDD approach.**
+
+#### TDD Workflow
+
+1. **Red Phase** - Write failing tests first
+   - Before implementing any new feature, write tests that define the expected behavior
+   - Tests should fail initially since the feature doesn't exist yet
+   - Focus on the interface and expected outcomes, not implementation details
+
+2. **Green Phase** - Make tests pass
+   - Write the minimal code necessary to make the tests pass
+   - Focus on functionality, not perfection
+   - Avoid over-engineering at this stage
+
+3. **Refactor Phase** - Improve the code
+   - Once tests pass, refactor for clarity, performance, and maintainability
+   - Ensure tests continue to pass after refactoring
+   - Extract common patterns, improve naming, add documentation
+
+#### TDD Guidelines
+
+- **Always write tests before implementation code**
+- **One test at a time** - Write one failing test, make it pass, then move to the next
+- **Test behavior, not implementation** - Focus on what the code does, not how it does it
+- **Keep tests isolated** - Each test should be independent and not rely on others
+- **Use descriptive test names** - Test names should clearly describe what they're testing
+- **Mock external dependencies** - Use mocks/stubs for DeepL API, file system, etc.
+- **Test edge cases** - Include tests for error conditions, empty inputs, boundary values
+
+#### Example TDD Cycle
+
+```typescript
+// 1. RED: Write failing test
+describe('TranslationService', () => {
+  it('should translate text using DeepL API', async () => {
+    const service = new TranslationService('fake-api-key');
+    const result = await service.translate('Hello', { targetLang: 'es' });
+    expect(result.text).toBe('Hola');
+  });
+});
+
+// Run test → It fails (TranslationService doesn't exist)
+
+// 2. GREEN: Write minimal implementation
+export class TranslationService {
+  constructor(apiKey: string) {}
+  async translate(text: string, options: any) {
+    return { text: 'Hola' }; // Hardcoded to make test pass
+  }
+}
+
+// Run test → It passes
+
+// 3. REFACTOR: Add more tests and improve implementation
+// Add tests for different languages, error handling, caching, etc.
+// Implement actual DeepL API integration
+```
+
+### Incremental Development
+
+Follow the phased approach outlined in DESIGN.md:
+
+**Phase 1: MVP (Current Focus)**
+- Basic translation command
+- File translation with format preservation
+- Configuration management
+- Basic glossary support
+- Local caching
+- Error handling and validation
+
+**Phase 2: Advanced Features**
+- DeepL Write integration
+- Watch mode
+- Git hooks
+- Batch processing
+- Context-aware translation
+
+**Phase 3: TUI & Collaboration**
+- Interactive TUI
+- Translation memory
+- Team features
+
+#### Development Process for Each Feature
+
+1. **Review Design** - Reference DESIGN.md for feature specifications
+2. **Write Tests** - Create comprehensive test suite (RED)
+3. **Implement Feature** - Write code to pass tests (GREEN)
+4. **Refactor** - Improve code quality while keeping tests green (REFACTOR)
+5. **Manual Testing** - Test the CLI manually to ensure good UX
+6. **Documentation** - Update relevant docs
+7. **Commit** - Create logical, atomic commits
+8. **Repeat** - Move to next feature
+
+## Code Style Guidelines
+
+### General Principles
+
+- **Comment sparingly** - Code should be self-documenting; only add comments when behavior is unclear
+- **Follow existing patterns** - Maintain consistency with the codebase
+- **Prefer explicit over implicit** - Clear, verbose code is better than clever, terse code
+- **Type everything** - Use TypeScript types extensively; avoid `any`
+
+### TypeScript Best Practices
+
+- Use strict mode (`strict: true` in tsconfig.json)
+- Prefer interfaces for public APIs, types for internal use
+- Use async/await over raw promises
+- Leverage discriminated unions for complex types
+- Use Zod for runtime validation where needed
+
+### File Organization
+
+```
+src/
+├── cli/              # CLI interface and commands
+├── services/         # Business logic
+├── api/              # DeepL API client
+├── storage/          # Data persistence
+├── utils/            # Utility functions
+├── types/            # Type definitions
+└── tui/              # Terminal UI components
+```
+
+### Naming Conventions
+
+- **Files**: kebab-case (e.g., `translation-service.ts`)
+- **Classes**: PascalCase (e.g., `TranslationService`)
+- **Functions/variables**: camelCase (e.g., `translateText`)
+- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_CACHE_SIZE`)
+- **Types/Interfaces**: PascalCase (e.g., `TranslationOptions`)
+
+## Testing Guidelines
+
+### Test Structure
+
+```typescript
+describe('ComponentName', () => {
+  describe('methodName', () => {
+    it('should do something specific', () => {
+      // Arrange - Set up test data and mocks
+      // Act - Execute the code under test
+      // Assert - Verify the expected outcome
+    });
+
+    it('should handle error case', () => {
+      // Test error scenarios
+    });
+
+    it('should handle edge case', () => {
+      // Test boundary conditions
+    });
+  });
+});
+```
+
+### Test Coverage
+
+- **Unit tests** - Test individual functions/classes in isolation
+- **Integration tests** - Test how components work together
+- **E2E tests** - Test complete user workflows (CLI commands)
+
+### Mocking Strategy
+
+- Mock external APIs (DeepL) in unit tests
+- Use real implementations for integration tests with test doubles
+- Consider using `nock` for HTTP mocking
+- Use `memfs` or similar for file system mocking
+
+## Git Commit Guidelines
+
+### Commit Message Format
+
+Follow the existing commit patterns in the repository. Use conventional commits format:
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+### Types
+
+- **feat**: New feature
+- **fix**: Bug fix
+- **refactor**: Code refactoring without changing behavior
+- **test**: Adding or updating tests
+- **docs**: Documentation changes
+- **chore**: Maintenance tasks (dependencies, config, etc.)
+- **perf**: Performance improvements
+- **style**: Code style changes (formatting, etc.)
+
+### Examples
+
+```bash
+feat(translate): add basic translation command
+
+Implement core translation functionality using DeepL API.
+Includes support for single text translation and auto-detection
+of source language.
+
+feat(cache): implement SQLite-based translation cache
+
+Add CacheService with LRU eviction strategy. Configurable
+max size with automatic cleanup of old entries.
+
+test(translation): add tests for error handling
+
+Add comprehensive test coverage for API errors, rate limiting,
+and network failures.
+
+refactor(preserve): extract code block preservation logic
+
+Move preservation logic into dedicated service for better
+separation of concerns and testability.
+```
+
+### Commit Structure
+
+- **Make separate commits per logical change** - Each commit should represent a single, cohesive change
+- **Group tests with the logic they test** - Include tests in the same commit as the feature/change they validate
+- **Use informative commit messages** - Follow the format above with clear descriptions
+
+### Commit Frequency
+
+- Commit after each TDD cycle (Red → Green → Refactor)
+- Commit when a feature is complete and tested
+- Don't commit broken code or failing tests
+- Don't wait too long between commits
+
+## Pull Request Guidelines
+
+### PR Structure
+
+When creating pull requests, follow these standards:
+
+### PR Description Requirements
+
+```markdown
+## Summary
+
+Brief overview of what was changed and why (1-2 sentences).
+
+## Changes Made
+
+- **Added TranslationService** - Core translation logic with caching support
+- **Added CacheService** - SQLite-based cache with LRU eviction
+- **Added PreservationService** - Preserves code blocks and variables during translation
+- **Updated CLI** - Added `translate` command with comprehensive options
+
+## Test Coverage
+
+- ✅ Unit tests for TranslationService (15 tests)
+- ✅ Unit tests for CacheService (8 tests)
+- ✅ Integration tests for translation workflow (5 tests)
+- ✅ E2E tests for CLI commands (3 tests)
+
+Total: 31 tests, 100% coverage for new code
+
+## Backward Compatibility
+
+✅ **Maintained**: This is new functionality, no breaking changes
+✅ **Configuration**: Uses existing config format
+
+## Technical Details
+
+**Translation Flow:**
+```typescript
+User Input → PreservationService → DeepL API → Cache → Output
+```
+
+**Caching Strategy:**
+- SHA-256 hash of (text + options) as cache key
+- LRU eviction when cache exceeds max size
+- 30-day TTL for cached entries
+
+**Preservation:**
+- Code blocks: ``` and `
+- Variables: {var}, ${var}, %s, %d, {0}
+- Placeholders replaced before translation, restored after
+
+## Manual Testing
+
+Tested the following scenarios:
+- [x] Basic translation: `deepl translate "Hello" --to es`
+- [x] File translation: `deepl translate README.md --to fr`
+- [x] Multiple targets: `deepl translate "Test" --to es,fr,de`
+- [x] Code preservation: `deepl translate tutorial.md --preserve-code`
+- [x] Cache hit/miss behavior
+- [x] Error handling (invalid API key, network errors)
+
+## Benefits
+
+- **Quality**: Leverages DeepL's next-gen LLM for superior translations
+- **Performance**: Caching reduces API calls and improves response time
+- **Reliability**: Comprehensive error handling and retry logic
+- **Maintainability**: Clean separation of concerns, fully tested
+
+## Size: Small ✓
+
+Small PR focusing on core translation functionality. ~500 LOC including tests.
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+```
+
+### PR Checklist
+
+Before submitting a PR:
+
+- [ ] All tests pass (`npm test`)
+- [ ] Code follows style guidelines (`npm run lint`)
+- [ ] TypeScript compiles without errors (`npm run build`)
+- [ ] New features have comprehensive tests
+- [ ] Documentation is updated if needed
+- [ ] Manual testing completed
+- [ ] Commit messages follow guidelines
+- [ ] PR description is complete and clear
+
+## Code Quality Standards
+
+### Before Making Changes
+
+- **Research existing patterns** - Look for similar implementations before creating new code
+- **Check for duplication** - Search for similar functionality that could be reused
+- **Understand architecture** - Follow the layered architecture (CLI → Services → API → Storage)
+
+### Testing Requirements
+
+- **Comprehensive coverage** - Aim for >80% test coverage, 100% for critical paths
+- **Test all scenarios** - Success cases, error cases, edge cases
+- **Integration testing** - Test how components interact
+- **Regression prevention** - Verify existing tests pass after changes
+
+### Refactoring Guidelines
+
+- **Preserve behavior** - Maintain backward compatibility unless explicitly changing behavior
+- **Extract common code** - Move reusable logic to utils or shared services
+- **Incremental approach** - Make small, reviewable changes
+- **Keep tests green** - Tests should pass after each refactor step
+
+### Build and Validation
+
+Run these commands before committing:
+
+```bash
+# Run tests
+npm test
+
+# Run linter
+npm run lint
+
+# Type check
+npm run type-check
+
+# Build
+npm run build
+
+# Test CLI locally
+npm link
+deepl --help
+```
+
+## Development Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Run tests (watch mode)
+npm test -- --watch
+
+# Run tests (single run)
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Lint code
+npm run lint
+
+# Fix lint issues
+npm run lint:fix
+
+# Type check
+npm run type-check
+
+# Build project
+npm run build
+
+# Run CLI locally
+npm run dev
+
+# Link for global testing
+npm link
+```
+
+## Dependencies
+
+### Production Dependencies
+
+- `deepl-node` - Official DeepL API SDK
+- `commander` - CLI framework
+- `inquirer` - Interactive prompts
+- `chalk` - Terminal colors
+- `ora` - Spinners
+- `better-sqlite3` - SQLite for caching
+- `conf` - Configuration management
+- `chokidar` - File watching
+- `ink` - TUI framework (React for terminal)
+
+### Development Dependencies
+
+- `typescript` - Type system
+- `jest` - Testing framework
+- `@types/*` - Type definitions
+- `eslint` - Linting
+- `prettier` - Code formatting
+- `ts-node` - TypeScript execution
+- `nock` - HTTP mocking
+
+## Project Structure
+
+See DESIGN.md for detailed architecture. Key directories:
+
+```
+deepl-cli/
+├── src/              # Source code
+├── tests/            # Test files
+├── docs/             # Documentation
+├── examples/         # Usage examples
+├── DESIGN.md         # Design document
+├── CLAUDE.md         # This file
+└── package.json      # Project metadata
+```
+
+## Resources
+
+- [DESIGN.md](./DESIGN.md) - Comprehensive design document
+- [DeepL API Docs](https://www.deepl.com/docs-api) - API reference
+- [CLI Guidelines](https://clig.dev/) - CLI best practices
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/) - TypeScript guide
+
+---
+
+## Quick Reference: TDD Cycle
+
+```
+1. 🔴 RED: Write a failing test
+2. 🟢 GREEN: Write minimal code to pass
+3. 🔵 REFACTOR: Improve the code
+4. ✅ COMMIT: Save your progress
+5. 🔁 REPEAT: Next feature/test
+```
+
+**Remember: No code without tests first!**
+
+---
+
+*This file helps Claude Code maintain consistent, high-quality development practices specific to the DeepL CLI project.*
