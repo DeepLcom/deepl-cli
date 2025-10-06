@@ -151,6 +151,27 @@ src/
 
 ## Testing Guidelines
 
+### Testing Stack
+
+**Phase-based approach to testing tools:**
+
+#### Phase 1-2: Core Testing (Current)
+- **Jest** - Test runner, assertion library, mocking framework
+  - Unit tests for services, API clients, utilities
+  - Integration tests for component interactions
+  - E2E tests for CLI commands
+- **ts-jest** - TypeScript support for Jest
+- **nock** - HTTP request mocking for API tests
+- **memfs** - File system mocking
+
+#### Phase 3: TUI Testing (Future)
+- **React Testing Library** - Testing utilities for Ink/React components
+  - Only needed when building TUI features
+  - Used with Jest as the test runner
+  - Tests user interactions in terminal UI
+
+**Important:** Jest is the foundation. React Testing Library is an add-on for testing React components (Ink TUI) and requires Jest to run.
+
 ### Test Structure
 
 ```typescript
@@ -181,10 +202,11 @@ describe('ComponentName', () => {
 
 ### Mocking Strategy
 
-- Mock external APIs (DeepL) in unit tests
+- Mock external APIs (DeepL) in unit tests using Jest mocks or nock
 - Use real implementations for integration tests with test doubles
-- Consider using `nock` for HTTP mocking
+- Use `nock` for HTTP mocking (DeepL API calls)
 - Use `memfs` or similar for file system mocking
+- Mock dependencies at module boundaries for isolation
 
 ## Git Commit Guidelines
 
@@ -431,13 +453,21 @@ npm link
 
 ### Development Dependencies
 
+#### Phase 1-2 (Current)
 - `typescript` - Type system
-- `jest` - Testing framework
-- `@types/*` - Type definitions
+- `jest` - Testing framework (test runner + assertions)
+- `ts-jest` - TypeScript support for Jest
+- `@types/jest` - Jest type definitions
+- `@types/node` - Node.js type definitions
 - `eslint` - Linting
 - `prettier` - Code formatting
 - `ts-node` - TypeScript execution
-- `nock` - HTTP mocking
+- `nock` - HTTP mocking for API tests
+- `memfs` - File system mocking
+
+#### Phase 3 (TUI)
+- `@testing-library/react` - Testing utilities for Ink components
+- `@testing-library/jest-dom` - Additional Jest matchers for DOM
 
 ## Project Structure
 
@@ -474,6 +504,62 @@ deepl-cli/
 ```
 
 **Remember: No code without tests first!**
+
+---
+
+## Documentation Maintenance
+
+### When to Update Documentation
+
+**IMPORTANT: Documentation must be kept in sync with code changes.**
+
+Update the following files when making related changes:
+
+#### README.md
+Update when:
+- Adding new CLI commands or features
+- Changing installation process
+- Modifying usage examples
+- Adding new configuration options
+- Changing supported languages or formats
+
+#### DESIGN.md
+Update when:
+- Changing system architecture
+- Modifying component responsibilities
+- Adding new services or layers
+- Changing API interfaces
+- Updating technical stack decisions
+
+#### CLAUDE.md (this file)
+Update when:
+- Adding new development guidelines
+- Modifying testing strategies
+- Changing code style conventions
+- Adding new dependencies
+- Updating TDD workflow
+
+#### Other Documentation
+- **API.md** - When changing API interfaces (create when needed)
+- **CONTRIBUTING.md** - When modifying contribution process (create when needed)
+- **CHANGELOG.md** - For every release with user-facing changes (create when needed)
+
+### Documentation Update Guidelines
+
+- Include documentation updates in the same commit as the related code changes
+- Use `docs(scope): description` commit type for documentation-only changes
+- Keep examples up-to-date with actual behavior
+- Remove outdated information immediately
+- Update version numbers and dates when applicable
+
+**Example:**
+```bash
+feat(watch): add watch mode with auto-translation
+
+Implement file watching with debouncing and auto-commit support.
+Updates README.md with watch mode examples and configuration.
+Updates DESIGN.md with WatchService architecture details.
+```
 
 ---
 
