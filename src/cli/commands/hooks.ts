@@ -1,0 +1,80 @@
+/**
+ * Hooks Command
+ * Manages git hooks for translation workflow
+ */
+
+import chalk from 'chalk';
+import { GitHooksService, HookType } from '../../services/git-hooks.js';
+
+export class HooksCommand {
+  private gitHooksService: GitHooksService | null = null;
+
+  constructor(gitDir?: string) {
+    // Find git directory if not provided
+    const gitDirectory = gitDir ?? GitHooksService.findGitRoot();
+
+    if (!gitDirectory) {
+      this.gitHooksService = null;
+    } else {
+      this.gitHooksService = new GitHooksService(gitDirectory);
+    }
+  }
+
+  /**
+   * Install a git hook
+   */
+  async install(hookType: HookType): Promise<string> {
+    if (!this.gitHooksService) {
+      throw new Error('Not in a git repository. Run this command from within a git repository.');
+    }
+
+    await this.gitHooksService.install(hookType);
+
+    return chalk.green(`✓ Installed ${hookType} hook`);
+  }
+
+  /**
+   * Uninstall a git hook
+   */
+  async uninstall(hookType: HookType): Promise<string> {
+    if (!this.gitHooksService) {
+      throw new Error('Not in a git repository. Run this command from within a git repository.');
+    }
+
+    await this.gitHooksService.uninstall(hookType);
+
+    return chalk.green(`✓ Uninstalled ${hookType} hook`);
+  }
+
+  /**
+   * List all hooks and their status
+   */
+  list(): string {
+    if (!this.gitHooksService) {
+      return chalk.yellow('⚠️  Not in a git repository');
+    }
+
+    const status = this.gitHooksService.list();
+    const lines = ['Git Hooks Status:', ''];
+
+    for (const [hook, installed] of Object.entries(status)) {
+      const icon = installed ? chalk.green('✓') : chalk.gray('✗');
+      const text = installed ? chalk.green('installed') : chalk.gray('not installed');
+      lines.push(`  ${icon} ${hook.padEnd(15)} ${text}`);
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Show hook path
+   */
+  showPath(hookType: HookType): string {
+    if (!this.gitHooksService) {
+      throw new Error('Not in a git repository. Run this command from within a git repository.');
+    }
+
+    const hookPath = this.gitHooksService.getHookPath(hookType);
+    return chalk.blue(`Hook path: ${hookPath}`);
+  }
+}
