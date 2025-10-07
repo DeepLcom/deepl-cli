@@ -1640,13 +1640,15 @@ jobs:
 
 ## Roadmap & Milestones
 
-### Phase 1: MVP (Month 1-2)
-- [ ] Basic translation command
+### Phase 1: MVP (Month 1-2) - 60% Complete
+- [x] Basic translation command
+- [x] Configuration management
+- [x] Local caching
+- [x] Error handling and validation
+- [x] Preservation of code/variables
 - [ ] File translation with format preservation
-- [ ] Configuration management
 - [ ] Basic glossary support
-- [ ] Local caching
-- [ ] Error handling and validation
+- [ ] Cache CLI commands
 
 ### Phase 2: Advanced Features (Month 3-4)
 - [ ] DeepL Write integration
@@ -1654,7 +1656,6 @@ jobs:
 - [ ] Git hooks integration
 - [ ] Batch processing
 - [ ] Context-aware translation
-- [ ] Preservation of code/variables
 
 ### Phase 3: TUI & Collaboration (Month 5-6)
 - [ ] Interactive TUI application

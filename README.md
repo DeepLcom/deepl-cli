@@ -44,13 +44,18 @@
 
 This project follows a phased development approach with strict Test-Driven Development (TDD):
 
-### Phase 1: MVP (Current)
-- [ ] Basic translation command
+### Phase 1: MVP (Current - 60% Complete)
+- [x] Basic translation command (`deepl translate`)
+- [x] Configuration management (`deepl config`)
+- [x] API key authentication (`deepl auth`)
+- [x] Local SQLite caching with LRU eviction
+- [x] Code block and variable preservation
+- [x] Multi-target language support
+- [x] Stdin support for piping
+- [x] Configurable API endpoints (free/pro/custom)
 - [ ] File translation with format preservation
-- [ ] Configuration management
 - [ ] Basic glossary support
-- [ ] Local caching
-- [ ] Error handling and validation
+- [ ] Cache management CLI commands
 
 ### Phase 2: Advanced Features (Planned)
 - [ ] DeepL Write integration
@@ -102,17 +107,16 @@ deepl --version
 
 Sign up for a [DeepL API account](https://www.deepl.com/pro-api) and get your authentication key.
 
-### 2. Initialize Configuration
+### 2. Set Your API Key
 
 ```bash
-deepl init
+deepl auth set-key YOUR_API_KEY
 ```
 
-This will prompt you for:
-- DeepL API key
-- Default source language
-- Default target languages
-- Cache preferences
+Or use an environment variable:
+```bash
+export DEEPL_API_KEY=YOUR_API_KEY
+```
 
 ### 3. Translate Your First Text
 
@@ -121,13 +125,9 @@ deepl translate "Hello, world!" --to es
 # Output: ¡Hola, mundo!
 ```
 
-### 4. Translate a File
-
-```bash
-deepl translate README.md --to es,fr,de --output docs/
-```
-
 ## 📖 Usage
+
+**Note:** Features marked with 🚧 are planned but not yet implemented.
 
 ### Translation
 
@@ -147,43 +147,47 @@ deepl translate "Good morning" --to es,fr,de,ja
 echo "Hello world" | deepl translate --to es
 ```
 
-#### File Translation
+#### File Translation 🚧
+
+**Coming Soon** - File translation is planned for Phase 1 completion.
 
 ```bash
-# Single file
+# Single file (planned)
 deepl translate README.md --to es --output README.es.md
 
-# Multiple files
+# Multiple files (planned)
 deepl translate docs/*.md --to fr,de,ja --output docs/i18n/
 
-# Document translation (PDF, DOCX, PPTX)
+# Document translation (planned - Phase 2)
 deepl translate document.pdf --to es --output documento.pdf
 ```
 
 #### Advanced Translation Options
 
 ```bash
-# Preserve code blocks and variables
-deepl translate tutorial.md --preserve-code --preserve-vars --to ja
+# Preserve code blocks and variables (implemented)
+deepl translate tutorial.md --preserve-code --to ja
 
-# Add context for better quality
-deepl translate api-docs.md --context "REST API documentation" --to de
-
-# Use glossary for consistent terminology
-deepl translate "Our API uses REST" --glossary tech-terms --to de
-
-# Set formality level
+# Set formality level (implemented)
 deepl translate "Hello" --formality more --to de
 
-# Show confidence scores
+# Add context for better quality (planned)
+deepl translate api-docs.md --context "REST API documentation" --to de
+
+# Use glossary for consistent terminology (planned)
+deepl translate "Our API uses REST" --glossary tech-terms --to de
+
+# Show confidence scores (planned)
 deepl translate "Technical term" --show-confidence --to es
 ```
 
-#### Interactive Mode
+#### Interactive Mode 🚧
+
+**Coming in Phase 2**
 
 ```bash
+# Interactive translation (planned)
 deepl translate --interactive --to es
-# Enter text, get translations in real-time
 ```
 
 ### Writing Enhancement
@@ -276,36 +280,40 @@ auto_commit = true
 
 ### Glossaries
 
+**Note:** Glossary support planned for Phase 1 completion.
+
 ```bash
-# Create glossary from CSV
+# Create glossary from CSV (planned)
 deepl glossary create tech-terms en de glossary.csv
 
-# List all glossaries
+# List all glossaries (planned)
 deepl glossary list
 
-# Show glossary details
+# Show glossary details (planned)
 deepl glossary show tech-terms
 
-# Delete glossary
+# Delete glossary (planned)
 deepl glossary delete tech-terms
 
-# Use glossary in translation
+# Use glossary in translation (planned)
 deepl translate "Our API" --glossary tech-terms --to de
 ```
 
 ### Cache Management
 
+**Note:** Cache CLI commands coming soon. Cache is currently enabled by default.
+
 ```bash
-# Enable cache
+# Enable cache (planned)
 deepl cache enable --max-size 1GB
 
-# Disable cache
+# Disable cache (planned)
 deepl cache disable
 
-# Clear cache
+# Clear cache (planned)
 deepl cache clear
 
-# View cache statistics
+# View cache statistics (planned)
 deepl cache stats
 ```
 
