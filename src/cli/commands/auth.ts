@@ -29,7 +29,11 @@ export class AuthCommand {
 
     // Validate with DeepL API by making a test request
     try {
-      const client = new DeepLClient(apiKey);
+      // Use configured API endpoint for validation
+      const baseUrl = this.config.getValue('api.baseUrl') as string | undefined;
+      const usePro = this.config.getValue('api.usePro') as boolean | undefined;
+
+      const client = new DeepLClient(apiKey, { baseUrl, usePro });
       await client.getUsage(); // Test API key validity
     } catch (error) {
       if (error instanceof Error) {
