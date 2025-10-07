@@ -311,4 +311,110 @@ describe('TranslateCommand', () => {
       ).rejects.toThrow('Network error');
     });
   });
+
+  describe('context-aware translation', () => {
+    it('should pass context to translation service', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola',
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        context: 'This is a greeting in a formal business email',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({
+          targetLang: 'es',
+          context: 'This is a greeting in a formal business email',
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should work without context parameter', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola',
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.not.objectContaining({
+          context: expect.anything(),
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass context for multiple target languages', async () => {
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'fr', text: 'Bonjour' },
+      ]);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es,fr',
+        context: 'Greeting in a casual conversation',
+      });
+
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        ['es', 'fr'],
+        expect.objectContaining({
+          context: 'Greeting in a casual conversation',
+        })
+      );
+    });
+
+    it('should handle long context strings', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'El banco está cerrado',
+      });
+
+      const longContext = 'This document is about financial services. The previous paragraph discussed banking hours and the next paragraph will cover online banking options.';
+
+      await translateCommand.translateText('The bank is closed', {
+        to: 'es',
+        context: longContext,
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'The bank is closed',
+        expect.objectContaining({
+          targetLang: 'es',
+          context: longContext,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should work with context and other options', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Cómo está usted',
+      });
+
+      await translateCommand.translateText('How are you', {
+        to: 'es',
+        from: 'en',
+        formality: 'more',
+        context: 'Formal business correspondence',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'How are you',
+        expect.objectContaining({
+          targetLang: 'es',
+          sourceLang: 'en',
+          formality: 'more',
+          context: 'Formal business correspondence',
+        }),
+        expect.any(Object)
+      );
+    });
+  });
 });

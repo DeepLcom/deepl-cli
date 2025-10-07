@@ -14,6 +14,7 @@ interface TranslateOptions {
   from?: string;
   formality?: string;
   preserveCode?: boolean;
+  context?: string;
   output?: string;
 }
 
@@ -144,6 +145,7 @@ export class TranslateCommand {
       targetLang: Language;
       sourceLang?: Language;
       formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      context?: string;
     } = {
       targetLang: options.to as Language,
     };
@@ -154,6 +156,10 @@ export class TranslateCommand {
 
     if (options.formality) {
       translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+    }
+
+    if (options.context) {
+      translationOptions.context = options.context;
     }
 
     // Translate
@@ -175,6 +181,7 @@ export class TranslateCommand {
     const translationOptions: {
       sourceLang?: Language;
       formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      context?: string;
     } = {};
 
     if (options.from) {
@@ -183,6 +190,10 @@ export class TranslateCommand {
 
     if (options.formality) {
       translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+    }
+
+    if (options.context) {
+      translationOptions.context = options.context;
     }
 
     const results = await this.translationService.translateToMultiple(

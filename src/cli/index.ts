@@ -141,6 +141,7 @@ program
   .option('-o, --output <path>', 'Output file path or directory (required for file translation)')
   .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
+  .option('--context <text>', 'Additional context to improve translation quality')
   .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
   .action(async (text: string | undefined, options: {
     to: string;
@@ -148,6 +149,7 @@ program
     output?: string;
     formality?: string;
     preserveCode?: boolean;
+    context?: string;
     apiUrl?: string;
   }) => {
     try {
