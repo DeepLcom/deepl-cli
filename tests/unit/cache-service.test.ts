@@ -1,0 +1,384 @@
+/**
+ * Tests for Cache Service
+ * Following TDD approach - RED phase
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { CacheService } from '../../src/storage/cache';
+
+describe('CacheService', () => {
+  let cacheService: CacheService;
+  let testCacheDir: string;
+  let testCachePath: string;
+
+  beforeEach(() => {
+    // Create temporary cache directory
+    testCacheDir = path.join(os.tmpdir(), `deepl-cli-test-${Date.now()}`);
+    testCachePath = path.join(testCacheDir, 'cache.db');
+
+    // Create cache service with test path
+    cacheService = new CacheService({ dbPath: testCachePath, maxSize: 1024 * 100 }); // 100KB for tests
+  });
+
+  afterEach(() => {
+    // Cleanup
+    cacheService.close();
+    if (fs.existsSync(testCacheDir)) {
+      fs.rmSync(testCacheDir, { recursive: true, force: true });
+    }
+  });
+
+  describe('initialization', () => {
+    it('should create a new CacheService instance', () => {
+      expect(cacheService).toBeInstanceOf(CacheService);
+    });
+
+    it('should create database file', () => {
+      expect(fs.existsSync(testCachePath)).toBe(true);
+    });
+
+    it('should create cache directory if it does not exist', () => {
+      expect(fs.existsSync(testCacheDir)).toBe(true);
+    });
+
+    it('should initialize with default settings', () => {
+      const stats = cacheService.stats();
+      expect(stats.entries).toBe(0);
+      expect(stats.totalSize).toBe(0);
+      expect(stats.enabled).toBe(true);
+    });
+  });
+
+  describe('get()', () => {
+    it('should return null for non-existent key', () => {
+      const value = cacheService.get('nonexistent');
+      expect(value).toBeNull();
+    });
+
+    it('should retrieve cached value', () => {
+      cacheService.set('test-key', { text: 'Hello' });
+      const value = cacheService.get('test-key');
+      expect(value).toEqual({ text: 'Hello' });
+    });
+
+    it('should return null when cache is disabled', () => {
+      cacheService.set('test-key', { text: 'Hello' });
+      cacheService.disable();
+      const value = cacheService.get('test-key');
+      expect(value).toBeNull();
+    });
+
+    it('should handle expired entries', async () => {
+      const shortTTL = 100; // 100ms
+      const service = new CacheService({ dbPath: testCachePath, ttl: shortTTL });
+
+      service.set('test-key', { text: 'Hello' });
+
+      // Wait for expiration
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const value = service.get('test-key');
+      expect(value).toBeNull();
+
+      service.close();
+    });
+  });
+
+  describe('set()', () => {
+    it('should store value in cache', () => {
+      cacheService.set('test-key', { text: 'Hello' });
+      const value = cacheService.get('test-key');
+      expect(value).toEqual({ text: 'Hello' });
+    });
+
+    it('should update existing key', () => {
+      cacheService.set('test-key', { text: 'Hello' });
+      cacheService.set('test-key', { text: 'Updated' });
+      const value = cacheService.get('test-key');
+      expect(value).toEqual({ text: 'Updated' });
+    });
+
+    it('should not store when cache is disabled', () => {
+      cacheService.disable();
+      cacheService.set('test-key', { text: 'Hello' });
+      cacheService.enable();
+      const value = cacheService.get('test-key');
+      expect(value).toBeNull();
+    });
+
+    it('should handle complex objects', () => {
+      const complexObj = {
+        text: 'Hello',
+        meta: { lang: 'es', formality: 'more' },
+        translations: ['Hola', 'Buenos días'],
+      };
+      cacheService.set('complex', complexObj);
+      const value = cacheService.get('complex');
+      expect(value).toEqual(complexObj);
+    });
+
+    it('should track entry size correctly', () => {
+      cacheService.set('test', { text: 'Hello' });
+      const stats = cacheService.stats();
+      expect(stats.totalSize).toBeGreaterThan(0);
+    });
+  });
+
+  describe('clear()', () => {
+    it('should remove all cached entries', () => {
+      cacheService.set('key1', { text: 'Value 1' });
+      cacheService.set('key2', { text: 'Value 2' });
+      cacheService.clear();
+
+      const value1 = cacheService.get('key1');
+      const value2 = cacheService.get('key2');
+
+      expect(value1).toBeNull();
+      expect(value2).toBeNull();
+    });
+
+    it('should reset stats after clear', () => {
+      cacheService.set('key1', { text: 'Value 1' });
+      cacheService.clear();
+
+      const stats = cacheService.stats();
+      expect(stats.entries).toBe(0);
+      expect(stats.totalSize).toBe(0);
+    });
+  });
+
+  describe('stats()', () => {
+    it('should return cache statistics', () => {
+      const stats = cacheService.stats();
+      expect(stats).toHaveProperty('entries');
+      expect(stats).toHaveProperty('totalSize');
+      expect(stats).toHaveProperty('maxSize');
+      expect(stats).toHaveProperty('enabled');
+    });
+
+    it('should track number of entries', () => {
+      cacheService.set('key1', { text: 'Value 1' });
+      cacheService.set('key2', { text: 'Value 2' });
+
+      const stats = cacheService.stats();
+      expect(stats.entries).toBe(2);
+    });
+
+    it('should calculate total size', () => {
+      cacheService.set('key1', { text: 'Small' });
+      cacheService.set('key2', { text: 'A much longer text value' });
+
+      const stats = cacheService.stats();
+      expect(stats.totalSize).toBeGreaterThan(0);
+    });
+
+    it('should show maxSize configuration', () => {
+      const stats = cacheService.stats();
+      expect(stats.maxSize).toBe(1024 * 100); // 100KB from beforeEach
+    });
+  });
+
+  describe('enable() / disable()', () => {
+    it('should enable cache', () => {
+      cacheService.disable();
+      cacheService.enable();
+      const stats = cacheService.stats();
+      expect(stats.enabled).toBe(true);
+    });
+
+    it('should disable cache', () => {
+      cacheService.disable();
+      const stats = cacheService.stats();
+      expect(stats.enabled).toBe(false);
+    });
+
+    it('should prevent caching when disabled', () => {
+      cacheService.disable();
+      cacheService.set('test', { text: 'Hello' });
+      cacheService.enable();
+      const value = cacheService.get('test');
+      expect(value).toBeNull();
+    });
+  });
+
+  describe('LRU eviction', () => {
+    it('should evict oldest entries when cache is full', () => {
+      // Fill cache to capacity
+      const largeValue = { text: 'x'.repeat(1000) }; // ~1KB per entry
+
+      // Fill cache completely
+      for (let i = 0; i < 150; i++) {
+        cacheService.set(`key-${i}`, largeValue);
+      }
+
+      const stats = cacheService.stats();
+
+      // Cache should be at or under max size
+      expect(stats.totalSize).toBeLessThanOrEqual(stats.maxSize);
+
+      // Some entries should have been evicted (can't fit all 150)
+      expect(stats.entries).toBeLessThan(150);
+
+      // Oldest entries should be gone, newest should exist
+      const veryOldEntry = cacheService.get('key-0');
+      const recentEntry = cacheService.get('key-149');
+
+      expect(veryOldEntry).toBeNull();
+      expect(recentEntry).toBeDefined();
+    });
+
+    it('should maintain cache size under maxSize', () => {
+      const largeValue = { text: 'x'.repeat(1000) };
+
+      for (let i = 0; i < 150; i++) {
+        cacheService.set(`key-${i}`, largeValue);
+      }
+
+      const stats = cacheService.stats();
+      expect(stats.totalSize).toBeLessThanOrEqual(stats.maxSize);
+    });
+
+    it('should evict multiple entries if needed', () => {
+      // Fill cache completely
+      for (let i = 0; i < 100; i++) {
+        cacheService.set(`key-${i}`, { text: 'x'.repeat(1000) });
+      }
+
+      // Add very large entry that should require evicting multiple small ones
+      cacheService.set('huge', { text: 'x'.repeat(30000) }); // ~30KB
+
+      const statsAfter = cacheService.stats();
+
+      // Cache should still be under max size
+      expect(statsAfter.totalSize).toBeLessThanOrEqual(statsAfter.maxSize);
+
+      // Large entry should exist
+      const largeEntry = cacheService.get('huge');
+      expect(largeEntry).toBeDefined();
+
+      // At least some old entries should have been evicted
+      const oldEntry = cacheService.get('key-0');
+      expect(oldEntry).toBeNull();
+    });
+  });
+
+  describe('TTL (Time To Live)', () => {
+    it('should respect TTL setting', async () => {
+      const service = new CacheService({
+        dbPath: testCachePath,
+        ttl: 100, // 100ms
+      });
+
+      service.set('test', { text: 'Hello' });
+
+      // Should exist immediately
+      let value = service.get('test');
+      expect(value).toBeDefined();
+
+      // Should expire after TTL
+      await new Promise(resolve => setTimeout(resolve, 150));
+      value = service.get('test');
+      expect(value).toBeNull();
+
+      service.close();
+    });
+
+    it('should not expire entries when TTL is disabled', async () => {
+      const service = new CacheService({
+        dbPath: testCachePath,
+        ttl: 0, // Disabled
+      });
+
+      service.set('test', { text: 'Hello' });
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const value = service.get('test');
+      expect(value).toBeDefined();
+
+      service.close();
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle empty values', () => {
+      cacheService.set('empty', '');
+      const value = cacheService.get('empty');
+      expect(value).toBe('');
+    });
+
+    it('should handle null values', () => {
+      cacheService.set('null', null);
+      const value = cacheService.get('null');
+      expect(value).toBeNull();
+    });
+
+    it('should handle undefined values', () => {
+      cacheService.set('undefined', undefined);
+      const value = cacheService.get('undefined');
+      expect(value).toBeUndefined();
+    });
+
+    it('should handle very large entries', () => {
+      const largeValue = { text: 'x'.repeat(50000) }; // ~50KB
+      cacheService.set('large', largeValue);
+      const value = cacheService.get('large');
+      expect(value).toEqual(largeValue);
+    });
+
+    it('should handle special characters in keys', () => {
+      const specialKey = 'key:with/special\\chars';
+      cacheService.set(specialKey, { text: 'Hello' });
+      const value = cacheService.get(specialKey);
+      expect(value).toEqual({ text: 'Hello' });
+    });
+
+    it('should handle concurrent operations', async () => {
+      const promises = [];
+      for (let i = 0; i < 10; i++) {
+        promises.push(Promise.resolve(cacheService.set(`concurrent-${i}`, { value: i })));
+      }
+
+      await Promise.all(promises);
+
+      const stats = cacheService.stats();
+      expect(stats.entries).toBe(10);
+    });
+  });
+
+  describe('database cleanup', () => {
+    it('should remove expired entries on cleanup', async () => {
+      const service = new CacheService({
+        dbPath: testCachePath,
+        ttl: 100,
+      });
+
+      service.set('key1', { text: 'Value 1' });
+      service.set('key2', { text: 'Value 2' });
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Trigger cleanup by adding new entry
+      service.set('key3', { text: 'Value 3' });
+
+      const stats = service.stats();
+      expect(stats.entries).toBe(1); // Only key3 should remain
+
+      service.close();
+    });
+  });
+
+  describe('close()', () => {
+    it('should close database connection', () => {
+      expect(() => cacheService.close()).not.toThrow();
+    });
+
+    it('should allow reopening after close', () => {
+      cacheService.close();
+      const newService = new CacheService({ dbPath: testCachePath });
+      expect(newService).toBeInstanceOf(CacheService);
+      newService.close();
+    });
+  });
+});

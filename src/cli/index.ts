@@ -33,7 +33,7 @@ const configService = new ConfigService();
  * Create DeepL client with API key from config or env
  */
 function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
-  const apiKey = configService.getValue('auth.apiKey') as string | undefined;
+  const apiKey = configService.getValue<string>('auth.apiKey');
   const envKey = process.env['DEEPL_API_KEY'];
 
   const key = apiKey ?? envKey;
@@ -45,8 +45,8 @@ function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
   }
 
   // Get API configuration
-  const baseUrl = overrideBaseUrl ?? (configService.getValue('api.baseUrl') as string);
-  const usePro = configService.getValue('api.usePro') as boolean;
+  const baseUrl = overrideBaseUrl ?? configService.getValue<string>('api.baseUrl');
+  const usePro = configService.getValue<boolean>('api.usePro');
 
   return new DeepLClient(key, { baseUrl, usePro });
 }
