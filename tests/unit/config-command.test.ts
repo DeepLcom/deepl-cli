@@ -53,6 +53,7 @@ describe('Config Command', () => {
     it('should get entire config when no key specified', async () => {
       mockConfigService.get.mockReturnValue({
         auth: { apiKey: 'test-key' },
+        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         defaults: {
           sourceLang: undefined,
           targetLangs: ['es', 'fr'],
@@ -127,6 +128,7 @@ describe('Config Command', () => {
     it('should list all config values', async () => {
       mockConfigService.get.mockReturnValue({
         auth: { apiKey: 'test-key' },
+        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         defaults: {
           sourceLang: 'en',
           targetLangs: ['es', 'fr'],
@@ -149,6 +151,7 @@ describe('Config Command', () => {
     it('should format config as readable key-value pairs', async () => {
       mockConfigService.get.mockReturnValue({
         auth: { apiKey: 'test-key' },
+        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         defaults: {
           sourceLang: 'en',
           targetLangs: ['es', 'fr'],
@@ -169,6 +172,7 @@ describe('Config Command', () => {
     it('should hide sensitive values like API keys', async () => {
       mockConfigService.get.mockReturnValue({
         auth: { apiKey: 'super-secret-key-123' },
+        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         defaults: {
           sourceLang: undefined,
           targetLangs: [],

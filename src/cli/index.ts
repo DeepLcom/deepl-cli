@@ -32,7 +32,7 @@ const configService = new ConfigService();
 /**
  * Create DeepL client with API key from config or env
  */
-function createDeepLClient(): DeepLClient {
+function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
   const apiKey = configService.getValue('auth.apiKey') as string | undefined;
   const envKey = process.env['DEEPL_API_KEY'];
 
@@ -44,7 +44,11 @@ function createDeepLClient(): DeepLClient {
     process.exit(1);
   }
 
-  return new DeepLClient(key);
+  // Get API configuration
+  const baseUrl = overrideBaseUrl ?? (configService.getValue('api.baseUrl') as string);
+  const usePro = configService.getValue('api.usePro') as boolean;
+
+  return new DeepLClient(key, { baseUrl, usePro });
 }
 
 // Create program
@@ -116,11 +120,13 @@ program
   .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
   .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
+  .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
   .action(async (text: string | undefined, options: {
     to: string;
     from?: string;
     formality?: string;
     preserveCode?: boolean;
+    apiUrl?: string;
   }) => {
     try {
       const client = createDeepLClient();

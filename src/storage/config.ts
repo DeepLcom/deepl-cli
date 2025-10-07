@@ -30,6 +30,7 @@ const VALID_OUTPUT_FORMATS: readonly OutputFormat[] = [
 ] as const;
 
 const BOOLEAN_CONFIG_PATHS = [
+  'api.usePro',
   'cache.enabled',
   'output.verbose',
   'output.color',
@@ -170,6 +171,10 @@ export class ConfigService {
       auth: {
         apiKey: undefined,
       },
+      api: {
+        baseUrl: 'https://api.deepl.com/v2',
+        usePro: true,
+      },
       defaults: {
         sourceLang: undefined,
         targetLangs: [],
@@ -243,6 +248,7 @@ export class ConfigService {
     const defaults = ConfigService.getDefaults();
     return {
       auth: { ...defaults.auth, ...loaded.auth },
+      api: { ...defaults.api, ...loaded.api },
       defaults: { ...defaults.defaults, ...loaded.defaults },
       cache: { ...defaults.cache, ...loaded.cache },
       output: { ...defaults.output, ...loaded.output },
@@ -288,6 +294,12 @@ export class ConfigService {
     if (path === 'cache.maxSize') {
       if (typeof value !== 'number' || value < 0) {
         throw new Error('Cache size must be positive');
+      }
+    }
+
+    if (path === 'api.baseUrl') {
+      if (typeof value !== 'string' || !value.startsWith('http')) {
+        throw new Error('API base URL must be a valid HTTP(S) URL');
       }
     }
 

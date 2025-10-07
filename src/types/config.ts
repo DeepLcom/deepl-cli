@@ -8,6 +8,10 @@ export interface DeepLConfig {
   auth: {
     apiKey?: string;
   };
+  api: {
+    baseUrl: string;
+    usePro: boolean;
+  };
   defaults: {
     sourceLang?: Language;
     targetLangs: Language[];
