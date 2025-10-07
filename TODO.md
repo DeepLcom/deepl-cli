@@ -24,8 +24,10 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 - [x] Add API documentation (docs/API.md)
 - [x] Add usage examples (examples/ directory)
 
-### ⏳ Pending
-- [ ] Setup CI/CD with GitHub Actions (skipped until ready to push to remote)
+### ⏳ Deferred
+- [ ] Setup CI/CD (GitLab CI for internal use, or GitHub Actions if open-sourced later)
+  - Note: Will be added when pushing to remote repository (GitLab/GitHub)
+  - Config will be tailored to project needs at that time
 
 ---
 
