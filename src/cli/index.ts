@@ -17,6 +17,7 @@ import { TranslationService } from '../services/translation.js';
 import { GlossaryService } from '../services/glossary.js';
 import { AuthCommand } from './commands/auth.js';
 import { TranslateCommand } from './commands/translate.js';
+import { WatchCommand } from './commands/watch.js';
 import { ConfigCommand as ConfigCmd } from './commands/config.js';
 import { CacheCommand } from './commands/cache.js';
 import { GlossaryCommand } from './commands/glossary.js';
@@ -178,6 +179,47 @@ program
       }
 
       console.log(result);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+      process.exit(1);
+    }
+  });
+
+// Watch command
+program
+  .command('watch')
+  .description('Watch files/directories for changes and auto-translate')
+  .argument('<path>', 'File or directory path to watch')
+  .requiredOption('-t, --targets <languages>', 'Target language(s), comma-separated')
+  .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
+  .option('-o, --output <path>', 'Output directory (default: <path>/translations or same dir for files)')
+  .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
+  .option('--preserve-code', 'Preserve code blocks and variables during translation')
+  .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
+  .option('--debounce <ms>', 'Debounce delay in milliseconds (default: 300)', parseInt)
+  .option('--auto-commit', 'Automatically commit translations to git')
+  .option('--git-staged', 'Only watch git-staged files (coming soon)')
+  .action(async (path: string, options: {
+    targets: string;
+    from?: string;
+    output?: string;
+    formality?: string;
+    preserveCode?: boolean;
+    pattern?: string;
+    debounce?: number;
+    autoCommit?: boolean;
+    gitStaged?: boolean;
+  }) => {
+    try {
+      if (options.gitStaged) {
+        console.error(chalk.yellow('Warning: --git-staged is not yet implemented'));
+      }
+
+      const client = createDeepLClient();
+      const translationService = new TranslationService(client, configService, cacheService);
+      const watchCommand = new WatchCommand(translationService);
+
+      await watchCommand.watch(path, options);
     } catch (error) {
       console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
       process.exit(1);

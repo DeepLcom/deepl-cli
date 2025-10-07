@@ -11,8 +11,8 @@
 ## 🌟 Key Features
 
 - **🌍 Translation** - High-quality translation using DeepL's next-gen LLM
-- **✍️ Writing Enhancement** - Grammar, style, and tone suggestions (DeepL Write API)
-- **👀 Watch Mode** - Real-time file watching with auto-translation
+- **👀 Watch Mode** - Real-time file watching with auto-translation (✅ NEW!)
+- **✍️ Writing Enhancement** - Grammar, style, and tone suggestions (DeepL Write API - coming soon)
 - **💾 Smart Caching** - Local SQLite cache with LRU eviction
 - **🎯 Context-Aware** - Preserves code blocks, variables, and formatting
 - **📦 Batch Processing** - Translate multiple files with parallel processing
@@ -65,8 +65,8 @@ This project follows a phased development approach with strict Test-Driven Devel
 ### Phase 2: Advanced Features (🚧 In Progress)
 - [x] Context-aware translation
 - [x] Batch processing with parallel translation
+- [x] Watch mode with file watching
 - [ ] DeepL Write integration
-- [ ] Watch mode with file watching
 - [ ] Git hooks integration
 
 ### Phase 3: TUI & Collaboration (Future)
@@ -276,20 +276,54 @@ deepl write email.txt --show-alternatives --tone diplomatic
 
 ### Watch Mode
 
-**Note:** Watch mode coming in Phase 2.
+Monitor files or directories for changes and automatically translate them in real-time. Perfect for keeping documentation and localization files in sync.
 
 ```bash
-# Watch i18n files and auto-translate
-deepl watch src/locales/en.json --targets es,fr,de
+# Watch a single file
+deepl watch README.md --targets es,fr,de
 
-# Watch markdown documentation
-deepl watch docs/ --pattern "*.md" --targets ja --output docs-i18n/
+# Watch a directory (all supported files)
+deepl watch docs/ --targets ja --output docs-i18n/
 
-# Git integration with auto-commit
-deepl watch --git-staged --targets es,fr --auto-commit
+# Watch with pattern filtering
+deepl watch src/locales/ --pattern "*.json" --targets es,fr,de
 
-# Dry run (preview without translating)
-deepl watch docs/ --targets es --dry-run
+# Watch markdown files only
+deepl watch docs/ --pattern "*.md" --targets ja
+
+# Auto-commit translations to git
+deepl watch docs/ --targets es --auto-commit
+
+# Custom debounce delay (default: 300ms)
+deepl watch src/ --targets es --debounce 1000
+
+# With formality and code preservation
+deepl watch docs/ --targets de --formality more --preserve-code
+```
+
+**Features:**
+- 🔄 Real-time monitoring with debouncing
+- 📁 Watch files or entire directories
+- 🎯 Glob pattern filtering (e.g., `*.md`, `*.json`)
+- 🔀 Multiple target languages
+- 💾 Auto-commit to git (optional)
+- ⚡ Smart debouncing to avoid redundant translations
+
+**Example output:**
+```
+👀 Watching for changes...
+Path: docs/
+Targets: es, fr, ja
+Output: docs/translations
+Pattern: *.md
+
+📝 Change detected: docs/README.md
+✓ Translated docs/README.md to 3 languages
+  → [es] docs/translations/README.es.md
+  → [fr] docs/translations/README.fr.md
+  → [ja] docs/translations/README.ja.md
+
+Press Ctrl+C to stop
 ```
 
 ### Configuration

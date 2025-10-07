@@ -1,0 +1,211 @@
+/**
+ * Watch Command
+ * Monitors files/directories for changes and auto-translates
+ */
+
+import * as fs from 'fs';
+import chalk from 'chalk';
+import { WatchService } from '../../services/watch.js';
+import { FileTranslationService } from '../../services/file-translation.js';
+import { TranslationService } from '../../services/translation.js';
+import { Language } from '../../types/index.js';
+
+interface WatchOptions {
+  targets: string;
+  from?: string;
+  formality?: string;
+  preserveCode?: boolean;
+  pattern?: string;
+  debounce?: number;
+  output?: string;
+  autoCommit?: boolean;
+  gitStaged?: boolean;
+}
+
+export class WatchCommand {
+  private fileTranslationService: FileTranslationService;
+  private watchService?: WatchService;
+
+  constructor(translationService: TranslationService) {
+    this.fileTranslationService = new FileTranslationService(translationService);
+  }
+
+  /**
+   * Start watching a file or directory
+   */
+  async watch(pathToWatch: string, options: WatchOptions): Promise<void> {
+    // Validate path exists
+    if (!fs.existsSync(pathToWatch)) {
+      throw new Error(`Path not found: ${pathToWatch}`);
+    }
+
+    // Parse target languages
+    const targetLangs = options.targets.split(',').map(lang => lang.trim()) as Language[];
+
+    if (targetLangs.length === 0) {
+      throw new Error('At least one target language is required. Use --targets es,fr,de');
+    }
+
+    // Determine output directory
+    let outputDir: string;
+    if (options.output) {
+      outputDir = options.output;
+    } else {
+      // Default: create translations/ subdirectory
+      const isDirectory = fs.statSync(pathToWatch).isDirectory();
+      if (isDirectory) {
+        outputDir = `${pathToWatch}/translations`;
+      } else {
+        // For files, use same directory
+        const pathParts = pathToWatch.split('/');
+        pathParts.pop();
+        outputDir = pathParts.join('/') || '.';
+      }
+    }
+
+    // Create output directory if it doesn't exist
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Create watch service with optional debounce
+    const watchServiceOptions = options.debounce
+      ? { debounceMs: options.debounce, pattern: options.pattern }
+      : { pattern: options.pattern };
+
+    this.watchService = new WatchService(this.fileTranslationService, watchServiceOptions);
+
+    // Build watch options
+    const watchOpts = {
+      targetLangs,
+      outputDir,
+      sourceLang: options.from as Language | undefined,
+      formality: options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less' | undefined,
+      preserveCode: options.preserveCode,
+      onChange: (filePath: string) => {
+        console.log(chalk.blue('📝 Change detected:'), filePath);
+      },
+      onTranslate: async (filePath: string, result: any) => {
+        if (Array.isArray(result)) {
+          // Multiple languages
+          console.log(chalk.green(`✓ Translated ${filePath} to ${result.length} languages`));
+          result.forEach((r: any) => {
+            console.log(chalk.gray(`  → [${r.targetLang}] ${r.outputPath}`));
+          });
+        } else {
+          // Single language
+          console.log(chalk.green(`✓ Translated ${filePath}`));
+          console.log(chalk.gray(`  → ${result.outputPath}`));
+        }
+
+        // Auto-commit if enabled
+        if (options.autoCommit) {
+          await this.autoCommit(filePath, result);
+        }
+      },
+      onError: (filePath: string, error: Error) => {
+        console.error(chalk.red(`✗ Translation failed for ${filePath}:`), error.message);
+      },
+    };
+
+    // Start watching
+    await this.watchService.watch(pathToWatch, watchOpts);
+
+    // Display initial message
+    console.log(chalk.green('👀 Watching for changes...'));
+    console.log(chalk.gray(`Path: ${pathToWatch}`));
+    console.log(chalk.gray(`Targets: ${targetLangs.join(', ')}`));
+    console.log(chalk.gray(`Output: ${outputDir}`));
+    if (options.pattern) {
+      console.log(chalk.gray(`Pattern: ${options.pattern}`));
+    }
+    if (options.autoCommit) {
+      console.log(chalk.yellow('⚠️  Auto-commit enabled'));
+    }
+    console.log(chalk.gray('Press Ctrl+C to stop\n'));
+
+    // Handle graceful shutdown
+    const cleanup = async () => {
+      console.log(chalk.yellow('\n\n🛑 Stopping watch...'));
+      if (this.watchService) {
+        await this.watchService.stop();
+        const stats = this.watchService.getStats();
+        console.log(chalk.gray(`Translations: ${stats.translationsCount}`));
+        console.log(chalk.gray(`Errors: ${stats.errorsCount}`));
+      }
+      console.log(chalk.green('✓ Watch stopped'));
+      process.exit(0);
+    };
+
+    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', cleanup);
+
+    // Keep process alive
+    await new Promise(() => {
+      // Intentionally never resolves - will exit via signal handlers
+    });
+  }
+
+  /**
+   * Auto-commit translated files to git
+   */
+  private async autoCommit(sourceFile: string, result: any): Promise<void> {
+    try {
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+
+      // Check if in a git repository
+      try {
+        await execAsync('git rev-parse --git-dir');
+      } catch {
+        console.log(chalk.yellow('⚠️  Not a git repository, skipping auto-commit'));
+        return;
+      }
+
+      // Collect output files
+      const outputFiles: string[] = [];
+      if (Array.isArray(result)) {
+        result.forEach((r: any) => {
+          if (r.outputPath) {
+            outputFiles.push(r.outputPath);
+          }
+        });
+      } else if (result.outputPath) {
+        outputFiles.push(result.outputPath);
+      }
+
+      if (outputFiles.length === 0) {
+        return;
+      }
+
+      // Stage files
+      for (const file of outputFiles) {
+        await execAsync(`git add "${file}"`);
+      }
+
+      // Create commit message
+      const langs = Array.isArray(result)
+        ? result.map((r: any) => r.targetLang).join(', ')
+        : result.targetLang;
+
+      const commitMsg = `chore(i18n): auto-translate ${sourceFile} to ${langs}`;
+
+      // Commit
+      await execAsync(`git commit -m "${commitMsg}"`);
+
+      console.log(chalk.green('✓ Auto-committed translations'));
+    } catch (error) {
+      console.error(chalk.red('✗ Auto-commit failed:'), error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
+
+  /**
+   * Stop watching
+   */
+  async stop(): Promise<void> {
+    if (this.watchService) {
+      await this.watchService.stop();
+    }
+  }
+}
