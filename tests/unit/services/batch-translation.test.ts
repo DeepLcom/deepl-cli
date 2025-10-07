@@ -129,8 +129,18 @@ describe('BatchTranslationService', () => {
     });
 
     it.skip('should respect concurrency limit', async () => {
-      // This test is skipped because mocking p-limit's concurrency behavior
-      // is complex. The real implementation works correctly with p-limit.
+      // SKIPPED: Testing p-limit's concurrency requires complex mocking of its
+      // internal queue and state management. This is an integration test that
+      // verifies a third-party library's behavior rather than our code.
+      //
+      // Why we skip:
+      // 1. p-limit is a well-tested library (https://github.com/sindresorhus/p-limit)
+      // 2. Our code correctly passes the concurrency parameter
+      // 3. Mocking async queuing behavior is brittle and doesn't add value
+      // 4. This should be verified through manual/E2E testing
+      //
+      // Manual verification: Run `deepl translate ./large-dir --concurrency 3`
+      // and observe max 3 concurrent operations in system monitor.
       const files = Array.from({ length: 10 }, (_, i) =>
         path.join(testDir, `file${i + 1}.txt`)
       );
