@@ -1,10 +1,11 @@
 /**
  * Tests for Translate Command
- * Following TDD approach - these tests should fail initially
+ * Following TDD approach
  */
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
+import { TranslateCommand } from '../../src/cli/commands/translate';
 import { TranslationService } from '../../src/services/translation';
 import { ConfigService } from '../../src/storage/config';
 
@@ -12,22 +13,10 @@ import { ConfigService } from '../../src/storage/config';
 jest.mock('../../src/services/translation');
 jest.mock('../../src/storage/config');
 
-describe('Translate Command', () => {
+describe('TranslateCommand', () => {
   let mockTranslationService: jest.Mocked<TranslationService>;
   let mockConfigService: jest.Mocked<ConfigService>;
-  let translateCommand: {
-    translateText: (text: string, options: {
-      to: string;
-      from?: string;
-      formality?: string;
-      preserveCode?: boolean;
-    }) => Promise<string>;
-    translateFromStdin: (options: {
-      to: string;
-      from?: string;
-      formality?: string;
-    }) => Promise<string>;
-  };
+  let translateCommand: TranslateCommand;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -48,6 +37,8 @@ describe('Translate Command', () => {
       delete: jest.fn(),
       clear: jest.fn(),
     } as unknown as jest.Mocked<ConfigService>;
+
+    translateCommand = new TranslateCommand(mockTranslationService, mockConfigService);
   });
 
   describe('translateText()', () => {

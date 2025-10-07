@@ -1,23 +1,19 @@
 /**
  * Tests for Config Command
- * Following TDD approach - these tests should fail initially
+ * Following TDD approach
  */
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
+import { ConfigCommand } from '../../src/cli/commands/config';
 import { ConfigService } from '../../src/storage/config';
 
 // Mock dependencies
 jest.mock('../../src/storage/config');
 
-describe('Config Command', () => {
+describe('ConfigCommand', () => {
   let mockConfigService: jest.Mocked<ConfigService>;
-  let configCommand: {
-    get: (key?: string) => Promise<unknown>;
-    set: (key: string, value: string) => Promise<void>;
-    list: () => Promise<Record<string, unknown>>;
-    reset: () => Promise<void>;
-  };
+  let configCommand: ConfigCommand;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -30,6 +26,8 @@ describe('Config Command', () => {
       delete: jest.fn(),
       clear: jest.fn(),
     } as unknown as jest.Mocked<ConfigService>;
+
+    configCommand = new ConfigCommand(mockConfigService);
   });
 
   describe('get()', () => {

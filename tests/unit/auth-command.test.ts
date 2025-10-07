@@ -1,22 +1,19 @@
 /**
  * Tests for Auth Command
- * Following TDD approach - these tests should fail initially
+ * Following TDD approach
  */
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
+import { AuthCommand } from '../../src/cli/commands/auth';
 import { ConfigService } from '../../src/storage/config';
 
 // Mock dependencies
 jest.mock('../../src/storage/config');
 
-describe('Auth Command', () => {
+describe('AuthCommand', () => {
   let mockConfigService: jest.Mocked<ConfigService>;
-  let authCommand: {
-    setKey: (apiKey: string) => Promise<void>;
-    getKey: () => Promise<string | undefined>;
-    clearKey: () => Promise<void>;
-  };
+  let authCommand: AuthCommand;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -29,6 +26,8 @@ describe('Auth Command', () => {
       delete: jest.fn(),
       clear: jest.fn(),
     } as unknown as jest.Mocked<ConfigService>;
+
+    authCommand = new AuthCommand(mockConfigService);
   });
 
   describe('setKey()', () => {

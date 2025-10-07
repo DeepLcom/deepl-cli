@@ -34,6 +34,21 @@ const { version } = packageJson;
 const configService = new ConfigService();
 const cacheService = new CacheService();
 
+// Cleanup on exit
+process.on('exit', () => {
+  cacheService.close();
+});
+
+process.on('SIGINT', () => {
+  cacheService.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  cacheService.close();
+  process.exit(0);
+});
+
 /**
  * Create DeepL client with API key from config or env
  */
