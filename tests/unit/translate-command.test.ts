@@ -9,8 +9,23 @@ import { TranslateCommand } from '../../src/cli/commands/translate';
 import { TranslationService } from '../../src/services/translation';
 import { ConfigService } from '../../src/storage/config';
 
+// Mock ESM dependencies
+jest.mock('ora', () => ({
+  default: jest.fn(() => ({
+    start: jest.fn().mockReturnThis(),
+    succeed: jest.fn().mockReturnThis(),
+    fail: jest.fn().mockReturnThis(),
+    text: '',
+  })),
+}));
+
+jest.mock('p-limit');
+jest.mock('fast-glob');
+
 // Mock dependencies
 jest.mock('../../src/services/translation');
+jest.mock('../../src/services/file-translation');
+jest.mock('../../src/services/batch-translation');
 jest.mock('../../src/storage/config');
 
 describe('TranslateCommand', () => {

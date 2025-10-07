@@ -134,14 +134,17 @@ program
 // Translate command
 program
   .command('translate')
-  .description('Translate text or files using DeepL API')
-  .argument('[text]', 'Text or file path to translate (or read from stdin)')
+  .description('Translate text, files, or directories using DeepL API')
+  .argument('[text]', 'Text, file path, or directory to translate (or read from stdin)')
   .requiredOption('-t, --to <language>', 'Target language(s), comma-separated for multiple')
   .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
-  .option('-o, --output <path>', 'Output file path or directory (required for file translation)')
+  .option('-o, --output <path>', 'Output file path or directory (required for file/directory translation)')
   .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
   .option('--context <text>', 'Additional context to improve translation quality')
+  .option('--recursive', 'Process subdirectories recursively (default: true)', true)
+  .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
+  .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
   .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
   .action(async (text: string | undefined, options: {
     to: string;
@@ -150,6 +153,9 @@ program
     formality?: string;
     preserveCode?: boolean;
     context?: string;
+    recursive?: boolean;
+    pattern?: string;
+    concurrency?: number;
     apiUrl?: string;
   }) => {
     try {

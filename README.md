@@ -57,17 +57,17 @@ This project follows a phased development approach with strict Test-Driven Devel
 - [x] Glossary management (create, list, show, delete)
 - [x] Cache management CLI commands
 
-**Test Coverage**: 323 tests (321 passing, 99.4% pass rate)
-- Unit tests: 275 (88.85% coverage)
+**Test Coverage**: 345 tests (340 passing, 98.6% pass rate)
+- Unit tests: 297 (88.5% coverage)
 - Integration tests: 27
 - E2E tests: 21
 
-### Phase 2: Advanced Features (Planned)
+### Phase 2: Advanced Features (🚧 In Progress)
+- [x] Context-aware translation
+- [x] Batch processing with parallel translation
 - [ ] DeepL Write integration
 - [ ] Watch mode with file watching
 - [ ] Git hooks integration
-- [ ] Batch processing
-- [ ] Context-aware translation
 
 ### Phase 3: TUI & Collaboration (Future)
 - [ ] Interactive TUI application
@@ -187,7 +187,34 @@ deepl translate docs.md --to es,fr,de --output ./translated/
 deepl translate tutorial.md --to ja --output tutorial.ja.md --preserve-code
 ```
 
-**Note:** Additional document formats (PDF, DOCX) and batch file translation planned for Phase 2.
+**Note:** Additional document formats (PDF, DOCX) planned for Phase 3.
+
+#### Batch Translation (Directory Processing)
+
+Translate multiple files in parallel with progress indicators:
+
+```bash
+# Translate all files in a directory
+deepl translate ./docs --to es --output ./docs-es
+# Scanning files...
+# Translating files: 10/10
+# ✔ Translation complete!
+#
+# Translation Statistics:
+#   Total files: 10
+#   ✓ Successful: 10
+
+# Translate specific file types with glob pattern
+deepl translate ./docs --to fr --output ./docs-fr --pattern "*.md"
+# Only translates markdown files
+
+# Non-recursive (current directory only)
+deepl translate ./docs --to de --output ./docs-de --recursive false
+
+# Custom concurrency (default: 5)
+deepl translate ./large-docs --to ja --output ./large-docs-ja --concurrency 10
+# Faster processing with more parallel translations
+```
 
 #### Advanced Translation Options
 

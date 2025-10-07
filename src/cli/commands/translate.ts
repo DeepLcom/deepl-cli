@@ -4,8 +4,10 @@
  */
 
 import * as fs from 'fs';
+import ora from 'ora';
 import { TranslationService } from '../../services/translation.js';
 import { FileTranslationService } from '../../services/file-translation.js';
+import { BatchTranslationService } from '../../services/batch-translation.js';
 import { ConfigService } from '../../storage/config.js';
 import { Language } from '../../types/index.js';
 
@@ -16,23 +18,36 @@ interface TranslateOptions {
   preserveCode?: boolean;
   context?: string;
   output?: string;
+  recursive?: boolean;
+  pattern?: string;
+  concurrency?: number;
 }
 
 export class TranslateCommand {
   private translationService: TranslationService;
   private fileTranslationService: FileTranslationService;
+  private batchTranslationService: BatchTranslationService;
   private config: ConfigService;
 
   constructor(translationService: TranslationService, config: ConfigService) {
     this.translationService = translationService;
     this.fileTranslationService = new FileTranslationService(translationService);
+    this.batchTranslationService = new BatchTranslationService(
+      this.fileTranslationService,
+      { concurrency: 5 }
+    );
     this.config = config;
   }
 
   /**
-   * Translate text or file
+   * Translate text, file, or directory
    */
   async translate(textOrPath: string, options: TranslateOptions): Promise<string> {
+    // Check if input is a directory
+    if (fs.existsSync(textOrPath) && fs.statSync(textOrPath).isDirectory()) {
+      return this.translateDirectory(textOrPath, options);
+    }
+
     // Check if input is a file path
     if (this.isFilePath(textOrPath)) {
       return this.translateFile(textOrPath, options);
@@ -206,6 +221,91 @@ export class TranslateCommand {
     return results
       .map(result => `[${result.targetLang}] ${result.text}`)
       .join('\n');
+  }
+
+  /**
+   * Translate directory (batch translation)
+   */
+  private async translateDirectory(dirPath: string, options: TranslateOptions): Promise<string> {
+    if (!options.output) {
+      throw new Error('Output directory is required for batch translation. Use --output <dir>');
+    }
+
+    // Build translation options
+    const targetLang = options.to as Language;
+    const translationOptions: {
+      targetLang: Language;
+      sourceLang?: Language;
+      formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+    } = {
+      targetLang,
+    };
+
+    if (options.from) {
+      translationOptions.sourceLang = options.from as Language;
+    }
+
+    if (options.formality) {
+      translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+    }
+
+    // Build batch options
+    const batchOptions = {
+      outputDir: options.output,
+      recursive: options.recursive !== false,
+      pattern: options.pattern,
+      onProgress: (progress: { completed: number; total: number; current?: string }) => {
+        spinner.text = `Translating files: ${progress.completed}/${progress.total}`;
+      },
+    };
+
+    // Create spinner
+    const spinner = ora('Scanning files...').start();
+
+    try {
+      // Override concurrency if provided
+      if (options.concurrency) {
+        this.batchTranslationService = new BatchTranslationService(
+          this.fileTranslationService,
+          { concurrency: options.concurrency }
+        );
+      }
+
+      // Translate directory
+      const result = await this.batchTranslationService.translateDirectory(
+        dirPath,
+        translationOptions,
+        batchOptions
+      );
+
+      const stats = this.batchTranslationService.getStatistics(result);
+
+      spinner.succeed(`Translation complete!`);
+
+      // Format output
+      const output: string[] = [
+        `\nTranslation Statistics:`,
+        `  Total files: ${stats.total}`,
+        `  ✓ Successful: ${stats.successful}`,
+      ];
+
+      if (stats.failed > 0) {
+        output.push(`  ✗ Failed: ${stats.failed}`);
+        output.push(`\nFailed files:`);
+        result.failed.forEach(f => {
+          output.push(`  - ${f.file}: ${f.error}`);
+        });
+      }
+
+      if (stats.skipped > 0) {
+        output.push(`  ⊘ Skipped: ${stats.skipped}`);
+      }
+
+      return output.join('\n');
+    } catch (error) {
+      spinner.fail('Translation failed');
+      throw error;
+    }
   }
 
   /**
