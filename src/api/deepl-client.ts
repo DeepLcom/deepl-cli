@@ -30,6 +30,16 @@ interface DeepLLanguageResponse {
   name: string;
 }
 
+export interface GlossaryInfo {
+  glossary_id: string;
+  name: string;
+  ready: boolean;
+  source_lang: string;
+  target_lang: string;
+  creation_time: string;
+  entry_count: number;
+}
+
 export interface TranslationResult {
   text: string;
   detectedSourceLang?: Language;
@@ -298,5 +308,63 @@ export class DeepLClient {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Create a glossary
+   */
+  async createGlossary(
+    name: string,
+    sourceLang: string,
+    targetLang: string,
+    entries: string
+  ): Promise<GlossaryInfo> {
+    const response = await this.client.post<GlossaryInfo>('/glossaries', {
+      name,
+      source_lang: sourceLang,
+      target_lang: targetLang,
+      entries,
+      entries_format: 'tsv',
+    });
+
+    return response.data;
+  }
+
+  /**
+   * List all glossaries
+   */
+  async listGlossaries(): Promise<GlossaryInfo[]> {
+    const response = await this.client.get<{ glossaries: GlossaryInfo[] }>('/glossaries');
+    return response.data.glossaries || [];
+  }
+
+  /**
+   * Get glossary information
+   */
+  async getGlossary(glossaryId: string): Promise<GlossaryInfo> {
+    const response = await this.client.get<GlossaryInfo>(`/glossaries/${glossaryId}`);
+    return response.data;
+  }
+
+  /**
+   * Delete a glossary
+   */
+  async deleteGlossary(glossaryId: string): Promise<void> {
+    await this.client.delete(`/glossaries/${glossaryId}`);
+  }
+
+  /**
+   * Get glossary entries
+   */
+  async getGlossaryEntries(glossaryId: string): Promise<string> {
+    const response = await this.client.get<string>(
+      `/glossaries/${glossaryId}/entries`,
+      {
+        headers: {
+          Accept: 'text/tab-separated-values',
+        },
+      }
+    );
+    return response.data;
   }
 }

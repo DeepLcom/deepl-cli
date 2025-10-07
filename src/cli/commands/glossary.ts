@@ -1,0 +1,125 @@
+/**
+ * Glossary Command
+ * Manages DeepL glossaries
+ */
+
+import * as fs from 'fs';
+import { GlossaryService } from '../../services/glossary.js';
+import { GlossaryInfo } from '../../api/deepl-client.js';
+
+export class GlossaryCommand {
+  private glossaryService: GlossaryService;
+
+  constructor(glossaryService: GlossaryService) {
+    this.glossaryService = glossaryService;
+  }
+
+  /**
+   * Create glossary from TSV/CSV file
+   */
+  async create(
+    name: string,
+    sourceLang: string,
+    targetLang: string,
+    filePath: string
+  ): Promise<GlossaryInfo> {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return this.glossaryService.createGlossaryFromTSV(
+      name,
+      sourceLang,
+      targetLang,
+      content
+    );
+  }
+
+  /**
+   * List all glossaries
+   */
+  async list(): Promise<GlossaryInfo[]> {
+    return this.glossaryService.listGlossaries();
+  }
+
+  /**
+   * Show glossary details
+   */
+  async show(nameOrId: string): Promise<GlossaryInfo> {
+    // Try to get by ID first
+    try {
+      return await this.glossaryService.getGlossary(nameOrId);
+    } catch {
+      // If failed, try by name
+      const glossary = await this.glossaryService.getGlossaryByName(nameOrId);
+      if (!glossary) {
+        throw new Error(`Glossary not found: ${nameOrId}`);
+      }
+      return glossary;
+    }
+  }
+
+  /**
+   * Delete glossary
+   */
+  async delete(nameOrId: string): Promise<void> {
+    // Try to get glossary first to find ID
+    const glossary = await this.show(nameOrId);
+    await this.glossaryService.deleteGlossary(glossary.glossary_id);
+  }
+
+  /**
+   * Get glossary entries
+   */
+  async entries(nameOrId: string): Promise<Record<string, string>> {
+    const glossary = await this.show(nameOrId);
+    return this.glossaryService.getGlossaryEntries(glossary.glossary_id);
+  }
+
+  /**
+   * Format glossary info for display
+   */
+  formatGlossaryInfo(glossary: GlossaryInfo): string {
+    const status = glossary.ready ? 'Ready' : 'Not ready';
+    return [
+      `Name: ${glossary.name}`,
+      `ID: ${glossary.glossary_id}`,
+      `Status: ${status}`,
+      `Language pair: ${glossary.source_lang} → ${glossary.target_lang}`,
+      `Entries: ${glossary.entry_count}`,
+      `Created: ${new Date(glossary.creation_time).toLocaleString()}`,
+    ].join('\n');
+  }
+
+  /**
+   * Format glossary list for display
+   */
+  formatGlossaryList(glossaries: GlossaryInfo[]): string {
+    if (glossaries.length === 0) {
+      return 'No glossaries found';
+    }
+
+    const lines = glossaries.map(g => {
+      const status = g.ready ? '✓' : '○';
+      return `${status} ${g.name} (${g.source_lang}→${g.target_lang}) - ${g.entry_count} entries`;
+    });
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Format glossary entries for display
+   */
+  formatEntries(entries: Record<string, string>): string {
+    if (Object.keys(entries).length === 0) {
+      return 'No entries found';
+    }
+
+    const lines = Object.entries(entries).map(
+      ([source, target]) => `${source} → ${target}`
+    );
+
+    return lines.join('\n');
+  }
+}

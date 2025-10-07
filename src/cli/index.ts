@@ -14,10 +14,12 @@ import { ConfigService } from '../storage/config.js';
 import { CacheService } from '../storage/cache.js';
 import { DeepLClient } from '../api/deepl-client.js';
 import { TranslationService } from '../services/translation.js';
+import { GlossaryService } from '../services/glossary.js';
 import { AuthCommand } from './commands/auth.js';
 import { TranslateCommand } from './commands/translate.js';
 import { ConfigCommand as ConfigCmd } from './commands/config.js';
 import { CacheCommand } from './commands/cache.js';
+import { GlossaryCommand } from './commands/glossary.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -270,6 +272,104 @@ program
         try {
           await cacheCommand.disable();
           console.log(chalk.green('✓ Cache disabled'));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  );
+
+// Glossary command
+program
+  .command('glossary')
+  .description('Manage translation glossaries')
+  .addCommand(
+    new Command('create')
+      .description('Create a glossary from TSV/CSV file')
+      .argument('<name>', 'Glossary name')
+      .argument('<source-lang>', 'Source language code')
+      .argument('<target-lang>', 'Target language code')
+      .argument('<file>', 'TSV/CSV file path')
+      .action(async (name: string, sourceLang: string, targetLang: string, file: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          const glossary = await glossaryCommand.create(name, sourceLang, targetLang, file);
+          console.log(chalk.green('✓ Glossary created successfully'));
+          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('list')
+      .description('List all glossaries')
+      .action(async () => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          const glossaries = await glossaryCommand.list();
+          console.log(glossaryCommand.formatGlossaryList(glossaries));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('show')
+      .description('Show glossary details')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .action(async (nameOrId: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          const glossary = await glossaryCommand.show(nameOrId);
+          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('entries')
+      .description('Show glossary entries')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .action(async (nameOrId: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          const entries = await glossaryCommand.entries(nameOrId);
+          console.log(glossaryCommand.formatEntries(entries));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('delete')
+      .description('Delete a glossary')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .action(async (nameOrId: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          await glossaryCommand.delete(nameOrId);
+          console.log(chalk.green('✓ Glossary deleted successfully'));
         } catch (error) {
           console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
