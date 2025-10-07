@@ -4,10 +4,10 @@
  */
 
 import * as crypto from 'crypto';
-import { DeepLClient, TranslationResult, UsageInfo, LanguageInfo } from '../api/deepl-client';
-import { ConfigService } from '../storage/config';
-import { CacheService } from '../storage/cache';
-import { TranslationOptions, Language } from '../types';
+import { DeepLClient, TranslationResult, UsageInfo, LanguageInfo } from '../api/deepl-client.js';
+import { ConfigService } from '../storage/config.js';
+import { CacheService } from '../storage/cache.js';
+import { TranslationOptions, Language } from '../types/index.js';
 
 interface TranslateServiceOptions {
   preserveCode?: boolean;

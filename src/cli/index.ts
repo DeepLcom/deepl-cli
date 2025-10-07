@@ -11,11 +11,13 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { ConfigService } from '../storage/config.js';
+import { CacheService } from '../storage/cache.js';
 import { DeepLClient } from '../api/deepl-client.js';
 import { TranslationService } from '../services/translation.js';
 import { AuthCommand } from './commands/auth.js';
 import { TranslateCommand } from './commands/translate.js';
 import { ConfigCommand as ConfigCmd } from './commands/config.js';
+import { CacheCommand } from './commands/cache.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -28,6 +30,7 @@ const { version } = packageJson;
 
 // Initialize services
 const configService = new ConfigService();
+const cacheService = new CacheService();
 
 /**
  * Create DeepL client with API key from config or env
@@ -205,6 +208,66 @@ program
         try {
           await configCommand.reset();
           console.log(chalk.green('✓ Configuration reset to defaults'));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  );
+
+// Cache command
+const cacheCommand = new CacheCommand(cacheService);
+
+program
+  .command('cache')
+  .description('Manage translation cache')
+  .addCommand(
+    new Command('stats')
+      .description('Show cache statistics')
+      .action(async () => {
+        try {
+          const stats = await cacheCommand.stats();
+          const formatted = cacheCommand.formatStats(stats);
+          console.log(formatted);
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('clear')
+      .description('Clear all cached translations')
+      .action(async () => {
+        try {
+          await cacheCommand.clear();
+          console.log(chalk.green('✓ Cache cleared successfully'));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('enable')
+      .description('Enable translation cache')
+      .action(async () => {
+        try {
+          await cacheCommand.enable();
+          console.log(chalk.green('✓ Cache enabled'));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('disable')
+      .description('Disable translation cache')
+      .action(async () => {
+        try {
+          await cacheCommand.disable();
+          console.log(chalk.green('✓ Cache disabled'));
         } catch (error) {
           console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
