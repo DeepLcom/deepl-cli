@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:developers.deepl.com)",
+      "WebSearch",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(node:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
