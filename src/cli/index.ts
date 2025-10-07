@@ -14,10 +14,13 @@ import { ConfigService } from '../storage/config.js';
 import { CacheService } from '../storage/cache.js';
 import { DeepLClient } from '../api/deepl-client.js';
 import { TranslationService } from '../services/translation.js';
+import { WriteService } from '../services/write.js';
 import { GlossaryService } from '../services/glossary.js';
 import { AuthCommand } from './commands/auth.js';
 import { TranslateCommand } from './commands/translate.js';
+import { WriteCommand } from './commands/write.js';
 import { WatchCommand } from './commands/watch.js';
+import { HooksCommand } from './commands/hooks.js';
 import { ConfigCommand as ConfigCmd } from './commands/config.js';
 import { CacheCommand } from './commands/cache.js';
 import { GlossaryCommand } from './commands/glossary.js';
@@ -220,6 +223,40 @@ program
       const watchCommand = new WatchCommand(translationService);
 
       await watchCommand.watch(path, options);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+      process.exit(1);
+    }
+  });
+
+// Write command
+program
+  .command('write')
+  .description('Improve text using DeepL Write API (grammar, style, tone)')
+  .argument('<text>', 'Text to improve')
+  .requiredOption('-l, --lang <language>', 'Target language (de, en-GB, en-US, es, fr, it, pt-BR, pt-PT)')
+  .option('-s, --style <style>', 'Writing style: simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
+  .option('-t, --tone <tone>', 'Tone: enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
+  .option('-a, --alternatives', 'Show all alternative improvements')
+  .action(async (text: string, options: {
+    lang: string;
+    style?: string;
+    tone?: string;
+    alternatives?: boolean;
+  }) => {
+    try {
+      const client = createDeepLClient();
+      const writeService = new WriteService(client, configService);
+      const writeCommand = new WriteCommand(writeService, configService);
+
+      const result = await writeCommand.improve(text, {
+        lang: options.lang as any,
+        style: options.style as any,
+        tone: options.tone as any,
+        showAlternatives: options.alternatives,
+      });
+
+      console.log(result);
     } catch (error) {
       console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
       process.exit(1);
@@ -440,6 +477,70 @@ program
 
           await glossaryCommand.delete(nameOrId);
           console.log(chalk.green('✓ Glossary deleted successfully'));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  );
+
+// Hooks command
+program
+  .command('hooks')
+  .description('Manage git hooks for translation workflow')
+  .addCommand(
+    new Command('install')
+      .description('Install a git hook')
+      .argument('<hook-type>', 'Hook type: pre-commit or pre-push')
+      .action(async (hookType: string) => {
+        try {
+          const hooksCommand = new HooksCommand();
+          const result = await hooksCommand.install(hookType as any);
+          console.log(result);
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('uninstall')
+      .description('Uninstall a git hook')
+      .argument('<hook-type>', 'Hook type: pre-commit or pre-push')
+      .action(async (hookType: string) => {
+        try {
+          const hooksCommand = new HooksCommand();
+          const result = await hooksCommand.uninstall(hookType as any);
+          console.log(result);
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('list')
+      .description('List all hooks and their status')
+      .action(() => {
+        try {
+          const hooksCommand = new HooksCommand();
+          const result = hooksCommand.list();
+          console.log(result);
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('path')
+      .description('Show path to a hook file')
+      .argument('<hook-type>', 'Hook type: pre-commit or pre-push')
+      .action((hookType: string) => {
+        try {
+          const hooksCommand = new HooksCommand();
+          const result = hooksCommand.showPath(hookType as any);
+          console.log(result);
         } catch (error) {
           console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
