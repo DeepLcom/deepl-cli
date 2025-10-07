@@ -270,16 +270,16 @@ deepl watch --help         # Test watch command
 
 ## Commits Summary (Last 10)
 
-1. `ea3bf3a` - feat(watch): add watch command for real-time file translation
-2. `f18e38c` - feat(watch): implement WatchService for file monitoring
-3. `f5ab68a` - test(translate): add comprehensive tests for file/directory translation
-4. `cc77fa6` - refactor(test): remove untestable concurrency test
-5. `ccd1073` - docs(test): improve skip comment for concurrency test
-6. `ed04241` - docs: update test status - all tests passing
-7. `33246d6` - fix(tests): add DEEPL_CONFIG_DIR env var for test isolation
-8. `deec6c9` - fix(config): return null instead of undefined for non-existent keys
-9. `ad2a363` - feat(batch): add batch translation with parallel processing
-10. `715bb0d` - docs: add comprehensive context-aware translation documentation
+1. `644c0df` - docs: update TODO.md and CHANGELOG.md with Phase 2 progress
+2. `3c378a2` - docs: update DESIGN.md to reflect Phase 2 progress
+3. `007ff26` - docs: update CONTEXT_SUMMARY.md with Phase 2 progress
+4. `ea3bf3a` - feat(watch): add watch command for real-time file translation
+5. `f18e38c` - feat(watch): implement WatchService for file monitoring and auto-translation
+6. `f5ab68a` - test(translate): add comprehensive tests for file/directory translation
+7. `cc77fa6` - refactor(test): remove untestable concurrency test
+8. `ccd1073` - docs(test): improve skip comment for concurrency test
+9. `ed04241` - docs: update test status - all tests passing
+10. `33246d6` - fix(tests): add DEEPL_CONFIG_DIR env var for test isolation
 
 ---
 
