@@ -14,12 +14,10 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 ### ✅ Completed
 - [x] Manual testing with real API
 - [x] Add integration tests for CLI commands (25/27 passing)
+- [x] Add E2E tests for complete workflows (21 tests, all passing)
 - [x] Add CHANGELOG.md and versioning guidelines
 - [x] Create VERSION file and v0.1.0 tag
 - [x] Update CLAUDE.md with versioning section
-
-### 🔄 In Progress
-- [ ] Add E2E tests for complete workflows
 
 ### ⏳ Pending
 - [ ] Update README with real usage examples
@@ -281,8 +279,9 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 ### Testing Strategy
 - **Unit tests**: 275 tests, 88.85% coverage ✅
 - **Integration tests**: 27 tests (25 passing) ✅
-- **E2E tests**: Pending
+- **E2E tests**: 21 tests (all passing) ✅
 - **Manual tests**: Documented in MANUAL_TEST_REPORT.md ✅
+- **Total**: 323 tests (321 passing, 2 failing with documented issues)
 
 ### Before v1.0.0 Release
 Must complete ALL items in "Production-Grade Polish (Critical)" section before tagging v1.0.0 and publishing to npm.
