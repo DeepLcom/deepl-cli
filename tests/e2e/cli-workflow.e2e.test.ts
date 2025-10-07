@@ -205,7 +205,7 @@ describe('CLI Workflow E2E', () => {
 
     it('should handle non-existent config keys gracefully', () => {
       const output = execSync('deepl config get nonexistent.key', { encoding: 'utf-8' });
-      expect(output.trim()).toBe('undefined');
+      expect(output.trim()).toBe('null');
     });
 
     it('should require target language for translation without API key', () => {

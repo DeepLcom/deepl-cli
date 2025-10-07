@@ -12,6 +12,14 @@ describe('Config CLI Integration', () => {
   const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-config-${Date.now()}`);
   const configPath = path.join(testConfigDir, 'config.json');
 
+  // Helper to run CLI commands with test config directory
+  const runCLI = (command: string): string => {
+    return execSync(command, {
+      encoding: 'utf-8',
+      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+    });
+  };
+
   beforeAll(() => {
     // Create test directory
     if (!fs.existsSync(testConfigDir)) {
@@ -63,7 +71,7 @@ describe('Config CLI Integration', () => {
 
   describe('deepl config list', () => {
     it('should list all configuration values as JSON', () => {
-      const output = execSync('deepl config list', { encoding: 'utf-8' });
+      const output = runCLI('deepl config list');
 
       // Parse JSON output
       const config = JSON.parse(output);
@@ -78,7 +86,7 @@ describe('Config CLI Integration', () => {
     });
 
     it('should show formatted JSON', () => {
-      const output = execSync('deepl config list', { encoding: 'utf-8' });
+      const output = runCLI('deepl config list');
 
       // Should be pretty-printed JSON
       expect(output).toContain('{\n');
@@ -88,14 +96,14 @@ describe('Config CLI Integration', () => {
 
   describe('deepl config get', () => {
     it('should get specific nested config value', () => {
-      const output = execSync('deepl config get cache.enabled', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get cache.enabled');
 
       const value = JSON.parse(output);
       expect(value).toBe(true);
     });
 
     it('should get top-level config section', () => {
-      const output = execSync('deepl config get cache', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get cache');
 
       const cache = JSON.parse(output);
       expect(cache).toHaveProperty('enabled');
@@ -104,7 +112,7 @@ describe('Config CLI Integration', () => {
     });
 
     it('should return null for non-existent key', () => {
-      const output = execSync('deepl config get nonexistent.key', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get nonexistent.key');
 
       const value = JSON.parse(output);
       expect(value).toBeNull();
@@ -113,43 +121,43 @@ describe('Config CLI Integration', () => {
 
   describe('deepl config set', () => {
     it('should set a boolean value', () => {
-      execSync('deepl config set cache.enabled false', { encoding: 'utf-8' });
+      runCLI('deepl config set cache.enabled false');
 
       // Verify it was set
-      const output = execSync('deepl config get cache.enabled', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get cache.enabled');
       const value = JSON.parse(output);
       expect(value).toBe(false);
     });
 
     it('should set a number value', () => {
-      execSync('deepl config set cache.maxSize 2048', { encoding: 'utf-8' });
+      runCLI('deepl config set cache.maxSize 2048');
 
       // Verify it was set
-      const output = execSync('deepl config get cache.maxSize', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get cache.maxSize');
       const value = JSON.parse(output);
       expect(value).toBe(2048);
     });
 
     it('should set a string value', () => {
-      execSync('deepl config set output.format json', { encoding: 'utf-8' });
+      runCLI('deepl config set output.format json');
 
       // Verify it was set
-      const output = execSync('deepl config get output.format', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get output.format');
       const value = JSON.parse(output);
       expect(value).toBe('json');
     });
 
     it('should set array values from comma-separated string', () => {
-      execSync('deepl config set defaults.targetLangs es,fr,de', { encoding: 'utf-8' });
+      runCLI('deepl config set defaults.targetLangs es,fr,de');
 
       // Verify it was set
-      const output = execSync('deepl config get defaults.targetLangs', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get defaults.targetLangs');
       const value = JSON.parse(output);
       expect(value).toEqual(['es', 'fr', 'de']);
     });
 
     it('should persist changes to config file', () => {
-      execSync('deepl config set cache.enabled false', { encoding: 'utf-8' });
+      runCLI('deepl config set cache.enabled false');
 
       // Read config file directly
       const configContent = fs.readFileSync(configPath, 'utf-8');
@@ -162,19 +170,19 @@ describe('Config CLI Integration', () => {
   describe('deepl config reset', () => {
     it('should reset configuration to defaults', () => {
       // Change a value
-      execSync('deepl config set cache.enabled false', { encoding: 'utf-8' });
+      runCLI('deepl config set cache.enabled false');
 
       // Reset
-      const output = execSync('deepl config reset', { encoding: 'utf-8' });
+      const output = runCLI('deepl config reset');
       expect(output).toContain('✓ Configuration reset to defaults');
 
       // Verify defaults restored
-      const cacheEnabled = execSync('deepl config get cache.enabled', { encoding: 'utf-8' });
+      const cacheEnabled = runCLI('deepl config get cache.enabled');
       expect(JSON.parse(cacheEnabled)).toBe(true);
     });
 
     it('should remove config file on reset', () => {
-      execSync('deepl config reset', { encoding: 'utf-8' });
+      runCLI('deepl config reset');
 
       // Config file should be removed or reset
       // (implementation may vary - either delete or reset to defaults)

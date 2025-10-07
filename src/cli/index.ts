@@ -31,7 +31,11 @@ const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as { vers
 const { version } = packageJson;
 
 // Initialize services
-const configService = new ConfigService();
+// Support custom config directory for testing via DEEPL_CONFIG_DIR env var
+const configPath = process.env['DEEPL_CONFIG_DIR']
+  ? join(process.env['DEEPL_CONFIG_DIR'], 'config.json')
+  : undefined;
+const configService = new ConfigService(configPath);
 const cacheService = new CacheService();
 
 // Cleanup on exit
