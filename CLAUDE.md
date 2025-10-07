@@ -86,11 +86,107 @@ export class TranslationService {
 // Implement actual DeepL API integration
 ```
 
+## Versioning and Changelog
+
+### Principles
+
+**IMPORTANT: This project uses Semantic Versioning (SemVer) and maintains a CHANGELOG.**
+
+- Use **Semantic Versioning (SemVer)**: MAJOR.MINOR.PATCH
+  - **MAJOR**: incompatible or breaking changes
+  - **MINOR**: backwards-compatible features
+  - **PATCH**: backwards-compatible bug fixes
+- Maintain a human-readable **CHANGELOG.md** following "Keep a Changelog" style with an **Unreleased** section.
+- Every **production/public release** must be **tagged** (`vX.Y.Z`) and documented in the changelog.
+
+### Commit & PR Conventions
+
+Prefer **Conventional Commits** to infer version bumps:
+- `feat:` → MINOR
+- `fix:` → PATCH
+- `perf:` (no breaking) → PATCH
+- `docs:, chore:, refactor:` → no bump unless behavior changes
+- Any commit with `BREAKING CHANGE:` or `!` → MAJOR
+
+**Example**: `feat(search): add fuzzy matching` → MINOR bump
+
+### What YOU Must Do on Every Change
+
+1. **Edit `CHANGELOG.md`**
+   - Add entries under **Unreleased** with subsections as needed:
+     - Added / Changed / Fixed / Deprecated / Removed / Security
+   - Keep concise, user-facing notes.
+
+2. **Select version bump**
+   - Determine MAJOR/MINOR/PATCH from the change scope (rules above).
+   - If no release is intended, keep changes in **Unreleased** (no tag yet).
+
+3. **When cutting a release**
+   - Move items from **Unreleased** to a new section `## [X.Y.Z] - YYYY-MM-DD`.
+   - Update **Unreleased** back to empty scaffolding.
+   - Update `VERSION` file to `X.Y.Z`.
+   - Update `package.json` version to match.
+   - Create an **annotated tag** at the release commit:
+     ```bash
+     git tag -a vX.Y.Z -m "Release vX.Y.Z: <one-line summary>"
+     ```
+   - Push commits and the tag:
+     ```bash
+     git push && git push --tags
+     ```
+
+4. **Never tag** for WIP or internal drafts; only tag **released** versions.
+
+### Tagging Rules
+
+- Tag every **production/public** release.
+- Do **not** tag for feature branches or internal snapshots.
+- Use `vX.Y.Z`, optionally with pre-releases (`v1.2.0-alpha.1`) when needed.
+- Always use **annotated tags** (with `-a` flag), not lightweight tags.
+
+### Changelog Format (Keep a Changelog)
+
+```markdown
+# Changelog
+
+## [Unreleased]
+### Added
+### Changed
+### Fixed
+### Deprecated
+### Removed
+### Security
+
+## [X.Y.Z] - YYYY-MM-DD
+### Added
+- New feature description
+### Fixed
+- Bug fix description
+```
+
+Keep entries imperative and short. Focus on user-facing changes.
+
+### Assistant Checklist (Run This on EVERY PR or Commit)
+
+- [ ] Updated **Unreleased** in `CHANGELOG.md` with accurate notes.
+- [ ] Chose correct SemVer bump or marked as "no release".
+- [ ] If releasing: moved notes to dated section, updated `VERSION` and `package.json`, created annotated tag.
+- [ ] Commit messages follow Conventional Commits format.
+- [ ] All tests pass before tagging a release.
+
+### Current Version Status
+
+- **Current Version**: 0.1.0 (Initial baseline release - Phase 1 MVP)
+- **Status**: Pre-1.0 indicates API may change as Phase 2-3 features are implemented
+- **Next Milestone**: 0.2.0 (Phase 2 features) or 1.0.0 (stable public API)
+
+---
+
 ### Incremental Development
 
 Follow the phased approach outlined in DESIGN.md:
 
-**Phase 1: MVP (Current Focus)**
+**Phase 1: MVP (✅ COMPLETE - v0.1.0)**
 - Basic translation command
 - File translation with format preservation
 - Configuration management
