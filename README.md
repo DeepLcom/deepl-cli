@@ -44,7 +44,7 @@
 
 This project follows a phased development approach with strict Test-Driven Development (TDD):
 
-### Phase 1: MVP (Current - 60% Complete)
+### Phase 1: MVP (✅ 100% Complete)
 - [x] Basic translation command (`deepl translate`)
 - [x] Configuration management (`deepl config`)
 - [x] API key authentication (`deepl auth`)
@@ -53,9 +53,9 @@ This project follows a phased development approach with strict Test-Driven Devel
 - [x] Multi-target language support
 - [x] Stdin support for piping
 - [x] Configurable API endpoints (free/pro/custom)
-- [ ] File translation with format preservation
-- [ ] Basic glossary support
-- [ ] Cache management CLI commands
+- [x] File translation with format preservation
+- [x] Basic glossary support
+- [x] Cache management CLI commands
 
 ### Phase 2: Advanced Features (Planned)
 - [ ] DeepL Write integration
@@ -147,20 +147,20 @@ deepl translate "Good morning" --to es,fr,de,ja
 echo "Hello world" | deepl translate --to es
 ```
 
-#### File Translation 🚧
-
-**Coming Soon** - File translation is planned for Phase 1 completion.
+#### File Translation
 
 ```bash
-# Single file (planned)
+# Single file translation
 deepl translate README.md --to es --output README.es.md
 
-# Multiple files (planned)
-deepl translate docs/*.md --to fr,de,ja --output docs/i18n/
+# Multiple target languages (creates README.es.md, README.fr.md, etc.)
+deepl translate docs.md --to es,fr,de --output ./translated/
 
-# Document translation (planned - Phase 2)
-deepl translate document.pdf --to es --output documento.pdf
+# With code preservation
+deepl translate tutorial.md --to ja --output tutorial.ja.md --preserve-code
 ```
+
+**Note:** Batch file translation and document formats (PDF, DOCX) planned for Phase 2.
 
 #### Advanced Translation Options
 
@@ -280,41 +280,47 @@ auto_commit = true
 
 ### Glossaries
 
-**Note:** Glossary support planned for Phase 1 completion.
-
 ```bash
-# Create glossary from CSV (planned)
-deepl glossary create tech-terms en de glossary.csv
+# Create glossary from TSV/CSV file
+deepl glossary create tech-terms en de glossary.tsv
 
-# List all glossaries (planned)
+# List all glossaries
 deepl glossary list
 
-# Show glossary details (planned)
+# Show glossary details
 deepl glossary show tech-terms
 
-# Delete glossary (planned)
+# Show glossary entries
+deepl glossary entries tech-terms
+
+# Delete glossary
 deepl glossary delete tech-terms
 
-# Use glossary in translation (planned)
+# Use glossary in translation
 deepl translate "Our API" --glossary tech-terms --to de
+```
+
+**Glossary file format (TSV or CSV):**
+```
+API	API
+REST	REST
+authentication	autenticación
 ```
 
 ### Cache Management
 
-**Note:** Cache CLI commands coming soon. Cache is currently enabled by default.
-
 ```bash
-# Enable cache (planned)
-deepl cache enable --max-size 1GB
+# View cache statistics
+deepl cache stats
 
-# Disable cache (planned)
-deepl cache disable
-
-# Clear cache (planned)
+# Clear cache
 deepl cache clear
 
-# View cache statistics (planned)
-deepl cache stats
+# Enable cache
+deepl cache enable
+
+# Disable cache
+deepl cache disable
 ```
 
 ### Batch Operations

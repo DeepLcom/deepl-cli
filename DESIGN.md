@@ -1640,15 +1640,15 @@ jobs:
 
 ## Roadmap & Milestones
 
-### Phase 1: MVP (Month 1-2) - 60% Complete
+### Phase 1: MVP (Month 1-2) - ✅ 100% Complete
 - [x] Basic translation command
 - [x] Configuration management
-- [x] Local caching
+- [x] Local caching with LRU eviction
 - [x] Error handling and validation
 - [x] Preservation of code/variables
-- [ ] File translation with format preservation
-- [ ] Basic glossary support
-- [ ] Cache CLI commands
+- [x] File translation with format preservation
+- [x] Basic glossary support (create, list, show, delete, use)
+- [x] Cache CLI commands (stats, clear, enable, disable)
 
 ### Phase 2: Advanced Features (Month 3-4)
 - [ ] DeepL Write integration
