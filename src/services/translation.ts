@@ -3,8 +3,10 @@
  * Business logic for translation operations
  */
 
+import * as crypto from 'crypto';
 import { DeepLClient, TranslationResult, UsageInfo, LanguageInfo } from '../api/deepl-client';
 import { ConfigService } from '../storage/config';
+import { CacheService } from '../storage/cache';
 import { TranslationOptions, Language } from '../types';
 
 interface TranslateServiceOptions {
@@ -29,11 +31,13 @@ interface ExtendedUsageInfo extends UsageInfo {
 export class TranslationService {
   private client: DeepLClient;
   private config: ConfigService;
+  private cache: CacheService;
   private languageCache: Map<'source' | 'target', LanguageInfo[]> = new Map();
 
-  constructor(client: DeepLClient, config: ConfigService) {
+  constructor(client: DeepLClient, config: ConfigService, cache?: CacheService) {
     this.client = client;
     this.config = config;
+    this.cache = cache ?? new CacheService();
   }
 
   /**
@@ -76,8 +80,32 @@ export class TranslationService {
     // Always preserve variables
     processedText = this.preserveVariables(processedText, preservationMap);
 
-    // Translate
+    // Check cache (only if cache is enabled)
+    const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
+    const cacheKey = this.generateCacheKey(processedText, translationOptions);
+
+    if (cacheEnabled) {
+      const cachedResult = this.cache.get(cacheKey) as TranslationResult | null;
+      if (cachedResult) {
+        // Restore preserved content from cached result
+        let finalText = cachedResult.text;
+        for (const [placeholder, original] of preservationMap.entries()) {
+          finalText = finalText.replace(placeholder, original);
+        }
+        return {
+          ...cachedResult,
+          text: finalText,
+        };
+      }
+    }
+
+    // Translate via API
     const result = await this.client.translate(processedText, translationOptions);
+
+    // Store in cache
+    if (cacheEnabled) {
+      this.cache.set(cacheKey, result);
+    }
 
     // Restore preserved content
     let finalText = result.text;
@@ -227,5 +255,29 @@ export class TranslationService {
     }
 
     return processed;
+  }
+
+  /**
+   * Generate cache key from text and options
+   */
+  private generateCacheKey(text: string, options: TranslationOptions): string {
+    // Create a stable representation of the translation request
+    const cacheData = {
+      text,
+      targetLang: options.targetLang,
+      sourceLang: options.sourceLang,
+      formality: options.formality,
+      glossaryId: options.glossaryId,
+      context: options.context,
+      // Note: preserveFormatting doesn't affect translation output caching
+    };
+
+    // Generate SHA-256 hash
+    const hash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(cacheData))
+      .digest('hex');
+
+    return `translation:${hash}`;
   }
 }

@@ -8,16 +8,19 @@
 import { TranslationService } from '../../src/services/translation';
 import { DeepLClient } from '../../src/api/deepl-client';
 import { ConfigService } from '../../src/storage/config';
+import { CacheService } from '../../src/storage/cache';
 import { Language } from '../../src/types';
 
 // Mock dependencies
 jest.mock('../../src/api/deepl-client');
 jest.mock('../../src/storage/config');
+jest.mock('../../src/storage/cache');
 
 describe('TranslationService', () => {
   let translationService: TranslationService;
   let mockDeepLClient: jest.Mocked<DeepLClient>;
   let mockConfigService: jest.Mocked<ConfigService>;
+  let mockCacheService: jest.Mocked<CacheService>;
 
   beforeEach(() => {
     // Reset mocks
@@ -43,15 +46,26 @@ describe('TranslationService', () => {
           maxSize: 1024 * 1024 * 1024,
           ttl: 30 * 24 * 60 * 60,
         },
+        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
       }),
-      getValue: jest.fn(),
+      getValue: jest.fn().mockReturnValue(true), // cache.enabled default
       set: jest.fn(),
       has: jest.fn(),
       delete: jest.fn(),
       clear: jest.fn(),
     } as unknown as jest.Mocked<ConfigService>;
 
-    translationService = new TranslationService(mockDeepLClient, mockConfigService);
+    mockCacheService = {
+      get: jest.fn().mockReturnValue(null), // No cache hit by default
+      set: jest.fn(),
+      clear: jest.fn(),
+      stats: jest.fn(),
+      enable: jest.fn(),
+      disable: jest.fn(),
+      close: jest.fn(),
+    } as unknown as jest.Mocked<CacheService>;
+
+    translationService = new TranslationService(mockDeepLClient, mockConfigService, mockCacheService);
   });
 
   describe('initialization', () => {
@@ -102,6 +116,7 @@ describe('TranslationService', () => {
           maxSize: 1024 * 1024 * 1024,
           ttl: 30 * 24 * 60 * 60,
         },
+        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         auth: {},
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
@@ -133,6 +148,7 @@ describe('TranslationService', () => {
           preserveFormatting: true,
         },
         cache: { enabled: true, maxSize: 1024 * 1024 * 1024, ttl: 30 * 24 * 60 * 60 },
+        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         auth: {},
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
@@ -621,6 +637,78 @@ describe('TranslationService', () => {
       });
 
       expect(result.text).toContain('\n\n');
+    });
+  });
+
+  describe('caching', () => {
+    it('should cache translation results', async () => {
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola',
+      });
+
+      // First call - should hit API
+      await translationService.translate('Hello', { targetLang: 'es' });
+
+      expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1);
+      expect(mockCacheService.set).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return cached result on second call', async () => {
+      // Setup cache to return a hit
+      mockCacheService.get.mockReturnValue({
+        text: 'Hola (cached)',
+      });
+
+      const result = await translationService.translate('Hello', { targetLang: 'es' });
+
+      expect(result.text).toBe('Hola (cached)');
+      expect(mockDeepLClient.translate).not.toHaveBeenCalled();
+      expect(mockCacheService.get).toHaveBeenCalled();
+    });
+
+    it('should not cache when cache is disabled', async () => {
+      mockConfigService.getValue.mockReturnValue(false); // cache.enabled = false
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola',
+      });
+
+      await translationService.translate('Hello', { targetLang: 'es' });
+
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+      expect(mockDeepLClient.translate).toHaveBeenCalled();
+    });
+
+    it('should generate different cache keys for different options', async () => {
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola',
+      });
+
+      // Call with different options
+      await translationService.translate('Hello', { targetLang: 'es' });
+      await translationService.translate('Hello', { targetLang: 'fr' });
+
+      // Should call API twice (different cache keys)
+      expect(mockDeepLClient.translate).toHaveBeenCalledTimes(2);
+      expect(mockCacheService.set).toHaveBeenCalledTimes(2);
+    });
+
+    it('should use same cache key for same text and options', async () => {
+      mockCacheService.get
+        .mockReturnValueOnce(null) // First call: cache miss
+        .mockReturnValueOnce({ text: 'Hola (cached)' }); // Second call: cache hit
+
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola',
+      });
+
+      // First call
+      await translationService.translate('Hello', { targetLang: 'es' });
+      expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1);
+
+      // Second call with same params
+      const result2 = await translationService.translate('Hello', { targetLang: 'es' });
+      expect(result2.text).toBe('Hola (cached)');
+      expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1); // Still only 1 API call
     });
   });
 });
