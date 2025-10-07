@@ -348,6 +348,9 @@ describe('WatchService', () => {
     });
 
     it('should call onError callback on translation failure', async () => {
+      // Suppress expected console.error
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
       const onError = jest.fn();
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
@@ -372,6 +375,9 @@ describe('WatchService', () => {
         expect.stringContaining('test.txt'),
         expect.any(Error)
       );
+
+      // Restore console.error
+      consoleErrorSpy.mockRestore();
     });
   });
 
