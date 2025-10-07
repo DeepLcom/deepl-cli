@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.2.0] - 2025-10-08
+
+### Added
 - **Git Hooks Integration** ✨ NEW! - Automate translation validation in git workflow
   - New `deepl hooks` command for managing git hooks
   - **pre-commit hook**: Validates translations before committing

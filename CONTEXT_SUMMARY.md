@@ -6,8 +6,8 @@
 
 ## Current Status
 
-### Version: 0.2.0-dev (Phase 2 - ✅ COMPLETE!)
-- **Test Coverage**: 482 tests (482 passing, 8 skipped, 98.4% pass rate) ✅
+### Version: 0.2.0 (Phase 2 - ✅ COMPLETE!)
+- **Test Coverage**: 482 tests (482 passing, 0 skipped, 100% pass rate) ✅
   - Unit tests: 379 (+35 new tests, 80.93% coverage)
   - Integration tests: 64 (all passing)
   - E2E tests: 21 (all passing)
@@ -344,5 +344,6 @@ deepl watch --help         # Test watch command
 ---
 
 **Last Updated**: October 8, 2025
-**Current Status**: Phase 2 Complete! ✅ All 5 features implemented and tested 🎉
-**Next Milestone**: Version 0.2.0 release or Phase 3 (TUI & Collaboration)
+**Current Version**: v0.2.0 (Released October 8, 2025) 🎉
+**Current Status**: Phase 2 Complete! ✅ All 5 features implemented and tested
+**Next Milestone**: Phase 3 (TUI & Collaboration) or v1.0.0 production release
