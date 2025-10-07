@@ -1,0 +1,42 @@
+# DeepL CLI Examples
+
+This directory contains practical, real-world examples of using the DeepL CLI.
+
+## Quick Links
+
+- [Basic Translation](./01-basic-translation.sh) - Simple text translation examples
+- [File Translation](./02-file-translation.sh) - Translating files and documents
+- [Glossaries](./03-glossaries.sh) - Managing glossaries for consistent terminology
+- [Configuration](./04-configuration.sh) - Setting up and managing configuration
+- [Cache Management](./05-cache.sh) - Working with the translation cache
+- [CI/CD Integration](./06-cicd-integration.sh) - Using DeepL CLI in automated workflows
+- [Batch Processing](./07-batch-processing.sh) - Translating multiple files
+
+## Prerequisites
+
+All examples assume you have:
+
+1. Installed DeepL CLI (`npm install -g deepl-cli` or `npm link`)
+2. A DeepL API key configured (`deepl auth set-key YOUR_API_KEY`)
+
+## Running Examples
+
+Each example is a standalone bash script that you can run directly:
+
+```bash
+# Make executable
+chmod +x examples/*.sh
+
+# Run an example
+./examples/01-basic-translation.sh
+```
+
+Or follow along and run commands individually.
+
+## Example Files
+
+The `sample-files/` directory contains sample documents used in the examples.
+
+## Contributing Examples
+
+Have a useful example? Please contribute! See [../CLAUDE.md](../CLAUDE.md) for guidelines.
