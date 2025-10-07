@@ -3,66 +3,84 @@
 This file tracks pending tasks and future work for the DeepL CLI project.
 
 ## 📋 Current Status
-- **Version**: 0.1.0
-- **Phase**: 1 (MVP) - Complete ✅
-- **Next**: Phase 2 or Production-Grade Polish
+- **Version**: 0.2.0-dev
+- **Phase**: 2 (Advanced Features) - 60% Complete 🚧
+- **Tests**: 380 total (372 passing, 8 skipped) - 97.9% pass rate ✅
+- **Coverage**: 89.91%
+- **Next**: DeepL Write Integration
 
 ---
 
-## 🎯 Phase 1 Polish (In Progress)
+## 🎯 Phase 1 (✅ COMPLETE)
 
-### ✅ Completed
+All Phase 1 tasks completed and v0.1.0 released:
 - [x] Manual testing with real API
-- [x] Add integration tests for CLI commands (25/27 passing)
-- [x] Add E2E tests for complete workflows (21 tests, all passing)
+- [x] Add integration tests for CLI commands (27 tests)
+- [x] Add E2E tests for complete workflows (21 tests)
 - [x] Add CHANGELOG.md and versioning guidelines
 - [x] Create VERSION file and v0.1.0 tag
 - [x] Update CLAUDE.md with versioning section
-
-### ✅ Completed (continued)
 - [x] Update README with real usage examples
 - [x] Add API documentation (docs/API.md)
 - [x] Add usage examples (examples/ directory)
 
 ### ⏳ Deferred
-- [ ] Setup CI/CD (GitLab CI for internal use, or GitHub Actions if open-sourced later)
-  - Note: Will be added when pushing to remote repository (GitLab/GitHub)
+- [ ] Setup CI/CD (GitLab CI for internal use)
+  - Will be added when pushing to remote repository
   - Config will be tailored to project needs at that time
 
 ---
 
-## 🚀 Phase 2: Advanced Features
+## 🚀 Phase 2: Advanced Features (60% Complete)
 
-### DeepL Write Integration
+### ✅ Context-Aware Translation (COMPLETE)
+- [x] Implement context detection (surrounding paragraphs)
+- [x] Add context parameter to API calls
+- [x] Add tests for context-aware translation (5 tests)
+- [x] Document context usage
+- [x] CLI integration with `--context` flag
+
+### ✅ Batch Processing (COMPLETE)
+- [x] Implement parallel file translation with p-limit
+- [x] Add progress bars with ora
+- [x] Add error recovery for batch operations
+- [x] Add batch operation tests (16 unit tests)
+- [x] CLI integration with directory support
+- [x] Add `--recursive`, `--pattern`, `--concurrency` options
+- [x] Document batch processing usage
+
+### ✅ Watch Mode (COMPLETE)
+- [x] Implement file watching with chokidar
+- [x] Add debouncing for file changes (configurable, default 300ms)
+- [x] Add auto-translation on file save
+- [x] Add optional auto-commit feature
+- [x] Add watch mode tests (19 unit tests for WatchService)
+- [x] CLI integration with `deepl watch` command
+- [x] Add glob pattern filtering support
+- [x] Add multiple target languages support
+- [x] Document watch mode usage with examples
+
+### 🎯 DeepL Write Integration (NEXT - 0% Complete)
 - [ ] Add Write API client integration
-- [ ] Create WriteCommand for grammar/style enhancement
+- [ ] Create WriteService for grammar/style enhancement
+- [ ] Create WriteCommand CLI (`deepl write`)
+- [ ] Add interactive mode for suggestions
+- [ ] Add tone selection (business, academic, casual)
+- [ ] Add show alternatives feature
 - [ ] Add tests for Write functionality
 - [ ] Document Write API usage
+- [ ] Add examples for writing enhancement
 
-### Watch Mode
-- [ ] Implement file watching with chokidar
-- [ ] Add debouncing for file changes
-- [ ] Add auto-translation on file save
-- [ ] Add optional auto-commit feature
-- [ ] Add watch mode tests
+**Estimated Effort**: 4-6 hours
+**Priority**: HIGH (Unique differentiator - first CLI with DeepL Write API)
 
-### Git Hooks
+### Git Hooks (0% Complete)
 - [ ] Create pre-commit hook for translation validation
 - [ ] Create pre-push hook for translation checks
 - [ ] Document git hook setup
-- [ ] Add hook installation command
-
-### Batch Processing
-- [ ] Implement parallel file translation
-- [ ] Add progress bars (ora)
-- [ ] Add error recovery for batch operations
-- [ ] Add batch operation tests
-
-### Context-Aware Translation
-- [ ] Implement context detection (surrounding paragraphs)
-- [ ] Add context parameter to API calls
-- [ ] Add tests for context-aware translation
-- [ ] Document context usage
+- [ ] Add hook installation command (`deepl install git-hooks`)
+- [ ] Add tests for hook functionality
+- [ ] Add hook templates
 
 ---
 
