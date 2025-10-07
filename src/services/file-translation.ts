@@ -1,0 +1,150 @@
+/**
+ * File Translation Service
+ * Handles translation of files with format preservation
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import { TranslationService } from './translation.js';
+import { TranslationOptions, Language } from '../types/index.js';
+
+interface FileTranslationOptions {
+  preserveCode?: boolean;
+}
+
+interface MultipleFileOptions {
+  outputDir?: string;
+}
+
+interface FileMultiTargetResult {
+  targetLang: Language;
+  text: string;
+  outputPath?: string;
+}
+
+export class FileTranslationService {
+  private translationService: TranslationService;
+  private supportedExtensions = ['.txt', '.md'];
+
+  constructor(translationService: TranslationService) {
+    this.translationService = translationService;
+  }
+
+  /**
+   * Translate a single file
+   */
+  async translateFile(
+    inputPath: string,
+    outputPath: string,
+    options: TranslationOptions,
+    fileOptions: FileTranslationOptions = {}
+  ): Promise<void> {
+    // Validate input file exists
+    if (!fs.existsSync(inputPath)) {
+      throw new Error(`Input file not found: ${inputPath}`);
+    }
+
+    // Check file type is supported
+    if (!this.isSupportedFile(inputPath)) {
+      throw new Error(`Unsupported file type: ${path.extname(inputPath)}`);
+    }
+
+    // Read file content
+    const content = fs.readFileSync(inputPath, 'utf-8');
+
+    // Check for empty files
+    if (!content || content.trim() === '') {
+      throw new Error('Cannot translate empty file');
+    }
+
+    // Translate content
+    const result = await this.translationService.translate(
+      content,
+      options,
+      fileOptions
+    );
+
+    // Create output directory if needed
+    const outputDir = path.dirname(outputPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Write translated content
+    fs.writeFileSync(outputPath, result.text, 'utf-8');
+  }
+
+  /**
+   * Translate file to multiple target languages
+   */
+  async translateFileToMultiple(
+    inputPath: string,
+    targetLangs: Language[],
+    options: Omit<TranslationOptions, 'targetLang'> & MultipleFileOptions = {}
+  ): Promise<FileMultiTargetResult[]> {
+    // Validate input file
+    if (!fs.existsSync(inputPath)) {
+      throw new Error(`Input file not found: ${inputPath}`);
+    }
+
+    if (!this.isSupportedFile(inputPath)) {
+      throw new Error(`Unsupported file type: ${path.extname(inputPath)}`);
+    }
+
+    // Read file content
+    const content = fs.readFileSync(inputPath, 'utf-8');
+
+    if (!content || content.trim() === '') {
+      throw new Error('Cannot translate empty file');
+    }
+
+    // Translate to multiple languages
+    const translationResults = await this.translationService.translateToMultiple(
+      content,
+      targetLangs,
+      options
+    );
+
+    // Convert to FileMultiTargetResult
+    const results: FileMultiTargetResult[] = translationResults.map(r => ({
+      targetLang: r.targetLang,
+      text: r.text,
+    }));
+
+    // If outputDir is specified, write files
+    if (options.outputDir) {
+      const outputDir = options.outputDir;
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      const inputFilename = path.basename(inputPath);
+      const ext = path.extname(inputFilename);
+      const basename = path.basename(inputFilename, ext);
+
+      for (const result of results) {
+        const outputFilename = `${basename}.${result.targetLang}${ext}`;
+        const outputPath = path.join(outputDir, outputFilename);
+        fs.writeFileSync(outputPath, result.text, 'utf-8');
+        result.outputPath = outputPath;
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Get list of supported file extensions
+   */
+  getSupportedFileTypes(): string[] {
+    return [...this.supportedExtensions];
+  }
+
+  /**
+   * Check if file type is supported
+   */
+  isSupportedFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return this.supportedExtensions.includes(ext);
+  }
+}

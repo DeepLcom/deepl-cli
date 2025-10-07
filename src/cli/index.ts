@@ -117,30 +117,32 @@ program
 // Translate command
 program
   .command('translate')
-  .description('Translate text using DeepL API')
-  .argument('[text]', 'Text to translate (or read from stdin)')
+  .description('Translate text or files using DeepL API')
+  .argument('[text]', 'Text or file path to translate (or read from stdin)')
   .requiredOption('-t, --to <language>', 'Target language(s), comma-separated for multiple')
   .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
+  .option('-o, --output <path>', 'Output file path or directory (required for file translation)')
   .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
   .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
   .action(async (text: string | undefined, options: {
     to: string;
     from?: string;
+    output?: string;
     formality?: string;
     preserveCode?: boolean;
     apiUrl?: string;
   }) => {
     try {
       const client = createDeepLClient();
-      const translationService = new TranslationService(client, configService);
+      const translationService = new TranslationService(client, configService, cacheService);
       const translateCommand = new TranslateCommand(translationService, configService);
 
       let result: string;
 
       if (text) {
-        // Translate provided text
-        result = await translateCommand.translateText(text, options);
+        // Translate provided text or file
+        result = await translateCommand.translate(text, options);
       } else {
         // Read from stdin
         result = await translateCommand.translateFromStdin(options);
