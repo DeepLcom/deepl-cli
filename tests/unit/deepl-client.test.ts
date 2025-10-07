@@ -509,4 +509,527 @@ describe('DeepLClient', () => {
       expect(customClient).toBeDefined();
     });
   });
+
+  describe('improveText()', () => {
+    describe('basic functionality', () => {
+      it('should improve text successfully', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(200, {
+            improvements: [
+              {
+                text: 'This is a well-written sentence.',
+                target_language: 'en-US',
+                detected_source_language: 'en',
+              },
+            ],
+          });
+
+        const result = await client.improveText('This is a sentence.', {
+          targetLang: 'en-US',
+        });
+
+        expect(result).toHaveLength(1);
+        expect(result[0]?.text).toBe('This is a well-written sentence.');
+        expect(result[0]?.targetLanguage).toBe('en-US');
+        expect(result[0]?.detectedSourceLanguage).toBe('en');
+      });
+
+      it('should throw error for empty text', async () => {
+        await expect(
+          client.improveText('', { targetLang: 'en-US' })
+        ).rejects.toThrow('Text cannot be empty');
+      });
+
+      it('should throw error for whitespace-only text', async () => {
+        await expect(
+          client.improveText('   ', { targetLang: 'en-US' })
+        ).rejects.toThrow('Text cannot be empty');
+      });
+
+      it('should throw error when no improvements returned', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(200, { improvements: [] });
+
+        await expect(
+          client.improveText('Test', { targetLang: 'en-US' })
+        ).rejects.toThrow('No improvements returned');
+      });
+    });
+
+    describe('writing style parameter', () => {
+      it('should apply simple writing style', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.writing_style === 'simple';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: 'This is easy to read.',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('This is a sentence.', {
+          targetLang: 'en-US',
+          writingStyle: 'simple',
+        });
+
+        expect(result[0]?.text).toBe('This is easy to read.');
+        expect(nock.isDone()).toBe(true);
+      });
+
+      it('should apply business writing style', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.writing_style === 'business';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: 'We are pleased to inform you.',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('We want to tell you.', {
+          targetLang: 'en-US',
+          writingStyle: 'business',
+        });
+
+        expect(result[0]?.text).toBe('We are pleased to inform you.');
+        expect(nock.isDone()).toBe(true);
+      });
+
+      it('should apply academic writing style', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.writing_style === 'academic';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: 'This study demonstrates the effectiveness of the method.',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('This shows it works.', {
+          targetLang: 'en-US',
+          writingStyle: 'academic',
+        });
+
+        expect(result[0]?.text).toContain('demonstrates');
+        expect(nock.isDone()).toBe(true);
+      });
+
+      it('should apply casual writing style', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.writing_style === 'casual';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: "Hey, that's pretty cool!",
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('That is interesting.', {
+          targetLang: 'en-US',
+          writingStyle: 'casual',
+        });
+
+        expect(result[0]?.text).toContain('cool');
+        expect(nock.isDone()).toBe(true);
+      });
+    });
+
+    describe('tone parameter', () => {
+      it('should apply enthusiastic tone', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.tone === 'enthusiastic';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: 'This is absolutely fantastic!',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('This is good.', {
+          targetLang: 'en-US',
+          tone: 'enthusiastic',
+        });
+
+        expect(result[0]?.text).toContain('fantastic');
+        expect(nock.isDone()).toBe(true);
+      });
+
+      it('should apply friendly tone', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.tone === 'friendly';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: "Hi there! Hope you're doing well.",
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('Hello.', {
+          targetLang: 'en-US',
+          tone: 'friendly',
+        });
+
+        expect(result[0]?.text).toContain('Hi');
+        expect(nock.isDone()).toBe(true);
+      });
+
+      it('should apply confident tone', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.tone === 'confident';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: 'I am certain this will succeed.',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('I think this will work.', {
+          targetLang: 'en-US',
+          tone: 'confident',
+        });
+
+        expect(result[0]?.text).toContain('certain');
+        expect(nock.isDone()).toBe(true);
+      });
+
+      it('should apply diplomatic tone', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.tone === 'diplomatic';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: 'Perhaps we could consider an alternative approach.',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('Try something else.', {
+          targetLang: 'en-US',
+          tone: 'diplomatic',
+        });
+
+        expect(result[0]?.text).toContain('Perhaps');
+        expect(nock.isDone()).toBe(true);
+      });
+    });
+
+    describe('parameter constraints', () => {
+      it('should throw error when both writing_style and tone are specified', async () => {
+        await expect(
+          client.improveText('Test', {
+            targetLang: 'en-US',
+            writingStyle: 'business',
+            tone: 'enthusiastic',
+          })
+        ).rejects.toThrow('Cannot specify both writing_style and tone');
+      });
+
+      it('should work with only target language', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return !body.writing_style && !body.tone;
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: 'Improved text.',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('Test text.', {
+          targetLang: 'en-US',
+        });
+
+        expect(result[0]?.text).toBe('Improved text.');
+        expect(nock.isDone()).toBe(true);
+      });
+    });
+
+    describe('supported languages', () => {
+      it('should work with German', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(200, {
+            improvements: [
+              {
+                text: 'Das ist ein guter Satz.',
+                target_language: 'de',
+              },
+            ],
+          });
+
+        const result = await client.improveText('Das ist ein Satz.', {
+          targetLang: 'de',
+        });
+
+        expect(result[0]?.targetLanguage).toBe('de');
+      });
+
+      it('should work with Spanish', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(200, {
+            improvements: [
+              {
+                text: 'Esta es una oración bien escrita.',
+                target_language: 'es',
+              },
+            ],
+          });
+
+        const result = await client.improveText('Esta es una oración.', {
+          targetLang: 'es',
+        });
+
+        expect(result[0]?.targetLanguage).toBe('es');
+      });
+
+      it('should work with French', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(200, {
+            improvements: [
+              {
+                text: 'Ceci est une phrase bien rédigée.',
+                target_language: 'fr',
+              },
+            ],
+          });
+
+        const result = await client.improveText('Ceci est une phrase.', {
+          targetLang: 'fr',
+        });
+
+        expect(result[0]?.targetLanguage).toBe('fr');
+      });
+
+      it('should work with British English', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(200, {
+            improvements: [
+              {
+                text: 'This is a well-written sentence with British spelling.',
+                target_language: 'en-GB',
+              },
+            ],
+          });
+
+        const result = await client.improveText('This is a sentence.', {
+          targetLang: 'en-GB',
+        });
+
+        expect(result[0]?.targetLanguage).toBe('en-GB');
+      });
+    });
+
+    describe('error handling', () => {
+      it('should handle 403 authentication error', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(403, { message: 'Invalid API key' });
+
+        await expect(
+          client.improveText('Test', { targetLang: 'en-US' })
+        ).rejects.toThrow('Authentication failed');
+      });
+
+      it('should handle 456 quota exceeded error', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(456, { message: 'Quota exceeded' });
+
+        await expect(
+          client.improveText('Test', { targetLang: 'en-US' })
+        ).rejects.toThrow('Quota exceeded');
+      });
+
+      it('should handle 429 rate limit error', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(429, { message: 'Too many requests' });
+
+        await expect(
+          client.improveText('Test', { targetLang: 'en-US' })
+        ).rejects.toThrow('Rate limit exceeded');
+      });
+
+      it('should handle 503 service unavailable', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .times(4)
+          .reply(503, { message: 'Service unavailable' });
+
+        await expect(
+          client.improveText('Test', { targetLang: 'en-US' })
+        ).rejects.toThrow('Service temporarily unavailable');
+      });
+
+      it('should handle network errors', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .replyWithError('Network error');
+
+        await expect(
+          client.improveText('Test', { targetLang: 'en-US' })
+        ).rejects.toThrow();
+      });
+    });
+
+    describe('edge cases', () => {
+      it('should handle long text', async () => {
+        const longText = 'This is a test sentence. '.repeat(100);
+
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(200, {
+            improvements: [
+              {
+                text: 'Improved long text. '.repeat(100),
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText(longText, {
+          targetLang: 'en-US',
+        });
+
+        expect(result[0]?.text.length).toBeGreaterThan(0);
+      });
+
+      it('should handle special characters', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(200, {
+            improvements: [
+              {
+                text: 'This is a test: "quotes" & special chars!',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('Test: quotes & chars', {
+          targetLang: 'en-US',
+        });
+
+        expect(result[0]?.text).toContain('&');
+        expect(result[0]?.text).toContain('"');
+      });
+
+      it('should preserve newlines in improved text', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase')
+          .reply(200, {
+            improvements: [
+              {
+                text: 'First paragraph.\n\nSecond paragraph.',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('Para 1.\n\nPara 2.', {
+          targetLang: 'en-US',
+        });
+
+        expect(result[0]?.text).toContain('\n\n');
+      });
+    });
+
+    describe('prefer_ prefixes', () => {
+      it('should apply prefer_simple writing style', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.writing_style === 'prefer_simple';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: 'This is easy to understand.',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('This is a sentence.', {
+          targetLang: 'en-US',
+          writingStyle: 'prefer_simple',
+        });
+
+        expect(result[0]?.text).toBe('This is easy to understand.');
+        expect(nock.isDone()).toBe(true);
+      });
+
+      it('should apply prefer_enthusiastic tone', async () => {
+        nock(baseUrl)
+          .post('/v2/write/rephrase', (body) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            return body.tone === 'prefer_enthusiastic';
+          })
+          .reply(200, {
+            improvements: [
+              {
+                text: 'This is great!',
+                target_language: 'en-US',
+              },
+            ],
+          });
+
+        const result = await client.improveText('This is good.', {
+          targetLang: 'en-US',
+          tone: 'prefer_enthusiastic',
+        });
+
+        expect(result[0]?.text).toBe('This is great!');
+        expect(nock.isDone()).toBe(true);
+      });
+    });
+  });
 });

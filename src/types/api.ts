@@ -28,31 +28,50 @@ export interface TranslationResult {
   };
 }
 
+export type WriteLanguage =
+  | 'de'
+  | 'en-GB'
+  | 'en-US'
+  | 'es'
+  | 'fr'
+  | 'it'
+  | 'pt-BR'
+  | 'pt-PT';
+
+export type WritingStyle =
+  | 'default'
+  | 'simple'
+  | 'business'
+  | 'academic'
+  | 'casual'
+  | 'prefer_simple'
+  | 'prefer_business'
+  | 'prefer_academic'
+  | 'prefer_casual';
+
+export type WriteTone =
+  | 'default'
+  | 'enthusiastic'
+  | 'friendly'
+  | 'confident'
+  | 'diplomatic'
+  | 'prefer_enthusiastic'
+  | 'prefer_friendly'
+  | 'prefer_confident'
+  | 'prefer_diplomatic';
+
 export interface WriteOptions {
-  lang: Language;
-  tone?:
-    | 'default'
-    | 'business'
-    | 'academic'
-    | 'casual'
-    | 'enthusiastic'
-    | 'diplomatic';
-  fix?: boolean;
+  targetLang: WriteLanguage;
+  writingStyle?: WritingStyle;
+  tone?: WriteTone;
 }
 
-export interface Suggestion {
-  type: 'grammar' | 'spelling' | 'style' | 'punctuation';
-  original: string;
-  suggestion: string;
-  start: number;
-  end: number;
-  confidence: number;
-  alternatives?: string[];
+export interface WriteImprovement {
+  text: string;
+  targetLanguage: WriteLanguage;
+  detectedSourceLanguage?: string;
 }
 
 export interface WriteResult {
-  originalText: string;
-  improvedText: string;
-  suggestions: Suggestion[];
-  applied: boolean;
+  improvements: WriteImprovement[];
 }
