@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as chokidar from 'chokidar';
 import { WatchService } from '../../../src/services/watch';
 import { FileTranslationService } from '../../../src/services/file-translation';
 
@@ -15,12 +16,24 @@ jest.mock('chokidar');
 // Mock FileTranslationService
 jest.mock('../../../src/services/file-translation');
 
+const mockWatcher = {
+  on: jest.fn().mockReturnThis(),
+  close: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('WatchService', () => {
   let watchService: WatchService;
   let mockFileTranslationService: jest.Mocked<FileTranslationService>;
   let testDir: string;
 
   beforeEach(() => {
+    // Reset mocks
+    jest.clearAllMocks();
+    mockWatcher.on.mockReturnThis();
+
+    // Mock chokidar.watch to return our mockWatcher
+    (chokidar.watch as jest.Mock).mockImplementation(() => mockWatcher);
+
     // Create temporary test directory
     testDir = path.join(os.tmpdir(), `deepl-watch-test-${Date.now()}`);
     fs.mkdirSync(testDir, { recursive: true });
@@ -144,6 +157,9 @@ describe('WatchService', () => {
       // Simulate file change
       await watchService.handleFileChange(testFile);
 
+      // Wait for debounce timer
+      await new Promise(resolve => setTimeout(resolve, 350));
+
       expect(mockFileTranslationService.translateFile).toHaveBeenCalled();
     });
 
@@ -220,8 +236,8 @@ describe('WatchService', () => {
       fs.writeFileSync(testFile, 'Hello');
 
       mockFileTranslationService.translateFileToMultiple.mockResolvedValue([
-        { targetLang: 'es', outputPath: '/out/test.es.txt' },
-        { targetLang: 'fr', outputPath: '/out/test.fr.txt' },
+        { targetLang: 'es', text: 'Hola', outputPath: '/out/test.es.txt' },
+        { targetLang: 'fr', text: 'Bonjour', outputPath: '/out/test.fr.txt' },
       ]);
 
       const options = {
@@ -231,6 +247,9 @@ describe('WatchService', () => {
 
       await watchService.watch(testDir, options);
       await watchService.handleFileChange(testFile);
+
+      // Wait for debounce timer
+      await new Promise(resolve => setTimeout(resolve, 350));
 
       expect(mockFileTranslationService.translateFileToMultiple).toHaveBeenCalled();
     });
@@ -319,6 +338,9 @@ describe('WatchService', () => {
       await watchService.watch(testDir, options);
       await watchService.handleFileChange(testFile);
 
+      // Wait for debounce timer
+      await new Promise(resolve => setTimeout(resolve, 350));
+
       expect(onTranslate).toHaveBeenCalledWith(
         expect.stringContaining('test.txt'),
         expect.any(Object)
@@ -342,6 +364,9 @@ describe('WatchService', () => {
 
       await watchService.watch(testDir, options);
       await watchService.handleFileChange(testFile);
+
+      // Wait for debounce timer
+      await new Promise(resolve => setTimeout(resolve, 350));
 
       expect(onError).toHaveBeenCalledWith(
         expect.stringContaining('test.txt'),
