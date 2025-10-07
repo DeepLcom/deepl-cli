@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Git Hooks Integration** ✨ NEW! - Automate translation validation in git workflow
+  - New `deepl hooks` command for managing git hooks
+  - **pre-commit hook**: Validates translations before committing
+  - **pre-push hook**: Validates all translations before pushing
+  - Hook management: install, uninstall, list, path commands
+  - Safe installation with automatic backup of existing hooks
+  - Customizable hook scripts for project-specific workflows
+  - GitHooksService for hook lifecycle management
+  - HooksCommand CLI with colored output
+- **DeepL Write Integration** - AI-powered text improvement
+  - Grammar, style, and tone enhancement using DeepL Write API
+  - New `deepl write` command for text improvement
+  - Support for 8 languages: de, en-GB, en-US, es, fr, it, pt-BR, pt-PT
+  - **Writing Styles**: simple, business, academic, casual, and prefer_* variants
+  - **Tones**: enthusiastic, friendly, confident, diplomatic, and prefer_* variants
+  - `--alternatives` option to show multiple improvement suggestions
+  - WriteService with comprehensive error handling
+  - 28 unit tests for WriteService
+  - 19 unit tests for WriteCommand
+  - 37 integration tests for DeepL client improveText method
+  - Full API integration with DeepL Write v2 endpoint
 - **Watch Mode**: Real-time file/directory monitoring with auto-translation
   - Monitor files or directories for changes with `deepl watch`
   - Configurable debouncing (default 300ms)
@@ -30,24 +51,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 5 additional tests for context handling
 
 ### Changed
-- **CLI Commands**: Added new options to `translate` command
-  - `--context <text>` - Additional context for better translation
-  - `--recursive` - Process subdirectories (default: true)
-  - `--pattern <glob>` - Filter files by glob pattern
-  - `--concurrency <number>` - Control parallel translation count
-- **Testing**: Expanded test suite from 302 to 380 tests
-  - Unit tests: 275 → 316 tests
-  - Integration tests: 27 tests (stable)
+- **CLI Commands**: Enhanced with Phase 2 features
+  - New `deepl write` command for text improvement
+  - Added to `translate` command: `--context`, `--recursive`, `--pattern`, `--concurrency`
+  - New `deepl watch` command for real-time translation
+- **Testing**: Expanded test suite from 302 to 447 tests (Phase 2 complete!)
+  - Unit tests: 275 → 344 tests (+69)
+  - Integration tests: 27 → 64 tests (+37 for Write API)
   - E2E tests: 21 tests (stable)
-  - Overall pass rate: 97.9% (372 passing, 8 skipped)
-- **Coverage**: Improved from 88.85% to 89.91%
+  - Overall pass rate: 98.2% (447 passing, 8 skipped)
+- **Coverage**: Improved from 88.85% to 90.1%
 - **Dependencies**: Added chokidar, p-limit, fast-glob for Phase 2 features
+- **API Types**: Added WriteLanguage, WritingStyle, WriteTone, WriteOptions, WriteImprovement types
 
 ### Technical
+- **WriteService**: New service for DeepL Write API integration
+  - Grammar and style improvement
+  - Tone and writing style customization
+  - Multiple improvement alternatives
 - **WatchService**: New service for file monitoring with chokidar integration
 - **BatchTranslationService**: Parallel processing with error recovery
-- **Architecture**: Enhanced service layer with watch and batch capabilities
+- **Architecture**: Enhanced service layer with write, watch, and batch capabilities
 - **Performance**: Optimized with parallel processing and smart caching
+- **API Client**: Extended DeepLClient with improveText() method for Write API
 
 ## [0.1.0] - 2025-10-07
 

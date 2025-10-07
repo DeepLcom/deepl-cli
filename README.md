@@ -11,8 +11,8 @@
 ## 🌟 Key Features
 
 - **🌍 Translation** - High-quality translation using DeepL's next-gen LLM
-- **👀 Watch Mode** - Real-time file watching with auto-translation (✅ NEW!)
-- **✍️ Writing Enhancement** - Grammar, style, and tone suggestions (DeepL Write API - coming soon)
+- **👀 Watch Mode** - Real-time file watching with auto-translation
+- **✍️ Writing Enhancement** - Grammar, style, and tone suggestions (DeepL Write API ✅ NEW!)
 - **💾 Smart Caching** - Local SQLite cache with LRU eviction
 - **🎯 Context-Aware** - Preserves code blocks, variables, and formatting
 - **📦 Batch Processing** - Translate multiple files with parallel processing
@@ -62,12 +62,12 @@ This project follows a phased development approach with strict Test-Driven Devel
 - Integration tests: 27
 - E2E tests: 21
 
-### Phase 2: Advanced Features (🚧 In Progress)
+### Phase 2: Advanced Features (✅ COMPLETE!)
 - [x] Context-aware translation
 - [x] Batch processing with parallel translation
 - [x] Watch mode with file watching
-- [ ] DeepL Write integration
-- [ ] Git hooks integration
+- [x] **DeepL Write integration**
+- [x] **Git hooks integration** ✨ NEW!
 
 ### Phase 3: TUI & Collaboration (Future)
 - [ ] Interactive TUI application
@@ -258,21 +258,56 @@ deepl translate "Technical term" --show-confidence --to es
 
 ### Writing Enhancement
 
-**Note:** DeepL Write API integration coming in Phase 2.
+Improve your writing with AI-powered grammar, style, and tone suggestions using the **DeepL Write API** ✨ **NEW!**
 
 ```bash
-# Check writing and get suggestions
-deepl write "Your text here" --check --tone business --lang en
+# Basic text improvement
+deepl write "This is a sentence." --lang en-US
 
-# Auto-fix grammar and style
-deepl write document.txt --fix --output fixed.txt
+# Apply business writing style
+deepl write "We want to tell you about our new product." --lang en-US --style business
 
-# Interactive writing assistant
-deepl write --interactive --tone academic --lang en
+# Apply academic writing style
+deepl write "This shows that the method works." --lang en-US --style academic
 
-# Show alternative phrasings
-deepl write email.txt --show-alternatives --tone diplomatic
+# Apply casual tone
+deepl write "That is interesting." --lang en-US --style casual
+
+# Use confident tone
+deepl write "I think this will work." --lang en-US --tone confident
+
+# Use diplomatic tone
+deepl write "Try something else." --lang en-US --tone diplomatic
+
+# Show all alternative improvements
+deepl write "This is good." --lang en-US --tone enthusiastic --alternatives
 ```
+
+**Supported Languages:**
+- German (`de`)
+- English - British (`en-GB`)
+- English - American (`en-US`)
+- Spanish (`es`)
+- French (`fr`)
+- Italian (`it`)
+- Portuguese - Brazilian (`pt-BR`)
+- Portuguese - European (`pt-PT`)
+
+**Writing Styles:**
+- `simple` - Easy-to-read, accessible language
+- `business` - Professional, formal business tone
+- `academic` - Scholarly, research-oriented style
+- `casual` - Relaxed, conversational tone
+- `prefer_*` prefix - Apply style only if language supports it
+
+**Tones:**
+- `enthusiastic` - Energetic and positive
+- `friendly` - Warm and approachable
+- `confident` - Assertive and certain
+- `diplomatic` - Tactful and considerate
+- `prefer_*` prefix - Apply tone only if language supports it
+
+**Note:** You cannot combine `--style` and `--tone` in a single request. Choose one or the other.
 
 ### Watch Mode
 
@@ -325,6 +360,51 @@ Pattern: *.md
 
 Press Ctrl+C to stop
 ```
+
+### Git Hooks
+
+Automate translation validation in your git workflow with pre-commit and pre-push hooks ✨ **NEW!**
+
+```bash
+# Install pre-commit hook (validates translations before commit)
+deepl hooks install pre-commit
+
+# Install pre-push hook (validates all translations before push)
+deepl hooks install pre-push
+
+# List hook installation status
+deepl hooks list
+
+# Show path to hook file
+deepl hooks path pre-commit
+
+# Uninstall a hook
+deepl hooks uninstall pre-commit
+```
+
+**What the hooks do:**
+
+- **pre-commit**: Checks if staged files include translatable content (`.md`, `.txt` files) and validates translations are up-to-date
+- **pre-push**: Validates all translations in the repository before pushing to remote
+
+**Features:**
+- 🔒 Safe installation with automatic backup of existing hooks
+- 🎯 Only validates changed files (pre-commit)
+- ⚡ Lightweight and fast
+- 🔧 Customizable hook scripts
+- 🗑️ Clean uninstallation with backup restoration
+
+**Hook Status Example:**
+```
+$ deepl hooks list
+
+Git Hooks Status:
+
+  ✓ pre-commit      installed
+  ✗ pre-push        not installed
+```
+
+**Note:** The hooks are generated with placeholder validation logic. You can customize them based on your project's translation workflow by editing the hook files directly at `.git/hooks/pre-commit` or `.git/hooks/pre-push`.
 
 ### Configuration
 

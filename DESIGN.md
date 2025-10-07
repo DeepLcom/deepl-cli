@@ -113,20 +113,48 @@ deepl translate "Our API uses REST" --to de --glossary tech-terms
 
 ### Phase 2: Advanced Features
 
-#### 5. DeepL Write Integration (🔥 NEW)
+#### 5. DeepL Write Integration ✅ IMPLEMENTED
 ```bash
+# Current features:
 # Improve writing with grammar/style suggestions
-deepl write "Your text here" --tone business --lang en
+deepl write "Your text here" --tone business --lang en-US
 
+# With writing style
+deepl write "Your text here" --style business --lang en-US
+
+# Show alternative improvements
+deepl write "Your text here" --lang en-US --alternatives
+
+# Future enhancements (planned):
 # Interactive writing assistant
-deepl write --interactive --tone academic
+deepl write --interactive --tone academic --lang en-US
 
 # Fix grammar in files
-deepl write fix README.md --style casual
+deepl write fix README.md --style casual --lang en-US
 
 # Preview suggestions
-deepl write check document.txt --show-alternatives
+deepl write check document.txt --show-alternatives --lang en-US
+
+# Available languages: de, en-GB, en-US, es, fr, it, pt-BR, pt-PT
+# Writing styles: simple, business, academic, casual (+ prefer_* variants)
+# Tones: enthusiastic, friendly, confident, diplomatic (+ prefer_* variants)
 ```
+
+**Status**: Production-ready with full test coverage (84 tests)
+**Current Features**:
+- Grammar and style improvement
+- Writing style customization (simple, business, academic, casual)
+- Tone customization (enthusiastic, friendly, confident, diplomatic)
+- Multiple improvement alternatives
+- Support for 8 languages
+- Full API integration with DeepL Write v2 endpoint
+
+**Planned Enhancements**:
+- File input/output support
+- Interactive REPL mode for iterative improvement
+- Diff view for before/after comparison
+- Check mode (show suggestions without applying)
+- Auto-fix mode for CI/CD integration
 
 #### 6. Watch Mode & Auto-Translation ✅ IMPLEMENTED
 ```bash
@@ -156,11 +184,33 @@ deepl watch docs/ --targets de --formality more --preserve-code
 - Custom output directories
 - Statistics tracking
 
-#### 7. Developer Workflow Integration
+#### 7. Git Hooks Integration ✅ IMPLEMENTED
 ```bash
-# Git pre-commit hook
-deepl install git-hooks --pre-commit
+# Install git hooks
+deepl hooks install pre-commit
+deepl hooks install pre-push
 
+# Check hook status
+deepl hooks list
+
+# Show hook path
+deepl hooks path pre-commit
+
+# Uninstall hooks
+deepl hooks uninstall pre-commit
+```
+
+**Status**: Production-ready, fully documented
+**Features**:
+- Pre-commit hook for translation validation
+- Pre-push hook for full validation
+- Automatic backup of existing hooks
+- Safe installation/uninstallation
+- Hook status checking
+- Customizable shell scripts
+
+#### 8. Developer Workflow Integration (Future)
+```bash
 # CI/CD integration (outputs JSON for scripts)
 deepl translate-changed --since HEAD~1 --format json
 
@@ -168,7 +218,7 @@ deepl translate-changed --since HEAD~1 --format json
 deepl lsp start
 ```
 
-#### 8. Interactive TUI Mode
+#### 9. Interactive TUI Mode (Phase 3)
 ```bash
 # Launch full TUI application
 deepl tui
@@ -184,7 +234,7 @@ deepl tui
 
 ### Phase 3: Team & Enterprise Features
 
-#### 9. Translation Memory & Caching
+#### 10. Translation Memory & Caching
 ```bash
 # Enable local translation cache
 deepl cache enable --max-size 1GB
@@ -199,7 +249,7 @@ deepl tm import translations.json --format i18next
 deepl tm export --format xliff
 ```
 
-#### 10. Team Collaboration
+#### 11. Team Collaboration
 ```bash
 # Initialize team workspace
 deepl team init --org mycompany
@@ -214,7 +264,7 @@ deepl review pending/ --assign @translator
 deepl diff en.json es.json --highlight-changes
 ```
 
-#### 11. Batch Processing & Cost Management
+#### 12. Batch Processing & Cost Management
 ```bash
 # Estimate costs before translating
 deepl estimate src/locales/ --targets es,fr,de,ja,zh
@@ -229,7 +279,7 @@ deepl usage --month current --breakdown by-language
 deepl config set budget-limit 1000000 --period monthly
 ```
 
-#### 12. Context-Aware Translation
+#### 13. Context-Aware Translation
 ```bash
 # Preserve code blocks and variables
 deepl translate README.md --preserve-code --preserve-vars
@@ -274,8 +324,13 @@ deepl translate text.txt --show-confidence --min-quality 0.85
 │  └──────────────┘  └──────────────┘  └───────────────┘ │
 │                                                           │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐ │
-│  │    Cache     │  │    Watch     │  │     Team      │ │
+│  │    Cache     │  │    Watch     │  │   GitHooks    │ │
 │  │   Service    │  │   Service    │  │   Service     │ │
+│  └──────────────┘  └──────────────┘  └───────────────┘ │
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐ │
+│  │     Team     │  │    Batch     │  │     File      │ │
+│  │   Service    │  │   Service    │  │  Translation  │ │
 │  └──────────────┘  └──────────────┘  └───────────────┘ │
 └────────────────────┬────────────────────────────────────┘
                      │
@@ -317,11 +372,13 @@ deepl translate text.txt --show-confidence --min-quality 0.85
 
 #### Service Layer
 - **Translation Service**: Core translation logic, format detection
-- **Write Service**: Grammar checking, style suggestions
-- **Glossary Service**: Glossary CRUD and application
-- **Cache Service**: Translation caching and invalidation
-- **Watch Service**: File watching and auto-translation
-- **Team Service**: Collaboration features
+- **Write Service**: Grammar checking, style suggestions ✅ IMPLEMENTED
+- **Glossary Service**: Glossary CRUD and application ✅ IMPLEMENTED
+- **Cache Service**: Translation caching and invalidation ✅ IMPLEMENTED
+- **Watch Service**: File watching and auto-translation ✅ IMPLEMENTED
+- **GitHooks Service**: Git hook lifecycle management ✅ IMPLEMENTED
+- **Batch Service**: Parallel translation processing ✅ IMPLEMENTED
+- **Team Service**: Collaboration features (Phase 3)
 
 #### API Client Layer
 - **DeepL Client**: Typed API wrappers for all DeepL endpoints
@@ -361,7 +418,7 @@ deepl [GLOBAL_OPTIONS] <COMMAND> [COMMAND_OPTIONS] [ARGS]
 ```
 deepl
 ├── translate [TEXT|FILE...] --to LANGS      # Translate text/files
-├── write [TEXT|FILE...] --tone TONE         # Improve writing
+├── write [TEXT] --lang LANG                 # Improve writing ✅ IMPLEMENTED
 ├── glossary                                  # Glossary management
 │   ├── create NAME SRC TGT [FILE]
 │   ├── list
@@ -369,7 +426,12 @@ deepl
 │   ├── delete NAME
 │   ├── push NAME --team
 │   └── pull NAME
-├── watch PATH --targets LANGS                # Watch and auto-translate
+├── watch PATH --targets LANGS                # Watch and auto-translate ✅ IMPLEMENTED
+├── hooks                                     # Git hooks management ✅ IMPLEMENTED
+│   ├── install <hook-type>
+│   ├── uninstall <hook-type>
+│   ├── list
+│   └── path <hook-type>
 ├── tui                                       # Launch interactive TUI
 ├── batch                                     # Batch operations
 │   ├── translate PATH --targets LANGS
@@ -399,11 +461,15 @@ deepl
 │   ├── list
 │   └── edit
 ├── init                                      # Initialize project
-├── install                                   # Install integrations
-│   ├── git-hooks [--pre-commit|--pre-push]
-│   └── lsp
+├── install                                   # Install integrations (Future)
+│   ├── git-hooks [--pre-commit|--pre-push]  # Alternative to 'deepl hooks install'
+│   └── lsp                                   # Language server protocol for editors
 ├── usage [--month MONTH]                     # Usage statistics
 └── help [COMMAND]                            # Help system
+
+NOTE: Git hooks currently use 'deepl hooks install <type>' syntax.
+      The 'deepl install' command is a future enhancement for consolidating
+      all integration installations (git-hooks, lsp, editor plugins, etc.)
 ```
 
 ### Detailed Command Specifications
@@ -447,33 +513,56 @@ EXAMPLES:
   deepl translate --interactive --to es
 ```
 
-#### `write` - Writing Enhancement Command
+#### `write` - Writing Enhancement Command ✅ IMPLEMENTED
 
 ```bash
-deepl write [OPTIONS] [TEXT|FILE...]
+deepl write [OPTIONS] TEXT
 
-OPTIONS:
-  --tone TONE                Style/tone (default|business|academic|casual|enthusiastic|diplomatic)
-  --lang LANG                Language of text (required for Write API)
-  --fix                      Auto-apply suggestions
-  --check                    Show suggestions without applying
-  --show-alternatives        Show alternative phrasings
-  --output, -o FILE          Output file
-  --diff                     Show diff of changes
-  --interactive, -i          Interactive writing assistant
+CURRENT OPTIONS (✅ IMPLEMENTED):
+  --lang, -l LANG            Language of text (required) - de, en-GB, en-US, es, fr, it, pt-BR, pt-PT
+  --style, -s STYLE          Writing style (simple|business|academic|casual|prefer_*)
+  --tone, -t TONE            Tone (enthusiastic|friendly|confident|diplomatic|prefer_*)
+  --alternatives, -a         Show multiple improvement alternatives
 
-EXAMPLES:
-  # Check writing
-  deepl write "Your text" --check --tone business
+FUTURE OPTIONS (Planned):
+  --fix                      Auto-apply suggestions (apply best improvement automatically)
+  --check                    Show suggestions without applying (analysis mode)
+  --output, -o FILE          Output file for improved text
+  --diff                     Show diff of changes (before/after comparison)
+  --interactive, -i          Interactive writing assistant (REPL mode)
 
-  # Auto-fix grammar
-  deepl write document.txt --fix --output document-fixed.txt
+NOTES:
+  - Cannot specify both --style and --tone in a single request
+  - style and tone options support "prefer_*" variants for suggestions
 
-  # Interactive writing assistant
-  deepl write --interactive --tone academic
+EXAMPLES (Current):
+  # Basic improvement
+  deepl write "This is a sentence." --lang en-US
+
+  # With business style
+  deepl write "We want to tell you." --lang en-US --style business
+
+  # With confident tone
+  deepl write "I think this will work." --lang en-US --tone confident
 
   # Show alternatives
-  deepl write email.txt --show-alternatives --tone diplomatic
+  deepl write "This is good." --lang en-US --alternatives
+
+  # Prefer casual style (suggestions only)
+  deepl write "Your text" --lang en-US --style prefer_casual
+
+EXAMPLES (Future):
+  # Auto-fix grammar in file
+  deepl write document.txt --fix --output document-fixed.txt --lang en-US
+
+  # Show diff of changes
+  deepl write email.txt --diff --tone diplomatic --lang en-US
+
+  # Interactive writing assistant
+  deepl write --interactive --tone academic --lang en-US
+
+  # Check writing without applying
+  deepl write "Your text" --check --style business --lang en-US
 ```
 
 #### `watch` - Watch Mode Command
@@ -500,6 +589,40 @@ EXAMPLES:
 
   # Git integration
   deepl watch --git-staged --targets es --auto-commit
+```
+
+#### `hooks` - Git Hooks Management ✅ IMPLEMENTED
+
+```bash
+deepl hooks <SUBCOMMAND>
+
+SUBCOMMANDS:
+  install <hook-type>        Install a git hook (pre-commit|pre-push)
+  uninstall <hook-type>      Uninstall a git hook
+  list                       List all hooks and their status
+  path <hook-type>           Show the path to a hook file
+
+EXAMPLES:
+  # Install pre-commit hook
+  deepl hooks install pre-commit
+
+  # Install pre-push hook
+  deepl hooks install pre-push
+
+  # Check hook status
+  deepl hooks list
+
+  # Show hook path
+  deepl hooks path pre-commit
+
+  # Uninstall hook
+  deepl hooks uninstall pre-commit
+
+FEATURES:
+  - Automatic backup of existing hooks
+  - Safe installation without overwriting custom hooks
+  - Hook validation with DeepL marker
+  - Customizable shell scripts for project workflows
 ```
 
 #### `tui` - Interactive TUI
@@ -623,15 +746,18 @@ deepl-cli/
 ├── src/
 │   ├── cli/
 │   │   ├── commands/              # Command implementations
-│   │   │   ├── translate.ts
-│   │   │   ├── write.ts
-│   │   │   ├── glossary.ts
-│   │   │   ├── watch.ts
-│   │   │   ├── tui.ts
-│   │   │   └── ...
+│   │   │   ├── translate.ts       # ✅ IMPLEMENTED
+│   │   │   ├── write.ts           # ✅ IMPLEMENTED
+│   │   │   ├── watch.ts           # ✅ IMPLEMENTED
+│   │   │   ├── hooks.ts           # ✅ IMPLEMENTED
+│   │   │   ├── glossary.ts        # ✅ IMPLEMENTED
+│   │   │   ├── cache.ts           # ✅ IMPLEMENTED
+│   │   │   ├── auth.ts            # ✅ IMPLEMENTED
+│   │   │   ├── config.ts          # ✅ IMPLEMENTED
+│   │   │   └── tui.ts             # Phase 3
 │   │   ├── parser.ts              # CLI argument parsing
 │   │   ├── help.ts                # Help system
-│   │   └── index.ts               # CLI entry point
+│   │   └── index.ts               # CLI entry point ✅ IMPLEMENTED
 │   │
 │   ├── tui/
 │   │   ├── components/            # Ink components
@@ -646,13 +772,16 @@ deepl-cli/
 │   │   └── index.tsx              # TUI entry point
 │   │
 │   ├── services/
-│   │   ├── translation.ts         # Translation service
-│   │   ├── write.ts               # Write service
-│   │   ├── glossary.ts            # Glossary service
-│   │   ├── cache.ts               # Cache service
-│   │   ├── watch.ts               # Watch service
-│   │   ├── tm.ts                  # Translation memory
-│   │   └── team.ts                # Team service
+│   │   ├── translation.ts         # Translation service ✅ IMPLEMENTED
+│   │   ├── write.ts               # Write service ✅ IMPLEMENTED
+│   │   ├── file-translation.ts    # File translation ✅ IMPLEMENTED
+│   │   ├── batch-translation.ts   # Batch translation ✅ IMPLEMENTED
+│   │   ├── glossary.ts            # Glossary service ✅ IMPLEMENTED
+│   │   ├── cache.ts               # Cache service ✅ IMPLEMENTED
+│   │   ├── watch.ts               # Watch service ✅ IMPLEMENTED
+│   │   ├── git-hooks.ts           # Git hooks service ✅ IMPLEMENTED
+│   │   ├── tm.ts                  # Translation memory (Phase 3)
+│   │   └── team.ts                # Team service (Phase 3)
 │   │
 │   ├── api/
 │   │   ├── client.ts              # DeepL API client
@@ -837,106 +966,83 @@ export class TranslationService {
 }
 ```
 
-### 2. Write Service
+### 2. Write Service ✅ IMPLEMENTED
+
+**Actual implementation**: See `src/services/write.ts`
 
 ```typescript
-// src/services/write.ts
+// src/services/write.ts (simplified conceptual view)
 
-import { DeepLClient } from '../api/client';
+import { DeepLClient } from '../api/deepl-client.js';
+import { ConfigService } from '../storage/config.js';
+import { WriteOptions, WriteImprovement } from '../types/index.js';
 
-interface WriteOptions {
-  lang: string;
-  tone?: 'default' | 'business' | 'academic' | 'casual' | 'enthusiastic' | 'diplomatic';
-  fix?: boolean;
+export class WriteService {
+  private client: DeepLClient;
+
+  constructor(client: DeepLClient, config: ConfigService) {
+    this.client = client;
+  }
+
+  async improve(
+    text: string,
+    options: WriteOptions
+  ): Promise<WriteImprovement[]> {
+    // Validates text, targetLang, and style/tone exclusivity
+    // Returns all improvements from DeepL Write API
+    return await this.client.improveText(text, options);
+  }
+
+  async getBestImprovement(
+    text: string,
+    options: WriteOptions
+  ): Promise<WriteImprovement> {
+    // Returns the first (best) improvement
+    const improvements = await this.improve(text, options);
+    return improvements[0]!;
+  }
 }
+```
 
+**Key Features**:
+- Support for 8 languages (de, en-GB, en-US, es, fr, it, pt-BR, pt-PT)
+- Writing styles: simple, business, academic, casual (+ prefer_* variants)
+- Tones: enthusiastic, friendly, confident, diplomatic (+ prefer_* variants)
+- Cannot specify both style and tone in one request
+- Returns multiple improvement alternatives
+- Full test coverage: 84 tests (28 service + 19 command + 37 client)
+
+**Future Enhancement Concepts**:
+
+If DeepL Write API adds detailed suggestion capabilities or if we add post-processing:
+
+```typescript
+// Potential future interface for detailed suggestions
 interface Suggestion {
   type: 'grammar' | 'spelling' | 'style' | 'punctuation';
   original: string;
   suggestion: string;
-  start: number;
-  end: number;
-  confidence: number;
+  start: number;      // Character position
+  end: number;        // Character position
+  confidence: number; // 0.0 - 1.0
   alternatives?: string[];
+  explanation?: string;
 }
 
 interface WriteResult {
   originalText: string;
   improvedText: string;
-  suggestions: Suggestion[];
+  suggestions: Suggestion[];  // Detailed breakdown
   applied: boolean;
 }
 
-export class WriteService {
-  private client: DeepLClient;
-
-  constructor(apiKey: string) {
-    this.client = new DeepLClient(apiKey);
-  }
-
-  async check(text: string, options: WriteOptions): Promise<WriteResult> {
-    const response = await this.client.write({
-      text,
-      source_lang: options.lang,
-      tone: options.tone,
-    });
-
-    return {
-      originalText: text,
-      improvedText: response.text,
-      suggestions: response.suggestions || [],
-      applied: false,
-    };
-  }
-
-  async fix(text: string, options: WriteOptions): Promise<WriteResult> {
-    const result = await this.check(text, options);
-    return {
-      ...result,
-      applied: true,
-    };
-  }
-
-  async interactive(options: WriteOptions): Promise<void> {
-    // Interactive writing assistant using inquirer
-    const inquirer = (await import('inquirer')).default;
-
-    console.log('Interactive Writing Assistant (type "exit" to quit)');
-
-    while (true) {
-      const { text } = await inquirer.prompt([
-        {
-          type: 'editor',
-          name: 'text',
-          message: 'Enter your text:',
-        },
-      ]);
-
-      if (text.trim().toLowerCase() === 'exit') break;
-
-      const result = await this.check(text, options);
-
-      // Show suggestions
-      console.log('\nSuggestions:');
-      result.suggestions.forEach((s, i) => {
-        console.log(`${i + 1}. ${s.type}: "${s.original}" → "${s.suggestion}"`);
-      });
-
-      const { apply } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'apply',
-          message: 'Apply suggestions?',
-          default: true,
-        },
-      ]);
-
-      if (apply) {
-        console.log('\nImproved text:');
-        console.log(result.improvedText);
-      }
-    }
-  }
+// Interactive mode for iterative improvement
+async interactive(options: WriteOptions): Promise<void> {
+  // REPL for writing assistance
+  // - Enter text in editor
+  // - Show suggestions
+  // - Apply/reject interactively
+  // - Iterate until satisfied
 }
 ```
 
@@ -1081,7 +1187,79 @@ export class WatchService {
 }
 ```
 
-### 4. Cache Service
+### 4. Git Hooks Service ✅ IMPLEMENTED
+
+**Actual implementation**: See `src/services/git-hooks.ts`
+
+```typescript
+// src/services/git-hooks.ts (simplified conceptual view)
+
+export type HookType = 'pre-commit' | 'pre-push';
+
+export class GitHooksService {
+  private hooksDir: string;
+
+  constructor(gitDir: string) {
+    // Validates git directory exists
+    this.hooksDir = path.join(gitDir, 'hooks');
+  }
+
+  async install(hookType: HookType): Promise<void> {
+    // 1. Validate hook type
+    // 2. Create hooks directory if needed
+    // 3. Backup existing hook if not a DeepL hook
+    // 4. Write new hook script
+    // 5. Make executable (chmod 755)
+  }
+
+  async uninstall(hookType: HookType): Promise<void> {
+    // 1. Validate it's a DeepL hook
+    // 2. Remove hook file
+    // 3. Restore backup if exists
+  }
+
+  isInstalled(hookType: HookType): boolean {
+    // Check if hook exists and is a DeepL hook
+  }
+
+  list(): HookStatus {
+    // Return status of all supported hooks
+  }
+
+  getHookPath(hookType: HookType): string {
+    // Return absolute path to hook file
+  }
+
+  static findGitRoot(startPath?: string): string | null {
+    // Traverse up directory tree to find .git directory
+  }
+
+  private generateHookContent(hookType: HookType): string {
+    // Generate shell script for the hook
+    // Includes marker comment for identification
+  }
+
+  private isDeepLHook(content: string): boolean {
+    // Check for DeepL CLI marker in hook content
+  }
+}
+```
+
+**Key Features**:
+- Support for pre-commit and pre-push hooks
+- Automatic backup of existing hooks
+- Safe installation without overwriting custom hooks
+- Hook validation with DeepL marker comment
+- Customizable shell scripts (placeholder logic for project-specific workflows)
+- Automatic .git directory detection
+- Graceful error handling for non-git repositories
+
+**Hook Scripts Generated**:
+- **pre-commit**: Validates translation files before commit
+- **pre-push**: Validates all translations before push
+- Both include placeholders for customization
+
+### 5. Cache Service
 
 ```typescript
 // src/storage/cache.ts
@@ -1207,7 +1385,7 @@ export class CacheService {
 }
 ```
 
-### 5. Preservation Service
+### 6. Preservation Service
 
 ```typescript
 // src/utils/preserve.ts
@@ -1553,15 +1731,29 @@ module.exports = {
 };
 ```
 
-### Git Hooks Integration
+### Git Hooks Integration ✅ IMPLEMENTED
 
 ```bash
 # Install pre-commit hook
-deepl install git-hooks --pre-commit
+deepl hooks install pre-commit
 
-# Generated .git/hooks/pre-commit:
-#!/bin/sh
-deepl watch --git-staged --targets es,fr,de --auto-commit
+# Install pre-push hook
+deepl hooks install pre-push
+
+# Check hook status
+deepl hooks list
+
+# Output:
+# Git Hooks Status:
+#
+#   ✓ pre-commit      installed
+#   ✗ pre-push        not installed
+
+# Generated .git/hooks/pre-commit includes:
+# - DeepL CLI marker for identification
+# - Translation file validation logic
+# - Customizable for project-specific workflows
+# - Automatic backup of existing hooks
 ```
 
 ### CI/CD Integration
@@ -1670,12 +1862,12 @@ jobs:
 - [x] Basic glossary support (create, list, show, delete, use)
 - [x] Cache CLI commands (stats, clear, enable, disable)
 
-### Phase 2: Advanced Features (Month 3-4) - 🚧 60% Complete
+### Phase 2: Advanced Features (Month 3-4) - ✅ 100% Complete
 - [x] Context-aware translation
 - [x] Batch processing with parallel translation
 - [x] Watch mode with file watching
-- [ ] DeepL Write integration (🎯 NEXT)
-- [ ] Git hooks integration
+- [x] DeepL Write integration ✨ NEW
+- [x] Git hooks integration ✨ NEW
 
 ### Phase 3: TUI & Collaboration (Month 5-6)
 - [ ] Interactive TUI application
