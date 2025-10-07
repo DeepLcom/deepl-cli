@@ -16,6 +16,16 @@ DeepL CLI is a next-generation command-line interface for the DeepL API that int
 
 ## Development Philosophy
 
+### Package Management
+
+**IMPORTANT: Always use the latest versions of packages.**
+
+- Never downgrade packages to avoid ESM/CommonJS issues
+- Embrace modern JavaScript features and ESM
+- If a package is ESM-only, refactor code to use dynamic imports or ESM
+- Use `"type": "module"` in package.json when necessary
+- Keep dependencies up-to-date with latest stable versions
+
 ### Test-Driven Development (TDD)
 
 **IMPORTANT: This project follows a strict TDD approach.**
