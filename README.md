@@ -202,6 +202,16 @@ deepl translate "How are you?" --formality more --to de --output formal.txt
 deepl translate "How are you?" --formality less --to de --output casual.txt
 # Less formal: Wie geht's?
 
+# Add context for better translation quality (helps with ambiguous terms)
+deepl translate "bank" --context "This document is about financial institutions" --to es
+# Translation considers financial context → "banco" (financial institution)
+
+deepl translate "bank" --context "This document is about rivers and geography" --to es
+# Translation considers geographical context → "orilla" (riverbank)
+
+# Combine context with other options
+deepl translate "How are you?" --context "Formal business email" --formality more --to de
+
 # Custom API endpoint (for DeepL Pro accounts or testing)
 deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
 ```
@@ -209,8 +219,8 @@ deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
 #### Features Coming in Phase 2 🚧
 
 ```bash
-# Context for better translation quality
-deepl translate api-docs.md --context "REST API documentation" --to de
+# Automatic context detection for files
+deepl translate api-docs.md --auto-context --to de
 
 # Interactive mode
 deepl translate --interactive --to es

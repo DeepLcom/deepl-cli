@@ -11,6 +11,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Cache Management](./05-cache.sh) - Working with the translation cache
 - [CI/CD Integration](./06-cicd-integration.sh) - Using DeepL CLI in automated workflows
 - [Batch Processing](./07-batch-processing.sh) - Translating multiple files
+- [Context-Aware Translation](./08-context-aware-translation.sh) - Using context for better translation quality
 
 ## Prerequisites
 

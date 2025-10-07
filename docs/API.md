@@ -62,6 +62,7 @@ deepl translate [options] <file>
 | `--output <path>` | `-o` | string | Yes* | Output file path or directory (*required for file translation) |
 | `--formality <level>` | | string | No | Formality level: `default`, `more`, `less`, `prefer_more`, `prefer_less` |
 | `--preserve-code` | | boolean | No | Preserve code blocks and variables during translation |
+| `--context <text>` | | string | No | Additional context to improve translation quality (helps disambiguate) |
 | `--api-url <url>` | | string | No | Custom API endpoint (e.g., `https://api.deepl.com/v2` for Pro) |
 
 #### Supported Languages
@@ -135,6 +136,12 @@ deepl translate "How are you?" --formality more --to de --output formal.txt
 
 # Use Pro API
 deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
+
+# Add context for disambiguation
+deepl translate "bank" --to es --context "This document discusses financial institutions"
+
+# Context with multiple options
+deepl translate "How are you?" --to de --context "Formal business correspondence" --formality more
 ```
 
 #### Input Methods
@@ -161,6 +168,47 @@ deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
 
 - `.txt` - Plain text files
 - `.md` - Markdown files (with `--preserve-code` to preserve code blocks)
+
+#### Using Context for Better Translations
+
+The `--context` parameter provides additional information to help DeepL disambiguate terms and improve translation quality.
+
+**When to use context:**
+- Translating ambiguous terms (e.g., "bank" could mean financial institution or riverbank)
+- Technical documentation with domain-specific vocabulary
+- Content where surrounding information affects meaning
+- Terms that have different translations based on subject matter
+
+**Examples:**
+
+```bash
+# Disambiguate "bank"
+deepl translate "bank" --to es --context "financial services document"
+# → "banco" (financial institution)
+
+deepl translate "bank" --to es --context "geography and rivers"
+# → "orilla" (riverbank)
+
+# Technical context
+deepl translate "memory" --to de --context "computer programming documentation"
+# → "Speicher" (computer memory)
+
+deepl translate "memory" --to de --context "psychology and cognition"
+# → "Gedächtnis" (human memory)
+
+# Business context
+deepl translate "close" --to fr --context "financial quarter reporting"
+# → "clôture" (close of business period)
+
+deepl translate "close" --to fr --context "physical distance"
+# → "proche" (near/close in distance)
+```
+
+**Best practices:**
+- Keep context concise but informative (1-2 sentences)
+- Describe the subject matter, not the sentence structure
+- Focus on domain/topic rather than grammatical context
+- Context is passed to DeepL API but doesn't appear in the output
 
 ### auth
 
