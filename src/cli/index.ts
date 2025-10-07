@@ -193,7 +193,8 @@ program
       .action(async (key?: string) => {
         try {
           const value = await configCommand.get(key);
-          console.log(JSON.stringify(value, null, 2));
+          // Convert undefined to null for proper JSON output
+          console.log(JSON.stringify(value ?? null, null, 2));
         } catch (error) {
           console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
