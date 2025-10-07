@@ -22,20 +22,25 @@ describe('TranslateCommand', () => {
     jest.clearAllMocks();
 
     mockTranslationService = {
-      translate: jest.fn(),
-      translateBatch: jest.fn(),
-      translateToMultiple: jest.fn(),
-      getUsage: jest.fn(),
-      getSupportedLanguages: jest.fn(),
+      translate: jest.fn().mockResolvedValue({ text: '', detectedSourceLang: undefined }),
+      translateBatch: jest.fn().mockResolvedValue([]),
+      translateToMultiple: jest.fn().mockResolvedValue([]),
+      getUsage: jest.fn().mockResolvedValue({ character: { count: 0, limit: 0 } }),
+      getSupportedLanguages: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<TranslationService>;
 
     mockConfigService = {
-      get: jest.fn(),
-      getValue: jest.fn(),
-      set: jest.fn(),
-      has: jest.fn(),
-      delete: jest.fn(),
-      clear: jest.fn(),
+      get: jest.fn().mockReturnValue({}),
+      getValue: jest.fn((key: string) => {
+        // Mock API key as set by default
+        if (key === 'auth.apiKey') return 'mock-api-key';
+        return undefined;
+      }),
+      set: jest.fn().mockResolvedValue(undefined),
+      has: jest.fn().mockReturnValue(false),
+      delete: jest.fn().mockResolvedValue(undefined),
+      clear: jest.fn().mockResolvedValue(undefined),
+      getDefaults: jest.fn().mockReturnValue({}),
     } as unknown as jest.Mocked<ConfigService>;
 
     translateCommand = new TranslateCommand(mockTranslationService, mockConfigService);
@@ -43,7 +48,7 @@ describe('TranslateCommand', () => {
 
   describe('translateText()', () => {
     it('should translate simple text', async () => {
-      mockTranslationService.translate.mockResolvedValue({
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: 'Hola mundo',
         detectedSourceLang: 'en',
       });
@@ -55,12 +60,13 @@ describe('TranslateCommand', () => {
       expect(result).toBe('Hola mundo');
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello world',
-        { targetLang: 'es' }
+        { targetLang: 'es' },
+        { preserveCode: undefined }
       );
     });
 
     it('should pass source language when specified', async () => {
-      mockTranslationService.translate.mockResolvedValue({
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: 'Bonjour',
       });
 
@@ -71,12 +77,13 @@ describe('TranslateCommand', () => {
 
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello',
-        { targetLang: 'fr', sourceLang: 'en' }
+        { targetLang: 'fr', sourceLang: 'en' },
+        { preserveCode: undefined }
       );
     });
 
     it('should pass formality when specified', async () => {
-      mockTranslationService.translate.mockResolvedValue({
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: 'Buenos días',
       });
 
@@ -87,12 +94,13 @@ describe('TranslateCommand', () => {
 
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Good morning',
-        { targetLang: 'es', formality: 'more' }
+        { targetLang: 'es', formality: 'more' },
+        { preserveCode: undefined }
       );
     });
 
     it('should enable code preservation when requested', async () => {
-      mockTranslationService.translate.mockResolvedValue({
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: 'Usa `console.log()` para imprimir',
       });
 
@@ -101,6 +109,7 @@ describe('TranslateCommand', () => {
         preserveCode: true,
       });
 
+      // Check that translate was called with preserveCode option
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Use `console.log()` to print',
         { targetLang: 'es' },
@@ -115,16 +124,21 @@ describe('TranslateCommand', () => {
     });
 
     it('should throw error when API key is not set', async () => {
-      mockConfigService.getValue.mockReturnValue(undefined);
-      process.env.DEEPL_API_KEY = undefined;
+      // Override mock to return no API key for this specific test
+      (mockConfigService.getValue as jest.Mock).mockImplementation(() => undefined);
+      const originalEnv = process.env['DEEPL_API_KEY'];
+      delete process.env['DEEPL_API_KEY'];
 
       await expect(
         translateCommand.translateText('Hello', { to: 'es' })
       ).rejects.toThrow('API key not set');
+
+      // Restore environment
+      if (originalEnv) process.env['DEEPL_API_KEY'] = originalEnv;
     });
 
     it('should handle translation errors gracefully', async () => {
-      mockTranslationService.translate.mockRejectedValue(
+      (mockTranslationService.translate as jest.Mock).mockRejectedValueOnce(
         new Error('API error: Quota exceeded')
       );
 
@@ -134,7 +148,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should support multiple target languages', async () => {
-      mockTranslationService.translateToMultiple.mockResolvedValue([
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
         { targetLang: 'es', text: 'Hola' },
         { targetLang: 'fr', text: 'Bonjour' },
         { targetLang: 'de', text: 'Hallo' },
@@ -151,9 +165,34 @@ describe('TranslateCommand', () => {
   });
 
   describe('translateFromStdin()', () => {
+    let mockStdin: any;
+
+    beforeEach(() => {
+      // Mock process.stdin
+      mockStdin = {
+        setEncoding: jest.fn(),
+        on: jest.fn(),
+      };
+      Object.defineProperty(process, 'stdin', {
+        value: mockStdin,
+        writable: true,
+        configurable: true,
+      });
+    });
+
     it('should read from stdin and translate', async () => {
-      mockTranslationService.translate.mockResolvedValue({
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: 'Hola desde stdin',
+      });
+
+      // Mock stdin data
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          callback('Hello from stdin');
+        } else if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
       });
 
       const result = await translateCommand.translateFromStdin({
@@ -164,8 +203,18 @@ describe('TranslateCommand', () => {
     });
 
     it('should handle multi-line stdin input', async () => {
-      mockTranslationService.translate.mockResolvedValue({
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: 'Línea 1\nLínea 2\nLínea 3',
+      });
+
+      // Mock multi-line stdin data
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          callback('Line 1\nLine 2\nLine 3');
+        } else if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
       });
 
       const result = await translateCommand.translateFromStdin({
@@ -176,6 +225,14 @@ describe('TranslateCommand', () => {
     });
 
     it('should throw error for empty stdin', async () => {
+      // Mock empty stdin
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
+      });
+
       await expect(
         translateCommand.translateFromStdin({ to: 'es' })
       ).rejects.toThrow('No input provided');
@@ -184,7 +241,7 @@ describe('TranslateCommand', () => {
 
   describe('output formatting', () => {
     it('should output plain text by default', async () => {
-      mockTranslationService.translate.mockResolvedValue({
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: 'Hola',
       });
 
@@ -196,7 +253,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should support JSON output format', async () => {
-      mockTranslationService.translate.mockResolvedValue({
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: 'Hola',
         detectedSourceLang: 'en',
       });
@@ -210,7 +267,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should display source language when detected', async () => {
-      mockTranslationService.translate.mockResolvedValue({
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: 'Hola',
         detectedSourceLang: 'en',
       });
@@ -225,7 +282,7 @@ describe('TranslateCommand', () => {
 
   describe('error handling', () => {
     it('should show user-friendly error for authentication failure', async () => {
-      mockTranslationService.translate.mockRejectedValue(
+      (mockTranslationService.translate as jest.Mock).mockRejectedValueOnce(
         new Error('Authentication failed: Invalid API key')
       );
 
@@ -235,7 +292,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should show user-friendly error for quota exceeded', async () => {
-      mockTranslationService.translate.mockRejectedValue(
+      (mockTranslationService.translate as jest.Mock).mockRejectedValueOnce(
         new Error('Quota exceeded: Character limit reached')
       );
 
@@ -245,7 +302,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should show user-friendly error for network issues', async () => {
-      mockTranslationService.translate.mockRejectedValue(
+      (mockTranslationService.translate as jest.Mock).mockRejectedValueOnce(
         new Error('Network error')
       );
 

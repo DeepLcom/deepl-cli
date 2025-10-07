@@ -14,6 +14,12 @@ DeepL CLI is a next-generation command-line interface for the DeepL API that int
 - Team collaboration features
 - CI/CD integration
 
+**Project Files Reference:**
+- **TODO.md** - Comprehensive project roadmap and task list (read this when resuming work!)
+- **CHANGELOG.md** - Release history and version notes
+- **DESIGN.md** - Architecture and technical design decisions
+- **MANUAL_TEST_REPORT.md** - Results of manual CLI testing
+
 ## Development Philosophy
 
 ### Package Management

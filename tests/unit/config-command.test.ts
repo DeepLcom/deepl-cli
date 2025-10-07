@@ -19,12 +19,13 @@ describe('ConfigCommand', () => {
     jest.clearAllMocks();
 
     mockConfigService = {
-      get: jest.fn(),
-      getValue: jest.fn(),
-      set: jest.fn(),
-      has: jest.fn(),
-      delete: jest.fn(),
-      clear: jest.fn(),
+      get: jest.fn().mockReturnValue({}),
+      getValue: jest.fn().mockReturnValue(undefined),
+      set: jest.fn().mockResolvedValue(undefined),
+      has: jest.fn().mockReturnValue(false),
+      delete: jest.fn().mockResolvedValue(undefined),
+      clear: jest.fn().mockResolvedValue(undefined),
+      getDefaults: jest.fn().mockReturnValue({}),
     } as unknown as jest.Mocked<ConfigService>;
 
     configCommand = new ConfigCommand(mockConfigService);
@@ -32,7 +33,7 @@ describe('ConfigCommand', () => {
 
   describe('get()', () => {
     it('should get specific config value', async () => {
-      mockConfigService.getValue.mockReturnValue('es');
+      (mockConfigService.getValue as jest.Mock).mockReturnValueOnce('es');
 
       const value = await configCommand.get('defaults.sourceLang');
 
@@ -41,15 +42,13 @@ describe('ConfigCommand', () => {
     });
 
     it('should return undefined for non-existent key', async () => {
-      mockConfigService.getValue.mockReturnValue(undefined);
-
       const value = await configCommand.get('nonexistent.key');
 
       expect(value).toBeUndefined();
     });
 
     it('should get entire config when no key specified', async () => {
-      mockConfigService.get.mockReturnValue({
+      (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'test-key' },
         api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         defaults: {
@@ -74,39 +73,31 @@ describe('ConfigCommand', () => {
 
   describe('set()', () => {
     it('should set config value', async () => {
-      mockConfigService.set.mockResolvedValue(undefined);
-
       await configCommand.set('defaults.sourceLang', 'en');
 
       expect(mockConfigService.set).toHaveBeenCalledWith('defaults.sourceLang', 'en');
     });
 
     it('should set array values', async () => {
-      mockConfigService.set.mockResolvedValue(undefined);
-
       await configCommand.set('defaults.targetLangs', 'es,fr,de');
 
       expect(mockConfigService.set).toHaveBeenCalledWith('defaults.targetLangs', ['es', 'fr', 'de']);
     });
 
     it('should set boolean values', async () => {
-      mockConfigService.set.mockResolvedValue(undefined);
-
       await configCommand.set('cache.enabled', 'false');
 
       expect(mockConfigService.set).toHaveBeenCalledWith('cache.enabled', false);
     });
 
     it('should set number values', async () => {
-      mockConfigService.set.mockResolvedValue(undefined);
-
       await configCommand.set('cache.maxSize', '2048');
 
       expect(mockConfigService.set).toHaveBeenCalledWith('cache.maxSize', 2048);
     });
 
     it('should throw error for invalid key', async () => {
-      mockConfigService.set.mockRejectedValue(new Error('Invalid config key'));
+      (mockConfigService.set as jest.Mock).mockRejectedValueOnce(new Error('Invalid config key'));
 
       await expect(
         configCommand.set('invalid.key', 'value')
@@ -114,7 +105,7 @@ describe('ConfigCommand', () => {
     });
 
     it('should throw error for invalid value', async () => {
-      mockConfigService.set.mockRejectedValue(new Error('Invalid language code'));
+      (mockConfigService.set as jest.Mock).mockRejectedValueOnce(new Error('Invalid language code'));
 
       await expect(
         configCommand.set('defaults.sourceLang', 'invalid')
@@ -124,7 +115,7 @@ describe('ConfigCommand', () => {
 
   describe('list()', () => {
     it('should list all config values', async () => {
-      mockConfigService.get.mockReturnValue({
+      (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'test-key' },
         api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         defaults: {
@@ -147,7 +138,7 @@ describe('ConfigCommand', () => {
     });
 
     it('should format config as readable key-value pairs', async () => {
-      mockConfigService.get.mockReturnValue({
+      (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'test-key' },
         api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         defaults: {
@@ -168,7 +159,7 @@ describe('ConfigCommand', () => {
     });
 
     it('should hide sensitive values like API keys', async () => {
-      mockConfigService.get.mockReturnValue({
+      (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'super-secret-key-123' },
         api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         defaults: {
@@ -192,15 +183,13 @@ describe('ConfigCommand', () => {
 
   describe('reset()', () => {
     it('should reset config to defaults', async () => {
-      mockConfigService.clear.mockResolvedValue(undefined);
-
       await configCommand.reset();
 
       expect(mockConfigService.clear).toHaveBeenCalled();
     });
 
     it('should handle reset errors', async () => {
-      mockConfigService.clear.mockRejectedValue(new Error('Failed to reset'));
+      (mockConfigService.clear as jest.Mock).mockRejectedValueOnce(new Error('Failed to reset'));
 
       await expect(configCommand.reset()).rejects.toThrow('Failed to reset');
     });
