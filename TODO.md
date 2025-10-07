@@ -19,11 +19,13 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 - [x] Create VERSION file and v0.1.0 tag
 - [x] Update CLAUDE.md with versioning section
 
+### ✅ Completed (continued)
+- [x] Update README with real usage examples
+- [x] Add API documentation (docs/API.md)
+- [x] Add usage examples (examples/ directory)
+
 ### ⏳ Pending
-- [ ] Update README with real usage examples
-- [ ] Add API documentation (docs/API.md)
-- [ ] Add usage examples (examples/ directory)
-- [ ] Setup CI/CD with GitHub Actions
+- [ ] Setup CI/CD with GitHub Actions (skipped until ready to push to remote)
 
 ---
 
