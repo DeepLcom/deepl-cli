@@ -30,8 +30,7 @@
     "command-line",
     "typescript"
   ],
-  "author": "",
-  "license": "MIT",
+  "author": "Steven Syrek",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
@@ -81,10 +80,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/deepl-cli.git"
+    "url": "https://git.deepl.dev/hack-projects/deepl-cli"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/deepl-cli/issues"
+    "url": "https://git.deepl.dev/hack-projects/deepl-cli/-/issues"
   },
-  "homepage": "https://github.com/yourusername/deepl-cli#readme"
+  "homepage": "https://git.deepl.dev/hack-projects/deepl-cli#readme"
 }

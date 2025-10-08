@@ -17,7 +17,7 @@ export default {
     '!src/types/**/*.ts', // Type definitions
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
+  coverageReporters: ['text', 'lcov', 'html', 'cobertura'],
   coverageThreshold: {
     global: {
       branches: 80,
