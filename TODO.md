@@ -156,14 +156,13 @@ v0.2.0 Released! ✅
 
 **Phase 3 (TUI & Collaboration)** - Ready to start!
 
-See [TUI_PLAN.md](./TUI_PLAN.md) for detailed implementation plan.
+Detailed Phase 3 plan is integrated below. Historical planning document archived at `docs/archive/TUI_PLAN.md`.
 
 ---
 
 ## 🎨 Phase 3: TUI & Collaboration
 
 **Status**: Planning complete, ready to implement!
-**Plan**: See [TUI_PLAN.md](./TUI_PLAN.md) for comprehensive implementation plan
 **Timeline**: 7 weeks
 **Target**: v0.3.0
 
@@ -514,6 +513,123 @@ See [TUI_PLAN.md](./TUI_PLAN.md) for detailed implementation plan.
 - Batch Processing: 16 tests ✅
 - Context Translation: 5 tests ✅
 - Other features: Included in totals ✅
+
+---
+
+## 🔧 Technical Debt & Coverage Improvements
+
+### Test Coverage Status
+
+**Current Coverage** (as of Phase 2 completion):
+- **Overall**: 80.93% statements, 78.17% branches, 83.69% functions
+- **Services Layer**: 96%+ (Excellent) ✅
+- **Storage Layer**: 92%+ (Excellent) ✅
+- **CLI Commands**: 68% (Needs improvement) 🟡
+
+**Historical Coverage Improvement**:
+- Phase 1 baseline: 74.15%
+- After translate.ts tests: 89.91%
+- After Phase 2 features: 80.93% (coverage diluted by new untested features)
+
+### Priority Coverage Tasks
+
+#### 1. translate.ts Command - Medium Priority 🟡
+**Current**: 71.02% (improved from 44.76%)
+**Target**: 85%+
+
+**Remaining gaps**:
+- [ ] Add tests for ora spinner integration (~7 tests skipped due to ESM mocking)
+- [ ] Add tests for stdin edge cases
+- [ ] Add tests for source language/formality in `translateToMultiple`
+
+**Note**: Core functionality is well-tested via integration/E2E tests. Unit test gaps are primarily ESM mocking challenges, not lack of validation.
+
+#### 2. write.ts Command - Low Priority ✅
+**Current**: Recently enhanced with Phase 3 features
+**Coverage**: 46 comprehensive unit tests
+
+**Recent improvements**:
+- ✅ File input/output support (7 tests)
+- ✅ Diff view (6 tests)
+- ✅ Check mode (6 tests)
+- ✅ Auto-fix mode (4 tests)
+- ✅ Interactive mode (4 tests)
+
+**Future enhancements** (not coverage, but features):
+- [ ] Batch file improvement (process multiple files)
+- [ ] Integration with watch mode
+- [ ] CI/CD integration examples
+
+#### 3. auth.ts Command - Low Priority
+**Current**: 77.27%
+**Target**: 90%+
+
+**Missing coverage**:
+- [ ] API validation timeout handling
+- [ ] Config write permission errors
+- [ ] Environment variable fallback edge cases
+
+**Effort**: ~30 minutes, +2% overall coverage
+
+#### 4. DeepL Client Edge Cases - Low Priority
+**Current**: 88.29%
+**Target**: 95%+
+
+**Missing coverage**:
+- [ ] Malformed JSON response handling
+- [ ] Specific timeout scenarios
+- [ ] Unexpected error code handling
+
+**Effort**: ~1 hour, +1-2% overall coverage
+
+### Technical Debt Items
+
+#### ESM Mocking Challenges ⚠️
+
+**Issue**: `ora` spinner library is ESM-only, creating Jest mocking challenges.
+
+**Impact**: ~7 tests skipped in translate.ts for directory translation with progress indicators.
+
+**Options**:
+1. **Accept current state** (Recommended) - Functionality is validated via integration/E2E tests
+2. Refactor to extract spinner logic into testable wrapper
+3. Upgrade test infrastructure for better ESM support
+4. Use dynamic imports for ora
+
+**Decision**: Accept current state. Cost/benefit doesn't justify effort given excellent integration test coverage.
+
+#### Watch Mode chokidar Types
+
+**Status**: ✅ Fixed in Phase 3 work
+- Replaced deprecated `chokidar.WatchOptions` with inline type definition
+- All tests passing
+
+### Coverage Goals
+
+#### Short Term (Optional)
+- **Target**: 85%+ overall coverage
+- **Focus**: Add missing auth.ts and deepl-client.ts edge case tests
+- **Effort**: 2-3 hours
+- **Priority**: Low (current coverage is acceptable)
+
+#### Long Term (Before v1.0.0)
+- **Target**: 90%+ statement coverage, 85%+ branch coverage
+- **Focus**: Comprehensive error path testing
+- **Note**: 100% coverage unrealistic due to defensive/unreachable paths
+
+### Archived Documentation
+
+Historical documentation has been moved to `docs/archive/`:
+- `COVERAGE_ANALYSIS_SUMMARY.md` (Oct 7, 2025) - Historical coverage analysis
+- `COVERAGE_IMPROVEMENT_PLAN.md` (Oct 7, 2025) - Original coverage improvement plan
+- `COVERAGE_IMPROVEMENT_RESULTS.md` (Oct 7, 2025) - Phase 1 coverage improvement results
+- `BATCH_PROCESSING_MANUAL_TEST.md` - Batch processing manual test report
+- `MANUAL_TEST_REPORT.md` - Phase 1 manual test report
+- `TUI_PLAN.md` - Detailed Phase 3 TUI planning document
+
+These provide historical context but are superseded by current TODO.md tracking.
+
+---
 
 ### Before v1.0.0 Release
 
