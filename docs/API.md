@@ -1,842 +1,592 @@
 # DeepL CLI - API Reference
 
-> Complete command-line interface reference for DeepL CLI v0.1.0
+**Version**: 0.2.0
+**Last Updated**: October 8, 2025
+
+Complete reference for all DeepL CLI commands, options, and configuration.
+
+---
 
 ## Table of Contents
 
-- [Overview](#overview)
 - [Global Options](#global-options)
 - [Commands](#commands)
   - [translate](#translate)
-  - [auth](#auth)
-  - [config](#config)
-  - [cache](#cache)
+  - [write](#write)
+  - [watch](#watch)
+  - [hooks](#hooks)
   - [glossary](#glossary)
-- [Environment Variables](#environment-variables)
-- [Configuration File](#configuration-file)
+  - [cache](#cache)
+  - [config](#config)
+  - [auth](#auth)
+- [Configuration](#configuration)
 - [Exit Codes](#exit-codes)
-- [Examples](#examples)
+- [Environment Variables](#environment-variables)
 
-## Overview
-
-DeepL CLI provides a comprehensive command-line interface for the DeepL translation API. All commands follow the pattern:
-
-```bash
-deepl [global-options] <command> [command-options] [arguments]
-```
+---
 
 ## Global Options
 
-Available for all commands:
+Options that work with all commands:
 
-| Option | Description |
-|--------|-------------|
-| `--help`, `-h` | Display help for command |
-| `--version`, `-V` | Display version number |
+\`\`\`bash
+--version, -v        Show version number
+--help, -h           Show help message
+--config FILE        Use alternate config file
+--no-cache           Disable translation cache for this command
+--verbose            Enable verbose logging
+--quiet, -q          Suppress non-error output
+\`\`\`
+
+**Examples:**
+
+\`\`\`bash
+# Show version
+deepl --version
+deepl -v
+
+# Get help
+deepl --help
+deepl translate --help
+
+# Use custom config
+deepl --config ~/.deepl-custom.json translate "Hello" --to es
+
+# Disable cache for single command
+deepl --no-cache translate "Hello" --to es
+\`\`\`
+
+---
 
 ## Commands
 
 ### translate
 
-Translate text or files using the DeepL API.
+Translate text, files, or directories.
 
 #### Synopsis
 
-```bash
-deepl translate [options] [text]
-deepl translate [options] <file>
-```
+\`\`\`bash
+deepl translate [OPTIONS] [TEXT|FILE|DIRECTORY]
+\`\`\`
 
-#### Arguments
+#### Description
 
-| Argument | Description |
-|----------|-------------|
-| `[text]` | Text to translate (optional if using stdin or file) |
+Translate text directly, from stdin, from files, or entire directories. Supports multiple target languages, code preservation, and context-aware translation.
 
 #### Options
 
-| Option | Alias | Type | Required | Description |
-|--------|-------|------|----------|-------------|
-| `--to <language>` | `-t` | string | Yes | Target language(s), comma-separated for multiple |
-| `--from <language>` | `-f` | string | No | Source language (auto-detect if not specified) |
-| `--output <path>` | `-o` | string | Yes* | Output file path or directory (*required for file translation) |
-| `--formality <level>` | | string | No | Formality level: `default`, `more`, `less`, `prefer_more`, `prefer_less` |
-| `--preserve-code` | | boolean | No | Preserve code blocks and variables during translation |
-| `--context <text>` | | string | No | Additional context to improve translation quality (helps disambiguate) |
-| `--api-url <url>` | | string | No | Custom API endpoint (e.g., `https://api.deepl.com/v2` for Pro) |
+**Required:**
+- \`--to, -t LANGS\` - Target language(s), comma-separated (e.g., \`es\`, \`es,fr,de\`)
 
-#### Supported Languages
+**Source Options:**
+- \`--from, -f LANG\` - Source language (auto-detect if omitted)
+- \`--context TEXT\` - Additional context for better translation
 
-**Source languages** (auto-detect if not specified):
-- `AR` - Arabic
-- `BG` - Bulgarian
-- `CS` - Czech
-- `DA` - Danish
-- `DE` - German
-- `EL` - Greek
-- `EN` - English
-- `ES` - Spanish
-- `ET` - Estonian
-- `FI` - Finnish
-- `FR` - French
-- `HU` - Hungarian
-- `ID` - Indonesian
-- `IT` - Italian
-- `JA` - Japanese
-- `KO` - Korean
-- `LT` - Lithuanian
-- `LV` - Latvian
-- `NB` - Norwegian (Bokmål)
-- `NL` - Dutch
-- `PL` - Polish
-- `PT` - Portuguese
-- `RO` - Romanian
-- `RU` - Russian
-- `SK` - Slovak
-- `SL` - Slovenian
-- `SV` - Swedish
-- `TR` - Turkish
-- `UK` - Ukrainian
-- `ZH` - Chinese
+**Output Options:**
+- \`--output, -o PATH\` - Output file or directory
+- \`--format FORMAT\` - Output format: \`text\` (default), \`json\`
 
-**Target languages**:
-All source languages plus:
-- `EN-GB` - English (British)
-- `EN-US` - English (American)
-- `PT-BR` - Portuguese (Brazilian)
-- `PT-PT` - Portuguese (European)
+**Translation Options:**
+- \`--formality LEVEL\` - Formality: \`default\`, \`less\`, \`more\`, \`prefer_less\`, \`prefer_more\`
+- \`--preserve-code\` - Preserve code blocks (markdown, etc.)
+- \`--preserve-vars\` - Preserve variables like \`{name}\`, \`${var}\`
+- \`--preserve-formatting\` - Preserve line breaks and formatting
+- \`--split-sentences LEVEL\` - Sentence splitting: \`on\`, \`off\`, \`nonewlines\`
+- \`--tag-handling MODE\` - XML tag handling: \`xml\`, \`html\`
+
+**Glossary:**
+- \`--glossary NAME\` - Use glossary by name or ID
+
+**Batch Options (for directories):**
+- \`--recursive, -r\` - Process subdirectories recursively
+- \`--pattern GLOB\` - File pattern (e.g., \`*.md\`, \`**/*.txt\`)
+- \`--concurrency N\` - Number of parallel translations (default: 5)
 
 #### Examples
 
-```bash
-# Basic text translation
-deepl translate "Hello world" --to ja
+**Basic text translation:**
+\`\`\`bash
+# Single language
+deepl translate "Hello, world!" --to es
 
-# Multiple target languages
-deepl translate "Good morning" --to es,fr,de
+# Multiple languages
+deepl translate "Hello, world!" --to es,fr,de
 
-# Specify source language
+# With source language
 deepl translate "Bonjour" --from fr --to en
+\`\`\`
 
-# From stdin
-echo "Hello world" | deepl translate --to es
-cat input.txt | deepl translate --to ja
+**From stdin:**
+\`\`\`bash
+# Pipe text
+echo "Hello" | deepl translate --to es
 
-# File translation
+# From file via stdin
+cat README.md | deepl translate --to fr
+\`\`\`
+
+**File translation:**
+\`\`\`bash
+# Single file
 deepl translate README.md --to es --output README.es.md
 
-# Multiple languages to directory
-deepl translate docs.md --to es,fr,de --output ./translated/
+# Multiple languages
+deepl translate README.md --to es,fr,de --output translations/
 
 # With code preservation
-deepl translate tutorial.md --to ja --output tutorial.ja.md --preserve-code
+deepl translate tutorial.md --to es --output tutorial.es.md --preserve-code
+\`\`\`
 
-# Set formality
-deepl translate "How are you?" --formality more --to de --output formal.txt
+**Directory translation:**
+\`\`\`bash
+# Translate all supported files
+deepl translate docs/ --to es --output docs-es/
 
-# Use Pro API
-deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
+# With glob pattern
+deepl translate docs/ --to es --output docs-es/ --pattern "*.md"
 
-# Add context for disambiguation
-deepl translate "bank" --to es --context "This document discusses financial institutions"
+# Recursive with custom concurrency
+deepl translate src/ --to es,fr --output translations/ --recursive --concurrency 10
+\`\`\`
 
-# Context with multiple options
-deepl translate "How are you?" --to de --context "Formal business correspondence" --formality more
-```
+**Context-aware translation:**
+\`\`\`bash
+# Add context for better disambiguation
+deepl translate "Bank" --to es --context "Financial institution"
+# → "Banco" (not "Orilla" for riverbank)
 
-#### Input Methods
+deepl translate app.json --to es --context "E-commerce checkout flow"
+\`\`\`
 
-1. **Direct text**: `deepl translate "text" --to es`
-2. **Stdin**: `echo "text" | deepl translate --to es`
-3. **File**: `deepl translate file.txt --to es --output file.es.txt`
+**With glossary:**
+\`\`\`bash
+deepl translate docs/ --to es --glossary tech-terms --output docs-es/
+\`\`\`
 
-#### Output
+**Formality levels:**
+\`\`\`bash
+# Formal
+deepl translate "How are you?" --to de --formality more
+# → "Wie geht es Ihnen?" (formal)
 
-- **Text translation**: Prints to stdout in format:
-  ```
-  Translation (ES):
-  Translated text here
-  ```
+# Informal
+deepl translate "How are you?" --to de --formality less
+# → "Wie geht es dir?" (informal)
+\`\`\`
 
-- **File translation**: Creates output file(s) and prints:
-  ```
-  Translated file.txt to 1 language(s):
-    [ES] file.es.txt
-  ```
+---
 
-#### Supported File Formats
+### write
 
-- `.txt` - Plain text files
-- `.md` - Markdown files (with `--preserve-code` to preserve code blocks)
+Improve text with DeepL Write API (grammar, style, tone enhancement).
 
-#### Using Context for Better Translations
+#### Synopsis
 
-The `--context` parameter provides additional information to help DeepL disambiguate terms and improve translation quality.
+\`\`\`bash
+deepl write [OPTIONS] TEXT
+\`\`\`
 
-**When to use context:**
-- Translating ambiguous terms (e.g., "bank" could mean financial institution or riverbank)
-- Technical documentation with domain-specific vocabulary
-- Content where surrounding information affects meaning
-- Terms that have different translations based on subject matter
+#### Description
 
-**Examples:**
+Enhance text quality with AI-powered grammar checking, style improvement, and tone adjustment. Supports 8 languages.
 
-```bash
-# Disambiguate "bank"
-deepl translate "bank" --to es --context "financial services document"
-# → "banco" (financial institution)
+#### Options
 
-deepl translate "bank" --to es --context "geography and rivers"
-# → "orilla" (riverbank)
+**Required:**
+- \`--lang, -l LANG\` - Target language: \`de\`, \`en-GB\`, \`en-US\`, \`es\`, \`fr\`, \`it\`, \`pt-BR\`, \`pt-PT\`
 
-# Technical context
-deepl translate "memory" --to de --context "computer programming documentation"
-# → "Speicher" (computer memory)
+**Style Options (mutually exclusive with tone):**
+- \`--style STYLE\` - Writing style:
+  - \`simple\` - Simpler, more accessible language
+  - \`business\` - Professional business language
+  - \`academic\` - Formal academic language
+  - \`casual\` - Conversational, informal language
+  - \`prefer_simple\`, \`prefer_business\`, etc. - Soft preferences
 
-deepl translate "memory" --to de --context "psychology and cognition"
-# → "Gedächtnis" (human memory)
+**Tone Options (mutually exclusive with style):**
+- \`--tone TONE\` - Tone:
+  - \`enthusiastic\` - More enthusiastic and positive
+  - \`friendly\` - Warmer, more approachable
+  - \`confident\` - More assertive and certain
+  - \`diplomatic\` - More careful and tactful
+  - \`prefer_enthusiastic\`, \`prefer_friendly\`, etc. - Soft preferences
 
-# Business context
-deepl translate "close" --to fr --context "financial quarter reporting"
-# → "clôture" (close of business period)
+**Output Options:**
+- \`--alternatives\` - Show all improvement alternatives
+- \`--format FORMAT\` - Output format: \`text\` (default), \`json\`
 
-deepl translate "close" --to fr --context "physical distance"
-# → "proche" (near/close in distance)
-```
+#### Supported Languages
 
-**Best practices:**
-- Keep context concise but informative (1-2 sentences)
-- Describe the subject matter, not the sentence structure
-- Focus on domain/topic rather than grammatical context
-- Context is passed to DeepL API but doesn't appear in the output
+- \`de\` - German
+- \`en-GB\` - British English
+- \`en-US\` - American English
+- \`es\` - Spanish
+- \`fr\` - French
+- \`it\` - Italian
+- \`pt-BR\` - Brazilian Portuguese
+- \`pt-PT\` - European Portuguese
 
-### auth
+#### Examples
 
-Manage DeepL API authentication.
+**Basic improvement:**
+\`\`\`bash
+deepl write "Me and him went to store." --lang en-US
+# → "He and I went to the store."
+\`\`\`
+
+**With writing style:**
+\`\`\`bash
+# Business style
+deepl write "We want to tell you about our product." --lang en-US --style business
+# → "We are pleased to inform you about our product."
+
+# Casual style
+deepl write "The analysis demonstrates significant findings." --lang en-US --style casual
+# → "The analysis shows some pretty big findings."
+\`\`\`
+
+**With tone:**
+\`\`\`bash
+# Confident tone
+deepl write "I think this might work." --lang en-US --tone confident
+# → "This will work."
+
+# Diplomatic tone
+deepl write "Your approach is wrong." --lang en-US --tone diplomatic
+# → "Perhaps we could consider an alternative approach."
+\`\`\`
+
+**Show alternatives:**
+\`\`\`bash
+deepl write "This is good." --lang en-US --alternatives
+\`\`\`
+
+---
+
+### watch
+
+Watch files or directories for changes and auto-translate.
+
+#### Synopsis
+
+\`\`\`bash
+deepl watch [OPTIONS] PATH
+\`\`\`
+
+#### Description
+
+Monitor files or directories for changes and automatically translate them. Supports debouncing, glob patterns, and multiple target languages.
+
+#### Options
+
+**Required:**
+- \`--targets, -t LANGS\` - Target language(s), comma-separated
+
+**Watch Options:**
+- \`--output, -o DIR\` - Output directory (default: \`./translations\` for directories, same dir for files)
+- \`--pattern GLOB\` - File pattern filter (e.g., \`*.md\`, \`**/*.json\`)
+- \`--debounce MS\` - Debounce delay in milliseconds (default: 300)
+
+**Translation Options:**
+- \`--from, -f LANG\` - Source language (auto-detect if omitted)
+- \`--formality LEVEL\` - Formality level
+- \`--preserve-code\` - Preserve code blocks
+- \`--glossary NAME\` - Use glossary
+
+**Git Integration:**
+- \`--auto-commit\` - Auto-commit translations to git after each change
+
+#### Examples
+
+**Watch single file:**
+\`\`\`bash
+# Basic watching
+deepl watch README.md --targets es
+
+# With custom output
+deepl watch README.md --targets es,fr --output translations/
+
+# With options
+deepl watch tutorial.md --targets es --preserve-code --formality more
+\`\`\`
+
+**Watch directory:**
+\`\`\`bash
+# Watch all supported files
+deepl watch docs/ --targets es
+
+# Watch with pattern
+deepl watch docs/ --targets es,fr --pattern "*.md"
+
+# With custom debounce (wait 1 second after changes)
+deepl watch docs/ --targets es --debounce 1000
+\`\`\`
+
+**With auto-commit:**
+\`\`\`bash
+# Automatically commit translations
+deepl watch docs/ --targets es --auto-commit
+\`\`\`
+
+---
+
+### hooks
+
+Manage git hooks for translation workflow automation.
+
+#### Synopsis
+
+\`\`\`bash
+deepl hooks <SUBCOMMAND>
+\`\`\`
+
+#### Description
+
+Install, uninstall, and manage git hooks that validate translations before committing or pushing.
 
 #### Subcommands
 
-##### `auth set-key`
+##### \`install <hook-type>\`
 
-Set or update the DeepL API key.
-
-```bash
-deepl auth set-key <api-key>
-```
+Install a git hook.
 
 **Arguments:**
-- `<api-key>` - Your DeepL API key (format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx`)
+- \`hook-type\` - Hook type: \`pre-commit\`, \`pre-push\`
 
-**Example:**
-```bash
-deepl auth set-key a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx
-```
+**Examples:**
+\`\`\`bash
+deepl hooks install pre-commit
+deepl hooks install pre-push
+\`\`\`
 
-**Output:**
-```
-✓ API key configured successfully
-Account type: DeepL API Free
-```
+##### \`uninstall <hook-type>\`
 
-##### `auth show`
+Uninstall a git hook.
 
-Display the currently configured API key (masked) and validation status.
+**Examples:**
+\`\`\`bash
+deepl hooks uninstall pre-commit
+deepl hooks uninstall pre-push
+\`\`\`
 
-```bash
-deepl auth show
-```
+##### \`list\`
 
-**Output:**
-```
-API Key: abc12***********:fx (masked)
-Status: Valid
-```
+List all hooks and their installation status.
 
-##### `auth clear`
+**Examples:**
+\`\`\`bash
+deepl hooks list
+\`\`\`
 
-Remove the stored API key.
+##### \`path <hook-type>\`
 
-```bash
-deepl auth clear
-```
+Show the path to a hook file.
 
-**Output:**
-```
-✓ API key cleared
-```
+**Examples:**
+\`\`\`bash
+deepl hooks path pre-commit
+\`\`\`
+
+---
+
+### glossary
+
+Manage translation glossaries.
+
+#### Synopsis
+
+\`\`\`bash
+deepl glossary <SUBCOMMAND>
+\`\`\`
+
+#### Subcommands
+
+##### \`create <name> <source-lang> <target-lang> [file]\`
+
+Create a new glossary.
+
+**Examples:**
+\`\`\`bash
+deepl glossary create tech-terms en es glossary.tsv
+\`\`\`
+
+##### \`list\`
+
+List all glossaries.
+
+##### \`show <name-or-id>\`
+
+Show glossary details and entries.
+
+##### \`delete <name-or-id>\`
+
+Delete a glossary.
+
+##### \`entries <name-or-id>\`
+
+Get glossary entries in TSV format.
+
+---
+
+### cache
+
+Manage translation cache.
+
+#### Synopsis
+
+\`\`\`bash
+deepl cache <SUBCOMMAND>
+\`\`\`
+
+#### Subcommands
+
+##### \`stats\`
+Show cache statistics.
+
+##### \`clear\`
+Clear all cache entries.
+
+##### \`enable [--max-size SIZE]\`
+Enable cache.
+
+##### \`disable\`
+Disable cache.
+
+---
 
 ### config
 
 Manage CLI configuration.
 
+#### Synopsis
+
+\`\`\`bash
+deepl config <SUBCOMMAND>
+\`\`\`
+
 #### Subcommands
 
-##### `config list`
+##### \`list\`
+List all configuration values.
 
-Display all configuration values as JSON.
-
-```bash
-deepl config list
-```
-
-**Output:**
-```json
-{
-  "auth": {
-    "apiKey": "..."
-  },
-  "api": {
-    "baseUrl": "https://api-free.deepl.com/v2",
-    "usePro": false
-  },
-  "defaults": {
-    "sourceLang": null,
-    "targetLangs": [],
-    "formality": "default",
-    "preserveFormatting": true
-  },
-  "cache": {
-    "enabled": true,
-    "maxSize": 1073741824,
-    "ttl": 2592000
-  },
-  "output": {
-    "format": "text",
-    "color": true,
-    "verbose": false
-  },
-  "watch": {
-    "debounceMs": 500,
-    "autoCommit": false,
-    "pattern": "**/*"
-  },
-  "team": {}
-}
-```
-
-##### `config get`
-
+##### \`get <key>\`
 Get a specific configuration value.
 
-```bash
-deepl config get <key>
-```
-
-**Arguments:**
-- `<key>` - Configuration key (dot notation for nested values)
-
-**Examples:**
-```bash
-deepl config get cache.enabled
-# Output: true
-
-deepl config get defaults.targetLangs
-# Output: ["es","fr","de"]
-
-deepl config get api.baseUrl
-# Output: https://api-free.deepl.com/v2
-```
-
-##### `config set`
-
+##### \`set <key> <value>\`
 Set a configuration value.
 
-```bash
-deepl config set <key> <value>
-```
-
-**Arguments:**
-- `<key>` - Configuration key (dot notation for nested values)
-- `<value>` - Value to set (auto-parsed as JSON, arrays as comma-separated)
-
-**Examples:**
-```bash
-# Set boolean
-deepl config set cache.enabled false
-
-# Set number
-deepl config set cache.maxSize 2147483648
-
-# Set string
-deepl config set output.format json
-
-# Set array (comma-separated)
-deepl config set defaults.targetLangs es,fr,de
-```
-
-##### `config reset`
-
-Reset all configuration to defaults.
-
-```bash
-deepl config reset
-```
-
-**Output:**
-```
-✓ Configuration reset to defaults
-```
-
-#### Configuration Keys
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `auth.apiKey` | string | `undefined` | DeepL API key |
-| `api.baseUrl` | string | `https://api-free.deepl.com/v2` | API endpoint |
-| `api.usePro` | boolean | `false` | Use Pro API endpoint |
-| `defaults.sourceLang` | string | `undefined` | Default source language |
-| `defaults.targetLangs` | array | `[]` | Default target languages |
-| `defaults.formality` | string | `default` | Default formality level |
-| `defaults.preserveFormatting` | boolean | `true` | Preserve formatting by default |
-| `cache.enabled` | boolean | `true` | Enable translation caching |
-| `cache.maxSize` | number | `1073741824` | Max cache size in bytes (1GB) |
-| `cache.ttl` | number | `2592000` | Cache TTL in seconds (30 days) |
-| `output.format` | string | `text` | Output format (text/json) |
-| `output.color` | boolean | `true` | Use colored output |
-| `output.verbose` | boolean | `false` | Verbose logging |
-| `watch.debounceMs` | number | `500` | File watch debounce (ms) |
-| `watch.autoCommit` | boolean | `false` | Auto-commit translations |
-| `watch.pattern` | string | `**/*` | File watch pattern |
-
-#### Configuration File
-
-Location: `~/.deepl-cli/config.json`
-
-You can manually edit this file, but using `deepl config` commands is recommended.
-
-### cache
-
-Manage the local translation cache.
-
-#### Subcommands
-
-##### `cache stats`
-
-Display cache statistics.
-
-```bash
-deepl cache stats
-```
-
-**Output:**
-```
-Cache Status: enabled
-Entries: 42
-Size: 1.23 MB / 1024.00 MB (0.1% used)
-```
-
-##### `cache clear`
-
-Clear all cached translations.
-
-```bash
-deepl cache clear
-```
-
-**Output:**
-```
-✓ Cache cleared (removed 42 entries)
-```
-
-##### `cache enable`
-
-Enable caching (persists to config).
-
-```bash
-deepl cache enable
-```
-
-**Output:**
-```
-✓ Cache enabled
-```
-
-##### `cache disable`
-
-Disable caching (persists to config).
-
-```bash
-deepl cache disable
-```
-
-**Output:**
-```
-✓ Cache disabled
-```
-
-#### Cache Details
-
-- **Storage**: SQLite database at `~/.deepl-cli/cache.db`
-- **Strategy**: LRU (Least Recently Used) eviction when max size is reached
-- **TTL**: 30 days by default (configurable via `cache.ttl`)
-- **Key**: SHA-256 hash of `(text + options)`
-
-### glossary
-
-Manage DeepL glossaries for consistent terminology.
-
-#### Subcommands
-
-##### `glossary create`
-
-Create a new glossary from a TSV/CSV file.
-
-```bash
-deepl glossary create <name> <source-lang> <target-lang> <file>
-```
-
-**Arguments:**
-- `<name>` - Glossary name
-- `<source-lang>` - Source language code (e.g., `en`)
-- `<target-lang>` - Target language code (e.g., `de`)
-- `<file>` - Path to TSV/CSV file with term pairs
-
-**File Format (TSV):**
-```tsv
-source_term	target_term
-API	API
-REST	REST
-authentication	Authentifizierung
-```
-
-**Example:**
-```bash
-echo -e "API\tAPI\nREST\tREST" > glossary.tsv
-deepl glossary create tech-terms en de glossary.tsv
-```
-
-**Output:**
-```
-✓ Glossary created: tech-terms (ID: abc123...)
-Language pair: EN → DE
-Entries: 2
-```
-
-##### `glossary list`
-
-List all glossaries.
-
-```bash
-deepl glossary list
-```
-
-**Output:**
-```
-Glossaries:
-
-Name: tech-terms
-ID: abc123...
-Languages: EN → DE
-Entries: 3
-Created: 2024-10-07
-```
-
-##### `glossary show`
-
-Show glossary details.
-
-```bash
-deepl glossary show <name-or-id>
-```
-
-**Arguments:**
-- `<name-or-id>` - Glossary name or ID
-
-**Example:**
-```bash
-deepl glossary show tech-terms
-```
-
-**Output:**
-```
-Glossary: tech-terms
-ID: abc123...
-Language Pair: EN → DE
-Entry Count: 3
-Created: 2024-10-07T12:34:56Z
-```
-
-##### `glossary entries`
-
-Show all entries in a glossary.
-
-```bash
-deepl glossary entries <name-or-id>
-```
-
-**Arguments:**
-- `<name-or-id>` - Glossary name or ID
-
-**Example:**
-```bash
-deepl glossary entries tech-terms
-```
-
-**Output:**
-```
-Entries for glossary 'tech-terms':
-
-API → API
-REST → REST
-authentication → Authentifizierung
-```
-
-##### `glossary delete`
-
-Delete a glossary.
-
-```bash
-deepl glossary delete <name-or-id>
-```
-
-**Arguments:**
-- `<name-or-id>` - Glossary name or ID
-
-**Example:**
-```bash
-deepl glossary delete tech-terms
-```
-
-**Output:**
-```
-✓ Glossary deleted: tech-terms
-```
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `DEEPL_API_KEY` | DeepL API key (alternative to `deepl auth set-key`) |
-| `DEEPL_CONFIG_DIR` | Custom config directory (default: `~/.deepl-cli`) |
-
-**Example:**
-```bash
-export DEEPL_API_KEY=a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx
-deepl translate "Hello" --to es
-```
-
-## Configuration File
-
-### Location
-
-- Default: `~/.deepl-cli/config.json`
-- Custom: Set `DEEPL_CONFIG_DIR` environment variable
-
-### Format
-
-JSON file with the following structure:
-
-```json
-{
-  "auth": {
-    "apiKey": "your-api-key"
-  },
-  "api": {
-    "baseUrl": "https://api-free.deepl.com/v2",
-    "usePro": false
-  },
-  "defaults": {
-    "sourceLang": null,
-    "targetLangs": [],
-    "formality": "default",
-    "preserveFormatting": true
-  },
-  "cache": {
-    "enabled": true,
-    "maxSize": 1073741824,
-    "ttl": 2592000
-  },
-  "output": {
-    "format": "text",
-    "color": true,
-    "verbose": false
-  },
-  "watch": {
-    "debounceMs": 500,
-    "autoCommit": false,
-    "pattern": "**/*"
-  },
-  "team": {}
-}
-```
-
-## Exit Codes
-
-| Code | Description |
-|------|-------------|
-| `0` | Success |
-| `1` | General error (invalid arguments, API error, etc.) |
-| `2` | Configuration error (missing API key, invalid config) |
-
-## Examples
-
-### Basic Translation Workflow
-
-```bash
-# Setup
-deepl auth set-key YOUR_API_KEY
-
-# Translate text
-deepl translate "Hello world" --to es,fr,de
-
-# Translate file
-deepl translate README.md --to es --output README.es.md
-
-# Check cache
-deepl cache stats
-```
-
-### File Translation with Multiple Languages
-
-```bash
-# Create translated versions in a directory
-mkdir translated
-deepl translate docs.md --to es,fr,de,ja --output translated/
-
-# Result:
-# translated/docs.es.md
-# translated/docs.fr.md
-# translated/docs.de.md
-# translated/docs.ja.md
-```
-
-### Glossary Workflow
-
-```bash
-# Create glossary file
-cat > terms.tsv << EOF
-API	API
-authentication	Authentifizierung
-REST	REST
-EOF
-
-# Create glossary
-deepl glossary create tech en de terms.tsv
-
-# List glossaries
-deepl glossary list
-
-# View entries
-deepl glossary entries tech
-
-# Clean up
-deepl glossary delete tech
-```
-
-### Configuration Management
-
-```bash
-# Set defaults
-deepl config set defaults.targetLangs es,fr,de
-deepl config set defaults.formality more
-
-# View all config
-deepl config list
-
-# View specific value
-deepl config get defaults.targetLangs
-
-# Reset to defaults
-deepl config reset
-```
-
-### Cache Management
-
-```bash
-# Check cache status
-deepl cache stats
-
-# Clear cache to free space
-deepl cache clear
-
-# Disable caching temporarily
-deepl cache disable
-
-# Re-enable caching
-deepl cache enable
-```
-
-### Using with Scripts
-
-```bash
-#!/bin/bash
-# Translate all markdown files in docs/
-
-for file in docs/*.md; do
-  filename=$(basename "$file" .md)
-  deepl translate "$file" --to es --output "docs/es/${filename}.es.md"
-  deepl translate "$file" --to fr --output "docs/fr/${filename}.fr.md"
-done
-
-echo "✓ All documentation translated"
-```
-
-### CI/CD Integration
-
-```bash
-#!/bin/bash
-# .github/workflows/translate-docs.sh
-
-export DEEPL_API_KEY=${{ secrets.DEEPL_API_KEY }}
-
-# Translate changed markdown files
-for file in $(git diff --name-only main | grep '\.md$'); do
-  deepl translate "$file" --to es,fr,de --output ./i18n/
-done
-
-# Commit translations
-git add i18n/
-git commit -m "chore: update translations"
-git push
-```
-
-## Error Handling
-
-### Common Errors
-
-**API Key Not Set:**
-```
-Error: API key not set
-Run: deepl auth set-key <your-api-key>
-```
-
-**Solution:** Set API key with `deepl auth set-key` or `export DEEPL_API_KEY=...`
-
-**Invalid Target Language:**
-```
-Error: Invalid target language: 'xyz'
-```
-
-**Solution:** Use valid language codes (run `deepl translate --help` for list)
-
-**File Not Found:**
-```
-Error: File not found: input.txt
-```
-
-**Solution:** Check file path is correct
-
-**Output Required for File Translation:**
-```
-Error: Output file path is required for file translation. Use --output <path>
-```
-
-**Solution:** Add `--output` flag when translating files
-
-**API Quota Exceeded:**
-```
-Error: Translation quota exceeded
-```
-
-**Solution:** Wait for quota reset or upgrade DeepL plan
-
-## Support
-
-- **Documentation**: https://github.com/yourusername/deepl-cli
-- **Issues**: https://github.com/yourusername/deepl-cli/issues
-- **DeepL API Docs**: https://www.deepl.com/docs-api
+##### \`reset\`
+Reset configuration to defaults.
 
 ---
 
-**Version**: 0.1.0
-**Last Updated**: 2025-10-07
+### auth
+
+Manage API authentication.
+
+#### Synopsis
+
+\`\`\`bash
+deepl auth <SUBCOMMAND>
+\`\`\`
+
+#### Subcommands
+
+##### \`set-key <api-key>\`
+Set your DeepL API key.
+
+##### \`show\`
+Show current API key (masked).
+
+##### \`clear\`
+Clear stored API key.
+
+---
+
+## Configuration
+
+Configuration file location: \`~/.deepl-cli/config.json\`
+
+### Configuration Schema
+
+\`\`\`json
+{
+  "apiKey": "your-api-key",
+  "defaults": {
+    "targetLang": "es",
+    "sourceLang": null,
+    "formality": "default",
+    "preserveFormatting": false,
+    "preserveCode": true,
+    "splitSentences": "on"
+  },
+  "cache": {
+    "enabled": true,
+    "maxSize": 104857600,
+    "ttl": 2592000
+  },
+  "output": {
+    "format": "text",
+    "colorize": true
+  }
+}
+\`\`\`
+
+---
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General error |
+| 2 | Invalid arguments |
+| 3 | Authentication error |
+| 4 | API error (quota, rate limit, etc.) |
+| 5 | Network error |
+| 6 | File not found |
+| 7 | Configuration error |
+
+---
+
+## Environment Variables
+
+### \`DEEPL_API_KEY\`
+
+Set your API key via environment variable.
+
+\`\`\`bash
+export DEEPL_API_KEY="your-api-key"
+deepl translate "Hello" --to es
+\`\`\`
+
+### \`DEEPL_CONFIG_DIR\`
+
+Override default config directory.
+
+\`\`\`bash
+export DEEPL_CONFIG_DIR="/custom/path"
+\`\`\`
+
+### \`NO_COLOR\`
+
+Disable colored output.
+
+\`\`\`bash
+export NO_COLOR=1
+\`\`\`
+
+---
+
+## See Also
+
+- [Quickstart Guide](./QUICKSTART.md)
+- [Troubleshooting](./TROUBLESHOOTING.md)
+- [Examples](../examples/)
+- [DeepL API Documentation](https://www.deepl.com/docs-api)
+
+---
+
+**Last Updated**: October 8, 2025
+**DeepL CLI Version**: 0.2.0
