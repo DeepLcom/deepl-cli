@@ -2,9 +2,9 @@
 
 > A next-generation command-line interface for DeepL translation and writing enhancement
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![Tests](https://img.shields.io/badge/tests-523%20passing-brightgreen)](https://git.deepl.dev/hack-projects/deepl-cli)
 
 **DeepL CLI** is a comprehensive, developer-friendly command-line tool that integrates DeepL's powerful translation API and cutting-edge Write API for grammar and style enhancement. Built with TypeScript and designed for modern development workflows.
 
@@ -95,7 +95,7 @@ npm install -g deepl-cli
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/deepl-cli.git
+git clone https://git.deepl.dev/hack-projects/deepl-cli.git
 cd deepl-cli
 
 # Install dependencies
@@ -619,7 +619,7 @@ Cache location: `~/.deepl-cli/cache.db`
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/deepl-cli.git
+git clone https://git.deepl.dev/hack-projects/deepl-cli.git
 cd deepl-cli
 
 # Install dependencies
@@ -721,7 +721,7 @@ See [DESIGN.md](./DESIGN.md) for detailed architecture documentation.
 
 ### Test Coverage
 
-Current coverage: **80.93%** (509 tests, 509 passing, 100% pass rate)
+Current coverage: **80.93%** (523 tests, 523 passing, 100% pass rate)
 
 ```bash
 # Run all tests
@@ -744,13 +744,13 @@ npm test -- --watch
 
 ### Test Statistics (v0.2.0)
 
-- **Unit Tests**: 406 tests (80.93% coverage)
+- **Unit Tests**: 416 tests (81% coverage)
   - Services, API clients, utilities
   - Isolated component testing
-- **Integration Tests**: 64 tests (all passing)
+- **Integration Tests**: 68 tests (all passing)
   - Multi-component interactions
   - CLI command execution
-- **E2E Tests**: 21 tests (all passing)
+- **E2E Tests**: 39 tests (all passing)
   - Complete user workflows
   - Real CLI command scenarios
 
@@ -780,8 +780,8 @@ We welcome contributions! Please follow these guidelines:
 ### Contribution Process
 
 ```bash
-# Fork and clone
-git clone https://github.com/yourusername/deepl-cli.git
+# Clone repository
+git clone https://git.deepl.dev/hack-projects/deepl-cli.git
 
 # Create a feature branch
 git checkout -b feat/my-feature
@@ -817,7 +817,7 @@ See [CLAUDE.md](./CLAUDE.md) for detailed PR guidelines.
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+Internal DeepL project - not yet publicly released.
 
 ## 🙏 Acknowledgments
 
@@ -828,8 +828,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 📞 Support
 
-- **Issues** - [GitHub Issues](https://github.com/yourusername/deepl-cli/issues)
-- **Discussions** - [GitHub Discussions](https://github.com/yourusername/deepl-cli/discussions)
+- **Issues** - [GitLab Issues](https://git.deepl.dev/hack-projects/deepl-cli/-/issues)
+- **Merge Requests** - [GitLab MRs](https://git.deepl.dev/hack-projects/deepl-cli/-/merge_requests)
 - **Documentation** - See [docs/](./docs/) folder
 
 ## 🗺️ Roadmap
