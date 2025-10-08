@@ -6,7 +6,8 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 
 - **Version**: 0.2.0 ✅ (Released October 8, 2025)
 - **Phase**: 2 (Advanced Features) - ✅ 100% COMPLETE! 🎉
-- **Tests**: 482 tests (482 passing, 0 skipped, 100% pass rate) ✅
+  - **Phase 3 Write Enhancements**: ✅ COMPLETE! (file ops, diff, check, fix, interactive)
+- **Tests**: 509 tests (509 passing, 0 skipped, 100% pass rate) ✅
 - **Coverage**: 80.93% overall (improved from 74.15%)
   - Statements: 80.93%
   - Branches: 78.17%
@@ -78,9 +79,9 @@ All Phase 1 tasks completed and v0.1.0 released:
 - [x] Add tone selection (enthusiastic, friendly, confident, diplomatic)
 - [x] Add writing style selection (simple, business, academic, casual)
 - [x] Add show alternatives feature (`--alternatives` flag)
-- [x] Add tests for Write functionality (84 tests total)
+- [x] Add tests for Write functionality (111 tests total)
   - [x] 28 WriteService unit tests
-  - [x] 19 WriteCommand unit tests
+  - [x] 46 WriteCommand unit tests (expanded in Phase 3 enhancements)
   - [x] 37 DeepL client integration tests
 - [x] Document Write API usage in README
 - [x] Add examples for writing enhancement (examples/09-write-basic.sh)
@@ -89,13 +90,16 @@ All Phase 1 tasks completed and v0.1.0 released:
 
 **Status**: Production-ready with full test coverage ✅
 
-**Future Enhancements** (Phase 3+):
+**Phase 3 Write Enhancements** (✅ COMPLETE!):
 
-- [ ] Add interactive mode for suggestions (`--interactive`)
-- [ ] Add file input/output support
-- [ ] Add diff view (`--diff`)
-- [ ] Add check mode (`--check`)
-- [ ] Add auto-fix mode (`--fix`)
+- [x] Add interactive mode for suggestions (`--interactive`)
+- [x] Add file input/output support (`--output`, `--in-place`)
+- [x] Add diff view (`--diff`)
+- [x] Add check mode (`--check`)
+- [x] Add auto-fix mode (`--fix`, `--backup`)
+- [x] Add 27 new comprehensive unit tests
+- [x] Update README and API.md with new features
+- [x] Update CHANGELOG with enhancements
 
 ### ✅ Git Hooks Integration (COMPLETE)
 
@@ -499,19 +503,21 @@ Detailed Phase 3 plan is integrated below. Historical planning document archived
 
 ### Testing Strategy
 
-- **Unit tests**: 344 tests, 90.1% coverage ✅
+- **Unit tests**: 379 tests (includes 46 WriteCommand tests) ✅
 - **Integration tests**: 64 tests (all passing) ✅
 - **E2E tests**: 21 tests (all passing) ✅
-- **Manual tests**: Documented in MANUAL_TEST_REPORT.md ✅
-- **Total**: 455 tests (447 passing, 8 skipped) - 98.2% pass rate ✅
+- **Service tests**: 45 tests (WatchService 19, WriteService 28) ✅
+- **Manual tests**: Archived in docs/archive/ ✅
+- **Total**: 509 tests (509 passing, 0 skipped) - 100% pass rate ✅
 
 **Test Breakdown by Feature**:
 
 - Translation: 297 tests ✅
-- Write API: 84 tests (28 service + 19 command + 37 client) ✅
+- Write API: 111 tests (28 service + 46 command + 37 client) ✅
 - Watch Mode: 19 tests ✅
 - Batch Processing: 16 tests ✅
 - Context Translation: 5 tests ✅
+- Git Hooks: Manual testing (documented in archived reports) ✅
 - Other features: Included in totals ✅
 
 ---
