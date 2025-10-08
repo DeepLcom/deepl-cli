@@ -7,7 +7,7 @@ import { WriteService } from '../../services/write.js';
 import { ConfigService } from '../../storage/config.js';
 import { WriteLanguage, WritingStyle, WriteTone } from '../../types/index.js';
 import { promises as fs } from 'fs';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import * as Diff from 'diff';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
@@ -104,6 +104,8 @@ export class WriteCommand {
     // Handle output
     if (options.outputFile) {
       const outputPath = resolve(options.outputFile);
+      // Ensure output directory exists
+      await fs.mkdir(dirname(outputPath), { recursive: true });
       await fs.writeFile(outputPath, improvedText, 'utf-8');
     } else if (options.inPlace) {
       await fs.writeFile(absolutePath, improvedText, 'utf-8');
