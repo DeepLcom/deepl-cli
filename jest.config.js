@@ -48,7 +48,7 @@ export default {
 
   // Transform ESM packages
   transformIgnorePatterns: [
-    'node_modules/(?!(p-limit|yocto-queue|fast-glob)/)',
+    'node_modules/(?!(p-limit|yocto-queue|fast-glob|chalk)/)',
   ],
 
   // Setup files

@@ -215,6 +215,13 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 **Output Options:**
 - `--alternatives` - Show all improvement alternatives
 - `--format FORMAT` - Output format: `text` (default), `json`
+- `--interactive, -i` - Interactive mode: choose from multiple alternatives
+- `--diff` - Show diff between original and improved text
+- `--check` - Check if text needs improvement without modifying
+- `--fix` - Auto-fix files in place
+- `--output, -o FILE` - Write output to file
+- `--in-place` - Edit file in place
+- `--backup` - Create backup before fixing (use with `--fix`)
 
 #### Supported Languages
 
@@ -260,6 +267,36 @@ deepl write "Your approach is wrong." --lang en-US --tone diplomatic
 **Show alternatives:**
 ```bash
 deepl write "This is good." --lang en-US --alternatives
+```
+
+**File operations:**
+```bash
+# Improve file and save to new location
+deepl write document.txt --lang en-US --output improved.txt
+
+# Edit file in place
+deepl write document.txt --lang en-US --in-place
+
+# Auto-fix with backup
+deepl write document.txt --lang en-US --fix --backup
+```
+
+**Interactive mode:**
+```bash
+# Choose from multiple alternatives interactively
+deepl write "Text to improve." --lang en-US --interactive
+```
+
+**Check mode:**
+```bash
+# Check if file needs improvement (exit code 1 if changes needed)
+deepl write document.md --lang en-US --check
+```
+
+**Diff view:**
+```bash
+# Show differences between original and improved
+deepl write file.txt --lang en-US --diff
 ```
 
 ---

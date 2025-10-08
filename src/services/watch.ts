@@ -5,8 +5,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as chokidar from 'chokidar';
-import { FSWatcher } from 'chokidar';
+import chokidar, { FSWatcher } from 'chokidar';
 import { FileTranslationService } from './file-translation.js';
 import { Language, TranslationOptions } from '../types/index.js';
 
@@ -71,7 +70,11 @@ export class WatchService {
     this.watchOptions = options;
 
     // Create watcher
-    const watcherOptions: chokidar.WatchOptions = {
+    const watcherOptions: {
+      persistent: boolean;
+      ignoreInitial: boolean;
+      ignored?: (path: string) => boolean;
+    } = {
       persistent: true,
       ignoreInitial: true,
     };

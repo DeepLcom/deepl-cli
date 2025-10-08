@@ -281,6 +281,21 @@ deepl write "Try something else." --lang en-US --tone diplomatic
 
 # Show all alternative improvements
 deepl write "This is good." --lang en-US --tone enthusiastic --alternatives
+
+# Improve files
+deepl write input.txt --lang en-US --output improved.txt
+
+# Interactive mode - choose from alternatives
+deepl write "Text to improve." --lang en-US --interactive
+
+# Check if text needs improvement (no changes)
+deepl write document.md --lang en-US --check
+
+# Auto-fix files in place
+deepl write document.md --lang en-US --fix
+
+# Show diff between original and improved
+deepl write file.txt --lang en-US --diff
 ```
 
 **Supported Languages:**

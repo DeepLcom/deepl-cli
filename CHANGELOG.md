@@ -8,10 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Write Command Enhancements** - Advanced file and interactive features for DeepL Write
+  - **File Input/Output Support**: Read and improve text from files
+    - `improveFile()` method for file-based improvements
+    - `--output` flag to write improved text to a file
+    - `--in-place` flag for in-place file editing
+    - Support for `.txt` and `.md` files
+  - **Diff View**: Visual comparison of original vs improved text
+    - `generateDiff()` method with colored unified diff output
+    - `improveWithDiff()` for text comparison
+    - `improveFileWithDiff()` for file-based diffs
+    - `--diff` flag to show changes before accepting
+  - **Check Mode**: Validate text quality without modifications
+    - `checkText()` method to detect if improvements are needed
+    - `checkFile()` method for file validation
+    - `--check` flag for CI/CD integration
+    - Returns improvement status and change count
+  - **Auto-Fix Mode**: Automatically apply improvements to files
+    - `autoFixFile()` method for automated file improvements
+    - `--fix` flag for in-place auto-correction
+    - `--backup` flag to create `.bak` files before fixing
+    - Only modifies files that need improvement
+  - **Interactive Mode**: Choose from multiple improvement alternatives
+    - `improveInteractive()` method with inquirer-based UI
+    - `improveFileInteractive()` for file-based interaction
+    - `--interactive` flag to select from suggestions
+    - Visual preview of each alternative with truncation
+    - Option to keep original text
+  - 27 new comprehensive unit tests (46 total for WriteCommand)
 
 ### Changed
 
 ### Fixed
+- Fixed chokidar TypeScript import issue in WatchService
+  - Replaced deprecated `chokidar.WatchOptions` with inline type definition
+  - All 509 tests now passing
 
 ## [0.2.0] - 2025-10-08
 
