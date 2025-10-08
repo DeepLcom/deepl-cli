@@ -17,7 +17,12 @@ test:
   stage: test
   script:
     - npm run build  # Build CLI before running E2E tests
-    - npm link  # Make CLI globally available for E2E tests
+    - |
+      # Create wrapper script for E2E tests in /tmp (writeable without sudo)
+      echo '#!/bin/sh' > /tmp/deepl
+      echo "exec node $PWD/dist/cli/index.js \"\$@\"" >> /tmp/deepl
+      chmod +x /tmp/deepl
+      export PATH="/tmp:$PATH"
     - npm run type-check
     - npm run test:coverage
     - npm run lint || true  # Run lint but don't fail the job
