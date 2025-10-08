@@ -29,18 +29,18 @@ Complete reference for all DeepL CLI commands, options, and configuration.
 
 Options that work with all commands:
 
-\`\`\`bash
+```bash
 --version, -v        Show version number
 --help, -h           Show help message
 --config FILE        Use alternate config file
 --no-cache           Disable translation cache for this command
 --verbose            Enable verbose logging
 --quiet, -q          Suppress non-error output
-\`\`\`
+```
 
 **Examples:**
 
-\`\`\`bash
+```bash
 # Show version
 deepl --version
 deepl -v
@@ -54,7 +54,7 @@ deepl --config ~/.deepl-custom.json translate "Hello" --to es
 
 # Disable cache for single command
 deepl --no-cache translate "Hello" --to es
-\`\`\`
+```
 
 ---
 
@@ -66,9 +66,9 @@ Translate text, files, or directories.
 
 #### Synopsis
 
-\`\`\`bash
+```bash
 deepl translate [OPTIONS] [TEXT|FILE|DIRECTORY]
-\`\`\`
+```
 
 #### Description
 
@@ -77,36 +77,36 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 #### Options
 
 **Required:**
-- \`--to, -t LANGS\` - Target language(s), comma-separated (e.g., \`es\`, \`es,fr,de\`)
+- `--to, -t LANGS` - Target language(s), comma-separated (e.g., `es`, `es,fr,de`)
 
 **Source Options:**
-- \`--from, -f LANG\` - Source language (auto-detect if omitted)
-- \`--context TEXT\` - Additional context for better translation
+- `--from, -f LANG` - Source language (auto-detect if omitted)
+- `--context TEXT` - Additional context for better translation
 
 **Output Options:**
-- \`--output, -o PATH\` - Output file or directory
-- \`--format FORMAT\` - Output format: \`text\` (default), \`json\`
+- `--output, -o PATH` - Output file or directory
+- `--format FORMAT` - Output format: `text` (default), `json`
 
 **Translation Options:**
-- \`--formality LEVEL\` - Formality: \`default\`, \`less\`, \`more\`, \`prefer_less\`, \`prefer_more\`
-- \`--preserve-code\` - Preserve code blocks (markdown, etc.)
-- \`--preserve-vars\` - Preserve variables like \`{name}\`, \`${var}\`
-- \`--preserve-formatting\` - Preserve line breaks and formatting
-- \`--split-sentences LEVEL\` - Sentence splitting: \`on\`, \`off\`, \`nonewlines\`
-- \`--tag-handling MODE\` - XML tag handling: \`xml\`, \`html\`
+- `--formality LEVEL` - Formality: `default`, `less`, `more`, `prefer_less`, `prefer_more`
+- `--preserve-code` - Preserve code blocks (markdown, etc.)
+- `--preserve-vars` - Preserve variables like `{name}`, `${var}`
+- `--preserve-formatting` - Preserve line breaks and formatting
+- `--split-sentences LEVEL` - Sentence splitting: `on`, `off`, `nonewlines`
+- `--tag-handling MODE` - XML tag handling: `xml`, `html`
 
 **Glossary:**
-- \`--glossary NAME\` - Use glossary by name or ID
+- `--glossary NAME` - Use glossary by name or ID
 
 **Batch Options (for directories):**
-- \`--recursive, -r\` - Process subdirectories recursively
-- \`--pattern GLOB\` - File pattern (e.g., \`*.md\`, \`**/*.txt\`)
-- \`--concurrency N\` - Number of parallel translations (default: 5)
+- `--recursive, -r` - Process subdirectories recursively
+- `--pattern GLOB` - File pattern (e.g., `*.md`, `**/*.txt`)
+- `--concurrency N` - Number of parallel translations (default: 5)
 
 #### Examples
 
 **Basic text translation:**
-\`\`\`bash
+```bash
 # Single language
 deepl translate "Hello, world!" --to es
 
@@ -115,19 +115,19 @@ deepl translate "Hello, world!" --to es,fr,de
 
 # With source language
 deepl translate "Bonjour" --from fr --to en
-\`\`\`
+```
 
 **From stdin:**
-\`\`\`bash
+```bash
 # Pipe text
 echo "Hello" | deepl translate --to es
 
 # From file via stdin
 cat README.md | deepl translate --to fr
-\`\`\`
+```
 
 **File translation:**
-\`\`\`bash
+```bash
 # Single file
 deepl translate README.md --to es --output README.es.md
 
@@ -136,10 +136,10 @@ deepl translate README.md --to es,fr,de --output translations/
 
 # With code preservation
 deepl translate tutorial.md --to es --output tutorial.es.md --preserve-code
-\`\`\`
+```
 
 **Directory translation:**
-\`\`\`bash
+```bash
 # Translate all supported files
 deepl translate docs/ --to es --output docs-es/
 
@@ -148,24 +148,24 @@ deepl translate docs/ --to es --output docs-es/ --pattern "*.md"
 
 # Recursive with custom concurrency
 deepl translate src/ --to es,fr --output translations/ --recursive --concurrency 10
-\`\`\`
+```
 
 **Context-aware translation:**
-\`\`\`bash
+```bash
 # Add context for better disambiguation
 deepl translate "Bank" --to es --context "Financial institution"
 # → "Banco" (not "Orilla" for riverbank)
 
 deepl translate app.json --to es --context "E-commerce checkout flow"
-\`\`\`
+```
 
 **With glossary:**
-\`\`\`bash
+```bash
 deepl translate docs/ --to es --glossary tech-terms --output docs-es/
-\`\`\`
+```
 
 **Formality levels:**
-\`\`\`bash
+```bash
 # Formal
 deepl translate "How are you?" --to de --formality more
 # → "Wie geht es Ihnen?" (formal)
@@ -173,7 +173,7 @@ deepl translate "How are you?" --to de --formality more
 # Informal
 deepl translate "How are you?" --to de --formality less
 # → "Wie geht es dir?" (informal)
-\`\`\`
+```
 
 ---
 
@@ -183,9 +183,9 @@ Improve text with DeepL Write API (grammar, style, tone enhancement).
 
 #### Synopsis
 
-\`\`\`bash
+```bash
 deepl write [OPTIONS] TEXT
-\`\`\`
+```
 
 #### Description
 
@@ -194,49 +194,49 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 #### Options
 
 **Required:**
-- \`--lang, -l LANG\` - Target language: \`de\`, \`en-GB\`, \`en-US\`, \`es\`, \`fr\`, \`it\`, \`pt-BR\`, \`pt-PT\`
+- `--lang, -l LANG` - Target language: `de`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt-BR`, `pt-PT`
 
 **Style Options (mutually exclusive with tone):**
-- \`--style STYLE\` - Writing style:
-  - \`simple\` - Simpler, more accessible language
-  - \`business\` - Professional business language
-  - \`academic\` - Formal academic language
-  - \`casual\` - Conversational, informal language
-  - \`prefer_simple\`, \`prefer_business\`, etc. - Soft preferences
+- `--style STYLE` - Writing style:
+  - `simple` - Simpler, more accessible language
+  - `business` - Professional business language
+  - `academic` - Formal academic language
+  - `casual` - Conversational, informal language
+  - `prefer_simple`, `prefer_business`, etc. - Soft preferences
 
 **Tone Options (mutually exclusive with style):**
-- \`--tone TONE\` - Tone:
-  - \`enthusiastic\` - More enthusiastic and positive
-  - \`friendly\` - Warmer, more approachable
-  - \`confident\` - More assertive and certain
-  - \`diplomatic\` - More careful and tactful
-  - \`prefer_enthusiastic\`, \`prefer_friendly\`, etc. - Soft preferences
+- `--tone TONE` - Tone:
+  - `enthusiastic` - More enthusiastic and positive
+  - `friendly` - Warmer, more approachable
+  - `confident` - More assertive and certain
+  - `diplomatic` - More careful and tactful
+  - `prefer_enthusiastic`, `prefer_friendly`, etc. - Soft preferences
 
 **Output Options:**
-- \`--alternatives\` - Show all improvement alternatives
-- \`--format FORMAT\` - Output format: \`text\` (default), \`json\`
+- `--alternatives` - Show all improvement alternatives
+- `--format FORMAT` - Output format: `text` (default), `json`
 
 #### Supported Languages
 
-- \`de\` - German
-- \`en-GB\` - British English
-- \`en-US\` - American English
-- \`es\` - Spanish
-- \`fr\` - French
-- \`it\` - Italian
-- \`pt-BR\` - Brazilian Portuguese
-- \`pt-PT\` - European Portuguese
+- `de` - German
+- `en-GB` - British English
+- `en-US` - American English
+- `es` - Spanish
+- `fr` - French
+- `it` - Italian
+- `pt-BR` - Brazilian Portuguese
+- `pt-PT` - European Portuguese
 
 #### Examples
 
 **Basic improvement:**
-\`\`\`bash
+```bash
 deepl write "Me and him went to store." --lang en-US
 # → "He and I went to the store."
-\`\`\`
+```
 
 **With writing style:**
-\`\`\`bash
+```bash
 # Business style
 deepl write "We want to tell you about our product." --lang en-US --style business
 # → "We are pleased to inform you about our product."
@@ -244,10 +244,10 @@ deepl write "We want to tell you about our product." --lang en-US --style busine
 # Casual style
 deepl write "The analysis demonstrates significant findings." --lang en-US --style casual
 # → "The analysis shows some pretty big findings."
-\`\`\`
+```
 
 **With tone:**
-\`\`\`bash
+```bash
 # Confident tone
 deepl write "I think this might work." --lang en-US --tone confident
 # → "This will work."
@@ -255,12 +255,12 @@ deepl write "I think this might work." --lang en-US --tone confident
 # Diplomatic tone
 deepl write "Your approach is wrong." --lang en-US --tone diplomatic
 # → "Perhaps we could consider an alternative approach."
-\`\`\`
+```
 
 **Show alternatives:**
-\`\`\`bash
+```bash
 deepl write "This is good." --lang en-US --alternatives
-\`\`\`
+```
 
 ---
 
@@ -270,9 +270,9 @@ Watch files or directories for changes and auto-translate.
 
 #### Synopsis
 
-\`\`\`bash
+```bash
 deepl watch [OPTIONS] PATH
-\`\`\`
+```
 
 #### Description
 
@@ -281,26 +281,26 @@ Monitor files or directories for changes and automatically translate them. Suppo
 #### Options
 
 **Required:**
-- \`--targets, -t LANGS\` - Target language(s), comma-separated
+- `--targets, -t LANGS` - Target language(s), comma-separated
 
 **Watch Options:**
-- \`--output, -o DIR\` - Output directory (default: \`./translations\` for directories, same dir for files)
-- \`--pattern GLOB\` - File pattern filter (e.g., \`*.md\`, \`**/*.json\`)
-- \`--debounce MS\` - Debounce delay in milliseconds (default: 300)
+- `--output, -o DIR` - Output directory (default: `./translations` for directories, same dir for files)
+- `--pattern GLOB` - File pattern filter (e.g., `*.md`, `**/*.json`)
+- `--debounce MS` - Debounce delay in milliseconds (default: 300)
 
 **Translation Options:**
-- \`--from, -f LANG\` - Source language (auto-detect if omitted)
-- \`--formality LEVEL\` - Formality level
-- \`--preserve-code\` - Preserve code blocks
-- \`--glossary NAME\` - Use glossary
+- `--from, -f LANG` - Source language (auto-detect if omitted)
+- `--formality LEVEL` - Formality level
+- `--preserve-code` - Preserve code blocks
+- `--glossary NAME` - Use glossary
 
 **Git Integration:**
-- \`--auto-commit\` - Auto-commit translations to git after each change
+- `--auto-commit` - Auto-commit translations to git after each change
 
 #### Examples
 
 **Watch single file:**
-\`\`\`bash
+```bash
 # Basic watching
 deepl watch README.md --targets es
 
@@ -309,10 +309,10 @@ deepl watch README.md --targets es,fr --output translations/
 
 # With options
 deepl watch tutorial.md --targets es --preserve-code --formality more
-\`\`\`
+```
 
 **Watch directory:**
-\`\`\`bash
+```bash
 # Watch all supported files
 deepl watch docs/ --targets es
 
@@ -321,13 +321,13 @@ deepl watch docs/ --targets es,fr --pattern "*.md"
 
 # With custom debounce (wait 1 second after changes)
 deepl watch docs/ --targets es --debounce 1000
-\`\`\`
+```
 
 **With auto-commit:**
-\`\`\`bash
+```bash
 # Automatically commit translations
 deepl watch docs/ --targets es --auto-commit
-\`\`\`
+```
 
 ---
 
@@ -337,9 +337,9 @@ Manage git hooks for translation workflow automation.
 
 #### Synopsis
 
-\`\`\`bash
+```bash
 deepl hooks <SUBCOMMAND>
-\`\`\`
+```
 
 #### Description
 
@@ -347,46 +347,46 @@ Install, uninstall, and manage git hooks that validate translations before commi
 
 #### Subcommands
 
-##### \`install <hook-type>\`
+##### `install <hook-type>`
 
 Install a git hook.
 
 **Arguments:**
-- \`hook-type\` - Hook type: \`pre-commit\`, \`pre-push\`
+- `hook-type` - Hook type: `pre-commit`, `pre-push`
 
 **Examples:**
-\`\`\`bash
+```bash
 deepl hooks install pre-commit
 deepl hooks install pre-push
-\`\`\`
+```
 
-##### \`uninstall <hook-type>\`
+##### `uninstall <hook-type>`
 
 Uninstall a git hook.
 
 **Examples:**
-\`\`\`bash
+```bash
 deepl hooks uninstall pre-commit
 deepl hooks uninstall pre-push
-\`\`\`
+```
 
-##### \`list\`
+##### `list`
 
 List all hooks and their installation status.
 
 **Examples:**
-\`\`\`bash
+```bash
 deepl hooks list
-\`\`\`
+```
 
-##### \`path <hook-type>\`
+##### `path <hook-type>`
 
 Show the path to a hook file.
 
 **Examples:**
-\`\`\`bash
+```bash
 deepl hooks path pre-commit
-\`\`\`
+```
 
 ---
 
@@ -396,34 +396,34 @@ Manage translation glossaries.
 
 #### Synopsis
 
-\`\`\`bash
+```bash
 deepl glossary <SUBCOMMAND>
-\`\`\`
+```
 
 #### Subcommands
 
-##### \`create <name> <source-lang> <target-lang> [file]\`
+##### `create <name> <source-lang> <target-lang> [file]`
 
 Create a new glossary.
 
 **Examples:**
-\`\`\`bash
+```bash
 deepl glossary create tech-terms en es glossary.tsv
-\`\`\`
+```
 
-##### \`list\`
+##### `list`
 
 List all glossaries.
 
-##### \`show <name-or-id>\`
+##### `show <name-or-id>`
 
 Show glossary details and entries.
 
-##### \`delete <name-or-id>\`
+##### `delete <name-or-id>`
 
 Delete a glossary.
 
-##### \`entries <name-or-id>\`
+##### `entries <name-or-id>`
 
 Get glossary entries in TSV format.
 
@@ -435,22 +435,22 @@ Manage translation cache.
 
 #### Synopsis
 
-\`\`\`bash
+```bash
 deepl cache <SUBCOMMAND>
-\`\`\`
+```
 
 #### Subcommands
 
-##### \`stats\`
+##### `stats`
 Show cache statistics.
 
-##### \`clear\`
+##### `clear`
 Clear all cache entries.
 
-##### \`enable [--max-size SIZE]\`
+##### `enable [--max-size SIZE]`
 Enable cache.
 
-##### \`disable\`
+##### `disable`
 Disable cache.
 
 ---
@@ -461,22 +461,22 @@ Manage CLI configuration.
 
 #### Synopsis
 
-\`\`\`bash
+```bash
 deepl config <SUBCOMMAND>
-\`\`\`
+```
 
 #### Subcommands
 
-##### \`list\`
+##### `list`
 List all configuration values.
 
-##### \`get <key>\`
+##### `get <key>`
 Get a specific configuration value.
 
-##### \`set <key> <value>\`
+##### `set <key> <value>`
 Set a configuration value.
 
-##### \`reset\`
+##### `reset`
 Reset configuration to defaults.
 
 ---
@@ -487,30 +487,30 @@ Manage API authentication.
 
 #### Synopsis
 
-\`\`\`bash
+```bash
 deepl auth <SUBCOMMAND>
-\`\`\`
+```
 
 #### Subcommands
 
-##### \`set-key <api-key>\`
+##### `set-key <api-key>`
 Set your DeepL API key.
 
-##### \`show\`
+##### `show`
 Show current API key (masked).
 
-##### \`clear\`
+##### `clear`
 Clear stored API key.
 
 ---
 
 ## Configuration
 
-Configuration file location: \`~/.deepl-cli/config.json\`
+Configuration file location: `~/.deepl-cli/config.json`
 
 ### Configuration Schema
 
-\`\`\`json
+```json
 {
   "apiKey": "your-api-key",
   "defaults": {
@@ -531,7 +531,7 @@ Configuration file location: \`~/.deepl-cli/config.json\`
     "colorize": true
   }
 }
-\`\`\`
+```
 
 ---
 
@@ -552,30 +552,30 @@ Configuration file location: \`~/.deepl-cli/config.json\`
 
 ## Environment Variables
 
-### \`DEEPL_API_KEY\`
+### `DEEPL_API_KEY`
 
 Set your API key via environment variable.
 
-\`\`\`bash
+```bash
 export DEEPL_API_KEY="your-api-key"
 deepl translate "Hello" --to es
-\`\`\`
+```
 
-### \`DEEPL_CONFIG_DIR\`
+### `DEEPL_CONFIG_DIR`
 
 Override default config directory.
 
-\`\`\`bash
+```bash
 export DEEPL_CONFIG_DIR="/custom/path"
-\`\`\`
+```
 
-### \`NO_COLOR\`
+### `NO_COLOR`
 
 Disable colored output.
 
-\`\`\`bash
+```bash
 export NO_COLOR=1
-\`\`\`
+```
 
 ---
 
