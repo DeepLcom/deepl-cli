@@ -310,6 +310,7 @@ export class WriteCommand {
 
   /**
    * Improve text interactively - show alternatives and let user choose
+   * Generates multiple alternatives by calling the API with different styles/tones
    */
   async improveInteractive(text: string, options: WriteOptions): Promise<string> {
     if (!text || text.trim() === '') {
@@ -320,33 +321,90 @@ export class WriteCommand {
       throw new Error('Language is required');
     }
 
-    const writeOptions: {
-      targetLang: WriteLanguage;
-      writingStyle?: WritingStyle;
-      tone?: WriteTone;
-    } = {
-      targetLang: options.lang,
-    };
+    // If user specified a style or tone, only use that
+    if (options.style || options.tone) {
+      const writeOptions: {
+        targetLang: WriteLanguage;
+        writingStyle?: WritingStyle;
+        tone?: WriteTone;
+      } = {
+        targetLang: options.lang,
+      };
 
-    if (options.style) {
-      writeOptions.writingStyle = options.style;
+      if (options.style) {
+        writeOptions.writingStyle = options.style;
+      }
+
+      if (options.tone) {
+        writeOptions.tone = options.tone;
+      }
+
+      const improvements = await this.writeService.improve(text, writeOptions);
+
+      const choices = [
+        {
+          name: `${chalk.yellow('Keep original')} - "${this.truncate(text, 60)}"`,
+          value: -1,
+        },
+        {
+          name: `${chalk.bold('Improved')} - "${this.truncate(improvements[0]!.text, 60)}"`,
+          value: 0,
+        },
+      ];
+
+      const answer = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'selection',
+          message: 'Choose an improvement:',
+          choices,
+        },
+      ]);
+
+      return answer.selection === -1 ? text : improvements[0]!.text;
     }
 
-    if (options.tone) {
-      writeOptions.tone = options.tone;
+    // Generate multiple alternatives by calling API with different styles
+    const styles: WritingStyle[] = ['simple', 'business', 'academic', 'casual'];
+    const allImprovements: Array<{ text: string; label: string }> = [];
+
+    // Call API for each style
+    for (const style of styles) {
+      try {
+        const improvements = await this.writeService.improve(text, {
+          targetLang: options.lang,
+          writingStyle: style,
+        });
+
+        if (improvements.length > 0 && improvements[0]) {
+          allImprovements.push({
+            text: improvements[0].text,
+            label: this.capitalizeFirst(style),
+          });
+        }
+      } catch (error) {
+        // Skip this style if it fails (silently continue)
+      }
     }
 
-    // Get all improvements
-    const improvements = await this.writeService.improve(text, writeOptions);
+    if (allImprovements.length === 0) {
+      throw new Error('No improvements could be generated');
+    }
 
-    // Create choices with previews
+    // Remove duplicates (same text with different styles)
+    const uniqueImprovements = allImprovements.filter(
+      (improvement, index, self) =>
+        index === self.findIndex(t => t.text === improvement.text)
+    );
+
+    // Create choices with style labels
     const choices = [
       {
         name: `${chalk.yellow('Keep original')} - "${this.truncate(text, 60)}"`,
         value: -1,
       },
-      ...improvements.map((improvement, index) => ({
-        name: `${chalk.bold(`Option ${index + 1}`)} - "${this.truncate(improvement.text, 60)}"`,
+      ...uniqueImprovements.map((improvement, index) => ({
+        name: `${chalk.bold(improvement.label)} - "${this.truncate(improvement.text, 60)}"`,
         value: index,
       })),
     ];
@@ -356,7 +414,7 @@ export class WriteCommand {
       {
         type: 'list',
         name: 'selection',
-        message: 'Choose an improvement:',
+        message: `Choose an improvement (${uniqueImprovements.length} alternatives):`,
         choices,
       },
     ]);
@@ -366,7 +424,7 @@ export class WriteCommand {
       return text; // Keep original
     }
 
-    return improvements[answer.selection]!.text;
+    return uniqueImprovements[answer.selection]!.text;
   }
 
   /**
@@ -435,6 +493,13 @@ export class WriteCommand {
       return text;
     }
     return text.substring(0, maxLength - 3) + '...';
+  }
+
+  /**
+   * Capitalize first letter of string
+   */
+  private capitalizeFirst(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
   /**

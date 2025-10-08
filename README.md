@@ -284,11 +284,15 @@ deepl write input.txt --lang en-US --output improved.txt
 # Edit file in place
 deepl write document.md --lang en-US --in-place
 
-# Interactive mode - choose from alternatives
+# Interactive mode - choose from multiple style alternatives
+# Generates improvements with simple, business, academic, and casual styles
 deepl write "Text to improve." --lang en-US --interactive
 
 # Interactive mode with file
 deepl write document.md --lang en-US --interactive --in-place
+
+# Interactive mode with specific style (single option)
+deepl write "Text to improve." --lang en-US --style business --interactive
 
 # Check if text needs improvement (exit code 0 if no changes needed)
 deepl write document.md --lang en-US --check
@@ -329,6 +333,21 @@ deepl write "This text could be better." --lang en-US --diff
 - `confident` - Assertive and certain
 - `diplomatic` - Tactful and considerate
 - `prefer_*` prefix - Apply tone only if language supports it
+
+**Interactive Mode:**
+
+When using `--interactive` without specifying a style or tone, the CLI automatically generates **4 different alternatives** by calling the DeepL Write API with different writing styles (simple, business, academic, casual). You can then choose which version works best for your needs:
+
+```
+? Choose an improvement (4 alternatives):
+❯ Keep original - "This text could be better improved with..."
+  Simple - "This text needs improvement with better..."
+  Business - "We recommend enhancing this text through..."
+  Academic - "It is advisable to improve this text via..."
+  Casual - "You should make this text better by..."
+```
+
+If you specify a style or tone with `--interactive`, you'll get a simple confirm/reject prompt for that single suggestion.
 
 **Note:** You cannot combine `--style` and `--tone` in a single request. Choose one or the other.
 

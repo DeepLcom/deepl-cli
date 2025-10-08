@@ -20,8 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 8 new E2E tests for CLI flag validation
 
 ### Changed
+- **Enhanced Interactive Mode** - Now generates multiple alternatives
+  - Calls DeepL Write API 4 times with different styles (simple, business, academic, casual)
+  - Presents multiple options in interactive menu instead of single suggestion
+  - Automatically removes duplicate suggestions
+  - Gracefully handles API errors for individual styles
+  - Falls back to single suggestion when user specifies style/tone
 - Updated write command help text to reflect all available options
 - Enhanced argument description to indicate file path support
+- Updated documentation to explain interactive mode behavior
 
 ### Fixed
 - Fixed chokidar TypeScript import issue in WatchService

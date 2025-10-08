@@ -766,32 +766,41 @@ describe('WriteCommand', () => {
   describe('improveInteractive()', () => {
     beforeEach(() => {
       mockPrompt.mockClear();
+      // Mock console.log to avoid chalk issues in tests
+      jest.spyOn(console, 'log').mockImplementation(() => {});
     });
 
-    it('should show alternatives and let user select one', async () => {
-      const mockImprovements: WriteImprovement[] = [
-        { text: 'First improvement.', targetLanguage: 'en-US' },
-        { text: 'Second improvement.', targetLanguage: 'en-US' },
-        { text: 'Third improvement.', targetLanguage: 'en-US' },
-      ];
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
 
-      mockWriteService.improve.mockResolvedValue(mockImprovements);
+    it('should generate alternatives with different styles', async () => {
+      // Mock different responses for different styles
+      mockWriteService.improve
+        .mockResolvedValueOnce([{ text: 'Simple improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Business improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Academic improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
+
       mockPrompt.mockResolvedValue({ selection: 1 });
 
       const result = await writeCommand.improveInteractive('Original text.', {
         lang: 'en-US',
       });
 
-      expect(result).toBe('Second improvement.');
+      // Should call API 4 times (once for each style)
+      expect(mockWriteService.improve).toHaveBeenCalledTimes(4);
+      expect(result).toBe('Business improvement.');
       expect(mockPrompt).toHaveBeenCalled();
     });
 
     it('should allow user to keep original text', async () => {
-      const mockImprovements: WriteImprovement[] = [
-        { text: 'Improved text.', targetLanguage: 'en-US' },
-      ];
+      mockWriteService.improve
+        .mockResolvedValueOnce([{ text: 'Simple.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Business.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Academic.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Casual.', targetLanguage: 'en-US' }]);
 
-      mockWriteService.improve.mockResolvedValue(mockImprovements);
       mockPrompt.mockResolvedValue({ selection: -1 }); // -1 = keep original
 
       const result = await writeCommand.improveInteractive('Original text.', {
@@ -801,47 +810,89 @@ describe('WriteCommand', () => {
       expect(result).toBe('Original text.');
     });
 
+    it('should use single style when specified by user', async () => {
+      const mockImprovements: WriteImprovement[] = [
+        { text: 'Business improvement.', targetLanguage: 'en-US' },
+      ];
+
+      mockWriteService.improve.mockResolvedValue(mockImprovements);
+      mockPrompt.mockResolvedValue({ selection: 0 });
+
+      const result = await writeCommand.improveInteractive('Original text.', {
+        lang: 'en-US',
+        style: 'business',
+      });
+
+      // Should only call API once when style is specified
+      expect(mockWriteService.improve).toHaveBeenCalledTimes(1);
+      expect(result).toBe('Business improvement.');
+    });
+
+    it('should remove duplicate improvements', async () => {
+      // Mock where some styles return the same text
+      mockWriteService.improve
+        .mockResolvedValueOnce([{ text: 'Same improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Same improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Different improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Same improvement.', targetLanguage: 'en-US' }]);
+
+      mockPrompt.mockResolvedValue({ selection: 0 });
+
+      const result = await writeCommand.improveInteractive('Original.', {
+        lang: 'en-US',
+      });
+
+      // Should work and return a result
+      expect(result).toBeTruthy();
+      expect(mockPrompt).toHaveBeenCalled();
+
+      // Verify deduplication happened - inquirer.prompt gets an array of questions
+      const promptQuestions = mockPrompt.mock.calls[0]![0] as unknown as any[];
+      expect(promptQuestions[0].choices.length).toBe(3); // Keep original + 2 unique
+    });
+
     it('should handle file input in interactive mode', async () => {
       await fs.mkdir(testDir, { recursive: true });
       const testFile = join(testDir, 'test.txt');
       await fs.writeFile(testFile, 'Original content', 'utf-8');
 
-      const mockImprovements: WriteImprovement[] = [
-        { text: 'Improved content.', targetLanguage: 'en-US' },
-      ];
+      // improveFileInteractive calls improve once, then improveInteractive calls it 4 more times
+      // First call: for building alternatives array
+      mockWriteService.improve
+        .mockResolvedValueOnce([{ text: 'Initial.', targetLanguage: 'en-US' }])
+        // Next 4 calls: from improveInteractive for different styles
+        .mockResolvedValueOnce([{ text: 'Simple.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Business.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Academic.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Casual.', targetLanguage: 'en-US' }]);
 
-      mockWriteService.improve.mockResolvedValue(mockImprovements);
-      mockPrompt.mockResolvedValue({ selection: 0 });
+      // Selection 1 corresponds to Business (second in the list)
+      mockPrompt.mockResolvedValue({ selection: 1 });
 
       const result = await writeCommand.improveFileInteractive(testFile, {
         lang: 'en-US',
       });
 
-      expect(result.selected).toBe('Improved content.');
-      expect(result.alternatives).toEqual(['Improved content.']);
+      expect(result.selected).toBe('Business.');
+      expect(result.alternatives).toEqual(['Initial.']);
     });
 
-    it('should show diff for each alternative', async () => {
-      const mockImprovements: WriteImprovement[] = [
-        { text: 'First option.', targetLanguage: 'en-US' },
-        { text: 'Second option.', targetLanguage: 'en-US' },
-      ];
+    it('should handle API errors gracefully', async () => {
+      // Mock where some styles fail but others succeed
+      mockWriteService.improve
+        .mockRejectedValueOnce(new Error('API error'))
+        .mockResolvedValueOnce([{ text: 'Business improvement.', targetLanguage: 'en-US' }])
+        .mockRejectedValueOnce(new Error('API error'))
+        .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
 
-      mockWriteService.improve.mockResolvedValue(mockImprovements);
       mockPrompt.mockResolvedValue({ selection: 0 });
 
-      await writeCommand.improveInteractive('Original.', {
+      const result = await writeCommand.improveInteractive('Original.', {
         lang: 'en-US',
       });
 
-      expect(mockPrompt).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({
-            type: 'list',
-            name: 'selection',
-          })
-        ])
-      );
+      // Should still work with partial results
+      expect(result).toBe('Business improvement.');
     });
   });
 });
