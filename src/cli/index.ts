@@ -235,29 +235,152 @@ program
 program
   .command('write')
   .description('Improve text using DeepL Write API (grammar, style, tone)')
-  .argument('<text>', 'Text to improve')
+  .argument('<text>', 'Text to improve (or file path when used with file operations)')
   .requiredOption('-l, --lang <language>', 'Target language (de, en-GB, en-US, es, fr, it, pt-BR, pt-PT)')
   .option('-s, --style <style>', 'Writing style: simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
   .option('-t, --tone <tone>', 'Tone: enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
   .option('-a, --alternatives', 'Show all alternative improvements')
+  .option('-o, --output <file>', 'Write improved text to file')
+  .option('--in-place', 'Edit file in place (use with file input)')
+  .option('-i, --interactive', 'Interactive mode - choose from multiple suggestions')
+  .option('-d, --diff', 'Show diff between original and improved text')
+  .option('-c, --check', 'Check if text needs improvement (exit code 0 if no changes)')
+  .option('-f, --fix', 'Automatically fix file in place')
+  .option('-b, --backup', 'Create backup file before fixing (use with --fix)')
   .action(async (text: string, options: {
     lang: string;
     style?: string;
     tone?: string;
     alternatives?: boolean;
+    output?: string;
+    inPlace?: boolean;
+    interactive?: boolean;
+    diff?: boolean;
+    check?: boolean;
+    fix?: boolean;
+    backup?: boolean;
   }) => {
     try {
       const client = createDeepLClient();
       const writeService = new WriteService(client, configService);
       const writeCommand = new WriteCommand(writeService, configService);
 
-      const result = await writeCommand.improve(text, {
+      const writeOptions = {
         lang: options.lang as WriteLanguage,
         style: options.style as WritingStyle | undefined,
         tone: options.tone as WriteTone | undefined,
         showAlternatives: options.alternatives,
-      });
+        outputFile: options.output,
+        inPlace: options.inPlace,
+        createBackup: options.backup,
+      };
 
+      // Check mode
+      if (options.check) {
+        let needsImprovement: boolean;
+        let changes = 0;
+
+        // Check if input is a file
+        const { existsSync } = await import('fs');
+        if (existsSync(text)) {
+          const result = await writeCommand.checkFile(text, writeOptions);
+          needsImprovement = result.needsImprovement;
+          changes = result.changes;
+          console.log(chalk.gray(`File: ${text}`));
+        } else {
+          const result = await writeCommand.checkText(text, writeOptions);
+          needsImprovement = result.needsImprovement;
+          changes = result.changes;
+        }
+
+        if (needsImprovement) {
+          console.log(chalk.yellow(`⚠ Text needs improvement (${changes} potential changes)`));
+          process.exit(1);
+        } else {
+          console.log(chalk.green('✓ Text looks good'));
+          process.exit(0);
+        }
+      }
+
+      // Auto-fix mode
+      if (options.fix) {
+        const { existsSync } = await import('fs');
+        if (!existsSync(text)) {
+          throw new Error('--fix requires a file path as input');
+        }
+
+        const result = await writeCommand.autoFixFile(text, writeOptions);
+
+        if (result.fixed) {
+          console.log(chalk.green('✓ File improved'));
+          if (result.backupPath) {
+            console.log(chalk.gray(`Backup: ${result.backupPath}`));
+          }
+          console.log(chalk.gray(`Changes: ${result.changes}`));
+        } else {
+          console.log(chalk.green('✓ No improvements needed'));
+        }
+        return;
+      }
+
+      // Diff mode
+      if (options.diff) {
+        const { existsSync } = await import('fs');
+        let result: { original: string; improved: string; diff: string };
+
+        if (existsSync(text)) {
+          result = await writeCommand.improveFileWithDiff(text, writeOptions);
+        } else {
+          result = await writeCommand.improveWithDiff(text, writeOptions);
+        }
+
+        console.log(chalk.bold('Original:'));
+        console.log(result.original);
+        console.log();
+        console.log(chalk.bold('Improved:'));
+        console.log(result.improved);
+        console.log();
+        console.log(chalk.bold('Diff:'));
+        console.log(result.diff);
+        return;
+      }
+
+      // Interactive mode
+      if (options.interactive) {
+        const { existsSync } = await import('fs');
+        let result: string;
+
+        if (existsSync(text)) {
+          const interactiveResult = await writeCommand.improveFileInteractive(text, writeOptions);
+          result = interactiveResult.selected;
+
+          // Write to output file if specified
+          if (options.output || options.inPlace) {
+            const outputPath = options.inPlace ? text : options.output!;
+            const { writeFile } = await import('fs/promises');
+            await writeFile(outputPath, result, 'utf-8');
+            console.log(chalk.green(`✓ Saved to ${outputPath}`));
+          }
+        } else {
+          result = await writeCommand.improveInteractive(text, writeOptions);
+        }
+
+        console.log();
+        console.log(chalk.bold('Selected improvement:'));
+        console.log(result);
+        return;
+      }
+
+      // File operations
+      const { existsSync } = await import('fs');
+      if (existsSync(text)) {
+        const result = await writeCommand.improveFile(text, writeOptions);
+        console.log(result);
+        return;
+      }
+
+      // Text improvement (default)
+      const result = await writeCommand.improve(text, writeOptions);
       console.log(result);
     } catch (error) {
       console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');

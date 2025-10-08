@@ -8,36 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Write Command Enhancements** - Advanced file and interactive features for DeepL Write
-  - **File Input/Output Support**: Read and improve text from files
-    - `improveFile()` method for file-based improvements
-    - `--output` flag to write improved text to a file
-    - `--in-place` flag for in-place file editing
-    - Support for `.txt` and `.md` files
-  - **Diff View**: Visual comparison of original vs improved text
-    - `generateDiff()` method with colored unified diff output
-    - `improveWithDiff()` for text comparison
-    - `improveFileWithDiff()` for file-based diffs
-    - `--diff` flag to show changes before accepting
-  - **Check Mode**: Validate text quality without modifications
-    - `checkText()` method to detect if improvements are needed
-    - `checkFile()` method for file validation
-    - `--check` flag for CI/CD integration
-    - Returns improvement status and change count
-  - **Auto-Fix Mode**: Automatically apply improvements to files
-    - `autoFixFile()` method for automated file improvements
-    - `--fix` flag for in-place auto-correction
-    - `--backup` flag to create `.bak` files before fixing
-    - Only modifies files that need improvement
-  - **Interactive Mode**: Choose from multiple improvement alternatives
-    - `improveInteractive()` method with inquirer-based UI
-    - `improveFileInteractive()` for file-based interaction
-    - `--interactive` flag to select from suggestions
-    - Visual preview of each alternative with truncation
-    - Option to keep original text
-  - 27 new comprehensive unit tests (46 total for WriteCommand)
+- **Write Command CLI Flags** - Exposed all write command features via CLI
+  - `--output` / `-o` - Write improved text to file
+  - `--in-place` - Edit file in place
+  - `--interactive` / `-i` - Interactive mode to choose from suggestions
+  - `--diff` / `-d` - Show diff between original and improved text
+  - `--check` / `-c` - Check if text needs improvement (exit code based)
+  - `--fix` / `-f` - Automatically fix file in place
+  - `--backup` / `-b` - Create backup file before fixing
+  - File path detection for automatic file operations
+  - 8 new E2E tests for CLI flag validation
 
 ### Changed
+- Updated write command help text to reflect all available options
+- Enhanced argument description to indicate file path support
 
 ### Fixed
 - Fixed chokidar TypeScript import issue in WatchService
