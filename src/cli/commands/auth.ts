@@ -22,12 +22,9 @@ export class AuthCommand {
       throw new Error('API key cannot be empty');
     }
 
-    // Basic format validation (DeepL keys are UUID-like with :fx suffix)
-    if (!apiKey.match(/^[a-f0-9-]+:fx$/i) && !apiKey.match(/^[a-f0-9-]+$/i)) {
-      throw new Error('Invalid API key format. DeepL API keys should be in format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx');
-    }
-
     // Validate with DeepL API by making a test request
+    // Note: No format validation - let the API determine if the key is valid
+    // This supports production keys (:fx suffix), free keys, and test keys
     try {
       // Use configured API endpoint for validation
       const baseUrl = this.config.getValue('api.baseUrl') as string | undefined;

@@ -51,10 +51,6 @@ describe('AuthCommand', () => {
       await expect(authCommand.setKey('')).rejects.toThrow('API key cannot be empty');
     });
 
-    it('should throw error for invalid API key format', async () => {
-      await expect(authCommand.setKey('invalid-key')).rejects.toThrow('Invalid API key format');
-    });
-
     it('should validate API key with DeepL API', async () => {
       // Mock DeepL client validation
       const mockGetUsage = jest.fn().mockResolvedValue({ character: { count: 0, limit: 500000 } });
