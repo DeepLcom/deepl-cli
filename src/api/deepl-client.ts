@@ -327,7 +327,7 @@ export class DeepLClient {
     targetLang: string,
     entries: string
   ): Promise<GlossaryInfo> {
-    const response = await this.client.post<GlossaryInfo>('/glossaries', {
+    const response = await this.client.post<GlossaryInfo>('/v2/glossaries', {
       name,
       source_lang: sourceLang,
       target_lang: targetLang,
@@ -342,7 +342,7 @@ export class DeepLClient {
    * List all glossaries
    */
   async listGlossaries(): Promise<GlossaryInfo[]> {
-    const response = await this.client.get<{ glossaries: GlossaryInfo[] }>('/glossaries');
+    const response = await this.client.get<{ glossaries: GlossaryInfo[] }>('/v2/glossaries');
     return response.data.glossaries || [];
   }
 
@@ -350,7 +350,7 @@ export class DeepLClient {
    * Get glossary information
    */
   async getGlossary(glossaryId: string): Promise<GlossaryInfo> {
-    const response = await this.client.get<GlossaryInfo>(`/glossaries/${glossaryId}`);
+    const response = await this.client.get<GlossaryInfo>(`/v2/glossaries/${glossaryId}`);
     return response.data;
   }
 
@@ -358,7 +358,7 @@ export class DeepLClient {
    * Delete a glossary
    */
   async deleteGlossary(glossaryId: string): Promise<void> {
-    await this.client.delete(`/glossaries/${glossaryId}`);
+    await this.client.delete(`/v2/glossaries/${glossaryId}`);
   }
 
   /**
@@ -366,7 +366,7 @@ export class DeepLClient {
    */
   async getGlossaryEntries(glossaryId: string): Promise<string> {
     const response = await this.client.get<string>(
-      `/glossaries/${glossaryId}/entries`,
+      `/v2/glossaries/${glossaryId}/entries`,
       {
         headers: {
           Accept: 'text/tab-separated-values',

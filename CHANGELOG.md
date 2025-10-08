@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed chokidar TypeScript import issue in WatchService
   - Replaced deprecated `chokidar.WatchOptions` with inline type definition
   - All 509 tests now passing
+- Fixed glossary API endpoints missing `/v2` path prefix
+  - Added `/v2` prefix to all glossary endpoints (create, list, get, delete, entries)
+  - Glossary commands now work correctly with DeepL API v2
 
 ## [0.2.0] - 2025-10-08
 
