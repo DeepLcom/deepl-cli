@@ -50,18 +50,26 @@ describe('Auth CLI Integration', () => {
       }
     });
 
-    it('should reject invalid API key format', () => {
+    it('should reject invalid API key via API validation', () => {
       try {
-        execSync('deepl auth set-key invalid-key', { encoding: 'utf-8', stdio: 'pipe' });
+        execSync('deepl auth set-key invalid-key-123', { encoding: 'utf-8', stdio: 'pipe' });
         fail('Should have thrown an error');
       } catch (error: any) {
-        expect(error.stderr || error.stdout).toContain('Invalid API key format');
+        // Now expects API validation error (not format error)
+        expect(error.stderr || error.stdout).toContain('Authentication failed');
       }
     });
   });
 
   describe('deepl auth show', () => {
     it('should show "No API key set" when no key configured', () => {
+      // Clear any existing key first
+      try {
+        execSync('deepl auth clear', { encoding: 'utf-8', stdio: 'pipe' });
+      } catch (e) {
+        // Ignore if already cleared
+      }
+
       const output = execSync('deepl auth show', { encoding: 'utf-8' });
       expect(output).toContain('No API key set');
     });
