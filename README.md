@@ -40,7 +40,7 @@
 
 ## 🚧 Project Status
 
-**Current Version: 0.1.0** (Phase 1 MVP - Complete)
+**Current Version: 0.2.0** (Phase 2 - Complete)
 
 This project follows a phased development approach with strict Test-Driven Development (TDD):
 

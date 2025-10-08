@@ -23,12 +23,12 @@ export class HooksCommand {
   /**
    * Install a git hook
    */
-  async install(hookType: HookType): Promise<string> {
+  install(hookType: HookType): string {
     if (!this.gitHooksService) {
       throw new Error('Not in a git repository. Run this command from within a git repository.');
     }
 
-    await this.gitHooksService.install(hookType);
+    this.gitHooksService.install(hookType);
 
     return chalk.green(`✓ Installed ${hookType} hook`);
   }
@@ -36,12 +36,12 @@ export class HooksCommand {
   /**
    * Uninstall a git hook
    */
-  async uninstall(hookType: HookType): Promise<string> {
+  uninstall(hookType: HookType): string {
     if (!this.gitHooksService) {
       throw new Error('Not in a git repository. Run this command from within a git repository.');
     }
 
-    await this.gitHooksService.uninstall(hookType);
+    this.gitHooksService.uninstall(hookType);
 
     return chalk.green(`✓ Uninstalled ${hookType} hook`);
   }

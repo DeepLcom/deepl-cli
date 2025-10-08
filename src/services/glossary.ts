@@ -112,7 +112,9 @@ export class GlossaryService {
     const lines = tsv.split('\n');
     for (const line of lines) {
       const trimmed = line.trim();
-      if (!trimmed) continue; // Skip empty lines
+      if (!trimmed) {
+        continue; // Skip empty lines
+      }
 
       // Try tab-separated first, then comma-separated
       let parts: string[];

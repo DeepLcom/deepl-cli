@@ -72,82 +72,86 @@ describe('HooksCommand', () => {
   });
 
   describe('install()', () => {
-    it('should install pre-commit hook', async () => {
-      mockGitHooksService.install.mockResolvedValue(undefined);
+    it('should install pre-commit hook', () => {
+      mockGitHooksService.install.mockReturnValue(undefined);
       const command = new HooksCommand('/path/to/.git');
 
-      const result = await command.install('pre-commit');
+      const result = command.install('pre-commit');
 
       expect(mockGitHooksService.install).toHaveBeenCalledWith('pre-commit');
       expect(result).toContain('Installed pre-commit hook');
     });
 
-    it('should install pre-push hook', async () => {
-      mockGitHooksService.install.mockResolvedValue(undefined);
+    it('should install pre-push hook', () => {
+      mockGitHooksService.install.mockReturnValue(undefined);
       const command = new HooksCommand('/path/to/.git');
 
-      const result = await command.install('pre-push');
+      const result = command.install('pre-push');
 
       expect(mockGitHooksService.install).toHaveBeenCalledWith('pre-push');
       expect(result).toContain('Installed pre-push hook');
     });
 
-    it('should throw error when not in git repository', async () => {
+    it('should throw error when not in git repository', () => {
       const mockFindGitRoot = jest.fn().mockReturnValue(null);
       (GitHooksService.findGitRoot as jest.Mock) = mockFindGitRoot;
 
       const command = new HooksCommand();
 
-      await expect(command.install('pre-commit')).rejects.toThrow(
+      expect(() => command.install('pre-commit')).toThrow(
         'Not in a git repository'
       );
     });
 
-    it('should propagate errors from GitHooksService', async () => {
-      mockGitHooksService.install.mockRejectedValue(new Error('Permission denied'));
+    it('should propagate errors from GitHooksService', () => {
+      mockGitHooksService.install.mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
       const command = new HooksCommand('/path/to/.git');
 
-      await expect(command.install('pre-commit')).rejects.toThrow('Permission denied');
+      expect(() => command.install('pre-commit')).toThrow('Permission denied');
     });
   });
 
   describe('uninstall()', () => {
-    it('should uninstall pre-commit hook', async () => {
-      mockGitHooksService.uninstall.mockResolvedValue(undefined);
+    it('should uninstall pre-commit hook', () => {
+      mockGitHooksService.uninstall.mockReturnValue(undefined);
       const command = new HooksCommand('/path/to/.git');
 
-      const result = await command.uninstall('pre-commit');
+      const result = command.uninstall('pre-commit');
 
       expect(mockGitHooksService.uninstall).toHaveBeenCalledWith('pre-commit');
       expect(result).toContain('Uninstalled pre-commit hook');
     });
 
-    it('should uninstall pre-push hook', async () => {
-      mockGitHooksService.uninstall.mockResolvedValue(undefined);
+    it('should uninstall pre-push hook', () => {
+      mockGitHooksService.uninstall.mockReturnValue(undefined);
       const command = new HooksCommand('/path/to/.git');
 
-      const result = await command.uninstall('pre-push');
+      const result = command.uninstall('pre-push');
 
       expect(mockGitHooksService.uninstall).toHaveBeenCalledWith('pre-push');
       expect(result).toContain('Uninstalled pre-push hook');
     });
 
-    it('should throw error when not in git repository', async () => {
+    it('should throw error when not in git repository', () => {
       const mockFindGitRoot = jest.fn().mockReturnValue(null);
       (GitHooksService.findGitRoot as jest.Mock) = mockFindGitRoot;
 
       const command = new HooksCommand();
 
-      await expect(command.uninstall('pre-commit')).rejects.toThrow(
+      expect(() => command.uninstall('pre-commit')).toThrow(
         'Not in a git repository'
       );
     });
 
-    it('should propagate errors from GitHooksService', async () => {
-      mockGitHooksService.uninstall.mockRejectedValue(new Error('Hook not found'));
+    it('should propagate errors from GitHooksService', () => {
+      mockGitHooksService.uninstall.mockImplementation(() => {
+        throw new Error('Hook not found');
+      });
       const command = new HooksCommand('/path/to/.git');
 
-      await expect(command.uninstall('pre-commit')).rejects.toThrow('Hook not found');
+      expect(() => command.uninstall('pre-commit')).toThrow('Hook not found');
     });
   });
 

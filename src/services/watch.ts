@@ -9,6 +9,14 @@ import chokidar, { FSWatcher } from 'chokidar';
 import { FileTranslationService } from './file-translation.js';
 import { Language, TranslationOptions } from '../types/index.js';
 
+export interface FileTranslationResult {
+  targetLang: Language;
+  text: string;
+  outputPath?: string;
+}
+
+export type WatchTranslationResult = FileTranslationResult | FileTranslationResult[];
+
 export interface WatchOptions {
   targetLangs: readonly Language[];
   outputDir: string;
@@ -18,7 +26,7 @@ export interface WatchOptions {
   pattern?: string;
   recursive?: boolean;
   onChange?: (filePath: string) => void;
-  onTranslate?: (filePath: string, result: any) => void;
+  onTranslate?: (filePath: string, result: WatchTranslationResult) => void;
   onError?: (filePath: string, error: Error) => void;
 }
 
@@ -61,7 +69,7 @@ export class WatchService {
   /**
    * Start watching a file or directory
    */
-  async watch(watchPath: string, options: WatchOptions): Promise<void> {
+  watch(watchPath: string, options: WatchOptions): void {
     // Validate path exists
     if (!fs.existsSync(watchPath)) {
       throw new Error(`Path not found: ${watchPath}`);
@@ -80,10 +88,12 @@ export class WatchService {
     };
 
     // Apply pattern filter if specified
-    if (this.options.pattern || options.pattern) {
+    if (this.options.pattern ?? options.pattern) {
       watcherOptions.ignored = (filePath: string) => {
-        const pattern = options.pattern || this.options.pattern;
-        if (!pattern) return false;
+        const pattern = options.pattern ?? this.options.pattern;
+        if (!pattern) {
+          return false;
+        }
 
         const basename = path.basename(filePath);
 
@@ -99,15 +109,19 @@ export class WatchService {
     this.watcher = chokidar.watch(watchPath, watcherOptions);
 
     this.watcher.on('change', (filePath: string) => {
-      this.handleFileChange(filePath).catch((error) => {
+      try {
+        this.handleFileChange(filePath);
+      } catch (error) {
         console.error(`Error handling file change for ${filePath}:`, error);
-      });
+      }
     });
 
     this.watcher.on('add', (filePath: string) => {
-      this.handleFileChange(filePath).catch((error) => {
+      try {
+        this.handleFileChange(filePath);
+      } catch (error) {
         console.error(`Error handling file add for ${filePath}:`, error);
-      });
+      }
     });
 
     this.stats.isWatching = true;
@@ -116,7 +130,7 @@ export class WatchService {
   /**
    * Handle file change event
    */
-  async handleFileChange(filePath: string): Promise<void> {
+  handleFileChange(filePath: string): void {
     if (!this.watchOptions) {
       throw new Error('Watch not started');
     }
@@ -137,17 +151,19 @@ export class WatchService {
       clearTimeout(existingTimer);
     }
 
-    const timer = setTimeout(async () => {
-      try {
-        await this.translateFile(filePath);
-        this.debounceTimers.delete(filePath);
-      } catch (error) {
-        this.stats.errorsCount++;
-        if (this.watchOptions?.onError) {
-          this.watchOptions.onError(filePath, error as Error);
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          await this.translateFile(filePath);
+          this.debounceTimers.delete(filePath);
+        } catch (error) {
+          this.stats.errorsCount++;
+          if (this.watchOptions?.onError) {
+            this.watchOptions.onError(filePath, error as Error);
+          }
+          console.error(`Translation failed for ${filePath}:`, error);
         }
-        console.error(`Translation failed for ${filePath}:`, error);
-      }
+      })();
     }, this.options.debounceMs);
 
     this.debounceTimers.set(filePath, timer);
@@ -182,17 +198,22 @@ export class WatchService {
       // Single target language
       const outputPath = path.join(outputDir, `${fileName}.${targetLangs[0]}${ext}`);
 
+      const targetLang = targetLangs[0];
+      if (!targetLang) {
+        throw new Error('No target language specified');
+      }
+
       await this.fileTranslationService.translateFile(
         filePath,
         outputPath,
-        { ...baseOptions, targetLang: targetLangs[0] } as TranslationOptions,
+        { ...baseOptions, targetLang } as TranslationOptions,
         { preserveCode }
       );
 
       this.stats.translationsCount++;
 
       if (this.watchOptions.onTranslate) {
-        this.watchOptions.onTranslate(filePath, { outputPath, targetLang: targetLangs[0] });
+        this.watchOptions.onTranslate(filePath, { text: '', outputPath, targetLang });
       }
     } else {
       // Multiple target languages

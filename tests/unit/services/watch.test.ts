@@ -100,15 +100,15 @@ describe('WatchService', () => {
       expect(watchService.isWatching()).toBe(true);
     });
 
-    it('should throw error for non-existent path', async () => {
+    it('should throw error for non-existent path', () => {
       const nonExistent = path.join(testDir, 'nonexistent');
 
-      await expect(
+      expect(() => {
         watchService.watch(nonExistent, {
           targetLangs: ['es'],
           outputDir: testDir,
-        })
-      ).rejects.toThrow('not found');
+        });
+      }).toThrow('not found');
     });
 
     it('should apply glob pattern filter', async () => {
@@ -225,10 +225,10 @@ describe('WatchService', () => {
         outputDir: path.join(testDir, 'output'),
       };
 
-      await watchService.watch(testDir, options);
+      watchService.watch(testDir, options);
 
-      // Should not throw, just log error
-      await expect(watchService.handleFileChange(testFile)).resolves.not.toThrow();
+      // Should not throw, just log error (it's synchronous but schedules async work)
+      expect(() => watchService.handleFileChange(testFile)).not.toThrow();
     });
 
     it('should translate to multiple target languages', async () => {

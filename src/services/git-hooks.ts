@@ -26,7 +26,7 @@ export class GitHooksService {
   /**
    * Install a git hook
    */
-  async install(hookType: HookType): Promise<void> {
+  install(hookType: HookType): void {
     this.validateHookType(hookType);
 
     const hookPath = this.getHookPath(hookType);
@@ -56,7 +56,7 @@ export class GitHooksService {
   /**
    * Uninstall a git hook
    */
-  async uninstall(hookType: HookType): Promise<void> {
+  uninstall(hookType: HookType): void {
     this.validateHookType(hookType);
 
     const hookPath = this.getHookPath(hookType);

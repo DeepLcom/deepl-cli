@@ -24,6 +24,8 @@ import { HooksCommand } from './commands/hooks.js';
 import { ConfigCommand as ConfigCmd } from './commands/config.js';
 import { CacheCommand } from './commands/cache.js';
 import { GlossaryCommand } from './commands/glossary.js';
+import { WriteLanguage, WritingStyle, WriteTone } from '../types/api.js';
+import { HookType } from '../services/git-hooks.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -250,9 +252,9 @@ program
       const writeCommand = new WriteCommand(writeService, configService);
 
       const result = await writeCommand.improve(text, {
-        lang: options.lang as any,
-        style: options.style as any,
-        tone: options.tone as any,
+        lang: options.lang as WriteLanguage,
+        style: options.style as WritingStyle | undefined,
+        tone: options.tone as WriteTone | undefined,
         showAlternatives: options.alternatives,
       });
 
@@ -492,10 +494,10 @@ program
     new Command('install')
       .description('Install a git hook')
       .argument('<hook-type>', 'Hook type: pre-commit or pre-push')
-      .action(async (hookType: string) => {
+      .action((hookType: string) => {
         try {
           const hooksCommand = new HooksCommand();
-          const result = await hooksCommand.install(hookType as any);
+          const result = hooksCommand.install(hookType as HookType);
           console.log(result);
         } catch (error) {
           console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
@@ -507,10 +509,10 @@ program
     new Command('uninstall')
       .description('Uninstall a git hook')
       .argument('<hook-type>', 'Hook type: pre-commit or pre-push')
-      .action(async (hookType: string) => {
+      .action((hookType: string) => {
         try {
           const hooksCommand = new HooksCommand();
-          const result = await hooksCommand.uninstall(hookType as any);
+          const result = hooksCommand.uninstall(hookType as HookType);
           console.log(result);
         } catch (error) {
           console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
@@ -539,7 +541,7 @@ program
       .action((hookType: string) => {
         try {
           const hooksCommand = new HooksCommand();
-          const result = hooksCommand.showPath(hookType as any);
+          const result = hooksCommand.showPath(hookType as HookType);
           console.log(result);
         } catch (error) {
           console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');

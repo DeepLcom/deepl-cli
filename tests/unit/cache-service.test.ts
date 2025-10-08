@@ -18,13 +18,20 @@ describe('CacheService', () => {
     testCacheDir = path.join(os.tmpdir(), `deepl-cli-test-${Date.now()}`);
     testCachePath = path.join(testCacheDir, 'cache.db');
 
+    // Ensure directory exists before creating cache service
+    if (!fs.existsSync(testCacheDir)) {
+      fs.mkdirSync(testCacheDir, { recursive: true });
+    }
+
     // Create cache service with test path
     cacheService = new CacheService({ dbPath: testCachePath, maxSize: 1024 * 100 }); // 100KB for tests
   });
 
   afterEach(() => {
     // Cleanup
-    cacheService.close();
+    if (cacheService) {
+      cacheService.close();
+    }
     if (fs.existsSync(testCacheDir)) {
       fs.rmSync(testCacheDir, { recursive: true, force: true });
     }
