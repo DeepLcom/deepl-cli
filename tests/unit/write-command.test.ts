@@ -375,6 +375,8 @@ describe('WriteCommand', () => {
   describe('improveFile()', () => {
     describe('basic file operations', () => {
       it('should read and improve text from a file', async () => {
+        // Ensure directory exists before writing file
+        await fs.mkdir(testDir, { recursive: true });
         const testFile = join(testDir, 'test.txt');
         await fs.writeFile(testFile, 'Original content', 'utf-8');
 
