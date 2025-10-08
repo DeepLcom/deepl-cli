@@ -61,17 +61,19 @@ describe('WriteCommand', () => {
 
     writeCommand = new WriteCommand(mockWriteService, mockConfig);
 
-    // Create temporary directory for file tests
-    testDir = join(tmpdir(), 'deepl-cli-test-' + Date.now());
+    // Create temporary directory for file tests with more entropy to avoid collisions
+    testDir = join(tmpdir(), `deepl-cli-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     await fs.mkdir(testDir, { recursive: true });
   });
 
   afterEach(async () => {
-    // Cleanup test directory
-    try {
-      await fs.rm(testDir, { recursive: true, force: true });
-    } catch (error) {
-      // Ignore cleanup errors
+    // Cleanup test directory - wait a bit to avoid race conditions
+    if (testDir) {
+      try {
+        await fs.rm(testDir, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
     }
   });
 
@@ -678,6 +680,7 @@ describe('WriteCommand', () => {
 
   describe('autoFixFile()', () => {
     it('should automatically fix file in-place', async () => {
+      await fs.mkdir(testDir, { recursive: true });
       const testFile = join(testDir, 'test.txt');
       await fs.writeFile(testFile, 'Original content', 'utf-8');
 
@@ -702,6 +705,7 @@ describe('WriteCommand', () => {
     });
 
     it('should not modify file if no improvements needed', async () => {
+      await fs.mkdir(testDir, { recursive: true });
       const testFile = join(testDir, 'perfect.txt');
       const content = 'Perfect content.';
       await fs.writeFile(testFile, content, 'utf-8');
@@ -726,6 +730,7 @@ describe('WriteCommand', () => {
     });
 
     it('should create backup when requested', async () => {
+      await fs.mkdir(testDir, { recursive: true });
       const testFile = join(testDir, 'test.txt');
       await fs.writeFile(testFile, 'Original content', 'utf-8');
 
@@ -797,6 +802,7 @@ describe('WriteCommand', () => {
     });
 
     it('should handle file input in interactive mode', async () => {
+      await fs.mkdir(testDir, { recursive: true });
       const testFile = join(testDir, 'test.txt');
       await fs.writeFile(testFile, 'Original content', 'utf-8');
 
