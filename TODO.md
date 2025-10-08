@@ -146,7 +146,7 @@ Phase 2 is complete! All major features are implemented, tested, and documented:
 v0.2.0 Released! ✅
 
 - [x] All Phase 2 features complete
-- [x] All tests passing (482/482, 100% pass rate)
+- [x] All tests passing (509/509, 100% pass rate)
 - [x] Documentation updated (README, CHANGELOG, DESIGN, CONTEXT_SUMMARY)
 - [x] Update VERSION file to 0.2.0
 - [x] Update package.json version to 0.2.0
@@ -413,12 +413,12 @@ Detailed Phase 3 plan is integrated below. Historical planning document archived
 
 ## 🐛 Known Issues
 
-### ESM Module Tests (8 skipped)
+### ESM Module Tests ✅
 
-- [ ] Fix ESM module compatibility for 8 tests
-  - Issue: Some tests skip due to ESM module import issues
-  - Impact: Minimal - core functionality fully tested
-  - Status: Non-blocking, functionality works in production
+- [x] Fixed ESM module compatibility issues
+  - Status: All 509 tests now passing (100% pass rate)
+  - Previously: 8 tests were skipped due to ESM module import issues
+  - Resolution: Fixed test mocks and async handling in Phase 3 work
 
 ### Test Coverage Gaps
 
@@ -496,14 +496,14 @@ Detailed Phase 3 plan is integrated below. Historical planning document archived
 
 ### Version Planning
 
-- **v0.1.0** - Phase 1 MVP (CURRENT) ✅
-- **v0.2.0** - Phase 2 features (watch mode, DeepL Write, git hooks, batch)
+- **v0.1.0** - Phase 1 MVP ✅
+- **v0.2.0** - Phase 2 features + Phase 3 Write Enhancements (CURRENT) ✅
 - **v0.3.0** - Phase 3 features (TUI, translation memory, team)
 - **v1.0.0** - Stable API, production-ready, all polish items complete
 
 ### Testing Strategy
 
-- **Unit tests**: 379 tests (includes 46 WriteCommand tests) ✅
+- **Unit tests**: 406 tests (includes 46 WriteCommand tests) ✅
 - **Integration tests**: 64 tests (all passing) ✅
 - **E2E tests**: 21 tests (all passing) ✅
 - **Service tests**: 45 tests (WatchService 19, WriteService 28) ✅

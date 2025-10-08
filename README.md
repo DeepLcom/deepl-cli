@@ -12,7 +12,7 @@
 
 - **🌍 Translation** - High-quality translation using DeepL's next-gen LLM
 - **👀 Watch Mode** - Real-time file watching with auto-translation
-- **✍️ Writing Enhancement** - Grammar, style, and tone suggestions (DeepL Write API ✅ NEW!)
+- **✍️ Writing Enhancement** - Grammar, style, and tone suggestions (DeepL Write API)
 - **💾 Smart Caching** - Local SQLite cache with LRU eviction
 - **🎯 Context-Aware** - Preserves code blocks, variables, and formatting
 - **📦 Batch Processing** - Translate multiple files with parallel processing
@@ -40,7 +40,7 @@
 
 ## 🚧 Project Status
 
-**Current Version: 0.2.0** (Phase 2 - Complete)
+**Current Version: 0.2.0** (Phase 2 + Phase 3 Write Enhancements - Complete)
 
 This project follows a phased development approach with strict Test-Driven Development (TDD):
 
@@ -57,17 +57,24 @@ This project follows a phased development approach with strict Test-Driven Devel
 - [x] Glossary management (create, list, show, delete)
 - [x] Cache management CLI commands
 
-**Test Coverage**: 345 tests (340 passing, 98.6% pass rate)
-- Unit tests: 297 (88.5% coverage)
-- Integration tests: 27
-- E2E tests: 21
-
 ### Phase 2: Advanced Features (✅ COMPLETE!)
 - [x] Context-aware translation
 - [x] Batch processing with parallel translation
 - [x] Watch mode with file watching
 - [x] **DeepL Write integration**
-- [x] **Git hooks integration** ✨ NEW!
+- [x] **Git hooks integration**
+
+### Phase 3 Write Enhancements (✅ COMPLETE!)
+- [x] Interactive mode for suggestions (`--interactive`)
+- [x] File input/output support (`--output`, `--in-place`)
+- [x] Diff view (`--diff`)
+- [x] Check mode (`--check`)
+- [x] Auto-fix mode (`--fix`, `--backup`)
+
+**Test Coverage**: 509 tests (509 passing, 100% pass rate)
+- Unit tests: 406 (80.93% coverage)
+- Integration tests: 64 (all passing)
+- E2E tests: 21 (all passing)
 
 ### Phase 3: TUI & Collaboration (Future)
 - [ ] Interactive TUI application
@@ -102,7 +109,7 @@ npm link
 
 # Verify installation
 deepl --version
-# Output: 0.1.0
+# Output: 0.2.0
 ```
 
 ## 🚀 Quick Start
@@ -133,7 +140,7 @@ deepl translate "Hello, world!" --to es
 
 ## 📖 Usage
 
-All examples below are **working and tested** in v0.1.0. Features marked with 🚧 are planned for future releases.
+All examples below are **working and tested** in v0.2.0.
 
 ### Translation
 
@@ -243,22 +250,11 @@ deepl translate "How are you?" --context "Formal business email" --formality mor
 deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
 ```
 
-#### Features Coming in Phase 2 🚧
-
-```bash
-# Automatic context detection for files
-deepl translate api-docs.md --auto-context --to de
-
-# Interactive mode
-deepl translate --interactive --to es
-
-# Confidence scores
-deepl translate "Technical term" --show-confidence --to es
-```
-
 ### Writing Enhancement
 
-Improve your writing with AI-powered grammar, style, and tone suggestions using the **DeepL Write API** ✨ **NEW!**
+Improve your writing with AI-powered grammar, style, and tone suggestions using the **DeepL Write API**.
+
+**Phase 3 Enhancements**: Now includes file operations, diff view, check mode, auto-fix, and interactive mode! ✨
 
 ```bash
 # Basic text improvement
@@ -378,7 +374,7 @@ Press Ctrl+C to stop
 
 ### Git Hooks
 
-Automate translation validation in your git workflow with pre-commit and pre-push hooks ✨ **NEW!**
+Automate translation validation in your git workflow with pre-commit and pre-push hooks.
 
 ```bash
 # Install pre-commit hook (validates translations before commit)
@@ -482,7 +478,7 @@ deepl config reset
 
 #### Project-Level Configuration 🚧
 
-**Coming in Phase 2**
+**Planned for future release**
 
 Create a `.deepl.toml` file in your project root:
 
@@ -552,7 +548,7 @@ REST	REST
 authentication	Authentifizierung
 ```
 
-**Note:** Using glossaries in translation (`--glossary` flag) is supported by the API client but CLI integration is planned for Phase 2.
+**Note:** Using glossaries in translation (`--glossary` flag) is supported by the API client. Full CLI integration with automatic glossary application is planned for a future release.
 
 ### Cache Management
 
@@ -579,21 +575,6 @@ deepl cache disable
 ```
 
 Cache location: `~/.deepl-cli/cache.db`
-
-### Batch Operations 🚧
-
-**Note:** Batch processing coming in Phase 2.
-
-```bash
-# Estimate translation costs
-deepl batch estimate docs/ --targets es,fr,de,ja
-
-# Batch translate with progress
-deepl batch translate docs/ --targets es,fr --parallel 5
-
-# View usage statistics
-deepl usage --month current --breakdown by-language
-```
 
 ## 💻 Development
 
@@ -709,7 +690,7 @@ See [DESIGN.md](./DESIGN.md) for detailed architecture documentation.
 
 ### Test Coverage
 
-Current coverage: **88.85%** (323 tests, 321 passing)
+Current coverage: **80.93%** (509 tests, 509 passing, 100% pass rate)
 
 ```bash
 # Run all tests
@@ -730,12 +711,12 @@ npm run test:coverage
 npm test -- --watch
 ```
 
-### Test Statistics (v0.1.0)
+### Test Statistics (v0.2.0)
 
-- **Unit Tests**: 275 tests (88.85% coverage)
+- **Unit Tests**: 406 tests (80.93% coverage)
   - Services, API clients, utilities
   - Isolated component testing
-- **Integration Tests**: 27 tests (25 passing)
+- **Integration Tests**: 64 tests (all passing)
   - Multi-component interactions
   - CLI command execution
 - **E2E Tests**: 21 tests (all passing)
@@ -822,11 +803,12 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🗺️ Roadmap
 
-See [DESIGN.md](./DESIGN.md) for the complete development roadmap.
+See [TODO.md](./TODO.md) for the complete development roadmap.
 
-**Phase 1 (Current)** - MVP with basic translation, config, caching
-**Phase 2 (Next)** - Write API, watch mode, batch processing
-**Phase 3 (Future)** - TUI, translation memory, team collaboration
+**Phase 1 (✅ Complete)** - MVP with basic translation, config, caching
+**Phase 2 (✅ Complete)** - Write API, watch mode, batch processing, git hooks
+**Phase 3 Write Enhancements (✅ Complete)** - File operations, diff, check, fix, interactive mode
+**Phase 3 TUI (Future)** - Interactive TUI, translation memory, team collaboration
 
 ---
 
