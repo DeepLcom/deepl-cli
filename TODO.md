@@ -6,9 +6,9 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 
 - **Version**: 0.2.0 ✅ (Released October 8, 2025)
 - **Phase**: 2 (Advanced Features) - ✅ 100% COMPLETE! 🎉
-  - **Phase 3 Write Enhancements**: ✅ COMPLETE! (file ops, diff, check, fix, interactive)
-- **Tests**: 509 tests (509 passing, 0 skipped, 100% pass rate) ✅
-- **Coverage**: 80.93% overall (improved from 74.15%)
+  - **Phase 3 Write Enhancements**: ✅ COMPLETE! (file ops, diff, check, fix, interactive with multi-style)
+- **Tests**: 523 tests (523 passing, 0 skipped, 100% pass rate) ✅
+- **Coverage**: ~81% overall
   - Statements: 80.93%
   - Branches: 78.17%
   - Functions: 83.69%
@@ -161,6 +161,31 @@ v0.2.0 Released! ✅
 **Phase 3 (TUI & Collaboration)** - Ready to start!
 
 Detailed Phase 3 plan is integrated below. Historical planning document archived at `docs/archive/TUI_PLAN.md`.
+
+### Outstanding Phase 2 Enhancements
+
+These features were identified during Phase 2 completion and deferred for future implementation:
+
+#### Debugging & Visibility Features
+
+- [ ] **--dry-run flag** - Preview commands without making API calls
+  - Shows validation results
+  - Displays request that would be sent (curl format)
+  - Checks cache status
+  - Works across all commands (translate, write, glossary)
+  - Saves API quota during testing
+
+- [ ] **--verbose flag** - Detailed request/response logging
+  - Shows HTTP request details (method, URL, headers, body)
+  - Shows HTTP response details (status, headers, body preview)
+  - Formats output with color coding
+  - Masks sensitive data (API keys)
+  - Useful for debugging and learning the API
+
+**Estimated effort**: 3-4 hours implementation + 2 hours testing
+**Priority**: Medium (nice-to-have for debugging)
+**Dependencies**: None
+**Files to modify**: All CLI commands, create utils/request-formatter.ts
 
 ---
 
