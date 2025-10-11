@@ -7,6 +7,21 @@ set -e  # Exit on error
 echo "=== DeepL CLI Example 6: CI/CD Integration ==="
 echo
 
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
+
+echo "✓ API key configured"
+echo
+
+# Setup: Create temp directory for example scripts
+TEMP_DIR="/tmp/deepl-example-06"
+rm -rf "$TEMP_DIR"
+mkdir -p "$TEMP_DIR"
+
 # Example 1: Environment variable configuration
 echo "1. Using environment variable for API key (CI/CD-friendly)"
 echo "   Normally in CI/CD you'd set:"
@@ -19,7 +34,7 @@ echo
 # Example 2: Automated documentation translation
 echo "2. Automated documentation translation script"
 echo
-cat > examples/translate-docs.sh << 'EOF'
+cat > "$TEMP_DIR/translate-docs.sh" << 'EOF'
 #!/bin/bash
 # translate-docs.sh - Translate all markdown documentation
 
@@ -44,14 +59,14 @@ done
 echo "✓ All documentation translated"
 EOF
 
-chmod +x examples/translate-docs.sh
-echo "   Created: examples/translate-docs.sh"
+chmod +x "$TEMP_DIR/translate-docs.sh"
+echo "   Created: $TEMP_DIR/translate-docs.sh"
 echo
 
 # Example 3: Git pre-commit hook for translation validation
 echo "3. Git pre-commit hook example"
 echo
-cat > examples/pre-commit-hook.sh << 'EOF'
+cat > "$TEMP_DIR/pre-commit-hook.sh" << 'EOF'
 #!/bin/bash
 # .git/hooks/pre-commit - Validate translations before commit
 
@@ -94,14 +109,14 @@ echo "✓ All translations present"
 exit 0
 EOF
 
-chmod +x examples/pre-commit-hook.sh
-echo "   Created: examples/pre-commit-hook.sh"
+chmod +x "$TEMP_DIR/pre-commit-hook.sh"
+echo "   Created: $TEMP_DIR/pre-commit-hook.sh"
 echo
 
 # Example 4: GitHub Actions workflow
 echo "4. GitHub Actions workflow example"
 echo
-cat > examples/github-actions-workflow.yml << 'EOF'
+cat > "$TEMP_DIR/github-actions-workflow.yml" << 'EOF'
 name: Translate Documentation
 
 on:
@@ -152,13 +167,13 @@ jobs:
           git push
 EOF
 
-echo "   Created: examples/github-actions-workflow.yml"
+echo "   Created: $TEMP_DIR/github-actions-workflow.yml"
 echo
 
 # Example 5: Batch translation script with error handling
 echo "5. Robust batch translation script"
 echo
-cat > examples/batch-translate.sh << 'EOF'
+cat > "$TEMP_DIR/batch-translate.sh" << 'EOF'
 #!/bin/bash
 # batch-translate.sh - Translate files with error handling and logging
 
@@ -210,13 +225,18 @@ else
 fi
 EOF
 
-chmod +x examples/batch-translate.sh
-echo "   Created: examples/batch-translate.sh"
+chmod +x "$TEMP_DIR/batch-translate.sh"
+echo "   Created: $TEMP_DIR/batch-translate.sh"
 echo
+
+# Cleanup
+echo "Cleaning up temporary files..."
+rm -rf "$TEMP_DIR"
+echo "✓ Cleanup complete"
 
 echo "=== All CI/CD integration examples completed! ==="
 echo
-echo "📋 Created scripts:"
+echo "📋 Example scripts demonstrated (created in /tmp, now cleaned up):"
 echo "   - translate-docs.sh: Automated documentation translation"
 echo "   - pre-commit-hook.sh: Git hook for translation validation"
 echo "   - github-actions-workflow.yml: GitHub Actions workflow"

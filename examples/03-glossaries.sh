@@ -17,8 +17,9 @@ fi
 echo "✓ API key configured"
 echo
 
-# Setup: Create sample glossary files
-SAMPLE_DIR="examples/sample-files"
+# Setup: Create sample glossary files in temp directory
+SAMPLE_DIR="/tmp/deepl-example-03/sample-files"
+rm -rf /tmp/deepl-example-03
 mkdir -p "$SAMPLE_DIR"
 
 # Create a tech terminology glossary (EN → DE)
@@ -98,6 +99,11 @@ echo
 echo "9. Verify glossaries are deleted"
 deepl glossary list
 echo
+
+# Cleanup temporary files
+echo "Cleaning up temporary files..."
+rm -rf /tmp/deepl-example-03
+echo "✓ Cleanup complete"
 
 echo "=== All glossary examples completed! ==="
 echo

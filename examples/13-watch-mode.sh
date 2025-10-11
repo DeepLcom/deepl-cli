@@ -39,7 +39,7 @@ echo "   In another terminal, try editing $TEST_DIR/document.md"
 echo
 
 # Run watch in background for demonstration
-timeout 5s deepl watch "$TEST_DIR/document.md" --targets es,fr --debounce 1000 &
+deepl watch "$TEST_DIR/document.md" --targets es,fr --debounce 1000 &
 WATCH_PID=$!
 
 sleep 2
@@ -53,9 +53,10 @@ cat >> "$TEST_DIR/document.md" << 'EOF'
 This line was added while watch mode is running.
 EOF
 
-sleep 4
+sleep 3
 
-# Wait for watch to complete
+# Stop watch mode
+kill $WATCH_PID 2>/dev/null || true
 wait $WATCH_PID 2>/dev/null || true
 
 echo "   ✓ Watch mode demo completed"
