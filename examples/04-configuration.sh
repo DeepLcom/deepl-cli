@@ -7,6 +7,16 @@ set -e  # Exit on error
 echo "=== DeepL CLI Example 4: Configuration ==="
 echo
 
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
+
+echo "✓ API key configured"
+echo
+
 # Example 1: View all configuration
 echo "1. View all configuration"
 deepl config list
@@ -80,18 +90,16 @@ echo "   Reverting to Free endpoint:"
 deepl config set api.baseUrl https://api-free.deepl.com/v2
 echo
 
-# Example 7: Reset configuration
+# Example 7: Reset configuration (demonstration only - not actually run)
 echo "7. Reset configuration to defaults"
-echo "   Resetting..."
-deepl config reset
+echo "   ⚠️  Note: This example demonstrates the command but doesn't run it"
+echo "   because it would clear the API key and break subsequent examples."
 echo
-
-echo "   Verifying reset - target languages should be empty:"
-deepl config get defaults.targetLangs
+echo "   To reset config in real usage:"
+echo "   $ deepl config reset"
 echo
-
-echo "   Verifying reset - cache should be enabled:"
-deepl config get cache.enabled
+echo "   After reset, you'll need to set your API key again:"
+echo "   $ deepl auth set-key YOUR_API_KEY"
 echo
 
 echo "=== All configuration examples completed! ==="

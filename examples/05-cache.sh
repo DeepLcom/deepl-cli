@@ -7,6 +7,16 @@ set -e  # Exit on error
 echo "=== DeepL CLI Example 5: Cache Management ==="
 echo
 
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
+
+echo "✓ API key configured"
+echo
+
 # Example 1: Check initial cache stats
 echo "1. Check initial cache statistics"
 deepl cache stats

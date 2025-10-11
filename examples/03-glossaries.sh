@@ -7,6 +7,16 @@ set -e  # Exit on error
 echo "=== DeepL CLI Example 3: Glossaries ==="
 echo
 
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
+
+echo "✓ API key configured"
+echo
+
 # Setup: Create sample glossary files
 SAMPLE_DIR="examples/sample-files"
 mkdir -p "$SAMPLE_DIR"
