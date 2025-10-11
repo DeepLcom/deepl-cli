@@ -150,7 +150,7 @@ TOTAL=$(ls -1 "$SAMPLE_DIR"/*.md | wc -l)
 CURRENT=0
 
 for file in "$SAMPLE_DIR"/*.md; do
-  ((CURRENT++))
+  CURRENT=$((CURRENT + 1))
   filename=$(basename "$file")
   PERCENT=$((CURRENT * 100 / TOTAL))
 
@@ -174,9 +174,9 @@ for file in "$SAMPLE_DIR"/*.md; do
   filename=$(basename "$file")
 
   if deepl translate "$file" --to ko --output "$OUTPUT_DIR/ko/" 2>>"$ERRORS_FILE"; then
-    ((SUCCESS++))
+    SUCCESS=$((SUCCESS + 1))
   else
-    ((FAILED++))
+    FAILED=$((FAILED + 1))
     echo "   ✗ Failed: $filename (logged to errors.log)"
   fi
 done
