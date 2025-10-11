@@ -209,6 +209,8 @@ program
   .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
   .option('--context <text>', 'Additional context to improve translation quality')
+  .option('--split-sentences <mode>', 'Sentence splitting: on, off, nonewlines (default: on)')
+  .option('--tag-handling <mode>', 'Tag handling for XML/HTML: xml, html')
   .option('--recursive', 'Process subdirectories recursively (default: true)', true)
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
   .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
@@ -220,6 +222,8 @@ program
     formality?: string;
     preserveCode?: boolean;
     context?: string;
+    splitSentences?: string;
+    tagHandling?: string;
     recursive?: boolean;
     pattern?: string;
     concurrency?: number;

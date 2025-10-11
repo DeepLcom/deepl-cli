@@ -277,54 +277,54 @@ Target Languages:
 
 ### 🟡 MEDIUM PRIORITY: Missing CLI Options
 
-#### 3. Split Sentences Control
+#### 3. Split Sentences Control ✅ IMPLEMENTED
 
-**Status**: ✅ Implemented in types and API client, ❌ NOT exposed in CLI
+**Status**: ✅ Fully implemented in API client, ✅ EXPOSED in CLI (v0.2.1)
 
 **Type Definition**: `splitSentences?: 'on' | 'off' | 'nonewlines'`
 - Location: `src/types/api.ts:16`
 - Supported in: `TranslationOptions` interface
-- API client: Uses parameter if provided
+- API client: Uses parameter if provided (line 129-131)
 
-**Missing CLI Flag**:
+**CLI Flag**:
 ```bash
-deepl translate "Text." --to es --split-sentences on|off|nonewlines
+deepl translate "Text." --to es --split-sentences on|off|nonewlines  ✅ IMPLEMENTED
 ```
 
-**Implementation Effort**: ~15 minutes
-- Add option to translate command in `src/cli/index.ts:129`
-- Pass through to translation service
-- Document in README
+**Implementation Details** (2025-10-11):
+- Added `--split-sentences` flag to translate command in `src/cli/index.ts:212`
+- Passes through to API client automatically
+- Full documentation with examples in docs/API.md
 
 **Use Case**: Control how DeepL splits sentences during translation
 
-**Comparison to Python Library**: Python supports this parameter
+**Comparison to Python Library**: ✅ Parity achieved
 
 ---
 
-#### 4. Tag Handling
+#### 4. Tag Handling ✅ IMPLEMENTED
 
-**Status**: ✅ Implemented in types and API client, ❌ NOT exposed in CLI
+**Status**: ✅ Fully implemented in API client, ✅ EXPOSED in CLI (v0.2.1)
 
 **Type Definition**: `tagHandling?: 'xml' | 'html'`
 - Location: `src/types/api.ts:17`
 - Supported in: `TranslationOptions` interface
-- API client: Uses parameter if provided
+- API client: Uses parameter if provided (line 133-135)
 
-**Missing CLI Flag**:
+**CLI Flag**:
 ```bash
-deepl translate file.html --to es --tag-handling html
-deepl translate config.xml --to fr --tag-handling xml
+deepl translate file.html --to es --tag-handling html  ✅ IMPLEMENTED
+deepl translate config.xml --to fr --tag-handling xml  ✅ IMPLEMENTED
 ```
 
-**Implementation Effort**: ~15 minutes
-- Add option to translate command in `src/cli/index.ts`
-- Pass through to translation service
-- Document in README
+**Implementation Details** (2025-10-11):
+- Added `--tag-handling` flag to translate command in `src/cli/index.ts:213`
+- Passes through to API client automatically
+- Full documentation with examples in docs/API.md
 
 **Use Case**: Proper handling of XML/HTML tags during translation
 
-**Comparison to Python Library**: Python supports this parameter
+**Comparison to Python Library**: ✅ Parity achieved
 
 ---
 
@@ -335,8 +335,8 @@ deepl translate config.xml --to fr --tag-handling xml
 | **translate()** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
 | **getUsage()** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | ✅ DONE |
 | **getSupportedLanguages()** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | ✅ DONE |
-| **splitSentences** | ✅ | ✅ | ❌ | ❌ | ✅ Python has it | 🟢 LOW |
-| **tagHandling** | ✅ | ✅ | ❌ | ❌ | ✅ Python has it | 🟢 LOW |
+| **splitSentences** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | ✅ DONE |
+| **tagHandling** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | ✅ DONE |
 | **formality** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
 | **context** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
 | **preserveCode** | ✅ | ✅ | ✅ | ✅ | ⭐ CLI-only | - |
@@ -348,15 +348,15 @@ deepl translate config.xml --to fr --tag-handling xml
 ### 🚀 Quick Wins Summary
 
 **Total Estimated Effort**: ~90 minutes for all 4 features
-**Completed**: 2/4 features (50%)
-**Remaining**: ~30 minutes
+**Completed**: 4/4 features (100%) ✅ ALL DONE!
+**Remaining**: 0 minutes
 
 1. **Add `deepl usage` command** - ✅ DONE (Implemented 2025-10-11)
 2. **Add `deepl languages` command** - ✅ DONE (Implemented 2025-10-11)
-3. **Add `--split-sentences` flag** - 15 min ⏳ Next
-4. **Add `--tag-handling` flag** - 15 min ⏳ Remaining
+3. **Add `--split-sentences` flag** - ✅ DONE (Implemented 2025-10-11)
+4. **Add `--tag-handling` flag** - ✅ DONE (Implemented 2025-10-11)
 
-**Value**: Brings CLI to feature parity with Python library for these core features.
+**Value**: ✅ CLI now has full feature parity with Python library for these core features!
 
 ---
 

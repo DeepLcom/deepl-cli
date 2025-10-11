@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - LanguagesCommand with comprehensive unit tests (12 tests)
   - Added example script: `examples/11-languages.sh`
   - Full documentation in README.md and API.md
+- **Translation Options** - Exposed additional DeepL API parameters
+  - `--split-sentences` flag for sentence splitting control (on, off, nonewlines)
+  - `--tag-handling` flag for XML/HTML tag preservation (xml, html)
+  - Both options were already implemented in API client, now accessible via CLI
+  - Full documentation with examples in docs/API.md
 - **Write Command CLI Flags** - Exposed all write command features via CLI
   - `--output` / `-o` - Write improved text to file
   - `--in-place` - Edit file in place

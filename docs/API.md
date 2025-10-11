@@ -177,6 +177,35 @@ deepl translate "How are you?" --to de --formality less
 # → "Wie geht es dir?" (informal)
 ```
 
+**Sentence splitting:**
+```bash
+# Default behavior (sentences split on punctuation and newlines)
+deepl translate "Hello. How are you?" --to es
+# → "Hola. ¿Cómo estás?"
+
+# Disable sentence splitting (treat as one unit)
+deepl translate "Hello. How are you?" --to es --split-sentences off
+# → May produce different translation
+
+# Split only on punctuation, not newlines
+deepl translate "Line 1\nLine 2" --to es --split-sentences nonewlines
+# → Preserves line breaks while splitting sentences
+```
+
+**Tag handling (XML/HTML):**
+```bash
+# Translate XML while preserving tags
+deepl translate "<p>Hello world</p>" --to es --tag-handling xml
+# → "<p>Hola mundo</p>"
+
+# Translate HTML content
+deepl translate "<div><span>Welcome</span></div>" --to de --tag-handling html
+# → "<div><span>Willkommen</span></div>"
+
+# Useful for localizing markup files
+deepl translate content.html --to fr --tag-handling html --output content.fr.html
+```
+
 ---
 
 ### write
