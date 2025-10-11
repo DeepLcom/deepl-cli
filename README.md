@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/tests-523%20passing-brightgreen)](https://git.deepl.dev/hack-projects/deepl-cli)
+[![Tests](https://img.shields.io/badge/tests-549%20passing-brightgreen)](https://git.deepl.dev/hack-projects/deepl-cli)
 
 **DeepL CLI** is a comprehensive, developer-friendly command-line tool that integrates DeepL's powerful translation API and cutting-edge Write API for grammar and style enhancement. Built with TypeScript and designed for modern development workflows.
 
@@ -71,10 +71,10 @@ This project follows a phased development approach with strict Test-Driven Devel
 - [x] Check mode (`--check`)
 - [x] Auto-fix mode (`--fix`, `--backup`)
 
-**Test Coverage**: 523 tests (523 passing, 100% pass rate)
+**Test Coverage**: 549 tests (549 passing, 100% pass rate)
 - Unit tests: 416 (~81% coverage)
 - Integration tests: 68 (all passing)
-- E2E tests: 39 (all passing)
+- E2E tests: 65 (all passing)
 
 ### Phase 3: TUI & Collaboration (Future)
 - [ ] Interactive TUI application
@@ -265,6 +265,8 @@ deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
 - `prefer_quality_optimized` - Prefer quality, fallback to latency if unavailable
 - `latency_optimized` - Faster responses, slightly lower quality (ideal for real-time use)
 
+See [examples/12-model-type-selection.sh](./examples/12-model-type-selection.sh) for a complete example with different model types.
+
 ### Writing Enhancement
 
 Improve your writing with AI-powered grammar, style, and tone suggestions using the **DeepL Write API**.
@@ -418,6 +420,8 @@ Pattern: *.md
 Press Ctrl+C to stop
 ```
 
+See [examples/13-watch-mode.sh](./examples/13-watch-mode.sh) for a complete watch mode example with multiple scenarios.
+
 ### Git Hooks
 
 Automate translation validation in your git workflow with pre-commit and pre-push hooks.
@@ -462,6 +466,8 @@ Git Hooks Status:
 ```
 
 **Note:** The hooks are generated with placeholder validation logic. You can customize them based on your project's translation workflow by editing the hook files directly at `.git/hooks/pre-commit` or `.git/hooks/pre-push`.
+
+See [examples/14-git-hooks.sh](./examples/14-git-hooks.sh) for a complete git hooks example demonstrating installation, usage, and management.
 
 ### Configuration
 
@@ -790,7 +796,7 @@ See [DESIGN.md](./DESIGN.md) for detailed architecture documentation.
 
 ### Test Coverage
 
-Current coverage: **80.93%** (523 tests, 523 passing, 100% pass rate)
+Current coverage: **80.93%** (549 tests, 549 passing, 100% pass rate)
 
 ```bash
 # Run all tests
@@ -819,7 +825,7 @@ npm test -- --watch
 - **Integration Tests**: 68 tests (all passing)
   - Multi-component interactions
   - CLI command execution
-- **E2E Tests**: 39 tests (all passing)
+- **E2E Tests**: 65 tests (all passing)
   - Complete user workflows
   - Real CLI command scenarios
 

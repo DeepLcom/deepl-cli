@@ -665,23 +665,86 @@ Update when:
 - Update version numbers and dates when applicable
 
 **IMPORTANT: Always add working examples when adding new features:**
-- Create a new example script in `examples/` directory (e.g., `examples/10-usage-monitoring.sh`)
-- Make the example executable: `chmod +x examples/*.sh`
-- Update `examples/README.md` with a link to the new example
-- Reference the example in the main README.md where the feature is documented
-- Examples should demonstrate real-world usage patterns, not just basic syntax
-- Each example should be runnable and include helpful comments
 
-**Example:**
+Every new feature or command MUST include a working example script following these requirements:
+
+#### Example Script Requirements
+
+1. **Create the script**:
+   - Add to `examples/` directory with sequential numbering (e.g., `examples/13-new-feature.sh`)
+   - Make executable: `chmod +x examples/13-new-feature.sh`
+
+2. **Follow the standard format**:
+   ```bash
+   #!/bin/bash
+   # Example X: Feature Name
+   # Brief description of what this example demonstrates
+
+   set -e  # Exit on error
+
+   echo "=== DeepL CLI Example X: Feature Name ==="
+   echo
+
+   # Check if API key is configured
+   if ! deepl auth show &>/dev/null; then
+     echo "❌ Error: API key not configured"
+     echo "Run: deepl auth set-key YOUR_API_KEY"
+     exit 1
+   fi
+
+   echo "✓ API key configured"
+   echo
+
+   # Example demonstrations...
+   echo "1. First example scenario"
+   # Commands here
+   echo
+
+   # More examples...
+
+   # Cleanup (if files were created)
+   echo "Cleaning up temporary files..."
+   rm -rf /tmp/deepl-example-XX
+   echo "✓ Cleanup complete"
+
+   echo "=== All examples completed successfully! ==="
+   ```
+
+3. **Key format requirements**:
+   - **Consistent header**: `=== DeepL CLI Example X: Feature Name ===`
+   - **API key check**: Always validate API key is configured before running commands
+   - **Use /tmp for files**: Create all temporary files in `/tmp/deepl-example-XX/`
+   - **Complete cleanup**: Remove ALL temporary files/directories at the end
+   - **Consistent footer**: `=== All examples completed successfully! ===`
+   - **Numbered examples**: Use "1. Description", "2. Description" format
+   - **Educational content**: Include tips, use cases, or feature explanations
+
+4. **Documentation updates**:
+   - Update `examples/README.md` with a link to the new example
+   - Reference the example in the main `README.md` where the feature is documented
+   - Examples should demonstrate real-world usage patterns, not just basic syntax
+   - Include helpful comments explaining what each section does
+
+**Example commit:**
 ```bash
 feat(watch): add watch mode with auto-translation
 
 Implement file watching with debouncing and auto-commit support.
 Updates README.md with watch mode examples and configuration.
 Updates DESIGN.md with WatchService architecture details.
-Adds examples/07-watch-mode.sh demonstrating watch mode usage.
+Adds examples/13-watch-mode.sh demonstrating watch mode usage.
 Updates examples/README.md with link to new example.
 ```
+
+**Quality checklist for examples:**
+- [ ] Script is executable (`chmod +x`)
+- [ ] Follows standard format (header, API check, cleanup, footer)
+- [ ] Uses /tmp for temporary files
+- [ ] Cleans up all temporary files
+- [ ] Includes multiple usage scenarios
+- [ ] Has educational content (tips, use cases)
+- [ ] Script runs without errors
+- [ ] Referenced in README.md and examples/README.md
 
 ---
 

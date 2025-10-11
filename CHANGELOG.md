@@ -8,13 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.2.1] - 2025-10-11
+
+### Added
 - **Model Type Selection** - Choose quality vs speed trade-offs for translation
   - New `--model-type` flag for translate command
   - Three model types: `quality_optimized` (default), `prefer_quality_optimized`, `latency_optimized`
   - Use quality_optimized for documents and marketing content
   - Use latency_optimized for real-time chat and live subtitles
   - ModelType union type added to TranslationOptions
-  - 4 comprehensive unit tests (all passing, 523 total tests)
+  - 4 comprehensive unit tests (all passing, 549 total tests)
   - Added example script: `examples/12-model-type-selection.sh`
   - Full documentation in README.md and docs/API.md
 - **Usage Command** - Monitor API character usage and quota
@@ -63,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed chokidar TypeScript import issue in WatchService
   - Replaced deprecated `chokidar.WatchOptions` with inline type definition
-  - All 509 tests now passing
+  - All 523 tests now passing
 - Fixed glossary API endpoints missing `/v2` path prefix
   - Added `/v2` prefix to all glossary endpoints (create, list, get, delete, entries)
   - Glossary commands now work correctly with DeepL API v2

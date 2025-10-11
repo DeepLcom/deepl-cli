@@ -4,7 +4,17 @@
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 11: Supported Languages ===="
+echo "=== DeepL CLI Example 11: Supported Languages ==="
+echo
+
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
+
+echo "✓ API key configured"
 echo
 
 # Example 1: List all languages (both source and target)
@@ -65,3 +75,5 @@ echo "   - es: Spanish"
 echo "   - ja: Japanese"
 echo "   - zh: Chinese"
 echo
+
+echo "=== All examples completed successfully! ==="

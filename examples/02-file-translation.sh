@@ -7,10 +7,21 @@ set -e  # Exit on error
 echo "=== DeepL CLI Example 2: File Translation ==="
 echo
 
-# Setup: Create sample files
-SAMPLE_DIR="examples/sample-files"
-OUTPUT_DIR="examples/output"
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
 
+echo "✓ API key configured"
+echo
+
+# Setup: Create sample files in temp directory
+SAMPLE_DIR="/tmp/deepl-example-02/sample-files"
+OUTPUT_DIR="/tmp/deepl-example-02/output"
+
+rm -rf /tmp/deepl-example-02
 mkdir -p "$SAMPLE_DIR" "$OUTPUT_DIR"
 
 # Create sample text file
@@ -75,10 +86,16 @@ echo
 # Example 4: Show the translated markdown has preserved code
 echo "4. Verify code blocks are preserved:"
 echo "   Original code block:"
-grep -A 1 '```bash' "$SAMPLE_DIR/sample.md"
+grep -A 2 '```' "$SAMPLE_DIR/sample.md" | head -4
 echo
-echo "   Translated code block (should be identical):"
-grep -A 1 '```bash' "$OUTPUT_DIR/sample.ja.md"
+echo "   Translated file:"
+if grep -q '```' "$OUTPUT_DIR/sample.ja.md"; then
+  echo "   ✓ Code block markers preserved"
+  grep -A 2 '```' "$OUTPUT_DIR/sample.ja.md" | head -4
+else
+  echo "   ⚠️  Note: Code blocks were translated (DeepL API behavior)"
+  echo "   The --preserve-code flag helps but may not catch all cases"
+fi
 echo
 
 # Example 5: Translate with formality
@@ -94,4 +111,11 @@ cat "$OUTPUT_DIR/formal.de.txt"
 echo
 
 echo "=== All file translation examples completed! ==="
-echo "📁 Check the output directory: $OUTPUT_DIR"
+echo
+
+# Cleanup
+echo "Cleaning up temporary files..."
+rm -rf /tmp/deepl-example-02
+echo "✓ Cleanup complete"
+
+echo "=== All examples completed successfully! ==="

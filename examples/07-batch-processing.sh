@@ -7,11 +7,23 @@ set -e  # Exit on error
 echo "=== DeepL CLI Example 7: Batch Processing ==="
 echo
 
-# Setup: Create multiple sample files
-SAMPLE_DIR="examples/sample-files/batch"
-OUTPUT_DIR="examples/output/batch"
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
 
-mkdir -p "$SAMPLE_DIR" "$OUTPUT_DIR"
+echo "✓ API key configured"
+echo
+
+# Setup: Create multiple sample files in temp directory
+SAMPLE_DIR="/tmp/deepl-example-07/sample-files/batch"
+OUTPUT_DIR="/tmp/deepl-example-07/output/batch"
+RECHECK_DIR="/tmp/deepl-example-07/sample-files/recheck"
+
+rm -rf /tmp/deepl-example-07
+mkdir -p "$SAMPLE_DIR" "$OUTPUT_DIR" "$RECHECK_DIR"
 
 # Create sample files
 echo "Setting up sample files..."
@@ -109,8 +121,6 @@ echo
 
 # Example 5: Selective batch translation (only changed files)
 echo "5. Selective batch translation (check if translation exists)"
-RECHECK_DIR="examples/sample-files/recheck"
-mkdir -p "$RECHECK_DIR"
 
 cat > "$RECHECK_DIR/new-doc.md" << 'EOF'
 # New Documentation
@@ -219,3 +229,11 @@ echo "   - Organize by language subdirectories"
 echo "   - Check for existing translations to avoid re-processing"
 echo "   - Log errors for debugging"
 echo "   - Use progress indicators for large batches"
+echo
+
+# Cleanup
+echo "Cleaning up temporary files..."
+rm -rf /tmp/deepl-example-07
+echo "✓ Cleanup complete"
+
+echo "=== All examples completed successfully! ==="

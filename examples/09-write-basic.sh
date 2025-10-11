@@ -1,13 +1,21 @@
 #!/bin/bash
+# Example 9: DeepL Write API
+# Demonstrates grammar, style, and tone enhancement
 
-# Example: Using DeepL Write API for text improvement
-# This example demonstrates grammar, style, and tone enhancement
+set -e  # Exit on error
 
-echo "=== DeepL Write API Examples ==="
+echo "=== DeepL CLI Example 9: DeepL Write API ==="
 echo
 
-# NOTE: Replace with your actual DeepL API key
-# export DEEPL_API_KEY="your-api-key-here"
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
+
+echo "✓ API key configured"
+echo
 
 # Basic text improvement
 echo "1. Basic text improvement:"
@@ -77,4 +85,4 @@ echo "14. Prefer business style (with fallback):"
 deepl write "We need to discuss this." --lang en-US --style prefer_business
 echo
 
-echo "Done!"
+echo "=== All examples completed successfully! ==="

@@ -7,6 +7,16 @@ set -e  # Exit on error
 echo "=== DeepL CLI Example 10: API Usage Monitoring ==="
 echo
 
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
+
+echo "✓ API key configured"
+echo
+
 # Example 1: Check initial API usage
 echo "1. Check current API usage statistics"
 deepl usage
@@ -62,3 +72,5 @@ echo "   - Free tier: typically 500,000 chars/month"
 echo "   - Pro accounts: varies by subscription"
 echo "   - Usage resets monthly"
 echo
+
+echo "=== All examples completed successfully! ==="

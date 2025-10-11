@@ -1,14 +1,21 @@
 #!/bin/bash
-
 # Example 12: Model Type Selection
 # Demonstrates using different model types for quality vs. speed trade-offs
 
-set -e
+set -e  # Exit on error
 
-echo "======================================"
-echo "Model Type Selection Examples"
-echo "======================================"
-echo ""
+echo "=== DeepL CLI Example 12: Model Type Selection ==="
+echo
+
+# Check if API key is configured
+if ! deepl auth show &>/dev/null; then
+  echo "❌ Error: API key not configured"
+  echo "Run: deepl auth set-key YOUR_API_KEY"
+  exit 1
+fi
+
+echo "✓ API key configured"
+echo
 
 # Example 1: Quality Optimized (default)
 echo "1. Quality Optimized (best quality, standard latency)"
@@ -98,27 +105,27 @@ for msg in "${MESSAGES[@]}"; do
   echo ""
 done
 
-echo ""
-echo "======================================"
-echo "Model Type Selection Guide"
-echo "======================================"
-echo ""
+echo
+echo "Model Type Selection Guide:"
+echo
 echo "quality_optimized (default):"
 echo "  • Best translation quality"
 echo "  • Standard latency"
 echo "  • Use for: Documents, marketing, professional content"
-echo ""
+echo
 echo "prefer_quality_optimized:"
 echo "  • Prefers quality model"
 echo "  • Falls back to latency if unavailable"
 echo "  • Use for: Important content with some flexibility"
-echo ""
+echo
 echo "latency_optimized:"
 echo "  • Faster response times"
 echo "  • Slightly lower quality"
 echo "  • Use for: Real-time chat, live subtitles, interactive apps"
-echo ""
+echo
 echo "💡 Tip: For most use cases, the default quality_optimized model"
 echo "   provides the best results. Use latency_optimized only when"
 echo "   response time is critical."
-echo ""
+echo
+
+echo "=== All examples completed successfully! ==="
