@@ -71,10 +71,7 @@ This project follows a phased development approach with strict Test-Driven Devel
 - [x] Check mode (`--check`)
 - [x] Auto-fix mode (`--fix`, `--backup`)
 
-**Test Coverage**: 549 tests (549 passing, 100% pass rate)
-- Unit tests: 416 (~81% coverage)
-- Integration tests: 68 (all passing)
-- E2E tests: 65 (all passing)
+**Test Coverage**: 549 tests passing, ~81% code coverage
 
 ### Phase 3: TUI & Collaboration (Future)
 - [ ] Interactive TUI application
@@ -803,9 +800,9 @@ Current coverage: **80.93%** (549 tests, 549 passing, 100% pass rate)
 npm test
 
 # Run specific test type
-npm test -- tests/unit
-npm test -- tests/integration
-npm test -- tests/e2e
+npm run test:unit
+npm run test:integration
+npm run test:e2e
 
 # Run specific test file
 npm test -- translation.test.ts
@@ -815,23 +812,18 @@ npm run test:coverage
 
 # Watch mode for TDD
 npm test -- --watch
+
+# Run all example scripts (validation)
+npm run examples
+
+# Run example scripts (fast mode, skips slow examples)
+npm run examples:fast
 ```
-
-### Test Statistics (v0.2.0)
-
-- **Unit Tests**: 416 tests (81% coverage)
-  - Services, API clients, utilities
-  - Isolated component testing
-- **Integration Tests**: 68 tests (all passing)
-  - Multi-component interactions
-  - CLI command execution
-- **E2E Tests**: 65 tests (all passing)
-  - Complete user workflows
-  - Real CLI command scenarios
 
 ### Testing Approach
 
 - **TDD**: All features developed using Test-Driven Development
+- **Comprehensive**: Unit, integration, and E2E tests
 - **Mocking**: DeepL API calls mocked for deterministic tests
 - **Real API Testing**: Manual testing documented in `MANUAL_TEST_REPORT.md`
 

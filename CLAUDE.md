@@ -530,6 +530,21 @@ npm test
 # Run tests with coverage
 npm run test:coverage
 
+# Run unit tests only
+npm run test:unit
+
+# Run integration tests only
+npm run test:integration
+
+# Run E2E tests only
+npm run test:e2e
+
+# Run all example scripts
+npm run examples
+
+# Run all example scripts (fast mode, skip slow examples)
+npm run examples:fast
+
 # Lint code
 npm run lint
 
@@ -722,6 +737,7 @@ Every new feature or command MUST include a working example script following the
 4. **Documentation updates**:
    - Update `examples/README.md` with a link to the new example
    - Reference the example in the main `README.md` where the feature is documented
+   - **Add the new script to `examples/run-all.sh`** in the EXAMPLES array
    - Examples should demonstrate real-world usage patterns, not just basic syntax
    - Include helpful comments explaining what each section does
 
@@ -745,6 +761,7 @@ Updates examples/README.md with link to new example.
 - [ ] Has educational content (tips, use cases)
 - [ ] Script runs without errors
 - [ ] Referenced in README.md and examples/README.md
+- [ ] Added to examples/run-all.sh in the EXAMPLES array
 
 ---
 
