@@ -563,6 +563,98 @@ describe('TranslateCommand', () => {
     });
   });
 
+  describe('advanced translation options', () => {
+    it('should pass splitSentences option when specified', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Primera oración. Segunda oración.',
+      });
+
+      await translateCommand.translateText('First sentence. Second sentence.', {
+        to: 'es',
+        splitSentences: 'nonewlines',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'First sentence. Second sentence.',
+        expect.objectContaining({
+          targetLang: 'es',
+          splitSentences: 'nonewlines',
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass tagHandling option when specified', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: '<p>Hola mundo</p>',
+      });
+
+      await translateCommand.translateText('<p>Hello world</p>', {
+        to: 'es',
+        tagHandling: 'html',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<p>Hello world</p>',
+        expect.objectContaining({
+          targetLang: 'es',
+          tagHandling: 'html',
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass formality to translateToMultiple', async () => {
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'de', text: 'Hallo' },
+      ]);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es,de',
+        formality: 'more',
+      });
+
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        ['es', 'de'],
+        expect.objectContaining({
+          formality: 'more',
+        })
+      );
+    });
+
+    it('should work with all options combined', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: '<p>Hola. ¿Cómo estás?</p>',
+      });
+
+      await translateCommand.translateText('<p>Hello. How are you?</p>', {
+        to: 'es',
+        from: 'en',
+        formality: 'more',
+        context: 'Formal email greeting',
+        splitSentences: 'on',
+        tagHandling: 'html',
+        modelType: 'quality_optimized',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<p>Hello. How are you?</p>',
+        expect.objectContaining({
+          targetLang: 'es',
+          sourceLang: 'en',
+          formality: 'more',
+          context: 'Formal email greeting',
+          splitSentences: 'on',
+          tagHandling: 'html',
+          modelType: 'quality_optimized',
+        }),
+        expect.any(Object)
+      );
+    });
+  });
+
   describe('translate() - file/directory detection', () => {
     it('should detect and route to translateDirectory() for directory paths', async () => {
       // Mock fs to indicate directory

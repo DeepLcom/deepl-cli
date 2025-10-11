@@ -76,6 +76,26 @@ describe('AuthCommand', () => {
 
       await expect(authCommand.setKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx')).rejects.toThrow('Failed to save config');
     });
+
+    it('should handle non-Error exceptions during validation', async () => {
+      // Mock DeepL client to throw non-Error exception
+      const mockGetUsage = jest.fn().mockRejectedValue('String error');
+      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
+        getUsage: mockGetUsage,
+      } as any));
+
+      await expect(authCommand.setKey('test-key')).rejects.toThrow('Failed to validate API key');
+    });
+
+    it('should handle non-authentication API errors', async () => {
+      // Mock DeepL client to throw error without "Authentication failed" message
+      const mockGetUsage = jest.fn().mockRejectedValue(new Error('Network timeout'));
+      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
+        getUsage: mockGetUsage,
+      } as any));
+
+      await expect(authCommand.setKey('test-key')).rejects.toThrow('Network timeout');
+    });
   });
 
   describe('getKey()', () => {
