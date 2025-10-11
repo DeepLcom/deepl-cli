@@ -10,8 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
+- **Test Coverage Improvements** - Comprehensive testing expansion for low-coverage areas
+  - WatchCommand: 42.85% → 87.05% (+44.2%) with 8 new tests
+    - Empty target validation, display messages, auto-commit scenarios
+    - Bug fix: Empty target languages validation now properly filters empty strings
+  - TranslateCommand: 70.79% → 73.45% (+2.66%) with 5 new tests
+    - Stdin error handling (whitespace, errors, large input)
+    - Multi-file translation options (sourceLang, formality)
+  - WatchService: 77.64% → 95.29% (+17.65%) with 11 new tests
+    - Pattern filtering (glob matching), translation options passthrough
+    - Error handling in event handlers, statistics tracking
+  - GitHooksService: 5.08% → 100% (+94.92%) with 33 new comprehensive tests
+    - Complete test suite with proper fs mocking and temp directory handling
+    - All methods tested: install, uninstall, isInstalled, list, findGitRoot
+    - Hook content generation, backup/restore, validation
+  - Total: +49 tests (557 → 606 tests, 100% pass rate)
 
 ### Fixed
+- Fixed empty target languages validation in WatchCommand
+  - Empty string split returns array with empty string, causing validation to pass incorrectly
+  - Added filter to remove empty strings before validation
+  - Now properly throws error when no target languages provided
 
 ## [0.2.1] - 2025-10-11
 

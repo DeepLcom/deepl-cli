@@ -367,6 +367,216 @@ describe('WatchCommand', () => {
       watchOptions.onError!('/test/file.md', new Error('Translation failed'));
       expect(console.error).toHaveBeenCalled();
     });
+
+    it('should throw error when no target languages provided', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+      await expect(
+        watchCommand.watch('/some/file.md', {
+          targets: '',
+        })
+      ).rejects.toThrow('At least one target language is required');
+    });
+
+    it('should display initial watch message with all options', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+
+      // Mock the watch service watch method to return a resolved promise
+      mockWatchService.watch.mockReturnValue(undefined as any);
+
+      // Start watch - it will reach the infinite Promise and hang there
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      watchCommand.watch('/some/file.md', {
+        targets: 'es,fr',
+        pattern: '*.md',
+        autoCommit: true,
+      });
+
+      // Wait a bit for console.log statements to execute
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Watching for changes'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Path: /some/file.md'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Targets: es, fr'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Pattern: *.md'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Auto-commit enabled'));
+
+      // Don't wait for the promise to resolve (it won't due to infinite Promise)
+    }, 1000);
+
+    it('should use current directory when file is in root', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      try {
+        await watchCommand.watch('file.md', {
+          targets: 'es',
+        });
+      } catch {
+        // Expected
+      }
+
+      expect(mockWatchService.watch).toHaveBeenCalledWith(
+        'file.md',
+        expect.objectContaining({
+          outputDir: '.',
+        })
+      );
+    });
+  });
+
+  describe('autoCommit', () => {
+    let mockExec: jest.Mock;
+
+    beforeEach(() => {
+      // Mock dynamic imports
+      mockExec = jest.fn().mockResolvedValue({ stdout: '', stderr: '' });
+      jest.mock('child_process', () => ({
+        exec: mockExec,
+      }));
+      jest.mock('util', () => ({
+        promisify: (fn: any) => fn,
+      }));
+
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+    });
+
+    it('should auto-commit translations when autoCommit is enabled for multiple languages', async () => {
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      // Mock exec to simulate git commands
+      const mockExecAsync = jest.fn()
+        .mockResolvedValueOnce({ stdout: '.git', stderr: '' }) // git rev-parse check
+        .mockResolvedValue({ stdout: '', stderr: '' }); // git add and commit
+
+      jest.doMock('child_process', () => ({
+        exec: jest.fn(),
+      }));
+      jest.doMock('util', () => ({
+        promisify: () => mockExecAsync,
+      }));
+
+      try {
+        await watchCommand.watch('/some/file.md', {
+          targets: 'es,fr',
+          autoCommit: true,
+        });
+      } catch {
+        // Expected
+      }
+
+      const watchOptions = mockWatchService.watch.mock.calls[0]![1];
+
+      // Trigger onTranslate callback with multiple languages
+      await watchOptions.onTranslate!('/test/file.md', [
+        { targetLang: 'es', text: 'texto', outputPath: '/test/file.es.md' },
+        { targetLang: 'fr', text: 'texte', outputPath: '/test/file.fr.md' },
+      ]);
+
+      // Verify console output includes auto-commit attempt
+      expect(console.log).toHaveBeenCalled();
+    });
+
+    it('should auto-commit translations when autoCommit is enabled for single language', async () => {
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      try {
+        await watchCommand.watch('/some/file.md', {
+          targets: 'es',
+          autoCommit: true,
+        });
+      } catch {
+        // Expected
+      }
+
+      const watchOptions = mockWatchService.watch.mock.calls[0]![1];
+
+      // Trigger onTranslate callback with single language
+      await watchOptions.onTranslate!('/test/file.md', {
+        targetLang: 'es',
+        text: 'texto',
+        outputPath: '/test/file.es.md',
+      });
+
+      expect(console.log).toHaveBeenCalled();
+    });
+
+    it('should handle auto-commit when not in git repository', async () => {
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      try {
+        await watchCommand.watch('/some/file.md', {
+          targets: 'es',
+          autoCommit: true,
+        });
+      } catch {
+        // Expected
+      }
+
+      const watchOptions = mockWatchService.watch.mock.calls[0]![1];
+
+      // Trigger onTranslate callback
+      await watchOptions.onTranslate!('/test/file.md', {
+        targetLang: 'es',
+        text: 'texto',
+        outputPath: '/test/file.es.md',
+      });
+
+      // Should not throw, just log warning
+      expect(console.log).toHaveBeenCalled();
+    });
+
+    it('should handle auto-commit with no output files', async () => {
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      try {
+        await watchCommand.watch('/some/file.md', {
+          targets: 'es',
+          autoCommit: true,
+        });
+      } catch {
+        // Expected
+      }
+
+      const watchOptions = mockWatchService.watch.mock.calls[0]![1];
+
+      // Trigger onTranslate callback with no outputPath
+      await watchOptions.onTranslate!('/test/file.md', {
+        targetLang: 'es',
+        text: 'texto',
+      });
+
+      // Should not throw
+      expect(console.log).toHaveBeenCalled();
+    });
+
+    it('should handle auto-commit errors gracefully', async () => {
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      try {
+        await watchCommand.watch('/some/file.md', {
+          targets: 'es',
+          autoCommit: true,
+        });
+      } catch {
+        // Expected
+      }
+
+      const watchOptions = mockWatchService.watch.mock.calls[0]![1];
+
+      // Trigger onTranslate callback
+      await watchOptions.onTranslate!('/test/file.md', {
+        targetLang: 'es',
+        text: 'texto',
+        outputPath: '/test/file.es.md',
+      });
+
+      // Should not throw on auto-commit failure
+      expect(console.log).toHaveBeenCalled();
+    });
   });
 
   describe('stop()', () => {

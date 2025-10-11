@@ -23,7 +23,6 @@
 
 ## 📋 Table of Contents
 
-- [Status](#-project-status)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
 - [Usage](#-usage)
@@ -37,48 +36,6 @@
 - [Architecture](#-architecture)
 - [Contributing](#-contributing)
 - [License](#-license)
-
-## 🚧 Project Status
-
-**Current Version: 0.2.0** (Phase 2 + Phase 3 Write Enhancements - Complete)
-
-This project follows a phased development approach with strict Test-Driven Development (TDD):
-
-### Phase 1: MVP (✅ Complete - v0.1.0)
-- [x] Basic translation command (`deepl translate`)
-- [x] Configuration management (`deepl config`)
-- [x] API key authentication (`deepl auth`)
-- [x] Local SQLite caching with LRU eviction
-- [x] Code block and variable preservation
-- [x] Multi-target language support
-- [x] Stdin support for piping
-- [x] Configurable API endpoints (free/pro/custom)
-- [x] File translation with format preservation (.txt, .md)
-- [x] Glossary management (create, list, show, delete)
-- [x] Cache management CLI commands
-
-### Phase 2: Advanced Features (✅ COMPLETE!)
-- [x] Context-aware translation
-- [x] Batch processing with parallel translation
-- [x] Watch mode with file watching
-- [x] **DeepL Write integration**
-- [x] **Git hooks integration**
-
-### Phase 3 Write Enhancements (✅ COMPLETE!)
-- [x] Interactive mode with multiple style alternatives (`--interactive`)
-- [x] File input/output support (`--output`, `--in-place`)
-- [x] Diff view (`--diff`)
-- [x] Check mode (`--check`)
-- [x] Auto-fix mode (`--fix`, `--backup`)
-
-**Test Coverage**: 549 tests passing, ~81% code coverage
-
-### Phase 3: TUI & Collaboration (Future)
-- [ ] Interactive TUI application
-- [ ] Translation memory
-- [ ] Team collaboration features
-
-See [DESIGN.md](./DESIGN.md) for detailed architecture and feature specifications.
 
 ## 📦 Installation
 
@@ -122,6 +79,7 @@ deepl auth set-key YOUR_API_KEY
 ```
 
 Or use an environment variable:
+
 ```bash
 export DEEPL_API_KEY=YOUR_API_KEY
 ```
@@ -258,6 +216,7 @@ deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
 ```
 
 **Model Types:**
+
 - `quality_optimized` (default) - Best translation quality, standard latency
 - `prefer_quality_optimized` - Prefer quality, fallback to latency if unavailable
 - `latency_optimized` - Faster responses, slightly lower quality (ideal for real-time use)
@@ -267,8 +226,6 @@ See [examples/12-model-type-selection.sh](./examples/12-model-type-selection.sh)
 ### Writing Enhancement
 
 Improve your writing with AI-powered grammar, style, and tone suggestions using the **DeepL Write API**.
-
-**Phase 3 Enhancements**: Now includes file operations, diff view, check mode, auto-fix, and interactive mode! ✨
 
 ```bash
 # Basic text improvement
@@ -325,6 +282,7 @@ deepl write "This text could be better." --lang en-US --diff
 ```
 
 **Supported Languages:**
+
 - German (`de`)
 - English - British (`en-GB`)
 - English - American (`en-US`)
@@ -335,6 +293,7 @@ deepl write "This text could be better." --lang en-US --diff
 - Portuguese - European (`pt-PT`)
 
 **Writing Styles:**
+
 - `simple` - Easy-to-read, accessible language
 - `business` - Professional, formal business tone
 - `academic` - Scholarly, research-oriented style
@@ -342,6 +301,7 @@ deepl write "This text could be better." --lang en-US --diff
 - `prefer_*` prefix - Apply style only if language supports it
 
 **Tones:**
+
 - `enthusiastic` - Energetic and positive
 - `friendly` - Warm and approachable
 - `confident` - Assertive and certain
@@ -393,6 +353,7 @@ deepl watch docs/ --targets de --formality more --preserve-code
 ```
 
 **Features:**
+
 - 🔄 Real-time monitoring with debouncing
 - 📁 Watch files or entire directories
 - 🎯 Glob pattern filtering (e.g., `*.md`, `*.json`)
@@ -401,6 +362,7 @@ deepl watch docs/ --targets de --formality more --preserve-code
 - ⚡ Smart debouncing to avoid redundant translations
 
 **Example output:**
+
 ```
 👀 Watching for changes...
 Path: docs/
@@ -446,6 +408,7 @@ deepl hooks uninstall pre-commit
 - **pre-push**: Validates all translations in the repository before pushing to remote
 
 **Features:**
+
 - 🔒 Safe installation with automatic backup of existing hooks
 - 🎯 Only validates changed files (pre-commit)
 - ⚡ Lightweight and fast
@@ -453,6 +416,7 @@ deepl hooks uninstall pre-commit
 - 🗑️ Clean uninstallation with backup restoration
 
 **Hook Status Example:**
+
 ```
 $ deepl hooks list
 
@@ -487,6 +451,7 @@ deepl auth clear
 ```
 
 Or use an environment variable:
+
 ```bash
 export DEEPL_API_KEY=YOUR_API_KEY
 ```
@@ -644,6 +609,7 @@ deepl glossary delete tech-terms
 ```
 
 **Glossary file format (TSV):**
+
 ```tsv
 source_term	target_term
 API	API
@@ -912,4 +878,4 @@ See [TODO.md](./TODO.md) for the complete development roadmap.
 
 **Built with ❤️ using Test-Driven Development**
 
-*Powered by DeepL's next-generation language model*
+_Powered by DeepL's next-generation language model_

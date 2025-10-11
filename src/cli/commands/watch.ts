@@ -40,7 +40,7 @@ export class WatchCommand {
     }
 
     // Parse target languages
-    const targetLangs = options.targets.split(',').map(lang => lang.trim()) as Language[];
+    const targetLangs = options.targets.split(',').map(lang => lang.trim()).filter(lang => lang.length > 0) as Language[];
 
     if (targetLangs.length === 0) {
       throw new Error('At least one target language is required. Use --targets es,fr,de');

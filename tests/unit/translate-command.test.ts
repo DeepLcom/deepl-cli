@@ -243,6 +243,67 @@ describe('TranslateCommand', () => {
         translateCommand.translateFromStdin({ to: 'es' })
       ).rejects.toThrow('No input provided');
     });
+
+    it('should throw error for whitespace-only stdin', async () => {
+      // Mock whitespace-only stdin
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          callback('   \n  \t  ');
+        } else if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
+      });
+
+      await expect(
+        translateCommand.translateFromStdin({ to: 'es' })
+      ).rejects.toThrow('No input provided');
+    });
+
+    it('should handle stdin errors', async () => {
+      // Mock stdin error
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'error') {
+          callback(new Error('Stdin read error'));
+        }
+        return mockStdin;
+      });
+
+      await expect(
+        translateCommand.translateFromStdin({ to: 'es' })
+      ).rejects.toThrow('Stdin read error');
+    });
+
+    it('should handle large stdin input', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Large translated text',
+      });
+
+      // Mock large stdin data (simulate chunks) - call all 'data' handlers, then 'end'
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          // Immediately call the callback with all chunks
+          callback('First chunk ');
+          callback('second chunk ');
+          callback('third chunk');
+        } else if (event === 'end') {
+          // Then call end
+          callback();
+        }
+        return mockStdin;
+      });
+
+      const result = await translateCommand.translateFromStdin({
+        to: 'es',
+      });
+
+      expect(result).toBe('Large translated text');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'First chunk second chunk third chunk',
+        expect.any(Object),
+        expect.any(Object)
+      );
+    });
   });
 
   describe('output formatting', () => {
@@ -672,6 +733,50 @@ describe('TranslateCommand', () => {
         { preserveCode: true }
       );
     });
+
+    it('should pass source language to multi-file translation', async () => {
+      const mockFileService = {
+        translateFileToMultiple: jest.fn().mockResolvedValue([
+          { targetLang: 'es', outputPath: '/output.es.txt' },
+          { targetLang: 'fr', outputPath: '/output.fr.txt' },
+        ]),
+      };
+      (translateCommand as any).fileTranslationService = mockFileService;
+
+      await (translateCommand as any).translateFile('/input.txt', {
+        to: 'es,fr',
+        from: 'en',
+        output: '/output',
+      });
+
+      expect(mockFileService.translateFileToMultiple).toHaveBeenCalledWith(
+        '/input.txt',
+        ['es', 'fr'],
+        expect.objectContaining({ sourceLang: 'en', outputDir: '/output' })
+      );
+    });
+
+    it('should pass formality to multi-file translation', async () => {
+      const mockFileService = {
+        translateFileToMultiple: jest.fn().mockResolvedValue([
+          { targetLang: 'es', outputPath: '/output.es.txt' },
+          { targetLang: 'de', outputPath: '/output.de.txt' },
+        ]),
+      };
+      (translateCommand as any).fileTranslationService = mockFileService;
+
+      await (translateCommand as any).translateFile('/input.txt', {
+        to: 'es,de',
+        formality: 'more',
+        output: '/output',
+      });
+
+      expect(mockFileService.translateFileToMultiple).toHaveBeenCalledWith(
+        '/input.txt',
+        ['es', 'de'],
+        expect.objectContaining({ formality: 'more', outputDir: '/output' })
+      );
+    });
   });
 
   describe('translateDirectory()', () => {
@@ -681,7 +786,14 @@ describe('TranslateCommand', () => {
       ).rejects.toThrow('Output directory is required');
     });
 
-    // Note: Directory translation ora spinner interactions are complex to mock
-    // This functionality is thoroughly validated through integration and E2E tests
+    // Note: Directory translation with ora spinner interactions is complex to mock due to ESM issues
+    // The spinner is created (line 281) before the onProgress callback (line 276) uses it,
+    // creating a forward reference that's difficult to test in unit tests.
+    // This functionality is thoroughly validated through integration and E2E tests:
+    // - Successful batch translation with statistics display
+    // - Failed files formatting (lines 221-225)
+    // - Skipped files count display (line 229-231)
+    // - Spinner progress updates (lines 187, 191)
+    // - Source language and formality passthrough to batch service
   });
 });

@@ -397,5 +397,270 @@ describe('WatchService', () => {
       expect(stats).toHaveProperty('translationsCount');
       expect(stats).toHaveProperty('errorsCount');
     });
+
+    it('should increment translation count after successful translation', async () => {
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      await watchService.watch(testDir, options);
+      await watchService.handleFileChange(testFile);
+
+      // Wait for debounce timer
+      await new Promise(resolve => setTimeout(resolve, 350));
+
+      const stats = watchService.getStats();
+      expect(stats.translationsCount).toBeGreaterThan(0);
+    });
+
+    it('should increment error count after failed translation', async () => {
+      // Suppress expected console.error
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockRejectedValue(
+        new Error('Translation failed')
+      );
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      await watchService.watch(testDir, options);
+      await watchService.handleFileChange(testFile);
+
+      // Wait for debounce timer
+      await new Promise(resolve => setTimeout(resolve, 350));
+
+      const stats = watchService.getStats();
+      expect(stats.errorsCount).toBeGreaterThan(0);
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('pattern filtering', () => {
+    it('should apply glob pattern with * prefix to filter by extension', async () => {
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        pattern: '*.md',
+      };
+
+      watchService.watch(testDir, options);
+
+      // Verify chokidar.watch was called with ignored function
+      const watchCall = (chokidar.watch as jest.Mock).mock.calls[0];
+      expect(watchCall).toBeDefined();
+      expect(watchCall[1]).toHaveProperty('ignored');
+      expect(typeof watchCall[1].ignored).toBe('function');
+
+      // Test the ignored function
+      const ignored = watchCall[1].ignored;
+      expect(ignored('/path/to/file.txt')).toBe(true);  // Should ignore .txt
+      expect(ignored('/path/to/file.md')).toBe(false);   // Should not ignore .md
+    });
+
+    it('should not filter when no pattern is specified', async () => {
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      watchService.watch(testDir, options);
+
+      const watchCall = (chokidar.watch as jest.Mock).mock.calls[0];
+      expect(watchCall[1]).not.toHaveProperty('ignored');
+    });
+
+    it('should prefer watchOptions pattern over constructor pattern', async () => {
+      const service = new WatchService(mockFileTranslationService, {
+        pattern: '*.txt',
+      });
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        pattern: '*.md',
+      };
+
+      service.watch(testDir, options);
+
+      const watchCall = (chokidar.watch as jest.Mock).mock.calls[0];
+      const ignored = watchCall[1].ignored;
+
+      // Should use *.md from options, not *.txt from constructor
+      expect(ignored('/path/to/file.md')).toBe(false);
+      expect(ignored('/path/to/file.txt')).toBe(true);
+    });
+  });
+
+  describe('translation options passthrough', () => {
+    it('should pass sourceLang to translation service', async () => {
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        sourceLang: 'en' as const,
+      };
+
+      await watchService.watch(testDir, options);
+      await watchService.handleFileChange(testFile);
+
+      // Wait for debounce timer
+      await new Promise(resolve => setTimeout(resolve, 350));
+
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.objectContaining({ sourceLang: 'en' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass formality to translation service', async () => {
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        formality: 'more' as const,
+      };
+
+      await watchService.watch(testDir, options);
+      await watchService.handleFileChange(testFile);
+
+      // Wait for debounce timer
+      await new Promise(resolve => setTimeout(resolve, 350));
+
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.objectContaining({ formality: 'more' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should call onTranslate callback for multiple languages', async () => {
+      const onTranslate = jest.fn();
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFileToMultiple.mockResolvedValue([
+        { targetLang: 'es', text: 'Hola', outputPath: '/out/test.es.txt' },
+        { targetLang: 'fr', text: 'Bonjour', outputPath: '/out/test.fr.txt' },
+      ]);
+
+      const options = {
+        targetLangs: ['es' as const, 'fr' as const],
+        outputDir: path.join(testDir, 'output'),
+        onTranslate,
+      };
+
+      await watchService.watch(testDir, options);
+      await watchService.handleFileChange(testFile);
+
+      // Wait for debounce timer
+      await new Promise(resolve => setTimeout(resolve, 350));
+
+      expect(onTranslate).toHaveBeenCalledWith(
+        expect.stringContaining('test.txt'),
+        expect.arrayContaining([
+          expect.objectContaining({ targetLang: 'es' }),
+          expect.objectContaining({ targetLang: 'fr' }),
+        ])
+      );
+    });
+  });
+
+  describe('error handling', () => {
+    it('should handle errors in change event handler', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      // Create a service where handleFileChange will throw
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      watchService.watch(testDir, options);
+
+      // Get the 'change' event handler
+      const changeHandler = mockWatcher.on.mock.calls.find(
+        call => call[0] === 'change'
+      )?.[1];
+
+      expect(changeHandler).toBeDefined();
+
+      // Mock handleFileChange to throw an error
+      jest.spyOn(watchService, 'handleFileChange').mockImplementation(() => {
+        throw new Error('Handler error');
+      });
+
+      // Should not throw, just log error
+      expect(() => changeHandler(testFile)).not.toThrow();
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle errors in add event handler', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      watchService.watch(testDir, options);
+
+      // Get the 'add' event handler
+      const addHandler = mockWatcher.on.mock.calls.find(
+        call => call[0] === 'add'
+      )?.[1];
+
+      expect(addHandler).toBeDefined();
+
+      // Mock handleFileChange to throw an error
+      jest.spyOn(watchService, 'handleFileChange').mockImplementation(() => {
+        throw new Error('Handler error');
+      });
+
+      // Should not throw, just log error
+      expect(() => addHandler(testFile)).not.toThrow();
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should throw error when handleFileChange called before watch starts', () => {
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      // Don't start watch, just call handleFileChange
+      expect(() => watchService.handleFileChange(testFile)).toThrow('Watch not started');
+    });
   });
 });
