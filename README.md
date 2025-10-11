@@ -246,9 +246,24 @@ deepl translate "bank" --context "This document is about rivers and geography" -
 # Combine context with other options
 deepl translate "How are you?" --context "Formal business email" --formality more --to de
 
+# Choose model type for quality vs. speed trade-offs
+deepl translate "Long document text..." --to ja --model-type quality_optimized
+# Best translation quality (default)
+
+deepl translate "Real-time chat message" --to es --model-type latency_optimized
+# Faster response time, slightly lower quality
+
+deepl translate "Important email" --to de --model-type prefer_quality_optimized
+# Prefer quality, fall back to latency if unavailable
+
 # Custom API endpoint (for DeepL Pro accounts or testing)
 deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
 ```
+
+**Model Types:**
+- `quality_optimized` (default) - Best translation quality, standard latency
+- `prefer_quality_optimized` - Prefer quality, fallback to latency if unavailable
+- `latency_optimized` - Faster responses, slightly lower quality (ideal for real-time use)
 
 ### Writing Enhancement
 

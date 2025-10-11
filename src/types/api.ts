@@ -4,6 +4,11 @@
 
 import { Language, Formality } from './common';
 
+export type ModelType =
+  | 'quality_optimized'
+  | 'prefer_quality_optimized'
+  | 'latency_optimized';
+
 export interface TranslationOptions {
   sourceLang?: Language;
   targetLang: Language;
@@ -15,6 +20,7 @@ export interface TranslationOptions {
   context?: string;
   splitSentences?: 'on' | 'off' | 'nonewlines';
   tagHandling?: 'xml' | 'html';
+  modelType?: ModelType;
 }
 
 export interface TranslationResult {

@@ -17,6 +17,9 @@ interface TranslateOptions {
   formality?: string;
   preserveCode?: boolean;
   context?: string;
+  splitSentences?: string;
+  tagHandling?: string;
+  modelType?: string;
   output?: string;
   recursive?: boolean;
   pattern?: string;
@@ -161,6 +164,9 @@ export class TranslateCommand {
       sourceLang?: Language;
       formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
       context?: string;
+      splitSentences?: 'on' | 'off' | 'nonewlines';
+      tagHandling?: 'xml' | 'html';
+      modelType?: 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
     } = {
       targetLang: options.to as Language,
     };
@@ -175,6 +181,18 @@ export class TranslateCommand {
 
     if (options.context) {
       translationOptions.context = options.context;
+    }
+
+    if (options.splitSentences) {
+      translationOptions.splitSentences = options.splitSentences as 'on' | 'off' | 'nonewlines';
+    }
+
+    if (options.tagHandling) {
+      translationOptions.tagHandling = options.tagHandling as 'xml' | 'html';
+    }
+
+    if (options.modelType) {
+      translationOptions.modelType = options.modelType as 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
     }
 
     // Translate

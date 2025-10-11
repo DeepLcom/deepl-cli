@@ -211,6 +211,7 @@ program
   .option('--context <text>', 'Additional context to improve translation quality')
   .option('--split-sentences <mode>', 'Sentence splitting: on, off, nonewlines (default: on)')
   .option('--tag-handling <mode>', 'Tag handling for XML/HTML: xml, html')
+  .option('--model-type <type>', 'Model type: quality_optimized, prefer_quality_optimized, latency_optimized')
   .option('--recursive', 'Process subdirectories recursively (default: true)', true)
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
   .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
@@ -224,6 +225,7 @@ program
     context?: string;
     splitSentences?: string;
     tagHandling?: string;
+    modelType?: string;
     recursive?: boolean;
     pattern?: string;
     concurrency?: number;

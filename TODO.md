@@ -362,7 +362,33 @@ deepl translate config.xml --to fr --tag-handling xml  ✅ IMPLEMENTED
 
 ### ❌ Missing Features (Not Yet Implemented)
 
-These features exist in the Python library but are **not implemented** in our CLI:
+These features exist in the Python library but are **not implemented** in our CLI.
+
+**Last Updated**: 2025-10-11
+
+---
+
+## 📚 DeepL API Version Information
+
+**Current API Status**:
+- **Translation & Document APIs**: v2 (stable, primary endpoints)
+- **Glossary API**: v2 (legacy) and v3 (current, recommended)
+- **Write API**: v2 (stable)
+
+**What is "v3"?**
+- v3 is **glossary-specific** only (released April 2025)
+- Core translation endpoints (`/v2/translate`, `/v2/document`) remain at v2
+- v3 adds multilingual glossary support and editing capabilities
+- Both v2 and v3 glossaries work with v2 translation endpoints
+
+**Our Current Implementation**:
+- ✅ v2 Translation API (fully supported)
+- ✅ v2 Write API (fully supported)
+- ✅ v2 Glossary API (fully supported - basic CRUD)
+- ❌ v3 Glossary API (not implemented - multilingual + editing)
+- ❌ v2 Document API (not implemented)
+
+---
 
 #### 1. Document Translation (🔴 HIGH PRIORITY)
 
@@ -382,11 +408,27 @@ These features exist in the Python library but are **not implemented** in our CL
 
 ---
 
-#### 2. Multilingual Glossaries (🟡 MEDIUM PRIORITY)
+#### 2. Multilingual Glossaries / v3 Glossary API (🟡 MEDIUM PRIORITY)
 
-**Python Support**: Advanced glossary management with multiple language pairs per glossary
+**API Version**: v3 Glossary endpoints (released April 30, 2025)
 
-**Python Methods**:
+**What is v3?**: v3 is **glossary-specific** (not a full API version upgrade). Core translation endpoints remain at v2.
+
+**Key Feature**: Multilingual glossaries - one glossary can contain multiple language pairs
+- **v2**: EN→DE requires separate glossary from EN→FR (one pair per glossary)
+- **v3**: EN→DE,FR,ES,IT can be in a single glossary (multiple pairs per glossary)
+
+**v3 Glossary Endpoints**:
+- `POST /v3/glossaries` - Create multilingual glossary
+- `GET /v3/glossaries` - List all glossaries
+- `GET /v3/glossaries/{id}` - Get glossary metadata
+- `GET /v3/glossaries/{id}/entries?source_lang=X&target_lang=Y` - Get entries for specific pair
+- `PATCH /v3/glossaries/{id}` - Edit glossary metadata (e.g., rename)
+- `PUT /v3/glossaries/{id}/dictionaries` - Replace/create dictionary for language pair
+- `DELETE /v3/glossaries/{id}/dictionaries?source_lang=X&target_lang=Y` - Delete specific pair
+- `DELETE /v3/glossaries/{id}` - Delete entire glossary
+
+**Python Library Methods** (v1.22.0+):
 - `create_multilingual_glossary()`
 - `create_multilingual_glossary_from_csv()`
 - `update_multilingual_glossary_dictionary()`
@@ -395,9 +437,30 @@ These features exist in the Python library but are **not implemented** in our CL
 - `get_multilingual_glossary_entries()`
 - `delete_multilingual_glossary_dictionary()`
 
-**Our CLI**: Only supports single language pair glossaries (EN→DE, not EN→DE,FR,ES)
+**Our CLI**: Only supports v2 endpoints (single language pair per glossary)
+- Uses: `/v2/glossaries` for all operations
+- Location: `src/api/deepl-client.ts:330,345,353,361,369`
 
-**Implementation Effort**: Medium (API supports it, needs CLI design)
+**Backward Compatibility**:
+- ✅ v2 glossaries continue to work
+- ✅ Both v2 and v3 glossaries can be used in `/v2/translate`
+- ⚠️ **WARNING**: Don't mix v2 and v3 endpoints for same glossary
+  - If you edit a glossary with v3, v2 endpoints may return unexpected results
+  - v2 endpoints cannot delete v3-edited glossaries
+
+**Use Cases for v3**:
+- **Enterprise teams** translating to many languages (manage 1 glossary instead of dozens)
+- **Translation agencies** with multilingual terminology databases
+- **Product teams** maintaining terminology across many locales
+
+**Implementation Effort**: Medium
+- Add v3 endpoint support to DeepLClient
+- Update GlossaryService with multilingual operations
+- Design CLI commands for managing language pairs
+- Handle v2/v3 compatibility warnings
+- Update types to support multilingual structure
+- Add comprehensive tests
+- Estimated: 8-12 hours
 
 ---
 
@@ -411,13 +474,38 @@ These features exist in the Python library but are **not implemented** in our CL
 
 ---
 
-#### 4. Model Type Selection (🟢 LOW PRIORITY)
+#### 4. Model Type Selection (🔴 HIGH PRIORITY - Quick Win!)
 
-**Python Support**: `model_type` parameter for translation
+**API Parameter**: `model_type` - Choose translation model based on priority
 
-**Our CLI**: No support for model type selection
+**Available Models**:
+- `quality_optimized` (default) - Best quality, standard latency
+- `prefer_quality_optimized` - Prefer quality, fallback to latency if unavailable
+- `latency_optimized` - Faster responses, slightly lower quality
 
-**Implementation Effort**: Low (add parameter, pass through)
+**Use Cases**:
+- **Real-time chat/UI**: Use `latency_optimized` for instant feedback
+- **Document translation**: Use `quality_optimized` for best results
+- **Batch processing**: Use `prefer_quality_optimized` for balanced approach
+
+**Python Library**: Supported via `model_type` parameter
+
+**Our CLI**: Not implemented
+- No `--model-type` flag in translate command
+- TranslationOptions interface doesn't include modelType field
+
+**Implementation Effort**: Very Low (15-20 minutes)
+1. Add `modelType?: 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized'` to TranslationOptions (src/types/api.ts)
+2. Add `--model-type` flag to translate command (src/cli/index.ts)
+3. Pass through to DeepL API client (already supports arbitrary params)
+4. Add 3-5 unit tests
+5. Document in README and API.md
+
+**Priority Upgrade Rationale**: Changed from LOW to HIGH because:
+- Very quick to implement (~15 minutes)
+- Provides immediate value for performance-sensitive use cases
+- Popular feature request in other DeepL SDKs
+- Low risk (pass-through parameter)
 
 ---
 
@@ -439,19 +527,35 @@ These features exist in the Python library but are **not implemented** in our CL
 
 ### 📝 Implementation Recommendations
 
-#### Immediate (Quick Wins - 60 minutes remaining)
+#### Immediate (Quick Wins)
 
 1. ✅ Add `deepl usage` command (DONE 2025-10-11)
-2. ⏳ Add `deepl languages` command (30 min)
-3. ⏳ Add `--split-sentences` option to translate (15 min)
-4. ⏳ Add `--tag-handling` option to translate (15 min)
+2. ✅ Add `deepl languages` command (DONE 2025-10-11)
+3. ✅ Add `--split-sentences` option to translate (DONE 2025-10-11)
+4. ✅ Add `--tag-handling` option to translate (DONE 2025-10-11)
+5. **Next: Add `--model-type` flag** (15-20 min) 🎯 **Recommended Next Step**
+   - Very quick implementation
+   - High user value (performance control)
+   - Low risk (pass-through parameter)
 
-#### Short Term (Phase 3+)
+#### Short Term (Phase 3+ or v0.3.0)
 
-5. Investigate and implement document translation
-6. Add multilingual glossary support
-7. Add glossary language pairs listing
-8. Add model type selection
+6. **Document Translation** (HIGH PRIORITY)
+   - Biggest missing feature vs. Python library
+   - Unlocks PDF, DOCX, PPTX, XLSX support
+   - Implementation: 2-3 days
+   - Requires: Upload/download flow, polling, status checks
+
+7. **v3 Multilingual Glossaries** (MEDIUM PRIORITY)
+   - Important for enterprise/team users
+   - Reduces glossary management overhead
+   - Implementation: 8-12 hours
+   - Requires: v3 endpoint integration, CLI design for multi-pair management
+
+8. **Glossary Language Pairs Listing** (LOW PRIORITY)
+   - Nice-to-have for discovery
+   - Implementation: 30 minutes
+   - Simple API call wrapper
 
 #### Long Term (Phase 4+)
 
@@ -576,6 +680,90 @@ These features exist in the Python library but are **not implemented** in our CL
 ---
 
 ## 🏗️ Production-Grade Polish (Before Public Release)
+
+### 🚀 GitHub Publication Preparation (Do First!)
+
+**Status**: Not yet published to GitHub
+**Target**: Before v1.0.0 or when ready for public release
+
+#### Step 0: Pre-Publication Cleanup ⭐⭐⭐
+
+**Remove Development Artifacts** (5-10 minutes):
+
+- [ ] **Scan for secrets in commit history** 🔴 CRITICAL
+  ```bash
+  # Check for API keys, tokens, passwords
+  git log -p | grep -i "api[_-]key\|token\|password\|secret"
+
+  # Use automated tools
+  npm install -g git-secrets
+  git secrets --scan-history
+  ```
+  - If secrets found: Use `git-filter-repo` to rewrite history
+  - If clean: Proceed with simple removal
+
+- [ ] **Remove internal development artifacts**
+  ```bash
+  git rm CONTEXT_SUMMARY.md
+  git rm -r docs/archive/
+  # Note: Files will still be in git history, but won't appear in current state
+  ```
+
+  Files to remove:
+  - `CONTEXT_SUMMARY.md` - Internal status tracking
+  - `docs/archive/` - Historical planning documents, test reports, coverage analysis
+  - Any other internal-only documentation
+
+- [ ] **Clean up TODO.md or rename to ROADMAP.md**
+  - Remove internal DeepL references
+  - Remove completed Phase 1-2 items (keep in CHANGELOG instead)
+  - Keep only future roadmap
+  - Remove "Internal to DeepL" notes
+  - Remove GitLab-specific references
+
+- [ ] **Update CLAUDE.md** (or rename to `DEVELOPMENT.md` or `AI_GUIDELINES.md`)
+  - Consider renaming for broader appeal
+  - Remove GitLab references, update to GitHub
+  - Remove internal workflow references
+  - Keep development practices (they're valuable!)
+
+- [ ] **Update repository URLs everywhere**
+  - package.json: `repository.url`, `bugs.url`, `homepage`
+  - README.md: Clone URLs, badges, links
+  - CLAUDE.md/DEVELOPMENT.md: CI/CD references
+  - All documentation: Replace `git.deepl.dev` with `github.com`
+
+- [ ] **Final commit before publication**
+  ```bash
+  git commit -m "chore: prepare for public release on GitHub
+
+  - Remove internal development artifacts
+  - Update repository URLs to GitHub
+  - Clean up documentation for public consumption
+  - Remove DeepL-specific internal references
+
+  Historical development artifacts remain in git history
+  but are not part of the public-facing repository."
+  ```
+
+**Decision Made**: Keep full commit history (shows development maturity and professionalism) unless secrets are found.
+
+**Recommended File Structure After Cleanup**:
+```
+deepl-cli/
+├── .github/              # New: GitHub-specific files
+├── docs/
+│   ├── API.md           # Keep
+│   └── DESIGN.md        # Keep
+├── examples/            # Keep all
+├── CHANGELOG.md         # Keep
+├── DEVELOPMENT.md       # Keep (renamed from CLAUDE.md)
+├── ROADMAP.md           # Keep (cleaned-up TODO.md)
+├── README.md            # Update URLs
+└── [other files...]
+```
+
+---
 
 ### Critical (Do Before Push to Remote)
 
@@ -960,6 +1148,6 @@ Must complete ALL items in "Production-Grade Polish (Critical)" section before t
 
 ---
 
-**Last Updated**: 2025-10-08
+**Last Updated**: 2025-10-11 (Added comprehensive DeepL API v3 information)
 **Maintained By**: Development team
 **Review Frequency**: Every release or major milestone

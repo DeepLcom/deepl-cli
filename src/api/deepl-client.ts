@@ -134,6 +134,10 @@ export class DeepLClient {
       params['tag_handling'] = options.tagHandling;
     }
 
+    if (options.modelType) {
+      params['model_type'] = options.modelType;
+    }
+
     try {
       const response = await this.makeRequest<DeepLTranslateResponse>(
         'POST',

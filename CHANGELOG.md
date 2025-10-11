@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Model Type Selection** - Choose quality vs speed trade-offs for translation
+  - New `--model-type` flag for translate command
+  - Three model types: `quality_optimized` (default), `prefer_quality_optimized`, `latency_optimized`
+  - Use quality_optimized for documents and marketing content
+  - Use latency_optimized for real-time chat and live subtitles
+  - ModelType union type added to TranslationOptions
+  - 4 comprehensive unit tests (all passing, 523 total tests)
+  - Added example script: `examples/12-model-type-selection.sh`
+  - Full documentation in README.md and docs/API.md
 - **Usage Command** - Monitor API character usage and quota
   - New `deepl usage` command to display character consumption statistics
   - Shows used/total characters with percentage and remaining quota

@@ -424,6 +424,84 @@ describe('TranslateCommand', () => {
     });
   });
 
+  describe('model type selection', () => {
+    it('should pass modelType to translation service when specified', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola',
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        modelType: 'latency_optimized',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({
+          targetLang: 'es',
+          modelType: 'latency_optimized',
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should work without modelType parameter', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola',
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.not.objectContaining({
+          modelType: expect.anything(),
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should support quality_optimized model type', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola',
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        modelType: 'quality_optimized',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({
+          modelType: 'quality_optimized',
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should support prefer_quality_optimized model type', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola',
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        modelType: 'prefer_quality_optimized',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({
+          modelType: 'prefer_quality_optimized',
+        }),
+        expect.any(Object)
+      );
+    });
+  });
+
   describe('translate() - file/directory detection', () => {
     it('should detect and route to translateDirectory() for directory paths', async () => {
       // Mock fs to indicate directory

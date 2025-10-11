@@ -91,6 +91,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 
 **Translation Options:**
 - `--formality LEVEL` - Formality: `default`, `less`, `more`, `prefer_less`, `prefer_more`
+- `--model-type TYPE` - Model type: `quality_optimized` (default), `prefer_quality_optimized`, `latency_optimized`
 - `--preserve-code` - Preserve code blocks (markdown, etc.)
 - `--preserve-vars` - Preserve variables like `{name}`, `${var}`
 - `--preserve-formatting` - Preserve line breaks and formatting

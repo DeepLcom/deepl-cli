@@ -15,6 +15,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Writing Enhancement](./09-write-basic.sh) - Using DeepL Write API for grammar and style improvement
 - [Usage Monitoring](./10-usage-monitoring.sh) - Monitoring API character usage and quota
 - [Supported Languages](./11-languages.sh) - Listing source and target languages supported by DeepL
+- [Model Type Selection](./12-model-type-selection.sh) - Choosing quality vs. speed trade-offs
 
 ## Prerequisites
 
