@@ -16,6 +16,8 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Usage Monitoring](./10-usage-monitoring.sh) - Monitoring API character usage and quota
 - [Supported Languages](./11-languages.sh) - Listing source and target languages supported by DeepL
 - [Model Type Selection](./12-model-type-selection.sh) - Choosing quality vs. speed trade-offs
+- [Watch Mode](./13-watch-mode.sh) - Real-time file monitoring and auto-translation
+- [Git Hooks Integration](./14-git-hooks.sh) - Automating translation validation in git workflow
 
 ## Prerequisites
 
