@@ -4,11 +4,38 @@
  */
 
 import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 describe('Cache CLI Integration', () => {
+  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-cache-${Date.now()}`);
+
+  // Helper to run CLI commands with isolated config directory
+  const runCLI = (command: string): string => {
+    return execSync(command, {
+      encoding: 'utf-8',
+      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+    });
+  };
+
+  beforeAll(() => {
+    // Create test directory
+    if (!fs.existsSync(testConfigDir)) {
+      fs.mkdirSync(testConfigDir, { recursive: true });
+    }
+  });
+
+  afterAll(() => {
+    // Clean up test directory
+    if (fs.existsSync(testConfigDir)) {
+      fs.rmSync(testConfigDir, { recursive: true, force: true });
+    }
+  });
+
   describe('deepl cache stats', () => {
     it('should show cache statistics', () => {
-      const output = execSync('deepl cache stats', { encoding: 'utf-8' });
+      const output = runCLI('deepl cache stats');
 
       // Should contain key metrics
       expect(output).toContain('Cache Status:');
@@ -17,14 +44,14 @@ describe('Cache CLI Integration', () => {
     });
 
     it('should show if cache is enabled or disabled', () => {
-      const output = execSync('deepl cache stats', { encoding: 'utf-8' });
+      const output = runCLI('deepl cache stats');
 
       // Should show status
       expect(output).toMatch(/Cache Status: (enabled|disabled)/);
     });
 
     it('should show size in MB and percentage', () => {
-      const output = execSync('deepl cache stats', { encoding: 'utf-8' });
+      const output = runCLI('deepl cache stats');
 
       // Should show size format
       expect(output).toMatch(/Size: [\d.]+ MB/);
@@ -34,15 +61,15 @@ describe('Cache CLI Integration', () => {
 
   describe('deepl cache enable', () => {
     it('should enable cache successfully', () => {
-      const output = execSync('deepl cache enable', { encoding: 'utf-8' });
+      const output = runCLI('deepl cache enable');
 
       expect(output).toContain('✓ Cache enabled');
     });
 
     it('should not error if cache already enabled', () => {
       // Enable twice
-      execSync('deepl cache enable', { encoding: 'utf-8' });
-      const output = execSync('deepl cache enable', { encoding: 'utf-8' });
+      runCLI('deepl cache enable');
+      const output = runCLI('deepl cache enable');
 
       expect(output).toContain('✓ Cache enabled');
     });
@@ -50,15 +77,15 @@ describe('Cache CLI Integration', () => {
 
   describe('deepl cache disable', () => {
     it('should disable cache successfully', () => {
-      const output = execSync('deepl cache disable', { encoding: 'utf-8' });
+      const output = runCLI('deepl cache disable');
 
       expect(output).toContain('✓ Cache disabled');
     });
 
     it('should not error if cache already disabled', () => {
       // Disable twice
-      execSync('deepl cache disable', { encoding: 'utf-8' });
-      const output = execSync('deepl cache disable', { encoding: 'utf-8' });
+      runCLI('deepl cache disable');
+      const output = runCLI('deepl cache disable');
 
       expect(output).toContain('✓ Cache disabled');
     });
@@ -66,15 +93,15 @@ describe('Cache CLI Integration', () => {
 
   describe('deepl cache clear', () => {
     it('should clear cache successfully', () => {
-      const output = execSync('deepl cache clear', { encoding: 'utf-8' });
+      const output = runCLI('deepl cache clear');
 
       expect(output).toContain('✓ Cache cleared successfully');
     });
 
     it('should not error when cache is empty', () => {
       // Clear twice
-      execSync('deepl cache clear', { encoding: 'utf-8' });
-      const output = execSync('deepl cache clear', { encoding: 'utf-8' });
+      runCLI('deepl cache clear');
+      const output = runCLI('deepl cache clear');
 
       expect(output).toContain('✓ Cache cleared successfully');
     });
@@ -83,19 +110,19 @@ describe('Cache CLI Integration', () => {
   describe('cache workflow', () => {
     it('should handle enable -> clear -> disable workflow', () => {
       // Enable
-      const enableOutput = execSync('deepl cache enable', { encoding: 'utf-8' });
+      const enableOutput = runCLI('deepl cache enable');
       expect(enableOutput).toContain('✓ Cache enabled');
 
       // Clear
-      const clearOutput = execSync('deepl cache clear', { encoding: 'utf-8' });
+      const clearOutput = runCLI('deepl cache clear');
       expect(clearOutput).toContain('✓ Cache cleared successfully');
 
       // Stats should show 0 entries
-      const statsOutput = execSync('deepl cache stats', { encoding: 'utf-8' });
+      const statsOutput = runCLI('deepl cache stats');
       expect(statsOutput).toContain('Entries: 0');
 
       // Disable
-      const disableOutput = execSync('deepl cache disable', { encoding: 'utf-8' });
+      const disableOutput = runCLI('deepl cache disable');
       expect(disableOutput).toContain('✓ Cache disabled');
     });
   });

@@ -12,7 +12,15 @@ describe('Auth CLI Integration', () => {
   const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-${Date.now()}`);
   const configPath = path.join(testConfigDir, 'config.json');
 
-  // Set test config directory via environment variable
+  // Helper to run CLI commands with isolated config directory
+  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
+    return execSync(command, {
+      encoding: 'utf-8',
+      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+      ...options,
+    });
+  };
+
   beforeAll(() => {
     // Create test directory
     if (!fs.existsSync(testConfigDir)) {
@@ -43,7 +51,7 @@ describe('Auth CLI Integration', () => {
 
     it('should reject empty API key', () => {
       try {
-        execSync('deepl auth set-key ""', { encoding: 'utf-8', stdio: 'pipe' });
+        runCLI('deepl auth set-key ""', { stdio: 'pipe' });
         fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.stderr || error.stdout).toContain('API key cannot be empty');
@@ -52,7 +60,7 @@ describe('Auth CLI Integration', () => {
 
     it('should reject invalid API key via API validation', () => {
       try {
-        execSync('deepl auth set-key invalid-key-123', { encoding: 'utf-8', stdio: 'pipe' });
+        runCLI('deepl auth set-key invalid-key-123', { stdio: 'pipe' });
         fail('Should have thrown an error');
       } catch (error: any) {
         // Now expects API validation error (not format error)
@@ -65,12 +73,12 @@ describe('Auth CLI Integration', () => {
     it('should show "No API key set" when no key configured', () => {
       // Clear any existing key first
       try {
-        execSync('deepl auth clear', { encoding: 'utf-8', stdio: 'pipe' });
+        runCLI('deepl auth clear', { stdio: 'pipe' });
       } catch (e) {
         // Ignore if already cleared
       }
 
-      const output = execSync('deepl auth show', { encoding: 'utf-8' });
+      const output = runCLI('deepl auth show');
       expect(output).toContain('No API key set');
     });
   });
@@ -78,7 +86,7 @@ describe('Auth CLI Integration', () => {
   describe('deepl auth clear', () => {
     it('should successfully clear API key', () => {
       // Even without a key set, clear should succeed
-      const output = execSync('deepl auth clear', { encoding: 'utf-8' });
+      const output = runCLI('deepl auth clear');
       expect(output).toContain('✓ API key removed');
     });
   });
