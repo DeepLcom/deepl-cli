@@ -18,6 +18,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
   - [glossary](#glossary)
   - [cache](#cache)
   - [config](#config)
+  - [usage](#usage)
   - [auth](#auth)
 - [Configuration](#configuration)
 - [Exit Codes](#exit-codes)
@@ -515,6 +516,44 @@ Set a configuration value.
 
 ##### `reset`
 Reset configuration to defaults.
+
+---
+
+### usage
+
+Show API usage statistics.
+
+#### Synopsis
+
+```bash
+deepl usage
+```
+
+#### Description
+
+Display your DeepL API character usage and remaining quota. Helps you monitor consumption and avoid exceeding your account limits.
+
+#### Examples
+
+```bash
+# Show usage statistics
+deepl usage
+# Character Usage:
+#   Used: 123,456 / 500,000 (24.7%)
+#   Remaining: 376,544
+```
+
+**Output Fields:**
+- **Used**: Number of characters translated this billing period
+- **Limit**: Total character limit for your account
+- **Percentage**: Usage as a percentage of total quota
+- **Remaining**: Characters remaining in your quota
+
+**Notes:**
+- Usage resets monthly for most accounts
+- Free tier: typically 500,000 characters/month
+- Pro accounts: varies by subscription level
+- Shows warning when usage exceeds 80%
 
 ---
 

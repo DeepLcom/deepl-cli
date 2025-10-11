@@ -664,6 +664,14 @@ Update when:
 - Remove outdated information immediately
 - Update version numbers and dates when applicable
 
+**IMPORTANT: Always add working examples when adding new features:**
+- Create a new example script in `examples/` directory (e.g., `examples/10-usage-monitoring.sh`)
+- Make the example executable: `chmod +x examples/*.sh`
+- Update `examples/README.md` with a link to the new example
+- Reference the example in the main README.md where the feature is documented
+- Examples should demonstrate real-world usage patterns, not just basic syntax
+- Each example should be runnable and include helpful comments
+
 **Example:**
 ```bash
 feat(watch): add watch mode with auto-translation
@@ -671,6 +679,8 @@ feat(watch): add watch mode with auto-translation
 Implement file watching with debouncing and auto-commit support.
 Updates README.md with watch mode examples and configuration.
 Updates DESIGN.md with WatchService architecture details.
+Adds examples/07-watch-mode.sh demonstrating watch mode usage.
+Updates examples/README.md with link to new example.
 ```
 
 ---

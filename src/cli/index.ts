@@ -17,6 +17,7 @@ import { TranslationService } from '../services/translation.js';
 import { WriteService } from '../services/write.js';
 import { GlossaryService } from '../services/glossary.js';
 import { AuthCommand } from './commands/auth.js';
+import { UsageCommand } from './commands/usage.js';
 import { TranslateCommand } from './commands/translate.js';
 import { WriteCommand } from './commands/write.js';
 import { WatchCommand } from './commands/watch.js';
@@ -140,6 +141,24 @@ program
         }
       })
   );
+
+// Usage command
+program
+  .command('usage')
+  .description('Show API usage statistics')
+  .action(async () => {
+    try {
+      const client = createDeepLClient();
+      const usageCommand = new UsageCommand(client);
+
+      const usage = await usageCommand.getUsage();
+      const formatted = usageCommand.formatUsage(usage);
+      console.log(formatted);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+      process.exit(1);
+    }
+  });
 
 // Translate command
 program

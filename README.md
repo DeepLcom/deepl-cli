@@ -473,6 +473,22 @@ Or use an environment variable:
 export DEEPL_API_KEY=YOUR_API_KEY
 ```
 
+#### API Usage Statistics
+
+Check your API usage to monitor character consumption:
+
+```bash
+# Show API usage statistics
+deepl usage
+# Character Usage:
+#   Used: 123,456 / 500,000 (24.7%)
+#   Remaining: 376,544
+```
+
+**Note:** Usage statistics help you track your DeepL API character quota and avoid exceeding limits.
+
+See [examples/10-usage-monitoring.sh](./examples/10-usage-monitoring.sh) for a complete usage monitoring example.
+
 #### Configure Defaults
 
 Configuration is stored in `~/.deepl-cli/config.json`

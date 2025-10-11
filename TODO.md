@@ -189,6 +189,291 @@ These features were identified during Phase 2 completion and deferred for future
 
 ---
 
+## 🔍 Hidden Features: Implemented But Not Exposed
+
+**Last Audit**: 2025-10-11
+
+This section documents features that are **fully implemented** in the codebase but are either not exposed through CLI commands or not documented. These are "quick wins" that can be exposed with minimal effort.
+
+### 🔴 HIGH PRIORITY: Missing CLI Commands
+
+#### 1. Usage Statistics (`getUsage()`) ✅ IMPLEMENTED
+
+**Status**: ✅ Fully implemented in API client, ✅ EXPOSED in CLI (v0.2.1)
+
+**API Method**: `DeepLClient.getUsage(): Promise<UsageInfo>`
+- Location: `src/api/deepl-client.ts:167-181`
+- Returns: `{ characterCount: number, characterLimit: number }`
+
+**CLI Command**:
+```bash
+deepl usage                    # Show current API usage ✅ IMPLEMENTED
+# Future enhancements:
+# deepl usage --detailed       # Show detailed breakdown
+# deepl usage --month 2025-10  # Show specific month
+```
+
+**Output**:
+```
+Character Usage:
+  Used: 123,456 / 500,000 (24.7%)
+  Remaining: 376,544
+```
+
+**Implementation Details** (2025-10-11):
+- New `UsageCommand` class in `src/cli/commands/usage.ts`
+- Formatted output with colored indicators (green/yellow)
+- Visual warning when usage exceeds 80% of limit
+- 10 comprehensive unit tests
+- Full documentation in README.md and API.md
+- Follows Python library feature parity
+
+**Comparison to Python Library**: ✅ Parity achieved
+
+---
+
+#### 2. List Supported Languages (`getSupportedLanguages()`)
+
+**Status**: ✅ Fully implemented in API client, ❌ NOT exposed in CLI
+
+**API Method**: `DeepLClient.getSupportedLanguages(type: 'source' | 'target'): Promise<LanguageInfo[]>`
+- Location: `src/api/deepl-client.ts:186-203`
+- Returns: Array of `{ language: Language, name: string }`
+
+**Missing CLI Commands**:
+```bash
+deepl languages                          # List all languages
+deepl languages --type source            # List source languages only
+deepl languages --type target            # List target languages only
+deepl glossary language-pairs            # List glossary pairs (not implemented)
+```
+
+**Expected Output**:
+```
+Supported Languages (Target):
+  AR - Arabic
+  BG - Bulgarian
+  CS - Czech
+  DA - Danish
+  DE - German
+  ...
+```
+
+**Implementation Effort**: ~30 minutes
+- Add new command to `src/cli/index.ts`
+- Format as table with language codes and names
+- Add tests for languages command
+
+**Comparison to Python Library**: Python has this feature exposed
+
+---
+
+### 🟡 MEDIUM PRIORITY: Missing CLI Options
+
+#### 3. Split Sentences Control
+
+**Status**: ✅ Implemented in types and API client, ❌ NOT exposed in CLI
+
+**Type Definition**: `splitSentences?: 'on' | 'off' | 'nonewlines'`
+- Location: `src/types/api.ts:16`
+- Supported in: `TranslationOptions` interface
+- API client: Uses parameter if provided
+
+**Missing CLI Flag**:
+```bash
+deepl translate "Text." --to es --split-sentences on|off|nonewlines
+```
+
+**Implementation Effort**: ~15 minutes
+- Add option to translate command in `src/cli/index.ts:129`
+- Pass through to translation service
+- Document in README
+
+**Use Case**: Control how DeepL splits sentences during translation
+
+**Comparison to Python Library**: Python supports this parameter
+
+---
+
+#### 4. Tag Handling
+
+**Status**: ✅ Implemented in types and API client, ❌ NOT exposed in CLI
+
+**Type Definition**: `tagHandling?: 'xml' | 'html'`
+- Location: `src/types/api.ts:17`
+- Supported in: `TranslationOptions` interface
+- API client: Uses parameter if provided
+
+**Missing CLI Flag**:
+```bash
+deepl translate file.html --to es --tag-handling html
+deepl translate config.xml --to fr --tag-handling xml
+```
+
+**Implementation Effort**: ~15 minutes
+- Add option to translate command in `src/cli/index.ts`
+- Pass through to translation service
+- Document in README
+
+**Use Case**: Proper handling of XML/HTML tags during translation
+
+**Comparison to Python Library**: Python supports this parameter
+
+---
+
+### 📊 Feature Exposure Matrix
+
+| Feature | API Client | Types | CLI Exposed | Documented | Comparison to Python | Priority |
+|---------|-----------|-------|-------------|------------|---------------------|----------|
+| **translate()** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
+| **getUsage()** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | ✅ DONE |
+| **getSupportedLanguages()** | ✅ | ✅ | ❌ | ❌ | ✅ Python has it | 🔴 HIGH |
+| **splitSentences** | ✅ | ✅ | ❌ | ❌ | ✅ Python has it | 🟢 LOW |
+| **tagHandling** | ✅ | ✅ | ❌ | ❌ | ✅ Python has it | 🟢 LOW |
+| **formality** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
+| **context** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
+| **preserveCode** | ✅ | ✅ | ✅ | ✅ | ⭐ CLI-only | - |
+| **improveText()** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
+| **Glossary CRUD** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
+
+---
+
+### 🚀 Quick Wins Summary
+
+**Total Estimated Effort**: ~90 minutes for all 4 features
+**Completed**: 1/4 features (25%)
+**Remaining**: ~60 minutes
+
+1. **Add `deepl usage` command** - ✅ DONE (Implemented 2025-10-11)
+2. **Add `deepl languages` command** - 30 min ⏳ Next
+3. **Add `--split-sentences` flag** - 15 min ⏳ Remaining
+4. **Add `--tag-handling` flag** - 15 min ⏳ Remaining
+
+**Value**: Brings CLI to feature parity with Python library for these core features.
+
+---
+
+### ❌ Missing Features (Not Yet Implemented)
+
+These features exist in the Python library but are **not implemented** in our CLI:
+
+#### 1. Document Translation (🔴 HIGH PRIORITY)
+
+**Python Support**: Full document translation for PDF, DOCX, PPTX, XLSX, etc.
+
+**Python Methods**:
+- `translate_document()`
+- `translate_document_from_filepath()`
+- `translate_document_upload()`
+- `translate_document_get_status()`
+- `translate_document_wait_until_done()`
+- `translate_document_download()`
+
+**Our CLI**: Only supports text files (`.txt`, `.md`)
+
+**Implementation Effort**: High (requires document API integration)
+
+---
+
+#### 2. Multilingual Glossaries (🟡 MEDIUM PRIORITY)
+
+**Python Support**: Advanced glossary management with multiple language pairs per glossary
+
+**Python Methods**:
+- `create_multilingual_glossary()`
+- `create_multilingual_glossary_from_csv()`
+- `update_multilingual_glossary_dictionary()`
+- `replace_multilingual_glossary_dictionary()`
+- `update_multilingual_glossary_name()`
+- `get_multilingual_glossary_entries()`
+- `delete_multilingual_glossary_dictionary()`
+
+**Our CLI**: Only supports single language pair glossaries (EN→DE, not EN→DE,FR,ES)
+
+**Implementation Effort**: Medium (API supports it, needs CLI design)
+
+---
+
+#### 3. Glossary Language Pairs Listing (🟢 LOW PRIORITY)
+
+**Python Support**: List supported glossary language combinations
+
+**Our CLI**: No method to list available glossary language pairs
+
+**Implementation Effort**: Low (simple API call)
+
+---
+
+#### 4. Model Type Selection (🟢 LOW PRIORITY)
+
+**Python Support**: `model_type` parameter for translation
+
+**Our CLI**: No support for model type selection
+
+**Implementation Effort**: Low (add parameter, pass through)
+
+---
+
+#### 5. Voice API (❓ UNKNOWN PRIORITY)
+
+**Status**: Potentially exists internally at `https://git.deepl.dev/deepl/backend/voice-api-reference-client`
+
+**Possible Features**:
+- Audio file translation
+- Speech-to-text transcription
+- Text-to-speech synthesis
+- Voice selection and customization
+
+**Our CLI**: Not implemented (requires investigation of Voice API)
+
+**Implementation Effort**: Unknown (depends on API availability and stability)
+
+---
+
+### 📝 Implementation Recommendations
+
+#### Immediate (Quick Wins - 60 minutes remaining)
+
+1. ✅ Add `deepl usage` command (DONE 2025-10-11)
+2. ⏳ Add `deepl languages` command (30 min)
+3. ⏳ Add `--split-sentences` option to translate (15 min)
+4. ⏳ Add `--tag-handling` option to translate (15 min)
+
+#### Short Term (Phase 3+)
+
+5. Investigate and implement document translation
+6. Add multilingual glossary support
+7. Add glossary language pairs listing
+8. Add model type selection
+
+#### Long Term (Phase 4+)
+
+9. Investigate Voice API availability
+10. Implement voice/audio features if available
+
+---
+
+### 🔧 Development Notes
+
+**Testing Strategy**: All exposed features should follow TDD approach:
+1. Write tests first (unit + integration)
+2. Implement CLI command
+3. Update documentation (README, API.md)
+4. Add examples
+
+**Documentation Requirements**:
+- Update README.md with new commands/options
+- Update docs/API.md with full reference
+- Add examples to examples/ directory
+- Update CHANGELOG.md
+
+**Version Planning**:
+- Quick wins (1-4): Can be added in v0.2.1 patch release
+- Document translation: Major feature for v0.3.0 or v0.4.0
+- Voice API: Depends on internal API availability
+
+---
+
 ## 🎨 Phase 3: TUI & Collaboration
 
 **Status**: Planning complete, ready to implement!

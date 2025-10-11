@@ -12,6 +12,8 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [CI/CD Integration](./06-cicd-integration.sh) - Using DeepL CLI in automated workflows
 - [Batch Processing](./07-batch-processing.sh) - Translating multiple files
 - [Context-Aware Translation](./08-context-aware-translation.sh) - Using context for better translation quality
+- [Writing Enhancement](./09-write-basic.sh) - Using DeepL Write API for grammar and style improvement
+- [Usage Monitoring](./10-usage-monitoring.sh) - Monitoring API character usage and quota
 
 ## Prerequisites
 
