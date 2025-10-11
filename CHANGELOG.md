@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Total: +49 tests (557 → 606 tests, 100% pass rate)
 
 ### Fixed
+- **Critical: E2E tests no longer clear user's API key** - Fixed E2E tests affecting real user configuration
+  - E2E tests were running against real user config directory (~/.deepl-cli/)
+  - Tests calling `deepl config reset` would clear user's stored API key
+  - Now use isolated test config directory via DEEPL_CONFIG_DIR environment variable
+  - All E2E tests now run in complete isolation from user configuration
+  - User's API key and settings are preserved after running tests
 - Fixed empty target languages validation in WatchCommand
   - Empty string split returns array with empty string, causing validation to pass incorrectly
   - Added filter to remove empty strings before validation

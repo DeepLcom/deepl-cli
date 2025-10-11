@@ -10,11 +10,24 @@ import * as os from 'os';
 
 describe('CLI Workflow E2E', () => {
   const testDir = path.join(os.tmpdir(), `.deepl-cli-e2e-${Date.now()}`);
+  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-e2e-config-${Date.now()}`);
+
+  // Helper to run CLI commands with isolated config directory
+  const runCLI = (command: string): string => {
+    return execSync(command, {
+      encoding: 'utf-8',
+      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+    });
+  };
 
   beforeAll(() => {
     // Create test directory
     if (!fs.existsSync(testDir)) {
       fs.mkdirSync(testDir, { recursive: true });
+    }
+    // Create test config directory
+    if (!fs.existsSync(testConfigDir)) {
+      fs.mkdirSync(testConfigDir, { recursive: true });
     }
   });
 
@@ -22,6 +35,10 @@ describe('CLI Workflow E2E', () => {
     // Clean up test directory
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
+    }
+    // Clean up test config directory
+    if (fs.existsSync(testConfigDir)) {
+      fs.rmSync(testConfigDir, { recursive: true, force: true });
     }
   });
 
@@ -99,74 +116,74 @@ describe('CLI Workflow E2E', () => {
   describe('Configuration Workflow', () => {
     it('should complete config workflow: list → set → get → reset', () => {
       // Step 1: List all config values
-      const listOutput = execSync('deepl config list', { encoding: 'utf-8' });
+      const listOutput = runCLI('deepl config list');
       expect(listOutput).toContain('auth');
       expect(listOutput).toContain('cache');
       expect(listOutput).toContain('defaults');
 
       // Step 2: Set a config value
-      execSync('deepl config set cache.enabled false', { encoding: 'utf-8' });
+      runCLI('deepl config set cache.enabled false');
 
       // Step 3: Get the value to verify
-      const getValue = execSync('deepl config get cache.enabled', { encoding: 'utf-8' });
+      const getValue = runCLI('deepl config get cache.enabled');
       expect(getValue.trim()).toBe('false');
 
       // Step 4: Reset config
-      const resetOutput = execSync('deepl config reset', { encoding: 'utf-8' });
+      const resetOutput = runCLI('deepl config reset');
       expect(resetOutput).toContain('reset');
 
       // Step 5: Verify reset worked (should be back to default true)
-      const getAfterReset = execSync('deepl config get cache.enabled', { encoding: 'utf-8' });
+      const getAfterReset = runCLI('deepl config get cache.enabled');
       expect(getAfterReset.trim()).toBe('true');
     });
 
     it('should handle nested config values', () => {
       // Set nested value
-      execSync('deepl config set output.color false', { encoding: 'utf-8' });
+      runCLI('deepl config set output.color false');
 
       // Get nested value
-      const output = execSync('deepl config get output.color', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get output.color');
       expect(output.trim()).toBe('false');
 
       // Reset
-      execSync('deepl config reset', { encoding: 'utf-8' });
+      runCLI('deepl config reset');
     });
 
     it('should handle array config values', () => {
       // Set array value
-      execSync('deepl config set defaults.targetLangs es,fr,de', { encoding: 'utf-8' });
+      runCLI('deepl config set defaults.targetLangs es,fr,de');
 
       // Get array value
-      const output = execSync('deepl config get defaults.targetLangs', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get defaults.targetLangs');
       const parsed = JSON.parse(output.trim());
       expect(parsed).toEqual(['es', 'fr', 'de']);
 
       // Reset
-      execSync('deepl config reset', { encoding: 'utf-8' });
+      runCLI('deepl config reset');
     });
   });
 
   describe('Cache Workflow', () => {
     it('should complete cache workflow: stats → clear → enable/disable commands', () => {
       // Step 1: Check initial stats
-      const statsOutput = execSync('deepl cache stats', { encoding: 'utf-8' });
+      const statsOutput = runCLI('deepl cache stats');
       expect(statsOutput).toContain('Cache Status:');
       expect(statsOutput).toContain('Entries:');
 
       // Step 2: Clear cache
-      const clearOutput = execSync('deepl cache clear', { encoding: 'utf-8' });
+      const clearOutput = runCLI('deepl cache clear');
       expect(clearOutput).toContain('cleared');
 
       // Step 3: Verify cache is empty
-      const statsAfterClear = execSync('deepl cache stats', { encoding: 'utf-8' });
+      const statsAfterClear = runCLI('deepl cache stats');
       expect(statsAfterClear).toContain('Entries: 0');
 
       // Step 4: Test enable command
-      const enableOutput = execSync('deepl cache enable', { encoding: 'utf-8' });
+      const enableOutput = runCLI('deepl cache enable');
       expect(enableOutput).toContain('enabled');
 
       // Step 5: Test disable command
-      const disableOutput = execSync('deepl cache disable', { encoding: 'utf-8' });
+      const disableOutput = runCLI('deepl cache disable');
       expect(disableOutput).toContain('disabled');
 
       // Note: enable/disable commands work but don't persist to config,
@@ -204,20 +221,20 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should handle non-existent config keys gracefully', () => {
-      const output = execSync('deepl config get nonexistent.key', { encoding: 'utf-8' });
+      const output = runCLI('deepl config get nonexistent.key');
       expect(output.trim()).toBe('null');
     });
 
     it('should require target language for translation without API key', () => {
-      // Clear API key first
+      // Clear API key first (in isolated test config)
       try {
-        execSync('deepl auth clear', { encoding: 'utf-8', stdio: 'ignore' });
+        runCLI('deepl auth clear');
       } catch {
         // Ignore if already cleared
       }
 
       try {
-        execSync('deepl translate "Hello" --to es', { encoding: 'utf-8', stdio: 'pipe' });
+        runCLI('deepl translate "Hello" --to es');
         fail('Should have thrown an error about missing API key');
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
@@ -246,18 +263,18 @@ describe('CLI Workflow E2E', () => {
     it('should complete auth workflow: show → clear → show again', () => {
       // Step 1: Try to show current key (just to check command works)
       try {
-        execSync('deepl auth show', { encoding: 'utf-8', stdio: 'pipe' });
+        runCLI('deepl auth show');
       } catch (error: any) {
         // If no key is set, that's expected
       }
 
       // Step 2: Clear the key
-      const clearOutput = execSync('deepl auth clear', { encoding: 'utf-8' });
+      const clearOutput = runCLI('deepl auth clear');
       expect(clearOutput).toMatch(/cleared|removed/i);
 
       // Step 3: Show should now indicate no key is set
       try {
-        execSync('deepl auth show', { encoding: 'utf-8', stdio: 'pipe' });
+        runCLI('deepl auth show');
         // If it doesn't throw, check that it says "not set" or similar
       } catch (error: any) {
         const output = error.stderr || error.stdout;
@@ -267,10 +284,7 @@ describe('CLI Workflow E2E', () => {
 
     it('should reject invalid API key format', () => {
       try {
-        execSync('deepl auth set-key "invalid-key"', {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
+        runCLI('deepl auth set-key "invalid-key"');
         fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
@@ -281,7 +295,7 @@ describe('CLI Workflow E2E', () => {
 
     it('should reject empty API key', () => {
       try {
-        execSync('deepl auth set-key ""', { encoding: 'utf-8', stdio: 'pipe' });
+        runCLI('deepl auth set-key ""');
         fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
@@ -293,43 +307,41 @@ describe('CLI Workflow E2E', () => {
   describe('Multi-Command Workflow', () => {
     it('should configure defaults and verify persistence', () => {
       // Configure multiple settings
-      execSync('deepl config set defaults.targetLangs es,fr', { encoding: 'utf-8' });
-      execSync('deepl config set output.color false', { encoding: 'utf-8' });
-      execSync('deepl config set cache.enabled true', { encoding: 'utf-8' });
+      runCLI('deepl config set defaults.targetLangs es,fr');
+      runCLI('deepl config set output.color false');
+      runCLI('deepl config set cache.enabled true');
 
       // Verify all settings persisted
-      const targetLangs = execSync('deepl config get defaults.targetLangs', {
-        encoding: 'utf-8',
-      });
+      const targetLangs = runCLI('deepl config get defaults.targetLangs');
       expect(JSON.parse(targetLangs.trim())).toEqual(['es', 'fr']);
 
-      const color = execSync('deepl config get output.color', { encoding: 'utf-8' });
+      const color = runCLI('deepl config get output.color');
       expect(color.trim()).toBe('false');
 
-      const cacheEnabled = execSync('deepl config get cache.enabled', { encoding: 'utf-8' });
+      const cacheEnabled = runCLI('deepl config get cache.enabled');
       expect(cacheEnabled.trim()).toBe('true');
 
       // Clean up
-      execSync('deepl config reset', { encoding: 'utf-8' });
+      runCLI('deepl config reset');
     });
 
     it('should handle cache configuration via config commands', () => {
       // Check initial config value
-      let configValue = execSync('deepl config get cache.enabled', { encoding: 'utf-8' });
+      let configValue = runCLI('deepl config get cache.enabled');
       expect(configValue.trim()).toBe('true');
 
       // Disable via config
-      execSync('deepl config set cache.enabled false', { encoding: 'utf-8' });
+      runCLI('deepl config set cache.enabled false');
 
       // Verify config change persisted
-      configValue = execSync('deepl config get cache.enabled', { encoding: 'utf-8' });
+      configValue = runCLI('deepl config get cache.enabled');
       expect(configValue.trim()).toBe('false');
 
       // Reset config
-      execSync('deepl config set cache.enabled true', { encoding: 'utf-8' });
+      runCLI('deepl config set cache.enabled true');
 
       // Verify reset
-      configValue = execSync('deepl config get cache.enabled', { encoding: 'utf-8' });
+      configValue = runCLI('deepl config get cache.enabled');
       expect(configValue.trim()).toBe('true');
     });
   });
