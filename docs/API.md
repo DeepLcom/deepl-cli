@@ -19,6 +19,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
   - [cache](#cache)
   - [config](#config)
   - [usage](#usage)
+  - [languages](#languages)
   - [auth](#auth)
 - [Configuration](#configuration)
 - [Exit Codes](#exit-codes)
@@ -554,6 +555,77 @@ deepl usage
 - Free tier: typically 500,000 characters/month
 - Pro accounts: varies by subscription level
 - Shows warning when usage exceeds 80%
+
+---
+
+### languages
+
+List supported source and target languages.
+
+#### Synopsis
+
+```bash
+deepl languages [OPTIONS]
+```
+
+#### Description
+
+Display all languages supported by DeepL API. You can filter to show only source languages, only target languages, or both (default).
+
+#### Options
+
+- `--source, -s` - Show only source languages
+- `--target, -t` - Show only target languages
+
+#### Examples
+
+```bash
+# Show all supported languages (both source and target)
+deepl languages
+# Source Languages:
+#   en      English
+#   de      German
+#   fr      French
+#   es      Spanish
+#   ...
+#
+# Target Languages:
+#   en-us   English (American)
+#   en-gb   English (British)
+#   de      German
+#   fr      French
+#   ...
+
+# Show only source languages
+deepl languages --source
+# Source Languages:
+#   en      English
+#   de      German
+#   fr      French
+#   ...
+
+# Show only target languages
+deepl languages --target
+# Target Languages:
+#   en-us   English (American)
+#   en-gb   English (British)
+#   de      German
+#   fr      French
+#   es      Spanish
+#   ja      Japanese
+#   ...
+```
+
+**Output Format:**
+- Language codes are displayed in the first column
+- Language names are displayed in the second column
+- Codes are left-aligned and padded for readability
+
+**Notes:**
+- Source and target language lists may differ
+- Some languages are only available as target languages (e.g., English variants `en-us`, `en-gb`)
+- Some languages are only available as source languages
+- The list is fetched directly from DeepL API and reflects current language support
 
 ---
 

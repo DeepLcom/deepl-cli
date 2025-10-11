@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - UsageCommand with comprehensive unit tests (10 tests)
   - Added example script: `examples/10-usage-monitoring.sh`
   - Full documentation in README.md and API.md
+- **Languages Command** - List supported source and target languages
+  - New `deepl languages` command to display all supported languages
+  - `--source` flag to show only source languages
+  - `--target` flag to show only target languages
+  - Formatted output with aligned language codes and names
+  - LanguagesCommand with comprehensive unit tests (12 tests)
+  - Added example script: `examples/11-languages.sh`
+  - Full documentation in README.md and API.md
 - **Write Command CLI Flags** - Exposed all write command features via CLI
   - `--output` / `-o` - Write improved text to file
   - `--in-place` - Edit file in place

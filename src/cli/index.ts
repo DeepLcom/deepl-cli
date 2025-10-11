@@ -18,6 +18,7 @@ import { WriteService } from '../services/write.js';
 import { GlossaryService } from '../services/glossary.js';
 import { AuthCommand } from './commands/auth.js';
 import { UsageCommand } from './commands/usage.js';
+import { LanguagesCommand } from './commands/languages.js';
 import { TranslateCommand } from './commands/translate.js';
 import { WriteCommand } from './commands/write.js';
 import { WatchCommand } from './commands/watch.js';
@@ -154,6 +155,43 @@ program
       const usage = await usageCommand.getUsage();
       const formatted = usageCommand.formatUsage(usage);
       console.log(formatted);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+      process.exit(1);
+    }
+  });
+
+// Languages command
+program
+  .command('languages')
+  .description('List supported source and target languages')
+  .option('-s, --source', 'Show only source languages')
+  .option('-t, --target', 'Show only target languages')
+  .action(async (options: { source?: boolean; target?: boolean }) => {
+    try {
+      const client = createDeepLClient();
+      const languagesCommand = new LanguagesCommand(client);
+
+      let output: string;
+
+      if (options.source && !options.target) {
+        // Show only source languages
+        const sourceLanguages = await languagesCommand.getSourceLanguages();
+        output = languagesCommand.formatLanguages(sourceLanguages, 'source');
+      } else if (options.target && !options.source) {
+        // Show only target languages
+        const targetLanguages = await languagesCommand.getTargetLanguages();
+        output = languagesCommand.formatLanguages(targetLanguages, 'target');
+      } else {
+        // Show both (default)
+        const [sourceLanguages, targetLanguages] = await Promise.all([
+          languagesCommand.getSourceLanguages(),
+          languagesCommand.getTargetLanguages(),
+        ]);
+        output = languagesCommand.formatAllLanguages(sourceLanguages, targetLanguages);
+      }
+
+      console.log(output);
     } catch (error) {
       console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
       process.exit(1);

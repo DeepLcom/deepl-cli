@@ -232,39 +232,46 @@ Character Usage:
 
 ---
 
-#### 2. List Supported Languages (`getSupportedLanguages()`)
+#### 2. List Supported Languages (`getSupportedLanguages()`) ✅ IMPLEMENTED
 
-**Status**: ✅ Fully implemented in API client, ❌ NOT exposed in CLI
+**Status**: ✅ Fully implemented in API client, ✅ EXPOSED in CLI (v0.2.1)
 
 **API Method**: `DeepLClient.getSupportedLanguages(type: 'source' | 'target'): Promise<LanguageInfo[]>`
 - Location: `src/api/deepl-client.ts:186-203`
 - Returns: Array of `{ language: Language, name: string }`
 
-**Missing CLI Commands**:
+**CLI Command**:
 ```bash
-deepl languages                          # List all languages
-deepl languages --type source            # List source languages only
-deepl languages --type target            # List target languages only
-deepl glossary language-pairs            # List glossary pairs (not implemented)
+deepl languages                          # List all languages ✅ IMPLEMENTED
+deepl languages --source                 # List source languages only ✅ IMPLEMENTED
+deepl languages --target                 # List target languages only ✅ IMPLEMENTED
+# Future: deepl glossary language-pairs  # List glossary pairs (not yet implemented)
 ```
 
-**Expected Output**:
+**Output**:
 ```
-Supported Languages (Target):
-  AR - Arabic
-  BG - Bulgarian
-  CS - Czech
-  DA - Danish
-  DE - German
+Source Languages:
+  en      English
+  de      German
+  fr      French
+  ...
+
+Target Languages:
+  en-us   English (American)
+  en-gb   English (British)
+  de      German
   ...
 ```
 
-**Implementation Effort**: ~30 minutes
-- Add new command to `src/cli/index.ts`
-- Format as table with language codes and names
-- Add tests for languages command
+**Implementation Details** (2025-10-11):
+- New `LanguagesCommand` class in `src/cli/commands/languages.ts`
+- Formatted output with aligned language codes and names
+- `--source` and `--target` flags for filtering
+- 12 comprehensive unit tests
+- Full documentation in README.md and API.md
+- Follows Python library feature parity
 
-**Comparison to Python Library**: Python has this feature exposed
+**Comparison to Python Library**: ✅ Parity achieved
 
 ---
 
@@ -327,7 +334,7 @@ deepl translate config.xml --to fr --tag-handling xml
 |---------|-----------|-------|-------------|------------|---------------------|----------|
 | **translate()** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
 | **getUsage()** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | ✅ DONE |
-| **getSupportedLanguages()** | ✅ | ✅ | ❌ | ❌ | ✅ Python has it | 🔴 HIGH |
+| **getSupportedLanguages()** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | ✅ DONE |
 | **splitSentences** | ✅ | ✅ | ❌ | ❌ | ✅ Python has it | 🟢 LOW |
 | **tagHandling** | ✅ | ✅ | ❌ | ❌ | ✅ Python has it | 🟢 LOW |
 | **formality** | ✅ | ✅ | ✅ | ✅ | ✅ Parity | - |
@@ -341,12 +348,12 @@ deepl translate config.xml --to fr --tag-handling xml
 ### 🚀 Quick Wins Summary
 
 **Total Estimated Effort**: ~90 minutes for all 4 features
-**Completed**: 1/4 features (25%)
-**Remaining**: ~60 minutes
+**Completed**: 2/4 features (50%)
+**Remaining**: ~30 minutes
 
 1. **Add `deepl usage` command** - ✅ DONE (Implemented 2025-10-11)
-2. **Add `deepl languages` command** - 30 min ⏳ Next
-3. **Add `--split-sentences` flag** - 15 min ⏳ Remaining
+2. **Add `deepl languages` command** - ✅ DONE (Implemented 2025-10-11)
+3. **Add `--split-sentences` flag** - 15 min ⏳ Next
 4. **Add `--tag-handling` flag** - 15 min ⏳ Remaining
 
 **Value**: Brings CLI to feature parity with Python library for these core features.

@@ -14,6 +14,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Context-Aware Translation](./08-context-aware-translation.sh) - Using context for better translation quality
 - [Writing Enhancement](./09-write-basic.sh) - Using DeepL Write API for grammar and style improvement
 - [Usage Monitoring](./10-usage-monitoring.sh) - Monitoring API character usage and quota
+- [Supported Languages](./11-languages.sh) - Listing source and target languages supported by DeepL
 
 ## Prerequisites
 

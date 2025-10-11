@@ -489,6 +489,44 @@ deepl usage
 
 See [examples/10-usage-monitoring.sh](./examples/10-usage-monitoring.sh) for a complete usage monitoring example.
 
+#### Supported Languages
+
+List all source and target languages supported by DeepL:
+
+```bash
+# Show all supported languages (both source and target)
+deepl languages
+# Source Languages:
+#   en      English
+#   de      German
+#   fr      French
+#   ...
+#
+# Target Languages:
+#   en-us   English (American)
+#   en-gb   English (British)
+#   de      German
+#   ...
+
+# Show only source languages
+deepl languages --source
+# Source Languages:
+#   en      English
+#   de      German
+#   ...
+
+# Show only target languages
+deepl languages --target
+# Target Languages:
+#   en-us   English (American)
+#   en-gb   English (British)
+#   ...
+```
+
+**Note:** Source and target language lists may differ. Some languages are available only as target languages (e.g., `en-us`, `en-gb` for English variants).
+
+See [examples/11-languages.sh](./examples/11-languages.sh) for a complete example.
+
 #### Configure Defaults
 
 Configuration is stored in `~/.deepl-cli/config.json`
