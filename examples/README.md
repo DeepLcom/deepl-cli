@@ -40,6 +40,26 @@ chmod +x examples/*.sh
 
 Or follow along and run commands individually.
 
+### Running All Examples
+
+You can run all examples at once using the `run-all.sh` script:
+
+```bash
+# Run all examples
+./examples/run-all.sh
+
+# Run all examples in fast mode (skip slow examples like watch mode)
+./examples/run-all.sh --fast
+
+# Stop on first failure
+./examples/run-all.sh --stop-on-error
+
+# Show help
+./examples/run-all.sh --help
+```
+
+**Note:** Running all examples will make real API calls and consume your DeepL API quota.
+
 ## Example Files
 
 The `sample-files/` directory contains sample documents used in the examples.
