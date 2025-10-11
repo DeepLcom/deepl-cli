@@ -624,6 +624,26 @@ describe('TranslateCommand', () => {
       );
     });
 
+    it('should pass sourceLang to translateToMultiple', async () => {
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'fr', text: 'Bonjour' },
+      ]);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es,fr',
+        from: 'en',
+      });
+
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        ['es', 'fr'],
+        expect.objectContaining({
+          sourceLang: 'en',
+        })
+      );
+    });
+
     it('should work with all options combined', async () => {
       (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
         text: '<p>Hola. ¿Cómo estás?</p>',

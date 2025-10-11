@@ -14,9 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **AuthCommand**: 75% → 95% (+20%) with 2 new tests
     - Non-Error exception handling during API validation
     - Non-authentication API errors (network timeout, etc.)
-  - **TranslateCommand**: 73.45% → 76.1% (+2.65%) with 5 new tests
+  - **TranslateCommand**: 73.45% → 76.99% (+3.54%) with 6 new tests
     - splitSentences and tagHandling option passthrough
     - formality option in translateToMultiple
+    - sourceLang option in translateToMultiple
     - Combined options validation
   - **WatchCommand**: 42.85% → 87.05% (+44.2%) with 8 new tests
     - Empty target validation, display messages, auto-commit scenarios
@@ -28,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Complete test suite with proper fs mocking and temp directory handling
     - All methods tested: install, uninstall, isInstalled, list, findGitRoot
     - Hook content generation, backup/restore, validation
-  - **Overall**: 90.88% → 91.47% (+0.59%), 557 → 612 tests (+55 tests, 100% pass rate)
+  - **Overall**: 90.88% → 91.47% (+0.59%), 557 → 613 tests (+56 tests, 100% pass rate)
 
 ### Fixed
 - **Critical: E2E and Integration tests no longer clear user's API key** - Fixed tests affecting real user configuration
