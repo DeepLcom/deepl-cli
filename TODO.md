@@ -4,7 +4,7 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 
 ## 📋 Current Status
 
-- **Version**: 0.2.1 ✅ (In Development)
+- **Version**: 0.4.0 ✅ (Current)
 - **Phase**: 2 (Advanced Features) - ✅ 100% COMPLETE! 🎉
   - **Phase 3 Write Enhancements**: ✅ COMPLETE! (file ops, diff, check, fix, interactive with multi-style)
   - **Phase 3 Document Translation**: ✅ COMPLETE! (PDF, DOCX, PPTX, XLSX with async processing)
@@ -1218,8 +1218,10 @@ deepl-cli/
 ### Version Planning
 
 - **v0.1.0** - Phase 1 MVP ✅
-- **v0.2.0** - Phase 2 features + Phase 3 Write Enhancements (CURRENT) ✅
-- **v0.3.0** - Phase 3 features (TUI, translation memory, team)
+- **v0.2.0** - Phase 2 features ✅
+- **v0.3.0** - Write Enhancements + Document Translation ✅
+- **v0.4.0** - Feature Parity (batch optimization, glossary management, --quiet, --config) ✅ (CURRENT)
+- **v0.5.0** - Phase 3 features (TUI, translation memory, team) (NEXT)
 - **v1.0.0** - Stable API, production-ready, all polish items complete
 
 ### Testing Strategy

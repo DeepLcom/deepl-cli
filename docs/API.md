@@ -1,6 +1,6 @@
 # DeepL CLI - API Reference
 
-**Version**: 0.2.1
+**Version**: 0.4.0
 **Last Updated**: October 12, 2025
 
 Complete reference for all DeepL CLI commands, options, and configuration.
@@ -114,6 +114,7 @@ deepl --config /path/to/test-config.json usage
 ```
 
 **Use cases:**
+
 - **Multiple API keys**: Switch between free and paid accounts
 - **Project isolation**: Different settings per project (glossaries, formality, etc.)
 - **Team configurations**: Share standardized configs via version control
@@ -141,6 +142,7 @@ deepl translate [OPTIONS] [TEXT|FILE|DIRECTORY]
 Translate text directly, from stdin, from files, or entire directories. Supports multiple target languages, code preservation, and context-aware translation.
 
 **Input Sources:**
+
 - Direct text argument: `deepl translate "Hello" --to es`
 - From stdin: `echo "Hello" | deepl translate --to es`
 - Single file: `deepl translate README.md --to es --output README.es.md`
@@ -151,16 +153,20 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 #### Options
 
 **Required:**
+
 - `--to, -t LANGS` - Target language(s), comma-separated (e.g., `es`, `es,fr,de`)
 
 **Source Options:**
+
 - `--from, -f LANG` - Source language (auto-detect if omitted)
 - `--context TEXT` - Additional context for better translation
 
 **Output Options:**
+
 - `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text)
 
 **Translation Options:**
+
 - `--formality LEVEL` - Formality: `default`, `less`, `more`, `prefer_less`, `prefer_more`
 - `--model-type TYPE` - Model type: `quality_optimized` (default), `prefer_quality_optimized`, `latency_optimized`
 - `--preserve-code` - Preserve code blocks (markdown, etc.)
@@ -169,9 +175,11 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--tag-handling MODE` - XML tag handling: `xml`, `html`
 
 **API Options:**
+
 - `--api-url URL` - Custom API endpoint URL (for testing or private instances)
 
 **Batch Options (for directories):**
+
 - `--recursive, -r` - Process subdirectories recursively (default: true)
 - `--pattern GLOB` - File pattern (e.g., `*.md`, `**/*.txt`)
 - `--concurrency N` - Number of parallel translations (default: 5)
@@ -179,6 +187,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 #### Examples
 
 **Basic text translation:**
+
 ```bash
 # Single language
 deepl translate "Hello, world!" --to es
@@ -191,6 +200,7 @@ deepl translate "Bonjour" --from fr --to en
 ```
 
 **From stdin:**
+
 ```bash
 # Pipe text
 echo "Hello" | deepl translate --to es
@@ -200,6 +210,7 @@ cat README.md | deepl translate --to fr
 ```
 
 **File translation:**
+
 ```bash
 # Single file
 deepl translate README.md --to es --output README.es.md
@@ -212,6 +223,7 @@ deepl translate tutorial.md --to es --output tutorial.es.md --preserve-code
 ```
 
 **Document translation:**
+
 ```bash
 # Translate PDF document
 deepl translate document.pdf --to es --output document.es.pdf
@@ -227,6 +239,7 @@ deepl translate website.html --to ja --output website.ja.html
 ```
 
 **Supported Document Formats:**
+
 - `.pdf` - PDF documents (up to 10MB)
 - `.docx`, `.doc` - Microsoft Word
 - `.pptx` - Microsoft PowerPoint
@@ -237,6 +250,7 @@ deepl translate website.html --to ja --output website.ja.html
 - `.xlf`, `.xliff` - XLIFF localization files
 
 **Document Translation Notes:**
+
 - Documents are translated on DeepL servers using async processing
 - Progress updates show status (queued → translating → done)
 - Billed characters are displayed after completion
@@ -245,6 +259,7 @@ deepl translate website.html --to ja --output website.ja.html
 - Maximum file sizes: 10MB (PDF), 30MB (other formats)
 
 **Directory translation:**
+
 ```bash
 # Translate all supported files
 deepl translate docs/ --to es --output docs-es/
@@ -257,6 +272,7 @@ deepl translate src/ --to es,fr --output translations/ --recursive --concurrency
 ```
 
 **Context-aware translation:**
+
 ```bash
 # Add context for better disambiguation
 deepl translate "Bank" --to es --context "Financial institution"
@@ -268,6 +284,7 @@ deepl translate app.json --to es --context "E-commerce checkout flow"
 **Note:** The `--context` feature may not be supported by all DeepL API tiers. Check your API plan for context support availability.
 
 **Formality levels:**
+
 ```bash
 # Formal
 deepl translate "How are you?" --to de --formality more
@@ -279,6 +296,7 @@ deepl translate "How are you?" --to de --formality less
 ```
 
 **Sentence splitting:**
+
 ```bash
 # Default behavior (sentences split on punctuation and newlines)
 deepl translate "Hello. How are you?" --to es
@@ -294,6 +312,7 @@ deepl translate "Line 1\nLine 2" --to es --split-sentences nonewlines
 ```
 
 **Tag handling (XML/HTML):**
+
 ```bash
 # Translate XML while preserving tags
 deepl translate "<p>Hello world</p>" --to es --tag-handling xml
@@ -328,9 +347,11 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 #### Options
 
 **Required:**
+
 - `--lang, -l LANG` - Target language: `de`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt-BR`, `pt-PT`
 
 **Style Options (mutually exclusive with tone):**
+
 - `--style STYLE` - Writing style:
   - `simple` - Simpler, more accessible language
   - `business` - Professional business language
@@ -339,6 +360,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
   - `prefer_simple`, `prefer_business`, etc. - Soft preferences
 
 **Tone Options (mutually exclusive with style):**
+
 - `--tone TONE` - Tone:
   - `enthusiastic` - More enthusiastic and positive
   - `friendly` - Warmer, more approachable
@@ -347,6 +369,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
   - `prefer_enthusiastic`, `prefer_friendly`, etc. - Soft preferences
 
 **Output Options:**
+
 - `--alternatives, -a` - Show all improvement alternatives
 - `--interactive, -i` - Interactive mode: choose from multiple alternatives
 - `--diff, -d` - Show diff between original and improved text
@@ -370,12 +393,14 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 #### Examples
 
 **Basic improvement:**
+
 ```bash
 deepl write "Me and him went to store." --lang en-US
 # → "He and I went to the store."
 ```
 
 **With writing style:**
+
 ```bash
 # Business style
 deepl write "We want to tell you about our product." --lang en-US --style business
@@ -387,6 +412,7 @@ deepl write "The analysis demonstrates significant findings." --lang en-US --sty
 ```
 
 **With tone:**
+
 ```bash
 # Confident tone
 deepl write "I think this might work." --lang en-US --tone confident
@@ -398,11 +424,13 @@ deepl write "Your approach is wrong." --lang en-US --tone diplomatic
 ```
 
 **Show alternatives:**
+
 ```bash
 deepl write "This is good." --lang en-US --alternatives
 ```
 
 **File operations:**
+
 ```bash
 # Improve file and save to new location
 deepl write document.txt --lang en-US --output improved.txt
@@ -415,18 +443,21 @@ deepl write document.txt --lang en-US --fix --backup
 ```
 
 **Interactive mode:**
+
 ```bash
 # Choose from multiple alternatives interactively
 deepl write "Text to improve." --lang en-US --interactive
 ```
 
 **Check mode:**
+
 ```bash
 # Check if file needs improvement (exit code 1 if changes needed)
 deepl write document.md --lang en-US --check
 ```
 
 **Diff view:**
+
 ```bash
 # Show differences between original and improved
 deepl write file.txt --lang en-US --diff
@@ -449,6 +480,7 @@ deepl watch [OPTIONS] PATH
 Monitor files or directories for changes and automatically translate them. Supports debouncing, glob patterns, and multiple target languages.
 
 **Behavior:**
+
 - Runs continuously until interrupted (Ctrl+C)
 - Shows translation statistics on exit
 - Detects file changes using filesystem watch
@@ -457,25 +489,30 @@ Monitor files or directories for changes and automatically translate them. Suppo
 #### Options
 
 **Required:**
+
 - `--targets, -t LANGS` - Target language(s), comma-separated
 
 **Watch Options:**
+
 - `--output, -o DIR` - Output directory (default: `<path>/translations` for directories, same dir for files)
 - `--pattern GLOB` - File pattern filter (e.g., `*.md`, `**/*.json`)
 - `--debounce MS` - Debounce delay in milliseconds (default: 300)
 
 **Translation Options:**
+
 - `--from, -f LANG` - Source language (auto-detect if omitted)
 - `--formality LEVEL` - Formality level
 - `--preserve-code` - Preserve code blocks
 
 **Git Integration:**
+
 - `--auto-commit` - Auto-commit translations to git after each change
 - `--git-staged` - Only watch git-staged files (not yet implemented)
 
 #### Examples
 
 **Watch single file:**
+
 ```bash
 # Basic watching
 deepl watch README.md --targets es
@@ -488,6 +525,7 @@ deepl watch tutorial.md --targets es --preserve-code --formality more
 ```
 
 **Watch directory:**
+
 ```bash
 # Watch all supported files
 deepl watch docs/ --targets es
@@ -500,6 +538,7 @@ deepl watch docs/ --targets es --debounce 1000
 ```
 
 **With auto-commit:**
+
 ```bash
 # Automatically commit translations
 deepl watch docs/ --targets es --auto-commit
@@ -528,9 +567,11 @@ Install, uninstall, and manage git hooks that validate translations before commi
 Install a git hook.
 
 **Arguments:**
+
 - `hook-type` - Hook type: `pre-commit`, `pre-push`
 
 **Examples:**
+
 ```bash
 deepl hooks install pre-commit
 deepl hooks install pre-push
@@ -541,6 +582,7 @@ deepl hooks install pre-push
 Uninstall a git hook.
 
 **Examples:**
+
 ```bash
 deepl hooks uninstall pre-commit
 deepl hooks uninstall pre-push
@@ -551,6 +593,7 @@ deepl hooks uninstall pre-push
 List all hooks and their installation status.
 
 **Examples:**
+
 ```bash
 deepl hooks list
 ```
@@ -560,6 +603,7 @@ deepl hooks list
 Show the path to a hook file.
 
 **Examples:**
+
 ```bash
 deepl hooks path pre-commit
 ```
@@ -583,18 +627,21 @@ deepl glossary <SUBCOMMAND>
 Create a new glossary from a TSV or CSV file.
 
 **Arguments:**
+
 - `name` - Glossary name
 - `source-lang` - Source language code (e.g., `en`, `de`, `fr`)
 - `target-lang` - Target language code (e.g., `es`, `fr`, `ja`)
 - `file` - Path to TSV or CSV file with term pairs
 
 **File Format:**
+
 - **TSV** (Tab-Separated Values): `source_term<TAB>target_term`
 - **CSV** (Comma-Separated Values): `source_term,target_term`
 - One term pair per line
 - No header row required
 
 **Example file (glossary.tsv):**
+
 ```
 API	API
 authentication	autenticación
@@ -602,6 +649,7 @@ cache	caché
 ```
 
 **Examples:**
+
 ```bash
 # Create glossary from TSV file
 deepl glossary create tech-terms en es glossary.tsv
@@ -615,6 +663,7 @@ deepl glossary create product-names en fr terms.csv
 List all glossaries with their IDs, language pairs, and entry counts.
 
 **Example:**
+
 ```bash
 deepl glossary list
 ```
@@ -624,6 +673,7 @@ deepl glossary list
 Show glossary details including name, ID, languages, creation date, and entry count.
 
 **Example:**
+
 ```bash
 deepl glossary show tech-terms
 deepl glossary show abc-123-def-456
@@ -634,6 +684,7 @@ deepl glossary show abc-123-def-456
 Delete a glossary by name or ID.
 
 **Example:**
+
 ```bash
 deepl glossary delete tech-terms
 deepl glossary delete abc-123-def-456
@@ -644,6 +695,7 @@ deepl glossary delete abc-123-def-456
 Get glossary entries in TSV format (suitable for backup or editing).
 
 **Example:**
+
 ```bash
 # Export to file
 deepl glossary entries tech-terms > backup.tsv
@@ -660,6 +712,7 @@ List all supported glossary language pairs.
 Shows which source-target language combinations are available for glossary creation. Not all language pairs supported by DeepL translation are available for glossaries.
 
 **Example:**
+
 ```bash
 deepl glossary languages
 # en → de
@@ -674,17 +727,20 @@ deepl glossary languages
 Add a new entry to an existing glossary.
 
 **Arguments:**
+
 - `name-or-id` - Glossary name or ID
 - `source` - Source language term
 - `target` - Target language term
 
 **Behavior:**
+
 - Creates new glossary with updated entries (delete + recreate)
 - Returns new glossary ID
 - Preserves all other entries and metadata
 - Fails if entry already exists
 
 **Examples:**
+
 ```bash
 # Add entry by glossary name
 deepl glossary add-entry tech-terms "API" "API"
@@ -703,17 +759,20 @@ deepl glossary add-entry tech-terms "user interface" "interfaz de usuario"
 Update an existing entry in a glossary.
 
 **Arguments:**
+
 - `name-or-id` - Glossary name or ID
 - `source` - Source language term to update
 - `new-target` - New target language translation
 
 **Behavior:**
+
 - Updates existing entry's target text
 - Creates new glossary with updated entries (delete + recreate)
 - Returns new glossary ID
 - Fails if entry doesn't exist
 
 **Examples:**
+
 ```bash
 # Update entry by glossary name
 deepl glossary update-entry tech-terms "cache" "caché del sistema"
@@ -729,10 +788,12 @@ deepl glossary update-entry abc-123-def-456 "API" "Interfaz de programación de 
 Remove an entry from a glossary.
 
 **Arguments:**
+
 - `name-or-id` - Glossary name or ID
 - `source` - Source language term to remove
 
 **Behavior:**
+
 - Removes entry from glossary
 - Creates new glossary with remaining entries (delete + recreate)
 - Returns new glossary ID
@@ -740,6 +801,7 @@ Remove an entry from a glossary.
 - Fails if removing the last entry (delete glossary instead)
 
 **Examples:**
+
 ```bash
 # Remove entry by glossary name
 deepl glossary remove-entry tech-terms "obsolete-term"
@@ -755,10 +817,12 @@ deepl glossary remove-entry abc-123-def-456 "deprecated"
 Rename a glossary.
 
 **Arguments:**
+
 - `name-or-id` - Glossary name or ID
 - `new-name` - New name for the glossary
 
 **Behavior:**
+
 - Changes glossary name
 - Creates new glossary with new name (delete + recreate)
 - Returns new glossary ID
@@ -766,6 +830,7 @@ Rename a glossary.
 - Fails if new name matches current name
 
 **Examples:**
+
 ```bash
 # Rename by glossary name
 deepl glossary rename tech-terms "Technical Terminology v2"
@@ -791,17 +856,21 @@ deepl cache <SUBCOMMAND>
 #### Subcommands
 
 ##### `stats`
+
 Show cache statistics (status, entries count, size, percentage used).
 
 ##### `clear`
+
 Clear all cache entries (displays: "✓ Cache cleared successfully").
 
 ##### `enable`
+
 Enable cache (displays: "✓ Cache enabled").
 
 **Note:** To configure max cache size, use: `deepl config set cache.maxSize <bytes>`
 
 ##### `disable`
+
 Disable cache (displays: "✓ Cache disabled").
 
 ---
@@ -819,15 +888,19 @@ deepl config <SUBCOMMAND>
 #### Subcommands
 
 ##### `list`
+
 List all configuration values (same as `get` without arguments).
 
 ##### `get [key]`
+
 Get a specific configuration value, or all values if key is omitted.
 
 **Arguments:**
+
 - `key` (optional) - Configuration key in dot notation (e.g., `cache.maxSize`, `auth.apiKey`)
 
 **Examples:**
+
 ```bash
 # Get all configuration
 deepl config get
@@ -838,19 +911,23 @@ deepl config get auth.apiKey
 ```
 
 ##### `set <key> <value>`
+
 Set a configuration value.
 
 **Arguments:**
+
 - `key` - Configuration key in dot notation
 - `value` - Value to set
 
 **Examples:**
+
 ```bash
 deepl config set cache.maxSize 52428800
 deepl config set defaults.formality more
 ```
 
 ##### `reset`
+
 Reset configuration to defaults (keeps API key).
 
 ---
@@ -880,12 +957,14 @@ deepl usage
 ```
 
 **Output Fields:**
+
 - **Used**: Number of characters translated this billing period
 - **Limit**: Total character limit for your account
 - **Percentage**: Usage as a percentage of total quota
 - **Remaining**: Characters remaining in your quota
 
 **Notes:**
+
 - Usage resets monthly for most accounts
 - Free tier: typically 500,000 characters/month
 - Pro accounts: varies by subscription level
@@ -952,11 +1031,13 @@ deepl languages --target
 ```
 
 **Output Format:**
+
 - Language codes are displayed in the first column
 - Language names are displayed in the second column
 - Codes are left-aligned and padded for readability
 
 **Notes:**
+
 - Source and target language lists may differ
 - Some languages are only available as target languages (e.g., English variants `en-us`, `en-gb`)
 - Some languages are only available as source languages
@@ -977,23 +1058,28 @@ deepl auth <SUBCOMMAND>
 #### Subcommands
 
 ##### `set-key <api-key>`
+
 Set your DeepL API key and validate it with the DeepL API.
 
 **Arguments:**
+
 - `api-key` - Your DeepL API authentication key
 
 **Examples:**
+
 ```bash
 deepl auth set-key YOUR-API-KEY-HERE
 # ✓ API key saved and validated successfully
 ```
 
 ##### `show`
+
 Show current API key (masked for security).
 
 **Output Format:** `API Key: abcdefgh...xyz123` (first 8 and last 4 characters visible)
 
 **Examples:**
+
 ```bash
 deepl auth show
 # API Key: 12345678...abcd
@@ -1003,9 +1089,11 @@ deepl auth show
 ```
 
 ##### `clear`
+
 Clear stored API key from configuration.
 
 **Examples:**
+
 ```bash
 deepl auth clear
 # ✓ API key removed
@@ -1016,6 +1104,7 @@ deepl auth clear
 ## Configuration
 
 **Configuration file location:**
+
 - **macOS**: `~/Library/Preferences/deepl-cli-nodejs/config.json`
 - **Linux**: `~/.config/deepl-cli-nodejs/config.json`
 - **Windows**: `%APPDATA%\deepl-cli-nodejs\Config\config.json`
@@ -1058,12 +1147,13 @@ deepl auth clear
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Error (any type) |
+| Code | Meaning          |
+| ---- | ---------------- |
+| 0    | Success          |
+| 1    | Error (any type) |
 
 **Special Cases:**
+
 - `deepl write --check`: Exits with 0 if no changes needed, 1 if improvements suggested
 
 **Note:** Detailed exit codes (2-7) are planned for a future release. Currently, all errors exit with code 1.
@@ -1101,12 +1191,10 @@ export NO_COLOR=1
 
 ## See Also
 
-- [Quickstart Guide](./QUICKSTART.md)
-- [Troubleshooting](./TROUBLESHOOTING.md)
 - [Examples](../examples/)
 - [DeepL API Documentation](https://www.deepl.com/docs-api)
 
 ---
 
 **Last Updated**: October 12, 2025
-**DeepL CLI Version**: 0.2.1
+**DeepL CLI Version**: 0.4.0
