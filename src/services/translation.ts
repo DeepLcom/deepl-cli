@@ -11,6 +11,7 @@ import { TranslationOptions, Language } from '../types/index.js';
 
 interface TranslateServiceOptions {
   preserveCode?: boolean;
+  skipCache?: boolean;
 }
 
 interface BatchOptions {
@@ -80,11 +81,12 @@ export class TranslationService {
     // Always preserve variables
     processedText = this.preserveVariables(processedText, preservationMap);
 
-    // Check cache (only if cache is enabled)
+    // Check cache (only if cache is enabled AND skipCache is not set)
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
+    const shouldUseCache = cacheEnabled && !serviceOptions.skipCache;
     const cacheKey = this.generateCacheKey(processedText, translationOptions);
 
-    if (cacheEnabled) {
+    if (shouldUseCache) {
       const cachedResult = this.cache.get(cacheKey) as TranslationResult | null;
       if (cachedResult) {
         // Restore preserved content from cached result
@@ -103,7 +105,7 @@ export class TranslationService {
     const result = await this.client.translate(processedText, translationOptions);
 
     // Store in cache
-    if (cacheEnabled) {
+    if (shouldUseCache) {
       this.cache.set(cacheKey, result);
     }
 

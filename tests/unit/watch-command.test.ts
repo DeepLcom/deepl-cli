@@ -7,6 +7,7 @@ import { WatchCommand } from '../../src/cli/commands/watch';
 import { WatchService } from '../../src/services/watch';
 import { FileTranslationService } from '../../src/services/file-translation';
 import { TranslationService } from '../../src/services/translation';
+import { GlossaryService } from '../../src/services/glossary';
 
 // Mock chalk
 jest.mock('chalk', () => ({
@@ -33,6 +34,7 @@ describe('WatchCommand', () => {
   let mockTranslationService: jest.Mocked<TranslationService>;
   let mockFileTranslationService: jest.Mocked<FileTranslationService>;
   let mockWatchService: jest.Mocked<WatchService>;
+  let mockGlossaryService: jest.Mocked<GlossaryService>;
   let watchCommand: WatchCommand;
 
   beforeEach(() => {
@@ -41,6 +43,11 @@ describe('WatchCommand', () => {
     // Mock TranslationService
     mockTranslationService = {
       translate: jest.fn(),
+    } as any;
+
+    // Mock GlossaryService
+    mockGlossaryService = {
+      getGlossaryByName: jest.fn(),
     } as any;
 
     // Mock FileTranslationService
@@ -70,7 +77,7 @@ describe('WatchCommand', () => {
     jest.spyOn(console, 'log').mockImplementation();
     jest.spyOn(console, 'error').mockImplementation();
 
-    watchCommand = new WatchCommand(mockTranslationService);
+    watchCommand = new WatchCommand(mockTranslationService, mockGlossaryService);
   });
 
   afterEach(() => {
@@ -78,7 +85,7 @@ describe('WatchCommand', () => {
   });
 
   describe('constructor', () => {
-    it('should create WatchCommand with TranslationService', () => {
+    it('should create WatchCommand with TranslationService and GlossaryService', () => {
       expect(watchCommand).toBeInstanceOf(WatchCommand);
       expect(FileTranslationService).toHaveBeenCalledWith(mockTranslationService);
     });

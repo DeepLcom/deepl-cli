@@ -731,5 +731,62 @@ describe('TranslationService', () => {
       expect(result2.text).toBe('Hola (cached)');
       expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1); // Still only 1 API call
     });
+
+    it('should skip reading from cache when skipCache is true', async () => {
+      // Setup cache to return a hit
+      mockCacheService.get.mockReturnValue({
+        text: 'Hola (cached)',
+      });
+
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola (fresh)',
+      });
+
+      const result = await translationService.translate(
+        'Hello',
+        { targetLang: 'es' },
+        { skipCache: true }
+      );
+
+      expect(result.text).toBe('Hola (fresh)');
+      expect(mockCacheService.get).not.toHaveBeenCalled();
+      expect(mockDeepLClient.translate).toHaveBeenCalled();
+    });
+
+    it('should skip writing to cache when skipCache is true', async () => {
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola',
+      });
+
+      await translationService.translate(
+        'Hello',
+        { targetLang: 'es' },
+        { skipCache: true }
+      );
+
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+      expect(mockDeepLClient.translate).toHaveBeenCalled();
+    });
+
+    it('should bypass cache completely with skipCache flag', async () => {
+      // Even with cache enabled and cache hit available
+      mockConfigService.getValue.mockReturnValue(true); // cache enabled
+      mockCacheService.get.mockReturnValue({ text: 'Hola (cached)' });
+
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola (fresh from API)',
+      });
+
+      const result = await translationService.translate(
+        'Hello',
+        { targetLang: 'es' },
+        { skipCache: true }
+      );
+
+      expect(result.text).toBe('Hola (fresh from API)');
+      expect(mockCacheService.get).not.toHaveBeenCalled();
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+      expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1);
+    });
   });
 });

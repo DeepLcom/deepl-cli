@@ -28,6 +28,7 @@ interface TranslateOptions {
   pattern?: string;
   concurrency?: number;
   glossary?: string;
+  noCache?: boolean;
 }
 
 export class TranslateCommand {
@@ -241,7 +242,10 @@ export class TranslateCommand {
     const result = await this.translationService.translate(
       text,
       translationOptions,
-      { preserveCode: options.preserveCode }
+      {
+        preserveCode: options.preserveCode,
+        skipCache: options.noCache
+      }
     );
 
     return result.text;
