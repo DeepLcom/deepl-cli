@@ -8,12 +8,14 @@ import chalk from 'chalk';
 import { WatchService } from '../../services/watch.js';
 import { FileTranslationService } from '../../services/file-translation.js';
 import { TranslationService } from '../../services/translation.js';
+import { GlossaryService } from '../../services/glossary.js';
 import { Language } from '../../types/index.js';
 
 interface WatchOptions {
   targets: string;
   from?: string;
   formality?: string;
+  glossary?: string;
   preserveCode?: boolean;
   pattern?: string;
   debounce?: number;
@@ -24,10 +26,29 @@ interface WatchOptions {
 
 export class WatchCommand {
   private fileTranslationService: FileTranslationService;
+  private glossaryService: GlossaryService;
   private watchService?: WatchService;
 
-  constructor(translationService: TranslationService) {
+  constructor(translationService: TranslationService, glossaryService: GlossaryService) {
     this.fileTranslationService = new FileTranslationService(translationService);
+    this.glossaryService = glossaryService;
+  }
+
+  /**
+   * Resolve glossary ID from name or ID
+   */
+  private async resolveGlossaryId(nameOrId: string): Promise<string> {
+    // If it looks like a glossary ID (UUID format), use it directly
+    if (nameOrId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      return nameOrId;
+    }
+
+    // Otherwise, lookup by name
+    const glossary = await this.glossaryService.getGlossaryByName(nameOrId);
+    if (!glossary) {
+      throw new Error(`Glossary "${nameOrId}" not found`);
+    }
+    return glossary.glossary_id;
   }
 
   /**
@@ -44,6 +65,12 @@ export class WatchCommand {
 
     if (targetLangs.length === 0) {
       throw new Error('At least one target language is required. Use --targets es,fr,de');
+    }
+
+    // Resolve glossary ID if provided
+    let glossaryId: string | undefined;
+    if (options.glossary) {
+      glossaryId = await this.resolveGlossaryId(options.glossary);
     }
 
     // Determine output directory
@@ -81,6 +108,7 @@ export class WatchCommand {
       outputDir,
       sourceLang: options.from as Language | undefined,
       formality: options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less' | undefined,
+      glossaryId,
       preserveCode: options.preserveCode,
       onChange: (filePath: string) => {
         console.log(chalk.blue('📝 Change detected:'), filePath);

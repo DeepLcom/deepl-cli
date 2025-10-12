@@ -272,6 +272,7 @@ program
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
   .option('--debounce <ms>', 'Debounce delay in milliseconds (default: 300)', parseInt)
+  .option('--glossary <name-or-id>', 'Use glossary by name or ID')
   .option('--auto-commit', 'Automatically commit translations to git')
   .option('--git-staged', 'Only watch git-staged files (coming soon)')
   .action(async (path: string, options: {
@@ -282,6 +283,7 @@ program
     preserveCode?: boolean;
     pattern?: string;
     debounce?: number;
+    glossary?: string;
     autoCommit?: boolean;
     gitStaged?: boolean;
   }) => {
@@ -292,7 +294,8 @@ program
 
       const client = createDeepLClient();
       const translationService = new TranslationService(client, configService, cacheService);
-      const watchCommand = new WatchCommand(translationService);
+      const glossaryService = new GlossaryService(client);
+      const watchCommand = new WatchCommand(translationService, glossaryService);
 
       await watchCommand.watch(path, options);
     } catch (error) {

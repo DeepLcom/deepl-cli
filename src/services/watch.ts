@@ -22,6 +22,7 @@ export interface WatchOptions {
   outputDir: string;
   sourceLang?: Language;
   formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+  glossaryId?: string;
   preserveCode?: boolean;
   pattern?: string;
   recursive?: boolean;
@@ -177,7 +178,7 @@ export class WatchService {
       throw new Error('Watch not started');
     }
 
-    const { targetLangs, outputDir, sourceLang, formality, preserveCode } = this.watchOptions;
+    const { targetLangs, outputDir, sourceLang, formality, glossaryId, preserveCode } = this.watchOptions;
 
     // Build translation options base (targetLang will be set per operation)
     const baseOptions: Partial<TranslationOptions> = {};
@@ -188,6 +189,10 @@ export class WatchService {
 
     if (formality) {
       baseOptions.formality = formality;
+    }
+
+    if (glossaryId) {
+      baseOptions.glossaryId = glossaryId;
     }
 
     // Determine output path(s)
