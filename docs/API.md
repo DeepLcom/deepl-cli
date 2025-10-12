@@ -35,6 +35,7 @@ Options that work with all commands:
 ```bash
 --version           Show version number
 --help              Show help message
+--quiet, -q         Suppress all non-essential output (errors and results only)
 ```
 
 **Examples:**
@@ -47,6 +48,17 @@ deepl --version
 deepl --help
 deepl translate --help
 
+# Quiet mode - suppress informational messages, keep errors and results
+deepl --quiet translate "Hello" --to es
+# Output: Hola (no "Translation (ES):" label)
+
+deepl -q cache stats
+# Shows cache statistics without decorative output
+
+# Quiet mode with batch operations (no spinners or progress indicators)
+deepl --quiet translate docs/ --to es --output docs-es/
+# Shows final statistics only, no progress updates
+
 # Use custom config directory (via environment variable)
 export DEEPL_CONFIG_DIR=/path/to/config
 deepl translate "Hello" --to es
@@ -55,6 +67,32 @@ deepl translate "Hello" --to es
 deepl cache disable
 deepl translate "Hello" --to es
 deepl cache enable
+```
+
+**Quiet Mode Behavior:**
+
+- ✅ **Always shown**: Errors, warnings about critical issues, essential output (translation results, JSON data, command output)
+- ❌ **Suppressed**: Informational messages, success confirmations, progress spinners, status updates
+- 🎯 **Use cases**: CI/CD pipelines, scripting, parsing output, quiet automation
+
+**Example comparison:**
+
+```bash
+# Normal mode
+$ deepl cache enable
+✓ Cache enabled
+
+# Quiet mode
+$ deepl --quiet cache enable
+(no output - command succeeded silently)
+
+# Normal mode with errors
+$ deepl translate "Hello" --to invalid
+Error: Invalid target language: invalid
+
+# Quiet mode with errors (errors always shown)
+$ deepl --quiet translate "Hello" --to invalid
+Error: Invalid target language: invalid
 ```
 
 ---
@@ -1045,35 +1083,9 @@ The following features are planned for future releases but not yet implemented:
 deepl --config ~/.deepl-custom.json translate "Hello" --to es
 ```
 
-**`--no-cache`** - Disable translation cache for a single command
-```bash
-deepl translate --no-cache "Hello" --to es
-```
-
 **`--verbose`** - Enable verbose logging (API requests, cache hits, timing)
 ```bash
 deepl --verbose translate README.md --to es --output README.es.md
-```
-
-**`--quiet, -q`** - Suppress non-error output
-```bash
-deepl --quiet translate docs/ --to es --output docs-es/
-```
-
-### Translation & Watch Commands
-
-**`--glossary NAME`** - Use glossary by name or ID for translate/watch commands
-```bash
-# Use glossary with translate command
-deepl translate "API authentication" --to es --glossary tech-terms
-
-# Use glossary with watch command
-deepl watch docs/ --targets es --glossary product-names
-```
-
-**`--preserve-formatting`** - Preserve line breaks and whitespace formatting
-```bash
-deepl translate poem.txt --to fr --preserve-formatting --output poem.fr.txt
 ```
 
 ### Cache Management
@@ -1087,20 +1099,7 @@ deepl cache enable --max-size 104857600
 deepl cache enable --max-size 100M
 ```
 
-**Note:** Currently, cache size must be configured separately with `deepl config set cache.maxSize <bytes>`
-
-### Output Formats
-
-**`--format json`** - JSON output for translate and write commands
-```bash
-# Translation with JSON output
-deepl translate "Hello" --to es --format json
-# {"text": "Hola", "detectedSourceLang": "en", "billedCharacters": 5}
-
-# Write with JSON output
-deepl write "This are good." --lang en-US --format json
-# {"original": "This are good.", "improved": "This is good.", "changes": 1}
-```
+**Note:** This is now implemented! Use `deepl cache enable --max-size 100M` to set the cache size.
 
 ### Exit Codes
 

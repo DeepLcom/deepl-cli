@@ -4,7 +4,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/tests-762%20passing-brightgreen)](https://git.deepl.dev/hack-projects/deepl-cli)
+[![Tests](https://img.shields.io/badge/tests-969%20passing-brightgreen)](https://git.deepl.dev/hack-projects/deepl-cli)
 
 **DeepL CLI** is a comprehensive, developer-friendly command-line tool that integrates DeepL's powerful translation API and cutting-edge Write API for grammar and style enhancement. Built with TypeScript and designed for modern development workflows.
 
@@ -26,6 +26,8 @@
 
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
+- [Global Options](#-global-options)
+  - [Quiet Mode](#quiet-mode)
 - [Usage](#-usage)
   - [Translation](#translation)
   - [Writing Enhancement](#writing-enhancement)
@@ -93,6 +95,56 @@ deepl translate "Hello, world!" --to es
 # Translation (ES):
 # ¡Hola, mundo!
 ```
+
+## 🔧 Global Options
+
+DeepL CLI supports global flags that work with all commands:
+
+### Quiet Mode
+
+The `--quiet` (or `-q`) flag suppresses all non-essential output, showing only errors and essential results. Perfect for scripts, CI/CD pipelines, and automation.
+
+```bash
+# Normal mode - shows informational messages
+$ deepl translate "Hello" --to es
+Hello
+
+# Quiet mode - cleaner output
+$ deepl --quiet translate "Hello" --to es
+Hola
+
+# Suppress progress indicators in batch operations
+$ deepl --quiet translate docs/ --to es --output docs-es/
+# Shows only final statistics, no spinners or progress updates
+```
+
+**What's suppressed in quiet mode:**
+- ❌ Informational messages (`API Key: ...`)
+- ❌ Success confirmations (`✓ Cache enabled`)
+- ❌ Progress spinners and status updates
+- ❌ Decorative output
+
+**What's always shown:**
+- ✅ Errors and critical warnings
+- ✅ Essential command output (translation results, JSON data, statistics)
+
+**Use cases:**
+- **CI/CD pipelines**: Clean output for log parsing
+- **Scripting**: Extract just the translation result
+- **Automation**: Reduce noise in automated workflows
+- **Parsing**: Easier to parse machine-readable output
+
+```bash
+# Example: Use in scripts
+TRANSLATION=$(deepl --quiet translate "Hello" --to es)
+echo "Result: $TRANSLATION"  # Result: Hola
+
+# Example: CI/CD pipeline
+deepl --quiet translate docs/ --to es,fr,de --output i18n/
+# Returns exit code 0 on success, shows only errors if they occur
+```
+
+See [docs/API.md#global-options](./docs/API.md#global-options) for complete documentation.
 
 ## 📖 Usage
 
@@ -942,7 +994,7 @@ See [DESIGN.md](./DESIGN.md) for detailed architecture documentation.
 
 ### Test Coverage
 
-Current coverage: **81%+** (762 tests, 762 passing, 100% pass rate)
+Current coverage: **81%+** (969 tests, 969 passing, 100% pass rate)
 
 ```bash
 # Run all tests
