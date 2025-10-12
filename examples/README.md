@@ -18,6 +18,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Model Type Selection](./12-model-type-selection.sh) - Choosing quality vs. speed trade-offs
 - [Watch Mode](./13-watch-mode.sh) - Real-time file monitoring and auto-translation
 - [Git Hooks Integration](./14-git-hooks.sh) - Automating translation validation in git workflow
+- [Document Translation](./15-document-translation.sh) - Translating complete documents (PDF, DOCX, HTML, etc.) while preserving formatting
 
 ## Prerequisites
 

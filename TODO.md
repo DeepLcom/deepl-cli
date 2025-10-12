@@ -4,15 +4,16 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 
 ## 📋 Current Status
 
-- **Version**: 0.2.0 ✅ (Released October 8, 2025)
+- **Version**: 0.2.1 ✅ (In Development)
 - **Phase**: 2 (Advanced Features) - ✅ 100% COMPLETE! 🎉
   - **Phase 3 Write Enhancements**: ✅ COMPLETE! (file ops, diff, check, fix, interactive with multi-style)
-- **Tests**: 606 tests (606 passing, 0 skipped, 100% pass rate) ✅
+  - **Phase 3 Document Translation**: ✅ COMPLETE! (PDF, DOCX, PPTX, XLSX with async processing)
+- **Tests**: 762 tests (762 passing, 0 skipped, 100% pass rate) ✅
 - **Coverage**: ~81% overall
-  - Statements: 80.93%
-  - Branches: 78.17%
-  - Functions: 83.69%
-  - Lines: 80.73%
+  - Statements: 81%+
+  - Branches: 78%+
+  - Functions: 83%+
+  - Lines: 81%+
 - **Next**: Phase 3 (TUI & Collaboration)
 
 ---
@@ -385,26 +386,53 @@ These features exist in the Python library but are **not implemented** in our CL
 - ✅ v2 Translation API (fully supported)
 - ✅ v2 Write API (fully supported)
 - ✅ v2 Glossary API (fully supported - basic CRUD)
+- ✅ v2 Document API (fully supported - async upload/polling/download) 🎉 **NEW!**
 - ❌ v3 Glossary API (not implemented - multilingual + editing)
-- ❌ v2 Document API (not implemented)
 
 ---
 
-#### 1. Document Translation (🔴 HIGH PRIORITY)
+#### 1. Document Translation (✅ COMPLETE!) 🎉
 
-**Python Support**: Full document translation for PDF, DOCX, PPTX, XLSX, etc.
+**Status**: ✅ FULLY IMPLEMENTED (v0.2.1 - October 12, 2025)
 
-**Python Methods**:
-- `translate_document()`
-- `translate_document_from_filepath()`
-- `translate_document_upload()`
-- `translate_document_get_status()`
-- `translate_document_wait_until_done()`
-- `translate_document_download()`
+**Supported Document Formats**: `.pdf`, `.docx`, `.doc`, `.pptx`, `.xlsx`, `.html`, `.htm`, `.txt`, `.srt`, `.xlf`, `.xliff`
 
-**Our CLI**: Only supports text files (`.txt`, `.md`)
+**Implementation Details**:
+- **DeepLClient** methods (src/api/deepl-client.ts):
+  - `uploadDocument()` - Upload document with multipart/form-data
+  - `getDocumentStatus()` - Poll translation status
+  - `downloadDocument()` - Download translated document
+- **DocumentTranslationService** (src/services/document-translation.ts):
+  - Complete upload → poll → download workflow
+  - Exponential backoff polling (1s initial, 30s max, 1.5x multiplier)
+  - Progress callbacks for real-time UI updates
+- **CLI Integration** (src/cli/commands/translate.ts):
+  - Automatic routing based on file extension
+  - Progress spinner with status updates
+  - Cost tracking (billed characters display)
 
-**Implementation Effort**: High (requires document API integration)
+**Test Coverage**:
+- 16 unit tests for DeepLClient document methods
+- 9 unit tests for DocumentTranslationService
+- 45 existing translate command tests (updated for document support)
+- Manual testing completed with real DeepL API
+- Total: 70+ tests covering document translation
+
+**Usage**:
+```bash
+# Translate PDF
+deepl translate document.pdf --to es --output document.es.pdf
+
+# Translate PowerPoint
+deepl translate presentation.pptx --to fr --output presentation.fr.pptx
+
+# Translate with formality
+deepl translate contract.pdf --to de --formality more --output contract.de.pdf
+```
+
+**Comparison to Python Library**: ✅ Full parity achieved
+
+**Documentation**: Comprehensive documentation added to README.md
 
 ---
 
@@ -1009,12 +1037,12 @@ deepl-cli/
 
 ### Testing Strategy
 
-- **Unit tests**: 499 tests (includes 46 WriteCommand tests, 33 GitHooksService tests, 24 WatchCommand tests) ✅
+- **Unit tests**: 655 tests (includes 46 WriteCommand tests, 33 GitHooksService tests, 24 WatchCommand tests, 25 document translation) ✅
 - **Integration tests**: 64 tests (all passing) ✅
 - **E2E tests**: 21 tests (all passing) ✅
-- **Service tests**: 78 tests (WatchService 30, WriteService 28, GitHooksService 33) ✅
+- **Service tests**: 87 tests (WatchService 30, WriteService 28, GitHooksService 33, DocumentTranslationService 9) ✅
 - **Manual tests**: Archived in docs/archive/ ✅
-- **Total**: 606 tests (606 passing, 0 skipped) - 100% pass rate ✅
+- **Total**: 762 tests (762 passing, 0 skipped) - 100% pass rate ✅
 
 **Test Breakdown by Feature**:
 
