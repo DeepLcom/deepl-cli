@@ -952,6 +952,19 @@ deepl watch docs/ --targets es --glossary product-names
 deepl translate poem.txt --to fr --preserve-formatting --output poem.fr.txt
 ```
 
+### Cache Management
+
+**`cache enable --max-size SIZE`** - Set maximum cache size when enabling cache
+```bash
+# Enable cache with custom size (100MB)
+deepl cache enable --max-size 104857600
+
+# Enable cache with size in human-readable format
+deepl cache enable --max-size 100M
+```
+
+**Note:** Currently, cache size must be configured separately with `deepl config set cache.maxSize <bytes>`
+
 ### Output Formats
 
 **`--format json`** - JSON output for translate and write commands
