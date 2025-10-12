@@ -466,7 +466,7 @@ export class DeepLClient {
     }
 
     // Create form data with multipart/form-data
-    const FormData = require('form-data');
+    const { default: FormData } = await import('form-data');
     const formData = new FormData();
 
     formData.append('file', file, options.filename);
