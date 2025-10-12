@@ -502,6 +502,51 @@ describe('DeepLClient', () => {
       expect(customClient).toBeDefined();
     });
 
+    it('should respect custom maxRetries setting', async () => {
+      const customClient = new DeepLClient(apiKey, { maxRetries: 1 });
+
+      nock(baseUrl)
+        .post('/v2/translate')
+        .times(2) // Should only retry 1 time + initial = 2 requests total
+        .reply(503);
+
+      await expect(
+        customClient.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow();
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should respect maxRetries of 0 (no retries)', async () => {
+      const customClient = new DeepLClient(apiKey, { maxRetries: 0 });
+
+      nock(baseUrl)
+        .post('/v2/translate')
+        .times(1) // Should not retry, only 1 request
+        .reply(503);
+
+      await expect(
+        customClient.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow();
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should allow higher maxRetries', async () => {
+      const customClient = new DeepLClient(apiKey, { maxRetries: 2 });
+
+      nock(baseUrl)
+        .post('/v2/translate')
+        .times(3) // Should retry 2 times + initial = 3 requests total
+        .reply(503);
+
+      await expect(
+        customClient.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow();
+
+      expect(nock.isDone()).toBe(true);
+    });
+
     it('should allow custom base URL', () => {
       const customClient = new DeepLClient(apiKey, {
         baseUrl: 'https://custom.api.com',

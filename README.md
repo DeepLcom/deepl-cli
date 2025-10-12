@@ -639,6 +639,47 @@ export https_proxy=https://proxy.example.com:8443
 
 **Note:** HTTPS_PROXY takes precedence over HTTP_PROXY when both are set. The CLI automatically parses proxy URLs including authentication credentials.
 
+#### Retry and Timeout Configuration
+
+DeepL CLI includes built-in retry logic and timeout handling for robust API communication:
+
+**Automatic Retry Logic:**
+
+- Automatically retries failed requests on transient errors (5xx, network failures)
+- Default: 3 retries with exponential backoff
+- Does not retry on client errors (4xx - bad request, auth failures, etc.)
+- Exponential backoff delays: 1s, 2s, 4s, 8s, 10s (capped at 10s)
+
+**Timeout Configuration:**
+
+- Default timeout: 30 seconds per request
+- Applies to all API requests (translate, usage, languages, etc.)
+
+**Features:**
+
+- ✅ Automatic retry on transient failures
+- ✅ Exponential backoff to avoid overwhelming the API
+- ✅ Smart error detection (retries 5xx, not 4xx)
+- ✅ Configurable timeout and retry limits (programmatic API only)
+- ✅ Works across all DeepL API endpoints
+
+**Retry Behavior Examples:**
+
+```bash
+# Network failure - automatically retries up to 3 times
+deepl translate "Hello" --to es
+# If API returns 503 (service unavailable), retries automatically
+
+# Authentication failure (403) - does not retry
+deepl translate "Hello" --to es
+# Fails immediately without retries on auth errors
+
+# Rate limiting (429) - does not retry
+# You may want to wait before retrying manually
+```
+
+**Note:** Retry and timeout settings use sensible defaults optimized for the DeepL API. These are internal features that work automatically - no configuration required.
+
 #### Project-Level Configuration 🚧
 
 **Planned for future release**
