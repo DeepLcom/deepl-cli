@@ -312,6 +312,195 @@ describe('ComponentName', () => {
 - **Integration tests** - Test how components work together
 - **E2E tests** - Test complete user workflows (CLI commands)
 
+### Test Coverage Requirements
+
+**CRITICAL: When developing new features, you MUST write integration and E2E tests in addition to unit tests.**
+
+This project previously had 91% code coverage with unit tests alone, but lacked integration/E2E tests, creating significant production risk. **High unit test coverage does NOT guarantee components work together correctly.**
+
+**Coverage Targets:**
+- Overall test distribution: **~25-30% integration/e2e, ~70-75% unit tests**
+- All new features REQUIRE all three test types
+- Never ship a feature with only unit tests
+
+#### When to Write Each Test Type
+
+**Unit Tests (ALWAYS):**
+- Test individual functions/methods in isolation
+- Mock all dependencies
+- Fast execution
+- Test edge cases and error conditions
+- Example: Testing `TranslationService.translate()` with mocked DeepL client
+
+**Integration Tests (REQUIRED for most features):**
+- Test component interactions without mocking internal dependencies
+- Use `nock` to mock HTTP requests to external APIs
+- Test with isolated test configuration (`DEEPL_CONFIG_DIR` env var)
+- Validate request/response structure
+- Test error handling across component boundaries
+- Example: Testing CLI command behavior with mocked API responses
+
+**E2E Tests (REQUIRED for user-facing features):**
+- Test complete user workflows from CLI input to output
+- Validate CLI argument parsing and validation
+- Test stdin/stdout behavior for scripting
+- Test exit codes for CI/CD integration
+- Verify error messages are helpful
+- Example: Testing `deepl translate "Hello" --to es` end-to-end
+
+#### Integration Test Requirements for New Features
+
+When adding a new CLI command or service, create an integration test file:
+
+**File naming:** `tests/integration/<component>.integration.test.ts`
+
+**Required test scenarios:**
+1. **Happy path** - Feature works with valid inputs
+2. **API key validation** - Feature requires authentication
+3. **Argument validation** - All required flags/arguments are validated
+4. **Error handling** - API errors are handled gracefully
+5. **HTTP request structure** - Validate request format with nock
+6. **Response parsing** - Verify responses are parsed correctly
+
+**Example structure:**
+```typescript
+// tests/integration/cli-myfeature.integration.test.ts
+describe('MyFeature CLI Integration', () => {
+  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-${Date.now()}`);
+
+  const runCLI = (command: string) => {
+    return execSync(command, {
+      encoding: 'utf-8',
+      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+    });
+  };
+
+  it('should require API key', () => {
+    // Test without API key
+  });
+
+  it('should validate required arguments', () => {
+    // Test missing required flags
+  });
+
+  it('should make correct HTTP request', () => {
+    // Use nock to verify request structure
+    nock('https://api-free.deepl.com')
+      .post('/v2/myfeature')
+      .reply(200, { result: 'success' });
+
+    // Execute command and verify
+  });
+
+  it('should handle API errors gracefully', () => {
+    // Test 403, 429, 503, etc.
+  });
+});
+```
+
+#### E2E Test Requirements for New Features
+
+When adding user-facing functionality, add E2E tests to existing or new E2E test files:
+
+**File naming:** `tests/e2e/<workflow>.e2e.test.ts`
+
+**Required test scenarios:**
+1. **Complete workflows** - Test full user scenarios
+2. **Configuration persistence** - Settings persist across invocations
+3. **Stdin/stdout** - Piping and redirection work correctly
+4. **Exit codes** - Proper exit codes for success/failure
+5. **Error messages** - Clear, actionable error messages
+6. **Flag combinations** - Valid/invalid flag combinations
+
+**Example:**
+```typescript
+// tests/e2e/cli-workflow.e2e.test.ts
+describe('MyFeature Workflow', () => {
+  it('should complete full workflow: configure → execute → verify', () => {
+    runCLI('deepl config set myfeature.setting value');
+    const result = runCLI('deepl myfeature --input test');
+    expect(result).toContain('Success');
+  });
+
+  it('should read from stdin', () => {
+    const result = execSync('echo "test" | deepl myfeature', {
+      encoding: 'utf-8',
+      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+    });
+    expect(result).toContain('Success');
+  });
+
+  it('should exit with proper exit codes', () => {
+    try {
+      runCLI('deepl myfeature --invalid-flag');
+      fail('Should have thrown');
+    } catch (error: any) {
+      expect(error.status).toBeGreaterThan(0);
+    }
+  });
+});
+```
+
+#### Test Coverage Checklist for New Features
+
+Before merging any new feature, verify:
+
+- [ ] **Unit tests** written for all new functions/classes
+- [ ] **Integration tests** written for component interactions
+- [ ] **E2E tests** written for CLI commands/user workflows
+- [ ] **HTTP mocking** with nock for API interactions
+- [ ] **Test isolation** using DEEPL_CONFIG_DIR
+- [ ] **Error scenarios** tested (auth failures, API errors, validation)
+- [ ] **Edge cases** tested (empty input, large input, special characters)
+- [ ] **Exit codes** validated (success = 0, errors > 0)
+- [ ] **Stdin/stdout** tested if feature uses pipes
+- [ ] All tests pass: `npm test`
+- [ ] Coverage maintained: `npm run test:coverage`
+
+**Example of good test coverage:**
+
+```
+Feature: Glossary Management
+- Unit tests: 15 tests (glossary.test.ts)
+  - CRUD operations
+  - File parsing (TSV/CSV)
+  - Error handling
+
+- Integration tests: 24 tests (cli-glossary.integration.test.ts)
+  - All subcommands (create, list, show, entries, delete)
+  - API request structure
+  - File format validation
+  - Argument validation
+
+- E2E tests: 5 tests (cli-workflow.e2e.test.ts)
+  - Create glossary → translate with glossary workflow
+  - Error recovery
+  - Help text validation
+
+Total: 44 tests covering unit → integration → e2e
+```
+
+#### Why This Matters
+
+**Lesson learned:** The project previously had 91% code coverage but only 12.5% integration/e2e coverage. This created blind spots:
+- ❌ DeepL client had ZERO integration tests (API contract not validated)
+- ❌ Translation workflows not tested end-to-end
+- ❌ HTTP request structure not validated
+- ❌ Error handling across component boundaries untested
+- ❌ CLI argument validation incomplete
+- ❌ Stdin/stdout behavior not tested
+- ❌ Exit codes not validated
+
+**After enhancement:** 27.3% integration/e2e coverage
+- ✅ 132 integration tests validating component interactions
+- ✅ 69 E2E tests validating user workflows
+- ✅ HTTP requests validated with nock
+- ✅ Error handling tested across boundaries
+- ✅ CLI behavior comprehensively tested
+- ✅ Real-world scenarios validated
+
+**Key insight:** High unit test coverage ≠ production readiness. You can have 90%+ coverage with unit tests alone but still ship broken software if components don't integrate correctly.
+
 ### Mocking Strategy
 
 - Mock external APIs (DeepL) in unit tests using Jest mocks or nock
@@ -465,7 +654,12 @@ Before submitting a PR:
 - [ ] All tests pass (`npm test`)
 - [ ] Code follows style guidelines (`npm run lint`)
 - [ ] TypeScript compiles without errors (`npm run build`)
-- [ ] New features have comprehensive tests
+- [ ] **New features have comprehensive tests:**
+  - [ ] Unit tests for all new functions/classes
+  - [ ] Integration tests for component interactions
+  - [ ] E2E tests for user-facing features
+  - [ ] HTTP mocking with nock for API calls
+  - [ ] Test isolation using DEEPL_CONFIG_DIR
 - [ ] Documentation is updated if needed
 - [ ] Manual testing completed
 - [ ] Commit messages follow guidelines
@@ -481,10 +675,16 @@ Before submitting a PR:
 
 ### Testing Requirements
 
-- **Comprehensive coverage** - Aim for >80% test coverage, 100% for critical paths
+**CRITICAL: All three test types (unit, integration, e2e) are required for new features.**
+
+- **Comprehensive coverage** - Aim for >80% code coverage, but ensure 25-30% is integration/e2e tests
 - **Test all scenarios** - Success cases, error cases, edge cases
-- **Integration testing** - Test how components interact
+- **Unit testing** - Test individual functions/classes in isolation
+- **Integration testing** - Test component interactions and API contract with nock
+- **E2E testing** - Test complete user workflows from CLI input to output
 - **Regression prevention** - Verify existing tests pass after changes
+
+See the "Test Coverage Requirements" section above for detailed guidelines on when and how to write each test type.
 
 ### Refactoring Guidelines
 
