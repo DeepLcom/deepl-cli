@@ -155,11 +155,13 @@ export class TranslationService {
     // Check cache and separate cached vs non-cached texts
     const textsToTranslate: string[] = [];
     const textIndexMap = new Map<string, number>(); // Maps text to original index
-    const results: (TranslationResult | null)[] = new Array(texts.length).fill(null);
+    const results: (TranslationResult | null)[] = new Array(texts.length).fill(null) as (TranslationResult | null)[];
 
     for (let i = 0; i < texts.length; i++) {
       const text = texts[i];
-      if (!text) continue;
+      if (!text) {
+        continue;
+      }
 
       const cacheKey = this.generateCacheKey(text, translationOptions);
 
@@ -200,7 +202,9 @@ export class TranslationService {
     for (let i = 0; i < textsToTranslate.length; i++) {
       const text = textsToTranslate[i];
       const result = batchResults[i];
-      if (!text || !result) continue;
+      if (!text || !result) {
+        continue;
+      }
 
       const originalIndex = textIndexMap.get(text);
       if (originalIndex !== undefined) {

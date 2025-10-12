@@ -23,7 +23,7 @@ class LoggerClass {
   /**
    * Log informational messages (suppressed in quiet mode)
    */
-  info(...args: any[]): void {
+  info(...args: unknown[]): void {
     if (!this.quiet) {
       console.log(...args);
     }
@@ -32,7 +32,7 @@ class LoggerClass {
   /**
    * Log success messages (suppressed in quiet mode)
    */
-  success(...args: any[]): void {
+  success(...args: unknown[]): void {
     if (!this.quiet) {
       console.log(...args);
     }
@@ -41,7 +41,7 @@ class LoggerClass {
   /**
    * Log warning messages (suppressed in quiet mode)
    */
-  warn(...args: any[]): void {
+  warn(...args: unknown[]): void {
     if (!this.quiet) {
       console.error(...args);
     }
@@ -50,7 +50,7 @@ class LoggerClass {
   /**
    * Log error messages (ALWAYS shown, even in quiet mode)
    */
-  error(...args: any[]): void {
+  error(...args: unknown[]): void {
     console.error(...args);
   }
 
@@ -58,7 +58,7 @@ class LoggerClass {
    * Log essential output (ALWAYS shown, even in quiet mode)
    * Use this for translation results, command output, etc.
    */
-  output(...args: any[]): void {
+  output(...args: unknown[]): void {
     console.log(...args);
   }
 
