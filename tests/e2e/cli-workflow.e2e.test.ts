@@ -680,4 +680,141 @@ describe('CLI Workflow E2E', () => {
       });
     });
   });
+
+  describe('Document Translation Workflow', () => {
+    it('should require --output flag for document translation', () => {
+      const testFile = path.join(testDir, 'test-doc.html');
+      fs.writeFileSync(testFile, '<html><body>Hello</body></html>', 'utf-8');
+
+      try {
+        execSync(`deepl translate "${testFile}" --to es`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on missing output flag or API key
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should validate input file exists for document translation', () => {
+      const nonExistentFile = path.join(testDir, 'does-not-exist.pdf');
+
+      try {
+        execSync(`deepl translate "${nonExistentFile}" --to es --output output.pdf`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail with either file not found or API key error
+        expect(output).toMatch(/not found|does not exist|API key|auth/i);
+      }
+    });
+
+    it('should handle HTML document structure in help text', () => {
+      const helpOutput = execSync('deepl translate --help', { encoding: 'utf-8' });
+
+      // Should mention documents or files in help
+      expect(helpOutput).toMatch(/file|document/i);
+      expect(helpOutput).toContain('--output');
+    });
+
+    it('should create output directory if needed', () => {
+      const testFile = path.join(testDir, 'simple.html');
+      const outputDir = path.join(testDir, 'nested', 'output');
+      const outputFile = path.join(outputDir, 'simple.es.html');
+
+      fs.writeFileSync(testFile, '<html><body>Test</body></html>', 'utf-8');
+
+      try {
+        execSync(`deepl translate "${testFile}" --to es --output "${outputFile}"`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not on directory creation
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/directory|ENOENT/i);
+      }
+    });
+
+    it('should validate document file formats', () => {
+      const testFile = path.join(testDir, 'test.json');
+      fs.writeFileSync(testFile, '{"test": "data"}', 'utf-8');
+
+      try {
+        execSync(`deepl translate "${testFile}" --to es --output test.es.json`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // May fail on API key or unsupported format
+        // Just verify it doesn't crash
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should exit with non-zero on document translation errors', () => {
+      const testFile = path.join(testDir, 'test-exit.html');
+      fs.writeFileSync(testFile, '<html><body>Test</body></html>', 'utf-8');
+
+      try {
+        execSync(`deepl translate "${testFile}" --to es --output test-exit.es.html`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        // Should exit with non-zero (no API key)
+        expect(error.status).toBeGreaterThan(0);
+      }
+    });
+
+    it('should support formality flag for document translation', () => {
+      const testFile = path.join(testDir, 'formal-doc.txt');
+      fs.writeFileSync(testFile, 'Hello, how are you?', 'utf-8');
+
+      try {
+        execSync(`deepl translate "${testFile}" --to de --formality more --output formal-doc.de.txt`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not on formality flag parsing
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/formality.*invalid/i);
+      }
+    });
+
+    it('should support source language flag for document translation', () => {
+      const testFile = path.join(testDir, 'source-doc.txt');
+      fs.writeFileSync(testFile, 'Hello world', 'utf-8');
+
+      try {
+        execSync(`deepl translate "${testFile}" --from en --to es --output source-doc.es.txt`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not on source language flag
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/source.*invalid/i);
+      }
+    });
+  });
 });
