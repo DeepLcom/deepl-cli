@@ -1,6 +1,6 @@
 #!/bin/bash
 # Example 16: Document Format Conversion
-# Demonstrates translating documents while converting to different formats
+# Demonstrates the --output-format flag for document translation
 
 set -e  # Exit on error
 
@@ -22,239 +22,186 @@ TEST_DIR="/tmp/deepl-example-16"
 rm -rf "$TEST_DIR"
 mkdir -p "$TEST_DIR"
 
-echo "=== Document Format Conversion Examples ==="
+echo "=== Understanding Document Format Conversion ==="
 echo
-echo "The --output-format flag allows you to convert document formats"
-echo "during translation, combining two operations into one:"
-echo "  1. Translate the document content"
-echo "  2. Convert to the target format"
+echo "⚠️  IMPORTANT: DeepL API Format Conversion Limitations"
 echo
-echo "This is especially useful for:"
-echo "  • Creating PDF versions of Word documents"
-echo "  • Extracting text content from HTML/PDF"
-echo "  • Converting presentations to Word format"
+echo "The --output-format flag is available, but DeepL API currently"
+echo "supports ONLY ONE format conversion:"
 echo
-echo "Supported output formats:"
-echo "  pdf, docx, pptx, xlsx, html, htm, txt, srt, xlf, xliff"
+echo "  ✅ PDF → DOCX  (Convert PDF to Microsoft Word)"
+echo
+echo "All other format combinations are NOT supported:"
+echo "  ❌ HTML → TXT   (not supported)"
+echo "  ❌ DOCX → PDF   (not supported)"
+echo "  ❌ PPTX → DOCX  (not supported)"
+echo "  ❌ Any other conversion (not supported)"
+echo
+echo "By default, translated documents are returned in the same"
+echo "format as the input document."
+echo
+echo "Source: https://developers.deepl.com/api-reference/document"
 echo
 
-# Example 1: HTML to Plain Text
-echo "1. Converting HTML document to plain text during translation"
+# Example 1: PDF → DOCX (The ONLY supported conversion)
+echo "=== Supported Conversion: PDF → DOCX ==="
+echo
+echo "To demonstrate PDF → DOCX conversion, you would need a PDF file."
+echo
+echo "Example command (if you have a PDF):"
+echo "  deepl translate document.pdf --to es --output-format docx --output document.es.docx"
+echo
+echo "This would:"
+echo "  1. Translate the PDF content to Spanish"
+echo "  2. Convert the result to Microsoft Word format (DOCX)"
+echo "  3. Save as document.es.docx"
+echo
+echo "Why use PDF → DOCX conversion?"
+echo "  • Edit translated PDFs in Microsoft Word"
+echo "  • Make corrections or adjustments to translation"
+echo "  • Reformat translated content"
+echo "  • Extract text from PDF for further processing"
+echo
+
+# Example 2: Default behavior (same format as input)
+echo "=== Default Behavior: Same Format as Input ==="
 echo
 echo "Creating a sample HTML document..."
-cat > "$TEST_DIR/webpage.html" <<'EOF'
+cat > "$TEST_DIR/sample.html" <<'EOF'
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="utf-8" />
-    <title>DeepL Translation Service</title>
+    <title>Sample Document</title>
 </head>
 <body>
     <h1>Welcome to DeepL Translation</h1>
-    <p>DeepL provides high-quality neural machine translation in over 30 languages.</p>
-    <h2>Key Features</h2>
-    <ul>
-        <li>Neural network-based translation</li>
-        <li>Context-aware processing</li>
-        <li>Support for multiple document formats</li>
-        <li>Glossary management</li>
-    </ul>
-    <p>Try DeepL today for professional-grade translations.</p>
+    <p>This is a sample HTML document for translation.</p>
+    <p>DeepL provides high-quality translation services.</p>
 </body>
 </html>
 EOF
 
-echo "✓ Created webpage.html"
+echo "✓ Created sample.html"
 echo
-echo "Translating to Spanish and converting to plain text..."
-deepl translate "$TEST_DIR/webpage.html" --to es --output-format txt --output "$TEST_DIR/webpage.es.txt"
+echo "Translating HTML document to Spanish (same format)..."
+deepl translate "$TEST_DIR/sample.html" --to es --output "$TEST_DIR/sample.es.html"
 echo
-echo "✓ Translation and conversion complete!"
+echo "✓ Translation complete!"
 echo
-echo "Original HTML (first 10 lines):"
-head -n 10 "$TEST_DIR/webpage.html"
+echo "Result: HTML input → HTML output (default behavior)"
 echo
-echo "Translated plain text output:"
-cat "$TEST_DIR/webpage.es.txt"
-echo
-
-# Example 2: DOCX to PDF (simulated with HTML → TXT)
-echo "2. Converting document format during translation (HTML → TXT as example)"
-echo
-echo "Creating a sample report..."
-cat > "$TEST_DIR/report.html" <<'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Quarterly Report</title>
-</head>
-<body>
-    <h1>Q4 2024 Sales Report</h1>
-    <h2>Executive Summary</h2>
-    <p>Our sales performance in Q4 2024 exceeded expectations, with a 15% increase over Q3.</p>
-    <h2>Key Metrics</h2>
-    <p>Total Revenue: $1.2M</p>
-    <p>New Customers: 450</p>
-    <p>Customer Retention: 92%</p>
-    <h2>Outlook</h2>
-    <p>We expect continued growth in Q1 2025 based on our strong pipeline.</p>
-</body>
-</html>
-EOF
-
-echo "✓ Created report.html"
-echo
-echo "Translating to German and converting to plain text..."
-deepl translate "$TEST_DIR/report.html" --to de --output-format txt --output "$TEST_DIR/report.de.txt"
-echo
-echo "✓ Conversion complete!"
-echo
-echo "Translated and converted report (plain text):"
-cat "$TEST_DIR/report.de.txt"
+echo "Translated HTML (first 10 lines):"
+head -n 10 "$TEST_DIR/sample.es.html"
 echo
 
-# Example 3: Multiple Format Conversions
-echo "3. Converting the same source to multiple formats"
+# Example 3: Attempting unsupported conversion (will fail)
+echo "=== What Happens with Unsupported Conversions ==="
 echo
-echo "Creating a technical document..."
-cat > "$TEST_DIR/technical.html" <<'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>API Documentation</title>
-</head>
-<body>
-    <h1>REST API Reference</h1>
-    <h2>Authentication</h2>
-    <p>All API requests require authentication using an API key.</p>
-    <p>Include your key in the Authorization header:</p>
-    <p>Authorization: DeepL-Auth-Key YOUR_API_KEY</p>
-    <h2>Endpoints</h2>
-    <p>/v2/translate - Translate text</p>
-    <p>/v2/document - Translate documents</p>
-    <p>/v2/usage - Check API usage</p>
-</body>
-</html>
-EOF
-
-echo "✓ Created technical.html"
+echo "Attempting HTML → TXT conversion (unsupported)..."
 echo
-echo "Translating to French (keeping as HTML)..."
-deepl translate "$TEST_DIR/technical.html" --to fr --output "$TEST_DIR/technical.fr.html"
+echo "Command: deepl translate sample.html --to es --output-format txt --output sample.txt"
 echo
-echo "Translating to French (converting to plain text)..."
-deepl translate "$TEST_DIR/technical.html" --to fr --output-format txt --output "$TEST_DIR/technical.fr.txt"
+echo "Expected result: ❌ Error - Conversion not supported"
 echo
-echo "✓ Multiple format outputs created!"
-echo
-echo "HTML version (first 15 lines):"
-head -n 15 "$TEST_DIR/technical.fr.html"
-echo
-echo "Plain text version:"
-cat "$TEST_DIR/technical.fr.txt"
+echo "If you try this, you'll see:"
+echo '  Error: API error: Conversion between different document types is not supported'
 echo
 
-# Example 4: Format Conversion with Formality
-echo "4. Combining format conversion with formality control"
+# Example 4: Working with different document types
+echo "=== Supported Document Types (Without Conversion) ==="
 echo
-echo "Creating a business letter..."
-cat > "$TEST_DIR/letter.html" <<'EOF'
-<!DOCTYPE html>
-<html>
-<body>
-    <p>Dear Customer,</p>
-    <p>Thank you for your interest in our services.</p>
-    <p>We would be happy to provide you with a detailed quotation.</p>
-    <p>Please contact us if you have any questions.</p>
-    <p>Best regards,<br/>Customer Service Team</p>
-</body>
-</html>
-EOF
-
-echo "✓ Created letter.html"
+echo "These document types CAN be translated (output = same format):"
 echo
-echo "Translating to German (formal) and converting to plain text..."
-deepl translate "$TEST_DIR/letter.html" --to de --formality more --output-format txt --output "$TEST_DIR/letter.formal.de.txt"
-echo
-echo "✓ Formal translation with format conversion complete!"
-echo
-echo "Formal German letter (plain text):"
-cat "$TEST_DIR/letter.formal.de.txt"
+echo "  ✅ PDF    - Returns translated PDF"
+echo "  ✅ DOCX   - Returns translated DOCX"
+echo "  ✅ PPTX   - Returns translated PPTX"
+echo "  ✅ XLSX   - Returns translated XLSX"
+echo "  ✅ HTML   - Returns translated HTML"
+echo "  ✅ TXT    - Returns translated TXT"
+echo "  ✅ SRT    - Returns translated SRT (subtitles)"
+echo "  ✅ XLIFF  - Returns translated XLIFF (localization)"
 echo
 
-# Example 5: Use Cases for Format Conversion
-echo "=== Common Use Cases for Format Conversion ==="
+# Example 5: Practical workflows
+echo "=== Practical Translation Workflows ==="
 echo
-echo "📋 Practical applications:"
+echo "Since format conversion is limited, use these workflows:"
 echo
-echo "1. Web Content Extraction:"
-echo "   deepl translate webpage.html --to es --output-format txt --output content.es.txt"
-echo "   → Extract and translate HTML content to clean text"
+echo "1. PDF → Editable Word:"
+echo "   deepl translate report.pdf --to de --output-format docx --output report.de.docx"
+echo "   → Translate PDF and convert to Word for editing"
 echo
-echo "2. Document Archival (simulated):"
-echo "   deepl translate document.docx --to fr --output-format pdf --output document.fr.pdf"
-echo "   → Create PDF archives of translated Word documents"
-echo "   (Note: Real DOCX → PDF requires actual DOCX file)"
+echo "2. Translate and Keep Format:"
+echo "   deepl translate document.docx --to es --output document.es.docx"
+echo "   → DOCX stays DOCX (no conversion needed)"
 echo
-echo "3. Presentation Conversion (simulated):"
-echo "   deepl translate slides.pptx --to de --output-format docx --output slides.de.docx"
-echo "   → Convert PowerPoint to Word for easier editing"
-echo "   (Note: Real PPTX → DOCX requires actual PPTX file)"
+echo "3. HTML Content Translation:"
+echo "   deepl translate webpage.html --to fr --output webpage.fr.html"
+echo "   → HTML stays HTML (preserves structure)"
 echo
-echo "4. Multi-Format Distribution:"
-echo "   # Create both formats from same source"
-echo "   deepl translate doc.html --to ja --output doc.ja.html"
-echo "   deepl translate doc.html --to ja --output-format txt --output doc.ja.txt"
-echo "   → Provide content in multiple formats"
+echo "4. Batch Processing (same format):"
+echo "   for lang in es fr de; do"
+echo '     deepl translate doc.html --to $lang --output doc.$lang.html'
+echo "   done"
+echo "   → Translate to multiple languages, same format"
 echo
-echo "5. Localization Workflows:"
-echo "   deepl translate strings.xlf --to es,fr,de --output-format xliff --output translations/"
-echo "   → Translate localization files with format conversion"
+echo "5. External Format Conversion:"
+echo "   # If you need other conversions, use external tools:"
+echo "   deepl translate doc.html --to es --output doc.es.html"
+echo "   pandoc doc.es.html -o doc.es.txt  # HTML → TXT"
+echo "   → Translate first, convert format separately"
 echo
 
-# Example 6: Format Conversion Tips
-echo "=== Format Conversion Best Practices ==="
+# Example 6: Alternative approaches
+echo "=== Alternative Approaches for Format Conversion ==="
 echo
-echo "💡 Tips for optimal results:"
+echo "If you need format conversions beyond PDF → DOCX:"
 echo
-echo "1. Format Compatibility:"
-echo "   • Not all conversions are supported (check DeepL API docs)"
-echo "   • Text-based formats work best (HTML → TXT, etc.)"
-echo "   • Complex formatting may be simplified"
+echo "Option 1: Text-based translation + pandoc"
+echo "  # For text content, use pandoc for conversions"
+echo "  pandoc input.docx -o input.txt"
+echo "  deepl translate input.txt --to es --output output.es.txt"
+echo "  pandoc output.es.txt -o output.es.pdf"
 echo
-echo "2. Quality Considerations:"
-echo "   • HTML → TXT: Preserves content, removes markup"
-echo "   • PDF conversions: Best with text-based PDFs"
-echo "   • DOCX → PDF: Maintains most formatting"
+echo "Option 2: Use text translation API"
+echo "  # For simple text, extract and translate text directly"
+echo '  text=$(cat document.txt)'
+echo '  deepl translate "$text" --to es > translated.txt'
 echo
-echo "3. When to Use Format Conversion:"
-echo "   ✓ Extracting text from markup (HTML → TXT)"
-echo "   ✓ Creating archives (DOCX → PDF)"
-echo "   ✓ Simplifying for editing (PPTX → DOCX)"
-echo "   ✗ Not for format migration without translation"
-echo "   ✗ Not for complex layout preservation"
-echo
-echo "4. Workflow Integration:"
-echo "   • Combine with --formality for business documents"
-echo "   • Use with --context for better translation quality"
-echo "   • Batch process multiple files with same conversion"
-echo
-echo "5. Testing Recommendations:"
-echo "   • Test with sample documents first"
-echo "   • Verify formatting in output files"
-echo "   • Check character counts with 'deepl usage'"
+echo "Option 3: External conversion tools"
+echo "  # Use tools like LibreOffice, pandoc, wkhtmltopdf"
+echo "  deepl translate doc.html --to es --output doc.es.html"
+echo "  wkhtmltopdf doc.es.html doc.es.pdf"
 echo
 
 # Show created files
-echo "=== Translation Summary ==="
+echo "=== Files Created in This Example ==="
 echo
-echo "Files created in $TEST_DIR:"
-ls -lh "$TEST_DIR" | tail -n +2 | awk '{print $9, "(" $5 ")"}'
+ls -lh "$TEST_DIR" | tail -n +2 | awk '{print "  " $9, "(" $5 ")"}'
 echo
 
-# Check usage after all translations
-echo "=== API Usage After Format Conversions ==="
-deepl usage
+# Summary
+echo "=== Summary: Document Format Conversion ==="
+echo
+echo "Key Takeaways:"
+echo
+echo "✅ What IS supported:"
+echo "   • PDF → DOCX conversion with --output-format docx"
+echo "   • All document types can be translated (output = same format)"
+echo
+echo "❌ What is NOT supported:"
+echo "   • Any other format conversion (HTML→TXT, DOCX→PDF, etc.)"
+echo "   • Multi-format output from single translation"
+echo
+echo "💡 Best Practices:"
+echo "   • Use --output-format docx only for PDF inputs"
+echo "   • For other conversions, use external tools (pandoc, LibreOffice)"
+echo "   • Default behavior (same format) works for most use cases"
+echo "   • Check DeepL API docs for updates on supported conversions"
+echo
+echo "🔗 References:"
+echo "   • DeepL API Docs: https://developers.deepl.com/api-reference/document"
+echo "   • Format Conversion Matrix: See official documentation"
 echo
 
 # Cleanup
@@ -266,18 +213,12 @@ echo
 echo "=== All examples completed successfully! ==="
 echo
 echo "📚 What you learned:"
-echo "  • Converting HTML to plain text during translation"
-echo "  • Creating multiple output formats from same source"
-echo "  • Combining format conversion with formality control"
-echo "  • Common use cases for format conversion"
-echo "  • Best practices and tips"
+echo "  • DeepL API only supports PDF → DOCX conversion"
+echo "  • All other document types keep their original format"
+echo "  • How to use --output-format for PDF → DOCX"
+echo "  • Alternative approaches for other format conversions"
 echo
 echo "🔗 Related examples:"
 echo "  • examples/15-document-translation.sh - Basic document translation"
 echo "  • examples/02-file-translation.sh - File translation basics"
-echo "  • examples/07-batch-processing.sh - Batch file processing"
-echo
-echo "📖 For more information:"
-echo "  deepl translate --help"
-echo "  https://www.deepl.com/docs-api/documents"
 echo

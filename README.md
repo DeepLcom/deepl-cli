@@ -182,21 +182,19 @@ deepl translate contract.pdf --to de --formality more --output contract.de.pdf
 # Specify source language
 deepl translate document.pdf --from en --to es --output document.es.pdf
 
-# Convert document format during translation
-deepl translate document.docx --to es --output-format pdf --output document.es.pdf
-# Translates DOCX to Spanish and converts to PDF in one step
+# Convert PDF to DOCX during translation (ONLY supported conversion)
+deepl translate document.pdf --to es --output-format docx --output document.es.docx
+# Translates PDF to Spanish and converts to editable Word format
 
-deepl translate presentation.pptx --to fr --output-format docx --output presentation.fr.docx
-# Convert PowerPoint to Word during translation
-
-deepl translate report.html --to de --output-format txt --output report.de.txt
-# Extract and translate HTML content to plain text
+# Note: DeepL API only supports PDF → DOCX conversion
+# All other format conversions (DOCX→PDF, HTML→TXT, etc.) are NOT supported
+# See examples/16-document-format-conversion.sh for details
 ```
 
 **Document Translation Features:**
 
 - ✅ **Preserves Formatting** - Maintains fonts, styles, colors, and layout
-- ✅ **Format Conversion** - Convert document formats during translation (e.g., DOCX → PDF, HTML → TXT)
+- ✅ **Format Conversion** - PDF → DOCX conversion only (convert PDFs to editable Word documents)
 - ✅ **Progress Tracking** - Real-time status updates during translation
 - ✅ **Large Files** - Handles documents up to 10MB (PDF) or 30MB (other formats)
 - ✅ **Cost Tracking** - Shows billed characters after translation

@@ -70,9 +70,12 @@ deepl translate "$SAMPLE_DIR/sample.txt" --to es --output "$OUTPUT_DIR/sample.es
 echo "   Output: $OUTPUT_DIR/sample.es.txt"
 echo
 
-# Example 2: Translate to multiple languages
+# Example 2: Translate to multiple languages (sequential)
 echo "2. Translate text file to multiple languages (EN → ES, FR, DE)"
-deepl translate "$SAMPLE_DIR/sample.txt" --to es,fr,de --output "$OUTPUT_DIR/"
+echo "   Note: Document translation requires separate requests per language"
+deepl translate "$SAMPLE_DIR/sample.txt" --to es --output "$OUTPUT_DIR/sample.es.txt"
+deepl translate "$SAMPLE_DIR/sample.txt" --to fr --output "$OUTPUT_DIR/sample.fr.txt"
+deepl translate "$SAMPLE_DIR/sample.txt" --to de --output "$OUTPUT_DIR/sample.de.txt"
 echo "   Outputs created in $OUTPUT_DIR/"
 ls -1 "$OUTPUT_DIR"/sample.*.txt
 echo
