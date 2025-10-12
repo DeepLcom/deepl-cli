@@ -1,0 +1,87 @@
+/**
+ * Output Formatters
+ * Utilities for formatting command output (JSON, plain text, etc.)
+ */
+
+import { TranslationResult } from '../api/deepl-client.js';
+import { Language } from '../types/index.js';
+
+export interface TranslateJsonOutput {
+  text: string;
+  targetLang: Language;
+  detectedSourceLang?: Language;
+  cached?: boolean;
+}
+
+export interface WriteJsonOutput {
+  original: string;
+  improved: string;
+  changes: number;
+  language: string;
+}
+
+export interface MultiTranslateJsonOutput {
+  translations: Array<{
+    targetLang: Language;
+    text: string;
+    detectedSourceLang?: Language;
+  }>;
+}
+
+/**
+ * Format translation result as JSON
+ */
+export function formatTranslationJson(
+  result: TranslationResult,
+  targetLang: Language,
+  cached?: boolean
+): string {
+  const output: TranslateJsonOutput = {
+    text: result.text,
+    targetLang,
+    detectedSourceLang: result.detectedSourceLang,
+  };
+
+  if (cached !== undefined) {
+    output.cached = cached;
+  }
+
+  return JSON.stringify(output, null, 2);
+}
+
+/**
+ * Format multiple translation results as JSON
+ */
+export function formatMultiTranslationJson(
+  results: Array<{ targetLang: Language; text: string; detectedSourceLang?: Language }>
+): string {
+  const output: MultiTranslateJsonOutput = {
+    translations: results.map(r => ({
+      targetLang: r.targetLang,
+      text: r.text,
+      detectedSourceLang: r.detectedSourceLang,
+    })),
+  };
+
+  return JSON.stringify(output, null, 2);
+}
+
+/**
+ * Format write/improve result as JSON
+ */
+export function formatWriteJson(
+  original: string,
+  improved: string,
+  language: string
+): string {
+  const changes = original !== improved ? 1 : 0;
+
+  const output: WriteJsonOutput = {
+    original,
+    improved,
+    changes,
+    language,
+  };
+
+  return JSON.stringify(output, null, 2);
+}

@@ -353,10 +353,12 @@ describe('Translate CLI Integration', () => {
   });
 
   describe('output format', () => {
-    it('should default to text output', () => {
-      // Help should not show JSON as default
+    it('should support --format option', () => {
+      // Help should show --format option
       const output = runCLI('deepl translate --help');
-      expect(output).not.toContain('--format');
+      expect(output).toContain('--format <format>');
+      expect(output).toContain('json');
+      expect(output).toContain('plain text');
     });
   });
 });

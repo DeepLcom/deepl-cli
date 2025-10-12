@@ -12,6 +12,7 @@ import { DocumentTranslationService } from '../../services/document-translation.
 import { GlossaryService } from '../../services/glossary.js';
 import { ConfigService } from '../../storage/config.js';
 import { Language } from '../../types/index.js';
+import { formatTranslationJson, formatMultiTranslationJson } from '../../utils/formatters.js';
 
 interface TranslateOptions {
   to: string;
@@ -29,6 +30,7 @@ interface TranslateOptions {
   concurrency?: number;
   glossary?: string;
   noCache?: boolean;
+  format?: string;
 }
 
 export class TranslateCommand {
@@ -248,6 +250,11 @@ export class TranslateCommand {
       }
     );
 
+    // Format output based on format option
+    if (options.format === 'json') {
+      return formatTranslationJson(result, options.to as Language);
+    }
+
     return result.text;
   }
 
@@ -286,7 +293,12 @@ export class TranslateCommand {
       translationOptions
     );
 
-    // Format output for multiple languages
+    // Format output based on format option
+    if (options.format === 'json') {
+      return formatMultiTranslationJson(results);
+    }
+
+    // Format output for multiple languages (default: plain text)
     return results
       .map(result => `[${result.targetLang}] ${result.text}`)
       .join('\n');
