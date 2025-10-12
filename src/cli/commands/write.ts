@@ -11,6 +11,7 @@ import { resolve, dirname } from 'path';
 import * as Diff from 'diff';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
+import { formatWriteJson } from '../../utils/formatters.js';
 
 interface WriteOptions {
   lang: WriteLanguage;
@@ -20,6 +21,7 @@ interface WriteOptions {
   outputFile?: string;
   inPlace?: boolean;
   createBackup?: boolean;
+  format?: string;
 }
 
 export class WriteCommand {
@@ -70,6 +72,12 @@ export class WriteCommand {
     }
 
     const improvement = await this.writeService.getBestImprovement(text, writeOptions);
+
+    // Format output based on format option
+    if (options.format === 'json') {
+      return formatWriteJson(text, improvement.text, options.lang);
+    }
+
     return improvement.text;
   }
 

@@ -324,6 +324,7 @@ program
   .option('-c, --check', 'Check if text needs improvement (exit code 0 if no changes)')
   .option('-f, --fix', 'Automatically fix file in place')
   .option('-b, --backup', 'Create backup file before fixing (use with --fix)')
+  .option('--format <format>', 'Output format: json (default: plain text)')
   .action(async (text: string, options: {
     lang: string;
     style?: string;
@@ -336,6 +337,7 @@ program
     check?: boolean;
     fix?: boolean;
     backup?: boolean;
+    format?: string;
   }) => {
     try {
       const client = createDeepLClient();
@@ -350,6 +352,7 @@ program
         outputFile: options.output,
         inPlace: options.inPlace,
         createBackup: options.backup,
+        format: options.format,
       };
 
       // Check mode
