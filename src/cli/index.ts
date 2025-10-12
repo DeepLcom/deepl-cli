@@ -42,10 +42,12 @@ const { version } = packageJson;
 
 // Initialize services
 // Support custom config directory for testing via DEEPL_CONFIG_DIR env var
-const configPath = process.env['DEEPL_CONFIG_DIR']
+const defaultConfigPath = process.env['DEEPL_CONFIG_DIR']
   ? join(process.env['DEEPL_CONFIG_DIR'], 'config.json')
   : undefined;
-const configService = new ConfigService(configPath);
+
+// Create config service - can be overridden by --config flag
+let configService = new ConfigService(defaultConfigPath);
 const cacheService = new CacheService();
 
 // Cleanup on exit
@@ -93,17 +95,23 @@ program
   .description('DeepL CLI - Next-generation translation tool powered by DeepL API')
   .version(version)
   .option('-q, --quiet', 'Suppress all non-essential output (errors and results only)')
+  .option('-c, --config <file>', 'Use alternate configuration file')
   .hook('preAction', (thisCommand) => {
-    // Set quiet mode before any command runs
     const options = thisCommand.opts();
+
+    // Handle --config flag - reinitialize config service with custom path
+    if (options['config']) {
+      const customConfigPath = options['config'] as string;
+      configService = new ConfigService(customConfigPath);
+    }
+
+    // Set quiet mode before any command runs
     if (options['quiet']) {
       Logger.setQuiet(true);
     }
   });
 
 // Auth command
-const authCommand = new AuthCommand(configService);
-
 program
   .command('auth')
   .description('Manage DeepL API authentication')
@@ -113,6 +121,7 @@ program
       .argument('<api-key>', 'Your DeepL API key')
       .action(async (apiKey: string) => {
         try {
+          const authCommand = new AuthCommand(configService);
           await authCommand.setKey(apiKey);
           Logger.success(chalk.green('✓ API key saved and validated successfully'));
         } catch (error) {
@@ -126,6 +135,7 @@ program
       .description('Show current API key (masked)')
       .action(async () => {
         try {
+          const authCommand = new AuthCommand(configService);
           const key = await authCommand.getKey();
           if (key) {
             const masked = key.substring(0, 8) + '...' + key.substring(key.length - 4);
@@ -144,6 +154,7 @@ program
       .description('Remove stored API key')
       .action(async () => {
         try {
+          const authCommand = new AuthCommand(configService);
           await authCommand.clearKey();
           Logger.success(chalk.green('✓ API key removed'));
         } catch (error) {
@@ -483,8 +494,6 @@ program
   });
 
 // Config command
-const configCommand = new ConfigCmd(configService);
-
 program
   .command('config')
   .description('Manage configuration')
@@ -494,6 +503,7 @@ program
       .argument('[key]', 'Config key (dot notation) or empty for all')
       .action(async (key?: string) => {
         try {
+          const configCommand = new ConfigCmd(configService);
           const value = await configCommand.get(key);
           // Convert undefined to null for proper JSON output
           Logger.output(JSON.stringify(value ?? null, null, 2));
@@ -510,6 +520,7 @@ program
       .argument('<value>', 'Value to set')
       .action(async (key: string, value: string) => {
         try {
+          const configCommand = new ConfigCmd(configService);
           await configCommand.set(key, value);
           Logger.success(chalk.green(`✓ Set ${key} = ${value}`));
         } catch (error) {
@@ -523,6 +534,7 @@ program
       .description('List all configuration values')
       .action(async () => {
         try {
+          const configCommand = new ConfigCmd(configService);
           const config = await configCommand.list();
           Logger.output(JSON.stringify(config, null, 2));
         } catch (error) {
@@ -536,6 +548,7 @@ program
       .description('Reset configuration to defaults')
       .action(async () => {
         try {
+          const configCommand = new ConfigCmd(configService);
           await configCommand.reset();
           Logger.success(chalk.green('✓ Configuration reset to defaults'));
         } catch (error) {
@@ -546,8 +559,6 @@ program
   );
 
 // Cache command
-const cacheCommand = new CacheCommand(cacheService, configService);
-
 program
   .command('cache')
   .description('Manage translation cache')
@@ -556,6 +567,7 @@ program
       .description('Show cache statistics')
       .action(async () => {
         try {
+          const cacheCommand = new CacheCommand(cacheService, configService);
           const stats = await cacheCommand.stats();
           const formatted = cacheCommand.formatStats(stats);
           Logger.output(formatted);
@@ -570,6 +582,7 @@ program
       .description('Clear all cached translations')
       .action(async () => {
         try {
+          const cacheCommand = new CacheCommand(cacheService, configService);
           await cacheCommand.clear();
           Logger.success(chalk.green('✓ Cache cleared successfully'));
         } catch (error) {
@@ -592,6 +605,7 @@ program
             maxSizeBytes = parseSize(options.maxSize);
           }
 
+          const cacheCommand = new CacheCommand(cacheService, configService);
           await cacheCommand.enable(maxSizeBytes);
           Logger.success(chalk.green('✓ Cache enabled'));
 
@@ -610,6 +624,7 @@ program
       .description('Disable translation cache')
       .action(async () => {
         try {
+          const cacheCommand = new CacheCommand(cacheService, configService);
           await cacheCommand.disable();
           Logger.success(chalk.green('✓ Cache disabled'));
         } catch (error) {
