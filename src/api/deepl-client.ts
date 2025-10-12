@@ -14,11 +14,22 @@ import {
   DocumentStatus,
 } from '../types';
 
+interface ProxyConfig {
+  protocol?: 'http' | 'https';
+  host: string;
+  port: number;
+  auth?: {
+    username: string;
+    password: string;
+  };
+}
+
 interface DeepLClientOptions {
   usePro?: boolean;
   timeout?: number;
   maxRetries?: number;
   baseUrl?: string;
+  proxy?: ProxyConfig;
 }
 
 interface DeepLTranslateResponse {
@@ -114,13 +125,57 @@ export class DeepLClient {
 
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
 
-    this.client = axios.create({
+    // Build axios config
+    const axiosConfig: Record<string, unknown> = {
       baseURL,
       timeout: options.timeout ?? DEFAULT_TIMEOUT,
       headers: {
         'Authorization': `DeepL-Auth-Key ${apiKey}`,
       },
-    });
+    };
+
+    // Add proxy configuration if provided
+    let proxyConfig = options.proxy;
+
+    // Check for proxy environment variables if no explicit proxy config
+    if (!proxyConfig) {
+      const httpProxy = process.env['HTTP_PROXY'] ?? process.env['http_proxy'];
+      const httpsProxy = process.env['HTTPS_PROXY'] ?? process.env['https_proxy'];
+      const proxyUrl = httpsProxy ?? httpProxy;
+
+      if (proxyUrl) {
+        try {
+          const url = new URL(proxyUrl);
+          proxyConfig = {
+            protocol: url.protocol.replace(':', '') as 'http' | 'https',
+            host: url.hostname,
+            port: parseInt(url.port || (url.protocol === 'https:' ? '443' : '80'), 10),
+          };
+
+          // Add auth if present in URL
+          if (url.username && url.password) {
+            proxyConfig.auth = {
+              username: url.username,
+              password: url.password,
+            };
+          }
+        } catch {
+          // Invalid proxy URL, ignore and continue without proxy
+        }
+      }
+    }
+
+    // Apply proxy config to axios
+    if (proxyConfig) {
+      axiosConfig['proxy'] = {
+        protocol: proxyConfig.protocol,
+        host: proxyConfig.host,
+        port: proxyConfig.port,
+        ...(proxyConfig.auth && { auth: proxyConfig.auth }),
+      };
+    }
+
+    this.client = axios.create(axiosConfig);
   }
 
   /**

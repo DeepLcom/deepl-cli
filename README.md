@@ -607,6 +607,38 @@ deepl config reset
 # ✓ Configuration reset to defaults
 ```
 
+#### Proxy Configuration
+
+DeepL CLI automatically supports HTTP and HTTPS proxies through environment variables:
+
+```bash
+# Configure HTTP proxy
+export HTTP_PROXY=http://proxy.example.com:8080
+deepl translate "Hello" --to es
+
+# Configure HTTPS proxy
+export HTTPS_PROXY=https://proxy.example.com:8443
+deepl translate "Hello" --to es
+
+# Configure proxy with authentication
+export HTTP_PROXY=http://username:password@proxy.example.com:8080
+deepl translate "Hello" --to es
+
+# Both HTTP_PROXY and HTTPS_PROXY are supported (case-insensitive)
+export http_proxy=http://proxy.example.com:8080
+export https_proxy=https://proxy.example.com:8443
+```
+
+**Features:**
+
+- ✅ Automatic proxy detection from environment variables
+- ✅ HTTP and HTTPS proxy support
+- ✅ Proxy authentication support
+- ✅ Follows standard proxy environment variable conventions
+- ✅ Works with all DeepL CLI commands
+
+**Note:** HTTPS_PROXY takes precedence over HTTP_PROXY when both are set. The CLI automatically parses proxy URLs including authentication credentials.
+
 #### Project-Level Configuration 🚧
 
 **Planned for future release**

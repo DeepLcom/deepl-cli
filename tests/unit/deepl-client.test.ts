@@ -508,6 +508,57 @@ describe('DeepLClient', () => {
       });
       expect(customClient).toBeDefined();
     });
+
+    it('should allow HTTP proxy configuration', () => {
+      const proxyClient = new DeepLClient(apiKey, {
+        proxy: {
+          protocol: 'http',
+          host: 'proxy.example.com',
+          port: 8080,
+        },
+      });
+      expect(proxyClient).toBeDefined();
+    });
+
+    it('should allow HTTPS proxy configuration', () => {
+      const proxyClient = new DeepLClient(apiKey, {
+        proxy: {
+          protocol: 'https',
+          host: 'proxy.example.com',
+          port: 8443,
+        },
+      });
+      expect(proxyClient).toBeDefined();
+    });
+
+    it('should allow proxy configuration with authentication', () => {
+      const proxyClient = new DeepLClient(apiKey, {
+        proxy: {
+          protocol: 'http',
+          host: 'proxy.example.com',
+          port: 8080,
+          auth: {
+            username: 'proxyuser',
+            password: 'proxypass',
+          },
+        },
+      });
+      expect(proxyClient).toBeDefined();
+    });
+
+    it('should allow proxy configuration from environment variables', () => {
+      process.env['HTTP_PROXY'] = 'http://proxy.example.com:8080';
+      const proxyClient = new DeepLClient(apiKey);
+      expect(proxyClient).toBeDefined();
+      delete process.env['HTTP_PROXY'];
+    });
+
+    it('should allow proxy configuration from HTTPS_PROXY environment variable', () => {
+      process.env['HTTPS_PROXY'] = 'https://proxy.example.com:8443';
+      const proxyClient = new DeepLClient(apiKey);
+      expect(proxyClient).toBeDefined();
+      delete process.env['HTTPS_PROXY'];
+    });
   });
 
   describe('improveText()', () => {
