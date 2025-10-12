@@ -206,6 +206,48 @@ These features were identified during Phase 2 completion and deferred for future
 **Dependencies**: None
 **Files to modify**: All CLI commands, add exit code constants
 
+#### Document Format Conversion (from Feature Parity Analysis)
+
+- [ ] **--output-format flag** - Convert document format during translation
+  ```bash
+  deepl translate document.docx --to es --output document.es.pdf --output-format pdf
+  ```
+  - Convert between formats during translation (DOCX→PDF, PDF→DOCX, etc.)
+  - Leverages DeepL API's `output_format` parameter
+  - Useful for workflow automation (translate + convert in one step)
+
+**Estimated effort**: 2-3 hours implementation + 1 hour testing
+**Priority**: Low (niche use case, workaround: use separate conversion tool)
+**Dependencies**: DeepL API document translation endpoint
+**Files to modify**: src/cli/commands/translate.ts, src/services/document-translation.ts
+
+#### Advanced Networking Configuration (from Feature Parity Analysis)
+
+- [ ] **Proxy configuration** - Support HTTP/HTTPS proxies for corporate environments
+  ```bash
+  deepl config set api.proxy "http://proxy:8080"
+  deepl config set api.proxy.username "user"
+  deepl config set api.proxy.password "pass"
+  ```
+  - HTTP/HTTPS proxy support
+  - Proxy authentication
+  - No-proxy exceptions
+
+- [ ] **Retry/timeout configuration** - Control API retry behavior
+  ```bash
+  deepl config set api.retries 3
+  deepl config set api.timeout 30000
+  deepl config set api.retryDelay 1000
+  ```
+  - Configurable retry count
+  - Custom timeout values
+  - Exponential backoff configuration
+
+**Estimated effort**: 4-6 hours implementation + 2 hours testing
+**Priority**: Low (system-level proxy works for most cases)
+**Dependencies**: axios configuration updates
+**Files to modify**: src/api/deepl-client.ts, src/storage/config.ts, configuration schema
+
 ---
 
 ## 🎯 Feature Parity with Official SDKs (✅ COMPLETE - October 12, 2025)
