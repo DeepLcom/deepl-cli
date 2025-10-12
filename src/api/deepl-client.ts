@@ -484,6 +484,10 @@ export class DeepLClient {
       formData.append('glossary_id', options.glossaryId);
     }
 
+    if (options.outputFormat) {
+      formData.append('output_format', options.outputFormat);
+    }
+
     try {
       const response = await this.client.request<DeepLDocumentUploadResponse>({
         method: 'POST',

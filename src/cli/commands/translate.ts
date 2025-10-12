@@ -16,6 +16,7 @@ interface TranslateOptions {
   to: string;
   from?: string;
   formality?: string;
+  outputFormat?: string;
   preserveCode?: boolean;
   context?: string;
   splitSentences?: string;
@@ -383,6 +384,7 @@ export class TranslateCommand {
       sourceLang?: Language;
       formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
       glossaryId?: string;
+      outputFormat?: 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
     } = {
       targetLang: options.to as Language,
     };
@@ -393,6 +395,10 @@ export class TranslateCommand {
 
     if (options.formality) {
       translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+    }
+
+    if (options.outputFormat) {
+      translationOptions.outputFormat = options.outputFormat as 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
     }
 
     // Create spinner for progress

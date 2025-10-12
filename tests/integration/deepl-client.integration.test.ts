@@ -601,6 +601,49 @@ describe('DeepLClient Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
+    it('should include output_format when specified', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test content');
+
+      const scope = nock(FREE_API_URL)
+        .post('/v2/document', (body) => {
+          return body.includes('output_format') && body.includes('pdf');
+        })
+        .reply(200, {
+          document_id: 'doc-123',
+          document_key: 'key-456',
+        });
+
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        outputFormat: 'pdf',
+        filename: 'test.docx',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should not include output_format when not specified', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test content');
+
+      const scope = nock(FREE_API_URL)
+        .post('/v2/document', (body) => {
+          return !body.includes('output_format');
+        })
+        .reply(200, {
+          document_id: 'doc-123',
+          document_key: 'key-456',
+        });
+
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        filename: 'test.pdf',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
     it('should use correct Authorization header', async () => {
       const client = new DeepLClient(API_KEY);
       const fileBuffer = Buffer.from('test content');

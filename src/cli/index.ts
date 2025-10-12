@@ -208,6 +208,7 @@ program
   .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
   .option('-o, --output <path>', 'Output file path or directory (required for file/directory translation)')
   .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
+  .option('--output-format <format>', 'Convert document format during translation (e.g., pdf, docx, pptx, xlsx, html)')
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
   .option('--context <text>', 'Additional context to improve translation quality')
   .option('--split-sentences <mode>', 'Sentence splitting: on, off, nonewlines (default: on)')
@@ -222,6 +223,7 @@ program
     from?: string;
     output?: string;
     formality?: string;
+    outputFormat?: string;
     preserveCode?: boolean;
     context?: string;
     splitSentences?: string;

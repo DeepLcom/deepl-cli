@@ -99,10 +99,13 @@ export interface DocumentStatus {
   errorMessage?: string;
 }
 
+export type DocumentOutputFormat = 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
+
 export interface DocumentTranslationOptions {
   sourceLang?: Language;
   targetLang: Language;
   filename?: string;
   formality?: Formality;
   glossaryId?: string;
+  outputFormat?: DocumentOutputFormat;
 }

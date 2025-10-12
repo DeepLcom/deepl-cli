@@ -62,6 +62,7 @@ EXAMPLES=(
   "13-watch-mode.sh"
   "14-git-hooks.sh"
   "15-document-translation.sh"
+  "16-document-format-conversion.sh"
 )
 
 # Skip slow examples in fast mode
@@ -82,6 +83,7 @@ if [ "$FAST_MODE" = true ]; then
     "11-languages.sh"
     "12-model-type-selection.sh"
     "15-document-translation.sh"
+    "16-document-format-conversion.sh"
   )
 fi
 

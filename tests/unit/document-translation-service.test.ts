@@ -227,6 +227,77 @@ describe('DocumentTranslationService', () => {
       expect(mockClient.getDocumentStatus).toHaveBeenCalledTimes(5);
       expect(mockWriteFileSync).toHaveBeenCalled();
     });
+
+    it('should pass outputFormat parameter to API client', async () => {
+      const inputPath = '/test/document.docx';
+      const outputPath = '/test/document.es.pdf';
+      const fileBuffer = Buffer.from('docx content');
+      const translatedBuffer = Buffer.from('translated pdf content');
+
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      mockClient.getDocumentStatus = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        status: 'done',
+        billedCharacters: 500,
+      });
+
+      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'es',
+        outputFormat: 'pdf',
+      });
+
+      // Verify outputFormat is passed to uploadDocument
+      expect(mockClient.uploadDocument).toHaveBeenCalledWith(
+        fileBuffer,
+        expect.objectContaining({
+          targetLang: 'es',
+          filename: 'document.docx',
+          outputFormat: 'pdf',
+        })
+      );
+    });
+
+    it('should translate document without outputFormat when not specified', async () => {
+      const inputPath = '/test/document.pdf';
+      const outputPath = '/test/document.es.pdf';
+      const fileBuffer = Buffer.from('pdf content');
+      const translatedBuffer = Buffer.from('translated pdf content');
+
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      mockClient.getDocumentStatus = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        status: 'done',
+        billedCharacters: 300,
+      });
+
+      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'es',
+      });
+
+      // Verify outputFormat is NOT passed when not specified
+      expect(mockClient.uploadDocument).toHaveBeenCalledWith(
+        fileBuffer,
+        expect.not.objectContaining({
+          outputFormat: expect.anything(),
+        })
+      );
+    });
   });
 
   describe('getSupportedFileTypes', () => {
