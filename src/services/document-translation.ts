@@ -83,7 +83,7 @@ export class DocumentTranslationService {
     // Check for errors
     if (finalStatus.status === 'error') {
       throw new Error(
-        `Document translation failed: ${finalStatus.errorMessage || 'Unknown error'}`
+        `Document translation failed: ${finalStatus.errorMessage ?? 'Unknown error'}`
       );
     }
 
@@ -116,6 +116,7 @@ export class DocumentTranslationService {
     let pollInterval = this.INITIAL_POLL_INTERVAL;
     let status: DocumentStatus;
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       status = await this.client.getDocumentStatus(handle);
 

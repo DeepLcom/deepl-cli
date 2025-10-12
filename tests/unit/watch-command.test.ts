@@ -105,19 +105,6 @@ describe('WatchCommand', () => {
       await expect(watchPromise).rejects.toThrow('Path not found');
     });
 
-    it('should throw error for non-existent path', async () => {
-      (fs.existsSync as jest.Mock).mockReturnValue(false);
-
-      try {
-        await watchCommand.watch('/non/existent', {
-          targets: 'es',
-        });
-        fail('Should have thrown an error');
-      } catch (error: any) {
-        expect(error.message).toContain('Path not found');
-      }
-    });
-
     it('should parse multiple target languages', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });

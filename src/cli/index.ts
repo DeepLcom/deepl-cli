@@ -420,6 +420,7 @@ program
           result = interactiveResult.selected;
 
           // Write to output file if specified
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           if (options.output || options.inPlace) {
             const outputPath = options.inPlace ? text : options.output!;
             const { writeFile } = await import('fs/promises');

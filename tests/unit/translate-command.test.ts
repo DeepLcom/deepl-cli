@@ -58,7 +58,7 @@ describe('TranslateCommand', () => {
       get: jest.fn().mockReturnValue({}),
       getValue: jest.fn((key: string) => {
         // Mock API key as set by default
-        if (key === 'auth.apiKey') return 'mock-api-key';
+        if (key === 'auth.apiKey') {return 'mock-api-key';}
         return undefined;
       }),
       set: jest.fn().mockResolvedValue(undefined),
@@ -159,7 +159,7 @@ describe('TranslateCommand', () => {
       ).rejects.toThrow('API key not set');
 
       // Restore environment
-      if (originalEnv) process.env['DEEPL_API_KEY'] = originalEnv;
+      if (originalEnv) {process.env['DEEPL_API_KEY'] = originalEnv;}
     });
 
     it('should support multiple target languages', async () => {

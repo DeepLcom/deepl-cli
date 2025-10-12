@@ -60,4 +60,23 @@ module.exports = {
     'coverage/',
     '*.js', // Ignore config files in root
   ],
+  overrides: [
+    {
+      // Relax rules for test files
+      files: ['tests/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off', // Allow 'any' in tests
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-return': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+        '@typescript-eslint/unbound-method': 'off', // Allow unbound methods (common with jest.fn())
+        '@typescript-eslint/await-thenable': 'off', // Allow awaiting non-promises in tests
+        '@typescript-eslint/ban-types': 'off', // Allow Function type in tests
+        'jest/no-conditional-expect': 'off', // Allow conditional expects in tests
+        'jest/no-jasmine-globals': 'off', // Allow fail() in tests
+      },
+    },
+  ],
 };
