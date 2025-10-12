@@ -1129,6 +1129,163 @@ describe('DeepLClient', () => {
     });
   });
 
+  describe('translateBatch()', () => {
+    it('should translate multiple texts in a single API call', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // Verify multiple text parameters are sent
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return Array.isArray(body.text) && body.text.length === 3;
+        })
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+            {
+              detected_source_language: 'EN',
+              text: 'Adiós',
+            },
+            {
+              detected_source_language: 'EN',
+              text: 'Gracias',
+            },
+          ],
+        });
+
+      const results = await client.translateBatch(
+        ['Hello', 'Goodbye', 'Thank you'],
+        { targetLang: 'es' }
+      );
+
+      expect(results).toHaveLength(3);
+      expect(results[0]?.text).toBe('Hola');
+      expect(results[1]?.text).toBe('Adiós');
+      expect(results[2]?.text).toBe('Gracias');
+      expect(results[0]?.detectedSourceLang).toBe('en');
+    });
+
+    it('should handle empty array', async () => {
+      const results = await client.translateBatch([], { targetLang: 'es' });
+      expect(results).toHaveLength(0);
+    });
+
+    it('should handle single text in batch', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+          ],
+        });
+
+      const results = await client.translateBatch(['Hello'], {
+        targetLang: 'es',
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.text).toBe('Hola');
+    });
+
+    it('should include all translation options in batch request', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.source_lang === 'EN' &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.formality === 'more' &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.glossary_id === 'test-glossary';
+        })
+        .reply(200, {
+          translations: [
+            { text: 'Hola' },
+            { text: 'Adiós' },
+          ],
+        });
+
+      await client.translateBatch(['Hello', 'Goodbye'], {
+        targetLang: 'es',
+        sourceLang: 'en',
+        formality: 'more',
+        glossaryId: 'test-glossary',
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should handle API errors in batch translation', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(403, {
+          message: 'Authorization failed',
+        });
+
+      await expect(
+        client.translateBatch(['Hello', 'Goodbye'], { targetLang: 'es' })
+      ).rejects.toThrow('Authentication failed');
+    });
+
+    it('should throw error if response has fewer translations than texts', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            { text: 'Hola' },
+            // Missing second translation
+          ],
+        });
+
+      await expect(
+        client.translateBatch(['Hello', 'Goodbye'], { targetLang: 'es' })
+      ).rejects.toThrow('Mismatch between texts sent and translations received');
+    });
+
+    it('should throw error if response has more translations than texts', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            { text: 'Hola' },
+            { text: 'Adiós' },
+            { text: 'Extra' }, // Extra translation
+          ],
+        });
+
+      await expect(
+        client.translateBatch(['Hello', 'Goodbye'], { targetLang: 'es' })
+      ).rejects.toThrow('Mismatch between texts sent and translations received');
+    });
+
+    it('should handle batch with different detected languages', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+            {
+              detected_source_language: 'FR',
+              text: 'Hola',
+            },
+          ],
+        });
+
+      const results = await client.translateBatch(['Hello', 'Bonjour'], {
+        targetLang: 'es',
+      });
+
+      expect(results[0]?.detectedSourceLang).toBe('en');
+      expect(results[1]?.detectedSourceLang).toBe('fr');
+    });
+  });
+
   describe('getGlossaryLanguages()', () => {
     it('should return supported glossary language pairs', async () => {
       nock(baseUrl)

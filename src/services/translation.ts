@@ -120,30 +120,99 @@ export class TranslationService {
   }
 
   /**
-   * Translate multiple texts in batch with concurrency control
+   * Translate multiple texts in batch using optimized API calls
+   * Uses client.translateBatch() to send multiple texts in a single API request
+   * More efficient than individual translate() calls
+   *
+   * @param texts - Array of texts to translate
+   * @param options - Translation options
+   * @param _batchOptions - Batch options (deprecated, kept for backward compatibility)
    */
   async translateBatch(
     texts: string[],
     options: TranslationOptions,
-    batchOptions: BatchOptions = {}
+    _batchOptions: BatchOptions = {}
   ): Promise<TranslationResult[]> {
     if (texts.length === 0) {
       return [];
     }
 
-    const concurrency = batchOptions.concurrency ?? 5;
-    const results: TranslationResult[] = [];
+    // Get config defaults
+    const configData = this.config.get();
+    const defaults = configData.defaults;
+    const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
 
-    // Process in chunks with concurrency limit
-    for (let i = 0; i < texts.length; i += concurrency) {
-      const chunk = texts.slice(i, i + concurrency);
-      const chunkResults = await Promise.all(
-        chunk.map((text) => this.translate(text, options))
-      );
-      results.push(...chunkResults);
+    // Merge options with defaults
+    const translationOptions: TranslationOptions = {
+      ...options,
+      sourceLang: options.sourceLang ?? defaults.sourceLang,
+      formality: options.formality ?? defaults.formality,
+      preserveFormatting: options.preserveFormatting ?? defaults.preserveFormatting,
+    };
+
+    // Check cache and separate cached vs non-cached texts
+    const textsToTranslate: string[] = [];
+    const textIndexMap = new Map<string, number>(); // Maps text to original index
+    const results: (TranslationResult | null)[] = new Array(texts.length).fill(null);
+
+    for (let i = 0; i < texts.length; i++) {
+      const text = texts[i];
+      if (!text) continue;
+
+      const cacheKey = this.generateCacheKey(text, translationOptions);
+
+      if (cacheEnabled) {
+        const cachedResult = this.cache.get(cacheKey) as TranslationResult | null;
+        if (cachedResult) {
+          results[i] = cachedResult;
+          continue;
+        }
+      }
+
+      // Not cached, need to translate
+      textsToTranslate.push(text);
+      textIndexMap.set(text, i);
     }
 
-    return results;
+    // If all texts were cached, return cached results
+    if (textsToTranslate.length === 0) {
+      return results.filter((r): r is TranslationResult => r !== null);
+    }
+
+    // Use batch API to translate all non-cached texts in a single request
+    // DeepL API supports up to 50 texts per request, so chunk if needed
+    const BATCH_SIZE = 50;
+    const batches: string[][] = [];
+    for (let i = 0; i < textsToTranslate.length; i += BATCH_SIZE) {
+      batches.push(textsToTranslate.slice(i, i + BATCH_SIZE));
+    }
+
+    // Process all batches
+    const batchResults: TranslationResult[] = [];
+    for (const batch of batches) {
+      const batchResult = await this.client.translateBatch(batch, translationOptions);
+      batchResults.push(...batchResult);
+    }
+
+    // Store results in cache and map back to original indices
+    for (let i = 0; i < textsToTranslate.length; i++) {
+      const text = textsToTranslate[i];
+      const result = batchResults[i];
+      if (!text || !result) continue;
+
+      const originalIndex = textIndexMap.get(text);
+      if (originalIndex !== undefined) {
+        results[originalIndex] = result;
+
+        // Cache the result
+        if (cacheEnabled) {
+          const cacheKey = this.generateCacheKey(text, translationOptions);
+          this.cache.set(cacheKey, result);
+        }
+      }
+    }
+
+    return results.filter((r): r is TranslationResult => r !== null);
   }
 
   /**

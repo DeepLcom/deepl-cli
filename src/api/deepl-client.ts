@@ -254,6 +254,85 @@ export class DeepLClient {
   }
 
   /**
+   * Translate multiple texts in a single API call
+   * More efficient than calling translate() multiple times
+   */
+  async translateBatch(
+    texts: string[],
+    options: TranslationOptions
+  ): Promise<TranslationResult[]> {
+    // Handle empty array
+    if (texts.length === 0) {
+      return [];
+    }
+
+    // Build request parameters
+    const params: Record<string, string | string[]> = {
+      text: texts,
+      target_lang: this.normalizeLanguage(options.targetLang).toUpperCase(),
+    };
+
+    if (options.sourceLang) {
+      params['source_lang'] = this.normalizeLanguage(options.sourceLang).toUpperCase();
+    }
+
+    if (options.formality) {
+      params['formality'] = options.formality;
+    }
+
+    if (options.glossaryId) {
+      params['glossary_id'] = options.glossaryId;
+    }
+
+    if (options.preserveFormatting) {
+      params['preserve_formatting'] = '1';
+    }
+
+    if (options.context) {
+      params['context'] = options.context;
+    }
+
+    if (options.splitSentences) {
+      params['split_sentences'] = options.splitSentences;
+    }
+
+    if (options.tagHandling) {
+      params['tag_handling'] = options.tagHandling;
+    }
+
+    if (options.modelType) {
+      params['model_type'] = options.modelType;
+    }
+
+    try {
+      const response = await this.makeRequest<DeepLTranslateResponse>(
+        'POST',
+        '/v2/translate',
+        params
+      );
+
+      if (!response.translations) {
+        throw new Error('No translations returned');
+      }
+
+      // Verify we got the same number of translations as texts
+      if (response.translations.length !== texts.length) {
+        throw new Error('Mismatch between texts sent and translations received');
+      }
+
+      // Map response translations to results
+      return response.translations.map((translation) => ({
+        text: translation.text,
+        detectedSourceLang: translation.detected_source_language
+          ? this.normalizeLanguage(translation.detected_source_language)
+          : undefined,
+      }));
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * Get usage statistics
    */
   async getUsage(): Promise<UsageInfo> {

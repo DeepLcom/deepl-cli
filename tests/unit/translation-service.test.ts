@@ -29,6 +29,7 @@ describe('TranslationService', () => {
     // Create mock instances
     mockDeepLClient = {
       translate: jest.fn(),
+      translateBatch: jest.fn(),
       getUsage: jest.fn(),
       getSupportedLanguages: jest.fn(),
     } as unknown as jest.Mocked<DeepLClient>;
@@ -224,11 +225,12 @@ describe('TranslationService', () => {
   });
 
   describe('translateBatch()', () => {
-    it('should translate multiple texts', async () => {
-      mockDeepLClient.translate
-        .mockResolvedValueOnce({ text: 'Hola' })
-        .mockResolvedValueOnce({ text: 'Adiós' })
-        .mockResolvedValueOnce({ text: 'Gracias' });
+    it('should translate multiple texts using batch API', async () => {
+      mockDeepLClient.translateBatch.mockResolvedValue([
+        { text: 'Hola' },
+        { text: 'Adiós' },
+        { text: 'Gracias' },
+      ]);
 
       const results = await translationService.translateBatch(
         ['Hello', 'Goodbye', 'Thanks'],
@@ -239,26 +241,27 @@ describe('TranslationService', () => {
       expect(results[0]?.text).toBe('Hola');
       expect(results[1]?.text).toBe('Adiós');
       expect(results[2]?.text).toBe('Gracias');
-      expect(mockDeepLClient.translate).toHaveBeenCalledTimes(3);
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalledTimes(1);
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalledWith(
+        ['Hello', 'Goodbye', 'Thanks'],
+        expect.objectContaining({ targetLang: 'es' })
+      );
     });
 
-    it('should translate texts in parallel', async () => {
-      const startTime = Date.now();
+    it('should use batch API for efficient translation (single API call)', async () => {
+      mockDeepLClient.translateBatch.mockResolvedValue([
+        { text: 'Uno' },
+        { text: 'Dos' },
+        { text: 'Tres' },
+      ]);
 
-      mockDeepLClient.translate.mockImplementation(
-        async () =>
-          new Promise((resolve) =>
-            setTimeout(() => resolve({ text: 'Translated' }), 100)
-          )
-      );
-
-      await translationService.translateBatch(['Hello', 'Goodbye', 'Thanks'], {
+      await translationService.translateBatch(['One', 'Two', 'Three'], {
         targetLang: 'es',
       });
 
-      const duration = Date.now() - startTime;
-      // Should complete in ~100ms (parallel), not ~300ms (sequential)
-      expect(duration).toBeLessThan(200);
+      // Should use batch API (1 call) instead of individual translate calls (3 calls)
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalledTimes(1);
+      expect(mockDeepLClient.translate).not.toHaveBeenCalled();
     });
 
     it('should handle empty array', async () => {
@@ -267,14 +270,12 @@ describe('TranslationService', () => {
       });
 
       expect(results).toHaveLength(0);
+      expect(mockDeepLClient.translateBatch).not.toHaveBeenCalled();
       expect(mockDeepLClient.translate).not.toHaveBeenCalled();
     });
 
-    it('should handle partial failures', async () => {
-      mockDeepLClient.translate
-        .mockResolvedValueOnce({ text: 'Hola' })
-        .mockRejectedValueOnce(new Error('API error'))
-        .mockResolvedValueOnce({ text: 'Gracias' });
+    it('should handle API errors', async () => {
+      mockDeepLClient.translateBatch.mockRejectedValue(new Error('API error'));
 
       await expect(
         translationService.translateBatch(['Hello', 'Goodbye', 'Thanks'], {
@@ -283,26 +284,46 @@ describe('TranslationService', () => {
       ).rejects.toThrow('API error');
     });
 
-    it('should respect concurrency limit', async () => {
-      const concurrentCalls: number[] = [];
-      let activeCalls = 0;
+    it('should utilize cache for batch translations', async () => {
+      // Cache hit for first text, miss for others
+      mockCacheService.get
+        .mockReturnValueOnce({ text: 'Hola (cached)' })
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce(null);
 
-      mockDeepLClient.translate.mockImplementation(async () => {
-        activeCalls++;
-        concurrentCalls.push(activeCalls);
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        activeCalls--;
-        return { text: 'Translated' };
-      });
+      mockDeepLClient.translateBatch.mockResolvedValue([
+        { text: 'Adiós' },
+        { text: 'Gracias' },
+      ]);
 
-      await translationService.translateBatch(
-        ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-        { targetLang: 'es' },
-        { concurrency: 3 }
+      const results = await translationService.translateBatch(
+        ['Hello', 'Goodbye', 'Thanks'],
+        { targetLang: 'es' }
       );
 
-      // Should never exceed concurrency limit of 3
-      expect(Math.max(...concurrentCalls)).toBeLessThanOrEqual(3);
+      expect(results).toHaveLength(3);
+      expect(results[0]?.text).toBe('Hola (cached)');
+      expect(results[1]?.text).toBe('Adiós');
+      expect(results[2]?.text).toBe('Gracias');
+      // Should only translate uncached texts
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalledWith(
+        ['Goodbye', 'Thanks'],
+        expect.any(Object)
+      );
+    });
+
+    it('should handle batch size limits (50 texts per batch)', async () => {
+      const largeTextArray = Array(100).fill('test');
+      mockDeepLClient.translateBatch
+        .mockResolvedValueOnce(Array(50).fill({ text: 'traducido' }))
+        .mockResolvedValueOnce(Array(50).fill({ text: 'traducido' }));
+
+      await translationService.translateBatch(largeTextArray, {
+        targetLang: 'es',
+      });
+
+      // Should split into 2 batches of 50
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalledTimes(2);
     });
   });
 
