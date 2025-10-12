@@ -25,6 +25,23 @@ jest.mock('chalk', () => ({
   red: (text: string) => text,
 }));
 
+// Mock Logger
+jest.mock('../../src/utils/logger', () => ({
+  Logger: {
+    info: jest.fn(),
+    success: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    output: jest.fn(),
+    shouldShowSpinner: jest.fn(() => true),
+    setQuiet: jest.fn(),
+    isQuiet: jest.fn(() => false),
+  },
+}));
+
+import { Logger } from '../../src/utils/logger';
+const mockLogger = Logger as jest.Mocked<typeof Logger>;
+
 // Mock dependencies
 jest.mock('fs');
 jest.mock('../../src/services/watch');
@@ -39,6 +56,13 @@ describe('WatchCommand', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Clear Logger mocks
+    mockLogger.info.mockClear();
+    mockLogger.success.mockClear();
+    mockLogger.warn.mockClear();
+    mockLogger.error.mockClear();
+    mockLogger.output.mockClear();
 
     // Mock TranslationService
     mockTranslationService = {
@@ -285,7 +309,7 @@ describe('WatchCommand', () => {
 
       // Test the callback
       watchOptions.onChange!('/test/file.md');
-      expect(console.log).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         expect.anything(),
         '/test/file.md'
       );
@@ -313,7 +337,7 @@ describe('WatchCommand', () => {
         { targetLang: 'fr', text: 'translated text', outputPath: '/test/file.fr.md' },
       ]);
 
-      expect(console.log).toHaveBeenCalled();
+      expect(mockLogger.success).toHaveBeenCalled();
     });
 
     it('should register onTranslate callback for single language', async () => {
@@ -338,7 +362,7 @@ describe('WatchCommand', () => {
         outputPath: '/test/file.es.md',
       });
 
-      expect(console.log).toHaveBeenCalled();
+      expect(mockLogger.success).toHaveBeenCalled();
     });
 
     it('should register onError callback', async () => {
@@ -359,7 +383,7 @@ describe('WatchCommand', () => {
 
       // Test the callback
       watchOptions.onError!('/test/file.md', new Error('Translation failed'));
-      expect(console.error).toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalled();
     });
 
     it('should throw error when no target languages provided', async () => {
@@ -387,14 +411,14 @@ describe('WatchCommand', () => {
         autoCommit: true,
       });
 
-      // Wait a bit for console.log statements to execute
+      // Wait a bit for Logger statements to execute
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Watching for changes'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Path: /some/file.md'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Targets: es, fr'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Pattern: *.md'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Auto-commit enabled'));
+      expect(mockLogger.success).toHaveBeenCalledWith(expect.stringContaining('Watching for changes'));
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Path: /some/file.md'));
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Targets: es, fr'));
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Pattern: *.md'));
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Auto-commit enabled'));
 
       // Don't wait for the promise to resolve (it won't due to infinite Promise)
     }, 1000);
@@ -471,7 +495,7 @@ describe('WatchCommand', () => {
       ]);
 
       // Verify console output includes auto-commit attempt
-      expect(console.log).toHaveBeenCalled();
+      expect(mockLogger.success).toHaveBeenCalled();
     });
 
     it('should auto-commit translations when autoCommit is enabled for single language', async () => {
@@ -495,7 +519,7 @@ describe('WatchCommand', () => {
         outputPath: '/test/file.es.md',
       });
 
-      expect(console.log).toHaveBeenCalled();
+      expect(mockLogger.success).toHaveBeenCalled();
     });
 
     it('should handle auto-commit when not in git repository', async () => {
@@ -520,7 +544,7 @@ describe('WatchCommand', () => {
       });
 
       // Should not throw, just log warning
-      expect(console.log).toHaveBeenCalled();
+      expect(mockLogger.success).toHaveBeenCalled();
     });
 
     it('should handle auto-commit with no output files', async () => {
@@ -544,7 +568,7 @@ describe('WatchCommand', () => {
       });
 
       // Should not throw
-      expect(console.log).toHaveBeenCalled();
+      expect(mockLogger.success).toHaveBeenCalled();
     });
 
     it('should handle auto-commit errors gracefully', async () => {
@@ -569,7 +593,7 @@ describe('WatchCommand', () => {
       });
 
       // Should not throw on auto-commit failure
-      expect(console.log).toHaveBeenCalled();
+      expect(mockLogger.success).toHaveBeenCalled();
     });
   });
 

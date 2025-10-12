@@ -13,6 +13,7 @@ import { GlossaryService } from '../../services/glossary.js';
 import { ConfigService } from '../../storage/config.js';
 import { Language } from '../../types/index.js';
 import { formatTranslationJson, formatMultiTranslationJson } from '../../utils/formatters.js';
+import { Logger } from '../../utils/logger.js';
 
 interface TranslateOptions {
   to: string;
@@ -336,18 +337,20 @@ export class TranslateCommand {
       translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
     }
 
+    // Create spinner (conditional based on quiet mode)
+    const spinner = Logger.shouldShowSpinner() ? ora('Scanning files...').start() : null;
+
     // Build batch options
     const batchOptions = {
       outputDir: options.output,
       recursive: options.recursive !== false,
       pattern: options.pattern,
       onProgress: (progress: { completed: number; total: number; current?: string }) => {
-        spinner.text = `Translating files: ${progress.completed}/${progress.total}`;
+        if (spinner) {
+          spinner.text = `Translating files: ${progress.completed}/${progress.total}`;
+        }
       },
     };
-
-    // Create spinner
-    const spinner = ora('Scanning files...').start();
 
     try {
       // Override concurrency if provided
@@ -367,7 +370,9 @@ export class TranslateCommand {
 
       const stats = this.batchTranslationService.getStatistics(result);
 
-      spinner.succeed(`Translation complete!`);
+      if (spinner) {
+        spinner.succeed(`Translation complete!`);
+      }
 
       // Format output
       const output: string[] = [
@@ -390,7 +395,9 @@ export class TranslateCommand {
 
       return output.join('\n');
     } catch (error) {
-      spinner.fail('Translation failed');
+      if (spinner) {
+        spinner.fail('Translation failed');
+      }
       throw error;
     }
   }
@@ -461,8 +468,8 @@ export class TranslateCommand {
       translationOptions.outputFormat = options.outputFormat as 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
     }
 
-    // Create spinner for progress
-    const spinner = ora('Uploading document...').start();
+    // Create spinner for progress (conditional based on quiet mode)
+    const spinner = Logger.shouldShowSpinner() ? ora('Uploading document...').start() : null;
 
     try {
       const result = await this.documentTranslationService.translateDocument(
@@ -471,20 +478,24 @@ export class TranslateCommand {
         translationOptions,
         (progress) => {
           // Update spinner based on progress
-          if (progress.status === 'queued') {
-            spinner.text = 'Document queued for translation...';
-          } else if (progress.status === 'translating') {
-            const timeText = progress.secondsRemaining
-              ? ` (est. ${progress.secondsRemaining}s remaining)`
-              : '';
-            spinner.text = `Translating document${timeText}...`;
-          } else if (progress.status === 'done') {
-            spinner.text = 'Downloading translated document...';
+          if (spinner) {
+            if (progress.status === 'queued') {
+              spinner.text = 'Document queued for translation...';
+            } else if (progress.status === 'translating') {
+              const timeText = progress.secondsRemaining
+                ? ` (est. ${progress.secondsRemaining}s remaining)`
+                : '';
+              spinner.text = `Translating document${timeText}...`;
+            } else if (progress.status === 'done') {
+              spinner.text = 'Downloading translated document...';
+            }
           }
         }
       );
 
-      spinner.succeed(`Document translated successfully!`);
+      if (spinner) {
+        spinner.succeed(`Document translated successfully!`);
+      }
 
       const output: string[] = [
         `Translated ${filePath} -> ${outputPath}`,
@@ -496,7 +507,9 @@ export class TranslateCommand {
 
       return output.join('\n');
     } catch (error) {
-      spinner.fail('Document translation failed');
+      if (spinner) {
+        spinner.fail('Document translation failed');
+      }
       throw error;
     }
   }

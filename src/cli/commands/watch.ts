@@ -10,6 +10,7 @@ import { FileTranslationService } from '../../services/file-translation.js';
 import { TranslationService } from '../../services/translation.js';
 import { GlossaryService } from '../../services/glossary.js';
 import { Language } from '../../types/index.js';
+import { Logger } from '../../utils/logger.js';
 
 interface WatchOptions {
   targets: string;
@@ -113,19 +114,19 @@ export class WatchCommand {
       preserveCode: options.preserveCode,
       preserveFormatting: options.preserveFormatting,
       onChange: (filePath: string) => {
-        console.log(chalk.blue('📝 Change detected:'), filePath);
+        Logger.info(chalk.blue('📝 Change detected:'), filePath);
       },
       onTranslate: async (filePath: string, result: any) => {
         if (Array.isArray(result)) {
           // Multiple languages
-          console.log(chalk.green(`✓ Translated ${filePath} to ${result.length} languages`));
+          Logger.success(chalk.green(`✓ Translated ${filePath} to ${result.length} languages`));
           result.forEach((r: any) => {
-            console.log(chalk.gray(`  → [${r.targetLang}] ${r.outputPath}`));
+            Logger.info(chalk.gray(`  → [${r.targetLang}] ${r.outputPath}`));
           });
         } else {
           // Single language
-          console.log(chalk.green(`✓ Translated ${filePath}`));
-          console.log(chalk.gray(`  → ${result.outputPath}`));
+          Logger.success(chalk.green(`✓ Translated ${filePath}`));
+          Logger.info(chalk.gray(`  → ${result.outputPath}`));
         }
 
         // Auto-commit if enabled
@@ -134,7 +135,7 @@ export class WatchCommand {
         }
       },
       onError: (filePath: string, error: Error) => {
-        console.error(chalk.red(`✗ Translation failed for ${filePath}:`), error.message);
+        Logger.error(chalk.red(`✗ Translation failed for ${filePath}:`), error.message);
       },
     };
 
@@ -142,28 +143,28 @@ export class WatchCommand {
     await this.watchService.watch(pathToWatch, watchOpts);
 
     // Display initial message
-    console.log(chalk.green('👀 Watching for changes...'));
-    console.log(chalk.gray(`Path: ${pathToWatch}`));
-    console.log(chalk.gray(`Targets: ${targetLangs.join(', ')}`));
-    console.log(chalk.gray(`Output: ${outputDir}`));
+    Logger.success(chalk.green('👀 Watching for changes...'));
+    Logger.info(chalk.gray(`Path: ${pathToWatch}`));
+    Logger.info(chalk.gray(`Targets: ${targetLangs.join(', ')}`));
+    Logger.info(chalk.gray(`Output: ${outputDir}`));
     if (options.pattern) {
-      console.log(chalk.gray(`Pattern: ${options.pattern}`));
+      Logger.info(chalk.gray(`Pattern: ${options.pattern}`));
     }
     if (options.autoCommit) {
-      console.log(chalk.yellow('⚠️  Auto-commit enabled'));
+      Logger.warn(chalk.yellow('⚠️  Auto-commit enabled'));
     }
-    console.log(chalk.gray('Press Ctrl+C to stop\n'));
+    Logger.info(chalk.gray('Press Ctrl+C to stop\n'));
 
     // Handle graceful shutdown
     const cleanup = async () => {
-      console.log(chalk.yellow('\n\n🛑 Stopping watch...'));
+      Logger.warn(chalk.yellow('\n\n🛑 Stopping watch...'));
       if (this.watchService) {
         await this.watchService.stop();
         const stats = this.watchService.getStats();
-        console.log(chalk.gray(`Translations: ${stats.translationsCount}`));
-        console.log(chalk.gray(`Errors: ${stats.errorsCount}`));
+        Logger.info(chalk.gray(`Translations: ${stats.translationsCount}`));
+        Logger.info(chalk.gray(`Errors: ${stats.errorsCount}`));
       }
-      console.log(chalk.green('✓ Watch stopped'));
+      Logger.success(chalk.green('✓ Watch stopped'));
       process.exit(0);
     };
 
@@ -189,7 +190,7 @@ export class WatchCommand {
       try {
         await execAsync('git rev-parse --git-dir');
       } catch {
-        console.log(chalk.yellow('⚠️  Not a git repository, skipping auto-commit'));
+        Logger.warn(chalk.yellow('⚠️  Not a git repository, skipping auto-commit'));
         return;
       }
 
@@ -224,9 +225,9 @@ export class WatchCommand {
       // Commit
       await execAsync(`git commit -m "${commitMsg}"`);
 
-      console.log(chalk.green('✓ Auto-committed translations'));
+      Logger.success(chalk.green('✓ Auto-committed translations'));
     } catch (error) {
-      console.error(chalk.red('✗ Auto-commit failed:'), error instanceof Error ? error.message : 'Unknown error');
+      Logger.error(chalk.red('✗ Auto-commit failed:'), error instanceof Error ? error.message : 'Unknown error');
     }
   }
 

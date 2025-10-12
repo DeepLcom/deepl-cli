@@ -29,6 +29,7 @@ import { CacheCommand } from './commands/cache.js';
 import { GlossaryCommand } from './commands/glossary.js';
 import { WriteLanguage, WritingStyle, WriteTone } from '../types/api.js';
 import { HookType } from '../services/git-hooks.js';
+import { Logger } from '../utils/logger.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -72,8 +73,8 @@ function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
   const key = apiKey ?? envKey;
 
   if (!key) {
-    console.error(chalk.red('Error: API key not set'));
-    console.error(chalk.yellow('Run: deepl auth set-key <your-api-key>'));
+    Logger.error(chalk.red('Error: API key not set'));
+    Logger.warn(chalk.yellow('Run: deepl auth set-key <your-api-key>'));
     process.exit(1);
   }
 
@@ -90,7 +91,15 @@ const program = new Command();
 program
   .name('deepl')
   .description('DeepL CLI - Next-generation translation tool powered by DeepL API')
-  .version(version);
+  .version(version)
+  .option('-q, --quiet', 'Suppress all non-essential output (errors and results only)')
+  .hook('preAction', (thisCommand) => {
+    // Set quiet mode before any command runs
+    const options = thisCommand.opts();
+    if (options['quiet']) {
+      Logger.setQuiet(true);
+    }
+  });
 
 // Auth command
 const authCommand = new AuthCommand(configService);
@@ -105,9 +114,9 @@ program
       .action(async (apiKey: string) => {
         try {
           await authCommand.setKey(apiKey);
-          console.log(chalk.green('✓ API key saved and validated successfully'));
+          Logger.success(chalk.green('✓ API key saved and validated successfully'));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -120,12 +129,12 @@ program
           const key = await authCommand.getKey();
           if (key) {
             const masked = key.substring(0, 8) + '...' + key.substring(key.length - 4);
-            console.log(chalk.blue('API Key:'), masked);
+            Logger.info(chalk.blue('API Key:'), masked);
           } else {
-            console.log(chalk.yellow('No API key set'));
+            Logger.output(chalk.yellow('No API key set'));
           }
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -136,9 +145,9 @@ program
       .action(async () => {
         try {
           await authCommand.clearKey();
-          console.log(chalk.green('✓ API key removed'));
+          Logger.success(chalk.green('✓ API key removed'));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -155,9 +164,9 @@ program
 
       const usage = await usageCommand.getUsage();
       const formatted = usageCommand.formatUsage(usage);
-      console.log(formatted);
+      Logger.output(formatted);
     } catch (error) {
-      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
       process.exit(1);
     }
   });
@@ -192,9 +201,9 @@ program
         output = languagesCommand.formatAllLanguages(sourceLanguages, targetLanguages);
       }
 
-      console.log(output);
+      Logger.output(output);
     } catch (error) {
-      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
       process.exit(1);
     }
   });
@@ -259,9 +268,9 @@ program
         result = await translateCommand.translateFromStdin(options);
       }
 
-      console.log(result);
+      Logger.output(result);
     } catch (error) {
-      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
       process.exit(1);
     }
   });
@@ -297,7 +306,7 @@ program
   }) => {
     try {
       if (options.gitStaged) {
-        console.error(chalk.yellow('Warning: --git-staged is not yet implemented'));
+        Logger.warn(chalk.yellow('Warning: --git-staged is not yet implemented'));
       }
 
       const client = createDeepLClient();
@@ -307,7 +316,7 @@ program
 
       await watchCommand.watch(path, options);
     } catch (error) {
-      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
       process.exit(1);
     }
   });
@@ -370,7 +379,7 @@ program
           const result = await writeCommand.checkFile(text, writeOptions);
           needsImprovement = result.needsImprovement;
           changes = result.changes;
-          console.log(chalk.gray(`File: ${text}`));
+          Logger.info(chalk.gray(`File: ${text}`));
         } else {
           const result = await writeCommand.checkText(text, writeOptions);
           needsImprovement = result.needsImprovement;
@@ -378,10 +387,10 @@ program
         }
 
         if (needsImprovement) {
-          console.log(chalk.yellow(`⚠ Text needs improvement (${changes} potential changes)`));
+          Logger.warn(chalk.yellow(`⚠ Text needs improvement (${changes} potential changes)`));
           process.exit(1);
         } else {
-          console.log(chalk.green('✓ Text looks good'));
+          Logger.success(chalk.green('✓ Text looks good'));
           process.exit(0);
         }
       }
@@ -396,13 +405,13 @@ program
         const result = await writeCommand.autoFixFile(text, writeOptions);
 
         if (result.fixed) {
-          console.log(chalk.green('✓ File improved'));
+          Logger.success(chalk.green('✓ File improved'));
           if (result.backupPath) {
-            console.log(chalk.gray(`Backup: ${result.backupPath}`));
+            Logger.info(chalk.gray(`Backup: ${result.backupPath}`));
           }
-          console.log(chalk.gray(`Changes: ${result.changes}`));
+          Logger.info(chalk.gray(`Changes: ${result.changes}`));
         } else {
-          console.log(chalk.green('✓ No improvements needed'));
+          Logger.success(chalk.green('✓ No improvements needed'));
         }
         return;
       }
@@ -418,14 +427,14 @@ program
           result = await writeCommand.improveWithDiff(text, writeOptions);
         }
 
-        console.log(chalk.bold('Original:'));
-        console.log(result.original);
-        console.log();
-        console.log(chalk.bold('Improved:'));
-        console.log(result.improved);
-        console.log();
-        console.log(chalk.bold('Diff:'));
-        console.log(result.diff);
+        Logger.output(chalk.bold('Original:'));
+        Logger.output(result.original);
+        Logger.output();
+        Logger.output(chalk.bold('Improved:'));
+        Logger.output(result.improved);
+        Logger.output();
+        Logger.output(chalk.bold('Diff:'));
+        Logger.output(result.diff);
         return;
       }
 
@@ -444,15 +453,15 @@ program
             const outputPath = options.inPlace ? text : options.output!;
             const { writeFile } = await import('fs/promises');
             await writeFile(outputPath, result, 'utf-8');
-            console.log(chalk.green(`✓ Saved to ${outputPath}`));
+            Logger.success(chalk.green(`✓ Saved to ${outputPath}`));
           }
         } else {
           result = await writeCommand.improveInteractive(text, writeOptions);
         }
 
-        console.log();
-        console.log(chalk.bold('Selected improvement:'));
-        console.log(result);
+        Logger.output();
+        Logger.output(chalk.bold('Selected improvement:'));
+        Logger.output(result);
         return;
       }
 
@@ -460,15 +469,15 @@ program
       const { existsSync } = await import('fs');
       if (existsSync(text)) {
         const result = await writeCommand.improveFile(text, writeOptions);
-        console.log(result);
+        Logger.output(result);
         return;
       }
 
       // Text improvement (default)
       const result = await writeCommand.improve(text, writeOptions);
-      console.log(result);
+      Logger.output(result);
     } catch (error) {
-      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
       process.exit(1);
     }
   });
@@ -487,9 +496,9 @@ program
         try {
           const value = await configCommand.get(key);
           // Convert undefined to null for proper JSON output
-          console.log(JSON.stringify(value ?? null, null, 2));
+          Logger.output(JSON.stringify(value ?? null, null, 2));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -502,9 +511,9 @@ program
       .action(async (key: string, value: string) => {
         try {
           await configCommand.set(key, value);
-          console.log(chalk.green(`✓ Set ${key} = ${value}`));
+          Logger.success(chalk.green(`✓ Set ${key} = ${value}`));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -515,9 +524,9 @@ program
       .action(async () => {
         try {
           const config = await configCommand.list();
-          console.log(JSON.stringify(config, null, 2));
+          Logger.output(JSON.stringify(config, null, 2));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -528,9 +537,9 @@ program
       .action(async () => {
         try {
           await configCommand.reset();
-          console.log(chalk.green('✓ Configuration reset to defaults'));
+          Logger.success(chalk.green('✓ Configuration reset to defaults'));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -549,9 +558,9 @@ program
         try {
           const stats = await cacheCommand.stats();
           const formatted = cacheCommand.formatStats(stats);
-          console.log(formatted);
+          Logger.output(formatted);
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -562,9 +571,9 @@ program
       .action(async () => {
         try {
           await cacheCommand.clear();
-          console.log(chalk.green('✓ Cache cleared successfully'));
+          Logger.success(chalk.green('✓ Cache cleared successfully'));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -584,14 +593,14 @@ program
           }
 
           await cacheCommand.enable(maxSizeBytes);
-          console.log(chalk.green('✓ Cache enabled'));
+          Logger.success(chalk.green('✓ Cache enabled'));
 
           if (maxSizeBytes !== undefined) {
             const { formatSize } = await import('../utils/parse-size.js');
-            console.log(chalk.gray(`Max size: ${formatSize(maxSizeBytes)}`));
+            Logger.info(chalk.gray(`Max size: ${formatSize(maxSizeBytes)}`));
           }
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -602,9 +611,9 @@ program
       .action(async () => {
         try {
           await cacheCommand.disable();
-          console.log(chalk.green('✓ Cache disabled'));
+          Logger.success(chalk.green('✓ Cache disabled'));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -628,10 +637,10 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           const glossary = await glossaryCommand.create(name, sourceLang, targetLang, file);
-          console.log(chalk.green('✓ Glossary created successfully'));
-          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+          Logger.success(chalk.green('✓ Glossary created successfully'));
+          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -646,9 +655,9 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           const glossaries = await glossaryCommand.list();
-          console.log(glossaryCommand.formatGlossaryList(glossaries));
+          Logger.output(glossaryCommand.formatGlossaryList(glossaries));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -664,9 +673,9 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           const glossary = await glossaryCommand.show(nameOrId);
-          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -682,9 +691,9 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           const entries = await glossaryCommand.entries(nameOrId);
-          console.log(glossaryCommand.formatEntries(entries));
+          Logger.output(glossaryCommand.formatEntries(entries));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -700,9 +709,9 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           await glossaryCommand.delete(nameOrId);
-          console.log(chalk.green('✓ Glossary deleted successfully'));
+          Logger.success(chalk.green('✓ Glossary deleted successfully'));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -717,9 +726,9 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           const pairs = await glossaryCommand.listLanguages();
-          console.log(glossaryCommand.formatLanguagePairs(pairs));
+          Logger.output(glossaryCommand.formatLanguagePairs(pairs));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -737,10 +746,10 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           const glossary = await glossaryCommand.addEntry(nameOrId, source, target);
-          console.log(chalk.green('✓ Entry added successfully'));
-          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+          Logger.success(chalk.green('✓ Entry added successfully'));
+          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -758,10 +767,10 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           const glossary = await glossaryCommand.updateEntry(nameOrId, source, newTarget);
-          console.log(chalk.green('✓ Entry updated successfully'));
-          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+          Logger.success(chalk.green('✓ Entry updated successfully'));
+          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -778,10 +787,10 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           const glossary = await glossaryCommand.removeEntry(nameOrId, source);
-          console.log(chalk.green('✓ Entry removed successfully'));
-          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+          Logger.success(chalk.green('✓ Entry removed successfully'));
+          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -798,10 +807,10 @@ program
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
           const glossary = await glossaryCommand.rename(nameOrId, newName);
-          console.log(chalk.green('✓ Glossary renamed successfully'));
-          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+          Logger.success(chalk.green('✓ Glossary renamed successfully'));
+          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -819,9 +828,9 @@ program
         try {
           const hooksCommand = new HooksCommand();
           const result = hooksCommand.install(hookType as HookType);
-          console.log(result);
+          Logger.output(result);
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -834,9 +843,9 @@ program
         try {
           const hooksCommand = new HooksCommand();
           const result = hooksCommand.uninstall(hookType as HookType);
-          console.log(result);
+          Logger.output(result);
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -848,9 +857,9 @@ program
         try {
           const hooksCommand = new HooksCommand();
           const result = hooksCommand.list();
-          console.log(result);
+          Logger.output(result);
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
@@ -863,9 +872,9 @@ program
         try {
           const hooksCommand = new HooksCommand();
           const result = hooksCommand.showPath(hookType as HookType);
-          console.log(result);
+          Logger.output(result);
         } catch (error) {
-          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
         }
       })
