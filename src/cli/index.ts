@@ -16,6 +16,7 @@ import { DeepLClient } from '../api/deepl-client.js';
 import { TranslationService } from '../services/translation.js';
 import { WriteService } from '../services/write.js';
 import { GlossaryService } from '../services/glossary.js';
+import { DocumentTranslationService } from '../services/document-translation.js';
 import { AuthCommand } from './commands/auth.js';
 import { UsageCommand } from './commands/usage.js';
 import { LanguagesCommand } from './commands/languages.js';
@@ -234,7 +235,8 @@ program
     try {
       const client = createDeepLClient();
       const translationService = new TranslationService(client, configService, cacheService);
-      const translateCommand = new TranslateCommand(translationService, configService);
+      const documentTranslationService = new DocumentTranslationService(client);
+      const translateCommand = new TranslateCommand(translationService, documentTranslationService, configService);
 
       let result: string;
 

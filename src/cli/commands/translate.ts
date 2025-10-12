@@ -8,6 +8,7 @@ import ora from 'ora';
 import { TranslationService } from '../../services/translation.js';
 import { FileTranslationService } from '../../services/file-translation.js';
 import { BatchTranslationService } from '../../services/batch-translation.js';
+import { DocumentTranslationService } from '../../services/document-translation.js';
 import { ConfigService } from '../../storage/config.js';
 import { Language } from '../../types/index.js';
 
@@ -29,12 +30,14 @@ interface TranslateOptions {
 export class TranslateCommand {
   private translationService: TranslationService;
   private fileTranslationService: FileTranslationService;
+  private documentTranslationService: DocumentTranslationService;
   private batchTranslationService: BatchTranslationService;
   private config: ConfigService;
 
-  constructor(translationService: TranslationService, config: ConfigService) {
+  constructor(translationService: TranslationService, documentTranslationService: DocumentTranslationService, config: ConfigService) {
     this.translationService = translationService;
     this.fileTranslationService = new FileTranslationService(translationService);
+    this.documentTranslationService = documentTranslationService;
     this.batchTranslationService = new BatchTranslationService(
       this.fileTranslationService,
       { concurrency: 5 }
@@ -78,6 +81,11 @@ export class TranslateCommand {
   private async translateFile(filePath: string, options: TranslateOptions): Promise<string> {
     if (!options.output) {
       throw new Error('Output file path is required for file translation. Use --output <path>');
+    }
+
+    // Check if it's a binary document (PDF, DOCX, etc.)
+    if (this.documentTranslationService.isDocumentSupported(filePath)) {
+      return this.translateDocument(filePath, options);
     }
 
     // Check if translating to multiple languages
@@ -361,5 +369,69 @@ export class TranslateCommand {
         reject(error);
       });
     });
+  }
+
+  /**
+   * Translate binary document (PDF, DOCX, etc.)
+   */
+  private async translateDocument(filePath: string, options: TranslateOptions): Promise<string> {
+    const outputPath = options.output!;
+
+    // Build translation options
+    const translationOptions: {
+      targetLang: Language;
+      sourceLang?: Language;
+      formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      glossaryId?: string;
+    } = {
+      targetLang: options.to as Language,
+    };
+
+    if (options.from) {
+      translationOptions.sourceLang = options.from as Language;
+    }
+
+    if (options.formality) {
+      translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+    }
+
+    // Create spinner for progress
+    const spinner = ora('Uploading document...').start();
+
+    try {
+      const result = await this.documentTranslationService.translateDocument(
+        filePath,
+        outputPath,
+        translationOptions,
+        (progress) => {
+          // Update spinner based on progress
+          if (progress.status === 'queued') {
+            spinner.text = 'Document queued for translation...';
+          } else if (progress.status === 'translating') {
+            const timeText = progress.secondsRemaining
+              ? ` (est. ${progress.secondsRemaining}s remaining)`
+              : '';
+            spinner.text = `Translating document${timeText}...`;
+          } else if (progress.status === 'done') {
+            spinner.text = 'Downloading translated document...';
+          }
+        }
+      );
+
+      spinner.succeed(`Document translated successfully!`);
+
+      const output: string[] = [
+        `Translated ${filePath} -> ${outputPath}`,
+      ];
+
+      if (result.billedCharacters) {
+        output.push(`Billed characters: ${result.billedCharacters.toLocaleString()}`);
+      }
+
+      return output.join('\n');
+    } catch (error) {
+      spinner.fail('Document translation failed');
+      throw error;
+    }
   }
 }

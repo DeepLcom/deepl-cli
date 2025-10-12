@@ -7,6 +7,7 @@
 
 import { TranslateCommand } from '../../src/cli/commands/translate';
 import { TranslationService } from '../../src/services/translation';
+import { DocumentTranslationService } from '../../src/services/document-translation';
 import { ConfigService } from '../../src/storage/config';
 
 // Mock ESM dependencies
@@ -27,10 +28,12 @@ jest.mock('fast-glob');
 jest.mock('../../src/services/translation');
 jest.mock('../../src/services/file-translation');
 jest.mock('../../src/services/batch-translation');
+jest.mock('../../src/services/document-translation');
 jest.mock('../../src/storage/config');
 
 describe('TranslateCommand', () => {
   let mockTranslationService: jest.Mocked<TranslationService>;
+  let mockDocumentTranslationService: jest.Mocked<DocumentTranslationService>;
   let mockConfigService: jest.Mocked<ConfigService>;
   let translateCommand: TranslateCommand;
 
@@ -44,6 +47,12 @@ describe('TranslateCommand', () => {
       getUsage: jest.fn().mockResolvedValue({ character: { count: 0, limit: 0 } }),
       getSupportedLanguages: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<TranslationService>;
+
+    mockDocumentTranslationService = {
+      translateDocument: jest.fn().mockResolvedValue({ success: true, outputPath: '/output.pdf' }),
+      isDocumentSupported: jest.fn().mockReturnValue(false),
+      getSupportedFileTypes: jest.fn().mockReturnValue(['.pdf', '.docx', '.pptx']),
+    } as unknown as jest.Mocked<DocumentTranslationService>;
 
     mockConfigService = {
       get: jest.fn().mockReturnValue({}),
@@ -59,7 +68,7 @@ describe('TranslateCommand', () => {
       getDefaults: jest.fn().mockReturnValue({}),
     } as unknown as jest.Mocked<ConfigService>;
 
-    translateCommand = new TranslateCommand(mockTranslationService, mockConfigService);
+    translateCommand = new TranslateCommand(mockTranslationService, mockDocumentTranslationService, mockConfigService);
   });
 
   describe('translateText()', () => {
