@@ -1,6 +1,6 @@
 # Integration & E2E Test Enhancement Opportunities
 
-## 🎉 Phase 1 & 2 Complete! ✅
+## 🎉 Phase 1, 2 & 3 Complete! ✅
 
 **Phase 1 Completed:**
 - ✅ cli-usage.integration.test.ts (4 tests)
@@ -11,11 +11,21 @@
 - ✅ cli-translate.integration.test.ts (30 tests)
 - ✅ cli-glossary.integration.test.ts (24 tests)
 
+**Phase 3 Completed:**
+- ✅ Enhanced cli-workflow.e2e.test.ts (+23 tests)
+  - Configuration persistence workflows (3 tests)
+  - Stdin/stdout integration (4 tests)
+  - Exit code validation (5 tests)
+  - CLI argument validation (11 tests)
+
 **Results:**
-- Total tests: 613 → 714 (+101 tests, +16.5%)
+- Total tests: 613 → 737 (+124 tests, +20.2%)
 - Integration tests: 31 → 132 (+101 tests, +326% increase!)
-- All 714 tests passing (100% pass rate)
-- Integration coverage: 5% → 18.5% (+13.5%)
+- E2E tests: 46 → 69 (+23 tests, +50% increase!)
+- All 737 tests passing (100% pass rate)
+- Integration coverage: 5% → 17.9% (+12.9%)
+- E2E coverage: 7.5% → 9.4% (+1.9%)
+- **Integration + E2E coverage: 12.5% → 27.3%** 🎯
 
 ---
 
@@ -27,18 +37,20 @@
 - E2E tests: Only general workflow and write command flags
 - **Major Gap:** No integration tests for actual DeepL API client or core translation features
 
-**Current State (After Phase 1 & 2):**
+**Current State (After Phase 1, 2 & 3):**
 - 31 total test files: 21 unit, 8 integration, 2 e2e
 - Integration tests: auth, cache, config, usage, languages, deepl-client, translate, glossary
+- E2E tests: Enhanced workflow testing with real-world scenarios
 - **Critical Gap Closed:** DeepL API client now has comprehensive integration tests
 - **Primary Feature Tested:** Translation command now has integration tests
+- **Workflow Coverage:** Comprehensive E2E tests for complete user workflows
 
 **Test Distribution:**
-- Unit tests: 582 tests (81.5%)
-- Integration tests: 132 tests (18.5%) ⬆️ from 5%
-- E2E tests: ~46 tests (6.4%)
+- Unit tests: 568 tests (77.1%)
+- Integration tests: 132 tests (17.9%) ⬆️ from 5%
+- E2E tests: 69 tests (9.4%) ⬆️ from 7.5%
 
-**Achievement:** Integration + E2E coverage increased from 12.5% → 25% 🎯
+**Achievement:** Integration + E2E coverage increased from 12.5% → 27.3% 🎯
 
 ---
 

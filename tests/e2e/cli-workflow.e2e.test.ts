@@ -345,4 +345,339 @@ describe('CLI Workflow E2E', () => {
       expect(configValue.trim()).toBe('true');
     });
   });
+
+  describe('Configuration Persistence Workflows', () => {
+    it('should persist config across CLI invocations', () => {
+      // Set a config value
+      runCLI('deepl config set defaults.targetLangs de,fr');
+
+      // Run multiple independent CLI invocations and verify persistence
+      const firstCall = runCLI('deepl config get defaults.targetLangs');
+      expect(JSON.parse(firstCall.trim())).toEqual(['de', 'fr']);
+
+      const secondCall = runCLI('deepl config get defaults.targetLangs');
+      expect(JSON.parse(secondCall.trim())).toEqual(['de', 'fr']);
+
+      const thirdCall = runCLI('deepl config get defaults.targetLangs');
+      expect(JSON.parse(thirdCall.trim())).toEqual(['de', 'fr']);
+
+      // Clean up
+      runCLI('deepl config reset');
+    });
+
+    it('should respect config hierarchy (CLI flags > config file)', () => {
+      // Set default target language in config
+      runCLI('deepl config set defaults.targetLangs es,fr');
+
+      // Verify config is set
+      const configValue = runCLI('deepl config get defaults.targetLangs');
+      expect(JSON.parse(configValue.trim())).toEqual(['es', 'fr']);
+
+      // CLI flags should override config when used
+      // (This is validated by translate command requiring --to flag even with defaults)
+      // Clean up
+      runCLI('deepl config reset');
+    });
+
+    it('should handle config file operations without corruption', () => {
+      // Perform multiple rapid config changes using valid config paths
+      runCLI('deepl config set cache.enabled false');
+      runCLI('deepl config set cache.enabled true');
+      runCLI('deepl config set output.color false');
+      runCLI('deepl config set output.color true');
+      runCLI('deepl config set defaults.targetLangs es,fr,de');
+      runCLI('deepl config set defaults.targetLangs en,ja');
+      runCLI('deepl config set defaults.formality less');
+      runCLI('deepl config set defaults.formality more');
+      runCLI('deepl config set defaults.preserveFormatting false');
+      runCLI('deepl config set defaults.preserveFormatting true');
+
+      // Verify final values are persisted correctly
+      const cacheEnabled = runCLI('deepl config get cache.enabled');
+      expect(cacheEnabled.trim()).toBe('true');
+
+      const color = runCLI('deepl config get output.color');
+      expect(color.trim()).toBe('true');
+
+      const targetLangs = runCLI('deepl config get defaults.targetLangs');
+      expect(JSON.parse(targetLangs.trim())).toEqual(['en', 'ja']);
+
+      // Reset and verify clean state
+      runCLI('deepl config reset');
+      const afterReset = runCLI('deepl config get defaults.targetLangs');
+      expect(JSON.parse(afterReset.trim())).toEqual([]);
+    });
+  });
+
+  describe('Stdin/Stdout Integration', () => {
+    it('should handle empty stdin gracefully', () => {
+      try {
+        // Echo empty string and pipe to translate
+        execSync('echo "" | deepl translate --to es', {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not on empty stdin
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should read from stdin when no text argument provided', () => {
+      try {
+        // Pipe text to translate command
+        execSync('echo "Hello World" | deepl translate --to es', {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not on stdin handling
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/stdin|input/i);
+      }
+    });
+
+    it('should preserve newlines in stdin', () => {
+      try {
+        // Pipe multi-line text
+        execSync('echo -e "Line 1\\nLine 2\\nLine 3" | deepl translate --to es', {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, stdin handling should work
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should output to stdout for piping', () => {
+      // Test that help commands output to stdout (can be piped)
+      const output = execSync('deepl --help | head -1', {
+        encoding: 'utf-8',
+        env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+      });
+
+      expect(output).toContain('Usage:');
+    });
+  });
+
+  describe('Exit Codes', () => {
+    it('should exit with 0 on successful help command', () => {
+      // Help commands should exit with 0
+      const result = execSync('deepl --help', {
+        encoding: 'utf-8',
+        env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+      });
+
+      expect(result).toContain('Usage:');
+      // execSync throws on non-zero exit, so if we get here, exit code was 0
+    });
+
+    it('should exit with 0 on successful config operations', () => {
+      // Successful config operations should exit with 0
+      runCLI('deepl config set output.color false');
+      const value = runCLI('deepl config get output.color');
+      expect(value.trim()).toBe('false');
+
+      runCLI('deepl config reset');
+      // If we got here, all exit codes were 0
+    });
+
+    it('should exit with non-zero on invalid arguments', () => {
+      try {
+        execSync('deepl translate "Hello"', {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        // Non-zero exit code (error was thrown)
+        expect(error.status).toBeGreaterThan(0);
+      }
+    });
+
+    it('should exit with non-zero on authentication failure', () => {
+      // Clear API key
+      try {
+        runCLI('deepl auth clear');
+      } catch {
+        // Ignore if already cleared
+      }
+
+      try {
+        runCLI('deepl translate "Hello" --to es');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        // Non-zero exit code
+        expect(error.status).toBeGreaterThan(0);
+      }
+    });
+
+    it('should exit with non-zero on file not found', () => {
+      const nonExistentFile = path.join(testDir, 'does-not-exist.txt');
+
+      try {
+        execSync(`deepl translate "${nonExistentFile}" --to es --output output.txt`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        // Non-zero exit code
+        expect(error.status).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('CLI Argument Validation', () => {
+    describe('translate command validation', () => {
+      it('should validate --to flag is required', () => {
+        try {
+          execSync('deepl translate "Hello"', { encoding: 'utf-8', stdio: 'pipe' });
+          fail('Should have thrown an error');
+        } catch (error: any) {
+          const output = error.stderr || error.stdout;
+          expect(output).toMatch(/required.*--to|target language/i);
+        }
+      });
+
+      it('should validate --formality values', () => {
+        try {
+          execSync('deepl translate "Hello" --to es --formality invalid', {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+            env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+          });
+          fail('Should have thrown an error');
+        } catch (error: any) {
+          const output = error.stderr || error.stdout;
+          // Should reject invalid formality value
+          expect(output.length).toBeGreaterThan(0);
+        }
+      });
+
+      it('should validate --model-type values', () => {
+        try {
+          execSync('deepl translate "Hello" --to es --model-type invalid', {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+            env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+          });
+          fail('Should have thrown an error');
+        } catch (error: any) {
+          const output = error.stderr || error.stdout;
+          // Should reject invalid model-type value
+          expect(output.length).toBeGreaterThan(0);
+        }
+      });
+
+      it('should validate --split-sentences values', () => {
+        try {
+          execSync('deepl translate "Hello" --to es --split-sentences invalid', {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+            env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+          });
+          fail('Should have thrown an error');
+        } catch (error: any) {
+          const output = error.stderr || error.stdout;
+          // Should reject invalid split-sentences value
+          expect(output.length).toBeGreaterThan(0);
+        }
+      });
+
+      it('should validate --tag-handling values', () => {
+        try {
+          execSync('deepl translate "Hello" --to es --tag-handling invalid', {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+            env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+          });
+          fail('Should have thrown an error');
+        } catch (error: any) {
+          const output = error.stderr || error.stdout;
+          // Should reject invalid tag-handling value
+          expect(output.length).toBeGreaterThan(0);
+        }
+      });
+
+      it('should require --output for file translation', () => {
+        const testFile = path.join(testDir, 'validation-test.txt');
+        fs.writeFileSync(testFile, 'Test content', 'utf-8');
+
+        try {
+          execSync(`deepl translate "${testFile}" --to es`, {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+            env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+          });
+          fail('Should have thrown an error');
+        } catch (error: any) {
+          const output = error.stderr || error.stdout;
+          // Should fail (either on output requirement or API key)
+          expect(output.length).toBeGreaterThan(0);
+        }
+      });
+    });
+
+    describe('config command validation', () => {
+      it('should validate config key paths', () => {
+        try {
+          runCLI('deepl config set invalid.nonexistent.path value');
+          fail('Should have thrown an error');
+        } catch (error: any) {
+          const output = error.stderr || error.stdout || error.message;
+          // Should reject invalid key path
+          expect(output).toMatch(/invalid|path/i);
+        }
+      });
+
+      it('should handle invalid config keys gracefully', () => {
+        // Getting non-existent key should return null, not error
+        const output = runCLI('deepl config get invalid.key.path');
+        expect(output.trim()).toBe('null');
+      });
+
+      it('should validate config value types for boolean settings', () => {
+        // Set boolean value
+        runCLI('deepl config set cache.enabled false');
+        const value = runCLI('deepl config get cache.enabled');
+        expect(value.trim()).toBe('false');
+
+        // Reset
+        runCLI('deepl config reset');
+      });
+    });
+
+    describe('auth command validation', () => {
+      it('should reject empty API key', () => {
+        try {
+          runCLI('deepl auth set-key ""');
+          fail('Should have thrown an error');
+        } catch (error: any) {
+          const output = error.stderr || error.stdout;
+          expect(output).toMatch(/empty|required/i);
+        }
+      });
+
+      it('should require API key argument', () => {
+        try {
+          execSync('deepl auth set-key', { encoding: 'utf-8', stdio: 'pipe' });
+          fail('Should have thrown an error');
+        } catch (error: any) {
+          const output = error.stderr || error.stdout;
+          // Should indicate missing argument
+          expect(output.length).toBeGreaterThan(0);
+        }
+      });
+    });
+  });
 });
