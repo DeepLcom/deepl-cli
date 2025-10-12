@@ -210,6 +210,7 @@ program
   .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
   .option('--output-format <format>', 'Convert document format during translation (e.g., pdf, docx, pptx, xlsx, html)')
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
+  .option('--preserve-formatting', 'Preserve line breaks and whitespace formatting')
   .option('--context <text>', 'Additional context to improve translation quality')
   .option('--split-sentences <mode>', 'Sentence splitting: on, off, nonewlines (default: on)')
   .option('--tag-handling <mode>', 'Tag handling for XML/HTML: xml, html')
@@ -228,6 +229,7 @@ program
     formality?: string;
     outputFormat?: string;
     preserveCode?: boolean;
+    preserveFormatting?: boolean;
     context?: string;
     splitSentences?: string;
     tagHandling?: string;
@@ -274,6 +276,7 @@ program
   .option('-o, --output <path>', 'Output directory (default: <path>/translations or same dir for files)')
   .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
+  .option('--preserve-formatting', 'Preserve line breaks and whitespace formatting')
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
   .option('--debounce <ms>', 'Debounce delay in milliseconds (default: 300)', parseInt)
   .option('--glossary <name-or-id>', 'Use glossary by name or ID')
@@ -285,6 +288,7 @@ program
     output?: string;
     formality?: string;
     preserveCode?: boolean;
+    preserveFormatting?: boolean;
     pattern?: string;
     debounce?: number;
     glossary?: string;

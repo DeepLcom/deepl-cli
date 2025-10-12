@@ -20,6 +20,7 @@ interface TranslateOptions {
   formality?: string;
   outputFormat?: string;
   preserveCode?: boolean;
+  preserveFormatting?: boolean;
   context?: string;
   splitSentences?: string;
   tagHandling?: string;
@@ -207,6 +208,7 @@ export class TranslateCommand {
       splitSentences?: 'on' | 'off' | 'nonewlines';
       tagHandling?: 'xml' | 'html';
       modelType?: 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
+      preserveFormatting?: boolean;
       glossaryId?: string;
     } = {
       targetLang: options.to as Language,
@@ -234,6 +236,10 @@ export class TranslateCommand {
 
     if (options.modelType) {
       translationOptions.modelType = options.modelType as 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
+    }
+
+    if (options.preserveFormatting !== undefined) {
+      translationOptions.preserveFormatting = options.preserveFormatting;
     }
 
     if (options.glossary) {

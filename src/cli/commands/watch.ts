@@ -17,6 +17,7 @@ interface WatchOptions {
   formality?: string;
   glossary?: string;
   preserveCode?: boolean;
+  preserveFormatting?: boolean;
   pattern?: string;
   debounce?: number;
   output?: string;
@@ -110,6 +111,7 @@ export class WatchCommand {
       formality: options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less' | undefined,
       glossaryId,
       preserveCode: options.preserveCode,
+      preserveFormatting: options.preserveFormatting,
       onChange: (filePath: string) => {
         console.log(chalk.blue('📝 Change detected:'), filePath);
       },
