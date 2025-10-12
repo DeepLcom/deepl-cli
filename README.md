@@ -28,6 +28,7 @@
 - [Quick Start](#-quick-start)
 - [Global Options](#-global-options)
   - [Quiet Mode](#quiet-mode)
+  - [Custom Configuration Files](#custom-configuration-files)
 - [Usage](#-usage)
   - [Translation](#translation)
   - [Writing Enhancement](#writing-enhancement)
@@ -145,6 +146,32 @@ deepl --quiet translate docs/ --to es,fr,de --output i18n/
 ```
 
 See [docs/API.md#global-options](./docs/API.md#global-options) for complete documentation.
+
+### Custom Configuration Files
+
+The `--config` (or `-c`) flag allows you to use alternate configuration files for different projects, environments, or accounts:
+
+```bash
+# Use work configuration
+$ deepl --config ~/.deepl-work.json translate "Hello" --to es
+
+# Use project-specific configuration
+$ deepl --config ./project/.deepl.json translate docs/ --to fr --output docs-fr/
+
+# Use test environment configuration
+$ deepl -c /path/to/test-config.json usage
+```
+
+**Use cases:**
+- **Multiple API keys**: Switch between free and paid accounts
+- **Project isolation**: Different settings per project (glossaries, formality defaults, etc.)
+- **Team configurations**: Share standardized configs via version control
+- **Environment separation**: Separate configs for dev/staging/production
+- **Testing**: Use test configurations without affecting default settings
+
+**Precedence**: `--config` overrides `DEEPL_CONFIG_DIR` environment variable. If neither is specified, uses default location (`~/.deepl-cli/config.json`).
+
+See [docs/API.md#global-options](./docs/API.md#global-options) for more details.
 
 ## 📖 Usage
 

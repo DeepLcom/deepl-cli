@@ -36,6 +36,7 @@ Options that work with all commands:
 --version           Show version number
 --help              Show help message
 --quiet, -q         Suppress all non-essential output (errors and results only)
+--config, -c FILE   Use alternate configuration file
 ```
 
 **Examples:**
@@ -58,6 +59,9 @@ deepl -q cache stats
 # Quiet mode with batch operations (no spinners or progress indicators)
 deepl --quiet translate docs/ --to es --output docs-es/
 # Shows final statistics only, no progress updates
+
+# Use custom config file
+deepl --config ~/.deepl-work.json translate "Hello" --to es
 
 # Use custom config directory (via environment variable)
 export DEEPL_CONFIG_DIR=/path/to/config
@@ -94,6 +98,30 @@ Error: Invalid target language: invalid
 $ deepl --quiet translate "Hello" --to invalid
 Error: Invalid target language: invalid
 ```
+
+**Custom Configuration Files:**
+
+The `--config` flag allows you to use alternate configuration files for different projects, environments, or accounts:
+
+```bash
+# Use work configuration
+deepl --config ~/.deepl-work.json translate "Hello" --to es
+
+# Use project-specific configuration
+deepl --config ./project/.deepl.json translate docs/ --to fr --output docs-fr/
+
+# Use test environment configuration
+deepl --config /path/to/test-config.json usage
+```
+
+**Use cases:**
+- **Multiple API keys**: Switch between free and paid accounts
+- **Project isolation**: Different settings per project (glossaries, formality, etc.)
+- **Team configurations**: Share standardized configs via version control
+- **Environment separation**: Separate configs for dev/staging/production
+- **Testing**: Use test configurations without affecting default settings
+
+**Precedence:** `--config` overrides `DEEPL_CONFIG_DIR`. If neither is specified, uses default location.
 
 ---
 
@@ -1077,11 +1105,6 @@ export NO_COLOR=1
 The following features are planned for future releases but not yet implemented:
 
 ### Global Options
-
-**`--config FILE`** - Use alternate configuration file
-```bash
-deepl --config ~/.deepl-custom.json translate "Hello" --to es
-```
 
 **`--verbose`** - Enable verbose logging (API requests, cache hits, timing)
 ```bash
