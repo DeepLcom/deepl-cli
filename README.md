@@ -4,13 +4,14 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/tests-549%20passing-brightgreen)](https://git.deepl.dev/hack-projects/deepl-cli)
+[![Tests](https://img.shields.io/badge/tests-762%20passing-brightgreen)](https://git.deepl.dev/hack-projects/deepl-cli)
 
 **DeepL CLI** is a comprehensive, developer-friendly command-line tool that integrates DeepL's powerful translation API and cutting-edge Write API for grammar and style enhancement. Built with TypeScript and designed for modern development workflows.
 
 ## 🌟 Key Features
 
 - **🌍 Translation** - High-quality translation using DeepL's next-gen LLM
+- **📄 Document Translation** - Translate PDF, DOCX, PPTX, XLSX with formatting preservation
 - **👀 Watch Mode** - Real-time file watching with auto-translation
 - **✍️ Writing Enhancement** - Grammar, style, and tone suggestions (DeepL Write API)
 - **💾 Smart Caching** - Local SQLite cache with LRU eviction
@@ -130,7 +131,7 @@ cat input.txt | deepl translate --to ja
 
 #### File Translation
 
-Supported formats: `.txt`, `.md`
+**Text Files:** `.txt`, `.md`
 
 ```bash
 # Single file translation
@@ -149,7 +150,58 @@ deepl translate docs.md --to es,fr,de --output ./translated/
 deepl translate tutorial.md --to ja --output tutorial.ja.md --preserve-code
 ```
 
-**Note:** Additional document formats (PDF, DOCX) planned for Phase 3.
+#### Document Translation
+
+**Supported Document Formats:** `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.html`, `.htm`, `.txt`, `.srt`, `.xlf`, `.xliff`
+
+Translate complete documents while preserving formatting, structure, and layout:
+
+```bash
+# Translate PDF document
+deepl translate document.pdf --to es --output document.es.pdf
+# Uploading document...
+# Document queued for translation...
+# Translating document (est. 5s remaining)...
+# Downloading translated document...
+# ✔ Document translated successfully!
+# Translated document.pdf -> document.es.pdf
+# Billed characters: 1,234
+
+# Translate PowerPoint presentation
+deepl translate presentation.pptx --to fr --output presentation.fr.pptx
+
+# Translate Excel spreadsheet
+deepl translate report.xlsx --to de --output report.de.xlsx
+
+# Translate HTML file
+deepl translate website.html --to ja --output website.ja.html
+
+# With formality setting
+deepl translate contract.pdf --to de --formality more --output contract.de.pdf
+
+# Specify source language
+deepl translate document.pdf --from en --to es --output document.es.pdf
+```
+
+**Document Translation Features:**
+
+- ✅ **Preserves Formatting** - Maintains fonts, styles, colors, and layout
+- ✅ **Progress Tracking** - Real-time status updates during translation
+- ✅ **Large Files** - Handles documents up to 10MB (PDF) or 30MB (other formats)
+- ✅ **Cost Tracking** - Shows billed characters after translation
+- ✅ **Async Processing** - Documents are translated on DeepL servers with polling
+
+**Supported Formats:**
+- `.pdf` - PDF documents
+- `.docx`, `.doc` - Microsoft Word
+- `.pptx` - Microsoft PowerPoint
+- `.xlsx` - Microsoft Excel
+- `.html`, `.htm` - HTML files
+- `.txt` - Plain text files
+- `.srt` - Subtitle files
+- `.xlf`, `.xliff` - XLIFF localization files
+
+**Note:** Document translation uses DeepL's async translation API. The CLI automatically handles upload, polling, and download. Translation time varies based on document size and complexity.
 
 #### Batch Translation (Directory Processing)
 
@@ -759,7 +811,7 @@ See [DESIGN.md](./DESIGN.md) for detailed architecture documentation.
 
 ### Test Coverage
 
-Current coverage: **80.93%** (549 tests, 549 passing, 100% pass rate)
+Current coverage: **81%+** (762 tests, 762 passing, 100% pass rate)
 
 ```bash
 # Run all tests
@@ -872,6 +924,7 @@ See [TODO.md](./TODO.md) for the complete development roadmap.
 **Phase 1 (✅ Complete)** - MVP with basic translation, config, caching
 **Phase 2 (✅ Complete)** - Write API, watch mode, batch processing, git hooks
 **Phase 3 Write Enhancements (✅ Complete)** - File operations, diff, check, fix, interactive mode
+**Phase 3 Document Translation (✅ Complete)** - PDF, DOCX, PPTX, XLSX translation with async processing
 **Phase 3 TUI (Future)** - Interactive TUI, translation memory, team collaboration
 
 ---
