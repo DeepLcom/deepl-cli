@@ -25,6 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Usage: `deepl translate document.pdf --to es --output document.es.pdf`
 
 ### Changed
+- **API Documentation** - Comprehensive update to docs/API.md for accuracy
+  - Fixed 62 discrepancies between documentation and actual implementation
+  - CRITICAL: Removed non-existent global flags (--config, --no-cache, --verbose, --quiet)
+  - CRITICAL: Simplified exit codes to actual behavior (0 and 1, noted 2-7 as planned)
+  - CRITICAL: Fixed configuration file locations with OS-specific paths
+  - CRITICAL: Corrected configuration schema structure (auth.apiKey, api section)
+  - HIGH: Added all short flag forms for write command (-a, -d, -c, -f, -b)
+  - HIGH: Removed non-existent --glossary from watch, documented --git-staged as planned
+  - MEDIUM/LOW: Enhanced documentation for config, glossary, auth, translate, write, watch commands
+  - Added "Planned Features" section documenting desired but unimplemented features
+  - Added API.md maintenance guidelines to CLAUDE.md with verification checklist
 - **Test Coverage Improvements** - Comprehensive testing expansion for low-coverage areas
   - **AuthCommand**: 75% → 95% (+20%) with 2 new tests
     - Non-Error exception handling during API validation
