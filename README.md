@@ -239,6 +239,17 @@ deepl translate ./large-docs --to ja --output ./large-docs-ja --concurrency 10
 # Faster processing with more parallel translations
 ```
 
+**Performance Optimization:**
+
+The CLI automatically optimizes batch translations by grouping multiple texts into single API requests (up to 50 texts per batch). This significantly reduces API overhead and improves translation speed compared to translating texts individually.
+
+- ✅ **Automatic batching** - Groups translations into efficient batches
+- ✅ **Cache-aware** - Only translates uncached texts
+- ✅ **Smart splitting** - Respects DeepL API batch size limits (50 texts/request)
+- ✅ **Parallel processing** - Multiple batches processed concurrently
+
+This optimization is automatic and transparent - no configuration needed.
+
 #### Advanced Translation Options
 
 ```bash
@@ -770,6 +781,13 @@ deepl glossary update-entry tech-terms "API" "API (Programmierschnittstelle)"
 deepl glossary remove-entry tech-terms "REST"
 # ✓ Entry removed successfully
 # Glossary: tech-terms
+# Entries: 3
+
+# Rename a glossary
+deepl glossary rename tech-terms "Technical Terms v2"
+# ✓ Glossary renamed successfully
+# Name: Technical Terms v2
+# ID: def456... (new ID)
 # Entries: 3
 ```
 

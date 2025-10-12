@@ -587,6 +587,130 @@ deepl glossary entries tech-terms > backup.tsv
 deepl glossary entries tech-terms
 ```
 
+##### `languages`
+
+List all supported glossary language pairs.
+
+**Description:**
+Shows which source-target language combinations are available for glossary creation. Not all language pairs supported by DeepL translation are available for glossaries.
+
+**Example:**
+```bash
+deepl glossary languages
+# en → de
+# en → es
+# en → fr
+# de → en
+# ...
+```
+
+##### `add-entry <name-or-id> <source> <target>`
+
+Add a new entry to an existing glossary.
+
+**Arguments:**
+- `name-or-id` - Glossary name or ID
+- `source` - Source language term
+- `target` - Target language term
+
+**Behavior:**
+- Creates new glossary with updated entries (delete + recreate)
+- Returns new glossary ID
+- Preserves all other entries and metadata
+- Fails if entry already exists
+
+**Examples:**
+```bash
+# Add entry by glossary name
+deepl glossary add-entry tech-terms "API" "API"
+
+# Add entry by glossary ID
+deepl glossary add-entry abc-123-def-456 "cache" "caché"
+
+# Add phrase
+deepl glossary add-entry tech-terms "user interface" "interfaz de usuario"
+```
+
+**Note:** Since DeepL API doesn't provide direct entry editing, this command fetches all entries, adds the new entry, deletes the old glossary, and creates a new one. The glossary ID will change but the name remains the same.
+
+##### `update-entry <name-or-id> <source> <new-target>`
+
+Update an existing entry in a glossary.
+
+**Arguments:**
+- `name-or-id` - Glossary name or ID
+- `source` - Source language term to update
+- `new-target` - New target language translation
+
+**Behavior:**
+- Updates existing entry's target text
+- Creates new glossary with updated entries (delete + recreate)
+- Returns new glossary ID
+- Fails if entry doesn't exist
+
+**Examples:**
+```bash
+# Update entry by glossary name
+deepl glossary update-entry tech-terms "cache" "caché del sistema"
+
+# Update entry by glossary ID
+deepl glossary update-entry abc-123-def-456 "API" "Interfaz de programación de aplicaciones"
+```
+
+**Note:** Like `add-entry`, this command recreates the glossary with updated entries. The glossary ID will change but the name remains the same.
+
+##### `remove-entry <name-or-id> <source>`
+
+Remove an entry from a glossary.
+
+**Arguments:**
+- `name-or-id` - Glossary name or ID
+- `source` - Source language term to remove
+
+**Behavior:**
+- Removes entry from glossary
+- Creates new glossary with remaining entries (delete + recreate)
+- Returns new glossary ID
+- Fails if entry doesn't exist
+- Fails if removing the last entry (delete glossary instead)
+
+**Examples:**
+```bash
+# Remove entry by glossary name
+deepl glossary remove-entry tech-terms "obsolete-term"
+
+# Remove entry by glossary ID
+deepl glossary remove-entry abc-123-def-456 "deprecated"
+```
+
+**Note:** You cannot remove the last entry from a glossary. If you need to remove all entries, use `deepl glossary delete` instead.
+
+##### `rename <name-or-id> <new-name>`
+
+Rename a glossary.
+
+**Arguments:**
+- `name-or-id` - Glossary name or ID
+- `new-name` - New name for the glossary
+
+**Behavior:**
+- Changes glossary name
+- Creates new glossary with new name (delete + recreate)
+- Returns new glossary ID
+- Preserves all entries and language pair
+- Fails if new name matches current name
+
+**Examples:**
+```bash
+# Rename by glossary name
+deepl glossary rename tech-terms "Technical Terminology v2"
+
+# Rename by glossary ID
+deepl glossary rename abc-123-def-456 "Product Names 2024"
+```
+
+**Note:** Since DeepL API doesn't provide a direct rename endpoint, this command fetches all entries, deletes the old glossary, and creates a new one with the new name. The glossary ID will change but all entries are preserved.
+
 ---
 
 ### cache
