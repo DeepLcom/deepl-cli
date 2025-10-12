@@ -682,6 +682,24 @@ deepl glossary languages
 # en → ja
 # en → pt
 # ...
+
+# Add a new entry to an existing glossary
+deepl glossary add-entry tech-terms "database" "Datenbank"
+# ✓ Entry added successfully
+# Glossary: tech-terms
+# Entries: 4
+
+# Update an existing entry in a glossary
+deepl glossary update-entry tech-terms "API" "API (Programmierschnittstelle)"
+# ✓ Entry updated successfully
+# Glossary: tech-terms
+# Entries: 4
+
+# Remove an entry from a glossary
+deepl glossary remove-entry tech-terms "REST"
+# ✓ Entry removed successfully
+# Glossary: tech-terms
+# Entries: 3
 ```
 
 **Glossary file format (TSV):**

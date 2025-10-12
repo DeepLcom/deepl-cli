@@ -85,6 +85,41 @@ export class GlossaryCommand {
   }
 
   /**
+   * Add a new entry to an existing glossary
+   */
+  async addEntry(
+    nameOrId: string,
+    sourceText: string,
+    targetText: string
+  ): Promise<GlossaryInfo> {
+    const glossary = await this.show(nameOrId);
+    return this.glossaryService.addEntry(glossary.glossary_id, sourceText, targetText);
+  }
+
+  /**
+   * Update an existing entry in a glossary
+   */
+  async updateEntry(
+    nameOrId: string,
+    sourceText: string,
+    newTargetText: string
+  ): Promise<GlossaryInfo> {
+    const glossary = await this.show(nameOrId);
+    return this.glossaryService.updateEntry(glossary.glossary_id, sourceText, newTargetText);
+  }
+
+  /**
+   * Remove an entry from a glossary
+   */
+  async removeEntry(
+    nameOrId: string,
+    sourceText: string
+  ): Promise<GlossaryInfo> {
+    const glossary = await this.show(nameOrId);
+    return this.glossaryService.removeEntry(glossary.glossary_id, sourceText);
+  }
+
+  /**
    * Format glossary info for display
    */
   formatGlossaryInfo(glossary: GlossaryInfo): string {

@@ -351,4 +351,223 @@ describe('GlossaryService', () => {
       });
     });
   });
+
+  describe('addEntry()', () => {
+    it('should add a new entry to glossary', async () => {
+      // Mock getting glossary info
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 2,
+      });
+
+      // Mock getting existing entries
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+
+      // Mock deleting old glossary
+      mockDeepLClient.deleteGlossary.mockResolvedValue(undefined);
+
+      // Mock creating new glossary
+      mockDeepLClient.createGlossary.mockResolvedValue({
+        glossary_id: 'test-456',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T01:00:00Z',
+        entry_count: 3,
+      });
+
+      const result = await glossaryService.addEntry('test-123', 'Hello', 'Hola');
+
+      expect(result.entry_count).toBe(3);
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('test-123');
+      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith('test-123');
+      expect(mockDeepLClient.deleteGlossary).toHaveBeenCalledWith('test-123');
+      expect(mockDeepLClient.createGlossary).toHaveBeenCalledWith(
+        'tech-terms',
+        'en',
+        'es',
+        'API\tAPI\nREST\tREST\nHello\tHola'
+      );
+    });
+
+    it('should throw error if entry already exists', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 2,
+      });
+
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+
+      await expect(
+        glossaryService.addEntry('test-123', 'API', 'Interface')
+      ).rejects.toThrow('Entry "API" already exists in glossary');
+    });
+
+    it('should validate source text is not empty', async () => {
+      await expect(
+        glossaryService.addEntry('test-123', '', 'target')
+      ).rejects.toThrow('Source text cannot be empty');
+    });
+
+    it('should validate target text is not empty', async () => {
+      await expect(
+        glossaryService.addEntry('test-123', 'source', '')
+      ).rejects.toThrow('Target text cannot be empty');
+    });
+  });
+
+  describe('updateEntry()', () => {
+    it('should update an existing entry', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 2,
+      });
+
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+      mockDeepLClient.deleteGlossary.mockResolvedValue(undefined);
+      mockDeepLClient.createGlossary.mockResolvedValue({
+        glossary_id: 'test-456',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T01:00:00Z',
+        entry_count: 2,
+      });
+
+      const result = await glossaryService.updateEntry('test-123', 'API', 'Interface');
+
+      expect(result.entry_count).toBe(2);
+      expect(mockDeepLClient.createGlossary).toHaveBeenCalledWith(
+        'tech-terms',
+        'en',
+        'es',
+        'API\tInterface\nREST\tREST'
+      );
+    });
+
+    it('should throw error if entry does not exist', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 2,
+      });
+
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+
+      await expect(
+        glossaryService.updateEntry('test-123', 'NonExistent', 'target')
+      ).rejects.toThrow('Entry "NonExistent" not found in glossary');
+    });
+
+    it('should validate source text is not empty', async () => {
+      await expect(
+        glossaryService.updateEntry('test-123', '', 'target')
+      ).rejects.toThrow('Source text cannot be empty');
+    });
+
+    it('should validate target text is not empty', async () => {
+      await expect(
+        glossaryService.updateEntry('test-123', 'source', '')
+      ).rejects.toThrow('Target text cannot be empty');
+    });
+  });
+
+  describe('removeEntry()', () => {
+    it('should remove an entry from glossary', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 3,
+      });
+
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST\nHello\tHola');
+      mockDeepLClient.deleteGlossary.mockResolvedValue(undefined);
+      mockDeepLClient.createGlossary.mockResolvedValue({
+        glossary_id: 'test-456',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T01:00:00Z',
+        entry_count: 2,
+      });
+
+      const result = await glossaryService.removeEntry('test-123', 'Hello');
+
+      expect(result.entry_count).toBe(2);
+      expect(mockDeepLClient.createGlossary).toHaveBeenCalledWith(
+        'tech-terms',
+        'en',
+        'es',
+        'API\tAPI\nREST\tREST'
+      );
+    });
+
+    it('should throw error if entry does not exist', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 2,
+      });
+
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+
+      await expect(
+        glossaryService.removeEntry('test-123', 'NonExistent')
+      ).rejects.toThrow('Entry "NonExistent" not found in glossary');
+    });
+
+    it('should validate source text is not empty', async () => {
+      await expect(
+        glossaryService.removeEntry('test-123', '')
+      ).rejects.toThrow('Source text cannot be empty');
+    });
+
+    it('should throw error if removing would leave glossary empty', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'tech-terms',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 1,
+      });
+
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI');
+
+      await expect(
+        glossaryService.removeEntry('test-123', 'API')
+      ).rejects.toThrow('Cannot remove last entry from glossary. Delete the glossary instead.');
+    });
+  });
 });

@@ -692,6 +692,68 @@ program
           process.exit(1);
         }
       })
+  )
+  .addCommand(
+    new Command('add-entry')
+      .description('Add a new entry to a glossary')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .argument('<source>', 'Source text')
+      .argument('<target>', 'Target text')
+      .action(async (nameOrId: string, source: string, target: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          const glossary = await glossaryCommand.addEntry(nameOrId, source, target);
+          console.log(chalk.green('✓ Entry added successfully'));
+          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('update-entry')
+      .description('Update an existing entry in a glossary')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .argument('<source>', 'Source text to update')
+      .argument('<new-target>', 'New target text')
+      .action(async (nameOrId: string, source: string, newTarget: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          const glossary = await glossaryCommand.updateEntry(nameOrId, source, newTarget);
+          console.log(chalk.green('✓ Entry updated successfully'));
+          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
+  )
+  .addCommand(
+    new Command('remove-entry')
+      .description('Remove an entry from a glossary')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .argument('<source>', 'Source text to remove')
+      .action(async (nameOrId: string, source: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          const glossary = await glossaryCommand.removeEntry(nameOrId, source);
+          console.log(chalk.green('✓ Entry removed successfully'));
+          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
   );
 
 // Hooks command

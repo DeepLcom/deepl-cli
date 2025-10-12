@@ -102,6 +102,142 @@ export class GlossaryService {
   }
 
   /**
+   * Add a new entry to an existing glossary
+   */
+  async addEntry(
+    glossaryId: string,
+    sourceText: string,
+    targetText: string
+  ): Promise<GlossaryInfo> {
+    // Validate inputs
+    if (!sourceText || sourceText.trim() === '') {
+      throw new Error('Source text cannot be empty');
+    }
+    if (!targetText || targetText.trim() === '') {
+      throw new Error('Target text cannot be empty');
+    }
+
+    // Get glossary info to preserve name and language pair
+    const glossary = await this.client.getGlossary(glossaryId);
+
+    // Get existing entries
+    const entries = await this.getGlossaryEntries(glossaryId);
+
+    // Check if entry already exists
+    if (entries[sourceText] !== undefined) {
+      throw new Error(`Entry "${sourceText}" already exists in glossary`);
+    }
+
+    // Add new entry
+    entries[sourceText] = targetText;
+
+    // Convert to TSV
+    const tsv = this.entriesToTSV(entries);
+
+    // Delete old glossary
+    await this.client.deleteGlossary(glossaryId);
+
+    // Create new glossary with updated entries
+    return this.client.createGlossary(
+      glossary.name,
+      glossary.source_lang,
+      glossary.target_lang,
+      tsv
+    );
+  }
+
+  /**
+   * Update an existing entry in a glossary
+   */
+  async updateEntry(
+    glossaryId: string,
+    sourceText: string,
+    newTargetText: string
+  ): Promise<GlossaryInfo> {
+    // Validate inputs
+    if (!sourceText || sourceText.trim() === '') {
+      throw new Error('Source text cannot be empty');
+    }
+    if (!newTargetText || newTargetText.trim() === '') {
+      throw new Error('Target text cannot be empty');
+    }
+
+    // Get glossary info to preserve name and language pair
+    const glossary = await this.client.getGlossary(glossaryId);
+
+    // Get existing entries
+    const entries = await this.getGlossaryEntries(glossaryId);
+
+    // Check if entry exists
+    if (entries[sourceText] === undefined) {
+      throw new Error(`Entry "${sourceText}" not found in glossary`);
+    }
+
+    // Update entry
+    entries[sourceText] = newTargetText;
+
+    // Convert to TSV
+    const tsv = this.entriesToTSV(entries);
+
+    // Delete old glossary
+    await this.client.deleteGlossary(glossaryId);
+
+    // Create new glossary with updated entries
+    return this.client.createGlossary(
+      glossary.name,
+      glossary.source_lang,
+      glossary.target_lang,
+      tsv
+    );
+  }
+
+  /**
+   * Remove an entry from a glossary
+   */
+  async removeEntry(
+    glossaryId: string,
+    sourceText: string
+  ): Promise<GlossaryInfo> {
+    // Validate input
+    if (!sourceText || sourceText.trim() === '') {
+      throw new Error('Source text cannot be empty');
+    }
+
+    // Get glossary info to preserve name and language pair
+    const glossary = await this.client.getGlossary(glossaryId);
+
+    // Get existing entries
+    const entries = await this.getGlossaryEntries(glossaryId);
+
+    // Check if entry exists
+    if (entries[sourceText] === undefined) {
+      throw new Error(`Entry "${sourceText}" not found in glossary`);
+    }
+
+    // Check if this is the last entry
+    if (Object.keys(entries).length === 1) {
+      throw new Error('Cannot remove last entry from glossary. Delete the glossary instead.');
+    }
+
+    // Remove entry
+    delete entries[sourceText];
+
+    // Convert to TSV
+    const tsv = this.entriesToTSV(entries);
+
+    // Delete old glossary
+    await this.client.deleteGlossary(glossaryId);
+
+    // Create new glossary with updated entries
+    return this.client.createGlossary(
+      glossary.name,
+      glossary.source_lang,
+      glossary.target_lang,
+      tsv
+    );
+  }
+
+  /**
    * Convert entries object to TSV format
    */
   entriesToTSV(entries: Record<string, string>): string {

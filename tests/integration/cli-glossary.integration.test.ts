@@ -346,4 +346,191 @@ describe('Glossary CLI Integration', () => {
       expect(helpOutput).toContain('List supported glossary language pairs');
     });
   });
+
+  describe('glossary add-entry', () => {
+    it('should have add-entry subcommand', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('add-entry');
+      expect(helpOutput).toContain('Add a new entry to a glossary');
+    });
+
+    it('should require name-or-id, source, and target arguments', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('add-entry <name-or-id> <source> <target>');
+    });
+
+    it('should validate missing arguments', () => {
+      try {
+        runCLI('deepl glossary add-entry', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should validate missing source and target', () => {
+      try {
+        runCLI('deepl glossary add-entry "My Glossary"', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing arguments
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should validate missing target', () => {
+      try {
+        runCLI('deepl glossary add-entry "My Glossary" "Hello"', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should accept all required arguments', () => {
+      try {
+        // Will fail without API key but should accept arguments
+        runCLI('deepl glossary add-entry "My Glossary" "Hello" "Hola"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth or not found, not argument validation
+        expect(output).toMatch(/API key|auth|not found/i);
+      }
+    });
+
+    it('should accept --help flag', () => {
+      const helpOutput = runCLI('deepl glossary add-entry --help');
+
+      expect(helpOutput).toContain('add-entry');
+      expect(helpOutput).toContain('Add a new entry to a glossary');
+    });
+  });
+
+  describe('glossary update-entry', () => {
+    it('should have update-entry subcommand', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('update-entry');
+      expect(helpOutput).toContain('Update an existing entry in a glossary');
+    });
+
+    it('should require name-or-id, source, and new-target arguments', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('update-entry <name-or-id> <source> <new-target>');
+    });
+
+    it('should validate missing arguments', () => {
+      try {
+        runCLI('deepl glossary update-entry', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should validate missing source and new-target', () => {
+      try {
+        runCLI('deepl glossary update-entry "My Glossary"', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing arguments
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should validate missing new-target', () => {
+      try {
+        runCLI('deepl glossary update-entry "My Glossary" "Hello"', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should accept all required arguments', () => {
+      try {
+        // Will fail without API key but should accept arguments
+        runCLI('deepl glossary update-entry "My Glossary" "Hello" "Hola Updated"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth or not found, not argument validation
+        expect(output).toMatch(/API key|auth|not found/i);
+      }
+    });
+
+    it('should accept --help flag', () => {
+      const helpOutput = runCLI('deepl glossary update-entry --help');
+
+      expect(helpOutput).toContain('update-entry');
+      expect(helpOutput).toContain('Update an existing entry in a glossary');
+    });
+  });
+
+  describe('glossary remove-entry', () => {
+    it('should have remove-entry subcommand', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('remove-entry');
+      expect(helpOutput).toContain('Remove an entry from a glossary');
+    });
+
+    it('should require name-or-id and source arguments', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('remove-entry <name-or-id> <source>');
+    });
+
+    it('should validate missing arguments', () => {
+      try {
+        runCLI('deepl glossary remove-entry', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should validate missing source', () => {
+      try {
+        runCLI('deepl glossary remove-entry "My Glossary"', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should accept all required arguments', () => {
+      try {
+        // Will fail without API key but should accept arguments
+        runCLI('deepl glossary remove-entry "My Glossary" "Hello"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth or not found, not argument validation
+        expect(output).toMatch(/API key|auth|not found/i);
+      }
+    });
+
+    it('should accept --help flag', () => {
+      const helpOutput = runCLI('deepl glossary remove-entry --help');
+
+      expect(helpOutput).toContain('remove-entry');
+      expect(helpOutput).toContain('Remove an entry from a glossary');
+    });
+  });
 });
