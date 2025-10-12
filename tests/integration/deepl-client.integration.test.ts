@@ -509,4 +509,408 @@ describe('DeepLClient Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
   });
+
+  describe('uploadDocument() - Document API', () => {
+    it('should make correct HTTP POST with multipart/form-data', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test pdf content');
+
+      const scope = nock(FREE_API_URL)
+        .post('/v2/document', (body) => {
+          // Verify multipart/form-data contains file and target_lang
+          return body.includes('test pdf content') && body.includes('target_lang');
+        })
+        .reply(200, {
+          document_id: 'doc-123',
+          document_key: 'key-456',
+        });
+
+      const result = await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        filename: 'test.pdf',
+      });
+
+      expect(result.documentId).toBe('doc-123');
+      expect(result.documentKey).toBe('key-456');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should include source language when specified', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test content');
+
+      const scope = nock(FREE_API_URL)
+        .post('/v2/document', (body) => {
+          return body.includes('source_lang') && body.includes('EN');
+        })
+        .reply(200, {
+          document_id: 'doc-123',
+          document_key: 'key-456',
+        });
+
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        sourceLang: 'en',
+        filename: 'test.pdf',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should include formality when specified', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test content');
+
+      const scope = nock(FREE_API_URL)
+        .post('/v2/document', (body) => {
+          return body.includes('formality') && body.includes('more');
+        })
+        .reply(200, {
+          document_id: 'doc-123',
+          document_key: 'key-456',
+        });
+
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        formality: 'more',
+        filename: 'test.pdf',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should include glossary ID when specified', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test content');
+
+      const scope = nock(FREE_API_URL)
+        .post('/v2/document', (body) => {
+          return body.includes('glossary_id') && body.includes('glossary-123');
+        })
+        .reply(200, {
+          document_id: 'doc-123',
+          document_key: 'key-456',
+        });
+
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        glossaryId: 'glossary-123',
+        filename: 'test.pdf',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should use correct Authorization header', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test content');
+
+      const scope = nock(FREE_API_URL, {
+        reqheaders: {
+          'authorization': `DeepL-Auth-Key ${API_KEY}`,
+        },
+      })
+        .post('/v2/document')
+        .reply(200, {
+          document_id: 'doc-123',
+          document_key: 'key-456',
+        });
+
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        filename: 'test.pdf',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should throw error for empty file buffer', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      await expect(
+        client.uploadDocument(Buffer.from(''), {
+          targetLang: 'es',
+          filename: 'test.pdf',
+        })
+      ).rejects.toThrow('Document file cannot be empty');
+    });
+
+    it('should throw error for missing filename', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test content');
+
+      await expect(
+        client.uploadDocument(fileBuffer, {
+          targetLang: 'es',
+          filename: undefined as any,
+        })
+      ).rejects.toThrow('filename is required');
+    });
+
+    it('should handle 403 authentication errors', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test content');
+
+      nock(FREE_API_URL).post('/v2/document').reply(403, { message: 'Invalid API key' });
+
+      await expect(
+        client.uploadDocument(fileBuffer, {
+          targetLang: 'es',
+          filename: 'test.pdf',
+        })
+      ).rejects.toThrow('Authentication failed');
+    });
+
+    it('should handle 413 file too large errors', async () => {
+      const client = new DeepLClient(API_KEY);
+      const fileBuffer = Buffer.from('test content');
+
+      nock(FREE_API_URL).post('/v2/document').reply(413, { message: 'File too large' });
+
+      await expect(
+        client.uploadDocument(fileBuffer, {
+          targetLang: 'es',
+          filename: 'test.pdf',
+        })
+      ).rejects.toThrow('API error');
+    });
+  });
+
+  describe('getDocumentStatus() - Document API', () => {
+    it('should make correct HTTP POST with document_key', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL)
+        .post('/v2/document/doc-123', (body) => {
+          // nock parses form-encoded body as object
+          expect(body.document_key).toBe('key-456');
+          return true;
+        })
+        .reply(200, {
+          document_id: 'doc-123',
+          status: 'done',
+          billed_characters: 500,
+        });
+
+      const result = await client.getDocumentStatus({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      expect(result.documentId).toBe('doc-123');
+      expect(result.status).toBe('done');
+      expect(result.billedCharacters).toBe(500);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should return status "queued"', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/document/doc-123')
+        .reply(200, {
+          document_id: 'doc-123',
+          status: 'queued',
+        });
+
+      const result = await client.getDocumentStatus({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      expect(result.status).toBe('queued');
+      expect(result.secondsRemaining).toBeUndefined();
+      expect(result.billedCharacters).toBeUndefined();
+    });
+
+    it('should return status "translating" with seconds remaining', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/document/doc-123')
+        .reply(200, {
+          document_id: 'doc-123',
+          status: 'translating',
+          seconds_remaining: 10,
+        });
+
+      const result = await client.getDocumentStatus({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      expect(result.status).toBe('translating');
+      expect(result.secondsRemaining).toBe(10);
+    });
+
+    it('should return status "done" with billed characters', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/document/doc-123')
+        .reply(200, {
+          document_id: 'doc-123',
+          status: 'done',
+          billed_characters: 1234,
+        });
+
+      const result = await client.getDocumentStatus({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      expect(result.status).toBe('done');
+      expect(result.billedCharacters).toBe(1234);
+    });
+
+    it('should return status "error" with error message', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/document/doc-123')
+        .reply(200, {
+          document_id: 'doc-123',
+          status: 'error',
+          error_message: 'Unsupported file format',
+        });
+
+      const result = await client.getDocumentStatus({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      expect(result.status).toBe('error');
+      expect(result.errorMessage).toBe('Unsupported file format');
+    });
+
+    it('should use form-encoded content type', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL, {
+        reqheaders: {
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+      })
+        .post('/v2/document/doc-123')
+        .reply(200, {
+          document_id: 'doc-123',
+          status: 'done',
+        });
+
+      await client.getDocumentStatus({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle 404 document not found errors', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/document/doc-nonexistent')
+        .reply(404, { message: 'Document not found' });
+
+      await expect(
+        client.getDocumentStatus({
+          documentId: 'doc-nonexistent',
+          documentKey: 'key-456',
+        })
+      ).rejects.toThrow('API error');
+    });
+  });
+
+  describe('downloadDocument() - Document API', () => {
+    it('should make correct HTTP POST and return buffer', async () => {
+      const client = new DeepLClient(API_KEY);
+      const translatedContent = Buffer.from('translated content');
+
+      const scope = nock(FREE_API_URL)
+        .post('/v2/document/doc-123/result', (body) => {
+          // nock parses form-encoded body as object
+          expect(body.document_key).toBe('key-456');
+          return true;
+        })
+        .reply(200, translatedContent);
+
+      const result = await client.downloadDocument({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      expect(Buffer.isBuffer(result)).toBe(true);
+      expect(result.toString()).toBe('translated content');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle binary content (PDF)', async () => {
+      const client = new DeepLClient(API_KEY);
+      const pdfContent = Buffer.from([0x25, 0x50, 0x44, 0x46]); // PDF header bytes
+
+      nock(FREE_API_URL)
+        .post('/v2/document/doc-123/result')
+        .reply(200, pdfContent);
+
+      const result = await client.downloadDocument({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      expect(Buffer.isBuffer(result)).toBe(true);
+      expect(result[0]).toBe(0x25);
+      expect(result[1]).toBe(0x50);
+      expect(result[2]).toBe(0x44);
+      expect(result[3]).toBe(0x46);
+    });
+
+    it('should use form-encoded content type', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL, {
+        reqheaders: {
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+      })
+        .post('/v2/document/doc-123/result')
+        .reply(200, Buffer.from('translated'));
+
+      await client.downloadDocument({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle 404 document not found errors', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/document/doc-nonexistent/result')
+        .reply(404, { message: 'Document not found' });
+
+      await expect(
+        client.downloadDocument({
+          documentId: 'doc-nonexistent',
+          documentKey: 'key-456',
+        })
+      ).rejects.toThrow('API error');
+    });
+
+    it('should handle 503 document not ready errors', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/document/doc-123/result')
+        .reply(503, { message: 'Document not ready yet' });
+
+      await expect(
+        client.downloadDocument({
+          documentId: 'doc-123',
+          documentKey: 'key-456',
+        })
+      ).rejects.toThrow('Service temporarily unavailable');
+    });
+  });
 });
