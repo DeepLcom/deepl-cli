@@ -164,6 +164,8 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 **Output Options:**
 
 - `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text)
+- `--output-format FORMAT` - Convert document format during translation (e.g., `pdf`, `docx`, `pptx`, `xlsx`, `html`)
+- `--format FORMAT` - Output format: `json` for machine-readable output (default: plain text)
 
 **Translation Options:**
 
@@ -171,8 +173,11 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--model-type TYPE` - Model type: `quality_optimized` (default), `prefer_quality_optimized`, `latency_optimized`
 - `--preserve-code` - Preserve code blocks (markdown, etc.)
 - `--preserve-vars` - Preserve variables like `{name}`, `${var}`
+- `--preserve-formatting` - Preserve line breaks and whitespace formatting
 - `--split-sentences LEVEL` - Sentence splitting: `on` (default), `off`, `nonewlines`
 - `--tag-handling MODE` - XML tag handling: `xml`, `html`
+- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
+- `--no-cache` - Bypass cache for this translation (useful for testing/forcing fresh translation)
 
 **API Options:**
 
@@ -236,6 +241,9 @@ deepl translate report.xlsx --to fr --output report.fr.xlsx
 
 # Translate HTML file
 deepl translate website.html --to ja --output website.ja.html
+
+# Convert format during translation (DOCX to PDF)
+deepl translate document.docx --to es --output document.es.pdf --output-format pdf
 ```
 
 **Supported Document Formats:**
@@ -326,6 +334,37 @@ deepl translate "<div><span>Welcome</span></div>" --to de --tag-handling html
 deepl translate content.html --to fr --tag-handling html --output content.fr.html
 ```
 
+**Glossary usage:**
+
+```bash
+# Use glossary for consistent terminology
+deepl translate "API documentation" --to es --glossary tech-terms
+
+# Use glossary by ID
+deepl translate README.md --to fr --glossary abc-123-def-456 --output README.fr.md
+```
+
+**Cache control:**
+
+```bash
+# Bypass cache for fresh translation
+deepl translate "Hello" --to es --no-cache
+
+# Useful for testing or when you need the latest translation
+deepl translate document.md --to es --output document.es.md --no-cache
+```
+
+**JSON output:**
+
+```bash
+# Get machine-readable JSON output
+deepl translate "Hello" --to es --format json
+# {"text":"Hola","detectedSourceLang":"en","targetLang":"es","cached":false}
+
+# Useful for scripting and automation
+deepl translate "Test" --to es,fr,de --format json
+```
+
 ---
 
 ### write
@@ -378,6 +417,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 - `--output, -o FILE` - Write output to file
 - `--in-place` - Edit file in place
 - `--backup, -b` - Create backup before fixing (use with `--fix`)
+- `--format FORMAT` - Output format: `json` for machine-readable output (default: plain text)
 
 #### Supported Languages
 
@@ -463,6 +503,14 @@ deepl write document.md --lang en-US --check
 deepl write file.txt --lang en-US --diff
 ```
 
+**JSON output:**
+
+```bash
+# Get machine-readable JSON output
+deepl write "This are good." --lang en-US --format json
+# {"original":"This are good.","improved":"This is good.","changes":1,"language":"en-US"}
+```
+
 ---
 
 ### watch
@@ -503,6 +551,8 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - `--from, -f LANG` - Source language (auto-detect if omitted)
 - `--formality LEVEL` - Formality level
 - `--preserve-code` - Preserve code blocks
+- `--preserve-formatting` - Preserve line breaks and whitespace formatting
+- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
 
 **Git Integration:**
 
@@ -867,7 +917,20 @@ Clear all cache entries (displays: "✓ Cache cleared successfully").
 
 Enable cache (displays: "✓ Cache enabled").
 
-**Note:** To configure max cache size, use: `deepl config set cache.maxSize <bytes>`
+**Options:**
+- `--max-size <size>` - Maximum cache size (e.g., `100M`, `1G`, `500MB`)
+
+**Examples:**
+```bash
+# Enable cache with default size
+deepl cache enable
+
+# Enable cache with custom size
+deepl cache enable --max-size 100M
+deepl cache enable --max-size 1G
+```
+
+**Note:** You can also configure max cache size separately: `deepl config set cache.maxSize <bytes>`
 
 ##### `disable`
 

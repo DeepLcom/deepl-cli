@@ -4,7 +4,6 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/tests-969%20passing-brightgreen)](https://git.deepl.dev/hack-projects/deepl-cli)
 
 **DeepL CLI** is a comprehensive, developer-friendly command-line tool that integrates DeepL's powerful translation API and cutting-edge Write API for grammar and style enhancement. Built with TypeScript and designed for modern development workflows.
 
@@ -1018,10 +1017,6 @@ Storage (SQLite Cache, Config, Translation Memory)
 See [DESIGN.md](./DESIGN.md) for detailed architecture documentation.
 
 ## 🧪 Testing
-
-### Test Coverage
-
-Current coverage: **81%+** (969 tests, 969 passing, 100% pass rate)
 
 ```bash
 # Run all tests
