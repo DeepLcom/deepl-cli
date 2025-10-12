@@ -8,6 +8,7 @@
 import { TranslateCommand } from '../../src/cli/commands/translate';
 import { TranslationService } from '../../src/services/translation';
 import { DocumentTranslationService } from '../../src/services/document-translation';
+import { GlossaryService } from '../../src/services/glossary';
 import { ConfigService } from '../../src/storage/config';
 
 // Mock ESM dependencies
@@ -29,11 +30,13 @@ jest.mock('../../src/services/translation');
 jest.mock('../../src/services/file-translation');
 jest.mock('../../src/services/batch-translation');
 jest.mock('../../src/services/document-translation');
+jest.mock('../../src/services/glossary');
 jest.mock('../../src/storage/config');
 
 describe('TranslateCommand', () => {
   let mockTranslationService: jest.Mocked<TranslationService>;
   let mockDocumentTranslationService: jest.Mocked<DocumentTranslationService>;
+  let mockGlossaryService: jest.Mocked<GlossaryService>;
   let mockConfigService: jest.Mocked<ConfigService>;
   let translateCommand: TranslateCommand;
 
@@ -54,6 +57,15 @@ describe('TranslateCommand', () => {
       getSupportedFileTypes: jest.fn().mockReturnValue(['.pdf', '.docx', '.pptx']),
     } as unknown as jest.Mocked<DocumentTranslationService>;
 
+    mockGlossaryService = {
+      getGlossaryByName: jest.fn().mockResolvedValue(null),
+      listGlossaries: jest.fn().mockResolvedValue([]),
+      getGlossary: jest.fn().mockResolvedValue(null),
+      createGlossary: jest.fn().mockResolvedValue(null),
+      deleteGlossary: jest.fn().mockResolvedValue(undefined),
+      getGlossaryEntries: jest.fn().mockResolvedValue({}),
+    } as unknown as jest.Mocked<GlossaryService>;
+
     mockConfigService = {
       get: jest.fn().mockReturnValue({}),
       getValue: jest.fn((key: string) => {
@@ -68,7 +80,12 @@ describe('TranslateCommand', () => {
       getDefaults: jest.fn().mockReturnValue({}),
     } as unknown as jest.Mocked<ConfigService>;
 
-    translateCommand = new TranslateCommand(mockTranslationService, mockDocumentTranslationService, mockConfigService);
+    translateCommand = new TranslateCommand(
+      mockTranslationService,
+      mockDocumentTranslationService,
+      mockGlossaryService,
+      mockConfigService
+    );
   });
 
   describe('translateText()', () => {
@@ -916,5 +933,132 @@ describe('TranslateCommand', () => {
     // - Skipped files count display (line 229-231)
     // - Spinner progress updates (lines 187, 191)
     // - Source language and formality passthrough to batch service
+  });
+
+  describe('glossary integration', () => {
+    it('should translate text with glossary by name', async () => {
+      // Mock glossary service lookup
+      (mockGlossaryService.getGlossaryByName as jest.Mock).mockResolvedValueOnce({
+        glossary_id: 'glossary-123',
+        name: 'my-glossary',
+        source_lang: 'en',
+        target_lang: 'de',
+      });
+
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hallo Welt',
+        detectedSourceLang: 'en',
+      });
+
+      const result = await translateCommand.translateText('Hello world', {
+        to: 'de',
+        glossary: 'my-glossary',
+      });
+
+      expect(result).toBe('Hallo Welt');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('my-glossary');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello world',
+        { targetLang: 'de', glossaryId: 'glossary-123' },
+        { preserveCode: undefined }
+      );
+    });
+
+    it('should translate text with glossary by ID', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Bonjour le monde',
+        detectedSourceLang: 'en',
+      });
+
+      const result = await translateCommand.translateText('Hello world', {
+        to: 'fr',
+        glossary: '01234567-89ab-cdef-0123-456789abcdef',
+      });
+
+      expect(result).toBe('Bonjour le monde');
+      expect(mockGlossaryService.getGlossaryByName).not.toHaveBeenCalled();
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello world',
+        { targetLang: 'fr', glossaryId: '01234567-89ab-cdef-0123-456789abcdef' },
+        { preserveCode: undefined }
+      );
+    });
+
+    it('should throw error when glossary not found by name', async () => {
+      // Mock glossary service lookup returning null
+      (mockGlossaryService.getGlossaryByName as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(
+        translateCommand.translateText('Hello world', {
+          to: 'de',
+          glossary: 'non-existent',
+        })
+      ).rejects.toThrow('Glossary "non-existent" not found');
+
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('non-existent');
+    });
+
+    it('should translate to multiple languages with glossary', async () => {
+      // Mock glossary service lookup
+      (mockGlossaryService.getGlossaryByName as jest.Mock).mockResolvedValueOnce({
+        glossary_id: 'glossary-789',
+        name: 'tech-terms',
+        source_lang: 'en',
+        target_lang: 'de',
+      });
+
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
+        { targetLang: 'de', text: 'Hallo' },
+        { targetLang: 'fr', text: 'Bonjour' },
+      ]);
+
+      const result = await translateCommand.translateText('Hello', {
+        to: 'de,fr',
+        glossary: 'tech-terms',
+      });
+
+      expect(result).toBe('[de] Hallo\n[fr] Bonjour');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('tech-terms');
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        ['de', 'fr'],
+        { glossaryId: 'glossary-789' }
+      );
+    });
+
+    it('should combine glossary with other options (formality, context)', async () => {
+      // Mock glossary service lookup
+      (mockGlossaryService.getGlossaryByName as jest.Mock).mockResolvedValueOnce({
+        glossary_id: 'glossary-abc',
+        name: 'business-glossary',
+        source_lang: 'en',
+        target_lang: 'de',
+      });
+
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Sehr geehrte Damen und Herren',
+        detectedSourceLang: 'en',
+      });
+
+      const result = await translateCommand.translateText('Dear Sir or Madam', {
+        to: 'de',
+        glossary: 'business-glossary',
+        formality: 'more',
+        context: 'Business letter opening',
+      });
+
+      expect(result).toBe('Sehr geehrte Damen und Herren');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('business-glossary');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Dear Sir or Madam',
+        {
+          targetLang: 'de',
+          glossaryId: 'glossary-abc',
+          formality: 'more',
+          context: 'Business letter opening',
+        },
+        { preserveCode: undefined }
+      );
+    });
   });
 });

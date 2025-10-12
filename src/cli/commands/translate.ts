@@ -9,6 +9,7 @@ import { TranslationService } from '../../services/translation.js';
 import { FileTranslationService } from '../../services/file-translation.js';
 import { BatchTranslationService } from '../../services/batch-translation.js';
 import { DocumentTranslationService } from '../../services/document-translation.js';
+import { GlossaryService } from '../../services/glossary.js';
 import { ConfigService } from '../../storage/config.js';
 import { Language } from '../../types/index.js';
 
@@ -26,6 +27,7 @@ interface TranslateOptions {
   recursive?: boolean;
   pattern?: string;
   concurrency?: number;
+  glossary?: string;
 }
 
 export class TranslateCommand {
@@ -33,9 +35,15 @@ export class TranslateCommand {
   private fileTranslationService: FileTranslationService;
   private documentTranslationService: DocumentTranslationService;
   private batchTranslationService: BatchTranslationService;
+  private glossaryService: GlossaryService;
   private config: ConfigService;
 
-  constructor(translationService: TranslationService, documentTranslationService: DocumentTranslationService, config: ConfigService) {
+  constructor(
+    translationService: TranslationService,
+    documentTranslationService: DocumentTranslationService,
+    glossaryService: GlossaryService,
+    config: ConfigService
+  ) {
     this.translationService = translationService;
     this.fileTranslationService = new FileTranslationService(translationService);
     this.documentTranslationService = documentTranslationService;
@@ -43,7 +51,27 @@ export class TranslateCommand {
       this.fileTranslationService,
       { concurrency: 5 }
     );
+    this.glossaryService = glossaryService;
     this.config = config;
+  }
+
+  /**
+   * Resolve glossary ID from name or ID
+   * If input looks like a UUID (glossary-*), use it directly as ID
+   * Otherwise, lookup by name
+   */
+  private async resolveGlossaryId(nameOrId: string): Promise<string> {
+    // If it looks like a glossary ID (UUID format), use it directly
+    if (nameOrId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      return nameOrId;
+    }
+
+    // Otherwise, lookup by name
+    const glossary = await this.glossaryService.getGlossaryByName(nameOrId);
+    if (!glossary) {
+      throw new Error(`Glossary "${nameOrId}" not found`);
+    }
+    return glossary.glossary_id;
   }
 
   /**
@@ -176,6 +204,7 @@ export class TranslateCommand {
       splitSentences?: 'on' | 'off' | 'nonewlines';
       tagHandling?: 'xml' | 'html';
       modelType?: 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
+      glossaryId?: string;
     } = {
       targetLang: options.to as Language,
     };
@@ -204,6 +233,10 @@ export class TranslateCommand {
       translationOptions.modelType = options.modelType as 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
     }
 
+    if (options.glossary) {
+      translationOptions.glossaryId = await this.resolveGlossaryId(options.glossary);
+    }
+
     // Translate
     const result = await this.translationService.translate(
       text,
@@ -224,6 +257,7 @@ export class TranslateCommand {
       sourceLang?: Language;
       formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
       context?: string;
+      glossaryId?: string;
     } = {};
 
     if (options.from) {
@@ -236,6 +270,10 @@ export class TranslateCommand {
 
     if (options.context) {
       translationOptions.context = options.context;
+    }
+
+    if (options.glossary) {
+      translationOptions.glossaryId = await this.resolveGlossaryId(options.glossary);
     }
 
     const results = await this.translationService.translateToMultiple(

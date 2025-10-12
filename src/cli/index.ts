@@ -217,6 +217,7 @@ program
   .option('--recursive', 'Process subdirectories recursively (default: true)', true)
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
   .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
+  .option('--glossary <name-or-id>', 'Use glossary by name or ID')
   .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
   .action(async (text: string | undefined, options: {
     to: string;
@@ -232,13 +233,15 @@ program
     recursive?: boolean;
     pattern?: string;
     concurrency?: number;
+    glossary?: string;
     apiUrl?: string;
   }) => {
     try {
       const client = createDeepLClient();
       const translationService = new TranslationService(client, configService, cacheService);
       const documentTranslationService = new DocumentTranslationService(client);
-      const translateCommand = new TranslateCommand(translationService, documentTranslationService, configService);
+      const glossaryService = new GlossaryService(client);
+      const translateCommand = new TranslateCommand(translationService, documentTranslationService, glossaryService, configService);
 
       let result: string;
 
