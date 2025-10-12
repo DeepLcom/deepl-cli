@@ -5,13 +5,16 @@
 
 import { CacheCommand } from '../../src/cli/commands/cache';
 import { CacheService } from '../../src/storage/cache';
+import { ConfigService } from '../../src/storage/config';
 
 // Mock CacheService
 jest.mock('../../src/storage/cache');
+jest.mock('../../src/storage/config');
 
 describe('CacheCommand', () => {
   let cacheCommand: CacheCommand;
   let mockCacheService: jest.Mocked<CacheService>;
+  let mockConfigService: jest.Mocked<ConfigService>;
 
   beforeEach(() => {
     // Reset mocks
@@ -25,10 +28,20 @@ describe('CacheCommand', () => {
       stats: jest.fn(),
       enable: jest.fn(),
       disable: jest.fn(),
+      setMaxSize: jest.fn(),
       close: jest.fn(),
     } as unknown as jest.Mocked<CacheService>;
 
-    cacheCommand = new CacheCommand(mockCacheService);
+    // Create mock ConfigService
+    mockConfigService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      has: jest.fn(),
+      delete: jest.fn(),
+      clear: jest.fn(),
+    } as unknown as jest.Mocked<ConfigService>;
+
+    cacheCommand = new CacheCommand(mockCacheService, mockConfigService);
   });
 
   describe('stats()', () => {
@@ -108,6 +121,40 @@ describe('CacheCommand', () => {
       mockCacheService.enable.mockReturnValue(undefined);
 
       await expect(cacheCommand.enable()).resolves.not.toThrow();
+    });
+
+    it('should set max size when provided', async () => {
+      mockCacheService.enable.mockReturnValue(undefined);
+      mockCacheService.setMaxSize.mockReturnValue(undefined);
+      mockConfigService.set.mockReturnValue(undefined);
+
+      const maxSize = 1024 * 1024 * 500; // 500MB
+      await cacheCommand.enable(maxSize);
+
+      expect(mockConfigService.set).toHaveBeenCalledWith('cache.maxSize', maxSize);
+      expect(mockCacheService.setMaxSize).toHaveBeenCalledWith(maxSize);
+      expect(mockCacheService.enable).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not set max size when not provided', async () => {
+      mockCacheService.enable.mockReturnValue(undefined);
+
+      await cacheCommand.enable();
+
+      expect(mockConfigService.set).not.toHaveBeenCalled();
+      expect(mockCacheService.setMaxSize).not.toHaveBeenCalled();
+      expect(mockCacheService.enable).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle zero as max size', async () => {
+      mockCacheService.enable.mockReturnValue(undefined);
+      mockCacheService.setMaxSize.mockReturnValue(undefined);
+      mockConfigService.set.mockReturnValue(undefined);
+
+      await cacheCommand.enable(0);
+
+      expect(mockConfigService.set).toHaveBeenCalledWith('cache.maxSize', 0);
+      expect(mockCacheService.setMaxSize).toHaveBeenCalledWith(0);
     });
   });
 

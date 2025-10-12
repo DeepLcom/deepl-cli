@@ -180,6 +180,16 @@ export class CacheService {
   }
 
   /**
+   * Set maximum cache size
+   */
+  setMaxSize(maxSize: number): void {
+    if (maxSize < 0) {
+      throw new Error('Max size must be positive');
+    }
+    this.maxSize = maxSize;
+  }
+
+  /**
    * Close database connection
    */
   close(): void {

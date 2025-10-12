@@ -533,7 +533,7 @@ program
   );
 
 // Cache command
-const cacheCommand = new CacheCommand(cacheService);
+const cacheCommand = new CacheCommand(cacheService, configService);
 
 program
   .command('cache')
@@ -568,10 +568,24 @@ program
   .addCommand(
     new Command('enable')
       .description('Enable translation cache')
-      .action(async () => {
+      .option('--max-size <size>', 'Maximum cache size (e.g., 100M, 1G, 500MB)')
+      .action(async (options: { maxSize?: string }) => {
         try {
-          await cacheCommand.enable();
+          let maxSizeBytes: number | undefined;
+
+          // Parse max size if provided
+          if (options.maxSize) {
+            const { parseSize } = await import('../utils/parse-size.js');
+            maxSizeBytes = parseSize(options.maxSize);
+          }
+
+          await cacheCommand.enable(maxSizeBytes);
           console.log(chalk.green('✓ Cache enabled'));
+
+          if (maxSizeBytes !== undefined) {
+            const { formatSize } = await import('../utils/parse-size.js');
+            console.log(chalk.gray(`Max size: ${formatSize(maxSizeBytes)}`));
+          }
         } catch (error) {
           console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);

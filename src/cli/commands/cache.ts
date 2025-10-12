@@ -4,6 +4,7 @@
  */
 
 import { CacheService } from '../../storage/cache.js';
+import { ConfigService } from '../../storage/config.js';
 
 interface CacheStats {
   entries: number;
@@ -14,9 +15,11 @@ interface CacheStats {
 
 export class CacheCommand {
   private cache: CacheService;
+  private config: ConfigService;
 
-  constructor(cache: CacheService) {
+  constructor(cache: CacheService, config: ConfigService) {
     this.cache = cache;
+    this.config = config;
   }
 
   /**
@@ -34,9 +37,16 @@ export class CacheCommand {
   }
 
   /**
-   * Enable cache
+   * Enable cache with optional max size
    */
-  async enable(): Promise<void> {
+  async enable(maxSize?: number): Promise<void> {
+    // Set max size if provided
+    if (maxSize !== undefined) {
+      this.config.set('cache.maxSize', maxSize);
+      this.cache.setMaxSize(maxSize);
+    }
+
+    // Enable cache
     this.cache.enable();
   }
 
