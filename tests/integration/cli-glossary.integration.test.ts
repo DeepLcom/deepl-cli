@@ -1,0 +1,310 @@
+/**
+ * Integration Tests for Glossary CLI Command
+ * Tests the glossary command CLI behavior, subcommands, and validation
+ */
+
+import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+describe('Glossary CLI Integration', () => {
+  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-glossary-${Date.now()}`);
+  const testDir = path.join(os.tmpdir(), `.deepl-cli-glossary-files-${Date.now()}`);
+
+  // Helper to run CLI commands with isolated config directory
+  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
+    return execSync(command, {
+      encoding: 'utf-8',
+      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+      ...options,
+    });
+  };
+
+  beforeAll(() => {
+    // Create test directories
+    if (!fs.existsSync(testConfigDir)) {
+      fs.mkdirSync(testConfigDir, { recursive: true });
+    }
+    if (!fs.existsSync(testDir)) {
+      fs.mkdirSync(testDir, { recursive: true });
+    }
+  });
+
+  afterAll(() => {
+    // Clean up test directories
+    if (fs.existsSync(testConfigDir)) {
+      fs.rmSync(testConfigDir, { recursive: true, force: true });
+    }
+    if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  describe('deepl glossary --help', () => {
+    it('should display help for glossary command', () => {
+      const output = runCLI('deepl glossary --help');
+
+      expect(output).toContain('Usage:');
+      expect(output).toContain('deepl glossary');
+      expect(output).toContain('Manage translation glossaries');
+      expect(output).toContain('create');
+      expect(output).toContain('list');
+      expect(output).toContain('show');
+      expect(output).toContain('entries');
+      expect(output).toContain('delete');
+    });
+  });
+
+  describe('deepl glossary without API key', () => {
+    it('should require API key for glossary operations', () => {
+      // Ensure no API key is set
+      try {
+        runCLI('deepl auth clear', { stdio: 'pipe' });
+      } catch {
+        // Ignore if already cleared
+      }
+
+      try {
+        runCLI('deepl glossary list', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate API key is required
+        expect(output).toMatch(/API key|auth|not set/i);
+      }
+    });
+  });
+
+  describe('glossary create', () => {
+    it('should require name, source-lang, target-lang, and file arguments', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('create <name> <source-lang> <target-lang> <file>');
+      expect(helpOutput).toContain('Create a glossary from TSV/CSV file');
+    });
+
+    it('should validate missing file argument', () => {
+      try {
+        runCLI('deepl glossary create "Test" en de', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing arguments or file
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should validate non-existent file', () => {
+      const nonExistentFile = path.join(testDir, 'does-not-exist.tsv');
+
+      try {
+        runCLI(`deepl glossary create "Test" en de "${nonExistentFile}"`, { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail (either file not found or API key missing)
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should accept TSV file', () => {
+      const tsvFile = path.join(testDir, 'glossary.tsv');
+      fs.writeFileSync(tsvFile, 'Hello\tHola\nWorld\tMundo\n', 'utf-8');
+
+      try {
+        // Will fail without API key but should recognize file type
+        runCLI(`deepl glossary create "Test" en es "${tsvFile}"`, { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth, not file format
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/invalid.*format|unsupported/i);
+      }
+    });
+
+    it('should accept CSV file', () => {
+      const csvFile = path.join(testDir, 'glossary.csv');
+      fs.writeFileSync(csvFile, 'Hello,Hola\nWorld,Mundo\n', 'utf-8');
+
+      try {
+        // Will fail without API key but should recognize file type
+        runCLI(`deepl glossary create "Test" en es "${csvFile}"`, { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth, not file format
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+  });
+
+  describe('glossary list', () => {
+    it('should have list subcommand', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('list');
+      expect(helpOutput).toContain('List all glossaries');
+    });
+
+    it('should not require any arguments', () => {
+      try {
+        // Will fail without API key
+        runCLI('deepl glossary list', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth, not missing arguments
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/required|missing.*argument/i);
+      }
+    });
+  });
+
+  describe('glossary show', () => {
+    it('should require name-or-id argument', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('show <name-or-id>');
+      expect(helpOutput).toContain('Show glossary details');
+    });
+
+    it('should validate missing argument', () => {
+      try {
+        runCLI('deepl glossary show', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should accept glossary name or ID', () => {
+      try {
+        // Will fail without API key but should accept argument
+        runCLI('deepl glossary show "My Glossary"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth or not found, not argument validation
+        expect(output).toMatch(/API key|auth|not found/i);
+      }
+    });
+  });
+
+  describe('glossary entries', () => {
+    it('should require name-or-id argument', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('entries <name-or-id>');
+      expect(helpOutput).toContain('Show glossary entries');
+    });
+
+    it('should validate missing argument', () => {
+      try {
+        runCLI('deepl glossary entries', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should accept glossary name or ID', () => {
+      try {
+        // Will fail without API key but should accept argument
+        runCLI('deepl glossary entries "My Glossary"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth or not found, not argument validation
+        expect(output).toMatch(/API key|auth|not found/i);
+      }
+    });
+  });
+
+  describe('glossary delete', () => {
+    it('should require name-or-id argument', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('delete <name-or-id>');
+      expect(helpOutput).toContain('Delete a glossary');
+    });
+
+    it('should validate missing argument', () => {
+      try {
+        runCLI('deepl glossary delete', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should accept glossary name or ID', () => {
+      try {
+        // Will fail without API key but should accept argument
+        runCLI('deepl glossary delete "My Glossary"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth or not found, not argument validation
+        expect(output).toMatch(/API key|auth|not found/i);
+      }
+    });
+  });
+
+  describe('command structure', () => {
+    it('should be available as a command', () => {
+      const helpOutput = runCLI('deepl --help');
+
+      // Glossary command should be listed in main help
+      expect(helpOutput).toContain('glossary');
+      expect(helpOutput).toContain('Manage translation glossaries');
+    });
+
+    it('should have subcommands', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      // Should show subcommands structure
+      expect(helpOutput).toContain('Commands:');
+      expect(helpOutput).toMatch(/create.*list.*show.*entries.*delete/s);
+    });
+
+    it('should support help for subcommands', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      // Should mention help command
+      expect(helpOutput).toContain('help [command]');
+    });
+  });
+
+  describe('file format support', () => {
+    it('should mention TSV format', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('TSV');
+    });
+
+    it('should mention CSV format', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('CSV');
+    });
+  });
+
+  describe('language validation', () => {
+    it('should accept valid language pairs', () => {
+      const tsvFile = path.join(testDir, 'valid-lang.tsv');
+      fs.writeFileSync(tsvFile, 'test\tprueba\n', 'utf-8');
+
+      try {
+        // Common language pairs
+        runCLI(`deepl glossary create "Test" en es "${tsvFile}"`, { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth, not language validation
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/invalid.*language|unsupported.*language/i);
+      }
+    });
+  });
+});
