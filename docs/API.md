@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
-**Version**: 0.2.0
-**Last Updated**: October 8, 2025
+**Version**: 0.2.1
+**Last Updated**: October 12, 2024
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -24,6 +24,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
 - [Configuration](#configuration)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
+- [Planned Features](#planned-features)
 
 ---
 
@@ -32,12 +33,8 @@ Complete reference for all DeepL CLI commands, options, and configuration.
 Options that work with all commands:
 
 ```bash
---version, -v        Show version number
---help, -h           Show help message
---config FILE        Use alternate config file
---no-cache           Disable translation cache for this command
---verbose            Enable verbose logging
---quiet, -q          Suppress non-error output
+--version           Show version number
+--help              Show help message
 ```
 
 **Examples:**
@@ -45,17 +42,19 @@ Options that work with all commands:
 ```bash
 # Show version
 deepl --version
-deepl -v
 
 # Get help
 deepl --help
 deepl translate --help
 
-# Use custom config
-deepl --config ~/.deepl-custom.json translate "Hello" --to es
+# Use custom config directory (via environment variable)
+export DEEPL_CONFIG_DIR=/path/to/config
+deepl translate "Hello" --to es
 
-# Disable cache for single command
-deepl --no-cache translate "Hello" --to es
+# Disable cache
+deepl cache disable
+deepl translate "Hello" --to es
+deepl cache enable
 ```
 
 ---
@@ -76,6 +75,14 @@ deepl translate [OPTIONS] [TEXT|FILE|DIRECTORY]
 
 Translate text directly, from stdin, from files, or entire directories. Supports multiple target languages, code preservation, and context-aware translation.
 
+**Input Sources:**
+- Direct text argument: `deepl translate "Hello" --to es`
+- From stdin: `echo "Hello" | deepl translate --to es`
+- Single file: `deepl translate README.md --to es --output README.es.md`
+- Directory: `deepl translate docs/ --to es --output docs-es/`
+
+**Note:** When reading from stdin or translating files, omit the text argument.
+
 #### Options
 
 **Required:**
@@ -86,23 +93,21 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--context TEXT` - Additional context for better translation
 
 **Output Options:**
-- `--output, -o PATH` - Output file or directory
-- `--format FORMAT` - Output format: `text` (default), `json`
+- `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text)
 
 **Translation Options:**
 - `--formality LEVEL` - Formality: `default`, `less`, `more`, `prefer_less`, `prefer_more`
 - `--model-type TYPE` - Model type: `quality_optimized` (default), `prefer_quality_optimized`, `latency_optimized`
 - `--preserve-code` - Preserve code blocks (markdown, etc.)
 - `--preserve-vars` - Preserve variables like `{name}`, `${var}`
-- `--preserve-formatting` - Preserve line breaks and formatting
-- `--split-sentences LEVEL` - Sentence splitting: `on`, `off`, `nonewlines`
+- `--split-sentences LEVEL` - Sentence splitting: `on` (default), `off`, `nonewlines`
 - `--tag-handling MODE` - XML tag handling: `xml`, `html`
 
-**Glossary:**
-- `--glossary NAME` - Use glossary by name or ID
+**API Options:**
+- `--api-url URL` - Custom API endpoint URL (for testing or private instances)
 
 **Batch Options (for directories):**
-- `--recursive, -r` - Process subdirectories recursively
+- `--recursive, -r` - Process subdirectories recursively (default: true)
 - `--pattern GLOB` - File pattern (e.g., `*.md`, `**/*.txt`)
 - `--concurrency N` - Number of parallel translations (default: 5)
 
@@ -141,6 +146,39 @@ deepl translate README.md --to es,fr,de --output translations/
 deepl translate tutorial.md --to es --output tutorial.es.md --preserve-code
 ```
 
+**Document translation:**
+```bash
+# Translate PDF document
+deepl translate document.pdf --to es --output document.es.pdf
+
+# Translate PowerPoint with formality
+deepl translate presentation.pptx --to de --formality more --output presentation.de.pptx
+
+# Translate Excel spreadsheet
+deepl translate report.xlsx --to fr --output report.fr.xlsx
+
+# Translate HTML file
+deepl translate website.html --to ja --output website.ja.html
+```
+
+**Supported Document Formats:**
+- `.pdf` - PDF documents (up to 10MB)
+- `.docx`, `.doc` - Microsoft Word
+- `.pptx` - Microsoft PowerPoint
+- `.xlsx` - Microsoft Excel
+- `.html`, `.htm` - HTML files
+- `.txt` - Plain text files (up to 30MB)
+- `.srt` - Subtitle files
+- `.xlf`, `.xliff` - XLIFF localization files
+
+**Document Translation Notes:**
+- Documents are translated on DeepL servers using async processing
+- Progress updates show status (queued → translating → done)
+- Billed characters are displayed after completion
+- Formatting, structure, and layout are automatically preserved
+- Large documents may take several seconds to translate
+- Maximum file sizes: 10MB (PDF), 30MB (other formats)
+
 **Directory translation:**
 ```bash
 # Translate all supported files
@@ -162,10 +200,7 @@ deepl translate "Bank" --to es --context "Financial institution"
 deepl translate app.json --to es --context "E-commerce checkout flow"
 ```
 
-**With glossary:**
-```bash
-deepl translate docs/ --to es --glossary tech-terms --output docs-es/
-```
+**Note:** The `--context` feature may not be supported by all DeepL API tiers. Check your API plan for context support availability.
 
 **Formality levels:**
 ```bash
@@ -223,6 +258,8 @@ deepl write [OPTIONS] TEXT
 
 Enhance text quality with AI-powered grammar checking, style improvement, and tone adjustment. Supports 8 languages.
 
+**File Detection:** The command automatically detects if the text argument is a file path. If a file exists at that path, it operates on the file; otherwise, it treats the argument as text to improve.
+
 #### Options
 
 **Required:**
@@ -245,15 +282,14 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
   - `prefer_enthusiastic`, `prefer_friendly`, etc. - Soft preferences
 
 **Output Options:**
-- `--alternatives` - Show all improvement alternatives
-- `--format FORMAT` - Output format: `text` (default), `json`
+- `--alternatives, -a` - Show all improvement alternatives
 - `--interactive, -i` - Interactive mode: choose from multiple alternatives
-- `--diff` - Show diff between original and improved text
-- `--check` - Check if text needs improvement without modifying
-- `--fix` - Auto-fix files in place
+- `--diff, -d` - Show diff between original and improved text
+- `--check, -c` - Check if text needs improvement without modifying (exits with 0 if no changes, 1 if improvements suggested)
+- `--fix, -f` - Auto-fix files in place
 - `--output, -o FILE` - Write output to file
 - `--in-place` - Edit file in place
-- `--backup` - Create backup before fixing (use with `--fix`)
+- `--backup, -b` - Create backup before fixing (use with `--fix`)
 
 #### Supported Languages
 
@@ -347,13 +383,19 @@ deepl watch [OPTIONS] PATH
 
 Monitor files or directories for changes and automatically translate them. Supports debouncing, glob patterns, and multiple target languages.
 
+**Behavior:**
+- Runs continuously until interrupted (Ctrl+C)
+- Shows translation statistics on exit
+- Detects file changes using filesystem watch
+- Debounces rapid changes to avoid duplicate translations
+
 #### Options
 
 **Required:**
 - `--targets, -t LANGS` - Target language(s), comma-separated
 
 **Watch Options:**
-- `--output, -o DIR` - Output directory (default: `./translations` for directories, same dir for files)
+- `--output, -o DIR` - Output directory (default: `<path>/translations` for directories, same dir for files)
 - `--pattern GLOB` - File pattern filter (e.g., `*.md`, `**/*.json`)
 - `--debounce MS` - Debounce delay in milliseconds (default: 300)
 
@@ -361,10 +403,10 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - `--from, -f LANG` - Source language (auto-detect if omitted)
 - `--formality LEVEL` - Formality level
 - `--preserve-code` - Preserve code blocks
-- `--glossary NAME` - Use glossary
 
 **Git Integration:**
 - `--auto-commit` - Auto-commit translations to git after each change
+- `--git-staged` - Only watch git-staged files (not yet implemented)
 
 #### Examples
 
@@ -471,30 +513,79 @@ deepl glossary <SUBCOMMAND>
 
 #### Subcommands
 
-##### `create <name> <source-lang> <target-lang> [file]`
+##### `create <name> <source-lang> <target-lang> <file>`
 
-Create a new glossary.
+Create a new glossary from a TSV or CSV file.
+
+**Arguments:**
+- `name` - Glossary name
+- `source-lang` - Source language code (e.g., `en`, `de`, `fr`)
+- `target-lang` - Target language code (e.g., `es`, `fr`, `ja`)
+- `file` - Path to TSV or CSV file with term pairs
+
+**File Format:**
+- **TSV** (Tab-Separated Values): `source_term<TAB>target_term`
+- **CSV** (Comma-Separated Values): `source_term,target_term`
+- One term pair per line
+- No header row required
+
+**Example file (glossary.tsv):**
+```
+API	API
+authentication	autenticación
+cache	caché
+```
 
 **Examples:**
 ```bash
+# Create glossary from TSV file
 deepl glossary create tech-terms en es glossary.tsv
+
+# Create glossary from CSV file
+deepl glossary create product-names en fr terms.csv
 ```
 
 ##### `list`
 
-List all glossaries.
+List all glossaries with their IDs, language pairs, and entry counts.
+
+**Example:**
+```bash
+deepl glossary list
+```
 
 ##### `show <name-or-id>`
 
-Show glossary details and entries.
+Show glossary details including name, ID, languages, creation date, and entry count.
+
+**Example:**
+```bash
+deepl glossary show tech-terms
+deepl glossary show abc-123-def-456
+```
 
 ##### `delete <name-or-id>`
 
-Delete a glossary.
+Delete a glossary by name or ID.
+
+**Example:**
+```bash
+deepl glossary delete tech-terms
+deepl glossary delete abc-123-def-456
+```
 
 ##### `entries <name-or-id>`
 
-Get glossary entries in TSV format.
+Get glossary entries in TSV format (suitable for backup or editing).
+
+**Example:**
+```bash
+# Export to file
+deepl glossary entries tech-terms > backup.tsv
+
+# View entries
+deepl glossary entries tech-terms
+```
 
 ---
 
@@ -511,16 +602,18 @@ deepl cache <SUBCOMMAND>
 #### Subcommands
 
 ##### `stats`
-Show cache statistics.
+Show cache statistics (status, entries count, size, percentage used).
 
 ##### `clear`
-Clear all cache entries.
+Clear all cache entries (displays: "✓ Cache cleared successfully").
 
-##### `enable [--max-size SIZE]`
-Enable cache.
+##### `enable`
+Enable cache (displays: "✓ Cache enabled").
+
+**Note:** To configure max cache size, use: `deepl config set cache.maxSize <bytes>`
 
 ##### `disable`
-Disable cache.
+Disable cache (displays: "✓ Cache disabled").
 
 ---
 
@@ -537,16 +630,39 @@ deepl config <SUBCOMMAND>
 #### Subcommands
 
 ##### `list`
-List all configuration values.
+List all configuration values (same as `get` without arguments).
 
-##### `get <key>`
-Get a specific configuration value.
+##### `get [key]`
+Get a specific configuration value, or all values if key is omitted.
+
+**Arguments:**
+- `key` (optional) - Configuration key in dot notation (e.g., `cache.maxSize`, `auth.apiKey`)
+
+**Examples:**
+```bash
+# Get all configuration
+deepl config get
+
+# Get specific value
+deepl config get cache.maxSize
+deepl config get auth.apiKey
+```
 
 ##### `set <key> <value>`
 Set a configuration value.
 
+**Arguments:**
+- `key` - Configuration key in dot notation
+- `value` - Value to set
+
+**Examples:**
+```bash
+deepl config set cache.maxSize 52428800
+deepl config set defaults.formality more
+```
+
 ##### `reset`
-Reset configuration to defaults.
+Reset configuration to defaults (keeps API key).
 
 ---
 
@@ -672,31 +788,67 @@ deepl auth <SUBCOMMAND>
 #### Subcommands
 
 ##### `set-key <api-key>`
-Set your DeepL API key.
+Set your DeepL API key and validate it with the DeepL API.
+
+**Arguments:**
+- `api-key` - Your DeepL API authentication key
+
+**Examples:**
+```bash
+deepl auth set-key YOUR-API-KEY-HERE
+# ✓ API key saved and validated successfully
+```
 
 ##### `show`
-Show current API key (masked).
+Show current API key (masked for security).
+
+**Output Format:** `API Key: abcdefgh...xyz123` (first 8 and last 4 characters visible)
+
+**Examples:**
+```bash
+deepl auth show
+# API Key: 12345678...abcd
+
+deepl auth show
+# No API key set
+```
 
 ##### `clear`
-Clear stored API key.
+Clear stored API key from configuration.
+
+**Examples:**
+```bash
+deepl auth clear
+# ✓ API key removed
+```
 
 ---
 
 ## Configuration
 
-Configuration file location: `~/.deepl-cli/config.json`
+**Configuration file location:**
+- **macOS**: `~/Library/Preferences/deepl-cli-nodejs/config.json`
+- **Linux**: `~/.config/deepl-cli-nodejs/config.json`
+- **Windows**: `%APPDATA%\deepl-cli-nodejs\Config\config.json`
+
+**Override location:** Set `DEEPL_CONFIG_DIR` environment variable
 
 ### Configuration Schema
 
 ```json
 {
-  "apiKey": "your-api-key",
+  "auth": {
+    "apiKey": "your-api-key"
+  },
+  "api": {
+    "baseUrl": null,
+    "usePro": false
+  },
   "defaults": {
-    "targetLang": "es",
+    "targetLangs": [],
     "sourceLang": null,
     "formality": "default",
-    "preserveFormatting": false,
-    "preserveCode": true,
+    "preserveCode": false,
     "splitSentences": "on"
   },
   "cache": {
@@ -706,10 +858,12 @@ Configuration file location: `~/.deepl-cli/config.json`
   },
   "output": {
     "format": "text",
-    "colorize": true
+    "color": true
   }
 }
 ```
+
+**Note:** Most users configure settings via `deepl config set` command rather than editing the file directly.
 
 ---
 
@@ -718,13 +872,12 @@ Configuration file location: `~/.deepl-cli/config.json`
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
-| 1 | General error |
-| 2 | Invalid arguments |
-| 3 | Authentication error |
-| 4 | API error (quota, rate limit, etc.) |
-| 5 | Network error |
-| 6 | File not found |
-| 7 | Configuration error |
+| 1 | Error (any type) |
+
+**Special Cases:**
+- `deepl write --check`: Exits with 0 if no changes needed, 1 if improvements suggested
+
+**Note:** Detailed exit codes (2-7) are planned for a future release. Currently, all errors exit with code 1.
 
 ---
 
@@ -757,6 +910,75 @@ export NO_COLOR=1
 
 ---
 
+## Planned Features
+
+The following features are planned for future releases but not yet implemented:
+
+### Global Options
+
+**`--config FILE`** - Use alternate configuration file
+```bash
+deepl --config ~/.deepl-custom.json translate "Hello" --to es
+```
+
+**`--no-cache`** - Disable translation cache for a single command
+```bash
+deepl translate --no-cache "Hello" --to es
+```
+
+**`--verbose`** - Enable verbose logging (API requests, cache hits, timing)
+```bash
+deepl --verbose translate README.md --to es --output README.es.md
+```
+
+**`--quiet, -q`** - Suppress non-error output
+```bash
+deepl --quiet translate docs/ --to es --output docs-es/
+```
+
+### Translation & Watch Commands
+
+**`--glossary NAME`** - Use glossary by name or ID for translate/watch commands
+```bash
+# Use glossary with translate command
+deepl translate "API authentication" --to es --glossary tech-terms
+
+# Use glossary with watch command
+deepl watch docs/ --targets es --glossary product-names
+```
+
+**`--preserve-formatting`** - Preserve line breaks and whitespace formatting
+```bash
+deepl translate poem.txt --to fr --preserve-formatting --output poem.fr.txt
+```
+
+### Output Formats
+
+**`--format json`** - JSON output for translate and write commands
+```bash
+# Translation with JSON output
+deepl translate "Hello" --to es --format json
+# {"text": "Hola", "detectedSourceLang": "en", "billedCharacters": 5}
+
+# Write with JSON output
+deepl write "This are good." --lang en-US --format json
+# {"original": "This are good.", "improved": "This is good.", "changes": 1}
+```
+
+### Exit Codes
+
+More granular exit codes for error handling:
+- **0** - Success
+- **1** - General error
+- **2** - Authentication error (invalid API key)
+- **3** - API rate limit exceeded
+- **4** - Quota exceeded
+- **5** - Network error
+- **6** - Invalid input (file not found, unsupported format)
+- **7** - Configuration error
+
+---
+
 ## See Also
 
 - [Quickstart Guide](./QUICKSTART.md)
@@ -766,5 +988,5 @@ export NO_COLOR=1
 
 ---
 
-**Last Updated**: October 8, 2025
-**DeepL CLI Version**: 0.2.0
+**Last Updated**: October 12, 2024
+**DeepL CLI Version**: 0.2.1

@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Document Translation** - Translate complete documents while preserving formatting
+  - Support for 11 document formats: PDF, DOCX, PPTX, XLSX, HTML, TXT, SRT, XLIFF, DOC, HTM
+  - Async processing with progress tracking (queued → translating → done)
+  - Formality control for document translation
+  - File size limits: 10MB (PDF), 30MB (other formats)
+  - Billed characters displayed after completion
+  - Formatting, structure, and layout automatically preserved
+  - DocumentTranslationService with upload/poll/download workflow
+  - Comprehensive test coverage:
+    - 25 unit tests for DocumentTranslationService (100% coverage)
+    - 23 integration tests for document API methods (upload, status, download)
+    - 8 E2E tests for document translation workflows
+  - Added example script: `examples/15-document-translation.sh` with 7 scenarios
+  - Full documentation in README.md and docs/API.md
+  - Usage: `deepl translate document.pdf --to es --output document.es.pdf`
 
 ### Changed
 - **Test Coverage Improvements** - Comprehensive testing expansion for low-coverage areas

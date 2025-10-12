@@ -660,7 +660,11 @@ Before submitting a PR:
   - [ ] E2E tests for user-facing features
   - [ ] HTTP mocking with nock for API calls
   - [ ] Test isolation using DEEPL_CONFIG_DIR
-- [ ] Documentation is updated if needed
+- [ ] **Documentation is updated:**
+  - [ ] README.md updated if user-facing feature
+  - [ ] API.md updated if command/flag added (verify with grep)
+  - [ ] DESIGN.md updated if architecture changed
+  - [ ] Working example script added to examples/ directory
 - [ ] Manual testing completed
 - [ ] Commit messages follow guidelines
 - [ ] PR description is complete and clear
@@ -866,8 +870,60 @@ Update when:
 - Adding new dependencies
 - Updating TDD workflow
 
+#### API.md - Complete API Reference
+Update when:
+- Adding new commands or subcommands
+- Adding, removing, or modifying command flags/options
+- Changing command behavior or output format
+- Adding new configuration options
+- Modifying environment variables
+- Changing exit codes
+
+**CRITICAL: API.md must accurately reflect the actual implementation.**
+
+**Verification process:**
+1. **Before adding a new flag to docs** - Verify it exists in `src/cli/index.ts` with `grep "\.option.*--flag-name"`
+2. **Check command structure** - Ensure synopsis matches commander.js definitions
+3. **Validate examples** - Test documented examples with the actual CLI
+4. **Check defaults** - Verify default values match code implementation
+5. **Verify output format** - Ensure documented output matches actual output
+
+**When adding a new feature:**
+1. Implement the feature in code (with tests)
+2. Update API.md with complete documentation:
+   - Add command/subcommand to Table of Contents
+   - Document all flags with correct short forms (e.g., `--output, -o`)
+   - Include default values in flag descriptions
+   - Add comprehensive examples covering common use cases
+   - Document error behavior and exit codes
+   - Add any special notes or warnings
+3. If feature is planned but not implemented, add to "Planned Features" section instead
+
+**Maintenance checklist:**
+- [ ] All documented flags exist in implementation
+- [ ] All implemented flags are documented
+- [ ] Short flag forms match implementation (e.g., `-f, --fix`)
+- [ ] Default values are correct and documented
+- [ ] Examples use correct syntax
+- [ ] Output format examples match actual output
+- [ ] Exit codes are accurate
+- [ ] Planned features are clearly marked as "not yet implemented"
+
+**Example verification:**
+```bash
+# Check if a flag exists
+grep "\.option.*--formality" src/cli/index.ts
+
+# Verify default value
+grep "\.option.*--debounce" src/cli/index.ts
+# Should show: .option('--debounce <ms>', '... (default: 300)', parseInt)
+
+# Test documented example
+deepl translate "Hello" --to es
+# Verify output matches docs
+```
+
 #### Other Documentation
-- **API.md** - When changing API interfaces (create when needed)
 - **CONTRIBUTING.md** - When modifying contribution process (create when needed)
 - **CHANGELOG.md** - For every release with user-facing changes (create when needed)
 
