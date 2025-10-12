@@ -189,6 +189,23 @@ These features were identified during Phase 2 completion and deferred for future
 **Dependencies**: None
 **Files to modify**: All CLI commands, create utils/request-formatter.ts
 
+#### Exit Codes Enhancement
+
+- [ ] **Granular exit codes** - More specific error codes for better error handling in scripts/CI
+  - **0** - Success
+  - **1** - General error
+  - **2** - Authentication error (invalid API key)
+  - **3** - API rate limit exceeded
+  - **4** - Quota exceeded
+  - **5** - Network error
+  - **6** - Invalid input (file not found, unsupported format)
+  - **7** - Configuration error
+
+**Estimated effort**: 2-3 hours implementation + 1 hour testing
+**Priority**: Medium (improves CI/CD integration)
+**Dependencies**: None
+**Files to modify**: All CLI commands, add exit code constants
+
 ---
 
 ## 🎯 Feature Parity with Official SDKs (✅ COMPLETE - October 12, 2025)

@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
 **Version**: 0.2.1
-**Last Updated**: October 12, 2024
+**Last Updated**: October 12, 2025
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -24,7 +24,6 @@ Complete reference for all DeepL CLI commands, options, and configuration.
 - [Configuration](#configuration)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
-- [Planned Features](#planned-features)
 
 ---
 
@@ -1100,44 +1099,6 @@ export NO_COLOR=1
 
 ---
 
-## Planned Features
-
-The following features are planned for future releases but not yet implemented:
-
-### Global Options
-
-**`--verbose`** - Enable verbose logging (API requests, cache hits, timing)
-```bash
-deepl --verbose translate README.md --to es --output README.es.md
-```
-
-### Cache Management
-
-**`cache enable --max-size SIZE`** - Set maximum cache size when enabling cache
-```bash
-# Enable cache with custom size (100MB)
-deepl cache enable --max-size 104857600
-
-# Enable cache with size in human-readable format
-deepl cache enable --max-size 100M
-```
-
-**Note:** This is now implemented! Use `deepl cache enable --max-size 100M` to set the cache size.
-
-### Exit Codes
-
-More granular exit codes for error handling:
-- **0** - Success
-- **1** - General error
-- **2** - Authentication error (invalid API key)
-- **3** - API rate limit exceeded
-- **4** - Quota exceeded
-- **5** - Network error
-- **6** - Invalid input (file not found, unsupported format)
-- **7** - Configuration error
-
----
-
 ## See Also
 
 - [Quickstart Guide](./QUICKSTART.md)
@@ -1147,5 +1108,5 @@ More granular exit codes for error handling:
 
 ---
 
-**Last Updated**: October 12, 2024
+**Last Updated**: October 12, 2025
 **DeepL CLI Version**: 0.2.1
