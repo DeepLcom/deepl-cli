@@ -39,6 +39,11 @@ describe('GlossaryCommand', () => {
       getGlossaryByName: jest.fn().mockResolvedValue(mockGlossary),
       deleteGlossary: jest.fn().mockResolvedValue(undefined),
       getGlossaryEntries: jest.fn().mockResolvedValue({ hello: 'hola', world: 'mundo' }),
+      getGlossaryLanguages: jest.fn().mockResolvedValue([]),
+      addEntry: jest.fn().mockResolvedValue(mockGlossary),
+      updateEntry: jest.fn().mockResolvedValue(mockGlossary),
+      removeEntry: jest.fn().mockResolvedValue(mockGlossary),
+      renameGlossary: jest.fn().mockResolvedValue(mockGlossary),
       entriesToTSV: jest.fn().mockReturnValue('hello\thola\nworld\tmundo'),
       tsvToEntries: jest.fn().mockReturnValue({ hello: 'hola', world: 'mundo' }),
     } as unknown as jest.Mocked<GlossaryService>;
@@ -159,6 +164,126 @@ describe('GlossaryCommand', () => {
       expect(result).toEqual({ hello: 'hola', world: 'mundo' });
       expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
       expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith('123-456-789');
+    });
+  });
+
+  describe('listLanguages()', () => {
+    it('should list supported glossary language pairs', async () => {
+      const mockPairs = [
+        { sourceLang: 'en', targetLang: 'es' },
+        { sourceLang: 'de', targetLang: 'en' },
+      ];
+      (mockGlossaryService.getGlossaryLanguages as jest.Mock).mockResolvedValue(mockPairs);
+
+      const result = await glossaryCommand.listLanguages();
+
+      expect(result).toEqual(mockPairs);
+      expect(mockGlossaryService.getGlossaryLanguages).toHaveBeenCalled();
+    });
+  });
+
+  describe('addEntry()', () => {
+    it('should add entry to glossary by ID', async () => {
+      (mockGlossaryService.addEntry as jest.Mock).mockResolvedValue(mockGlossary);
+
+      const result = await glossaryCommand.addEntry('123-456-789', 'hello', 'hola');
+
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.addEntry).toHaveBeenCalledWith('123-456-789', 'hello', 'hola');
+      expect(result).toEqual(mockGlossary);
+    });
+
+    it('should add entry to glossary by name', async () => {
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      (mockGlossaryService.addEntry as jest.Mock).mockResolvedValue(mockGlossary);
+
+      const result = await glossaryCommand.addEntry('Tech Terms', 'hello', 'hola');
+
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
+      expect(mockGlossaryService.addEntry).toHaveBeenCalledWith('123-456-789', 'hello', 'hola');
+      expect(result).toEqual(mockGlossary);
+    });
+  });
+
+  describe('updateEntry()', () => {
+    it('should update entry in glossary by ID', async () => {
+      (mockGlossaryService.updateEntry as jest.Mock).mockResolvedValue(mockGlossary);
+
+      const result = await glossaryCommand.updateEntry('123-456-789', 'hello', 'hola updated');
+
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith('123-456-789', 'hello', 'hola updated');
+      expect(result).toEqual(mockGlossary);
+    });
+
+    it('should update entry in glossary by name', async () => {
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      (mockGlossaryService.updateEntry as jest.Mock).mockResolvedValue(mockGlossary);
+
+      const result = await glossaryCommand.updateEntry('Tech Terms', 'hello', 'hola updated');
+
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
+      expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith('123-456-789', 'hello', 'hola updated');
+      expect(result).toEqual(mockGlossary);
+    });
+  });
+
+  describe('removeEntry()', () => {
+    it('should remove entry from glossary by ID', async () => {
+      (mockGlossaryService.removeEntry as jest.Mock).mockResolvedValue(mockGlossary);
+
+      const result = await glossaryCommand.removeEntry('123-456-789', 'hello');
+
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith('123-456-789', 'hello');
+      expect(result).toEqual(mockGlossary);
+    });
+
+    it('should remove entry from glossary by name', async () => {
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      (mockGlossaryService.removeEntry as jest.Mock).mockResolvedValue(mockGlossary);
+
+      const result = await glossaryCommand.removeEntry('Tech Terms', 'hello');
+
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
+      expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith('123-456-789', 'hello');
+      expect(result).toEqual(mockGlossary);
+    });
+  });
+
+  describe('rename()', () => {
+    it('should rename glossary by ID', async () => {
+      const renamedGlossary = { ...mockGlossary, name: 'New Name' };
+      (mockGlossaryService.renameGlossary as jest.Mock).mockResolvedValue(renamedGlossary);
+
+      const result = await glossaryCommand.rename('123-456-789', 'New Name');
+
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.renameGlossary).toHaveBeenCalledWith('123-456-789', 'New Name');
+      expect(result).toEqual(renamedGlossary);
+      expect(result.name).toBe('New Name');
+    });
+
+    it('should rename glossary by name', async () => {
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      const renamedGlossary = { ...mockGlossary, name: 'New Name' };
+      (mockGlossaryService.renameGlossary as jest.Mock).mockResolvedValue(renamedGlossary);
+
+      const result = await glossaryCommand.rename('Tech Terms', 'New Name');
+
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
+      expect(mockGlossaryService.renameGlossary).toHaveBeenCalledWith('123-456-789', 'New Name');
+      expect(result).toEqual(renamedGlossary);
+    });
+
+    it('should handle rename errors', async () => {
+      (mockGlossaryService.renameGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('New name must be different from current name')
+      );
+
+      await expect(
+        glossaryCommand.rename('123-456-789', 'Tech Terms')
+      ).rejects.toThrow('New name must be different from current name');
     });
   });
 

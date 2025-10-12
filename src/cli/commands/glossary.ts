@@ -120,6 +120,17 @@ export class GlossaryCommand {
   }
 
   /**
+   * Rename a glossary
+   */
+  async rename(
+    nameOrId: string,
+    newName: string
+  ): Promise<GlossaryInfo> {
+    const glossary = await this.show(nameOrId);
+    return this.glossaryService.renameGlossary(glossary.glossary_id, newName);
+  }
+
+  /**
    * Format glossary info for display
    */
   formatGlossaryInfo(glossary: GlossaryInfo): string {

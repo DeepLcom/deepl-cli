@@ -533,4 +533,77 @@ describe('Glossary CLI Integration', () => {
       expect(helpOutput).toContain('Remove an entry from a glossary');
     });
   });
+
+  describe('glossary rename', () => {
+    it('should have rename subcommand', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('rename');
+      expect(helpOutput).toContain('Rename a glossary');
+    });
+
+    it('should require name-or-id and new-name arguments', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('rename <name-or-id> <new-name>');
+    });
+
+    it('should validate missing arguments', () => {
+      try {
+        runCLI('deepl glossary rename', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should validate missing new-name', () => {
+      try {
+        runCLI('deepl glossary rename "My Glossary"', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should indicate missing argument
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should accept all required arguments', () => {
+      try {
+        // Will fail without API key but should accept arguments
+        runCLI('deepl glossary rename "My Glossary" "New Name"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth or not found, not argument validation
+        expect(output).toMatch(/API key|auth|not found/i);
+      }
+    });
+
+    it('should accept glossary ID as identifier', () => {
+      try {
+        // Will fail without API key but should accept ID format
+        runCLI('deepl glossary rename "abc123-def456" "New Name"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth or not found, not argument validation
+        expect(output).toMatch(/API key|auth|not found/i);
+      }
+    });
+
+    it('should accept --help flag', () => {
+      const helpOutput = runCLI('deepl glossary rename --help');
+
+      expect(helpOutput).toContain('rename');
+      expect(helpOutput).toContain('Rename a glossary');
+    });
+
+    it('should show rename in glossary help', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('rename');
+      expect(helpOutput).toMatch(/rename.*<name-or-id>.*<new-name>/);
+    });
+  });
 });

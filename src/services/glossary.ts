@@ -238,6 +238,43 @@ export class GlossaryService {
   }
 
   /**
+   * Rename a glossary
+   * Note: DeepL API doesn't provide a direct rename endpoint,
+   * so we need to delete the old glossary and create a new one with the same entries
+   */
+  async renameGlossary(
+    glossaryId: string,
+    newName: string
+  ): Promise<GlossaryInfo> {
+    // Validate input
+    if (!newName || newName.trim() === '') {
+      throw new Error('New glossary name cannot be empty');
+    }
+
+    // Get glossary info to preserve language pair
+    const glossary = await this.client.getGlossary(glossaryId);
+
+    // Check if new name is different from current name
+    if (glossary.name === newName) {
+      throw new Error('New name must be different from current name');
+    }
+
+    // Get existing entries
+    const tsv = await this.client.getGlossaryEntries(glossaryId);
+
+    // Delete old glossary
+    await this.client.deleteGlossary(glossaryId);
+
+    // Create new glossary with new name and same entries
+    return this.client.createGlossary(
+      newName,
+      glossary.source_lang,
+      glossary.target_lang,
+      tsv
+    );
+  }
+
+  /**
    * Convert entries object to TSV format
    */
   entriesToTSV(entries: Record<string, string>): string {

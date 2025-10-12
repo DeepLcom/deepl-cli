@@ -570,4 +570,111 @@ describe('GlossaryService', () => {
       ).rejects.toThrow('Cannot remove last entry from glossary. Delete the glossary instead.');
     });
   });
+
+  describe('renameGlossary()', () => {
+    it('should rename a glossary', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'old-name',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 3,
+      });
+
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST\nHello\tHola');
+      mockDeepLClient.deleteGlossary.mockResolvedValue(undefined);
+      mockDeepLClient.createGlossary.mockResolvedValue({
+        glossary_id: 'test-456',
+        name: 'new-name',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T01:00:00Z',
+        entry_count: 3,
+      });
+
+      const result = await glossaryService.renameGlossary('test-123', 'new-name');
+
+      expect(result.name).toBe('new-name');
+      expect(result.entry_count).toBe(3);
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('test-123');
+      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith('test-123');
+      expect(mockDeepLClient.deleteGlossary).toHaveBeenCalledWith('test-123');
+      expect(mockDeepLClient.createGlossary).toHaveBeenCalledWith(
+        'new-name',
+        'en',
+        'es',
+        'API\tAPI\nREST\tREST\nHello\tHola'
+      );
+    });
+
+    it('should validate new name is not empty', async () => {
+      await expect(
+        glossaryService.renameGlossary('test-123', '')
+      ).rejects.toThrow('New glossary name cannot be empty');
+    });
+
+    it('should validate new name is different from current name', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'same-name',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 3,
+      });
+
+      await expect(
+        glossaryService.renameGlossary('test-123', 'same-name')
+      ).rejects.toThrow('New name must be different from current name');
+    });
+
+    it('should handle API errors', async () => {
+      mockDeepLClient.getGlossary.mockRejectedValue(
+        new Error('Glossary not found')
+      );
+
+      await expect(
+        glossaryService.renameGlossary('test-123', 'new-name')
+      ).rejects.toThrow('Glossary not found');
+    });
+
+    it('should preserve all entries after rename', async () => {
+      const existingEntries = 'API\tAPI\nREST\tREST\nHello\tHola\nWorld\tMundo';
+
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'old-name',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T00:00:00Z',
+        entry_count: 4,
+      });
+
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue(existingEntries);
+      mockDeepLClient.deleteGlossary.mockResolvedValue(undefined);
+      mockDeepLClient.createGlossary.mockResolvedValue({
+        glossary_id: 'test-456',
+        name: 'new-name',
+        ready: true,
+        source_lang: 'en',
+        target_lang: 'es',
+        creation_time: '2024-01-01T01:00:00Z',
+        entry_count: 4,
+      });
+
+      await glossaryService.renameGlossary('test-123', 'new-name');
+
+      expect(mockDeepLClient.createGlossary).toHaveBeenCalledWith(
+        'new-name',
+        'en',
+        'es',
+        existingEntries
+      );
+    });
+  });
 });

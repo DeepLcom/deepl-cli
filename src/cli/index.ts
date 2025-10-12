@@ -754,6 +754,26 @@ program
           process.exit(1);
         }
       })
+  )
+  .addCommand(
+    new Command('rename')
+      .description('Rename a glossary')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .argument('<new-name>', 'New glossary name')
+      .action(async (nameOrId: string, newName: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          const glossary = await glossaryCommand.rename(nameOrId, newName);
+          console.log(chalk.green('✓ Glossary renamed successfully'));
+          console.log(glossaryCommand.formatGlossaryInfo(glossary));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
   );
 
 // Hooks command
