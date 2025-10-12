@@ -59,6 +59,13 @@ interface DeepLDocumentStatusResponse {
   error_message?: string;
 }
 
+interface DeepLGlossaryLanguagePairsResponse {
+  supported_languages: Array<{
+    source_lang: string;
+    target_lang: string;
+  }>;
+}
+
 export interface GlossaryInfo {
   glossary_id: string;
   name: string;
@@ -82,6 +89,11 @@ export interface UsageInfo {
 export interface LanguageInfo {
   language: Language;
   name: string;
+}
+
+export interface GlossaryLanguagePair {
+  sourceLang: Language;
+  targetLang: Language;
 }
 
 const FREE_API_URL = 'https://api-free.deepl.com';
@@ -221,6 +233,25 @@ export class DeepLClient {
       return response.map((lang) => ({
         language: this.normalizeLanguage(lang.language),
         name: lang.name,
+      }));
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Get supported glossary language pairs
+   */
+  async getGlossaryLanguages(): Promise<GlossaryLanguagePair[]> {
+    try {
+      const response = await this.makeRequest<DeepLGlossaryLanguagePairsResponse>(
+        'GET',
+        '/v2/glossary-language-pairs'
+      );
+
+      return response.supported_languages.map((pair) => ({
+        sourceLang: this.normalizeLanguage(pair.source_lang),
+        targetLang: this.normalizeLanguage(pair.target_lang),
       }));
     } catch (error) {
       throw this.handleError(error);

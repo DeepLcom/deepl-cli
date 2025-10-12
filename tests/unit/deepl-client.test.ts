@@ -1032,4 +1032,74 @@ describe('DeepLClient', () => {
       });
     });
   });
+
+  describe('getGlossaryLanguages()', () => {
+    it('should return supported glossary language pairs', async () => {
+      nock(baseUrl)
+        .get('/v2/glossary-language-pairs')
+        .reply(200, {
+          supported_languages: [
+            { source_lang: 'en', target_lang: 'de' },
+            { source_lang: 'de', target_lang: 'en' },
+            { source_lang: 'en', target_lang: 'fr' },
+          ],
+        });
+
+      const pairs = await client.getGlossaryLanguages();
+
+      expect(pairs).toHaveLength(3);
+      expect(pairs[0]?.sourceLang).toBe('en');
+      expect(pairs[0]?.targetLang).toBe('de');
+      expect(pairs[1]?.sourceLang).toBe('de');
+      expect(pairs[1]?.targetLang).toBe('en');
+    });
+
+    it('should normalize language codes to lowercase', async () => {
+      nock(baseUrl)
+        .get('/v2/glossary-language-pairs')
+        .reply(200, {
+          supported_languages: [
+            { source_lang: 'EN', target_lang: 'DE' },
+            { source_lang: 'EN-US', target_lang: 'ES' },
+          ],
+        });
+
+      const pairs = await client.getGlossaryLanguages();
+
+      expect(pairs[0]?.sourceLang).toBe('en');
+      expect(pairs[0]?.targetLang).toBe('de');
+      expect(pairs[1]?.sourceLang).toBe('en-us');
+      expect(pairs[1]?.targetLang).toBe('es');
+    });
+
+    it('should handle empty response', async () => {
+      nock(baseUrl)
+        .get('/v2/glossary-language-pairs')
+        .reply(200, {
+          supported_languages: [],
+        });
+
+      const pairs = await client.getGlossaryLanguages();
+
+      expect(pairs).toHaveLength(0);
+    });
+
+    it('should handle API errors', async () => {
+      nock(baseUrl)
+        .get('/v2/glossary-language-pairs')
+        .reply(403, {
+          message: 'Authentication failed',
+        });
+
+      await expect(client.getGlossaryLanguages()).rejects.toThrow('Authentication failed');
+    });
+
+    it('should handle network errors', async () => {
+      nock(baseUrl)
+        .get('/v2/glossary-language-pairs')
+        .replyWithError('Network error');
+
+      await expect(client.getGlossaryLanguages()).rejects.toThrow();
+    });
+  });
 });

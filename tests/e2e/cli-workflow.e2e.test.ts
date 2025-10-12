@@ -885,4 +885,68 @@ describe('CLI Workflow E2E', () => {
       expect(helpOutput).toMatch(/format.*convert/i);
     });
   });
+
+  describe('Glossary Languages Workflow', () => {
+    it('should display glossary languages help text', () => {
+      const helpOutput = execSync('deepl glossary --help', { encoding: 'utf-8' });
+
+      // Should mention languages subcommand
+      expect(helpOutput).toContain('languages');
+      expect(helpOutput).toContain('List supported glossary language pairs');
+    });
+
+    it('should display help for glossary languages subcommand', () => {
+      const helpOutput = execSync('deepl glossary languages --help', { encoding: 'utf-8' });
+
+      expect(helpOutput).toContain('Usage:');
+      expect(helpOutput).toContain('languages');
+      expect(helpOutput).toContain('List supported glossary language pairs');
+    });
+
+    it('should require API key for glossary languages', () => {
+      // Clear API key first
+      try {
+        runCLI('deepl auth clear');
+      } catch {
+        // Ignore if already cleared
+      }
+
+      try {
+        runCLI('deepl glossary languages');
+        fail('Should have thrown an error about missing API key');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout || error.message;
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should not require any arguments', () => {
+      try {
+        // Will fail without API key but should not require arguments
+        runCLI('deepl glossary languages');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth, not missing arguments
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/required|missing.*argument/i);
+      }
+    });
+
+    it('should exit with non-zero on authentication failure', () => {
+      // Ensure no API key is set
+      try {
+        runCLI('deepl auth clear');
+      } catch {
+        // Ignore if already cleared
+      }
+
+      try {
+        runCLI('deepl glossary languages');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        // Non-zero exit code
+        expect(error.status).toBeGreaterThan(0);
+      }
+    });
+  });
 });

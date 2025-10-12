@@ -669,6 +669,19 @@ deepl glossary entries tech-terms
 # Delete glossary
 deepl glossary delete tech-terms
 # ✓ Glossary deleted: tech-terms
+
+# List supported glossary language pairs
+deepl glossary languages
+# Supported glossary language pairs:
+# de → en
+# de → fr
+# de → it
+# en → de
+# en → es
+# en → fr
+# en → ja
+# en → pt
+# ...
 ```
 
 **Glossary file format (TSV):**

@@ -3,7 +3,7 @@
  * Manages DeepL glossaries
  */
 
-import { DeepLClient, GlossaryInfo } from '../api/deepl-client.js';
+import { DeepLClient, GlossaryInfo, GlossaryLanguagePair } from '../api/deepl-client.js';
 
 export class GlossaryService {
   private client: DeepLClient;
@@ -92,6 +92,13 @@ export class GlossaryService {
   async getGlossaryEntries(glossaryId: string): Promise<Record<string, string>> {
     const tsv = await this.client.getGlossaryEntries(glossaryId);
     return this.tsvToEntries(tsv);
+  }
+
+  /**
+   * Get supported glossary language pairs
+   */
+  async getGlossaryLanguages(): Promise<GlossaryLanguagePair[]> {
+    return this.client.getGlossaryLanguages();
   }
 
   /**

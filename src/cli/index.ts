@@ -675,6 +675,23 @@ program
           process.exit(1);
         }
       })
+  )
+  .addCommand(
+    new Command('languages')
+      .description('List supported glossary language pairs')
+      .action(async () => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          const pairs = await glossaryCommand.listLanguages();
+          console.log(glossaryCommand.formatLanguagePairs(pairs));
+        } catch (error) {
+          console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
   );
 
 // Hooks command

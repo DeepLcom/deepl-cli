@@ -307,4 +307,43 @@ describe('Glossary CLI Integration', () => {
       }
     });
   });
+
+  describe('glossary languages', () => {
+    it('should have languages subcommand', () => {
+      const helpOutput = runCLI('deepl glossary --help');
+
+      expect(helpOutput).toContain('languages');
+      expect(helpOutput).toContain('List supported glossary language pairs');
+    });
+
+    it('should not require any arguments', () => {
+      try {
+        // Will fail without API key
+        runCLI('deepl glossary languages', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on auth, not missing arguments
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/required|missing.*argument/i);
+      }
+    });
+
+    it('should not accept extraneous arguments', () => {
+      try {
+        // Will fail without API key, but should not accept extra args
+        runCLI('deepl glossary languages extra-arg', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail (either too many args or auth)
+        expect(output.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should accept --help flag', () => {
+      const helpOutput = runCLI('deepl glossary languages --help');
+
+      expect(helpOutput).toContain('languages');
+      expect(helpOutput).toContain('List supported glossary language pairs');
+    });
+  });
 });

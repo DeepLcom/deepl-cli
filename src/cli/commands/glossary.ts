@@ -5,7 +5,7 @@
 
 import * as fs from 'fs';
 import { GlossaryService } from '../../services/glossary.js';
-import { GlossaryInfo } from '../../api/deepl-client.js';
+import { GlossaryInfo, GlossaryLanguagePair } from '../../api/deepl-client.js';
 
 export class GlossaryCommand {
   private glossaryService: GlossaryService;
@@ -78,6 +78,13 @@ export class GlossaryCommand {
   }
 
   /**
+   * List supported glossary language pairs
+   */
+  async listLanguages(): Promise<GlossaryLanguagePair[]> {
+    return this.glossaryService.getGlossaryLanguages();
+  }
+
+  /**
    * Format glossary info for display
    */
   formatGlossaryInfo(glossary: GlossaryInfo): string {
@@ -118,6 +125,21 @@ export class GlossaryCommand {
 
     const lines = Object.entries(entries).map(
       ([source, target]) => `${source} → ${target}`
+    );
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Format glossary language pairs for display
+   */
+  formatLanguagePairs(pairs: GlossaryLanguagePair[]): string {
+    if (pairs.length === 0) {
+      return 'No language pairs available';
+    }
+
+    const lines = pairs.map(
+      (pair) => `${pair.sourceLang} → ${pair.targetLang}`
     );
 
     return lines.join('\n');
