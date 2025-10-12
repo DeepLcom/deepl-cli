@@ -81,3 +81,28 @@ export interface WriteImprovement {
 export interface WriteResult {
   improvements: WriteImprovement[];
 }
+
+// Document Translation Types
+
+export type DocumentStatusCode = 'queued' | 'translating' | 'error' | 'done';
+
+export interface DocumentHandle {
+  documentId: string;
+  documentKey: string;
+}
+
+export interface DocumentStatus {
+  documentId: string;
+  status: DocumentStatusCode;
+  secondsRemaining?: number;
+  billedCharacters?: number;
+  errorMessage?: string;
+}
+
+export interface DocumentTranslationOptions {
+  sourceLang?: Language;
+  targetLang: Language;
+  filename?: string;
+  formality?: Formality;
+  glossaryId?: string;
+}

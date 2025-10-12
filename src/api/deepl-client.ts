@@ -4,7 +4,15 @@
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { TranslationOptions, Language, WriteOptions, WriteImprovement } from '../types';
+import {
+  TranslationOptions,
+  Language,
+  WriteOptions,
+  WriteImprovement,
+  DocumentTranslationOptions,
+  DocumentHandle,
+  DocumentStatus,
+} from '../types';
 
 interface DeepLClientOptions {
   usePro?: boolean;
@@ -36,6 +44,19 @@ interface DeepLWriteResponse {
     target_language: string;
     detected_source_language?: string;
   }>;
+}
+
+interface DeepLDocumentUploadResponse {
+  document_id: string;
+  document_key: string;
+}
+
+interface DeepLDocumentStatusResponse {
+  document_id: string;
+  status: 'queued' | 'translating' | 'done' | 'error';
+  seconds_remaining?: number;
+  billed_characters?: number;
+  error_message?: string;
 }
 
 export interface GlossaryInfo {
@@ -424,6 +445,112 @@ export class DeepLClient {
         targetLanguage: improvement.target_language as WriteImprovement['targetLanguage'],
         detectedSourceLanguage: improvement.detected_source_language,
       }));
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Upload document for translation
+   */
+  async uploadDocument(
+    file: Buffer,
+    options: DocumentTranslationOptions
+  ): Promise<DocumentHandle> {
+    if (!file || file.length === 0) {
+      throw new Error('Document file cannot be empty');
+    }
+
+    if (!options.filename) {
+      throw new Error('filename is required when uploading document as Buffer');
+    }
+
+    // Create form data with multipart/form-data
+    const FormData = require('form-data');
+    const formData = new FormData();
+
+    formData.append('file', file, options.filename);
+    formData.append('target_lang', this.normalizeLanguage(options.targetLang).toUpperCase());
+
+    if (options.sourceLang) {
+      formData.append('source_lang', this.normalizeLanguage(options.sourceLang).toUpperCase());
+    }
+
+    if (options.formality) {
+      formData.append('formality', options.formality);
+    }
+
+    if (options.glossaryId) {
+      formData.append('glossary_id', options.glossaryId);
+    }
+
+    try {
+      const response = await this.client.request<DeepLDocumentUploadResponse>({
+        method: 'POST',
+        url: '/v2/document',
+        data: formData,
+        headers: {
+          ...formData.getHeaders(),
+        },
+      });
+
+      return {
+        documentId: response.data.document_id,
+        documentKey: response.data.document_key,
+      };
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Get document translation status
+   */
+  async getDocumentStatus(handle: DocumentHandle): Promise<DocumentStatus> {
+    const formData = new URLSearchParams();
+    formData.append('document_key', handle.documentKey);
+
+    try {
+      const response = await this.client.request<DeepLDocumentStatusResponse>({
+        method: 'POST',
+        url: `/v2/document/${handle.documentId}`,
+        data: formData.toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+
+      return {
+        documentId: response.data.document_id,
+        status: response.data.status,
+        secondsRemaining: response.data.seconds_remaining,
+        billedCharacters: response.data.billed_characters,
+        errorMessage: response.data.error_message,
+      };
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Download translated document
+   */
+  async downloadDocument(handle: DocumentHandle): Promise<Buffer> {
+    const formData = new URLSearchParams();
+    formData.append('document_key', handle.documentKey);
+
+    try {
+      const response = await this.client.request<Buffer>({
+        method: 'POST',
+        url: `/v2/document/${handle.documentId}/result`,
+        data: formData.toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        responseType: 'arraybuffer',
+      });
+
+      return Buffer.from(response.data);
     } catch (error) {
       throw this.handleError(error);
     }
