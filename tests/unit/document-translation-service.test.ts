@@ -5,32 +5,41 @@
 
 import { DocumentTranslationService } from '../../src/services/document-translation.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
-import * as fs from 'fs';
 
-// Mock fs module
-jest.mock('fs');
+// Mock the DeepL client
 jest.mock('../../src/api/deepl-client.js');
 
+// Mock fs module with jest.mock
+const mockExistsSync = jest.fn();
+const mockReadFileSync = jest.fn();
+const mockWriteFileSync = jest.fn();
+const mockMkdirSync = jest.fn();
+
+jest.mock('fs', () => ({
+  existsSync: (...args: unknown[]) => mockExistsSync(...args),
+  readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
+  writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
+  mkdirSync: (...args: unknown[]) => mockMkdirSync(...args),
+}));
+
 const MockedDeepLClient = DeepLClient as jest.MockedClass<typeof DeepLClient>;
-const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('DocumentTranslationService', () => {
   let service: DocumentTranslationService;
   let mockClient: jest.Mocked<DeepLClient>;
 
   beforeEach(() => {
-    // Setup default mocks for fs
-    (mockedFs.existsSync as jest.Mock) = jest.fn().mockReturnValue(true);
-    (mockedFs.readFileSync as jest.Mock) = jest.fn().mockReturnValue(Buffer.from('test'));
-    (mockedFs.writeFileSync as jest.Mock) = jest.fn();
-    (mockedFs.mkdirSync as jest.Mock) = jest.fn();
+    // Reset all mocks
+    jest.clearAllMocks();
+
+    // Setup default fs mock behaviors
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(Buffer.from('test'));
+    mockWriteFileSync.mockImplementation(() => {});
+    mockMkdirSync.mockImplementation(() => '');
 
     mockClient = new MockedDeepLClient('test-key') as jest.Mocked<DeepLClient>;
     service = new DocumentTranslationService(mockClient);
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
   });
 
   describe('translateDocument', () => {
@@ -41,7 +50,7 @@ describe('DocumentTranslationService', () => {
       const translatedBuffer = Buffer.from('translated pdf content');
 
       // Override fs mocks for this test
-      (mockedFs.readFileSync as jest.Mock).mockReturnValue(fileBuffer);
+      mockReadFileSync.mockReturnValue(fileBuffer);
 
       // Mock DeepL client methods
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
@@ -91,14 +100,14 @@ describe('DocumentTranslationService', () => {
         documentKey: 'key-456',
       });
 
-      expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
+      expect(mockWriteFileSync).toHaveBeenCalledWith(
         outputPath,
         translatedBuffer
       );
     });
 
     it('should throw error if input file does not exist', async () => {
-      (mockedFs.existsSync as jest.Mock).mockReturnValue(false);
+      mockExistsSync.mockReturnValue(false);
 
       await expect(
         service.translateDocument('/nonexistent.pdf', '/output.pdf', {
@@ -112,7 +121,7 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/doc.es.pdf';
       const fileBuffer = Buffer.from('content');
 
-      (mockedFs.readFileSync as jest.Mock).mockReturnValue(fileBuffer);
+      mockReadFileSync.mockReturnValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -138,7 +147,7 @@ describe('DocumentTranslationService', () => {
       const fileBuffer = Buffer.from('content');
       const progressCallback = jest.fn();
 
-      (mockedFs.readFileSync as jest.Mock).mockReturnValue(fileBuffer);
+      mockReadFileSync.mockReturnValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -193,7 +202,7 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/doc.es.pdf';
       const fileBuffer = Buffer.from('content');
 
-      (mockedFs.readFileSync as jest.Mock).mockReturnValue(fileBuffer);
+      mockReadFileSync.mockReturnValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -216,7 +225,7 @@ describe('DocumentTranslationService', () => {
 
       // Should have made 5 status checks
       expect(mockClient.getDocumentStatus).toHaveBeenCalledTimes(5);
-      expect(mockedFs.writeFileSync).toHaveBeenCalled();
+      expect(mockWriteFileSync).toHaveBeenCalled();
     });
   });
 
