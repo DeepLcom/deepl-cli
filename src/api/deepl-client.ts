@@ -15,6 +15,7 @@ import {
   GlossaryInfo,
   GlossaryLanguagePair,
 } from '../types';
+import { normalizeGlossaryInfo, GlossaryApiResponse } from '../types/glossary.js';
 
 interface ProxyConfig {
   protocol?: 'http' | 'https';
@@ -514,7 +515,7 @@ export class DeepLClient {
     }
 
     try {
-      const response = await this.makeRequest<GlossaryInfo>(
+      const response = await this.makeRequest<GlossaryApiResponse>(
         'POST',
         '/v3/glossaries',
         {
@@ -526,7 +527,7 @@ export class DeepLClient {
         }
       );
 
-      return response;
+      return normalizeGlossaryInfo(response);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -537,12 +538,12 @@ export class DeepLClient {
    */
   async listGlossaries(): Promise<GlossaryInfo[]> {
     try {
-      const response = await this.makeRequest<{ glossaries: GlossaryInfo[] }>(
+      const response = await this.makeRequest<{ glossaries: GlossaryApiResponse[] }>(
         'GET',
         '/v3/glossaries'
       );
 
-      return response.glossaries || [];
+      return (response.glossaries || []).map(normalizeGlossaryInfo);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -553,12 +554,12 @@ export class DeepLClient {
    */
   async getGlossary(glossaryId: string): Promise<GlossaryInfo> {
     try {
-      const response = await this.makeRequest<GlossaryInfo>(
+      const response = await this.makeRequest<GlossaryApiResponse>(
         'GET',
         `/v3/glossaries/${glossaryId}`
       );
 
-      return response;
+      return normalizeGlossaryInfo(response);
     } catch (error) {
       throw this.handleError(error);
     }

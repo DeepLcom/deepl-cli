@@ -5,16 +5,24 @@
 import { Language } from './common.js';
 
 /**
- * Glossary Info (v3 API structure)
- * Supports both single and multiple target languages
+ * Raw API response from DeepL v3 glossary endpoints
+ * This matches the actual API response structure
  */
-export interface GlossaryInfo {
+export interface GlossaryApiResponse {
   glossary_id: string;
   name: string;
-  source_lang: Language;
-  target_langs: Language[]; // Always array (even for single target)
+  ready?: boolean; // Indicates if glossary is ready (may be absent)
   dictionaries: LanguagePairInfo[];
   creation_time: string;
+}
+
+/**
+ * Normalized Glossary Info (used internally in the CLI)
+ * Adds derived fields for convenience
+ */
+export interface GlossaryInfo extends GlossaryApiResponse {
+  source_lang: Language; // Derived from dictionaries
+  target_langs: Language[]; // Derived from dictionaries (unique targets)
 }
 
 /**
@@ -24,6 +32,33 @@ export interface LanguagePairInfo {
   source_lang: Language;
   target_lang: Language;
   entry_count: number;
+}
+
+/**
+ * Transform raw API response to normalized GlossaryInfo
+ * Derives source_lang and target_langs from dictionaries
+ */
+export function normalizeGlossaryInfo(response: GlossaryApiResponse): GlossaryInfo {
+  // Extract unique source and target languages from dictionaries
+  const sourceLangs = new Set<Language>();
+  const targetLangs = new Set<Language>();
+
+  response.dictionaries.forEach(dict => {
+    sourceLangs.add(dict.source_lang.toLowerCase() as Language);
+    targetLangs.add(dict.target_lang.toLowerCase() as Language);
+  });
+
+  // For v3 glossaries, there should be one source language
+  // (but dictionaries might be empty if still processing)
+  const source_lang = sourceLangs.size > 0
+    ? Array.from(sourceLangs)[0]!
+    : 'en' as Language; // Fallback (shouldn't happen in practice)
+
+  return {
+    ...response,
+    source_lang,
+    target_langs: Array.from(targetLangs),
+  };
 }
 
 /**
