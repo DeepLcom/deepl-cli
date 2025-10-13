@@ -5,6 +5,7 @@
 
 import { DeepLClient } from '../api/deepl-client.js';
 import { GlossaryInfo, GlossaryLanguagePair, Language } from '../types/index.js';
+import { isMultilingual } from '../types/glossary.js';
 
 export class GlossaryService {
   private client: DeepLClient;
@@ -245,6 +246,42 @@ export class GlossaryService {
 
     // Rename using v3 PATCH endpoint
     await this.client.renameGlossary(glossaryId, newName);
+  }
+
+  /**
+   * Delete a dictionary from a multilingual glossary (v3 API)
+   * Removes a specific language pair from the glossary
+   */
+  async deleteGlossaryDictionary(
+    glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language
+  ): Promise<void> {
+    // Get glossary info to validate it's multilingual
+    const glossary = await this.client.getGlossary(glossaryId);
+
+    // Check if glossary has multiple dictionaries
+    if (!isMultilingual(glossary)) {
+      throw new Error('Cannot delete dictionary from single-language glossary. Delete the entire glossary instead.');
+    }
+
+    // Check if this would be the last dictionary
+    if (glossary.dictionaries.length === 1) {
+      throw new Error('Cannot delete last dictionary from glossary. Delete the entire glossary instead.');
+    }
+
+    // Validate the dictionary exists
+    const dictionaryExists = glossary.dictionaries.some(
+      dict => dict.source_lang.toUpperCase() === sourceLang.toUpperCase() &&
+              dict.target_lang.toUpperCase() === targetLang.toUpperCase()
+    );
+
+    if (!dictionaryExists) {
+      throw new Error(`Dictionary ${sourceLang}-${targetLang} not found in glossary`);
+    }
+
+    // Delete the dictionary using v3 DELETE endpoint
+    await this.client.deleteGlossaryDictionary(glossaryId, sourceLang, targetLang);
   }
 
   /**

@@ -850,6 +850,25 @@ program
           process.exit(1);
         }
       })
+  )
+  .addCommand(
+    new Command('delete-dictionary')
+      .description('Delete a dictionary from a multilingual glossary (v3)')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .argument('<target-lang>', 'Target language of dictionary to delete')
+      .action(async (nameOrId: string, targetLang: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          await glossaryCommand.deleteDictionary(nameOrId, targetLang as Language);
+          Logger.success(chalk.green(`✓ Dictionary deleted successfully (${targetLang})`));
+        } catch (error) {
+          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
+          process.exit(1);
+        }
+      })
   );
 
 // Hooks command

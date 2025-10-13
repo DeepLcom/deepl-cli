@@ -680,6 +680,25 @@ export class DeepLClient {
   }
 
   /**
+   * Delete a dictionary from a multilingual glossary (v3 API)
+   * Removes a specific language pair from the glossary
+   */
+  async deleteGlossaryDictionary(
+    glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language
+  ): Promise<void> {
+    try {
+      await this.makeRequest<void>(
+        'DELETE',
+        `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`
+      );
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * Improve text using DeepL Write API
    */
   async improveText(

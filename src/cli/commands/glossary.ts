@@ -164,6 +164,21 @@ export class GlossaryCommand {
   }
 
   /**
+   * Delete a dictionary from a multilingual glossary (v3 API)
+   */
+  async deleteDictionary(
+    nameOrId: string,
+    targetLang: Language
+  ): Promise<void> {
+    const glossary = await this.show(nameOrId);
+    await this.glossaryService.deleteGlossaryDictionary(
+      glossary.glossary_id,
+      glossary.source_lang,
+      targetLang
+    );
+  }
+
+  /**
    * Format glossary info for display (v3 structure)
    */
   formatGlossaryInfo(glossary: GlossaryInfo): string {

@@ -480,4 +480,66 @@ describe('DeepLClient v3 Glossary Integration', () => {
       ).rejects.toThrow();
     });
   });
+
+  describe('deleteGlossaryDictionary() - v3 API', () => {
+    it('should make correct HTTP DELETE request', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL)
+        .delete('/v3/glossaries/glossary-123/dictionaries/EN-ES')
+        .reply(204);
+
+      await client.deleteGlossaryDictionary('glossary-123', 'en', 'es');
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should uppercase language codes in URL', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL)
+        .delete('/v3/glossaries/glossary-456/dictionaries/EN-FR')
+        .reply(204);
+
+      await client.deleteGlossaryDictionary('glossary-456', 'en', 'fr');
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle 404 glossary not found errors', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .delete('/v3/glossaries/nonexistent/dictionaries/EN-ES')
+        .reply(404, { message: 'Glossary not found' });
+
+      await expect(
+        client.deleteGlossaryDictionary('nonexistent', 'en', 'es')
+      ).rejects.toThrow();
+    });
+
+    it('should handle 404 dictionary not found errors', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .delete('/v3/glossaries/glossary-123/dictionaries/EN-FR')
+        .reply(404, { message: 'Dictionary not found in glossary' });
+
+      await expect(
+        client.deleteGlossaryDictionary('glossary-123', 'en', 'fr')
+      ).rejects.toThrow();
+    });
+
+    it('should handle 400 last dictionary errors', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .delete('/v3/glossaries/glossary-123/dictionaries/EN-ES')
+        .reply(400, { message: 'Cannot delete last dictionary' });
+
+      await expect(
+        client.deleteGlossaryDictionary('glossary-123', 'en', 'es')
+      ).rejects.toThrow();
+    });
+  });
 });
