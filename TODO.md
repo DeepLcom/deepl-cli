@@ -50,6 +50,30 @@ These features were identified but deferred for future implementation:
 **Estimated effort**: 2-3 hours implementation + 1 hour testing
 **Priority**: Medium (improves CI/CD integration)
 
+### Configuration Enhancements
+
+- [ ] **Project-level configuration** - `.deepl.toml` file for project-specific settings
+  ```toml
+  [project]
+  name = "My Project"
+
+  [defaults]
+  source_lang = "en"
+  target_langs = ["es", "fr", "de", "ja"]
+  glossary = "tech-terms"
+
+  [watch]
+  pattern = "src/locales/en.json"
+  auto_commit = true
+  ```
+  - Allows per-project configuration without modifying global config
+  - Version-controllable settings for team collaboration
+  - Hierarchical config: project → user → defaults
+  - Supports watch patterns, default languages, glossary mappings
+
+**Estimated effort**: 4-6 hours implementation + 2 hours testing
+**Priority**: Medium (improves team collaboration and project isolation)
+
 ---
 
 ## 🎨 Phase 3: TUI & Collaboration

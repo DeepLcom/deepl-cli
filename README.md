@@ -767,26 +767,6 @@ deepl translate "Hello" --to es
 
 **Note:** Retry and timeout settings use sensible defaults optimized for the DeepL API. These are internal features that work automatically - no configuration required.
 
-#### Project-Level Configuration 🚧
-
-**Planned for future release**
-
-Create a `.deepl.toml` file in your project root:
-
-```toml
-[project]
-name = "My Project"
-
-[defaults]
-source_lang = "en"
-target_langs = ["es", "fr", "de", "ja"]
-glossary = "tech-terms"
-
-[watch]
-pattern = "src/locales/en.json"
-auto_commit = true
-```
-
 ### Glossaries
 
 DeepL glossaries ensure consistent terminology across translations. The v3 Glossary API supports both single-target and multilingual glossaries (one glossary with multiple target languages).
@@ -888,8 +868,7 @@ authentication	Authentifizierung
 - **Direct updates** - v3 API uses PATCH endpoints for efficient updates (no delete+recreate)
 - **Smart defaults** - `--target` flag only required for multilingual glossaries
 - **Visual indicators** - 📖 for single-target, 📚 for multilingual glossaries
-
-**Note:** Using glossaries in translation (`--glossary` flag) is supported by the API client. Full CLI integration with automatic glossary application is planned for a future release.
+- **Translation integration** - Use `--glossary` flag in translate and watch commands to apply glossary terms
 
 ### Cache Management
 
