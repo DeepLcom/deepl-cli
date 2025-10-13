@@ -109,3 +109,10 @@ export interface DocumentTranslationOptions {
   glossaryId?: string;
   outputFormat?: DocumentOutputFormat;
 }
+
+// Glossary Types
+
+export interface GlossaryLanguagePair {
+  sourceLang: Language;
+  targetLang: Language;
+}
