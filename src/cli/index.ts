@@ -716,13 +716,15 @@ program
     new Command('entries')
       .description('Show glossary entries')
       .argument('<name-or-id>', 'Glossary name or ID')
-      .action(async (nameOrId: string) => {
+      .option('--target <lang>', 'Target language (required for multilingual glossaries)')
+      .action(async (nameOrId: string, options: { target?: string }) => {
         try {
           const client = createDeepLClient();
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
-          const entries = await glossaryCommand.entries(nameOrId);
+          const targetLang = options.target as Language | undefined;
+          const entries = await glossaryCommand.entries(nameOrId, targetLang);
           Logger.output(glossaryCommand.formatEntries(entries));
         } catch (error) {
           Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
@@ -771,13 +773,15 @@ program
       .argument('<name-or-id>', 'Glossary name or ID')
       .argument('<source>', 'Source text')
       .argument('<target>', 'Target text')
-      .action(async (nameOrId: string, source: string, target: string) => {
+      .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
+      .action(async (nameOrId: string, source: string, target: string, options: { targetLang?: string }) => {
         try {
           const client = createDeepLClient();
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
-          await glossaryCommand.addEntry(nameOrId, source, target);
+          const targetLang = options.targetLang as Language | undefined;
+          await glossaryCommand.addEntry(nameOrId, source, target, targetLang);
           Logger.success(chalk.green('✓ Entry added successfully'));
         } catch (error) {
           Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
@@ -791,13 +795,15 @@ program
       .argument('<name-or-id>', 'Glossary name or ID')
       .argument('<source>', 'Source text to update')
       .argument('<new-target>', 'New target text')
-      .action(async (nameOrId: string, source: string, newTarget: string) => {
+      .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
+      .action(async (nameOrId: string, source: string, newTarget: string, options: { targetLang?: string }) => {
         try {
           const client = createDeepLClient();
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
-          await glossaryCommand.updateEntry(nameOrId, source, newTarget);
+          const targetLang = options.targetLang as Language | undefined;
+          await glossaryCommand.updateEntry(nameOrId, source, newTarget, targetLang);
           Logger.success(chalk.green('✓ Entry updated successfully'));
         } catch (error) {
           Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
@@ -810,13 +816,15 @@ program
       .description('Remove an entry from a glossary')
       .argument('<name-or-id>', 'Glossary name or ID')
       .argument('<source>', 'Source text to remove')
-      .action(async (nameOrId: string, source: string) => {
+      .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
+      .action(async (nameOrId: string, source: string, options: { targetLang?: string }) => {
         try {
           const client = createDeepLClient();
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
-          await glossaryCommand.removeEntry(nameOrId, source);
+          const targetLang = options.targetLang as Language | undefined;
+          await glossaryCommand.removeEntry(nameOrId, source, targetLang);
           Logger.success(chalk.green('✓ Entry removed successfully'));
         } catch (error) {
           Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
