@@ -3,7 +3,8 @@
  * Manages DeepL glossaries
  */
 
-import { DeepLClient, GlossaryInfo, GlossaryLanguagePair } from '../api/deepl-client.js';
+import { DeepLClient } from '../api/deepl-client.js';
+import { GlossaryInfo, GlossaryLanguagePair, Language } from '../types/index.js';
 
 export class GlossaryService {
   private client: DeepLClient;
@@ -13,17 +14,21 @@ export class GlossaryService {
   }
 
   /**
-   * Create a glossary from entries object
+   * Create a glossary from entries object (v3 API - supports multiple target languages)
    */
   async createGlossary(
     name: string,
-    sourceLang: string,
-    targetLang: string,
+    sourceLang: Language,
+    targetLangs: Language[],
     entries: Record<string, string>
   ): Promise<GlossaryInfo> {
     // Validate inputs
     if (!name || name.trim() === '') {
       throw new Error('Glossary name is required');
+    }
+
+    if (targetLangs.length === 0) {
+      throw new Error('At least one target language is required');
     }
 
     if (Object.keys(entries).length === 0) {
@@ -34,27 +39,31 @@ export class GlossaryService {
     const tsv = this.entriesToTSV(entries);
 
     // Create glossary via API
-    return this.client.createGlossary(name, sourceLang, targetLang, tsv);
+    return this.client.createGlossary(name, sourceLang, targetLangs, tsv);
   }
 
   /**
-   * Create a glossary from TSV/CSV string
+   * Create a glossary from TSV/CSV string (v3 API - supports multiple target languages)
    */
   async createGlossaryFromTSV(
     name: string,
-    sourceLang: string,
-    targetLang: string,
+    sourceLang: Language,
+    targetLangs: Language[],
     tsv: string
   ): Promise<GlossaryInfo> {
     if (!name || name.trim() === '') {
       throw new Error('Glossary name is required');
     }
 
+    if (targetLangs.length === 0) {
+      throw new Error('At least one target language is required');
+    }
+
     if (!tsv || tsv.trim() === '') {
       throw new Error('Glossary entries cannot be empty');
     }
 
-    return this.client.createGlossary(name, sourceLang, targetLang, tsv);
+    return this.client.createGlossary(name, sourceLang, targetLangs, tsv);
   }
 
   /**
@@ -87,10 +96,14 @@ export class GlossaryService {
   }
 
   /**
-   * Get glossary entries as object
+   * Get glossary entries as object (v3 API - requires language pair)
    */
-  async getGlossaryEntries(glossaryId: string): Promise<Record<string, string>> {
-    const tsv = await this.client.getGlossaryEntries(glossaryId);
+  async getGlossaryEntries(
+    glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language
+  ): Promise<Record<string, string>> {
+    const tsv = await this.client.getGlossaryEntries(glossaryId, sourceLang, targetLang);
     return this.tsvToEntries(tsv);
   }
 
@@ -102,13 +115,15 @@ export class GlossaryService {
   }
 
   /**
-   * Add a new entry to an existing glossary
+   * Add a new entry to an existing glossary (v3 API - uses PATCH)
    */
   async addEntry(
     glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language,
     sourceText: string,
     targetText: string
-  ): Promise<GlossaryInfo> {
+  ): Promise<void> {
     // Validate inputs
     if (!sourceText || sourceText.trim() === '') {
       throw new Error('Source text cannot be empty');
@@ -117,11 +132,8 @@ export class GlossaryService {
       throw new Error('Target text cannot be empty');
     }
 
-    // Get glossary info to preserve name and language pair
-    const glossary = await this.client.getGlossary(glossaryId);
-
     // Get existing entries
-    const entries = await this.getGlossaryEntries(glossaryId);
+    const entries = await this.getGlossaryEntries(glossaryId, sourceLang, targetLang);
 
     // Check if entry already exists
     if (entries[sourceText] !== undefined) {
@@ -134,26 +146,20 @@ export class GlossaryService {
     // Convert to TSV
     const tsv = this.entriesToTSV(entries);
 
-    // Delete old glossary
-    await this.client.deleteGlossary(glossaryId);
-
-    // Create new glossary with updated entries
-    return this.client.createGlossary(
-      glossary.name,
-      glossary.source_lang,
-      glossary.target_lang,
-      tsv
-    );
+    // Update glossary using v3 PATCH endpoint
+    await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
   }
 
   /**
-   * Update an existing entry in a glossary
+   * Update an existing entry in a glossary (v3 API - uses PATCH)
    */
   async updateEntry(
     glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language,
     sourceText: string,
     newTargetText: string
-  ): Promise<GlossaryInfo> {
+  ): Promise<void> {
     // Validate inputs
     if (!sourceText || sourceText.trim() === '') {
       throw new Error('Source text cannot be empty');
@@ -162,11 +168,8 @@ export class GlossaryService {
       throw new Error('Target text cannot be empty');
     }
 
-    // Get glossary info to preserve name and language pair
-    const glossary = await this.client.getGlossary(glossaryId);
-
     // Get existing entries
-    const entries = await this.getGlossaryEntries(glossaryId);
+    const entries = await this.getGlossaryEntries(glossaryId, sourceLang, targetLang);
 
     // Check if entry exists
     if (entries[sourceText] === undefined) {
@@ -179,35 +182,26 @@ export class GlossaryService {
     // Convert to TSV
     const tsv = this.entriesToTSV(entries);
 
-    // Delete old glossary
-    await this.client.deleteGlossary(glossaryId);
-
-    // Create new glossary with updated entries
-    return this.client.createGlossary(
-      glossary.name,
-      glossary.source_lang,
-      glossary.target_lang,
-      tsv
-    );
+    // Update glossary using v3 PATCH endpoint
+    await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
   }
 
   /**
-   * Remove an entry from a glossary
+   * Remove an entry from a glossary (v3 API - uses PATCH)
    */
   async removeEntry(
     glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language,
     sourceText: string
-  ): Promise<GlossaryInfo> {
+  ): Promise<void> {
     // Validate input
     if (!sourceText || sourceText.trim() === '') {
       throw new Error('Source text cannot be empty');
     }
 
-    // Get glossary info to preserve name and language pair
-    const glossary = await this.client.getGlossary(glossaryId);
-
     // Get existing entries
-    const entries = await this.getGlossaryEntries(glossaryId);
+    const entries = await this.getGlossaryEntries(glossaryId, sourceLang, targetLang);
 
     // Check if entry exists
     if (entries[sourceText] === undefined) {
@@ -225,33 +219,23 @@ export class GlossaryService {
     // Convert to TSV
     const tsv = this.entriesToTSV(entries);
 
-    // Delete old glossary
-    await this.client.deleteGlossary(glossaryId);
-
-    // Create new glossary with updated entries
-    return this.client.createGlossary(
-      glossary.name,
-      glossary.source_lang,
-      glossary.target_lang,
-      tsv
-    );
+    // Update glossary using v3 PATCH endpoint
+    await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
   }
 
   /**
-   * Rename a glossary
-   * Note: DeepL API doesn't provide a direct rename endpoint,
-   * so we need to delete the old glossary and create a new one with the same entries
+   * Rename a glossary (v3 API - uses PATCH endpoint)
    */
   async renameGlossary(
     glossaryId: string,
     newName: string
-  ): Promise<GlossaryInfo> {
+  ): Promise<void> {
     // Validate input
     if (!newName || newName.trim() === '') {
       throw new Error('New glossary name cannot be empty');
     }
 
-    // Get glossary info to preserve language pair
+    // Get glossary info to check current name
     const glossary = await this.client.getGlossary(glossaryId);
 
     // Check if new name is different from current name
@@ -259,19 +243,8 @@ export class GlossaryService {
       throw new Error('New name must be different from current name');
     }
 
-    // Get existing entries
-    const tsv = await this.client.getGlossaryEntries(glossaryId);
-
-    // Delete old glossary
-    await this.client.deleteGlossary(glossaryId);
-
-    // Create new glossary with new name and same entries
-    return this.client.createGlossary(
-      newName,
-      glossary.source_lang,
-      glossary.target_lang,
-      tsv
-    );
+    // Rename using v3 PATCH endpoint
+    await this.client.renameGlossary(glossaryId, newName);
   }
 
   /**
