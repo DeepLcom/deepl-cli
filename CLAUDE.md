@@ -7,12 +7,45 @@ This file contains project-specific configuration and guidelines for Claude Code
 DeepL CLI is a next-generation command-line interface for the DeepL API that integrates translation, writing enhancement (DeepL Write API), and developer workflow automation.
 
 **Key Features:**
-- Translation with context-aware preservation
-- Writing enhancement with grammar/style suggestions
-- Watch mode for real-time translation
-- Modern TUI (Terminal User Interface)
-- Team collaboration features
-- CI/CD integration
+- Translation with context-aware preservation (text, files, directories, documents)
+- Writing enhancement with grammar/style/tone suggestions
+- Watch mode for real-time translation with auto-commit
+- Multilingual glossary management (v3 API)
+- Local SQLite caching with LRU eviction
+- Git hooks integration for CI/CD
+- Document translation (PDF, DOCX, PPTX, XLSX, HTML)
+
+### Current Status
+
+- **Version**: 0.5.0 (v3 Glossary API support)
+- **Tests**: 1020+ tests passing (100% pass rate)
+  - Unit tests: ~70-75%
+  - Integration tests: ~25-30%
+  - E2E tests: Comprehensive CLI coverage
+- **Coverage**: ~91% overall with excellent integration/e2e coverage
+- **Git Status**: Local repository, not yet pushed to remote
+- **Next Milestone**: v0.6.0 (Phase 3: TUI & Collaboration)
+
+### Architecture
+
+```
+CLI Commands (translate, write, watch, glossary, etc.)
+           ↓
+Service Layer (Translation, Write, Batch, Watch, GitHooks, Cache, Glossary)
+           ↓
+API Client (DeepL API: /v2/translate, /v2/write, /v3/glossaries)
+           ↓
+Storage (SQLite Cache, Config Management)
+```
+
+### Configuration
+
+- **Config**: `~/.config/deepl-cli-nodejs/config.json` (macOS/Linux), `%APPDATA%\deepl-cli-nodejs\Config\config.json` (Windows)
+- **Cache**: `~/.config/deepl-cli-nodejs/cache.db` (SQLite)
+- **Environment Variables**:
+  - `DEEPL_API_KEY` - API authentication
+  - `DEEPL_CONFIG_DIR` - Override config directory (used for test isolation)
+  - `NO_COLOR` - Disable colored output
 
 **Project Files Reference:**
 - **TODO.md** - Comprehensive project roadmap and task list (read this when resuming work!)
@@ -182,9 +215,9 @@ Keep entries imperative and short. Focus on user-facing changes.
 
 ### Current Version Status
 
-- **Current Version**: 0.1.0 (Initial baseline release - Phase 1 MVP)
-- **Status**: Pre-1.0 indicates API may change as Phase 2-3 features are implemented
-- **Next Milestone**: 0.2.0 (Phase 2 features) or 1.0.0 (stable public API)
+- **Current Version**: 0.5.0 (v3 Glossary API support - multilingual glossaries)
+- **Status**: Pre-1.0 indicates API may change as Phase 3 features are implemented
+- **Next Milestone**: 0.6.0 (Phase 3: TUI features) or 1.0.0 (stable public API)
 
 ---
 
@@ -200,17 +233,17 @@ Follow the phased approach outlined in DESIGN.md:
 - Local caching
 - Error handling and validation
 
-**Phase 2: Advanced Features**
-- DeepL Write integration
-- Watch mode
-- Git hooks
-- Batch processing
-- Context-aware translation
+**Phase 2: Advanced Features (✅ COMPLETE - v0.2.0 through v0.5.0)**
+- v0.2.0: DeepL Write integration, watch mode, git hooks, batch processing, context-aware translation
+- v0.3.0: Document translation (PDF, DOCX, PPTX, XLSX, HTML), write enhancements (--diff, --check, --fix, --interactive)
+- v0.4.0: Document format conversion (--output-format), proxy config, retry/timeout, batch optimization, glossary CRUD operations
+- v0.5.0: v3 Glossary API (multilingual glossaries), delete-dictionary command
 
-**Phase 3: TUI & Collaboration**
-- Interactive TUI
+**Phase 3: TUI & Collaboration (🚧 NEXT - v0.6.0)**
+- Interactive TUI with Ink
 - Translation memory
 - Team features
+- See TODO.md for detailed Phase 3 roadmap
 
 #### Development Process for Each Feature
 

@@ -1,8 +1,8 @@
 # DeepL CLI: Comprehensive Design Document
 
-**Version:** 1.0
+**Version:** 2.0
 **Date:** October 2025
-**Status:** Design Phase
+**Status:** Phase 2 Complete - v0.5.0 Released
 
 ---
 
@@ -75,7 +75,7 @@ echo "Hello world" | deepl translate --to ja
 deepl translate --interactive
 ```
 
-#### 2. File Translation
+#### 2. File Translation ✅ IMPLEMENTED
 ```bash
 # Single file
 deepl translate README.md --to es --output README.es.md
@@ -83,8 +83,13 @@ deepl translate README.md --to es --output README.es.md
 # Multiple formats (preserves formatting)
 deepl translate docs/*.md --to fr,de,ja
 
-# Document translation (PDF, DOCX, etc.)
+# Document translation (PDF, DOCX, PPTX, XLSX, HTML) ✅ v0.3.0
 deepl translate document.pdf --to es --output documento.pdf
+deepl translate presentation.pptx --to de --output presentation.de.pptx
+deepl translate report.xlsx --to fr --output report.fr.xlsx
+
+# Document format conversion ✅ v0.4.0
+deepl translate document.docx --to es --output document.es.pdf --output-format pdf
 ```
 
 #### 3. Configuration Management
@@ -99,13 +104,35 @@ deepl auth set-key YOUR_API_KEY
 deepl config set source en target "es,fr,de,ja"
 ```
 
-#### 4. Basic Glossaries
+#### 4. Glossary Management ✅ IMPLEMENTED
 ```bash
-# Create glossary
+# Create glossary (v3 API) ✅ v0.5.0
 deepl glossary create tech-terms en de glossary.csv
 
-# List glossaries
+# List glossaries with multilingual support
 deepl glossary list
+
+# Show glossary details
+deepl glossary show tech-terms
+
+# Get entries
+deepl glossary entries tech-terms
+deepl glossary entries multilingual-terms --target es
+
+# CRUD operations ✅ v0.4.0
+deepl glossary add-entry tech-terms "API" "API"
+deepl glossary update-entry tech-terms "API" "REST-API"
+deepl glossary remove-entry tech-terms "obsolete"
+deepl glossary rename tech-terms "technical-terms"
+
+# Delete language pair from multilingual glossary ✅ v0.5.0
+deepl glossary delete-dictionary multilingual-terms es
+
+# Delete entire glossary
+deepl glossary delete tech-terms
+
+# List supported language pairs
+deepl glossary languages
 
 # Use glossary in translation
 deepl translate "Our API uses REST" --to de --glossary tech-terms
@@ -140,21 +167,23 @@ deepl write check document.txt --show-alternatives --lang en-US
 # Tones: enthusiastic, friendly, confident, diplomatic (+ prefer_* variants)
 ```
 
-**Status**: Production-ready with full test coverage (84 tests)
-**Current Features**:
+**Status**: Production-ready with full test coverage (111 tests: 28 service + 19 command + 37 client + 27 enhancements)
+
+**Current Features** ✅ IMPLEMENTED:
 - Grammar and style improvement
 - Writing style customization (simple, business, academic, casual)
 - Tone customization (enthusiastic, friendly, confident, diplomatic)
 - Multiple improvement alternatives
-- Support for 8 languages
+- Support for 8 languages (de, en-GB, en-US, es, fr, it, pt-BR, pt-PT)
 - Full API integration with DeepL Write v2 endpoint
+- **File input/output support** ✅ v0.3.0 (--output, --in-place)
+- **Diff view** ✅ v0.3.0 (--diff)
+- **Check mode** ✅ v0.3.0 (--check)
+- **Auto-fix mode** ✅ v0.3.0 (--fix, --backup)
+- **Interactive mode** ✅ v0.3.0 (--interactive)
 
-**Planned Enhancements**:
-- File input/output support
-- Interactive REPL mode for iterative improvement
-- Diff view for before/after comparison
-- Check mode (show suggestions without applying)
-- Auto-fix mode for CI/CD integration
+**Future Enhancements**:
+- Interactive REPL mode for continuous writing assistance
 
 #### 6. Watch Mode & Auto-Translation ✅ IMPLEMENTED
 ```bash
@@ -209,16 +238,56 @@ deepl hooks uninstall pre-commit
 - Hook status checking
 - Customizable shell scripts
 
-#### 8. Developer Workflow Integration (Future)
+#### 8. Context-Aware Translation ✅ IMPLEMENTED (v0.2.0)
 ```bash
-# CI/CD integration (outputs JSON for scripts)
+# Preserve code blocks and variables
+deepl translate README.md --preserve-code --preserve-vars
+
+# Inject context for better quality
+deepl translate app.json --context "E-commerce checkout flow"
+
+# Formality levels
+deepl translate "How are you?" --to de --formality more
+
+# Sentence splitting control
+deepl translate "Line 1\nLine 2" --to es --split-sentences nonewlines
+
+# Tag handling for XML/HTML
+deepl translate "<p>Hello</p>" --to es --tag-handling xml
+```
+
+#### 9. Batch Processing ✅ IMPLEMENTED (v0.2.0, optimized v0.4.0)
+```bash
+# Translate entire directories with progress
+deepl translate docs/ --to es,fr,de --output translations/
+
+# With pattern filtering
+deepl translate docs/ --to es --pattern "*.md" --concurrency 10
+
+# Parallel translation with configurable concurrency
+deepl translate src/ --to ja --recursive --concurrency 5
+```
+
+#### 10. Developer Workflow Integration (Partial)
+```bash
+# JSON output for CI/CD ✅ IMPLEMENTED
+deepl translate "Hello" --to es --format json
+
+# Proxy configuration ✅ v0.4.0 (automatic via environment)
+# HTTP_PROXY, HTTPS_PROXY, NO_PROXY
+
+# Retry/timeout configuration ✅ v0.4.0 (built-in)
+# Exponential backoff, configurable timeouts
+
+# Future:
+# CI/CD integration for changed files
 deepl translate-changed --since HEAD~1 --format json
 
 # VS Code integration via language server
 deepl lsp start
 ```
 
-#### 9. Interactive TUI Mode (Phase 3)
+#### 11. Interactive TUI Mode (Phase 3)
 ```bash
 # Launch full TUI application
 deepl tui
@@ -417,15 +486,22 @@ deepl [GLOBAL_OPTIONS] <COMMAND> [COMMAND_OPTIONS] [ARGS]
 
 ```
 deepl
-├── translate [TEXT|FILE...] --to LANGS      # Translate text/files
+├── translate [TEXT|FILE...] --to LANGS      # Translate text/files ✅ IMPLEMENTED
 ├── write [TEXT] --lang LANG                 # Improve writing ✅ IMPLEMENTED
-├── glossary                                  # Glossary management
-│   ├── create NAME SRC TGT [FILE]
-│   ├── list
-│   ├── show NAME
-│   ├── delete NAME
-│   ├── push NAME --team
-│   └── pull NAME
+├── glossary                                  # Glossary management ✅ IMPLEMENTED (v3 API)
+│   ├── create NAME SRC TGT [FILE]           # Create glossary
+│   ├── list                                 # List all glossaries
+│   ├── show NAME                            # Show glossary details
+│   ├── entries NAME [--target LANG]         # Get glossary entries
+│   ├── delete NAME                          # Delete glossary
+│   ├── languages                            # List supported language pairs
+│   ├── add-entry NAME SRC TGT [--target]    # Add entry (v0.4.0)
+│   ├── update-entry NAME SRC TGT [--target] # Update entry (v0.4.0)
+│   ├── remove-entry NAME SRC [--target]     # Remove entry (v0.4.0)
+│   ├── rename NAME NEW_NAME                 # Rename glossary (v0.4.0)
+│   ├── delete-dictionary NAME LANG          # Delete language pair (v0.5.0)
+│   ├── push NAME --team                     # (Phase 3 - Future)
+│   └── pull NAME                            # (Phase 3 - Future)
 ├── watch PATH --targets LANGS                # Watch and auto-translate ✅ IMPLEMENTED
 ├── hooks                                     # Git hooks management ✅ IMPLEMENTED
 │   ├── install <hook-type>
@@ -464,10 +540,11 @@ deepl
 ├── install                                   # Install integrations (Future)
 │   ├── git-hooks [--pre-commit|--pre-push]  # Alternative to 'deepl hooks install'
 │   └── lsp                                   # Language server protocol for editors
-├── usage [--month MONTH]                     # Usage statistics
-└── help [COMMAND]                            # Help system
+├── usage [--month MONTH]                     # Usage statistics ✅ IMPLEMENTED
+├── languages [--source|--target]             # List supported languages ✅ IMPLEMENTED
+└── help [COMMAND]                            # Help system ✅ IMPLEMENTED
 
-NOTE: Git hooks currently use 'deepl hooks install <type>' syntax.
+NOTE: Git hooks use 'deepl hooks install <type>' syntax.
       The 'deepl install' command is a future enhancement for consolidating
       all integration installations (git-hooks, lsp, editor plugins, etc.)
 ```
@@ -1852,7 +1929,7 @@ jobs:
 
 ## Roadmap & Milestones
 
-### Phase 1: MVP (Month 1-2) - ✅ 100% Complete
+### Phase 1: MVP - ✅ 100% Complete (v0.1.0)
 - [x] Basic translation command
 - [x] Configuration management
 - [x] Local caching with LRU eviction
@@ -1862,12 +1939,29 @@ jobs:
 - [x] Basic glossary support (create, list, show, delete, use)
 - [x] Cache CLI commands (stats, clear, enable, disable)
 
-### Phase 2: Advanced Features (Month 3-4) - ✅ 100% Complete
-- [x] Context-aware translation
+### Phase 2: Advanced Features - ✅ 100% Complete (v0.2.0 - v0.5.0)
+
+**v0.2.0 (October 2025)**:
+- [x] Context-aware translation (--context)
 - [x] Batch processing with parallel translation
-- [x] Watch mode with file watching
-- [x] DeepL Write integration ✨ NEW
-- [x] Git hooks integration ✨ NEW
+- [x] Watch mode with file watching (debouncing, auto-commit)
+- [x] DeepL Write integration (grammar/style/tone)
+- [x] Git hooks integration (pre-commit, pre-push)
+
+**v0.3.0 (October 2025)**:
+- [x] Document translation (PDF, DOCX, PPTX, XLSX, HTML)
+- [x] Write enhancements (--diff, --check, --fix, --interactive, --in-place, --backup)
+
+**v0.4.0 (October 2025)**:
+- [x] Document format conversion (--output-format)
+- [x] Proxy configuration (automatic via environment)
+- [x] Retry/timeout configuration (exponential backoff)
+- [x] Batch optimization (improved parallelization)
+- [x] Glossary CRUD operations (add-entry, update-entry, remove-entry, rename)
+
+**v0.5.0 (October 2025)**:
+- [x] v3 Glossary API support (multilingual glossaries)
+- [x] Delete-dictionary command (remove specific language pairs)
 
 ### Phase 3: TUI & Collaboration (Month 5-6)
 - [ ] Interactive TUI application

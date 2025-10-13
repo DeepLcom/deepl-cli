@@ -74,6 +74,54 @@ These features were identified but deferred for future implementation:
 **Estimated effort**: 4-6 hours implementation + 2 hours testing
 **Priority**: Medium (improves team collaboration and project isolation)
 
+### User Experience Enhancements
+
+- [ ] **`deepl init` command** - Interactive setup wizard for first-time users
+  - Interactive prompts for API key, default languages, cache settings
+  - Creates configuration file with sensible defaults
+  - Validates API key before saving
+  - Provides helpful next steps after setup
+  - Example: `deepl init` → walks through setup wizard
+
+**Estimated effort**: 2-3 hours implementation + 1 hour testing
+**Priority**: Medium (improves first-time user experience for v1.0.0)
+
+### Output Format Enhancements
+
+- [ ] **Table output format** - Structured table output for multiple translations
+  - Add `--format table` flag support
+  - Display translations, cache status, character counts in tabular format
+  - Uses cli-table3 (already a dependency)
+  - Useful for comparing multiple target languages
+  - Example: `deepl translate "Hello" --to es,fr,de --format table`
+
+**Estimated effort**: 1-2 hours implementation + 1 hour testing
+**Priority**: Low (nice-to-have for v1.0.0)
+
+### Cost Management
+
+- [ ] **`deepl estimate` command** - Cost estimation before translation
+  - Calculate character count for text/files/directories
+  - Estimate API costs based on character count
+  - Show breakdown by language and file
+  - Warn before expensive operations
+  - Example: `deepl estimate docs/ --targets es,fr,de,ja,zh`
+
+**Estimated effort**: 3-4 hours implementation + 2 hours testing
+**Priority**: Medium (useful for large projects and budget management)
+
+### Translation Quality
+
+- [ ] **Confidence scores** - Research and implement if DeepL API supports it
+  - Show translation confidence/quality metrics
+  - Add `--show-confidence` flag
+  - Display confidence score (0.0-1.0) with translations
+  - Add `--min-quality` threshold filter
+  - **Requires research**: Check if DeepL API provides confidence scores
+
+**Estimated effort**: 2-3 hours research + 3-4 hours implementation (if supported)
+**Priority**: Low (depends on API support)
+
 ---
 
 ## 🎨 Phase 3: TUI & Collaboration
