@@ -503,6 +503,7 @@ export class DeepLClient {
 
   /**
    * Create a glossary (v3 API - supports multilingual glossaries)
+   * v3 API requires dictionaries array in JSON format (not form-encoded)
    */
   async createGlossary(
     name: string,
@@ -515,19 +516,33 @@ export class DeepLClient {
     }
 
     try {
-      const response = await this.makeRequest<GlossaryApiResponse>(
-        'POST',
+      // v3 API expects dictionaries array, not flat structure
+      // Create a dictionary for each target language
+      const dictionaries = targetLangs.map(targetLang => ({
+        source_lang: sourceLang.toUpperCase(),
+        target_lang: targetLang.toUpperCase(),
+        entries,
+        entries_format: 'tsv',
+      }));
+
+      const requestBody = {
+        name,
+        dictionaries,
+      };
+
+      // v3 glossary creation requires JSON, not form-encoded data
+      // Use axios client directly instead of makeRequest
+      const response = await this.client.post<GlossaryApiResponse>(
         '/v3/glossaries',
+        requestBody,
         {
-          name,
-          source_lang: sourceLang.toUpperCase(),
-          target_langs: targetLangs.map(lang => lang.toUpperCase()),
-          entries,
-          entries_format: 'tsv',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
       );
 
-      return normalizeGlossaryInfo(response);
+      return normalizeGlossaryInfo(response.data);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -581,6 +596,7 @@ export class DeepLClient {
 
   /**
    * Get glossary entries for a specific language pair (v3 API)
+   * Note: v3 API returns JSON with TSV data in entries field, not raw TSV
    */
   async getGlossaryEntries(
     glossaryId: string,
@@ -589,19 +605,35 @@ export class DeepLClient {
   ): Promise<string> {
     try {
       // v3 API requires source and target lang query params
-      const response = await this.client.get<string>(
+      // v3 always returns JSON with structure: { dictionaries: [{ entries: "tsv data" }] }
+      const response = await this.client.get<{
+        dictionaries: Array<{
+          source_lang: string;
+          target_lang: string;
+          entries: string;
+          entries_format: string;
+        }>;
+      }>(
         `/v3/glossaries/${glossaryId}/entries`,
         {
           params: {
             source_lang: sourceLang.toUpperCase(),
             target_lang: targetLang.toUpperCase(),
           },
-          headers: {
-            Accept: 'text/tab-separated-values',
-          },
         }
       );
-      return response.data;
+
+      // Extract TSV data from the first dictionary
+      if (!response.data.dictionaries || response.data.dictionaries.length === 0) {
+        return '';
+      }
+
+      const dictionary = response.data.dictionaries[0];
+      if (!dictionary) {
+        return '';
+      }
+
+      return dictionary.entries;
     } catch (error) {
       throw this.handleError(error);
     }
