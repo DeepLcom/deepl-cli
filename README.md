@@ -863,6 +863,13 @@ deepl glossary remove-entry tech-terms "REST"
 # Rename a glossary
 deepl glossary rename tech-terms "Technical Terms v2"
 # ✓ Glossary renamed successfully
+
+# Delete a dictionary from a multilingual glossary (v3 API only)
+# Removes a specific language pair from a multilingual glossary
+deepl glossary delete-dictionary multilingual-terms es
+# ✓ Dictionary deleted successfully (es)
+# Note: This only works with multilingual glossaries (multiple target languages)
+# For single-target glossaries, use 'glossary delete' to remove the entire glossary
 ```
 
 **Glossary file format (TSV):**

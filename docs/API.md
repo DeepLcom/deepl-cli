@@ -975,6 +975,43 @@ deepl glossary rename abc-123-def-456 "Product Names 2024"
 
 **Note:** v3 API uses PATCH for efficient rename. The glossary ID remains unchanged and all entries are preserved.
 
+##### `delete-dictionary <name-or-id> <target-lang>`
+
+Delete a specific language pair from a multilingual glossary (v3 API only).
+
+**Arguments:**
+
+- `name-or-id` - Glossary name or ID
+- `target-lang` - Target language of the dictionary to delete (e.g., `es`, `fr`, `de`)
+
+**Behavior:**
+
+- Removes a specific language pair from a multilingual glossary using v3 DELETE endpoint
+- Glossary ID remains unchanged
+- Other language pairs in the glossary are preserved
+- Fails if glossary is single-target (use `glossary delete` instead)
+- Fails if this would be the last dictionary in the glossary (use `glossary delete` instead)
+- Fails if the dictionary doesn't exist in the glossary
+
+**Examples:**
+
+```bash
+# Delete Spanish dictionary from multilingual glossary
+deepl glossary delete-dictionary multilingual-terms es
+# ✓ Dictionary deleted successfully (es)
+# Other language pairs (fr, de) remain intact
+
+# Delete by glossary ID
+deepl glossary delete-dictionary abc-123-def-456 fr
+# ✓ Dictionary deleted successfully (fr)
+```
+
+**Notes:**
+
+- **Multilingual glossaries only**: This command only works with multilingual glossaries that have multiple target languages. For single-target glossaries, use `deepl glossary delete` to remove the entire glossary.
+- **Preserves glossary**: Unlike `glossary delete`, this command preserves the glossary and only removes one language pair.
+- **Cannot delete last dictionary**: If the glossary would have zero dictionaries after deletion, the command fails. Use `glossary delete` to remove the entire glossary instead.
+
 ---
 
 ### cache
