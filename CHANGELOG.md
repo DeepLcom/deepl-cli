@@ -13,6 +13,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.5.0] - 2025-10-13
+
+### Added
+- **v3 Glossary API Support** - Multilingual glossaries with advanced management
+  - Full support for DeepL v3 Glossary API (released April 2025)
+  - Multilingual glossaries: one glossary can contain multiple language pairs (EN→DE,FR,ES,IT)
+  - `deepl glossary delete-dictionary <name-or-id> <target-lang>` - Delete specific language pair from multilingual glossary
+  - Preserves glossary while removing individual dictionaries
+  - Validation: prevents deletion of last dictionary or from single-target glossaries
+  - Comprehensive integration tests (5 new tests for delete-dictionary)
+  - Full documentation in README.md and docs/API.md with usage examples
+
+### Changed
+- **v3 API Migration** - Updated glossary operations to use v3 endpoints
+  - All glossary operations now use `/v3/glossaries` endpoints (create, list, get, entries, update, delete)
+  - GlossaryInfo type supports both v2 (single-target) and v3 (multilingual) formats
+  - Helper functions: `isMultilingual()`, `isSingleTarget()` for glossary type checking
+  - Backward compatible: existing v2 glossaries continue to work seamlessly
+  - Request format: JSON with `dictionaries` array structure
+  - Response format: JSON with `dictionaries` array containing entries
+  - Entry management: requires source/target language pair for all operations
+  - Updated all integration tests to expect v3 API format
+  - Fixed CLI help text assertions to use regex matching for flexibility
+
+### Fixed
+- **Integration Test Compatibility** - Fixed test expectations for v3 API
+  - Fixed 3 CLI integration tests expecting exact string match (now use regex for `[options]`)
+  - Fixed 4 API integration tests expecting v2 flat structure (now expect v3 `dictionaries` array)
+  - Fixed content-type expectations (v3 uses `application/json`, not form-encoded)
+  - Fixed response parsing for v3 JSON wrapper format
+  - All 1020 tests now passing (100% pass rate)
+
+### Technical
+- **Glossary API v3 Implementation**
+  - DeepLClient methods updated for v3: createGlossary(), updateGlossaryEntries(), deleteGlossaryDictionary()
+  - GlossaryService enhanced with multilingual validation logic
+  - GlossaryCommand extended with delete-dictionary subcommand
+  - Type system supports both v2 and v3 glossary formats with discriminated unions
+  - HTTP mocking updated for v3 JSON request/response format
+
+### Documentation
+- Updated README.md with v3 glossary examples and delete-dictionary usage
+- Updated docs/API.md with complete delete-dictionary command reference
+- Removed outdated V3_GLOSSARY planning documents (implementation complete)
+- Cleaned up TODO.md: removed completed Phase 1-2 tasks, kept only future roadmap
+
 ## [0.4.0] - 2025-10-12
 
 ### Added

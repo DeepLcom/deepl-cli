@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
-**Version**: 0.4.0
-**Last Updated**: October 12, 2025
+**Version**: 0.5.0
+**Last Updated**: October 13, 2025
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -1380,5 +1380,5 @@ export NO_COLOR=1
 
 ---
 
-**Last Updated**: October 12, 2025
-**DeepL CLI Version**: 0.4.0
+**Last Updated**: October 13, 2025
+**DeepL CLI Version**: 0.5.0
