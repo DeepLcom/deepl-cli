@@ -5,7 +5,8 @@
 
 import * as fs from 'fs';
 import { GlossaryService } from '../../services/glossary.js';
-import { GlossaryInfo, GlossaryLanguagePair } from '../../api/deepl-client.js';
+import { GlossaryInfo, GlossaryLanguagePair, Language } from '../../types/index.js';
+import { getTargetLang, getTotalEntryCount, isMultilingual } from '../../types/glossary.js';
 
 export class GlossaryCommand {
   private glossaryService: GlossaryService;
@@ -15,12 +16,12 @@ export class GlossaryCommand {
   }
 
   /**
-   * Create glossary from TSV/CSV file
+   * Create glossary from TSV/CSV file (v3 API - supports multiple target languages)
    */
   async create(
     name: string,
-    sourceLang: string,
-    targetLang: string,
+    sourceLang: Language,
+    targetLangs: Language[],
     filePath: string
   ): Promise<GlossaryInfo> {
     if (!fs.existsSync(filePath)) {
@@ -31,7 +32,7 @@ export class GlossaryCommand {
     return this.glossaryService.createGlossaryFromTSV(
       name,
       sourceLang,
-      targetLang,
+      targetLangs,
       content
     );
   }
@@ -70,11 +71,17 @@ export class GlossaryCommand {
   }
 
   /**
-   * Get glossary entries
+   * Get glossary entries (v3 API - requires target lang for multilingual glossaries)
    */
-  async entries(nameOrId: string): Promise<Record<string, string>> {
+  async entries(nameOrId: string, targetLang?: Language): Promise<Record<string, string>> {
     const glossary = await this.show(nameOrId);
-    return this.glossaryService.getGlossaryEntries(glossary.glossary_id);
+    // Get target language (will throw if glossary is multilingual and targetLang not provided)
+    const target = getTargetLang(glossary, targetLang);
+    return this.glossaryService.getGlossaryEntries(
+      glossary.glossary_id,
+      glossary.source_lang,
+      target
+    );
   }
 
   /**
@@ -85,68 +92,106 @@ export class GlossaryCommand {
   }
 
   /**
-   * Add a new entry to an existing glossary
+   * Add a new entry to an existing glossary (v3 API - requires target lang for multilingual glossaries)
    */
   async addEntry(
     nameOrId: string,
     sourceText: string,
-    targetText: string
-  ): Promise<GlossaryInfo> {
+    targetText: string,
+    targetLang?: Language
+  ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    return this.glossaryService.addEntry(glossary.glossary_id, sourceText, targetText);
+    // Get target language (will throw if glossary is multilingual and targetLang not provided)
+    const target = getTargetLang(glossary, targetLang);
+    await this.glossaryService.addEntry(
+      glossary.glossary_id,
+      glossary.source_lang,
+      target,
+      sourceText,
+      targetText
+    );
   }
 
   /**
-   * Update an existing entry in a glossary
+   * Update an existing entry in a glossary (v3 API - requires target lang for multilingual glossaries)
    */
   async updateEntry(
     nameOrId: string,
     sourceText: string,
-    newTargetText: string
-  ): Promise<GlossaryInfo> {
+    newTargetText: string,
+    targetLang?: Language
+  ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    return this.glossaryService.updateEntry(glossary.glossary_id, sourceText, newTargetText);
+    // Get target language (will throw if glossary is multilingual and targetLang not provided)
+    const target = getTargetLang(glossary, targetLang);
+    await this.glossaryService.updateEntry(
+      glossary.glossary_id,
+      glossary.source_lang,
+      target,
+      sourceText,
+      newTargetText
+    );
   }
 
   /**
-   * Remove an entry from a glossary
+   * Remove an entry from a glossary (v3 API - requires target lang for multilingual glossaries)
    */
   async removeEntry(
     nameOrId: string,
-    sourceText: string
-  ): Promise<GlossaryInfo> {
+    sourceText: string,
+    targetLang?: Language
+  ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    return this.glossaryService.removeEntry(glossary.glossary_id, sourceText);
+    // Get target language (will throw if glossary is multilingual and targetLang not provided)
+    const target = getTargetLang(glossary, targetLang);
+    await this.glossaryService.removeEntry(
+      glossary.glossary_id,
+      glossary.source_lang,
+      target,
+      sourceText
+    );
   }
 
   /**
-   * Rename a glossary
+   * Rename a glossary (v3 API - uses PATCH)
    */
   async rename(
     nameOrId: string,
     newName: string
-  ): Promise<GlossaryInfo> {
+  ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    return this.glossaryService.renameGlossary(glossary.glossary_id, newName);
+    await this.glossaryService.renameGlossary(glossary.glossary_id, newName);
   }
 
   /**
-   * Format glossary info for display
+   * Format glossary info for display (v3 structure)
    */
   formatGlossaryInfo(glossary: GlossaryInfo): string {
-    const status = glossary.ready ? 'Ready' : 'Not ready';
-    return [
+    const totalEntries = getTotalEntryCount(glossary);
+    const multilingual = isMultilingual(glossary);
+
+    const lines = [
       `Name: ${glossary.name}`,
       `ID: ${glossary.glossary_id}`,
-      `Status: ${status}`,
-      `Language pair: ${glossary.source_lang} → ${glossary.target_lang}`,
-      `Entries: ${glossary.entry_count}`,
+      `Source language: ${glossary.source_lang}`,
+      `Target languages: ${glossary.target_langs.join(', ')}`,
+      `Type: ${multilingual ? 'Multilingual' : 'Single target'}`,
+      `Total entries: ${totalEntries}`,
       `Created: ${new Date(glossary.creation_time).toLocaleString()}`,
-    ].join('\n');
+    ];
+
+    if (multilingual) {
+      lines.push('\nLanguage pairs:');
+      glossary.dictionaries.forEach(dict => {
+        lines.push(`  ${dict.source_lang} → ${dict.target_lang}: ${dict.entry_count} entries`);
+      });
+    }
+
+    return lines.join('\n');
   }
 
   /**
-   * Format glossary list for display
+   * Format glossary list for display (v3 structure)
    */
   formatGlossaryList(glossaries: GlossaryInfo[]): string {
     if (glossaries.length === 0) {
@@ -154,8 +199,12 @@ export class GlossaryCommand {
     }
 
     const lines = glossaries.map(g => {
-      const status = g.ready ? '✓' : '○';
-      return `${status} ${g.name} (${g.source_lang}→${g.target_lang}) - ${g.entry_count} entries`;
+      const totalEntries = getTotalEntryCount(g);
+      const targetStr = g.target_langs.length === 1
+        ? g.target_langs[0]
+        : `${g.target_langs.length} targets`;
+      const icon = isMultilingual(g) ? '📚' : '📖';
+      return `${icon} ${g.name} (${g.source_lang}→${targetStr}) - ${totalEntries} entries`;
     });
 
     return lines.join('\n');

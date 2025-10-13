@@ -28,6 +28,7 @@ import { ConfigCommand as ConfigCmd } from './commands/config.js';
 import { CacheCommand } from './commands/cache.js';
 import { GlossaryCommand } from './commands/glossary.js';
 import { WriteLanguage, WritingStyle, WriteTone } from '../types/api.js';
+import { Language } from '../types/common.js';
 import { HookType } from '../services/git-hooks.js';
 import { Logger } from '../utils/logger.js';
 
@@ -664,7 +665,10 @@ program
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
-          const glossary = await glossaryCommand.create(name, sourceLang, targetLang, file);
+          // v3 API: convert target lang to array
+          const targetLangs = [targetLang as Language];
+
+          const glossary = await glossaryCommand.create(name, sourceLang as Language, targetLangs, file);
           Logger.success(chalk.green('✓ Glossary created successfully'));
           Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
@@ -773,9 +777,8 @@ program
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
-          const glossary = await glossaryCommand.addEntry(nameOrId, source, target);
+          await glossaryCommand.addEntry(nameOrId, source, target);
           Logger.success(chalk.green('✓ Entry added successfully'));
-          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
           Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
@@ -794,9 +797,8 @@ program
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
-          const glossary = await glossaryCommand.updateEntry(nameOrId, source, newTarget);
+          await glossaryCommand.updateEntry(nameOrId, source, newTarget);
           Logger.success(chalk.green('✓ Entry updated successfully'));
-          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
           Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
@@ -814,9 +816,8 @@ program
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
-          const glossary = await glossaryCommand.removeEntry(nameOrId, source);
+          await glossaryCommand.removeEntry(nameOrId, source);
           Logger.success(chalk.green('✓ Entry removed successfully'));
-          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
           Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
@@ -834,9 +835,8 @@ program
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
-          const glossary = await glossaryCommand.rename(nameOrId, newName);
+          await glossaryCommand.rename(nameOrId, newName);
           Logger.success(chalk.green('✓ Glossary renamed successfully'));
-          Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
           Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
           process.exit(1);
