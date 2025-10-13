@@ -22,19 +22,18 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
       const scope = nock(FREE_API_URL)
         .post('/v3/glossaries', (body) => {
-          // Verify request body
+          // Verify request body uses v3 format with dictionaries array
           expect(body.name).toBe('Test Glossary');
-          expect(body.source_lang).toBe('EN');
-          expect(body.target_langs).toContain('ES');
-          expect(body.entries).toBe('Hello\tHola');
-          expect(body.entries_format).toBe('tsv');
+          expect(body.dictionaries).toHaveLength(1);
+          expect(body.dictionaries[0].source_lang).toBe('EN');
+          expect(body.dictionaries[0].target_lang).toBe('ES');
+          expect(body.dictionaries[0].entries).toBe('Hello\tHola');
+          expect(body.dictionaries[0].entries_format).toBe('tsv');
           return true;
         })
         .reply(200, {
           glossary_id: 'glossary-123',
           name: 'Test Glossary',
-          source_lang: 'en',
-          target_langs: ['es'],
           dictionaries: [
             {
               source_lang: 'en',
@@ -61,21 +60,20 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
       const scope = nock(FREE_API_URL)
         .post('/v3/glossaries', (body) => {
-          // Verify request body
+          // Verify request body uses v3 format with dictionaries array (one per target language)
           expect(body.name).toBe('Multilingual Glossary');
-          expect(body.source_lang).toBe('EN');
-          expect(body.target_langs).toContain('ES');
-          expect(body.target_langs).toContain('FR');
-          expect(body.target_langs).toContain('DE');
-          expect(body.entries).toContain('Hello\tHola');
-          expect(body.entries_format).toBe('tsv');
+          expect(body.dictionaries).toHaveLength(3);
+          expect(body.dictionaries[0].source_lang).toBe('EN');
+          expect(body.dictionaries[0].target_lang).toBe('ES');
+          expect(body.dictionaries[0].entries).toBe('Hello\tHola');
+          expect(body.dictionaries[0].entries_format).toBe('tsv');
+          expect(body.dictionaries[1].target_lang).toBe('FR');
+          expect(body.dictionaries[2].target_lang).toBe('DE');
           return true;
         })
         .reply(200, {
           glossary_id: 'glossary-456',
           name: 'Multilingual Glossary',
-          source_lang: 'en',
-          target_langs: ['es', 'fr', 'de'],
           dictionaries: [
             {
               source_lang: 'en',
@@ -139,20 +137,18 @@ describe('DeepLClient v3 Glossary Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('should use form-encoded content type', async () => {
+    it('should use JSON content type', async () => {
       const client = new DeepLClient(API_KEY);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
-          'content-type': 'application/x-www-form-urlencoded',
+          'content-type': 'application/json',
         },
       })
         .post('/v3/glossaries')
         .reply(200, {
           glossary_id: 'glossary-123',
           name: 'Test',
-          source_lang: 'en',
-          target_langs: ['es'],
           dictionaries: [{ source_lang: 'en', target_lang: 'es', entry_count: 1 }],
           creation_time: '2025-10-13T10:00:00Z',
         });
@@ -318,8 +314,15 @@ describe('DeepLClient v3 Glossary Integration', () => {
           source_lang: 'EN',
           target_lang: 'ES',
         })
-        .reply(200, 'Hello\tHola\nWorld\tMundo', {
-          'Content-Type': 'text/tab-separated-values',
+        .reply(200, {
+          dictionaries: [
+            {
+              source_lang: 'EN',
+              target_lang: 'ES',
+              entries: 'Hello\tHola\nWorld\tMundo',
+              entries_format: 'tsv',
+            },
+          ],
         });
 
       const result = await client.getGlossaryEntries('glossary-123', 'en', 'es');
@@ -328,19 +331,25 @@ describe('DeepLClient v3 Glossary Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('should accept text/tab-separated-values content type', async () => {
+    it('should extract TSV from JSON response', async () => {
       const client = new DeepLClient(API_KEY);
 
-      const scope = nock(FREE_API_URL, {
-        reqheaders: {
-          'accept': 'text/tab-separated-values',
-        },
-      })
+      const scope = nock(FREE_API_URL)
         .get('/v3/glossaries/glossary-123/entries')
         .query({ source_lang: 'EN', target_lang: 'ES' })
-        .reply(200, 'Test\tPrueba');
+        .reply(200, {
+          dictionaries: [
+            {
+              source_lang: 'EN',
+              target_lang: 'ES',
+              entries: 'Test\tPrueba',
+              entries_format: 'tsv',
+            },
+          ],
+        });
 
-      await client.getGlossaryEntries('glossary-123', 'en', 'es');
+      const result = await client.getGlossaryEntries('glossary-123', 'en', 'es');
+      expect(result).toBe('Test\tPrueba');
       expect(scope.isDone()).toBe(true);
     });
 

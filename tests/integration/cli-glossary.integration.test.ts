@@ -194,7 +194,7 @@ describe('Glossary CLI Integration', () => {
     it('should require name-or-id argument', () => {
       const helpOutput = runCLI('deepl glossary --help');
 
-      expect(helpOutput).toContain('entries <name-or-id>');
+      expect(helpOutput).toMatch(/entries.*<name-or-id>/);
       expect(helpOutput).toContain('Show glossary entries');
     });
 
@@ -358,7 +358,7 @@ describe('Glossary CLI Integration', () => {
     it('should require name-or-id, source, and target arguments', () => {
       const helpOutput = runCLI('deepl glossary --help');
 
-      expect(helpOutput).toContain('add-entry <name-or-id> <source> <target>');
+      expect(helpOutput).toMatch(/add-entry.*<name-or-id>.*<source>.*<target>/);
     });
 
     it('should validate missing arguments', () => {
@@ -424,7 +424,7 @@ describe('Glossary CLI Integration', () => {
     it('should require name-or-id, source, and new-target arguments', () => {
       const helpOutput = runCLI('deepl glossary --help');
 
-      expect(helpOutput).toContain('update-entry <name-or-id> <source> <new-target>');
+      expect(helpOutput).toMatch(/update-entry.*<name-or-id>.*<source>.*<new-target>/);
     });
 
     it('should validate missing arguments', () => {
@@ -490,7 +490,7 @@ describe('Glossary CLI Integration', () => {
     it('should require name-or-id and source arguments', () => {
       const helpOutput = runCLI('deepl glossary --help');
 
-      expect(helpOutput).toContain('remove-entry <name-or-id> <source>');
+      expect(helpOutput).toMatch(/remove-entry.*<name-or-id>.*<source>/);
     });
 
     it('should validate missing arguments', () => {
