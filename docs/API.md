@@ -662,7 +662,9 @@ deepl hooks path pre-commit
 
 ### glossary
 
-Manage translation glossaries.
+Manage translation glossaries using the DeepL v3 Glossary API.
+
+The v3 API supports both **single-target glossaries** (one source → one target language) and **multilingual glossaries** (one source → multiple target languages).
 
 #### Synopsis
 
@@ -681,6 +683,7 @@ Create a new glossary from a TSV or CSV file.
 - `name` - Glossary name
 - `source-lang` - Source language code (e.g., `en`, `de`, `fr`)
 - `target-lang` - Target language code (e.g., `es`, `fr`, `ja`)
+  - **Note:** v3 API internally supports multiple target languages, but the CLI currently accepts only one target language per creation. Multilingual glossary support in the `create` command is planned for a future release.
 - `file` - Path to TSV or CSV file with term pairs
 
 **File Format:**
@@ -701,8 +704,13 @@ cache	caché
 **Examples:**
 
 ```bash
-# Create glossary from TSV file
+# Create single-target glossary from TSV file
 deepl glossary create tech-terms en es glossary.tsv
+# ✓ Glossary created: tech-terms (ID: abc123...)
+# Source language: EN
+# Target languages: ES
+# Type: Single target
+# Total entries: 3
 
 # Create glossary from CSV file
 deepl glossary create product-names en fr terms.csv
@@ -712,21 +720,59 @@ deepl glossary create product-names en fr terms.csv
 
 List all glossaries with their IDs, language pairs, and entry counts.
 
+**Output Format:**
+
+- Single-target glossaries: `📖 name (source→target) - N entries`
+- Multilingual glossaries: `📚 name (source→N targets) - N entries`
+
 **Example:**
 
 ```bash
 deepl glossary list
+# 📖 tech-terms (en→de) - 3 entries
+# 📚 multilingual-terms (en→3 targets) - 15 entries
 ```
 
 ##### `show <name-or-id>`
 
 Show glossary details including name, ID, languages, creation date, and entry count.
 
+**Output includes:**
+
+- Name and ID
+- Source language
+- Target languages (comma-separated for multilingual glossaries)
+- Type (Single target or Multilingual)
+- Total entry count
+- Language pairs (for multilingual glossaries)
+- Creation timestamp
+
 **Example:**
 
 ```bash
 deepl glossary show tech-terms
-deepl glossary show abc-123-def-456
+# Name: tech-terms
+# ID: abc123...
+# Source language: en
+# Target languages: de
+# Type: Single target
+# Total entries: 3
+# Created: 2024-10-07T12:34:56Z
+
+# Multilingual glossary example
+deepl glossary show multilingual-terms
+# Name: multilingual-terms
+# ID: def456...
+# Source language: en
+# Target languages: es, fr, de
+# Type: Multilingual
+# Total entries: 15
+#
+# Language pairs:
+#   en → es: 5 entries
+#   en → fr: 5 entries
+#   en → de: 5 entries
+# Created: 2024-10-08T10:00:00Z
 ```
 
 ##### `delete <name-or-id>`
@@ -740,18 +786,45 @@ deepl glossary delete tech-terms
 deepl glossary delete abc-123-def-456
 ```
 
-##### `entries <name-or-id>`
+##### `entries <name-or-id> [--target <lang>]`
 
 Get glossary entries in TSV format (suitable for backup or editing).
+
+**Arguments:**
+
+- `name-or-id` - Glossary name or ID
+
+**Options:**
+
+- `--target <lang>` - Target language (required for multilingual glossaries, optional for single-target)
+
+**Behavior:**
+
+- For **single-target glossaries**: `--target` flag is optional (automatically uses the single target language)
+- For **multilingual glossaries**: `--target` flag is required to specify which language pair to retrieve
 
 **Example:**
 
 ```bash
-# Export to file
+# Single-target glossary (no --target needed)
 deepl glossary entries tech-terms > backup.tsv
 
 # View entries
 deepl glossary entries tech-terms
+# API → API
+# REST → REST
+# authentication → Authentifizierung
+
+# Multilingual glossary (--target required)
+deepl glossary entries multilingual-terms --target es
+# API → API
+# cache → caché
+# ...
+
+deepl glossary entries multilingual-terms --target fr
+# API → API
+# cache → cache
+# ...
 ```
 
 ##### `languages`
@@ -772,7 +845,7 @@ deepl glossary languages
 # ...
 ```
 
-##### `add-entry <name-or-id> <source> <target>`
+##### `add-entry <name-or-id> <source> <target> [--target <lang>]`
 
 Add a new entry to an existing glossary.
 
@@ -780,31 +853,36 @@ Add a new entry to an existing glossary.
 
 - `name-or-id` - Glossary name or ID
 - `source` - Source language term
-- `target` - Target language term
+- `target` - Target language translation
+
+**Options:**
+
+- `--target <lang>` - Target language (required for multilingual glossaries, optional for single-target)
 
 **Behavior:**
 
-- Creates new glossary with updated entries (delete + recreate)
-- Returns new glossary ID
-- Preserves all other entries and metadata
+- Uses v3 PATCH endpoint for efficient updates (no delete+recreate)
+- Glossary ID remains unchanged
+- Preserves all other entries
 - Fails if entry already exists
 
 **Examples:**
 
 ```bash
-# Add entry by glossary name
-deepl glossary add-entry tech-terms "API" "API"
+# Add entry to single-target glossary
+deepl glossary add-entry tech-terms "database" "Datenbank"
 
-# Add entry by glossary ID
-deepl glossary add-entry abc-123-def-456 "cache" "caché"
+# Add entry to multilingual glossary (--target required)
+deepl glossary add-entry multilingual-terms "cache" "caché" --target es
+deepl glossary add-entry multilingual-terms "cache" "cache" --target fr
 
 # Add phrase
-deepl glossary add-entry tech-terms "user interface" "interfaz de usuario"
+deepl glossary add-entry tech-terms "user interface" "Schnittstelle"
 ```
 
-**Note:** Since DeepL API doesn't provide direct entry editing, this command fetches all entries, adds the new entry, deletes the old glossary, and creates a new one. The glossary ID will change but the name remains the same.
+**Note:** v3 API uses PATCH for efficient updates. The glossary ID remains unchanged.
 
-##### `update-entry <name-or-id> <source> <new-target>`
+##### `update-entry <name-or-id> <source> <new-target> [--target <lang>]`
 
 Update an existing entry in a glossary.
 
@@ -814,26 +892,30 @@ Update an existing entry in a glossary.
 - `source` - Source language term to update
 - `new-target` - New target language translation
 
+**Options:**
+
+- `--target <lang>` - Target language (required for multilingual glossaries, optional for single-target)
+
 **Behavior:**
 
-- Updates existing entry's target text
-- Creates new glossary with updated entries (delete + recreate)
-- Returns new glossary ID
+- Updates existing entry's target text using v3 PATCH endpoint
+- Glossary ID remains unchanged
 - Fails if entry doesn't exist
 
 **Examples:**
 
 ```bash
-# Update entry by glossary name
-deepl glossary update-entry tech-terms "cache" "caché del sistema"
+# Update entry in single-target glossary
+deepl glossary update-entry tech-terms "API" "API (Programmierschnittstelle)"
 
-# Update entry by glossary ID
-deepl glossary update-entry abc-123-def-456 "API" "Interfaz de programación de aplicaciones"
+# Update entry in multilingual glossary (--target required)
+deepl glossary update-entry multilingual-terms "API" "API (Interfaz)" --target es
+deepl glossary update-entry multilingual-terms "API" "API (Interface)" --target fr
 ```
 
-**Note:** Like `add-entry`, this command recreates the glossary with updated entries. The glossary ID will change but the name remains the same.
+**Note:** v3 API uses PATCH for efficient updates. The glossary ID remains unchanged.
 
-##### `remove-entry <name-or-id> <source>`
+##### `remove-entry <name-or-id> <source> [--target <lang>]`
 
 Remove an entry from a glossary.
 
@@ -842,22 +924,25 @@ Remove an entry from a glossary.
 - `name-or-id` - Glossary name or ID
 - `source` - Source language term to remove
 
+**Options:**
+
+- `--target <lang>` - Target language (required for multilingual glossaries, optional for single-target)
+
 **Behavior:**
 
-- Removes entry from glossary
-- Creates new glossary with remaining entries (delete + recreate)
-- Returns new glossary ID
+- Removes entry from glossary using v3 PATCH endpoint
+- Glossary ID remains unchanged
 - Fails if entry doesn't exist
 - Fails if removing the last entry (delete glossary instead)
 
 **Examples:**
 
 ```bash
-# Remove entry by glossary name
+# Remove entry from single-target glossary
 deepl glossary remove-entry tech-terms "obsolete-term"
 
-# Remove entry by glossary ID
-deepl glossary remove-entry abc-123-def-456 "deprecated"
+# Remove entry from multilingual glossary (--target required)
+deepl glossary remove-entry multilingual-terms "deprecated" --target es
 ```
 
 **Note:** You cannot remove the last entry from a glossary. If you need to remove all entries, use `deepl glossary delete` instead.
@@ -873,10 +958,9 @@ Rename a glossary.
 
 **Behavior:**
 
-- Changes glossary name
-- Creates new glossary with new name (delete + recreate)
-- Returns new glossary ID
-- Preserves all entries and language pair
+- Changes glossary name using v3 PATCH endpoint
+- Glossary ID remains unchanged
+- Preserves all entries and language pairs
 - Fails if new name matches current name
 
 **Examples:**
@@ -889,7 +973,7 @@ deepl glossary rename tech-terms "Technical Terminology v2"
 deepl glossary rename abc-123-def-456 "Product Names 2024"
 ```
 
-**Note:** Since DeepL API doesn't provide a direct rename endpoint, this command fetches all entries, deletes the old glossary, and creates a new one with the new name. The glossary ID will change but all entries are preserved.
+**Note:** v3 API uses PATCH for efficient rename. The glossary ID remains unchanged and all entries are preserved.
 
 ---
 

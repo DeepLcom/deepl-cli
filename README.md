@@ -789,42 +789,45 @@ auto_commit = true
 
 ### Glossaries
 
-DeepL glossaries ensure consistent terminology across translations.
+DeepL glossaries ensure consistent terminology across translations. The v3 Glossary API supports both single-target and multilingual glossaries (one glossary with multiple target languages).
 
 ```bash
-# Create a glossary from TSV file
+# Create a single-target glossary from TSV file
 # File format: source_term<TAB>target_term per line
 echo -e "API\tAPI\nREST\tREST\nauthentication\tAuthentifizierung" > glossary.tsv
 deepl glossary create tech-terms en de glossary.tsv
 # ✓ Glossary created: tech-terms (ID: abc123...)
-# Language pair: EN → DE
-# Entries: 3
+# Source language: EN
+# Target languages: DE
+# Type: Single target
+# Total entries: 3
 
 # List all glossaries
 deepl glossary list
-# Glossaries:
-#
-# Name: tech-terms
-# ID: abc123...
-# Languages: EN → DE
-# Entries: 3
-# Created: 2024-10-07
+# 📖 tech-terms (en→de) - 3 entries
+# 📚 multilingual-terms (en→3 targets) - 15 entries
 
 # Show glossary details
 deepl glossary show tech-terms
-# Glossary: tech-terms
+# Name: tech-terms
 # ID: abc123...
-# Language Pair: EN → DE
-# Entry Count: 3
+# Source language: en
+# Target languages: de
+# Type: Single target
+# Total entries: 3
 # Created: 2024-10-07T12:34:56Z
 
-# Show glossary entries
+# Show glossary entries (single-target glossary - no --target flag needed)
 deepl glossary entries tech-terms
-# Entries for glossary 'tech-terms':
-#
 # API → API
 # REST → REST
 # authentication → Authentifizierung
+
+# Show entries for multilingual glossary (--target flag required)
+deepl glossary entries multilingual-terms --target es
+# API → API
+# cache → caché
+# ...
 
 # Delete glossary
 deepl glossary delete tech-terms
@@ -832,7 +835,6 @@ deepl glossary delete tech-terms
 
 # List supported glossary language pairs
 deepl glossary languages
-# Supported glossary language pairs:
 # de → en
 # de → fr
 # de → it
@@ -846,27 +848,21 @@ deepl glossary languages
 # Add a new entry to an existing glossary
 deepl glossary add-entry tech-terms "database" "Datenbank"
 # ✓ Entry added successfully
-# Glossary: tech-terms
-# Entries: 4
+
+# Add entry to multilingual glossary (requires --target flag)
+deepl glossary add-entry multilingual-terms "cache" "caché" --target es
 
 # Update an existing entry in a glossary
 deepl glossary update-entry tech-terms "API" "API (Programmierschnittstelle)"
 # ✓ Entry updated successfully
-# Glossary: tech-terms
-# Entries: 4
 
 # Remove an entry from a glossary
 deepl glossary remove-entry tech-terms "REST"
 # ✓ Entry removed successfully
-# Glossary: tech-terms
-# Entries: 3
 
 # Rename a glossary
 deepl glossary rename tech-terms "Technical Terms v2"
 # ✓ Glossary renamed successfully
-# Name: Technical Terms v2
-# ID: def456... (new ID)
-# Entries: 3
 ```
 
 **Glossary file format (TSV):**
@@ -877,6 +873,14 @@ API	API
 REST	REST
 authentication	Authentifizierung
 ```
+
+**Key Features:**
+
+- **Single-target glossaries** - One source language → one target language (e.g., EN → DE)
+- **Multilingual glossaries** - One source language → multiple target languages (e.g., EN → ES, FR, DE)
+- **Direct updates** - v3 API uses PATCH endpoints for efficient updates (no delete+recreate)
+- **Smart defaults** - `--target` flag only required for multilingual glossaries
+- **Visual indicators** - 📖 for single-target, 📚 for multilingual glossaries
 
 **Note:** Using glossaries in translation (`--glossary` flag) is supported by the API client. Full CLI integration with automatic glossary application is planned for a future release.
 
