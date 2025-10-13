@@ -12,6 +12,8 @@ import {
   DocumentTranslationOptions,
   DocumentHandle,
   DocumentStatus,
+  GlossaryInfo,
+  GlossaryLanguagePair,
 } from '../types';
 
 interface ProxyConfig {
@@ -77,15 +79,7 @@ interface DeepLGlossaryLanguagePairsResponse {
   }>;
 }
 
-export interface GlossaryInfo {
-  glossary_id: string;
-  name: string;
-  ready: boolean;
-  source_lang: string;
-  target_lang: string;
-  creation_time: string;
-  entry_count: number;
-}
+// GlossaryInfo now imported from types
 
 export interface TranslationResult {
   text: string;
@@ -100,11 +94,6 @@ export interface UsageInfo {
 export interface LanguageInfo {
   language: Language;
   name: string;
-}
-
-export interface GlossaryLanguagePair {
-  sourceLang: Language;
-  targetLang: Language;
 }
 
 const FREE_API_URL = 'https://api-free.deepl.com';
@@ -396,7 +385,7 @@ export class DeepLClient {
    * Make HTTP request with retry logic
    */
   private async makeRequest<T>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
     path: string,
     data?: Record<string, unknown>
   ): Promise<T> {
@@ -408,7 +397,7 @@ export class DeepLClient {
 
         if (method === 'GET') {
           config = { params: data };
-        } else if (method === 'POST') {
+        } else if (method === 'POST' || method === 'PATCH') {
           // DeepL API uses form-encoded data
           const formData = new URLSearchParams();
           if (data) {
@@ -426,6 +415,9 @@ export class DeepLClient {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
           };
+        } else if (method === 'DELETE') {
+          // DELETE typically doesn't have a body
+          config = {};
         }
 
         const response = await this.client.request<T>({
@@ -509,61 +501,149 @@ export class DeepLClient {
   }
 
   /**
-   * Create a glossary
+   * Create a glossary (v3 API - supports multilingual glossaries)
    */
   async createGlossary(
     name: string,
-    sourceLang: string,
-    targetLang: string,
+    sourceLang: Language,
+    targetLangs: Language[],
     entries: string
   ): Promise<GlossaryInfo> {
-    const response = await this.client.post<GlossaryInfo>('/v2/glossaries', {
-      name,
-      source_lang: sourceLang,
-      target_lang: targetLang,
-      entries,
-      entries_format: 'tsv',
-    });
+    if (targetLangs.length === 0) {
+      throw new Error('At least one target language is required');
+    }
 
-    return response.data;
+    try {
+      const response = await this.makeRequest<GlossaryInfo>(
+        'POST',
+        '/v3/glossaries',
+        {
+          name,
+          source_lang: sourceLang.toUpperCase(),
+          target_langs: targetLangs.map(lang => lang.toUpperCase()),
+          entries,
+          entries_format: 'tsv',
+        }
+      );
+
+      return response;
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 
   /**
-   * List all glossaries
+   * List all glossaries (v3 API)
    */
   async listGlossaries(): Promise<GlossaryInfo[]> {
-    const response = await this.client.get<{ glossaries: GlossaryInfo[] }>('/v2/glossaries');
-    return response.data.glossaries || [];
+    try {
+      const response = await this.makeRequest<{ glossaries: GlossaryInfo[] }>(
+        'GET',
+        '/v3/glossaries'
+      );
+
+      return response.glossaries || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 
   /**
-   * Get glossary information
+   * Get glossary information (v3 API)
    */
   async getGlossary(glossaryId: string): Promise<GlossaryInfo> {
-    const response = await this.client.get<GlossaryInfo>(`/v2/glossaries/${glossaryId}`);
-    return response.data;
+    try {
+      const response = await this.makeRequest<GlossaryInfo>(
+        'GET',
+        `/v3/glossaries/${glossaryId}`
+      );
+
+      return response;
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 
   /**
-   * Delete a glossary
+   * Delete a glossary (v3 API)
    */
   async deleteGlossary(glossaryId: string): Promise<void> {
-    await this.client.delete(`/v2/glossaries/${glossaryId}`);
+    try {
+      await this.makeRequest<void>(
+        'DELETE',
+        `/v3/glossaries/${glossaryId}`
+      );
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 
   /**
-   * Get glossary entries
+   * Get glossary entries for a specific language pair (v3 API)
    */
-  async getGlossaryEntries(glossaryId: string): Promise<string> {
-    const response = await this.client.get<string>(
-      `/v2/glossaries/${glossaryId}/entries`,
-      {
-        headers: {
-          Accept: 'text/tab-separated-values',
-        },
-      }
-    );
-    return response.data;
+  async getGlossaryEntries(
+    glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language
+  ): Promise<string> {
+    try {
+      // v3 API requires source and target lang query params
+      const response = await this.client.get<string>(
+        `/v3/glossaries/${glossaryId}/entries`,
+        {
+          params: {
+            source_lang: sourceLang.toUpperCase(),
+            target_lang: targetLang.toUpperCase(),
+          },
+          headers: {
+            Accept: 'text/tab-separated-values',
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Update glossary entries for a specific language pair (v3 API)
+   */
+  async updateGlossaryEntries(
+    glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language,
+    entries: string
+  ): Promise<void> {
+    try {
+      await this.makeRequest<void>(
+        'PATCH',
+        `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`,
+        {
+          entries,
+          entries_format: 'tsv',
+        }
+      );
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Rename a glossary (v3 API)
+   */
+  async renameGlossary(glossaryId: string, newName: string): Promise<void> {
+    try {
+      await this.makeRequest<void>(
+        'PATCH',
+        `/v3/glossaries/${glossaryId}`,
+        {
+          name: newName,
+        }
+      );
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 
   /**
