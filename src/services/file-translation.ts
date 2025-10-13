@@ -142,9 +142,42 @@ export class FileTranslationService {
 
   /**
    * Check if file type is supported
+   * SECURITY: Validates file type, resolves symlinks if file exists, and checks file is regular file
    */
   isSupportedFile(filePath: string): boolean {
     const ext = path.extname(filePath).toLowerCase();
-    return this.supportedExtensions.includes(ext);
+
+    // Check extension first (works even if file doesn't exist)
+    if (!this.supportedExtensions.includes(ext)) {
+      return false;
+    }
+
+    // If file doesn't exist, extension check is sufficient (e.g., for validation before creation)
+    if (!fs.existsSync(filePath)) {
+      return true;
+    }
+
+    // For existing files, perform security checks
+    try {
+      // Resolve symlinks to get real path
+      const realPath = fs.realpathSync(filePath);
+      const realExt = path.extname(realPath).toLowerCase();
+
+      // Verify real extension matches (prevents symlink to non-text file)
+      if (!this.supportedExtensions.includes(realExt)) {
+        return false;
+      }
+
+      // Check if file is a regular file (not device, socket, etc.)
+      const stats = fs.lstatSync(filePath);
+      if (!stats.isFile()) {
+        return false;
+      }
+
+      return true;
+    } catch {
+      // If security check fails (permission denied, etc.), reject
+      return false;
+    }
   }
 }

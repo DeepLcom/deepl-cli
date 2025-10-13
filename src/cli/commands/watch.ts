@@ -179,16 +179,17 @@ export class WatchCommand {
 
   /**
    * Auto-commit translated files to git
+   * SECURITY: Uses execFile instead of exec to prevent command injection
    */
   private async autoCommit(sourceFile: string, result: any): Promise<void> {
     try {
-      const { exec } = await import('child_process');
+      const { execFile } = await import('child_process');
       const { promisify } = await import('util');
-      const execAsync = promisify(exec);
+      const execFileAsync = promisify(execFile);
 
       // Check if in a git repository
       try {
-        await execAsync('git rev-parse --git-dir');
+        await execFileAsync('git', ['rev-parse', '--git-dir']);
       } catch {
         Logger.warn(chalk.yellow('⚠️  Not a git repository, skipping auto-commit'));
         return;
@@ -210,9 +211,9 @@ export class WatchCommand {
         return;
       }
 
-      // Stage files
+      // Stage files - execFile passes arguments as array, preventing injection
       for (const file of outputFiles) {
-        await execAsync(`git add "${file}"`);
+        await execFileAsync('git', ['add', file]);
       }
 
       // Create commit message
@@ -222,8 +223,8 @@ export class WatchCommand {
 
       const commitMsg = `chore(i18n): auto-translate ${sourceFile} to ${langs}`;
 
-      // Commit
-      await execAsync(`git commit -m "${commitMsg}"`);
+      // Commit - commit message is passed as array argument, preventing injection
+      await execFileAsync('git', ['commit', '-m', commitMsg]);
 
       Logger.success(chalk.green('✓ Auto-committed translations'));
     } catch (error) {
