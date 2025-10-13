@@ -1,10 +1,11 @@
 #!/bin/bash
-# Example 3: Glossaries
+# Example 3: Glossaries (v3 API)
 # Demonstrates managing glossaries for consistent terminology
+# v3 API supports both single-target and multilingual glossaries
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 3: Glossaries ==="
+echo "=== DeepL CLI Example 3: Glossaries (v3 API) ==="
 echo
 
 # Check if API key is configured
@@ -46,14 +47,18 @@ EOF
 echo "✓ Sample glossary files created"
 echo
 
+# ═══════════════════════════════════════════════════════
+# BASIC GLOSSARY OPERATIONS
+# ═══════════════════════════════════════════════════════
+
 # Example 1: Create a glossary
 echo "1. Create tech glossary (EN → DE)"
-deepl glossary create tech-terms en de "$SAMPLE_DIR/tech-glossary.tsv"
+deepl glossary create tech-terms-demo en de "$SAMPLE_DIR/tech-glossary.tsv"
 echo
 
 # Example 2: Create another glossary
 echo "2. Create business glossary (EN → ES)"
-deepl glossary create business-terms en es "$SAMPLE_DIR/business-glossary.tsv"
+deepl glossary create business-terms-demo en es "$SAMPLE_DIR/business-glossary.tsv"
 echo
 
 # Example 3: List all glossaries
@@ -63,40 +68,68 @@ echo
 
 # Example 4: Show glossary details
 echo "4. Show tech glossary details"
-deepl glossary show tech-terms
+deepl glossary show tech-terms-demo
 echo
 
 # Example 5: View glossary entries
 echo "5. View tech glossary entries"
-deepl glossary entries tech-terms
+deepl glossary entries tech-terms-demo
 echo
 
 # Example 6: View business glossary entries
 echo "6. View business glossary entries"
-deepl glossary entries business-terms
+deepl glossary entries business-terms-demo
 echo
 
-# Example 7: Find glossary by ID (get ID from list)
-echo "7. Find glossary by ID"
-GLOSSARY_ID=$(deepl glossary list 2>/dev/null | grep -A 1 "tech-terms" | grep "ID:" | awk '{print $2}' | head -1)
-if [ -n "$GLOSSARY_ID" ]; then
-  echo "   Looking up glossary with ID: $GLOSSARY_ID"
-  deepl glossary show "$GLOSSARY_ID"
-fi
+# Example 7: Rename a glossary
+echo "7. Rename glossary"
+deepl glossary rename tech-terms-demo tech-terms-renamed
+echo "✓ Renamed tech-terms-demo to tech-terms-renamed"
 echo
 
-# Cleanup: Delete glossaries
-echo "8. Clean up - delete glossaries"
-echo "   Deleting tech-terms..."
-deepl glossary delete tech-terms 2>/dev/null || echo "   (Already deleted)"
+# Example 8: Verify rename
+echo "8. Verify rename"
+deepl glossary show tech-terms-renamed
+echo
 
-echo "   Deleting business-terms..."
-deepl glossary delete business-terms 2>/dev/null || echo "   (Already deleted)"
+# ═══════════════════════════════════════════════════════
+# USING GLOSSARIES IN TRANSLATION
+# ═══════════════════════════════════════════════════════
+
+echo "9. Translate with glossary"
+echo "   Without glossary:"
+deepl translate "The API endpoint requires authentication." --from en --to de
+
+echo
+echo "   With tech glossary:"
+deepl translate "The API endpoint requires authentication." --from en --to de --glossary tech-terms-renamed
+
+echo
+
+# ═══════════════════════════════════════════════════════
+# GLOSSARY LANGUAGE PAIRS
+# ═══════════════════════════════════════════════════════
+
+echo "10. List supported glossary language pairs"
+deepl glossary languages | head -10
+echo "   (showing first 10 pairs - see 'deepl glossary languages' for full list)"
+echo
+
+# ═══════════════════════════════════════════════════════
+# CLEANUP
+# ═══════════════════════════════════════════════════════
+
+echo "11. Clean up - delete glossaries"
+echo "   Deleting tech-terms-renamed..."
+deepl glossary delete tech-terms-renamed 2>/dev/null || echo "   (Already deleted)"
+
+echo "   Deleting business-terms-demo..."
+deepl glossary delete business-terms-demo 2>/dev/null || echo "   (Already deleted)"
 
 echo
 
 # Verify deletion
-echo "9. Verify glossaries are deleted"
+echo "12. Verify glossaries are deleted"
 deepl glossary list
 echo
 
@@ -107,9 +140,16 @@ echo "✓ Cleanup complete"
 
 echo "=== All glossary examples completed! ==="
 echo
-echo "💡 Tip: Glossaries ensure consistent translation of technical terms across your project."
-echo "   Use them for:"
-echo "   - Product names"
-echo "   - Technical terminology"
-echo "   - Brand-specific terms"
-echo "   - Domain-specific vocabulary"
+echo "💡 Glossary Tips:"
+echo "   ✓ Glossaries ensure consistent translation of technical terms"
+echo "   ✓ v3 API supports multilingual glossaries (multiple target languages)"
+echo "   ✓ Use glossaries for:"
+echo "     - Product names (e.g., 'iPhone' should not be translated)"
+echo "     - Technical terminology (e.g., 'API', 'endpoint', 'authentication')"
+echo "     - Brand-specific terms (e.g., company name, product features)"
+echo "     - Domain-specific vocabulary (e.g., legal, medical, financial terms)"
+echo
+echo "   ✓ For multilingual glossaries, use --target-lang flag to specify"
+echo "     which language pair to view/modify:"
+echo "     deepl glossary entries my-glossary --target de"
+echo "     deepl glossary add-entry my-glossary 'source' 'target' --target-lang de"
