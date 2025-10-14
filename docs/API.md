@@ -1331,16 +1331,78 @@ deepl auth clear
 
 ## Exit Codes
 
-| Code | Meaning          |
-| ---- | ---------------- |
-| 0    | Success          |
-| 1    | Error (any type) |
+The CLI uses semantic exit codes to enable intelligent error handling in scripts and CI/CD pipelines.
+
+| Code | Meaning                         | Description                                                    | Retryable |
+| ---- | ------------------------------- | -------------------------------------------------------------- | --------- |
+| 0    | Success                         | Operation completed successfully                               | N/A       |
+| 1    | General Error                   | Unclassified error                                             | No        |
+| 2    | Authentication Error            | Invalid or missing API key                                     | No        |
+| 3    | Rate Limit Error                | Too many requests (HTTP 429)                                   | Yes       |
+| 4    | Quota Exceeded                  | Character limit reached (HTTP 456)                             | No        |
+| 5    | Network Error                   | Connection timeout, refused, or service unavailable (HTTP 503) | Yes       |
+| 6    | Invalid Input                   | Missing arguments, unsupported format, or validation error     | No        |
+| 7    | Configuration Error             | Invalid configuration file or settings                         | No        |
 
 **Special Cases:**
 
 - `deepl write --check`: Exits with 0 if no changes needed, 1 if improvements suggested
 
-**Note:** Detailed exit codes (2-7) are planned for a future release. Currently, all errors exit with code 1.
+**Exit Code Classification:**
+
+The CLI automatically classifies errors based on error messages and HTTP status codes:
+
+- **Authentication (2)**: "authentication failed", "invalid api key", "api key not set"
+- **Rate Limit (3)**: "rate limit exceeded", "too many requests", HTTP 429
+- **Quota (4)**: "quota exceeded", "character limit reached", HTTP 456
+- **Network (5)**: "timeout", "econnrefused", "enotfound", "connection", HTTP 503
+- **Invalid Input (6)**: "cannot be empty", "not found", "unsupported", "invalid", "required"
+- **Configuration (7)**: "config", "configuration"
+
+**CI/CD Integration:**
+
+Use exit codes to implement intelligent retry logic in scripts:
+
+```bash
+#!/bin/bash
+# Retry on rate limit or network errors only
+
+deepl translate "Hello" --to es
+EXIT_CODE=$?
+
+case $EXIT_CODE in
+  0)
+    echo "Success"
+    ;;
+  3|5)
+    echo "Retryable error (code $EXIT_CODE), retrying in 5 seconds..."
+    sleep 5
+    deepl translate "Hello" --to es
+    ;;
+  *)
+    echo "Non-retryable error (code $EXIT_CODE)"
+    exit $EXIT_CODE
+    ;;
+esac
+```
+
+**Checking Exit Codes:**
+
+```bash
+# Check if translation succeeded
+if deepl translate "Hello" --to es; then
+  echo "Translation succeeded"
+else
+  EXIT_CODE=$?
+  echo "Translation failed with exit code: $EXIT_CODE"
+fi
+
+# Handle specific errors
+deepl translate "Hello" --to invalid
+if [ $? -eq 6 ]; then
+  echo "Invalid input provided"
+fi
+```
 
 ---
 

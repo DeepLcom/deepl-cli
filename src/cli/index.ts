@@ -31,6 +31,7 @@ import { WriteLanguage, WritingStyle, WriteTone } from '../types/api.js';
 import { Language } from '../types/common.js';
 import { HookType } from '../services/git-hooks.js';
 import { Logger } from '../utils/logger.js';
+import { ExitCode, getExitCodeFromError } from '../utils/exit-codes.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -67,6 +68,17 @@ process.on('SIGTERM', () => {
 });
 
 /**
+ * Handle error and exit with appropriate exit code
+ */
+function handleError(error: unknown): never {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  const exitCode = error instanceof Error ? getExitCodeFromError(error) : ExitCode.GeneralError;
+
+  Logger.error(chalk.red('Error:'), errorMessage);
+  process.exit(exitCode);
+}
+
+/**
  * Create DeepL client with API key from config or env
  */
 function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
@@ -78,7 +90,7 @@ function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
   if (!key) {
     Logger.error(chalk.red('Error: API key not set'));
     Logger.warn(chalk.yellow('Run: deepl auth set-key <your-api-key>'));
-    process.exit(1);
+    process.exit(ExitCode.AuthError);
   }
 
   // Get API configuration
@@ -139,8 +151,8 @@ program
           await authCommand.setKey(apiKey);
           Logger.success(chalk.green('✓ API key saved and validated successfully'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -158,8 +170,8 @@ program
             Logger.output(chalk.yellow('No API key set'));
           }
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -172,8 +184,8 @@ program
           await authCommand.clearKey();
           Logger.success(chalk.green('✓ API key removed'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   );
@@ -191,8 +203,7 @@ program
       const formatted = usageCommand.formatUsage(usage);
       Logger.output(formatted);
     } catch (error) {
-      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
+      handleError(error);
     }
   });
 
@@ -228,8 +239,7 @@ program
 
       Logger.output(output);
     } catch (error) {
-      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
+      handleError(error);
     }
   });
 
@@ -295,8 +305,7 @@ program
 
       Logger.output(result);
     } catch (error) {
-      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
+      handleError(error);
     }
   });
 
@@ -341,8 +350,7 @@ program
 
       await watchCommand.watch(path, options);
     } catch (error) {
-      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
+      handleError(error);
     }
   });
 
@@ -413,10 +421,10 @@ program
 
         if (needsImprovement) {
           Logger.warn(chalk.yellow(`⚠ Text needs improvement (${changes} potential changes)`));
-          process.exit(1);
+          process.exit(ExitCode.GeneralError); // Exit with error code when improvements needed
         } else {
           Logger.success(chalk.green('✓ Text looks good'));
-          process.exit(0);
+          process.exit(ExitCode.Success);
         }
       }
 
@@ -502,8 +510,7 @@ program
       const result = await writeCommand.improve(text, writeOptions);
       Logger.output(result);
     } catch (error) {
-      Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
+      handleError(error);
     }
   });
 
@@ -522,8 +529,8 @@ program
           // Convert undefined to null for proper JSON output
           Logger.output(JSON.stringify(value ?? null, null, 2));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -538,8 +545,8 @@ program
           await configCommand.set(key, value);
           Logger.success(chalk.green(`✓ Set ${key} = ${value}`));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -552,8 +559,8 @@ program
           const config = await configCommand.list();
           Logger.output(JSON.stringify(config, null, 2));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -566,8 +573,8 @@ program
           await configCommand.reset();
           Logger.success(chalk.green('✓ Configuration reset to defaults'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   );
@@ -586,8 +593,8 @@ program
           const formatted = cacheCommand.formatStats(stats);
           Logger.output(formatted);
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -600,8 +607,8 @@ program
           await cacheCommand.clear();
           Logger.success(chalk.green('✓ Cache cleared successfully'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -628,8 +635,8 @@ program
             Logger.info(chalk.gray(`Max size: ${formatSize(maxSizeBytes)}`));
           }
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -642,8 +649,8 @@ program
           await cacheCommand.disable();
           Logger.success(chalk.green('✓ Cache disabled'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   );
@@ -672,8 +679,8 @@ program
           Logger.success(chalk.green('✓ Glossary created successfully'));
           Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -689,8 +696,8 @@ program
           const glossaries = await glossaryCommand.list();
           Logger.output(glossaryCommand.formatGlossaryList(glossaries));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -707,8 +714,8 @@ program
           const glossary = await glossaryCommand.show(nameOrId);
           Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -727,8 +734,8 @@ program
           const entries = await glossaryCommand.entries(nameOrId, targetLang);
           Logger.output(glossaryCommand.formatEntries(entries));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -745,8 +752,8 @@ program
           await glossaryCommand.delete(nameOrId);
           Logger.success(chalk.green('✓ Glossary deleted successfully'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -762,8 +769,8 @@ program
           const pairs = await glossaryCommand.listLanguages();
           Logger.output(glossaryCommand.formatLanguagePairs(pairs));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -784,8 +791,8 @@ program
           await glossaryCommand.addEntry(nameOrId, source, target, targetLang);
           Logger.success(chalk.green('✓ Entry added successfully'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -806,8 +813,8 @@ program
           await glossaryCommand.updateEntry(nameOrId, source, newTarget, targetLang);
           Logger.success(chalk.green('✓ Entry updated successfully'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -827,8 +834,8 @@ program
           await glossaryCommand.removeEntry(nameOrId, source, targetLang);
           Logger.success(chalk.green('✓ Entry removed successfully'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -846,8 +853,8 @@ program
           await glossaryCommand.rename(nameOrId, newName);
           Logger.success(chalk.green('✓ Glossary renamed successfully'));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -865,8 +872,8 @@ program
           await glossaryCommand.deleteDictionary(nameOrId, targetLang as Language);
           Logger.success(chalk.green(`✓ Dictionary deleted successfully (${targetLang})`));
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   );
@@ -885,8 +892,8 @@ program
           const result = hooksCommand.install(hookType as HookType);
           Logger.output(result);
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -900,8 +907,8 @@ program
           const result = hooksCommand.uninstall(hookType as HookType);
           Logger.output(result);
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -914,8 +921,8 @@ program
           const result = hooksCommand.list();
           Logger.output(result);
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   )
@@ -929,8 +936,8 @@ program
           const result = hooksCommand.showPath(hookType as HookType);
           Logger.output(result);
         } catch (error) {
-          Logger.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error');
-          process.exit(1);
+          handleError(error);
+
         }
       })
   );

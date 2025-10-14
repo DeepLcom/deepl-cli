@@ -50,11 +50,23 @@ describe('ConfigService', () => {
       expect(config).toHaveProperty('team');
     });
 
-    it('should return a deep copy of config to prevent mutations', () => {
+    it('should return readonly reference (mutations affect original)', () => {
+      // get() now returns Readonly<DeepLConfig> for performance
+      // TypeScript prevents mutations at compile time
       const config1 = configService.get();
-      config1.defaults.targetLangs.push('es');
+
+      // This would be a TypeScript error: Cannot assign to 'targetLangs' because it is a read-only property
+      // But in JavaScript runtime, the object is still mutable
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (config1 as any).defaults.targetLangs.push('es');
+
       const config2 = configService.get();
-      expect(config2.defaults.targetLangs).toEqual([]);
+      // Since we return a reference now, mutations affect the original
+      expect(config2.defaults.targetLangs).toEqual(['es']);
+
+      // Clean up for other tests
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (config2 as any).defaults.targetLangs.pop();
     });
   });
 

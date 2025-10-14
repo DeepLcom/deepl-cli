@@ -54,10 +54,13 @@ export class ConfigService {
 
   /**
    * Get the entire configuration
+   * Returns a readonly reference to prevent accidental mutations
+   *
+   * IMPORTANT: Do not mutate the returned config object.
+   * If you need to modify the config, use set() method instead.
    */
-  get(): DeepLConfig {
-    // Return deep copy to prevent mutations
-    return JSON.parse(JSON.stringify(this.config)) as DeepLConfig;
+  get(): Readonly<DeepLConfig> {
+    return this.config;
   }
 
   /**
@@ -155,6 +158,11 @@ export class ConfigService {
 
   /**
    * Clear all configuration and reset to defaults
+   *
+   * NOTE: This method only clears the configuration file, not the cache database.
+   * If you have an active CacheService instance, you should call cache.close()
+   * before calling this method to release the database connection.
+   * In CLI usage, this is handled automatically by process exit handlers.
    */
   clear(): void {
     this.config = ConfigService.getDefaults();

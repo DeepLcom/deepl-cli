@@ -461,9 +461,10 @@ describe('TranslationService', () => {
 
   describe('preserveVariables()', () => {
     it('should preserve curly brace variables', async () => {
-      mockDeepLClient.translate.mockResolvedValue({
-        text: 'Hola __VAR_0__',
-      });
+      // Mock to echo back the translated text with placeholders intact
+      mockDeepLClient.translate.mockImplementation(async (text) => ({
+        text: text.replace('Hello', 'Hola'),
+      }));
 
       const result = await translationService.translate('Hello {name}', {
         targetLang: 'es',
@@ -473,9 +474,9 @@ describe('TranslationService', () => {
     });
 
     it('should preserve dollar sign variables', async () => {
-      mockDeepLClient.translate.mockResolvedValue({
-        text: 'Hola __VAR_0__',
-      });
+      mockDeepLClient.translate.mockImplementation(async (text) => ({
+        text: text.replace('Hello', 'Hola'),
+      }));
 
       const result = await translationService.translate('Hello ${name}', {
         targetLang: 'es',
@@ -485,9 +486,9 @@ describe('TranslationService', () => {
     });
 
     it('should preserve printf-style variables', async () => {
-      mockDeepLClient.translate.mockResolvedValue({
-        text: 'Hola __VAR_0__, tienes __VAR_1__ años',
-      });
+      mockDeepLClient.translate.mockImplementation(async (text) => ({
+        text: text.replace('Hello', 'Hola').replace('you are', 'tienes').replace('years old', 'años'),
+      }));
 
       const result = await translationService.translate('Hello %s, you are %d years old', {
         targetLang: 'es',
@@ -497,9 +498,9 @@ describe('TranslationService', () => {
     });
 
     it('should preserve numbered placeholders', async () => {
-      mockDeepLClient.translate.mockResolvedValue({
-        text: 'Hola __VAR_0__, tienes __VAR_1__ años',
-      });
+      mockDeepLClient.translate.mockImplementation(async (text) => ({
+        text: text.replace('Hello', 'Hola').replace('you are', 'tienes').replace('years old', 'años'),
+      }));
 
       const result = await translationService.translate('Hello {0}, you are {1} years old', {
         targetLang: 'es',
@@ -509,9 +510,9 @@ describe('TranslationService', () => {
     });
 
     it('should preserve multiple variable types', async () => {
-      mockDeepLClient.translate.mockResolvedValue({
-        text: '__VAR_1__ tiene __VAR_0__ y __VAR_2__',
-      });
+      mockDeepLClient.translate.mockImplementation(async (text) => ({
+        text: text.replace('has', 'tiene').replace('and', 'y'),
+      }));
 
       const result = await translationService.translate('{name} has ${count} and %s', {
         targetLang: 'es',

@@ -335,4 +335,198 @@ describe('DocumentTranslationService', () => {
       expect(service.isDocumentSupported('/test/document.DOCX')).toBe(true);
     });
   });
+
+  describe('cancellation support', () => {
+    it('should cancel translation when AbortSignal is aborted before polling starts', async () => {
+      const inputPath = '/test/doc.pdf';
+      const outputPath = '/test/doc.es.pdf';
+      const fileBuffer = Buffer.from('content');
+
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      // Create an already-aborted signal
+      const abortController = new AbortController();
+      abortController.abort();
+
+      await expect(
+        service.translateDocument(
+          inputPath,
+          outputPath,
+          { targetLang: 'es' },
+          undefined,
+          { abortSignal: abortController.signal }
+        )
+      ).rejects.toThrow('Document translation cancelled');
+
+      // Should have uploaded but not polled
+      expect(mockClient.uploadDocument).toHaveBeenCalled();
+      expect(mockClient.getDocumentStatus).not.toHaveBeenCalled();
+    });
+
+    it('should cancel translation during polling', async () => {
+      const inputPath = '/test/doc.pdf';
+      const outputPath = '/test/doc.es.pdf';
+      const fileBuffer = Buffer.from('content');
+
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      const abortController = new AbortController();
+
+      // Mock getDocumentStatus to return "translating" and then abort after first call
+      mockClient.getDocumentStatus = jest.fn()
+        .mockImplementation(async () => {
+          // Abort after first status check
+          abortController.abort();
+          return {
+            documentId: 'doc-123',
+            status: 'translating',
+            secondsRemaining: 10,
+          };
+        });
+
+      await expect(
+        service.translateDocument(
+          inputPath,
+          outputPath,
+          { targetLang: 'es' },
+          undefined,
+          { abortSignal: abortController.signal }
+        )
+      ).rejects.toThrow('Document translation cancelled');
+
+      // Should have polled at least once before cancellation
+      expect(mockClient.getDocumentStatus).toHaveBeenCalledWith({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+    });
+
+    it('should cancel translation during sleep between polls', async () => {
+      const inputPath = '/test/doc.pdf';
+      const outputPath = '/test/doc.es.pdf';
+      const fileBuffer = Buffer.from('content');
+
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      const abortController = new AbortController();
+
+      // Mock getDocumentStatus to return "translating" status
+      mockClient.getDocumentStatus = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        status: 'translating',
+        secondsRemaining: 10,
+      });
+
+      // Abort after a short delay (during sleep)
+      setTimeout(() => {
+        abortController.abort();
+      }, 50);
+
+      await expect(
+        service.translateDocument(
+          inputPath,
+          outputPath,
+          { targetLang: 'es' },
+          undefined,
+          { abortSignal: abortController.signal }
+        )
+      ).rejects.toThrow('Document translation cancelled');
+
+      // Should have polled at least once
+      expect(mockClient.getDocumentStatus).toHaveBeenCalled();
+    });
+
+    it('should complete successfully if not cancelled', async () => {
+      const inputPath = '/test/doc.pdf';
+      const outputPath = '/test/doc.es.pdf';
+      const fileBuffer = Buffer.from('content');
+      const translatedBuffer = Buffer.from('translated');
+
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      mockClient.getDocumentStatus = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        status: 'done',
+        billedCharacters: 100,
+      });
+
+      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+
+      // Create AbortController but don't abort
+      const abortController = new AbortController();
+
+      const result = await service.translateDocument(
+        inputPath,
+        outputPath,
+        { targetLang: 'es' },
+        undefined,
+        { abortSignal: abortController.signal }
+      );
+
+      expect(result).toEqual({
+        success: true,
+        billedCharacters: 100,
+        outputPath: outputPath,
+      });
+
+      expect(mockClient.downloadDocument).toHaveBeenCalled();
+      expect(mockWriteFileSync).toHaveBeenCalledWith(outputPath, translatedBuffer);
+    });
+
+    it('should work without AbortSignal (backward compatibility)', async () => {
+      const inputPath = '/test/doc.pdf';
+      const outputPath = '/test/doc.es.pdf';
+      const fileBuffer = Buffer.from('content');
+      const translatedBuffer = Buffer.from('translated');
+
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      mockClient.getDocumentStatus = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        status: 'done',
+      });
+
+      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+
+      // Call without serviceOptions (no AbortSignal)
+      const result = await service.translateDocument(
+        inputPath,
+        outputPath,
+        { targetLang: 'es' }
+      );
+
+      expect(result).toEqual({
+        success: true,
+        billedCharacters: undefined,
+        outputPath: outputPath,
+      });
+
+      expect(mockClient.downloadDocument).toHaveBeenCalled();
+    });
+  });
 });

@@ -28,6 +28,10 @@ interface DocumentProgressUpdate {
 
 type ProgressCallback = (progress: DocumentProgressUpdate) => void;
 
+interface TranslateDocumentOptions {
+  abortSignal?: AbortSignal;
+}
+
 export class DocumentTranslationService {
   private client: DeepLClient;
   private supportedExtensions = [
@@ -55,12 +59,14 @@ export class DocumentTranslationService {
 
   /**
    * Translate a document from input path to output path
+   * Can be cancelled via options.abortSignal
    */
   async translateDocument(
     inputPath: string,
     outputPath: string,
     options: DocumentTranslationOptions,
-    progressCallback?: ProgressCallback
+    progressCallback?: ProgressCallback,
+    serviceOptions?: TranslateDocumentOptions
   ): Promise<DocumentTranslationResult> {
     // Validate input file exists
     if (!fs.existsSync(inputPath)) {
@@ -78,7 +84,11 @@ export class DocumentTranslationService {
     });
 
     // Poll for completion
-    const finalStatus = await this.pollDocumentStatus(handle, progressCallback);
+    const finalStatus = await this.pollDocumentStatus(
+      handle,
+      progressCallback,
+      serviceOptions?.abortSignal
+    );
 
     // Check for errors
     if (finalStatus.status === 'error') {
@@ -108,16 +118,23 @@ export class DocumentTranslationService {
 
   /**
    * Poll document status until translation is complete
+   * Can be cancelled via abortSignal
    */
   private async pollDocumentStatus(
     handle: DocumentHandle,
-    progressCallback?: ProgressCallback
+    progressCallback?: ProgressCallback,
+    abortSignal?: AbortSignal
   ): Promise<DocumentStatus> {
     let pollInterval = this.INITIAL_POLL_INTERVAL;
     let status: DocumentStatus;
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      // Check if operation was cancelled
+      if (abortSignal?.aborted) {
+        throw new Error('Document translation cancelled');
+      }
+
       status = await this.client.getDocumentStatus(handle);
 
       // Call progress callback if provided
@@ -136,7 +153,7 @@ export class DocumentTranslationService {
       }
 
       // Wait before next poll with exponential backoff
-      await this.sleep(pollInterval);
+      await this.sleep(pollInterval, abortSignal);
       pollInterval = Math.min(
         pollInterval * this.BACKOFF_MULTIPLIER,
         this.MAX_POLL_INTERVAL
@@ -163,8 +180,30 @@ export class DocumentTranslationService {
 
   /**
    * Sleep helper for polling delays
+   * Can be cancelled via abortSignal
    */
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private sleep(ms: number, abortSignal?: AbortSignal): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Check if already aborted
+      if (abortSignal?.aborted) {
+        reject(new Error('Document translation cancelled'));
+        return;
+      }
+
+      const timeout = setTimeout(resolve, ms);
+
+      // Listen for abort event
+      const abortHandler = () => {
+        clearTimeout(timeout);
+        reject(new Error('Document translation cancelled'));
+      };
+
+      abortSignal?.addEventListener('abort', abortHandler, { once: true });
+
+      // Clean up listener when timeout completes
+      setTimeout(() => {
+        abortSignal?.removeEventListener('abort', abortHandler);
+      }, ms);
+    });
   }
 }

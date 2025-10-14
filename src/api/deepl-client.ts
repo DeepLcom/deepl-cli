@@ -4,6 +4,8 @@
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import * as http from 'http';
+import * as https from 'https';
 import {
   TranslationOptions,
   Language,
@@ -115,13 +117,30 @@ export class DeepLClient {
 
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
 
-    // Build axios config
+    // Build axios config with HTTP keep-alive for connection reuse
+    // This significantly improves performance for batch translations
     const axiosConfig: Record<string, unknown> = {
       baseURL,
       timeout: options.timeout ?? DEFAULT_TIMEOUT,
       headers: {
         'Authorization': `DeepL-Auth-Key ${apiKey}`,
+        'Connection': 'keep-alive',
       },
+      // Enable HTTP keep-alive for better performance in batch operations
+      httpAgent: new http.Agent({
+        keepAlive: true,
+        keepAliveMsecs: 1000,
+        maxSockets: 50,
+        maxFreeSockets: 10,
+        timeout: options.timeout ?? DEFAULT_TIMEOUT,
+      }),
+      httpsAgent: new https.Agent({
+        keepAlive: true,
+        keepAliveMsecs: 1000,
+        maxSockets: 50,
+        maxFreeSockets: 10,
+        timeout: options.timeout ?? DEFAULT_TIMEOUT,
+      }),
     };
 
     // Add proxy configuration if provided

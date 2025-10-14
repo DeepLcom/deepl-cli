@@ -1042,6 +1042,8 @@ npm run examples:fast
 
 ## 📚 Documentation
 
+- **[API.md](./docs/API.md)** - Complete API reference with all commands, flags, and options
+- **[Exit Codes](./docs/API.md#exit-codes)** - Semantic exit codes for CI/CD integration and error handling
 - **[DESIGN.md](./DESIGN.md)** - Comprehensive design and architecture
 - **[CLAUDE.md](./CLAUDE.md)** - Development guidelines and TDD workflow
 - **[DeepL API Docs](https://www.deepl.com/docs-api)** - Official API documentation

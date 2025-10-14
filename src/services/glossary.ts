@@ -295,34 +295,68 @@ export class GlossaryService {
 
   /**
    * Convert TSV/CSV to entries object
+   * Handles UTF-8 BOM, warns about extra columns, validates format
    */
   tsvToEntries(tsv: string): Record<string, string> {
     const entries: Record<string, string> = {};
 
-    const lines = tsv.split('\n');
+    // Remove UTF-8 BOM if present (0xFEFF)
+    let content = tsv;
+    if (content.charCodeAt(0) === 0xFEFF) {
+      content = content.slice(1);
+    }
+
+    const lines = content.split('\n');
+    let lineNumber = 0;
+
     for (const line of lines) {
+      lineNumber++;
       const trimmed = line.trim();
+
+      // Skip empty lines
       if (!trimmed) {
-        continue; // Skip empty lines
+        continue;
       }
 
-      // Try tab-separated first, then comma-separated
+      // Try tab-separated first (TSV is preferred), then comma-separated (CSV)
       let parts: string[];
+
       if (trimmed.includes('\t')) {
         parts = trimmed.split('\t');
       } else if (trimmed.includes(',')) {
         parts = trimmed.split(',');
       } else {
-        continue; // Skip invalid lines
+        // Line has no separator - skip it
+        console.warn(`Line ${lineNumber}: No tab or comma separator found, skipping`);
+        continue;
       }
 
-      if (parts.length >= 2) {
-        const source = parts[0]?.trim();
-        const target = parts[1]?.trim();
-        if (source && target) {
-          entries[source] = target;
-        }
+      // Validate we have at least 2 columns
+      if (parts.length < 2) {
+        console.warn(`Line ${lineNumber}: Expected 2 columns, found ${parts.length}, skipping`);
+        continue;
       }
+
+      // Warn if more than 2 columns (extra data will be ignored)
+      if (parts.length > 2) {
+        console.warn(`Line ${lineNumber}: Found ${parts.length} columns, expected 2. Using first 2 columns.`);
+      }
+
+      const source = parts[0]?.trim();
+      const target = parts[1]?.trim();
+
+      // Validate both source and target are non-empty
+      if (!source || !target) {
+        console.warn(`Line ${lineNumber}: Empty source or target, skipping`);
+        continue;
+      }
+
+      // Add to entries (duplicates will overwrite earlier entries)
+      if (entries[source] !== undefined) {
+        console.warn(`Line ${lineNumber}: Duplicate source "${source}", overwriting previous entry`);
+      }
+
+      entries[source] = target;
     }
 
     return entries;

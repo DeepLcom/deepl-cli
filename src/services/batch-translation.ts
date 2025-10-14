@@ -96,13 +96,6 @@ export class BatchTranslationService {
             batchOptions
           );
 
-          // Call progress callback
-          batchOptions.onProgress?.({
-            completed,
-            total: files.length,
-            current: file,
-          });
-
           // Translate file
           await this.fileTranslationService.translateFile(
             file,
@@ -114,6 +107,7 @@ export class BatchTranslationService {
           result.successful.push({ file, outputPath });
           completed++;
 
+          // Call progress callback once after completion
           batchOptions.onProgress?.({
             completed,
             total: files.length,
@@ -126,6 +120,7 @@ export class BatchTranslationService {
           });
           completed++;
 
+          // Call progress callback once after error
           batchOptions.onProgress?.({
             completed,
             total: files.length,

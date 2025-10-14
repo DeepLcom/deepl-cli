@@ -33,7 +33,8 @@ export class TranslationService {
   private client: DeepLClient;
   private config: ConfigService;
   private cache: CacheService;
-  private languageCache: Map<'source' | 'target', LanguageInfo[]> = new Map();
+  private languageCache: Map<'source' | 'target', { data: LanguageInfo[]; timestamp: number }> = new Map();
+  private readonly LANGUAGE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
   constructor(client: DeepLClient, config: ConfigService, cache?: CacheService) {
     this.client = client;
@@ -265,20 +266,23 @@ export class TranslationService {
   }
 
   /**
-   * Get supported languages with caching
+   * Get supported languages with caching (24-hour TTL)
    */
   async getSupportedLanguages(type: 'source' | 'target'): Promise<LanguageInfo[]> {
     // Check cache first
     const cached = this.languageCache.get(type);
-    if (cached) {
-      return cached;
+    const now = Date.now();
+
+    // Return cached data if it exists and hasn't expired
+    if (cached && (now - cached.timestamp) < this.LANGUAGE_CACHE_TTL) {
+      return cached.data;
     }
 
     // Fetch from API
     const languages = await this.client.getSupportedLanguages(type);
 
-    // Cache result
-    this.languageCache.set(type, languages);
+    // Cache result with timestamp
+    this.languageCache.set(type, { data: languages, timestamp: now });
 
     return languages;
   }
@@ -309,10 +313,10 @@ export class TranslationService {
 
   /**
    * Preserve variables by replacing with placeholders
+   * Uses hash-based placeholders to eliminate collision risk
    */
   private preserveVariables(text: string, preservationMap: Map<string, string>): string {
     let processed = text;
-    let counter = 0;
 
     // Preserve various variable formats (order matters - do ${} before {})
     const patterns = [
@@ -323,7 +327,14 @@ export class TranslationService {
 
     for (const pattern of patterns) {
       processed = processed.replace(pattern, (match) => {
-        const placeholder = `__VAR_${counter++}__`;
+        // Use hash of match + random value to ensure uniqueness
+        // This makes collisions virtually impossible
+        const hash = crypto
+          .createHash('sha256')
+          .update(match + Math.random().toString())
+          .digest('hex')
+          .slice(0, 16);
+        const placeholder = `__VAR_${hash}__`;
         preservationMap.set(placeholder, match);
         return placeholder;
       });

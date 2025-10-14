@@ -156,13 +156,15 @@ export class WatchService {
       void (async () => {
         try {
           await this.translateFile(filePath);
-          this.debounceTimers.delete(filePath);
         } catch (error) {
           this.stats.errorsCount++;
           if (this.watchOptions?.onError) {
             this.watchOptions.onError(filePath, error as Error);
           }
           console.error(`Translation failed for ${filePath}:`, error);
+        } finally {
+          // Always delete timer, even on error, to prevent memory leaks
+          this.debounceTimers.delete(filePath);
         }
       })();
     }, this.options.debounceMs);
