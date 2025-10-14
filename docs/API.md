@@ -1,6 +1,6 @@
 # DeepL CLI - API Reference
 
-**Version**: 0.5.0
+**Version**: 0.5.1
 **Last Updated**: October 14, 2025
 
 Complete reference for all DeepL CLI commands, options, and configuration.
@@ -164,7 +164,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 **Output Options:**
 
 - `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text)
-- `--output-format FORMAT` - Convert document format during translation (e.g., `pdf`, `docx`, `pptx`, `xlsx`, `html`)
+- `--output-format FORMAT` - Convert PDF to DOCX during translation (only supported conversion)
 - `--enable-minification` - Enable document minification for PPTX/DOCX files (reduces file size)
 - `--format FORMAT` - Output format: `json` for machine-readable output, `table` for structured table view (default: plain text)
 
@@ -248,8 +248,8 @@ deepl translate report.xlsx --to fr --output report.fr.xlsx
 # Translate HTML file
 deepl translate website.html --to ja --output website.ja.html
 
-# Convert format during translation (DOCX to PDF)
-deepl translate document.docx --to es --output document.es.pdf --output-format pdf
+# Convert format during translation (PDF to DOCX - only supported conversion)
+deepl translate document.pdf --to es --output document.es.docx --output-format docx
 
 # Enable document minification for smaller file size (PPTX/DOCX only)
 deepl translate presentation.pptx --to de --output presentation.de.pptx --enable-minification
@@ -1541,4 +1541,4 @@ export NO_COLOR=1
 ---
 
 **Last Updated**: October 14, 2025
-**DeepL CLI Version**: 0.5.0
+**DeepL CLI Version**: 0.5.1
