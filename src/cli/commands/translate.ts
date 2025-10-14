@@ -28,6 +28,10 @@ interface TranslateOptions {
   modelType?: string;
   showBilledCharacters?: boolean;
   enableMinification?: boolean;
+  outlineDetection?: string;
+  splittingTags?: string;
+  nonSplittingTags?: string;
+  ignoreTags?: string;
   output?: string;
   recursive?: boolean;
   pattern?: string;
@@ -252,6 +256,33 @@ export class TranslateCommand {
 
     if (options.showBilledCharacters) {
       translationOptions.showBilledCharacters = true;
+    }
+
+    // XML tag handling parameters (only valid with --tag-handling xml)
+    if (options.outlineDetection !== undefined || options.splittingTags || options.nonSplittingTags || options.ignoreTags) {
+      if (options.tagHandling !== 'xml') {
+        throw new Error('XML tag handling parameters (--outline-detection, --splitting-tags, --non-splitting-tags, --ignore-tags) require --tag-handling xml');
+      }
+    }
+
+    if (options.outlineDetection !== undefined) {
+      const boolValue = options.outlineDetection.toLowerCase();
+      if (boolValue !== 'true' && boolValue !== 'false') {
+        throw new Error('--outline-detection must be "true" or "false"');
+      }
+      (translationOptions as {outlineDetection?: boolean}).outlineDetection = boolValue === 'true';
+    }
+
+    if (options.splittingTags) {
+      (translationOptions as {splittingTags?: string[]}).splittingTags = options.splittingTags.split(',').map(tag => tag.trim());
+    }
+
+    if (options.nonSplittingTags) {
+      (translationOptions as {nonSplittingTags?: string[]}).nonSplittingTags = options.nonSplittingTags.split(',').map(tag => tag.trim());
+    }
+
+    if (options.ignoreTags) {
+      (translationOptions as {ignoreTags?: string[]}).ignoreTags = options.ignoreTags.split(',').map(tag => tag.trim());
     }
 
     // Translate

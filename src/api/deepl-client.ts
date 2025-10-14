@@ -241,6 +241,22 @@ export class DeepLClient {
       params['show_billed_characters'] = '1';
     }
 
+    if (options.outlineDetection !== undefined) {
+      params['outline_detection'] = options.outlineDetection ? '1' : '0';
+    }
+
+    if (options.splittingTags && options.splittingTags.length > 0) {
+      params['splitting_tags'] = options.splittingTags.join(',');
+    }
+
+    if (options.nonSplittingTags && options.nonSplittingTags.length > 0) {
+      params['non_splitting_tags'] = options.nonSplittingTags.join(',');
+    }
+
+    if (options.ignoreTags && options.ignoreTags.length > 0) {
+      params['ignore_tags'] = options.ignoreTags.join(',');
+    }
+
     try {
       const response = await this.makeRequest<DeepLTranslateResponse>(
         'POST',
@@ -322,6 +338,22 @@ export class DeepLClient {
 
     if (options.showBilledCharacters) {
       params['show_billed_characters'] = '1';
+    }
+
+    if (options.outlineDetection !== undefined) {
+      params['outline_detection'] = options.outlineDetection ? '1' : '0';
+    }
+
+    if (options.splittingTags && options.splittingTags.length > 0) {
+      params['splitting_tags'] = options.splittingTags.join(',');
+    }
+
+    if (options.nonSplittingTags && options.nonSplittingTags.length > 0) {
+      params['non_splitting_tags'] = options.nonSplittingTags.join(',');
+    }
+
+    if (options.ignoreTags && options.ignoreTags.length > 0) {
+      params['ignore_tags'] = options.ignoreTags.join(',');
     }
 
     try {

@@ -261,6 +261,10 @@ program
   .option('--model-type <type>', 'Model type: quality_optimized, prefer_quality_optimized, latency_optimized')
   .option('--show-billed-characters', 'Request and display actual billed character count for cost transparency')
   .option('--enable-minification', 'Enable document minification for PPTX/DOCX files (reduces file size)')
+  .option('--outline-detection <bool>', 'Control automatic XML structure detection (true/false, default: true, requires --tag-handling xml)')
+  .option('--splitting-tags <tags>', 'Comma-separated XML tags that split sentences (requires --tag-handling xml)')
+  .option('--non-splitting-tags <tags>', 'Comma-separated XML tags for non-translatable text (requires --tag-handling xml)')
+  .option('--ignore-tags <tags>', 'Comma-separated XML tags with content to ignore (requires --tag-handling xml)')
   .option('--recursive', 'Process subdirectories recursively (default: true)', true)
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
   .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
@@ -282,6 +286,10 @@ program
     modelType?: string;
     showBilledCharacters?: boolean;
     enableMinification?: boolean;
+    outlineDetection?: string;
+    splittingTags?: string;
+    nonSplittingTags?: string;
+    ignoreTags?: string;
     recursive?: boolean;
     pattern?: string;
     concurrency?: number;

@@ -22,6 +22,10 @@ export interface TranslationOptions {
   tagHandling?: 'xml' | 'html';
   modelType?: ModelType;
   showBilledCharacters?: boolean;
+  outlineDetection?: boolean;
+  splittingTags?: string[];
+  nonSplittingTags?: string[];
+  ignoreTags?: string[];
 }
 
 export interface TranslationResult {
