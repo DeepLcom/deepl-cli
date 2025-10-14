@@ -462,7 +462,7 @@ describe('TranslationService', () => {
   describe('preserveVariables()', () => {
     it('should preserve curly brace variables', async () => {
       // Mock to echo back the translated text with placeholders intact
-      mockDeepLClient.translate.mockImplementation(async (text) => ({
+      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
         text: text.replace('Hello', 'Hola'),
       }));
 
@@ -474,7 +474,7 @@ describe('TranslationService', () => {
     });
 
     it('should preserve dollar sign variables', async () => {
-      mockDeepLClient.translate.mockImplementation(async (text) => ({
+      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
         text: text.replace('Hello', 'Hola'),
       }));
 
@@ -486,7 +486,7 @@ describe('TranslationService', () => {
     });
 
     it('should preserve printf-style variables', async () => {
-      mockDeepLClient.translate.mockImplementation(async (text) => ({
+      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
         text: text.replace('Hello', 'Hola').replace('you are', 'tienes').replace('years old', 'años'),
       }));
 
@@ -498,7 +498,7 @@ describe('TranslationService', () => {
     });
 
     it('should preserve numbered placeholders', async () => {
-      mockDeepLClient.translate.mockImplementation(async (text) => ({
+      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
         text: text.replace('Hello', 'Hola').replace('you are', 'tienes').replace('years old', 'años'),
       }));
 
@@ -510,7 +510,7 @@ describe('TranslationService', () => {
     });
 
     it('should preserve multiple variable types', async () => {
-      mockDeepLClient.translate.mockImplementation(async (text) => ({
+      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
         text: text.replace('has', 'tiene').replace('and', 'y'),
       }));
 

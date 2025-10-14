@@ -384,14 +384,14 @@ describe('DocumentTranslationService', () => {
 
       // Mock getDocumentStatus to return "translating" and then abort after first call
       mockClient.getDocumentStatus = jest.fn()
-        .mockImplementation(async () => {
+        .mockImplementation(() => {
           // Abort after first status check
           abortController.abort();
-          return {
+          return Promise.resolve({
             documentId: 'doc-123',
             status: 'translating',
             secondsRemaining: 10,
-          };
+          });
         });
 
       await expect(
