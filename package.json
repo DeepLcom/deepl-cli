@@ -62,6 +62,8 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@types/better-sqlite3": "^7.6.8",
     "@types/diff": "^7.0.2",
     "@types/form-data": "^2.2.1",

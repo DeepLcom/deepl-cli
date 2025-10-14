@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Git Hooks: commit-msg and post-commit** - Enhanced git workflow automation
+  - New `commit-msg` hook enforces Conventional Commits format with commitlint
+  - New `post-commit` hook provides feedback and reminds to update CHANGELOG.md
+  - Created `commitlint.config.js` with project-specific configuration
+  - Installed @commitlint/cli and @commitlint/config-conventional dependencies
+  - Updated GitHooksService to support all four hooks: pre-commit, pre-push, commit-msg, post-commit
+  - Enhanced `deepl hooks` CLI commands with new hook types
+  - commit-msg hook validates commit messages against Conventional Commits specification
+  - post-commit hook provides type-specific feedback (feat, fix, docs, test, etc.)
+  - All hooks properly integrated with CI/CD workflows
+  - 8 additional unit tests for new hook types (install, uninstall, path, list, content generation)
+  - Total test count: 1116 → 1130 tests (+14 tests, 100% pass rate)
+  - **Use cases**: Enforcing commit message standards, automated changelog reminders, team consistency
+
 - **Table Output Format** - Structured table view for comparing translations
   - New `--format table` option for translate command with multiple target languages
   - Displays translations in clean 3-column table: Language | Translation | Characters

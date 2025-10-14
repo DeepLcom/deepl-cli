@@ -911,7 +911,7 @@ program
   .addCommand(
     new Command('install')
       .description('Install a git hook')
-      .argument('<hook-type>', 'Hook type: pre-commit or pre-push')
+      .argument('<hook-type>', 'Hook type: pre-commit, pre-push, commit-msg, or post-commit')
       .action((hookType: string) => {
         try {
           const hooksCommand = new HooksCommand();
@@ -926,7 +926,7 @@ program
   .addCommand(
     new Command('uninstall')
       .description('Uninstall a git hook')
-      .argument('<hook-type>', 'Hook type: pre-commit or pre-push')
+      .argument('<hook-type>', 'Hook type: pre-commit, pre-push, commit-msg, or post-commit')
       .action((hookType: string) => {
         try {
           const hooksCommand = new HooksCommand();
@@ -955,7 +955,7 @@ program
   .addCommand(
     new Command('path')
       .description('Show path to a hook file')
-      .argument('<hook-type>', 'Hook type: pre-commit or pre-push')
+      .argument('<hook-type>', 'Hook type: pre-commit, pre-push, commit-msg, or post-commit')
       .action((hookType: string) => {
         try {
           const hooksCommand = new HooksCommand();

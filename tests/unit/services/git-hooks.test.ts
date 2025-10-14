@@ -65,6 +65,30 @@ describe('GitHooksService', () => {
       expect(content).toContain('pre-push');
     });
 
+    it('should install commit-msg hook', () => {
+      gitHooksService.install('commit-msg');
+
+      const hookPath = path.join(testHooksDir, 'commit-msg');
+      expect(fs.existsSync(hookPath)).toBe(true);
+
+      const content = fs.readFileSync(hookPath, 'utf-8');
+      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toContain('commit-msg');
+      expect(content).toContain('commitlint');
+    });
+
+    it('should install post-commit hook', () => {
+      gitHooksService.install('post-commit');
+
+      const hookPath = path.join(testHooksDir, 'post-commit');
+      expect(fs.existsSync(hookPath)).toBe(true);
+
+      const content = fs.readFileSync(hookPath, 'utf-8');
+      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toContain('post-commit');
+      expect(content).toContain('Commit successful');
+    });
+
     it('should make hook file executable', () => {
       gitHooksService.install('pre-commit');
 
@@ -225,27 +249,38 @@ describe('GitHooksService', () => {
 
       expect(status).toHaveProperty('pre-commit');
       expect(status).toHaveProperty('pre-push');
+      expect(status).toHaveProperty('commit-msg');
+      expect(status).toHaveProperty('post-commit');
       expect(status['pre-commit']).toBe(false);
       expect(status['pre-push']).toBe(false);
+      expect(status['commit-msg']).toBe(false);
+      expect(status['post-commit']).toBe(false);
     });
 
     it('should show correct status when some hooks are installed', () => {
       gitHooksService.install('pre-commit');
+      gitHooksService.install('commit-msg');
 
       const status = gitHooksService.list();
 
       expect(status['pre-commit']).toBe(true);
       expect(status['pre-push']).toBe(false);
+      expect(status['commit-msg']).toBe(true);
+      expect(status['post-commit']).toBe(false);
     });
 
-    it('should show all installed when both hooks are installed', () => {
+    it('should show all installed when all hooks are installed', () => {
       gitHooksService.install('pre-commit');
       gitHooksService.install('pre-push');
+      gitHooksService.install('commit-msg');
+      gitHooksService.install('post-commit');
 
       const status = gitHooksService.list();
 
       expect(status['pre-commit']).toBe(true);
       expect(status['pre-push']).toBe(true);
+      expect(status['commit-msg']).toBe(true);
+      expect(status['post-commit']).toBe(true);
     });
   });
 
@@ -260,6 +295,18 @@ describe('GitHooksService', () => {
       const hookPath = gitHooksService.getHookPath('pre-push');
 
       expect(hookPath).toBe(path.join(testHooksDir, 'pre-push'));
+    });
+
+    it('should return correct path for commit-msg hook', () => {
+      const hookPath = gitHooksService.getHookPath('commit-msg');
+
+      expect(hookPath).toBe(path.join(testHooksDir, 'commit-msg'));
+    });
+
+    it('should return correct path for post-commit hook', () => {
+      const hookPath = gitHooksService.getHookPath('post-commit');
+
+      expect(hookPath).toBe(path.join(testHooksDir, 'post-commit'));
     });
 
     it('should throw error for invalid hook type', () => {
@@ -337,6 +384,28 @@ describe('GitHooksService', () => {
       expect(content).toContain('# DeepL CLI Hook');
       expect(content).toContain('pre-push');
       expect(content).toContain('deepl hooks uninstall pre-push');
+    });
+
+    it('should generate valid commit-msg hook content', () => {
+      const content = (gitHooksService as any).generateHookContent('commit-msg');
+
+      expect(content).toContain('#!/bin/sh');
+      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toContain('commit-msg');
+      expect(content).toContain('commitlint');
+      expect(content).toContain('COMMIT_MSG_FILE=$1');
+      expect(content).toContain('deepl hooks uninstall commit-msg');
+    });
+
+    it('should generate valid post-commit hook content', () => {
+      const content = (gitHooksService as any).generateHookContent('post-commit');
+
+      expect(content).toContain('#!/bin/sh');
+      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toContain('post-commit');
+      expect(content).toContain('Commit successful');
+      expect(content).toContain('CHANGELOG.md');
+      expect(content).toContain('deepl hooks uninstall post-commit');
     });
 
     it('should throw error for invalid hook type', () => {

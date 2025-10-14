@@ -152,7 +152,6 @@ These features were identified but deferred for future implementation:
 
 - [ ] Create `.editorconfig`
 - [ ] Create `.nvmrc` or `.node-version`
-- [ ] Create `commitlint.config.js`
 
 ### Nice to Have
 

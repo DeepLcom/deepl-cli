@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export type HookType = 'pre-commit' | 'pre-push';
+export type HookType = 'pre-commit' | 'pre-push' | 'commit-msg' | 'post-commit';
 
 export interface HookStatus {
   [key: string]: boolean;
@@ -102,7 +102,7 @@ export class GitHooksService {
    * List all hooks and their installation status
    */
   list(): HookStatus {
-    const hooks: HookType[] = ['pre-commit', 'pre-push'];
+    const hooks: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
     const status: HookStatus = {};
 
     for (const hook of hooks) {
@@ -200,6 +200,75 @@ fi
 echo "✓ Translation validation passed"
 exit 0
 `;
+    } else if (hookType === 'commit-msg') {
+      return commonHeader + `# Commit message hook for DeepL CLI
+# Validates commit messages follow Conventional Commits format
+
+COMMIT_MSG_FILE=$1
+
+# Check if commitlint is available
+if ! command -v npx &> /dev/null; then
+  echo "⚠️  npx not found, skipping commit message validation"
+  exit 0
+fi
+
+# Check if commitlint is installed in the project
+if [ ! -f "$(pwd)/node_modules/.bin/commitlint" ] && [ ! -f "$(pwd)/commitlint.config.js" ]; then
+  echo "⚠️  commitlint not configured, skipping validation"
+  exit 0
+fi
+
+# Run commitlint
+npx --no -- commitlint --edit "$COMMIT_MSG_FILE"
+
+# Exit with commitlint's exit code
+exit $?
+`;
+    } else if (hookType === 'post-commit') {
+      return commonHeader + `# Post-commit hook for DeepL CLI
+# Provides feedback and automation after successful commits
+
+# Get the commit message and hash
+COMMIT_HASH=$(git rev-parse --short HEAD)
+COMMIT_MSG=$(git log -1 --pretty=%B)
+COMMIT_TYPE=$(echo "$COMMIT_MSG" | grep -oE '^[a-z]+' || echo "unknown")
+
+echo "✅ Commit successful: $COMMIT_HASH"
+
+# Provide type-specific feedback
+case "$COMMIT_TYPE" in
+  feat)
+    echo "📦 Feature added - consider updating CHANGELOG.md"
+    ;;
+  fix)
+    echo "🐛 Bug fix - consider updating CHANGELOG.md"
+    ;;
+  docs)
+    echo "📝 Documentation updated"
+    ;;
+  test)
+    echo "🧪 Tests updated"
+    ;;
+  refactor)
+    echo "♻️  Code refactored"
+    ;;
+  perf)
+    echo "⚡ Performance improved"
+    ;;
+  chore)
+    echo "🔧 Maintenance completed"
+    ;;
+esac
+
+# Check if this is a feature or fix that should be documented
+if [ "$COMMIT_TYPE" = "feat" ] || [ "$COMMIT_TYPE" = "fix" ]; then
+  if ! grep -q "## \\[Unreleased\\]" CHANGELOG.md 2>/dev/null; then
+    echo "💡 Tip: Update CHANGELOG.md with user-facing changes"
+  fi
+fi
+
+exit 0
+`;
     }
 
     throw new Error('Invalid hook type');
@@ -216,8 +285,9 @@ exit 0
    * Validate hook type
    */
   private validateHookType(hookType: string): asserts hookType is HookType {
-    if (hookType !== 'pre-commit' && hookType !== 'pre-push') {
-      throw new Error(`Invalid hook type: ${hookType}. Must be 'pre-commit' or 'pre-push'`);
+    const validTypes: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
+    if (!validTypes.includes(hookType as HookType)) {
+      throw new Error(`Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`);
     }
   }
 }
