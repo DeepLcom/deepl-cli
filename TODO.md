@@ -8,7 +8,7 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 - **Phase**: 2 (Advanced Features) - ✅ COMPLETE
 - **Tests**: 1068 tests (100% pass rate) ✅
 - **Coverage**: ~91% overall (with excellent integration/e2e coverage)
-- **Next**: Phase 3 (TUI & Collaboration)
+- **Next**: Deferred enhancements → v1.0.0 production polish (TUI deferred indefinitely)
 
 ---
 
@@ -126,99 +126,21 @@ These features were identified but deferred for future implementation:
 **Estimated effort**: 2-3 hours research + 3-4 hours implementation (if supported)
 **Priority**: Low (depends on API support)
 
----
+### Binary Distribution
 
-## 🎨 Phase 3: TUI & Collaboration
+- [ ] **Self-contained binary distribution** - Package CLI as standalone executables
+  - Use `pkg` to bundle Node.js runtime with CLI code
+  - Create binaries for macOS (x64/arm64), Linux (x64), Windows (x64)
+  - Size: ~40-50MB per binary (includes Node.js runtime)
+  - Enable `brew install deepl-cli` distribution
+  - Create Homebrew formula for macOS
+  - Alternative: Consider Bun or Deno for smaller binaries (20-30MB) in future
+  - Benefits: No Node.js installation required, single binary download
+  - Use cases: Docker containers, CI/CD runners, systems without Node.js
 
-**Status**: Planning complete, ready to implement!
-**Timeline**: 7 weeks
-**Target**: v0.6.0
-
-### Phase 3.1: TUI Foundation (Week 1-2)
-
-- [ ] Install Ink and TUI dependencies (~15 packages)
-- [ ] Create TUI project structure (components, screens, hooks, store)
-- [ ] Build App.tsx with routing logic
-- [ ] Create MainLayout component
-- [ ] Build HomeScreen with menu navigation
-- [ ] Add basic keyboard shortcuts (up/down, enter, esc)
-- [ ] Write tests for basic navigation
-- [ ] Add color themes and styling
-
-**Deliverable**: Working home screen with menu navigation
-
-### Phase 3.2: Translation Interface (Week 3-4)
-
-- [ ] Create TranslateScreen component
-- [ ] Build SplitPane layout component
-- [ ] Create TextEditor component (multi-line input)
-- [ ] Add LanguageSelector dropdown
-- [ ] Integrate TranslationService
-- [ ] Implement real-time translation with debouncing
-- [ ] Add translation options panel (formality, context, etc.)
-- [ ] Show translation stats (chars, time, cached)
-- [ ] Add copy/save functionality
-- [ ] Write comprehensive tests for translation flow
-
-**Deliverable**: Fully functional split-pane translation interface
-
-### Phase 3.3: History & Glossary (Week 5)
-
-- [ ] Create HistoryScreen component
-- [ ] Build translation history browser
-- [ ] Add search and filter functionality
-- [ ] Create GlossaryScreen component
-- [ ] Build glossary CRUD interface
-- [ ] Add glossary import/export
-- [ ] Integrate glossaries into translation
-- [ ] Write tests for history and glossary screens
-
-**Deliverable**: Working history and glossary management
-
-### Phase 3.4: Settings & Polish (Week 6)
-
-- [ ] Create SettingsScreen component
-- [ ] Build settings editor with live preview
-- [ ] Add theme switching
-- [ ] Create HelpScreen with keyboard shortcuts
-- [ ] Add loading animations and spinners
-- [ ] Add error handling and error screens
-- [ ] Implement status bar with real-time stats
-- [ ] Add usage dashboard
-- [ ] Polish animations and transitions
-- [ ] Write E2E tests for complete workflows
-
-**Deliverable**: Production-ready TUI
-
-### Phase 3.5: Documentation & Release (Week 7)
-
-- [ ] Update README with TUI documentation
-- [ ] Add TUI examples and GIFs/videos
-- [ ] Update CHANGELOG with TUI features
-- [ ] Create TUI tutorial
-- [ ] Update DESIGN.md with TUI architecture
-- [ ] Tag v0.6.0 release
-- [ ] Create release notes
-
-**Deliverable**: v0.6.0 release with complete TUI
-
-### Translation Memory (Phase 3.6+)
-
-**Status**: Deferred to later in Phase 3 or Phase 4
-
-- [ ] Design translation memory schema
-- [ ] Implement TM storage (SQLite)
-- [ ] Add TM search functionality
-- [ ] Add TM import/export
-- [ ] Add TM tests
-
-### Team Features (Phase 4+)
-
-**Status**: Future enhancement
-
-- [ ] Implement shared glossary support
-- [ ] Add team configuration sharing
-- [ ] Add collaboration documentation
+**Estimated effort**: 1-2 days implementation + testing + Homebrew setup
+**Priority**: Medium (improves distribution, enables brew install)
+**Alternative considered**: C# rewrite (6-8 weeks) - rejected as too much effort
 
 ---
 
@@ -367,6 +289,102 @@ These features were identified but deferred for future implementation:
 
 ---
 
+## 🎨 Phase 3: TUI & Collaboration (Deferred)
+
+**Status**: Deferred - Priority uncertain
+**Original Timeline**: 7 weeks
+**Original Target**: v0.6.0 (now TBD)
+
+**Note**: TUI implementation is saved for potential future work but is not prioritized for v1.0.0. All pre-v1.0 tasks and post-v1.0 enhancements take priority. This section is preserved for reference but should be considered optional/aspirational.
+
+### Phase 3.1: TUI Foundation (Week 1-2)
+
+- [ ] Install Ink and TUI dependencies (~15 packages)
+- [ ] Create TUI project structure (components, screens, hooks, store)
+- [ ] Build App.tsx with routing logic
+- [ ] Create MainLayout component
+- [ ] Build HomeScreen with menu navigation
+- [ ] Add basic keyboard shortcuts (up/down, enter, esc)
+- [ ] Write tests for basic navigation
+- [ ] Add color themes and styling
+
+**Deliverable**: Working home screen with menu navigation
+
+### Phase 3.2: Translation Interface (Week 3-4)
+
+- [ ] Create TranslateScreen component
+- [ ] Build SplitPane layout component
+- [ ] Create TextEditor component (multi-line input)
+- [ ] Add LanguageSelector dropdown
+- [ ] Integrate TranslationService
+- [ ] Implement real-time translation with debouncing
+- [ ] Add translation options panel (formality, context, etc.)
+- [ ] Show translation stats (chars, time, cached)
+- [ ] Add copy/save functionality
+- [ ] Write comprehensive tests for translation flow
+
+**Deliverable**: Fully functional split-pane translation interface
+
+### Phase 3.3: History & Glossary (Week 5)
+
+- [ ] Create HistoryScreen component
+- [ ] Build translation history browser
+- [ ] Add search and filter functionality
+- [ ] Create GlossaryScreen component
+- [ ] Build glossary CRUD interface
+- [ ] Add glossary import/export
+- [ ] Integrate glossaries into translation
+- [ ] Write tests for history and glossary screens
+
+**Deliverable**: Working history and glossary management
+
+### Phase 3.4: Settings & Polish (Week 6)
+
+- [ ] Create SettingsScreen component
+- [ ] Build settings editor with live preview
+- [ ] Add theme switching
+- [ ] Create HelpScreen with keyboard shortcuts
+- [ ] Add loading animations and spinners
+- [ ] Add error handling and error screens
+- [ ] Implement status bar with real-time stats
+- [ ] Add usage dashboard
+- [ ] Polish animations and transitions
+- [ ] Write E2E tests for complete workflows
+
+**Deliverable**: Production-ready TUI
+
+### Phase 3.5: Documentation & Release (Week 7)
+
+- [ ] Update README with TUI documentation
+- [ ] Add TUI examples and GIFs/videos
+- [ ] Update CHANGELOG with TUI features
+- [ ] Create TUI tutorial
+- [ ] Update DESIGN.md with TUI architecture
+- [ ] Tag v0.6.0 release (or whatever version TUI ships in)
+- [ ] Create release notes
+
+**Deliverable**: v0.6.0+ release with complete TUI
+
+### Translation Memory (Phase 3.6+)
+
+**Status**: Deferred to later in Phase 3 or Phase 4
+
+- [ ] Design translation memory schema
+- [ ] Implement TM storage (SQLite)
+- [ ] Add TM search functionality
+- [ ] Add TM import/export
+- [ ] Add TM tests
+
+### Team Features (Phase 4+)
+
+**Status**: Future enhancement
+
+- [ ] Implement shared glossary support
+- [ ] Add team configuration sharing
+- [ ] Add collaboration documentation
+
+---
+
 ## 📝 Notes
 
 ### Version Planning
@@ -375,9 +393,10 @@ These features were identified but deferred for future implementation:
 - **v0.2.0** - Phase 2 features ✅
 - **v0.3.0** - Write Enhancements + Document Translation ✅
 - **v0.4.0** - Feature Parity (batch optimization, glossary management) ✅
-- **v0.5.0** - v3 Glossary API (multilingual glossaries) ✅ (CURRENT)
-- **v0.6.0** - Phase 3 features (TUI, translation memory, team) (NEXT)
-- **v1.0.0** - Stable API, production-ready, all polish items complete
+- **v0.5.0** - v3 Glossary API (multilingual glossaries) ✅
+- **v0.5.1** - Semantic exit codes, performance improvements ✅ (CURRENT)
+- **v0.6.0-v0.9.x** - Deferred enhancements (binary distribution, --dry-run, --verbose, etc.)
+- **v1.0.0** - Stable API, production-ready, all polish items complete (TUI deferred)
 
 ---
 
