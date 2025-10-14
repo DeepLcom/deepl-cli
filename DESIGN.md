@@ -1,8 +1,41 @@
 # DeepL CLI: Comprehensive Design Document
 
-**Version:** 2.0
+**Version:** 2.1
 **Date:** October 2025
-**Status:** Phase 2 Complete - v0.5.0 Released
+**Status:** Phase 2 Complete - v0.5.1 Released
+
+---
+
+## Current Implementation Status
+
+**Version**: v0.5.1 (October 2025)
+**Phase**: 2 (Advanced Features) - ✅ **COMPLETE**
+**Test Suite**: 1117 tests, 100% pass rate
+**Code Coverage**: ~88% overall (excellent integration/e2e coverage)
+**Production Readiness**: High - CLI is stable and feature-complete for v1.0.0
+
+### What's Implemented (v0.1.0 - v0.5.1)
+
+✅ **Core Translation** - Text, file, directory, and document translation
+✅ **DeepL Write API** - Grammar and style enhancement with 8 languages
+✅ **Watch Mode** - Real-time file monitoring with auto-translation
+✅ **Git Hooks** - Pre-commit and pre-push hook management
+✅ **Glossary Management** - v3 API with multilingual glossary support
+✅ **Document Translation** - PDF, DOCX, PPTX, XLSX, HTML with format conversion
+✅ **Batch Processing** - Parallel translation with automatic request optimization
+✅ **Caching** - SQLite-based cache with LRU eviction
+✅ **XML/HTML Tag Handling** - Advanced control over tag translation
+✅ **Table Output Format** - Structured output for multi-language comparisons
+✅ **Cost Transparency** - Track billed characters for budget planning
+✅ **Semantic Exit Codes** - Intelligent exit codes (0-7) for CI/CD integration
+✅ **Global Options** - `--quiet`, `--config` for flexible CLI usage
+
+### What's Deferred
+
+⏸️ **TUI (Terminal UI)** - Deferred indefinitely (not required for v1.0.0)
+⏸️ **Translation Memory** - Future enhancement (Phase 3+)
+⏸️ **Team Collaboration** - Future enhancement (Phase 4+)
+⏸️ **Plugin System** - Future enhancement
 
 ---
 
@@ -1977,7 +2010,7 @@ jobs:
 - [x] Basic glossary support (create, list, show, delete, use)
 - [x] Cache CLI commands (stats, clear, enable, disable)
 
-### Phase 2: Advanced Features - ✅ 100% Complete (v0.2.0 - v0.5.0)
+### Phase 2: Advanced Features - ✅ 100% Complete (v0.2.0 - v0.5.1)
 
 **v0.2.0 (October 2025)**:
 
@@ -2005,13 +2038,26 @@ jobs:
 - [x] v3 Glossary API support (multilingual glossaries)
 - [x] Delete-dictionary command (remove specific language pairs)
 
-### Phase 3: TUI & Collaboration (Month 5-6)
+**v0.5.1 (October 2025)**:
 
-- [ ] Interactive TUI application
-- [ ] Translation memory
+- [x] Semantic exit codes (0-7) for intelligent CI/CD integration
+- [x] XML tag handling enhancements (--outline-detection, --splitting-tags, --non-splitting-tags, --ignore-tags)
+- [x] Table output format (--format table) for multi-language comparisons
+- [x] Cost transparency (--show-billed-characters) for budget planning
+- [x] Global options (--quiet, --config) for flexible CLI usage
+- [x] Performance improvements and bug fixes
+
+### Phase 3: TUI & Collaboration - ⏸️ **Deferred Indefinitely**
+
+**Status**: Not prioritized for v1.0.0. Focus is on CLI stability and production readiness.
+
+**Originally Planned Features**:
+
+- [ ] Interactive TUI application with split-pane editor
+- [ ] Translation memory with search and import/export
 - [ ] Team collaboration features
-- [ ] Review workflows
-- [ ] Shared glossaries
+- [ ] Review workflows for human validation
+- [ ] Shared glossaries with team sync
 
 ### Phase 4: Enterprise & Polish (Month 7-8)
 

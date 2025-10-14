@@ -2,16 +2,6 @@
 
 This file tracks pending tasks and future work for the DeepL CLI project.
 
-## 📋 Current Status
-
-- **Version**: 0.5.1 (Current)
-- **Phase**: 2 (Advanced Features) - ✅ COMPLETE
-- **Tests**: 1068 tests (100% pass rate) ✅
-- **Coverage**: ~91% overall (with excellent integration/e2e coverage)
-- **Next**: Deferred enhancements → v1.0.0 production polish (TUI deferred indefinitely)
-
----
-
 ## 🚀 Deferred Enhancements
 
 These features were identified but deferred for future implementation:

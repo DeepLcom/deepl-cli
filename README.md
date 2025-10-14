@@ -67,7 +67,7 @@ npm link
 
 # Verify installation
 deepl --version
-# Output: 0.2.0
+# Output: 0.5.1
 ```
 
 ## 🚀 Quick Start
@@ -175,7 +175,7 @@ See [docs/API.md#global-options](./docs/API.md#global-options) for more details.
 
 ## 📖 Usage
 
-All examples below are **working and tested** in v0.2.0.
+All examples below are **working and tested** in v0.5.1.
 
 ### Translation
 

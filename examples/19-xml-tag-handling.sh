@@ -68,36 +68,22 @@ echo "   (Scripts and styles remain untranslated)"
 echo
 
 echo "6. Combine multiple XML tag handling options"
-echo "   Fine-tuned control for complex XML documents"
-# Create a complex XML document
-cat > "$TEMP_DIR/article.xml" << 'EOF'
-<article>
-  <metadata>
-    <author>John Doe</author>
-    <date>2024-10-14</date>
-  </metadata>
-  <content>
-    <section>
-      <h1>Technical Documentation</h1>
-      <p>This is the introduction.</p>
-      <code>function example() { return true; }</code>
-      <p>More content here.<br/>Next line after break.</p>
-    </section>
-    <script>trackPageView();</script>
-  </content>
-</article>
-EOF
+echo "   Fine-tuned control for complex XML strings"
+# Create a complex XML string (inline translation, not document translation)
+XML_INPUT='<article><content><section><h1>Technical Documentation</h1><p>This is the introduction.</p><code>function example() { return true; }</code><p>More content here.<br/>Next line after break.</p></section><script>trackPageView();</script></content></article>'
 
+echo "   Input XML string:"
+echo "   $XML_INPUT"
+echo
 echo "   Using all XML tag handling options together:"
-deepl translate "$TEMP_DIR/article.xml" --to de --tag-handling xml \
+deepl translate "$XML_INPUT" --to de --tag-handling xml \
   --outline-detection false \
   --splitting-tags "br,hr,section" \
-  --non-splitting-tags "code,pre,kbd,metadata" \
-  --ignore-tags "script,style" \
-  --output "$TEMP_DIR/article.de.xml"
+  --non-splitting-tags "code,pre,kbd" \
+  --ignore-tags "script,style"
 
+echo
 echo "   ✓ Translated complex XML with custom tag handling"
-echo "   Output: $TEMP_DIR/article.de.xml"
 echo
 
 echo "7. Real-world example: Translate technical documentation HTML"
@@ -143,31 +129,21 @@ echo "   - Scripts and styles ignored (not translated)"
 echo "   - Output: $TEMP_DIR/docs.fr.html"
 echo
 
-echo "8. Use case: Localize XML configuration files"
-# Create a config file with translatable and non-translatable content
-cat > "$TEMP_DIR/config.xml" << 'EOF'
-<config>
-  <app>
-    <name>MyApplication</name>
-    <welcome-message>Welcome to our application</welcome-message>
-    <help-text>Click here for help</help-text>
-  </app>
-  <system>
-    <version>1.0.0</version>
-    <api-endpoint>https://api.example.com</api-endpoint>
-  </system>
-</config>
-EOF
+echo "8. Use case: Localize XML configuration strings"
+# Create a config XML string (inline translation)
+CONFIG_XML='<config><app><name>MyApplication</name><welcome-message>Welcome to our application</welcome-message><help-text>Click here for help</help-text></app><system><version>1.0.0</version><api-endpoint>https://api.example.com</api-endpoint></system></config>'
 
+echo "   Input XML config:"
+echo "   $CONFIG_XML"
+echo
 echo "   Translating app messages while preserving system config:"
-deepl translate "$TEMP_DIR/config.xml" --to ja --tag-handling xml \
-  --non-splitting-tags "system,version,api-endpoint" \
-  --output "$TEMP_DIR/config.ja.xml"
+deepl translate "$CONFIG_XML" --to ja --tag-handling xml \
+  --non-splitting-tags "system,version,api-endpoint"
 
-echo "   ✓ Translated config file to Japanese"
+echo
+echo "   ✓ Translated config XML to Japanese"
 echo "   - User-facing messages translated"
 echo "   - System configuration preserved"
-echo "   Output: $TEMP_DIR/config.ja.xml"
 echo
 
 echo "Tip: XML tag handling parameters are powerful for:"
@@ -180,12 +156,12 @@ echo
 
 echo "Note: All XML tag handling flags require --tag-handling xml"
 echo
-
-# Show output directory contents
-echo "All example files saved to: $TEMP_DIR/"
-ls -lh "$TEMP_DIR/" | tail -n +2
-
+echo "   XML tag handling works with:"
+echo "   • Inline XML/HTML strings (as shown in examples 1-4, 6, 8)"
+echo "   • HTML document files (as shown in examples 5, 7)"
+echo "   • Text translation with embedded XML/HTML"
 echo
+
 echo "Cleaning up temporary files..."
 rm -rf "$TEMP_DIR"
 echo "✓ Cleanup complete"
