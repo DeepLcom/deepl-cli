@@ -372,6 +372,26 @@ deepl translate "Hello, world!" --to es --show-billed-characters
 #
 # Billed characters: 13
 
+# Table output format - structured view for multiple languages
+deepl translate "Hello, world!" --to es,fr,de --format table
+# ┌──────────┬──────────────────────────────────────────────────────────────────────┐
+# │ Language │ Translation                                                          │
+# ├──────────┼──────────────────────────────────────────────────────────────────────┤
+# │ ES       │ ¡Hola, mundo!                                                        │
+# │ FR       │ Bonjour le monde!                                                    │
+# │ DE       │ Hallo, Welt!                                                         │
+# └──────────┴──────────────────────────────────────────────────────────────────────┘
+
+# Table format with cost tracking (adds Characters column)
+deepl translate "Cost analysis" --to es,fr,de --format table --show-billed-characters --no-cache
+# ┌──────────┬────────────────────────────────────────────────────────────┬────────────┐
+# │ Language │ Translation                                                │ Characters │
+# ├──────────┼────────────────────────────────────────────────────────────┼────────────┤
+# │ ES       │ Análisis de costes                                         │ 14         │
+# │ FR       │ Analyse des coûts                                          │ 14         │
+# │ DE       │ Kostenanalyse                                              │ 14         │
+# └──────────┴────────────────────────────────────────────────────────────┴────────────┘
+
 # Advanced XML/HTML tag handling (requires --tag-handling xml)
 # Control automatic XML structure detection
 deepl translate "<doc><p>Hello</p></doc>" --to es --tag-handling xml --outline-detection false

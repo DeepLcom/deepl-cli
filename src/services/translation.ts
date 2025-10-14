@@ -22,6 +22,7 @@ interface MultiTargetResult {
   targetLang: Language;
   text: string;
   detectedSourceLang?: Language;
+  billedCharacters?: number;
 }
 
 interface ExtendedUsageInfo extends UsageInfo {
@@ -228,7 +229,7 @@ export class TranslationService {
   async translateToMultiple(
     text: string,
     targetLangs: Language[],
-    options: Omit<TranslationOptions, 'targetLang'> = {}
+    options: Omit<TranslationOptions, 'targetLang'> & { skipCache?: boolean } = {}
   ): Promise<MultiTargetResult[]> {
     if (targetLangs.length === 0) {
       throw new Error('At least one target language is required');
@@ -238,11 +239,13 @@ export class TranslationService {
       const result = await this.translate(text, {
         ...options,
         targetLang,
-      });
+      }, { skipCache: options.skipCache });
+
       return {
         targetLang,
         text: result.text,
         detectedSourceLang: result.detectedSourceLang,
+        billedCharacters: result.billedCharacters,
       };
     });
 

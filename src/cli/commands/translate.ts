@@ -12,7 +12,7 @@ import { DocumentTranslationService } from '../../services/document-translation.
 import { GlossaryService } from '../../services/glossary.js';
 import { ConfigService } from '../../storage/config.js';
 import { Language } from '../../types/index.js';
-import { formatTranslationJson, formatMultiTranslationJson } from '../../utils/formatters.js';
+import { formatTranslationJson, formatMultiTranslationJson, formatMultiTranslationTable } from '../../utils/formatters.js';
 import { Logger } from '../../utils/logger.js';
 
 interface TranslateOptions {
@@ -37,7 +37,7 @@ interface TranslateOptions {
   pattern?: string;
   concurrency?: number;
   glossary?: string;
-  noCache?: boolean;
+  cache?: boolean;  // Commander.js converts --no-cache to cache: false
   format?: string;
 }
 
@@ -291,7 +291,7 @@ export class TranslateCommand {
       translationOptions,
       {
         preserveCode: options.preserveCode,
-        skipCache: options.noCache
+        skipCache: !options.cache
       }
     );
 
@@ -319,6 +319,7 @@ export class TranslateCommand {
       formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
       context?: string;
       glossaryId?: string;
+      showBilledCharacters?: boolean;
     } = {};
 
     if (options.from) {
@@ -337,15 +338,23 @@ export class TranslateCommand {
       translationOptions.glossaryId = await this.resolveGlossaryId(options.glossary);
     }
 
+    if (options.showBilledCharacters) {
+      translationOptions.showBilledCharacters = true;
+    }
+
     const results = await this.translationService.translateToMultiple(
       text,
       targetLangs,
-      translationOptions
+      { ...translationOptions, skipCache: !options.cache }
     );
 
     // Format output based on format option
     if (options.format === 'json') {
       return formatMultiTranslationJson(results);
+    }
+
+    if (options.format === 'table') {
+      return formatMultiTranslationTable(results);
     }
 
     // Format output for multiple languages (default: plain text)

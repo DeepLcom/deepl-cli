@@ -1,8 +1,9 @@
 /**
  * Output Formatters
- * Utilities for formatting command output (JSON, plain text, etc.)
+ * Utilities for formatting command output (JSON, plain text, table, etc.)
  */
 
+import Table from 'cli-table3';
 import { TranslationResult } from '../api/deepl-client.js';
 import { Language } from '../types/index.js';
 
@@ -25,6 +26,7 @@ export interface MultiTranslateJsonOutput {
     targetLang: Language;
     text: string;
     detectedSourceLang?: Language;
+    billedCharacters?: number;
   }>;
 }
 
@@ -53,13 +55,14 @@ export function formatTranslationJson(
  * Format multiple translation results as JSON
  */
 export function formatMultiTranslationJson(
-  results: Array<{ targetLang: Language; text: string; detectedSourceLang?: Language }>
+  results: Array<{ targetLang: Language; text: string; detectedSourceLang?: Language; billedCharacters?: number }>
 ): string {
   const output: MultiTranslateJsonOutput = {
     translations: results.map(r => ({
       targetLang: r.targetLang,
       text: r.text,
       detectedSourceLang: r.detectedSourceLang,
+      ...(r.billedCharacters !== undefined && { billedCharacters: r.billedCharacters }),
     })),
   };
 
@@ -84,4 +87,40 @@ export function formatWriteJson(
   };
 
   return JSON.stringify(output, null, 2);
+}
+
+/**
+ * Format multiple translation results as table
+ */
+export function formatMultiTranslationTable(
+  results: Array<{
+    targetLang: Language;
+    text: string;
+    detectedSourceLang?: Language;
+    billedCharacters?: number;
+  }>
+): string {
+  // Check if any result has billedCharacters - if so, show the Characters column
+  const showCharacters = results.some(r => r.billedCharacters !== undefined);
+
+  const table = new Table({
+    head: showCharacters ? ['Language', 'Translation', 'Characters'] : ['Language', 'Translation'],
+    colWidths: showCharacters ? [10, 60, 12] : [10, 70],
+    wordWrap: true,
+  });
+
+  results.forEach((result) => {
+    const row = [
+      result.targetLang.toUpperCase(),
+      result.text,
+    ];
+
+    if (showCharacters) {
+      row.push(result.billedCharacters?.toLocaleString() ?? 'N/A');
+    }
+
+    table.push(row);
+  });
+
+  return table.toString();
 }

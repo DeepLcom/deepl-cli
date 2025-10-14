@@ -35,28 +35,10 @@ These features were identified but deferred for future implementation:
 **Estimated effort**: 3-4 hours implementation + 2 hours testing
 **Priority**: Medium (nice-to-have for debugging)
 
-### Exit Codes Enhancement
-
-- [x] **Granular exit codes** - ✅ IMPLEMENTED in v0.5.1
-  - **0** - Success
-  - **1** - General error
-  - **2** - Authentication error (invalid API key)
-  - **3** - API rate limit exceeded
-  - **4** - Quota exceeded
-  - **5** - Network error
-  - **6** - Invalid input (file not found, unsupported format)
-  - **7** - Configuration error
-  - Automatic error classification based on error messages
-  - Retry logic for retryable errors (rate limit, network)
-  - 43 comprehensive unit tests
-  - Complete documentation in docs/API.md with CI/CD examples
-
-**Completed**: 2025-10-14
-**Actual effort**: 3 hours implementation + testing
-
 ### Configuration Enhancements
 
 - [ ] **Project-level configuration** - `.deepl.toml` file for project-specific settings
+
   ```toml
   [project]
   name = "My Project"
@@ -70,6 +52,7 @@ These features were identified but deferred for future implementation:
   pattern = "src/locales/en.json"
   auto_commit = true
   ```
+
   - Allows per-project configuration without modifying global config
   - Version-controllable settings for team collaboration
   - Hierarchical config: project → user → defaults
@@ -89,60 +72,6 @@ These features were identified but deferred for future implementation:
 
 **Estimated effort**: 2-3 hours implementation + 1 hour testing
 **Priority**: Medium (improves first-time user experience for v1.0.0)
-
-### Output Format Enhancements
-
-- [ ] **Table output format** - Structured table output for multiple translations
-  - Add `--format table` flag support
-  - Display translations, cache status, character counts in tabular format
-  - Uses cli-table3 (already a dependency)
-  - Useful for comparing multiple target languages
-  - Example: `deepl translate "Hello" --to es,fr,de --format table`
-
-**Estimated effort**: 1-2 hours implementation + 1 hour testing
-**Priority**: Low (nice-to-have for v1.0.0)
-
-### Missing API Parameters
-
-Currently unexposed DeepL API parameters that could be added:
-
-**Text Translation:**
-- [x] `show_billed_characters` - ✅ IMPLEMENTED in v0.5.2 (pending release)
-  - Added CLI flag: `--show-billed-characters`
-  - Displays actual character count used for billing
-  - **Use case**: Cost transparency for users
-  - Includes comprehensive tests (unit + integration)
-  - Documentation: API.md with examples
-  - Working example: examples/18-cost-transparency.sh
-  - **Completed**: 2025-10-14
-
-**Document Translation:**
-- [x] `enable_document_minification` - ✅ IMPLEMENTED in v0.5.2 (pending release)
-  - Added CLI flag: `--enable-minification`
-  - Reduces file size for PPTX and DOCX documents
-  - **Use case**: Smaller files, faster uploads, lower bandwidth
-  - Validation: Only works with PPTX/DOCX formats
-  - Includes comprehensive tests (unit + integration)
-  - Documentation: API.md with examples
-  - **Completed**: 2025-10-14
-
-**Advanced XML/HTML Tag Handling:**
-- [x] `non_splitting_tags` - ✅ IMPLEMENTED in v0.5.2 (pending release)
-- [x] `outline_detection` - ✅ IMPLEMENTED in v0.5.2 (pending release)
-- [x] `splitting_tags` - ✅ IMPLEMENTED in v0.5.2 (pending release)
-- [x] `ignore_tags` - ✅ IMPLEMENTED in v0.5.2 (pending release)
-- Added CLI flags: `--outline-detection`, `--splitting-tags`, `--non-splitting-tags`, `--ignore-tags`
-- All flags require `--tag-handling xml` for validation
-- Includes comprehensive tests (6 unit + 5 integration)
-- Documentation: API.md with advanced XML examples
-- Working example: examples/19-xml-tag-handling.sh
-- **Completed**: 2025-10-14
-
-**Estimated effort**: ~~1-2 hours for `show_billed_characters`~~ ✅ COMPLETE, ~~2-3 hours for `enable_document_minification`~~ ✅ COMPLETE, ~~2-3 hours for tag handling~~ ✅ COMPLETE
-**Priority**: ~~Medium for billing transparency~~ ✅ COMPLETE, ~~Medium for document minification~~ ✅ COMPLETE, ~~Low for advanced tag handling~~ ✅ COMPLETE
-**Actual effort**:
-- `show_billed_characters`: ~2-3 hours implementation + testing + documentation
-- `enable_document_minification`: ~2-3 hours implementation + testing + documentation
 
 ### Binary Distribution
 

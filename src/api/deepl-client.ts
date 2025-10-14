@@ -41,6 +41,7 @@ interface DeepLTranslateResponse {
   translations: Array<{
     detected_source_language?: string;
     text: string;
+    billed_characters?: number;
   }>;
   billed_characters?: number;
 }
@@ -200,7 +201,7 @@ export class DeepLClient {
       throw new Error('Text cannot be empty');
     }
 
-    const params: Record<string, string | string[]> = {
+    const params: Record<string, string | string[] | number | boolean> = {
       text: [text],
       target_lang: this.normalizeLanguage(options.targetLang).toUpperCase(),
     };
@@ -278,7 +279,7 @@ export class DeepLClient {
         detectedSourceLang: translation.detected_source_language
           ? this.normalizeLanguage(translation.detected_source_language)
           : undefined,
-        billedCharacters: response.billed_characters,
+        billedCharacters: translation.billed_characters ?? response.billed_characters,
       };
     } catch (error) {
       throw this.handleError(error);
@@ -299,7 +300,7 @@ export class DeepLClient {
     }
 
     // Build request parameters
-    const params: Record<string, string | string[]> = {
+    const params: Record<string, string | string[] | number | boolean> = {
       text: texts,
       target_lang: this.normalizeLanguage(options.targetLang).toUpperCase(),
     };
@@ -373,13 +374,13 @@ export class DeepLClient {
       }
 
       // Map response translations to results
-      // Note: billed_characters is returned at the batch level, not per translation
+      // Note: billed_characters can be returned per translation or at the batch level
       return response.translations.map((translation) => ({
         text: translation.text,
         detectedSourceLang: translation.detected_source_language
           ? this.normalizeLanguage(translation.detected_source_language)
           : undefined,
-        billedCharacters: response.billed_characters,
+        billedCharacters: translation.billed_characters ?? response.billed_characters,
       }));
     } catch (error) {
       throw this.handleError(error);

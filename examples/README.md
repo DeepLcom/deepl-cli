@@ -23,6 +23,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Custom Config Files](./17-custom-config-files.sh) - Using multiple configuration files for different projects
 - [Cost Transparency](./18-cost-transparency.sh) - Tracking billed characters for translation cost analysis
 - [XML Tag Handling](./19-xml-tag-handling.sh) - Advanced XML/HTML tag handling for fine-tuned translation control
+- [Table Output Format](./20-table-output.sh) - Structured table output for comparing translations across multiple languages
 
 ## Prerequisites
 

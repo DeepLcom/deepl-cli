@@ -166,7 +166,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text)
 - `--output-format FORMAT` - Convert document format during translation (e.g., `pdf`, `docx`, `pptx`, `xlsx`, `html`)
 - `--enable-minification` - Enable document minification for PPTX/DOCX files (reduces file size)
-- `--format FORMAT` - Output format: `json` for machine-readable output (default: plain text)
+- `--format FORMAT` - Output format: `json` for machine-readable output, `table` for structured table view (default: plain text)
 
 **Translation Options:**
 
@@ -393,7 +393,7 @@ deepl translate document.md --to es --output document.es.md --no-cache
 **Cost transparency:**
 
 ```bash
-# Show actual billed character count
+# Show actual billed character count (Pro API only)
 deepl translate "Hello, world!" --to es --show-billed-characters
 # Hola, mundo!
 #
@@ -411,6 +411,8 @@ deepl translate "Hello" --to es,fr,de --show-billed-characters
 deepl translate document.md --to es --output document.es.md --show-billed-characters
 ```
 
+**Note:** The `--show-billed-characters` feature is only available with Pro API accounts. Free API accounts will display "N/A" for character counts.
+
 **JSON output:**
 
 ```bash
@@ -421,6 +423,45 @@ deepl translate "Hello" --to es --format json
 # Useful for scripting and automation
 deepl translate "Test" --to es,fr,de --format json
 ```
+
+**Table output:**
+
+```bash
+# Display translations in structured table format (multiple languages)
+deepl translate "Hello, world!" --to es,fr,de --format table
+# ┌──────────┬──────────────────────────────────────────────────────────────────────┐
+# │ Language │ Translation                                                          │
+# ├──────────┼──────────────────────────────────────────────────────────────────────┤
+# │ ES       │ ¡Hola mundo!                                                         │
+# │ FR       │ Bonjour le monde!                                                    │
+# │ DE       │ Hallo Welt!                                                          │
+# └──────────┴──────────────────────────────────────────────────────────────────────┘
+
+# Add --show-billed-characters to display the Characters column
+deepl translate "Cost tracking" --to es,fr,de --format table --show-billed-characters --no-cache
+# ┌──────────┬────────────────────────────────────────────────────────────────┬────────────┐
+# │ Language │ Translation                                                    │ Characters │
+# ├──────────┼────────────────────────────────────────────────────────────────┼────────────┤
+# │ ES       │ Seguimiento de costes                                          │ 16         │
+# │ FR       │ Suivi des coûts                                                │ 16         │
+# │ DE       │ Kostenverfolgung                                               │ 16         │
+# └──────────┴────────────────────────────────────────────────────────────────┴────────────┘
+
+# Long translations automatically wrap in the Translation column
+deepl translate "This is a very long sentence that demonstrates word wrapping." --to es,fr --format table
+# Wider Translation column (70 chars) when Characters column is not shown
+
+# Useful for:
+# - Comparing translations side-by-side across multiple languages
+# - Monitoring billed characters per translation for cost transparency (with --show-billed-characters)
+# - Human-readable output for reports and documentation
+# - Quality assurance - spot-checking consistency across languages
+```
+
+**Notes:**
+- Table format is only available when translating to multiple target languages. For single language translations, use default plain text or JSON format.
+- The Characters column is only shown when using `--show-billed-characters` flag.
+- Without `--show-billed-characters`, the Translation column is wider (70 characters vs 60) for better readability.
 
 ---
 

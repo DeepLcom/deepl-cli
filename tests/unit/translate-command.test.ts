@@ -103,7 +103,7 @@ describe('TranslateCommand', () => {
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello world',
         { targetLang: 'es' },
-        { preserveCode: undefined }
+        { preserveCode: undefined, skipCache: true }
       );
     });
 
@@ -120,7 +120,7 @@ describe('TranslateCommand', () => {
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello',
         { targetLang: 'fr', sourceLang: 'en' },
-        { preserveCode: undefined }
+        { preserveCode: undefined, skipCache: true }
       );
     });
 
@@ -137,7 +137,7 @@ describe('TranslateCommand', () => {
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Good morning',
         { targetLang: 'es', formality: 'more' },
-        { preserveCode: undefined }
+        { preserveCode: undefined, skipCache: true }
       );
     });
 
@@ -155,7 +155,7 @@ describe('TranslateCommand', () => {
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Use `console.log()` to print',
         { targetLang: 'es' },
-        { preserveCode: true }
+        { preserveCode: true, skipCache: true }
       );
     });
 
@@ -960,7 +960,7 @@ describe('TranslateCommand', () => {
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello world',
         { targetLang: 'de', glossaryId: 'glossary-123' },
-        { preserveCode: undefined }
+        { preserveCode: undefined, skipCache: true }
       );
     });
 
@@ -980,7 +980,7 @@ describe('TranslateCommand', () => {
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello world',
         { targetLang: 'fr', glossaryId: '01234567-89ab-cdef-0123-456789abcdef' },
-        { preserveCode: undefined }
+        { preserveCode: undefined, skipCache: true }
       );
     });
 
@@ -1022,7 +1022,7 @@ describe('TranslateCommand', () => {
       expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
         'Hello',
         ['de', 'fr'],
-        { glossaryId: 'glossary-789' }
+        { glossaryId: 'glossary-789', skipCache: true }
       );
     });
 
@@ -1057,7 +1057,7 @@ describe('TranslateCommand', () => {
           formality: 'more',
           context: 'Business letter opening',
         },
-        { preserveCode: undefined }
+        { preserveCode: undefined, skipCache: true }
       );
     });
   });

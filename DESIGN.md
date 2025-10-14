@@ -40,6 +40,7 @@
 ## Vision & Goals
 
 ### Primary Vision
+
 Create the most comprehensive, developer-friendly translation CLI that becomes the standard tool for localization, documentation, and multilingual content workflows.
 
 ### Core Goals
@@ -64,6 +65,7 @@ Create the most comprehensive, developer-friendly translation CLI that becomes t
 ### Phase 1: Core Features (MVP)
 
 #### 1. Basic Translation
+
 ```bash
 # Simple text translation
 deepl translate "Hello world" --to ja
@@ -76,6 +78,7 @@ deepl translate --interactive
 ```
 
 #### 2. File Translation ✅ IMPLEMENTED
+
 ```bash
 # Single file
 deepl translate README.md --to es --output README.es.md
@@ -93,6 +96,7 @@ deepl translate document.docx --to es --output document.es.pdf --output-format p
 ```
 
 #### 3. Configuration Management
+
 ```bash
 # Initialize project config
 deepl init
@@ -105,6 +109,7 @@ deepl config set source en target "es,fr,de,ja"
 ```
 
 #### 4. Glossary Management ✅ IMPLEMENTED
+
 ```bash
 # Create glossary (v3 API) ✅ v0.5.0
 deepl glossary create tech-terms en de glossary.csv
@@ -141,6 +146,7 @@ deepl translate "Our API uses REST" --to de --glossary tech-terms
 ### Phase 2: Advanced Features
 
 #### 5. DeepL Write Integration ✅ IMPLEMENTED
+
 ```bash
 # Current features:
 # Improve writing with grammar/style suggestions
@@ -167,9 +173,8 @@ deepl write check document.txt --show-alternatives --lang en-US
 # Tones: enthusiastic, friendly, confident, diplomatic (+ prefer_* variants)
 ```
 
-**Status**: Production-ready with full test coverage (111 tests: 28 service + 19 command + 37 client + 27 enhancements)
-
 **Current Features** ✅ IMPLEMENTED:
+
 - Grammar and style improvement
 - Writing style customization (simple, business, academic, casual)
 - Tone customization (enthusiastic, friendly, confident, diplomatic)
@@ -183,9 +188,11 @@ deepl write check document.txt --show-alternatives --lang en-US
 - **Interactive mode** ✅ v0.3.0 (--interactive)
 
 **Future Enhancements**:
+
 - Interactive REPL mode for continuous writing assistance
 
 #### 6. Watch Mode & Auto-Translation ✅ IMPLEMENTED
+
 ```bash
 # Watch i18n files and auto-translate
 deepl watch src/locales/en.json --targets es,fr,de
@@ -205,6 +212,7 @@ deepl watch docs/ --targets de --formality more --preserve-code
 
 **Status**: Production-ready with full test coverage (19 tests)
 **Features**:
+
 - Real-time file/directory monitoring
 - Configurable debouncing (default 300ms)
 - Glob pattern filtering
@@ -214,6 +222,7 @@ deepl watch docs/ --targets de --formality more --preserve-code
 - Statistics tracking
 
 #### 7. Git Hooks Integration ✅ IMPLEMENTED
+
 ```bash
 # Install git hooks
 deepl hooks install pre-commit
@@ -231,6 +240,7 @@ deepl hooks uninstall pre-commit
 
 **Status**: Production-ready, fully documented
 **Features**:
+
 - Pre-commit hook for translation validation
 - Pre-push hook for full validation
 - Automatic backup of existing hooks
@@ -239,6 +249,7 @@ deepl hooks uninstall pre-commit
 - Customizable shell scripts
 
 #### 8. Context-Aware Translation ✅ IMPLEMENTED (v0.2.0)
+
 ```bash
 # Preserve code blocks and variables
 deepl translate README.md --preserve-code --preserve-vars
@@ -257,6 +268,7 @@ deepl translate "<p>Hello</p>" --to es --tag-handling xml
 ```
 
 #### 9. Batch Processing ✅ IMPLEMENTED (v0.2.0, optimized v0.4.0)
+
 ```bash
 # Translate entire directories with progress
 deepl translate docs/ --to es,fr,de --output translations/
@@ -269,6 +281,7 @@ deepl translate src/ --to ja --recursive --concurrency 5
 ```
 
 #### 10. Developer Workflow Integration (Partial)
+
 ```bash
 # JSON output for CI/CD ✅ IMPLEMENTED
 deepl translate "Hello" --to es --format json
@@ -288,6 +301,7 @@ deepl lsp start
 ```
 
 #### 11. Interactive TUI Mode (Phase 3)
+
 ```bash
 # Launch full TUI application
 deepl tui
@@ -304,6 +318,7 @@ deepl tui
 ### Phase 3: Team & Enterprise Features
 
 #### 10. Translation Memory & Caching
+
 ```bash
 # Enable local translation cache
 deepl cache enable --max-size 1GB
@@ -319,6 +334,7 @@ deepl tm export --format xliff
 ```
 
 #### 11. Team Collaboration
+
 ```bash
 # Initialize team workspace
 deepl team init --org mycompany
@@ -334,6 +350,7 @@ deepl diff en.json es.json --highlight-changes
 ```
 
 #### 12. Batch Processing & Cost Management
+
 ```bash
 # Estimate costs before translating
 deepl estimate src/locales/ --targets es,fr,de,ja,zh
@@ -349,6 +366,7 @@ deepl config set budget-limit 1000000 --period monthly
 ```
 
 #### 13. Context-Aware Translation
+
 ```bash
 # Preserve code blocks and variables
 deepl translate README.md --preserve-code --preserve-vars
@@ -430,16 +448,19 @@ deepl translate text.txt --show-confidence --min-quality 0.85
 ### Component Responsibilities
 
 #### CLI Interface Layer
+
 - **Command Parser**: Parse and validate CLI arguments
 - **Help System**: Generate contextual help and documentation
 - **Output Formatter**: Format output (text, JSON, table, etc.)
 
 #### Core Application Layer
+
 - **Command Handlers**: Business logic for each CLI command
 - **TUI Manager**: Terminal UI state management and rendering
 - **Interactive Shell**: REPL for interactive usage
 
 #### Service Layer
+
 - **Translation Service**: Core translation logic, format detection
 - **Write Service**: Grammar checking, style suggestions ✅ IMPLEMENTED
 - **Glossary Service**: Glossary CRUD and application ✅ IMPLEMENTED
@@ -450,12 +471,14 @@ deepl translate text.txt --show-confidence --min-quality 0.85
 - **Team Service**: Collaboration features (Phase 3)
 
 #### API Client Layer
+
 - **DeepL Client**: Typed API wrappers for all DeepL endpoints
 - **HTTP Client**: Request/response handling, error recovery
 - **Rate Limiter**: Respect API rate limits
 - **Retry Logic**: Exponential backoff for transient failures
 
 #### Storage Layer
+
 - **Cache Storage**: Local translation cache (SQLite)
 - **Config Storage**: User preferences (TOML/YAML)
 - **Translation Memory**: Historical translations (SQLite)
@@ -754,6 +777,7 @@ EXAMPLES:
 **Recommendation: TypeScript with Node.js**
 
 **Rationale:**
+
 - **Rapid development**: Rich ecosystem, excellent tooling
 - **DeepL SDK**: Official Node.js SDK available
 - **TUI library**: Ink (React for terminal) - mature and powerful
@@ -762,6 +786,7 @@ EXAMPLES:
 - **Community**: Large user base for CLI tools
 
 **Alternative Options:**
+
 - **Rust**: Best performance, but slower development, steeper learning curve
 - **Python**: Quick prototyping, but slower runtime, distribution challenges
 
@@ -1082,9 +1107,10 @@ export class WriteService {
 ```
 
 **Key Features**:
+
 - Support for 8 languages (de, en-GB, en-US, es, fr, it, pt-BR, pt-PT)
-- Writing styles: simple, business, academic, casual (+ prefer_* variants)
-- Tones: enthusiastic, friendly, confident, diplomatic (+ prefer_* variants)
+- Writing styles: simple, business, academic, casual (+ prefer\_\* variants)
+- Tones: enthusiastic, friendly, confident, diplomatic (+ prefer\_\* variants)
 - Cannot specify both style and tone in one request
 - Returns multiple improvement alternatives
 - Full test coverage: 84 tests (28 service + 19 command + 37 client)
@@ -1161,12 +1187,9 @@ export class WatchService {
     console.log(`Watching ${watchPath} for changes...`);
     console.log(`Target languages: ${options.targets.join(', ')}`);
 
-    const handleChange = debounce(
-      async (filePath: string) => {
-        await this.handleFileChange(filePath, options);
-      },
-      options.debounceMs || 500
-    );
+    const handleChange = debounce(async (filePath: string) => {
+      await this.handleFileChange(filePath, options);
+    }, options.debounceMs || 500);
 
     this.watcher = chokidar.watch(watchPath, {
       ignored: /(^|[\/\\])\../, // ignore hidden files
@@ -1323,6 +1346,7 @@ export class GitHooksService {
 ```
 
 **Key Features**:
+
 - Support for pre-commit and pre-push hooks
 - Automatic backup of existing hooks
 - Safe installation without overwriting custom hooks
@@ -1332,6 +1356,7 @@ export class GitHooksService {
 - Graceful error handling for non-git repositories
 
 **Hook Scripts Generated**:
+
 - **pre-commit**: Validates translation files before commit
 - **pre-push**: Validates all translations before push
 - Both include placeholders for customization
@@ -1357,7 +1382,8 @@ export class CacheService {
   private maxSize: number; // in bytes
   private enabled: boolean = true;
 
-  constructor(maxSize: number = 1024 * 1024 * 1024) { // 1GB default
+  constructor(maxSize: number = 1024 * 1024 * 1024) {
+    // 1GB default
     const dbPath = path.join(os.homedir(), '.deepl-cli', 'cache.db');
     this.db = new Database(dbPath);
     this.maxSize = maxSize;
@@ -1416,7 +1442,9 @@ export class CacheService {
     totalSize: number;
     maxSize: number;
   }> {
-    const stmt = this.db.prepare('SELECT COUNT(*) as count, SUM(size) as total FROM cache');
+    const stmt = this.db.prepare(
+      'SELECT COUNT(*) as count, SUM(size) as total FROM cache'
+    );
     const row = stmt.get() as { count: number; total: number | null };
 
     return {
@@ -1464,7 +1492,7 @@ export class CacheService {
 
 ### 6. Preservation Service
 
-```typescript
+````typescript
 // src/utils/preserve.ts
 
 interface PreservationOptions {
@@ -1518,7 +1546,10 @@ export class PreservationService {
     return restoredText;
   }
 
-  private extractCodeBlocks(text: string, preserved: Map<string, string>): string {
+  private extractCodeBlocks(
+    text: string,
+    preserved: Map<string, string>
+  ): string {
     // Extract fenced code blocks (```)
     const fencedPattern = /```[\s\S]*?```/g;
     text = this.extractPattern(text, fencedPattern, preserved);
@@ -1530,13 +1561,16 @@ export class PreservationService {
     return text;
   }
 
-  private extractVariables(text: string, preserved: Map<string, string>): string {
+  private extractVariables(
+    text: string,
+    preserved: Map<string, string>
+  ): string {
     // Extract {variable}, ${variable}, %s, %d, etc.
     const patterns = [
-      /\{[^}]+\}/g,           // {variable}
-      /\$\{[^}]+\}/g,         // ${variable}
-      /%[sd]/g,               // %s, %d
-      /\{\d+\}/g,             // {0}, {1}
+      /\{[^}]+\}/g, // {variable}
+      /\$\{[^}]+\}/g, // ${variable}
+      /%[sd]/g, // %s, %d
+      /\{\d+\}/g, // {0}, {1}
     ];
 
     for (const pattern of patterns) {
@@ -1551,7 +1585,10 @@ export class PreservationService {
     return this.extractPattern(text, urlPattern, preserved);
   }
 
-  private extractHtmlTags(text: string, preserved: Map<string, string>): string {
+  private extractHtmlTags(
+    text: string,
+    preserved: Map<string, string>
+  ): string {
     const tagPattern = /<[^>]+>/g;
     return this.extractPattern(text, tagPattern, preserved);
   }
@@ -1568,7 +1605,7 @@ export class PreservationService {
     });
   }
 }
-```
+````
 
 ---
 
@@ -1930,6 +1967,7 @@ jobs:
 ## Roadmap & Milestones
 
 ### Phase 1: MVP - ✅ 100% Complete (v0.1.0)
+
 - [x] Basic translation command
 - [x] Configuration management
 - [x] Local caching with LRU eviction
@@ -1942,6 +1980,7 @@ jobs:
 ### Phase 2: Advanced Features - ✅ 100% Complete (v0.2.0 - v0.5.0)
 
 **v0.2.0 (October 2025)**:
+
 - [x] Context-aware translation (--context)
 - [x] Batch processing with parallel translation
 - [x] Watch mode with file watching (debouncing, auto-commit)
@@ -1949,10 +1988,12 @@ jobs:
 - [x] Git hooks integration (pre-commit, pre-push)
 
 **v0.3.0 (October 2025)**:
+
 - [x] Document translation (PDF, DOCX, PPTX, XLSX, HTML)
 - [x] Write enhancements (--diff, --check, --fix, --interactive, --in-place, --backup)
 
 **v0.4.0 (October 2025)**:
+
 - [x] Document format conversion (--output-format)
 - [x] Proxy configuration (automatic via environment)
 - [x] Retry/timeout configuration (exponential backoff)
@@ -1960,10 +2001,12 @@ jobs:
 - [x] Glossary CRUD operations (add-entry, update-entry, remove-entry, rename)
 
 **v0.5.0 (October 2025)**:
+
 - [x] v3 Glossary API support (multilingual glossaries)
 - [x] Delete-dictionary command (remove specific language pairs)
 
 ### Phase 3: TUI & Collaboration (Month 5-6)
+
 - [ ] Interactive TUI application
 - [ ] Translation memory
 - [ ] Team collaboration features
@@ -1971,6 +2014,7 @@ jobs:
 - [ ] Shared glossaries
 
 ### Phase 4: Enterprise & Polish (Month 7-8)
+
 - [ ] CI/CD integrations
 - [ ] VS Code extension
 - [ ] Plugin system
@@ -1979,6 +2023,7 @@ jobs:
 - [ ] Tutorial videos
 
 ### Future Ideas
+
 - Desktop app (Electron)
 - Browser extension
 - Mobile app integration
@@ -1994,6 +2039,7 @@ jobs:
 ## Success Criteria
 
 ### Technical Excellence
+
 - ⚡ Fast: <100ms overhead per translation
 - 🛡️ Reliable: 99.9% uptime, robust error handling
 - 🎨 Beautiful: Modern, intuitive CLI/TUI experience
@@ -2001,6 +2047,7 @@ jobs:
 - 🔧 Maintainable: Clean architecture, well-documented code
 
 ### User Adoption
+
 - 🌟 10,000+ GitHub stars
 - 📥 100,000+ downloads
 - 👥 100+ contributors
@@ -2008,6 +2055,7 @@ jobs:
 - 📚 Comprehensive documentation
 
 ### Business Impact
+
 - 💼 Adopted by major open source projects
 - 🏢 Enterprise customers
 - 🚀 Featured on Product Hunt, Hacker News
@@ -2020,6 +2068,7 @@ jobs:
 ### Supported Languages
 
 DeepL API supports 30+ languages:
+
 - Arabic (ar)
 - Bulgarian (bg)
 - Chinese - Simplified (zh)
@@ -2061,12 +2110,12 @@ DeepL API supports 30+ languages:
 
 ### API Rate Limits
 
-| Plan | Requests/sec | Characters/month |
-|------|-------------|------------------|
-| Free | 5 | 500,000 |
-| Pro (Starter) | 10 | 1,000,000 |
-| Pro (Advanced) | 20 | 10,000,000 |
-| Pro (Ultimate) | 50 | 100,000,000 |
+| Plan           | Requests/sec | Characters/month |
+| -------------- | ------------ | ---------------- |
+| Free           | 5            | 500,000          |
+| Pro (Starter)  | 10           | 1,000,000        |
+| Pro (Advanced) | 20           | 10,000,000       |
+| Pro (Ultimate) | 50           | 100,000,000      |
 
 ### External Resources
 
@@ -2080,4 +2129,4 @@ DeepL API supports 30+ languages:
 
 **End of Design Document**
 
-*This document is a living document and will be updated as the project evolves.*
+_This document is a living document and will be updated as the project evolves._

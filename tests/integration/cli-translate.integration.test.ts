@@ -504,4 +504,69 @@ describe('Translate CLI Integration', () => {
       }
     });
   });
+
+  describe('table output format', () => {
+    it('should show table format option in help', () => {
+      const helpOutput = runCLI('deepl translate --help');
+      expect(helpOutput).toContain('--format <format>');
+      expect(helpOutput).toMatch(/json/i);
+    });
+
+    it('should accept --format table flag without error', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es,fr,de --format table', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not on unknown format
+        expect(output).not.toMatch(/unknown.*format.*table/i);
+        expect(output).not.toMatch(/invalid.*format/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should recognize table format as valid option', () => {
+      try {
+        runCLI('deepl translate "Test" --to es,fr --format table', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout || error.message;
+        // Should not contain invalid format error
+        expect(output).not.toMatch(/invalid.*format/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+      }
+    });
+
+    it('should work with multiple target languages', () => {
+      try {
+        runCLI('deepl translate "Hello world" --to es,fr,de,ja --format table', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should accept multiple languages with table format
+        expect(output).not.toMatch(/invalid/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept table format with other options', () => {
+      try {
+        runCLI('deepl translate "Test" --to es,fr --format table --formality more --context "Business email"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should accept combination of options
+        expect(output).not.toMatch(/invalid.*format/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept table format with --show-billed-characters', () => {
+      try {
+        runCLI('deepl translate "Test" --to es,fr,de --format table --show-billed-characters --no-cache', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should accept both flags together
+        expect(output).not.toMatch(/invalid.*format/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+  });
 });

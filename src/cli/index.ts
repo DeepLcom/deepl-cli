@@ -270,7 +270,7 @@ program
   .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
   .option('--glossary <name-or-id>', 'Use glossary by name or ID')
   .option('--no-cache', 'Bypass cache for this translation (useful for testing)')
-  .option('--format <format>', 'Output format: json (default: plain text)')
+  .option('--format <format>', 'Output format: json, table (default: plain text)')
   .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
   .action(async (text: string | undefined, options: {
     to: string;
@@ -382,7 +382,7 @@ program
   .option('-c, --check', 'Check if text needs improvement (exit code 0 if no changes)')
   .option('-f, --fix', 'Automatically fix file in place')
   .option('-b, --backup', 'Create backup file before fixing (use with --fix)')
-  .option('--format <format>', 'Output format: json (default: plain text)')
+  .option('--format <format>', 'Output format: json, table (default: plain text)')
   .action(async (text: string, options: {
     lang: string;
     style?: string;

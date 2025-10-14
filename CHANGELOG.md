@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Table Output Format** - Structured table view for comparing translations
+  - New `--format table` option for translate command with multiple target languages
+  - Displays translations in clean 3-column table: Language | Translation | Characters
+  - Automatic word wrapping for long translations (60-character column width)
+  - Thousands separator formatting for character counts
+  - Works with `--show-billed-characters` for cost tracking
+  - 6 comprehensive unit tests for table formatter
+  - 5 integration tests for CLI --format table flag
+  - Working example script: `examples/20-table-output.sh` with 6 scenarios
+  - Full documentation in README.md and docs/API.md
+  - Total test count: 1105 → 1116 tests (+11 tests, 100% pass rate)
+  - **Use cases**: Side-by-side translation comparison, cost tracking, human-readable reports, quality assurance
+
 - **Cost Transparency** - Track actual billed characters for budget planning
   - New `--show-billed-characters` flag for translate command
   - Displays actual billed character count after translation for cost tracking

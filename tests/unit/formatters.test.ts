@@ -5,6 +5,7 @@
 import {
   formatTranslationJson,
   formatMultiTranslationJson,
+  formatMultiTranslationTable,
   formatWriteJson,
 } from '../../src/utils/formatters';
 import { TranslationResult } from '../../src/api/deepl-client';
@@ -123,6 +124,144 @@ describe('formatters', () => {
       const output = formatMultiTranslationJson(results);
 
       expect(output).toContain('  "translations": [');
+    });
+  });
+
+  describe('formatMultiTranslationTable()', () => {
+    it('should format multiple translations as table', () => {
+      const results = [
+        {
+          targetLang: 'es' as Language,
+          text: 'Hola',
+          billedCharacters: 5,
+        },
+        {
+          targetLang: 'fr' as Language,
+          text: 'Bonjour',
+          billedCharacters: 7,
+        },
+      ];
+
+      const output = formatMultiTranslationTable(results);
+
+      // Verify table headers
+      expect(output).toContain('Language');
+      expect(output).toContain('Translation');
+      expect(output).toContain('Characters');
+
+      // Verify data rows
+      expect(output).toContain('ES');
+      expect(output).toContain('Hola');
+      expect(output).toContain('5');
+
+      expect(output).toContain('FR');
+      expect(output).toContain('Bonjour');
+      expect(output).toContain('7');
+    });
+
+    it('should handle missing optional fields', () => {
+      const results = [
+        {
+          targetLang: 'es' as Language,
+          text: 'Hola',
+        },
+      ];
+
+      const output = formatMultiTranslationTable(results);
+
+      expect(output).toContain('ES');
+      expect(output).toContain('Hola');
+      // Should NOT contain Characters column when billedCharacters is missing
+      expect(output).not.toContain('Characters');
+    });
+
+    it('should handle long translations with word wrap', () => {
+      const results = [
+        {
+          targetLang: 'de' as Language,
+          text: 'Dies ist ein sehr langer Text, der über mehrere Zeilen umgebrochen werden sollte, um die Lesbarkeit zu verbessern.',
+          billedCharacters: 100,
+        },
+      ];
+
+      const output = formatMultiTranslationTable(results);
+
+      expect(output).toContain('DE');
+      expect(output).toContain('Dies ist ein sehr langer');
+      expect(output).toContain('100');
+    });
+
+    it('should format billed characters with thousands separator', () => {
+      const results = [
+        {
+          targetLang: 'ja' as Language,
+          text: 'こんにちは',
+          billedCharacters: 1234567,
+        },
+      ];
+
+      const output = formatMultiTranslationTable(results);
+
+      expect(output).toContain('1,234,567');
+    });
+
+    it('should handle empty results array', () => {
+      const results: Array<{
+        targetLang: Language;
+        text: string;
+        billedCharacters?: number;
+      }> = [];
+
+      const output = formatMultiTranslationTable(results);
+
+      // Should still have table headers (without Characters column since no data has billedCharacters)
+      expect(output).toContain('Language');
+      expect(output).toContain('Translation');
+      expect(output).not.toContain('Characters');
+    });
+
+    it('should handle multiple languages consistently', () => {
+      const results = [
+        {
+          targetLang: 'es' as Language,
+          text: 'Hola',
+          billedCharacters: 5,
+        },
+        {
+          targetLang: 'fr' as Language,
+          text: 'Bonjour',
+          billedCharacters: 7,
+        },
+        {
+          targetLang: 'de' as Language,
+          text: 'Hallo',
+          billedCharacters: 5,
+        },
+        {
+          targetLang: 'ja' as Language,
+          text: 'こんにちは',
+          billedCharacters: 15,
+        },
+      ];
+
+      const output = formatMultiTranslationTable(results);
+
+      // All languages present
+      expect(output).toContain('ES');
+      expect(output).toContain('FR');
+      expect(output).toContain('DE');
+      expect(output).toContain('JA');
+
+      // All translations present
+      expect(output).toContain('Hola');
+      expect(output).toContain('Bonjour');
+      expect(output).toContain('Hallo');
+      expect(output).toContain('こんにちは');
+
+      // Character counts present
+      expect(output).toContain('5');
+      expect(output).toContain('7');
+      expect(output).toContain('15');
     });
   });
 
