@@ -127,15 +127,19 @@ Currently unexposed DeepL API parameters that could be added:
   - **Completed**: 2025-10-14
 
 **Advanced XML/HTML Tag Handling:**
-- [ ] `non_splitting_tags` - Comma-separated list of XML tags indicating text not to translate
-- [ ] `outline_detection` - Control automatic XML structure detection (boolean)
-- [ ] `splitting_tags` - Define custom tags that split sentences
-- [ ] `ignore_tags` - Define tags to ignore during translation
-- **Priority**: Low (niche use case for XML/HTML power users)
-- **Effort**: ~2-3 hours to add all tag handling options
+- [x] `non_splitting_tags` - ✅ IMPLEMENTED in v0.5.2 (pending release)
+- [x] `outline_detection` - ✅ IMPLEMENTED in v0.5.2 (pending release)
+- [x] `splitting_tags` - ✅ IMPLEMENTED in v0.5.2 (pending release)
+- [x] `ignore_tags` - ✅ IMPLEMENTED in v0.5.2 (pending release)
+- Added CLI flags: `--outline-detection`, `--splitting-tags`, `--non-splitting-tags`, `--ignore-tags`
+- All flags require `--tag-handling xml` for validation
+- Includes comprehensive tests (6 unit + 5 integration)
+- Documentation: API.md with advanced XML examples
+- Working example: examples/19-xml-tag-handling.sh
+- **Completed**: 2025-10-14
 
-**Estimated effort**: ~~1-2 hours for `show_billed_characters`~~ ✅ COMPLETE, ~~2-3 hours for `enable_document_minification`~~ ✅ COMPLETE, 2-3 hours for tag handling
-**Priority**: ~~Medium for billing transparency~~ ✅ COMPLETE, ~~Medium for document minification~~ ✅ COMPLETE, Low for advanced tag handling
+**Estimated effort**: ~~1-2 hours for `show_billed_characters`~~ ✅ COMPLETE, ~~2-3 hours for `enable_document_minification`~~ ✅ COMPLETE, ~~2-3 hours for tag handling~~ ✅ COMPLETE
+**Priority**: ~~Medium for billing transparency~~ ✅ COMPLETE, ~~Medium for document minification~~ ✅ COMPLETE, ~~Low for advanced tag handling~~ ✅ COMPLETE
 **Actual effort**:
 - `show_billed_characters`: ~2-3 hours implementation + testing + documentation
 - `enable_document_minification`: ~2-3 hours implementation + testing + documentation

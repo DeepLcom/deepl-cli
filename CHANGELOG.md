@@ -31,6 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Full documentation in README.md and docs/API.md
   - Total test count: 1080 → 1090 tests (+10 tests, 100% pass rate)
 
+- **Advanced XML Tag Handling** - Fine-tuned control for XML/HTML translation
+  - New `--outline-detection` flag to control automatic XML structure detection (true/false)
+  - New `--splitting-tags` flag to specify XML tags that split sentences (comma-separated)
+  - New `--non-splitting-tags` flag for non-translatable text content (comma-separated)
+  - New `--ignore-tags` flag to skip translation of specific tag content (comma-separated)
+  - All XML flags require `--tag-handling xml` for validation
+  - Useful for custom XML formats, technical documentation, and localized HTML
+  - 6 comprehensive unit tests for DeepL API client parameter sending
+  - 5 integration tests for CLI flag validation
+  - Full documentation in docs/API.md with advanced XML examples
+  - Working example script: `examples/19-xml-tag-handling.sh` demonstrating all options
+  - Total test count: 1090 → 1105 tests (+15 tests, 100% pass rate)
+
 ### Changed
 
 ### Fixed
