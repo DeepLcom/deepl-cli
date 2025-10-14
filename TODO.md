@@ -102,29 +102,27 @@ These features were identified but deferred for future implementation:
 **Estimated effort**: 1-2 hours implementation + 1 hour testing
 **Priority**: Low (nice-to-have for v1.0.0)
 
-### Cost Management
+### Missing API Parameters
 
-- [ ] **`deepl estimate` command** - Cost estimation before translation
-  - Calculate character count for text/files/directories
-  - Estimate API costs based on character count
-  - Show breakdown by language and file
-  - Warn before expensive operations
-  - Example: `deepl estimate docs/ --targets es,fr,de,ja,zh`
+Currently unexposed DeepL API parameters that could be added:
 
-**Estimated effort**: 3-4 hours implementation + 2 hours testing
-**Priority**: Medium (useful for large projects and budget management)
+**Text Translation:**
+- [ ] `show_billed_characters` - Request parameter to include billing info in response
+  - We already parse `billed_characters` from responses
+  - Need to add CLI flag: `--show-billed-characters`
+  - Would display actual character count used for billing
+  - **Use case**: Cost transparency for users
 
-### Translation Quality
+**Advanced XML/HTML Tag Handling:**
+- [ ] `non_splitting_tags` - Comma-separated list of XML tags indicating text not to translate
+- [ ] `outline_detection` - Control automatic XML structure detection (boolean)
+- [ ] `splitting_tags` - Define custom tags that split sentences
+- [ ] `ignore_tags` - Define tags to ignore during translation
+- **Priority**: Low (niche use case for XML/HTML power users)
+- **Effort**: ~2-3 hours to add all tag handling options
 
-- [ ] **Confidence scores** - Research and implement if DeepL API supports it
-  - Show translation confidence/quality metrics
-  - Add `--show-confidence` flag
-  - Display confidence score (0.0-1.0) with translations
-  - Add `--min-quality` threshold filter
-  - **Requires research**: Check if DeepL API provides confidence scores
-
-**Estimated effort**: 2-3 hours research + 3-4 hours implementation (if supported)
-**Priority**: Low (depends on API support)
+**Estimated effort**: 1-2 hours for `show_billed_characters`, 2-3 hours for tag handling
+**Priority**: Medium for billing transparency, Low for advanced tag handling
 
 ### Binary Distribution
 
