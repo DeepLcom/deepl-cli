@@ -16,6 +16,7 @@
 - **💾 Smart Caching** - Local SQLite cache with LRU eviction
 - **🎯 Context-Aware** - Preserves code blocks, variables, and formatting
 - **📦 Batch Processing** - Translate multiple files with parallel processing
+- **💰 Cost Transparency** - Track actual billed characters for budget planning
 - **🎨 Modern TUI** - Interactive terminal UI (coming in Phase 3)
 - **👥 Team Collaboration** - Shared glossaries and translation memory (coming in Phase 3)
 - **🔧 Developer Workflows** - Git hooks, CI/CD integration
@@ -363,6 +364,13 @@ deepl translate "Important email" --to de --model-type prefer_quality_optimized
 
 # Custom API endpoint (for DeepL Pro accounts or testing)
 deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
+
+# Track actual billed characters for cost transparency
+deepl translate "Hello, world!" --to es --show-billed-characters
+# Output:
+# Hola, mundo!
+#
+# Billed characters: 13
 ```
 
 **Model Types:**
@@ -621,6 +629,12 @@ deepl usage
 **Note:** Usage statistics help you track your DeepL API character quota and avoid exceeding limits.
 
 See [examples/10-usage-monitoring.sh](./examples/10-usage-monitoring.sh) for a complete usage monitoring example.
+
+**Cost Transparency:**
+
+For detailed cost tracking per translation, use the `--show-billed-characters` flag with the translate command (see Advanced Translation Options above). This displays the actual billed character count for each translation, helping with budget planning and cost analysis.
+
+See [examples/18-cost-transparency.sh](./examples/18-cost-transparency.sh) for comprehensive cost tracking examples.
 
 #### Supported Languages
 

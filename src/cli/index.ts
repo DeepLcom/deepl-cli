@@ -259,6 +259,7 @@ program
   .option('--split-sentences <mode>', 'Sentence splitting: on, off, nonewlines (default: on)')
   .option('--tag-handling <mode>', 'Tag handling for XML/HTML: xml, html')
   .option('--model-type <type>', 'Model type: quality_optimized, prefer_quality_optimized, latency_optimized')
+  .option('--show-billed-characters', 'Request and display actual billed character count for cost transparency')
   .option('--recursive', 'Process subdirectories recursively (default: true)', true)
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
   .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
@@ -278,6 +279,7 @@ program
     splitSentences?: string;
     tagHandling?: string;
     modelType?: string;
+    showBilledCharacters?: boolean;
     recursive?: boolean;
     pattern?: string;
     concurrency?: number;

@@ -42,6 +42,7 @@ interface DeepLTranslateResponse {
     detected_source_language?: string;
     text: string;
   }>;
+  billed_characters?: number;
 }
 
 interface DeepLUsageResponse {
@@ -87,6 +88,7 @@ interface DeepLGlossaryLanguagePairsResponse {
 export interface TranslationResult {
   text: string;
   detectedSourceLang?: Language;
+  billedCharacters?: number;
 }
 
 export interface UsageInfo {
@@ -235,6 +237,10 @@ export class DeepLClient {
       params['model_type'] = options.modelType;
     }
 
+    if (options.showBilledCharacters) {
+      params['show_billed_characters'] = '1';
+    }
+
     try {
       const response = await this.makeRequest<DeepLTranslateResponse>(
         'POST',
@@ -256,6 +262,7 @@ export class DeepLClient {
         detectedSourceLang: translation.detected_source_language
           ? this.normalizeLanguage(translation.detected_source_language)
           : undefined,
+        billedCharacters: response.billed_characters,
       };
     } catch (error) {
       throw this.handleError(error);
@@ -313,6 +320,10 @@ export class DeepLClient {
       params['model_type'] = options.modelType;
     }
 
+    if (options.showBilledCharacters) {
+      params['show_billed_characters'] = '1';
+    }
+
     try {
       const response = await this.makeRequest<DeepLTranslateResponse>(
         'POST',
@@ -330,11 +341,13 @@ export class DeepLClient {
       }
 
       // Map response translations to results
+      // Note: billed_characters is returned at the batch level, not per translation
       return response.translations.map((translation) => ({
         text: translation.text,
         detectedSourceLang: translation.detected_source_language
           ? this.normalizeLanguage(translation.detected_source_language)
           : undefined,
+        billedCharacters: response.billed_characters,
       }));
     } catch (error) {
       throw this.handleError(error);

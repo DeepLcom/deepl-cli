@@ -21,6 +21,7 @@ export interface TranslationOptions {
   splitSentences?: 'on' | 'off' | 'nonewlines';
   tagHandling?: 'xml' | 'html';
   modelType?: ModelType;
+  showBilledCharacters?: boolean;
 }
 
 export interface TranslationResult {

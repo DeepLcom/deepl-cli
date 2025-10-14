@@ -204,6 +204,74 @@ describe('DeepLClient', () => {
       expect(nock.isDone()).toBe(true);
     });
 
+    it('should send show_billed_characters parameter when enabled', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.show_billed_characters === '1';
+        })
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+          ],
+          billed_characters: 5,
+        });
+
+      await client.translate('Hello', {
+        targetLang: 'es',
+        showBilledCharacters: true,
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should parse billed_characters from response', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+          ],
+          billed_characters: 5,
+        });
+
+      const result = await client.translate('Hello', {
+        targetLang: 'es',
+        showBilledCharacters: true,
+      });
+
+      expect(result.text).toBe('Hola');
+      expect(result.billedCharacters).toBe(5);
+    });
+
+    it('should not send show_billed_characters when not requested', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.show_billed_characters === undefined;
+        })
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+          ],
+        });
+
+      await client.translate('Hello', {
+        targetLang: 'es',
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
     it('should throw error for invalid target language', async () => {
       await expect(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
@@ -1283,6 +1351,63 @@ describe('DeepLClient', () => {
 
       expect(results[0]?.detectedSourceLang).toBe('en');
       expect(results[1]?.detectedSourceLang).toBe('fr');
+    });
+
+    it('should send show_billed_characters in batch translation', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.show_billed_characters === '1';
+        })
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+            {
+              detected_source_language: 'EN',
+              text: 'Adiós',
+            },
+          ],
+          billed_characters: 12,
+        });
+
+      await client.translateBatch(['Hello', 'Goodbye'], {
+        targetLang: 'es',
+        showBilledCharacters: true,
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should parse billed_characters in batch translation response', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+            {
+              detected_source_language: 'EN',
+              text: 'Adiós',
+            },
+          ],
+          billed_characters: 12,
+        });
+
+      const results = await client.translateBatch(['Hello', 'Goodbye'], {
+        targetLang: 'es',
+        showBilledCharacters: true,
+      });
+
+      expect(results).toHaveLength(2);
+      expect(results[0]?.text).toBe('Hola');
+      expect(results[1]?.text).toBe('Adiós');
+      // Note: In batch translation, billed_characters is for the entire batch,
+      // not per translation. The API client returns it at the response level.
     });
   });
 

@@ -361,4 +361,25 @@ describe('Translate CLI Integration', () => {
       expect(output).toContain('plain text');
     });
   });
+
+  describe('billed characters', () => {
+    it('should show --show-billed-characters flag in help', () => {
+      const helpOutput = runCLI('deepl translate --help');
+      expect(helpOutput).toContain('--show-billed-characters');
+      expect(helpOutput).toMatch(/billed.*character/i);
+      expect(helpOutput).toMatch(/cost.*transparency/i);
+    });
+
+    it('should accept --show-billed-characters flag without error', () => {
+      // Verify the flag is recognized (will fail on API key but shouldn't error on unknown flag)
+      try {
+        runCLI('deepl translate "Hello" --to es --show-billed-characters', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not on unknown option
+        expect(output).not.toMatch(/unknown.*option.*show-billed-characters/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+  });
 });

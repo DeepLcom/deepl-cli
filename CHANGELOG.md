@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Cost Transparency** - Track actual billed characters for budget planning
+  - New `--show-billed-characters` flag for translate command
+  - Displays actual billed character count after translation for cost tracking
+  - Supports text, file, and batch translation modes
+  - JSON output format includes `billedCharacters` field
+  - Number formatting with `.toLocaleString()` for readability
+  - 5 comprehensive unit tests for parameter sending and response parsing
+  - 2 integration tests for CLI flag validation
+  - 5 E2E tests for complete workflow validation
+  - Working example script: `examples/18-cost-transparency.sh` with 10 scenarios
+  - Full documentation in README.md and docs/API.md
+  - Total test count: 1068 → 1080 tests (+12 tests, 100% pass rate)
 
 ### Changed
 

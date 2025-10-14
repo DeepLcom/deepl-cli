@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
 **Version**: 0.5.0
-**Last Updated**: October 13, 2025
+**Last Updated**: October 14, 2025
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -182,6 +182,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 **API Options:**
 
 - `--api-url URL` - Custom API endpoint URL (for testing or private instances)
+- `--show-billed-characters` - Request and display actual billed character count for cost transparency
 
 **Batch Options (for directories):**
 
@@ -352,6 +353,27 @@ deepl translate "Hello" --to es --no-cache
 
 # Useful for testing or when you need the latest translation
 deepl translate document.md --to es --output document.es.md --no-cache
+```
+
+**Cost transparency:**
+
+```bash
+# Show actual billed character count
+deepl translate "Hello, world!" --to es --show-billed-characters
+# Hola, mundo!
+#
+# Billed characters: 13
+
+# Use with multiple languages
+deepl translate "Hello" --to es,fr,de --show-billed-characters
+# [es] Hola
+# [fr] Bonjour
+# [de] Hallo
+#
+# Billed characters: 15
+
+# Useful for budget tracking and cost analysis
+deepl translate document.md --to es --output document.es.md --show-billed-characters
 ```
 
 **JSON output:**
@@ -1442,5 +1464,5 @@ export NO_COLOR=1
 
 ---
 
-**Last Updated**: October 13, 2025
+**Last Updated**: October 14, 2025
 **DeepL CLI Version**: 0.5.0

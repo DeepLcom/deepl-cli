@@ -107,11 +107,14 @@ These features were identified but deferred for future implementation:
 Currently unexposed DeepL API parameters that could be added:
 
 **Text Translation:**
-- [ ] `show_billed_characters` - Request parameter to include billing info in response
-  - We already parse `billed_characters` from responses
-  - Need to add CLI flag: `--show-billed-characters`
-  - Would display actual character count used for billing
+- [x] `show_billed_characters` - ✅ IMPLEMENTED in v0.5.2 (pending release)
+  - Added CLI flag: `--show-billed-characters`
+  - Displays actual character count used for billing
   - **Use case**: Cost transparency for users
+  - Includes comprehensive tests (unit + integration)
+  - Documentation: API.md with examples
+  - Working example: examples/18-cost-transparency.sh
+  - **Completed**: 2025-10-14
 
 **Advanced XML/HTML Tag Handling:**
 - [ ] `non_splitting_tags` - Comma-separated list of XML tags indicating text not to translate
@@ -121,8 +124,9 @@ Currently unexposed DeepL API parameters that could be added:
 - **Priority**: Low (niche use case for XML/HTML power users)
 - **Effort**: ~2-3 hours to add all tag handling options
 
-**Estimated effort**: 1-2 hours for `show_billed_characters`, 2-3 hours for tag handling
-**Priority**: Medium for billing transparency, Low for advanced tag handling
+**Estimated effort**: ~~1-2 hours for `show_billed_characters`~~ ✅ COMPLETE, 2-3 hours for tag handling
+**Priority**: ~~Medium for billing transparency~~ ✅ COMPLETE, Low for advanced tag handling
+**Actual effort (show_billed_characters)**: ~2-3 hours implementation + testing + documentation
 
 ### Binary Distribution
 

@@ -26,6 +26,7 @@ interface TranslateOptions {
   splitSentences?: string;
   tagHandling?: string;
   modelType?: string;
+  showBilledCharacters?: boolean;
   output?: string;
   recursive?: boolean;
   pattern?: string;
@@ -211,6 +212,7 @@ export class TranslateCommand {
       modelType?: 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
       preserveFormatting?: boolean;
       glossaryId?: string;
+      showBilledCharacters?: boolean;
     } = {
       targetLang: options.to as Language,
     };
@@ -247,6 +249,10 @@ export class TranslateCommand {
       translationOptions.glossaryId = await this.resolveGlossaryId(options.glossary);
     }
 
+    if (options.showBilledCharacters) {
+      translationOptions.showBilledCharacters = true;
+    }
+
     // Translate
     const result = await this.translationService.translate(
       text,
@@ -260,6 +266,11 @@ export class TranslateCommand {
     // Format output based on format option
     if (options.format === 'json') {
       return formatTranslationJson(result, options.to as Language);
+    }
+
+    // Display billed characters if available
+    if (result.billedCharacters !== undefined) {
+      return `${result.text}\n\nBilled characters: ${result.billedCharacters.toLocaleString()}`;
     }
 
     return result.text;

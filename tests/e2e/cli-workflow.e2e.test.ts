@@ -1254,4 +1254,89 @@ describe('CLI Workflow E2E', () => {
       });
     });
   });
+
+  describe('Cost Transparency Workflow', () => {
+    it('should display --show-billed-characters flag in translate help', () => {
+      const helpOutput = execSync('deepl translate --help', { encoding: 'utf-8' });
+
+      expect(helpOutput).toContain('--show-billed-characters');
+      expect(helpOutput).toMatch(/billed.*character/i);
+      expect(helpOutput).toMatch(/cost.*transparency/i);
+    });
+
+    it('should accept --show-billed-characters flag without unknown option error', () => {
+      // Clear API key first
+      try {
+        runCLI('deepl auth clear');
+      } catch {
+        // Ignore if already cleared
+      }
+
+      try {
+        runCLI('deepl translate "Hello" --to es --show-billed-characters');
+        fail('Should have thrown an error about missing API key');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout || error.message;
+        // Should fail on auth, not on unknown option
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unknown.*option.*show-billed-characters/i);
+      }
+    });
+
+    it('should support --show-billed-characters with other flags', () => {
+      // Clear API key first
+      try {
+        runCLI('deepl auth clear');
+      } catch {
+        // Ignore if already cleared
+      }
+
+      try {
+        runCLI('deepl translate "Hello" --to es --from en --formality more --show-billed-characters');
+        fail('Should have thrown an error about missing API key');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout || error.message;
+        // Should fail on auth, not on flag combination
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).not.toMatch(/invalid.*flag/i);
+      }
+    });
+
+    it('should support --show-billed-characters with JSON output format', () => {
+      // Clear API key first
+      try {
+        runCLI('deepl auth clear');
+      } catch {
+        // Ignore if already cleared
+      }
+
+      try {
+        runCLI('deepl translate "Test" --to es --show-billed-characters --format json');
+        fail('Should have thrown an error about missing API key');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout || error.message;
+        // Should fail on auth, not on flag parsing
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+      }
+    });
+
+    it('should exit with non-zero when using --show-billed-characters without API key', () => {
+      // Clear API key first
+      try {
+        runCLI('deepl auth clear');
+      } catch {
+        // Ignore if already cleared
+      }
+
+      try {
+        runCLI('deepl translate "Hello" --to es --show-billed-characters');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        // Non-zero exit code
+        expect(error.status).toBeGreaterThan(0);
+      }
+    });
+  });
 });

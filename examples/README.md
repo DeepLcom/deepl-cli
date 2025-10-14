@@ -19,6 +19,9 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Watch Mode](./13-watch-mode.sh) - Real-time file monitoring and auto-translation
 - [Git Hooks Integration](./14-git-hooks.sh) - Automating translation validation in git workflow
 - [Document Translation](./15-document-translation.sh) - Translating complete documents (PDF, DOCX, HTML, etc.) while preserving formatting
+- [Document Format Conversion](./16-document-format-conversion.sh) - Converting document formats during translation
+- [Custom Config Files](./17-custom-config-files.sh) - Using multiple configuration files for different projects
+- [Cost Transparency](./18-cost-transparency.sh) - Tracking billed characters for translation cost analysis
 
 ## Prerequisites
 
