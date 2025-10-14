@@ -177,6 +177,10 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--preserve-formatting` - Preserve line breaks and whitespace formatting
 - `--split-sentences LEVEL` - Sentence splitting: `on` (default), `off`, `nonewlines`
 - `--tag-handling MODE` - XML tag handling: `xml`, `html`
+- `--outline-detection BOOL` - Control automatic XML structure detection: `true` (default), `false` (requires `--tag-handling xml`)
+- `--splitting-tags TAGS` - Comma-separated XML tags that split sentences (requires `--tag-handling xml`)
+- `--non-splitting-tags TAGS` - Comma-separated XML tags for non-translatable text (requires `--tag-handling xml`)
+- `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
 - `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
 - `--no-cache` - Bypass cache for this translation (useful for testing/forcing fresh translation)
 
@@ -329,7 +333,7 @@ deepl translate "Line 1\nLine 2" --to es --split-sentences nonewlines
 **Tag handling (XML/HTML):**
 
 ```bash
-# Translate XML while preserving tags
+# Basic XML tag preservation
 deepl translate "<p>Hello world</p>" --to es --tag-handling xml
 # → "<p>Hola mundo</p>"
 
@@ -339,6 +343,31 @@ deepl translate "<div><span>Welcome</span></div>" --to de --tag-handling html
 
 # Useful for localizing markup files
 deepl translate content.html --to fr --tag-handling html --output content.fr.html
+
+# Advanced XML tag handling: Disable automatic structure detection
+deepl translate "<doc><p>Text</p></doc>" --to es --tag-handling xml --outline-detection false
+# Forces manual tag handling instead of automatic detection
+
+# Specify tags that split sentences (useful for custom XML formats)
+deepl translate "<article><br/>Content<hr/>More</article>" --to es --tag-handling xml --splitting-tags "br,hr"
+# Treats <br/> and <hr/> as sentence boundaries
+
+# Specify tags for non-translatable content (like code blocks)
+deepl translate "<doc><code>let x = 1;</code><p>Text</p></doc>" --to es --tag-handling xml --non-splitting-tags "code,pre"
+# Content in <code> and <pre> tags won't be split into sentences
+
+# Ignore specific tags and their content (e.g., scripts, styles)
+deepl translate file.html --to es --tag-handling xml --ignore-tags "script,style,noscript" --output file.es.html
+# Content in <script>, <style>, and <noscript> tags is not translated
+
+# Combine multiple XML tag handling options
+deepl translate complex.xml --to de --tag-handling xml \
+  --outline-detection false \
+  --splitting-tags "br,hr,div" \
+  --non-splitting-tags "code,pre,kbd" \
+  --ignore-tags "script,style" \
+  --output complex.de.xml
+# Fine-tuned control for complex XML/HTML documents
 ```
 
 **Glossary usage:**

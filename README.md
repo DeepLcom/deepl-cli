@@ -371,6 +371,40 @@ deepl translate "Hello, world!" --to es --show-billed-characters
 # Hola, mundo!
 #
 # Billed characters: 13
+
+# Advanced XML/HTML tag handling (requires --tag-handling xml)
+# Control automatic XML structure detection
+deepl translate "<doc><p>Hello</p></doc>" --to es --tag-handling xml --outline-detection false
+
+# Specify tags that split sentences (like <br/> and <hr/>)
+deepl translate "<div>First sentence<br/>Second sentence</div>" --to es --tag-handling xml --splitting-tags "br,hr"
+
+# Preserve non-translatable content (code blocks, preformatted text)
+deepl translate "<doc><code>let x = 1;</code><p>Text</p></doc>" --to es --tag-handling xml --non-splitting-tags "code,pre"
+
+# Ignore specific tags and their content (scripts, styles)
+deepl translate page.html --to es --tag-handling xml --ignore-tags "script,style,noscript" --output page.es.html
+
+# Combine multiple XML tag handling options for fine-tuned control
+deepl translate complex.xml --to de --tag-handling xml \
+  --outline-detection false \
+  --splitting-tags "br,hr,div" \
+  --non-splitting-tags "code,pre,kbd" \
+  --ignore-tags "script,style" \
+  --output complex.de.xml
+```
+
+**XML Tag Handling Use Cases:**
+
+Advanced XML/HTML tag handling is perfect for:
+- 🌐 Localizing HTML websites while preserving structure
+- 📚 Translating technical documentation with code blocks
+- 📄 Processing custom XML formats with specific content rules
+- 🔒 Protecting non-translatable content (scripts, styles, code)
+- ✂️ Fine-tuned control over sentence splitting for better context
+
+See [examples/19-xml-tag-handling.sh](./examples/19-xml-tag-handling.sh) for comprehensive XML tag handling examples with real-world scenarios.
+
 ```
 
 **Model Types:**
