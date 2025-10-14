@@ -65,6 +65,7 @@ EXAMPLES=(
   "16-document-format-conversion.sh"
   "17-custom-config-files.sh"
   "18-cost-transparency.sh"
+  "19-xml-tag-handling.sh"
 )
 
 # Skip slow examples in fast mode
@@ -88,6 +89,7 @@ if [ "$FAST_MODE" = true ]; then
     "16-document-format-conversion.sh"
     "17-custom-config-files.sh"
     "18-cost-transparency.sh"
+    "19-xml-tag-handling.sh"
   )
 fi
 

@@ -22,6 +22,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Document Format Conversion](./16-document-format-conversion.sh) - Converting document formats during translation
 - [Custom Config Files](./17-custom-config-files.sh) - Using multiple configuration files for different projects
 - [Cost Transparency](./18-cost-transparency.sh) - Tracking billed characters for translation cost analysis
+- [XML Tag Handling](./19-xml-tag-handling.sh) - Advanced XML/HTML tag handling for fine-tuned translation control
 
 ## Prerequisites
 
