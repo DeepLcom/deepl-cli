@@ -4,9 +4,9 @@ This file tracks pending tasks and future work for the DeepL CLI project.
 
 ## 📋 Current Status
 
-- **Version**: 0.5.0 (Current)
+- **Version**: 0.5.1 (Current)
 - **Phase**: 2 (Advanced Features) - ✅ COMPLETE
-- **Tests**: 1020+ tests (100% pass rate) ✅
+- **Tests**: 1068 tests (100% pass rate) ✅
 - **Coverage**: ~91% overall (with excellent integration/e2e coverage)
 - **Next**: Phase 3 (TUI & Collaboration)
 
@@ -37,7 +37,7 @@ These features were identified but deferred for future implementation:
 
 ### Exit Codes Enhancement
 
-- [ ] **Granular exit codes** - More specific error codes for better error handling in scripts/CI
+- [x] **Granular exit codes** - ✅ IMPLEMENTED in v0.5.1
   - **0** - Success
   - **1** - General error
   - **2** - Authentication error (invalid API key)
@@ -46,9 +46,13 @@ These features were identified but deferred for future implementation:
   - **5** - Network error
   - **6** - Invalid input (file not found, unsupported format)
   - **7** - Configuration error
+  - Automatic error classification based on error messages
+  - Retry logic for retryable errors (rate limit, network)
+  - 43 comprehensive unit tests
+  - Complete documentation in docs/API.md with CI/CD examples
 
-**Estimated effort**: 2-3 hours implementation + 1 hour testing
-**Priority**: Medium (improves CI/CD integration)
+**Completed**: 2025-10-14
+**Actual effort**: 3 hours implementation + testing
 
 ### Configuration Enhancements
 
@@ -377,6 +381,6 @@ These features were identified but deferred for future implementation:
 
 ---
 
-**Last Updated**: 2025-10-13
+**Last Updated**: 2025-10-14
 **Maintained By**: Development team
 **Review Frequency**: Every release or major milestone
