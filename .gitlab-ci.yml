@@ -1,6 +1,7 @@
 image: node:18
 
 stages:
+  - security
   - test
   - build
   - deploy
@@ -11,6 +12,21 @@ cache:
 
 before_script:
   - npm ci
+
+# Security stage - runs first to fail fast on security issues
+security:audit:
+  stage: security
+  script:
+    - echo "🔍 Running npm security audit..."
+    - npm audit --audit-level=moderate
+  allow_failure: false
+
+security:typecheck:
+  stage: security
+  script:
+    - echo "🔍 Running TypeScript type check..."
+    - npm run type-check
+  allow_failure: false
 
 # Run tests
 test:
@@ -23,9 +39,8 @@ test:
       echo "exec node $PWD/dist/cli/index.js \"\$@\"" >> /tmp/deepl
       chmod +x /tmp/deepl
       export PATH="/tmp:$PATH"
-    - npm run type-check
     - npm run test:coverage
-    - npm run lint || true  # Run lint but don't fail the job
+    - npm run lint
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   artifacts:
     reports:
@@ -48,3 +63,15 @@ build:
   only:
     - main
     - tags
+
+# Daily security audit (scheduled pipeline)
+scheduled:security:
+  stage: security
+  script:
+    - echo "🔍 Running scheduled security audit..."
+    - npm audit --audit-level=moderate
+    - npm run type-check
+    - npm run lint
+  allow_failure: false
+  only:
+    - schedules

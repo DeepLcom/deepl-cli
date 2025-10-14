@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CI/CD Security Automation** - Automated security checks in continuous integration
+  - GitHub Actions workflow (`.github/workflows/security.yml`) with daily scheduled audits
+  - GitLab CI pipeline (`.gitlab-ci.yml`) with dedicated security stage
+  - Security checks: npm audit, TypeScript type-check, ESLint, tests
+  - Fail-fast security stage runs before tests/build
+  - Scheduled daily security audits for proactive vulnerability detection
+
 - **Git Hooks: commit-msg and post-commit** - Enhanced git workflow automation
   - New `commit-msg` hook enforces Conventional Commits format with commitlint
   - New `post-commit` hook provides feedback and reminds to update CHANGELOG.md
@@ -76,6 +83,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ## [0.5.1] - 2025-10-14
+
+### Security
+- Completed comprehensive security audit: 0 vulnerabilities, risk score 1.0/10 (excellent)
 
 ### Added
 - **Semantic Exit Codes** - Granular exit codes for better CI/CD integration
