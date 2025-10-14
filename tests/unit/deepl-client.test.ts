@@ -272,6 +272,129 @@ describe('DeepLClient', () => {
       expect(nock.isDone()).toBe(true);
     });
 
+    it('should send outline_detection parameter when set to true', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.outline_detection === '1';
+        })
+        .reply(200, {
+          translations: [{ text: '<p>Hola</p>' }],
+        });
+
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'xml',
+        outlineDetection: true,
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should send outline_detection parameter when set to false', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.outline_detection === '0';
+        })
+        .reply(200, {
+          translations: [{ text: '<p>Hola</p>' }],
+        });
+
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'xml',
+        outlineDetection: false,
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should send splitting_tags parameter as comma-separated string', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.splitting_tags === 'br,hr,div';
+        })
+        .reply(200, {
+          translations: [{ text: '<p>Hola</p>' }],
+        });
+
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'xml',
+        splittingTags: ['br', 'hr', 'div'],
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should send non_splitting_tags parameter as comma-separated string', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.non_splitting_tags === 'code,pre,kbd';
+        })
+        .reply(200, {
+          translations: [{ text: '<p>Hola</p>' }],
+        });
+
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'xml',
+        nonSplittingTags: ['code', 'pre', 'kbd'],
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should send ignore_tags parameter as comma-separated string', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.ignore_tags === 'script,style,noscript';
+        })
+        .reply(200, {
+          translations: [{ text: '<p>Hola</p>' }],
+        });
+
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'xml',
+        ignoreTags: ['script', 'style', 'noscript'],
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should send all XML tag handling parameters together', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.outline_detection === '0' &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.splitting_tags === 'br,hr' &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.non_splitting_tags === 'code,pre' &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.ignore_tags === 'script,style';
+        })
+        .reply(200, {
+          translations: [{ text: '<p>Hola</p>' }],
+        });
+
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'xml',
+        outlineDetection: false,
+        splittingTags: ['br', 'hr'],
+        nonSplittingTags: ['code', 'pre'],
+        ignoreTags: ['script', 'style'],
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
     it('should throw error for invalid target language', async () => {
       await expect(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
