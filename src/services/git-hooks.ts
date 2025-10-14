@@ -231,7 +231,7 @@ exit $?
 # Get the commit message and hash
 COMMIT_HASH=$(git rev-parse --short HEAD)
 COMMIT_MSG=$(git log -1 --pretty=%B)
-COMMIT_TYPE=$(echo "$COMMIT_MSG" | grep --color=never -oE '^[a-z]+' || echo "unknown")
+COMMIT_TYPE=$(echo "$COMMIT_MSG" | head -1 | grep --color=never -oE '^[a-z]+' || echo "unknown")
 
 echo "✅ Commit successful: $COMMIT_HASH"
 
