@@ -1541,4 +1541,4 @@ export NO_COLOR=1
 ---
 
 **Last Updated**: October 14, 2025
-**DeepL CLI Version**: 0.5.1
+**DeepL CLI Version**: 0.6.0

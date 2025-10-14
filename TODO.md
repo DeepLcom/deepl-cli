@@ -330,7 +330,8 @@ These features were identified but deferred for future implementation:
 - **v0.3.0** - Write Enhancements + Document Translation ✅
 - **v0.4.0** - Feature Parity (batch optimization, glossary management) ✅
 - **v0.5.0** - v3 Glossary API (multilingual glossaries) ✅
-- **v0.5.1** - Semantic exit codes, performance improvements ✅ (CURRENT)
+- **v0.5.1** - Semantic exit codes, performance improvements ✅
+- **v0.6.0** - CI/CD automation, git hooks, table output, cost transparency ✅ (CURRENT)
 - **v0.6.0-v0.9.x** - Deferred enhancements (binary distribution, --dry-run, --verbose, etc.)
 - **v1.0.0** - Stable API, production-ready, all polish items complete (TUI deferred)
 

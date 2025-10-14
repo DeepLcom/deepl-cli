@@ -1,14 +1,14 @@
 # DeepL CLI: Comprehensive Design Document
 
-**Version:** 2.1
+**Version:** 2.2
 **Date:** October 2025
-**Status:** Phase 2 Complete - v0.5.1 Released
+**Status:** Phase 2 Complete - v0.6.0 Released
 
 ---
 
 ## Current Implementation Status
 
-**Version**: v0.5.1 (October 2025)
+**Version**: v0.6.0 (October 2025)
 **Phase**: 2 (Advanced Features) - ✅ **COMPLETE**
 **Test Suite**: 1117 tests, 100% pass rate
 **Code Coverage**: ~88% overall (excellent integration/e2e coverage)

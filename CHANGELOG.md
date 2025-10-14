@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.6.0] - 2025-10-14
+
+### Added
 - **CI/CD Security Automation** - Automated security checks in continuous integration
   - GitHub Actions workflow (`.github/workflows/security.yml`) with daily scheduled audits
   - GitLab CI pipeline (`.gitlab-ci.yml`) with dedicated security stage
@@ -79,8 +87,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Total test count: 1090 → 1105 tests (+15 tests, 100% pass rate)
 
 ### Changed
+- **Documentation Updates** - Improved accuracy and clarity
+  - Fixed version numbers across all documentation files
+  - Clarified document format conversion limitations (PDF → DOCX only)
+  - Removed completed security audit reports and point-in-time coverage reports
+  - Updated hook documentation with usage examples and troubleshooting
 
 ### Fixed
+- **Git Hooks Reliability** - Fixed multiple issues in post-commit hook
+  - Fixed grep color code issue causing hook failures in CI environments
+  - Added `--color=never` flag to grep to prevent ANSI color codes in output
+  - Fixed commit type extraction to use `head -1` for multi-line commit messages
+  - Ensures hooks work correctly in both interactive terminals and CI/CD pipelines
+
+- **Test Suite Improvements** - Fixed test failures in CI environments
+  - Fixed E2E write command validation errors
+  - Resolved all ESLint errors for clean linting
+  - All 1130 tests now pass in CI/CD environments
+
+### Technical
+- **Test Coverage**: 1068 → 1130 tests (+62 tests, 5.8% increase)
+- **Overall pass rate**: 100% (1130/1130 passing)
+- **Production Readiness**: High - CLI is stable and feature-complete for v1.0.0
 
 ## [0.5.1] - 2025-10-14
 
