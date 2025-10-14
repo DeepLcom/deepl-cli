@@ -386,6 +386,20 @@ program
     format?: string;
   }) => {
     try {
+      // Validate arguments BEFORE creating client (to check API key)
+      // This ensures validation errors (exit code 6) come before auth errors (exit code 2)
+
+      // Validate language code
+      const validLanguages = ['de', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt-BR', 'pt-PT'];
+      if (!validLanguages.includes(options.lang)) {
+        throw new Error(`Invalid language code: ${options.lang}. Valid options: ${validLanguages.join(', ')}`);
+      }
+
+      // Validate that style and tone are not both specified
+      if (options.style && options.tone) {
+        throw new Error('Cannot specify both --style and --tone. Use one or the other.');
+      }
+
       const client = createDeepLClient();
       const writeService = new WriteService(client, configService);
       const writeCommand = new WriteCommand(writeService, configService);

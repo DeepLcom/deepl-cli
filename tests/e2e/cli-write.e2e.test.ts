@@ -57,7 +57,8 @@ describe('Write Command E2E', () => {
         execSync('deepl write "test" --lang invalid', { encoding: 'utf-8', stdio: 'pipe' });
         fail('Should have thrown error');
       } catch (error: any) {
-        expect(error.status).toBe(1);
+        // Exit code 6 = InvalidInput (validation error)
+        expect(error.status).toBe(6);
       }
     });
 
@@ -69,7 +70,8 @@ describe('Write Command E2E', () => {
         });
         fail('Should have thrown error');
       } catch (error: any) {
-        expect(error.status).toBe(1);
+        // Exit code 6 = InvalidInput (validation error - "Cannot specify both")
+        expect(error.status).toBe(6);
       }
     });
 

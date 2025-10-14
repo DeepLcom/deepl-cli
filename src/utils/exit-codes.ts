@@ -84,9 +84,11 @@ export function getExitCodeFromError(error: Error): ExitCode {
     message.includes('cannot be empty') ||
     message.includes('not found') ||
     message.includes('unsupported') ||
+    message.includes('not supported') ||
     message.includes('invalid') ||
     message.includes('required') ||
-    message.includes('expected')
+    message.includes('expected') ||
+    message.includes('cannot specify both')
   ) {
     return ExitCode.InvalidInput;
   }
