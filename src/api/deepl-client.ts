@@ -817,6 +817,10 @@ export class DeepLClient {
       formData.append('output_format', options.outputFormat);
     }
 
+    if (options.enableDocumentMinification) {
+      formData.append('enable_document_minification', '1');
+    }
+
     try {
       const response = await this.client.request<DeepLDocumentUploadResponse>({
         method: 'POST',

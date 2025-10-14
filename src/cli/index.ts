@@ -260,6 +260,7 @@ program
   .option('--tag-handling <mode>', 'Tag handling for XML/HTML: xml, html')
   .option('--model-type <type>', 'Model type: quality_optimized, prefer_quality_optimized, latency_optimized')
   .option('--show-billed-characters', 'Request and display actual billed character count for cost transparency')
+  .option('--enable-minification', 'Enable document minification for PPTX/DOCX files (reduces file size)')
   .option('--recursive', 'Process subdirectories recursively (default: true)', true)
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
   .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
@@ -280,6 +281,7 @@ program
     tagHandling?: string;
     modelType?: string;
     showBilledCharacters?: boolean;
+    enableMinification?: boolean;
     recursive?: boolean;
     pattern?: string;
     concurrency?: number;

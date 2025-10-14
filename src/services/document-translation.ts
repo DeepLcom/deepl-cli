@@ -73,6 +73,16 @@ export class DocumentTranslationService {
       throw new Error(`Input file not found: ${inputPath}`);
     }
 
+    // Validate document minification is only used with PPTX/DOCX
+    if (options.enableDocumentMinification) {
+      const ext = path.extname(inputPath).toLowerCase();
+      if (ext !== '.pptx' && ext !== '.docx') {
+        throw new Error(
+          'Document minification is only supported for PPTX and DOCX files'
+        );
+      }
+    }
+
     // Read input file
     const fileBuffer = fs.readFileSync(inputPath);
     const filename = path.basename(inputPath);

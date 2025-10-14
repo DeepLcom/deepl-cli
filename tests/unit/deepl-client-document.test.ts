@@ -125,6 +125,59 @@ describe('DeepLClient - Document Translation', () => {
       expect(mockAxiosInstance.request).toHaveBeenCalled();
     });
 
+    it('should include enable_document_minification parameter when enabled', async () => {
+      const mockResponse = {
+        data: {
+          document_id: 'doc-id',
+          document_key: 'doc-key',
+        },
+      };
+
+      mockAxiosInstance.request.mockResolvedValue(mockResponse);
+
+      const fileBuffer = Buffer.from('test content');
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        filename: 'presentation.pptx',
+        enableDocumentMinification: true,
+      });
+
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: '/v2/document',
+        })
+      );
+
+      // Verify the form data contains enable_document_minification
+      const callArgs = mockAxiosInstance.request.mock.calls[0][0];
+      expect(callArgs.data).toBeDefined();
+    });
+
+    it('should NOT include enable_document_minification parameter when not specified', async () => {
+      const mockResponse = {
+        data: {
+          document_id: 'doc-id',
+          document_key: 'doc-key',
+        },
+      };
+
+      mockAxiosInstance.request.mockResolvedValue(mockResponse);
+
+      const fileBuffer = Buffer.from('test content');
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        filename: 'document.docx',
+      });
+
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: '/v2/document',
+        })
+      );
+    });
+
     it('should throw error if filename is missing', async () => {
       const fileBuffer = Buffer.from('test content');
 

@@ -165,6 +165,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 
 - `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text)
 - `--output-format FORMAT` - Convert document format during translation (e.g., `pdf`, `docx`, `pptx`, `xlsx`, `html`)
+- `--enable-minification` - Enable document minification for PPTX/DOCX files (reduces file size)
 - `--format FORMAT` - Output format: `json` for machine-readable output (default: plain text)
 
 **Translation Options:**
@@ -245,6 +246,10 @@ deepl translate website.html --to ja --output website.ja.html
 
 # Convert format during translation (DOCX to PDF)
 deepl translate document.docx --to es --output document.es.pdf --output-format pdf
+
+# Enable document minification for smaller file size (PPTX/DOCX only)
+deepl translate presentation.pptx --to de --output presentation.de.pptx --enable-minification
+deepl translate report.docx --to fr --output report.fr.docx --enable-minification
 ```
 
 **Supported Document Formats:**
@@ -266,6 +271,7 @@ deepl translate document.docx --to es --output document.es.pdf --output-format p
 - Formatting, structure, and layout are automatically preserved
 - Large documents may take several seconds to translate
 - Maximum file sizes: 10MB (PDF), 30MB (other formats)
+- **Document minification** (`--enable-minification`): Reduces file size for PPTX and DOCX files only. Useful for large presentations and documents.
 
 **Directory translation:**
 

@@ -298,6 +298,121 @@ describe('DocumentTranslationService', () => {
         })
       );
     });
+
+    it('should allow enableDocumentMinification for PPTX files', async () => {
+      const inputPath = '/test/presentation.pptx';
+      const outputPath = '/test/presentation.es.pptx';
+      const fileBuffer = Buffer.from('pptx content');
+      const translatedBuffer = Buffer.from('translated pptx content');
+
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      mockClient.getDocumentStatus = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        status: 'done',
+      });
+
+      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'es',
+        enableDocumentMinification: true,
+      });
+
+      // Verify enableDocumentMinification is passed for PPTX
+      expect(mockClient.uploadDocument).toHaveBeenCalledWith(
+        fileBuffer,
+        expect.objectContaining({
+          targetLang: 'es',
+          filename: 'presentation.pptx',
+          enableDocumentMinification: true,
+        })
+      );
+    });
+
+    it('should allow enableDocumentMinification for DOCX files', async () => {
+      const inputPath = '/test/document.docx';
+      const outputPath = '/test/document.es.docx';
+      const fileBuffer = Buffer.from('docx content');
+      const translatedBuffer = Buffer.from('translated docx content');
+
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      mockClient.getDocumentStatus = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        status: 'done',
+      });
+
+      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'es',
+        enableDocumentMinification: true,
+      });
+
+      // Verify enableDocumentMinification is passed for DOCX
+      expect(mockClient.uploadDocument).toHaveBeenCalledWith(
+        fileBuffer,
+        expect.objectContaining({
+          targetLang: 'es',
+          filename: 'document.docx',
+          enableDocumentMinification: true,
+        })
+      );
+    });
+
+    it('should reject enableDocumentMinification for PDF files', async () => {
+      const inputPath = '/test/document.pdf';
+      const outputPath = '/test/document.es.pdf';
+
+      await expect(
+        service.translateDocument(inputPath, outputPath, {
+          targetLang: 'es',
+          enableDocumentMinification: true,
+        })
+      ).rejects.toThrow('Document minification is only supported for PPTX and DOCX files');
+
+      // uploadDocument should NOT have been called
+      expect(mockClient.uploadDocument).not.toHaveBeenCalled();
+    });
+
+    it('should reject enableDocumentMinification for TXT files', async () => {
+      const inputPath = '/test/document.txt';
+      const outputPath = '/test/document.es.txt';
+
+      await expect(
+        service.translateDocument(inputPath, outputPath, {
+          targetLang: 'es',
+          enableDocumentMinification: true,
+        })
+      ).rejects.toThrow('Document minification is only supported for PPTX and DOCX files');
+
+      expect(mockClient.uploadDocument).not.toHaveBeenCalled();
+    });
+
+    it('should reject enableDocumentMinification for XLSX files', async () => {
+      const inputPath = '/test/spreadsheet.xlsx';
+      const outputPath = '/test/spreadsheet.es.xlsx';
+
+      await expect(
+        service.translateDocument(inputPath, outputPath, {
+          targetLang: 'es',
+          enableDocumentMinification: true,
+        })
+      ).rejects.toThrow('Document minification is only supported for PPTX and DOCX files');
+
+      expect(mockClient.uploadDocument).not.toHaveBeenCalled();
+    });
   });
 
   describe('getSupportedFileTypes', () => {

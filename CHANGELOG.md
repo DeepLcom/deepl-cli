@@ -21,6 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Full documentation in README.md and docs/API.md
   - Total test count: 1068 → 1080 tests (+12 tests, 100% pass rate)
 
+- **Document Minification** - Reduce file size for PPTX/DOCX translations
+  - New `--enable-minification` flag for document translation
+  - Reduces file size for PowerPoint (PPTX) and Word (DOCX) documents
+  - Only works with PPTX and DOCX formats (API limitation)
+  - Validation prevents usage with unsupported formats (PDF, XLSX, TXT, etc.)
+  - 7 comprehensive unit tests (2 for DeepL client, 5 for DocumentTranslationService)
+  - 3 integration tests for CLI flag validation
+  - Full documentation in README.md and docs/API.md
+  - Total test count: 1080 → 1090 tests (+10 tests, 100% pass rate)
+
 ### Changed
 
 ### Fixed

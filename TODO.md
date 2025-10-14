@@ -116,6 +116,16 @@ Currently unexposed DeepL API parameters that could be added:
   - Working example: examples/18-cost-transparency.sh
   - **Completed**: 2025-10-14
 
+**Document Translation:**
+- [x] `enable_document_minification` - ✅ IMPLEMENTED in v0.5.2 (pending release)
+  - Added CLI flag: `--enable-minification`
+  - Reduces file size for PPTX and DOCX documents
+  - **Use case**: Smaller files, faster uploads, lower bandwidth
+  - Validation: Only works with PPTX/DOCX formats
+  - Includes comprehensive tests (unit + integration)
+  - Documentation: API.md with examples
+  - **Completed**: 2025-10-14
+
 **Advanced XML/HTML Tag Handling:**
 - [ ] `non_splitting_tags` - Comma-separated list of XML tags indicating text not to translate
 - [ ] `outline_detection` - Control automatic XML structure detection (boolean)
@@ -124,9 +134,11 @@ Currently unexposed DeepL API parameters that could be added:
 - **Priority**: Low (niche use case for XML/HTML power users)
 - **Effort**: ~2-3 hours to add all tag handling options
 
-**Estimated effort**: ~~1-2 hours for `show_billed_characters`~~ ✅ COMPLETE, 2-3 hours for tag handling
-**Priority**: ~~Medium for billing transparency~~ ✅ COMPLETE, Low for advanced tag handling
-**Actual effort (show_billed_characters)**: ~2-3 hours implementation + testing + documentation
+**Estimated effort**: ~~1-2 hours for `show_billed_characters`~~ ✅ COMPLETE, ~~2-3 hours for `enable_document_minification`~~ ✅ COMPLETE, 2-3 hours for tag handling
+**Priority**: ~~Medium for billing transparency~~ ✅ COMPLETE, ~~Medium for document minification~~ ✅ COMPLETE, Low for advanced tag handling
+**Actual effort**:
+- `show_billed_characters`: ~2-3 hours implementation + testing + documentation
+- `enable_document_minification`: ~2-3 hours implementation + testing + documentation
 
 ### Binary Distribution
 

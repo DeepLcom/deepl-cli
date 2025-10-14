@@ -382,4 +382,44 @@ describe('Translate CLI Integration', () => {
       }
     });
   });
+
+  describe('document minification', () => {
+    it('should show --enable-minification flag in help', () => {
+      const helpOutput = runCLI('deepl translate --help');
+      expect(helpOutput).toContain('--enable-minification');
+      expect(helpOutput).toMatch(/minification/i);
+      expect(helpOutput).toMatch(/pptx|docx/i);
+    });
+
+    it('should accept --enable-minification flag without error', () => {
+      // Create a test PPTX file (mock)
+      const pptxFile = path.join(testDir, 'presentation.pptx');
+      const outputFile = path.join(testDir, 'output.pptx');
+      fs.writeFileSync(pptxFile, 'Mock PPTX content', 'utf-8');
+
+      try {
+        runCLI(`deepl translate "${pptxFile}" --to es --output "${outputFile}" --enable-minification`, { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not on unknown option
+        expect(output).not.toMatch(/unknown.*option.*enable-minification/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should recognize --enable-minification flag in command', () => {
+      // Verify the flag doesn't cause "unknown option" error
+      const pptxFile = path.join(testDir, 'test.pptx');
+      const outputFile = path.join(testDir, 'out.pptx');
+      fs.writeFileSync(pptxFile, 'content', 'utf-8');
+
+      try {
+        runCLI(`deepl translate "${pptxFile}" --to fr --output "${outputFile}" --enable-minification`, { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout || error.message;
+        // Should not contain unknown option error
+        expect(output).not.toMatch(/unknown.*option/i);
+      }
+    });
+  });
 });

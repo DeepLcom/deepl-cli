@@ -27,6 +27,7 @@ interface TranslateOptions {
   tagHandling?: string;
   modelType?: string;
   showBilledCharacters?: boolean;
+  enableMinification?: boolean;
   output?: string;
   recursive?: boolean;
   pattern?: string;
@@ -463,6 +464,7 @@ export class TranslateCommand {
       formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
       glossaryId?: string;
       outputFormat?: 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
+      enableDocumentMinification?: boolean;
     } = {
       targetLang: options.to as Language,
     };
@@ -477,6 +479,10 @@ export class TranslateCommand {
 
     if (options.outputFormat) {
       translationOptions.outputFormat = options.outputFormat as 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
+    }
+
+    if (options.enableMinification) {
+      translationOptions.enableDocumentMinification = true;
     }
 
     // Create spinner for progress (conditional based on quiet mode)

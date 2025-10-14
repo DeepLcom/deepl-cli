@@ -109,6 +109,7 @@ export interface DocumentTranslationOptions {
   formality?: Formality;
   glossaryId?: string;
   outputFormat?: DocumentOutputFormat;
+  enableDocumentMinification?: boolean;
 }
 
 // Glossary Types
