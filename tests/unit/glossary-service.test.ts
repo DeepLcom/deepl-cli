@@ -25,6 +25,7 @@ describe('GlossaryService', () => {
       getGlossaryEntries: jest.fn(),
       updateGlossaryEntries: jest.fn(),
       renameGlossary: jest.fn(),
+      deleteGlossaryDictionary: jest.fn(),
     } as unknown as jest.Mocked<DeepLClient>;
 
     glossaryService = new GlossaryService(mockDeepLClient);
@@ -552,6 +553,236 @@ describe('GlossaryService', () => {
       await expect(
         glossaryService.renameGlossary('test-123', 'new-name')
       ).rejects.toThrow('Glossary not found');
+    });
+  });
+
+  describe('deleteGlossaryDictionary()', () => {
+    it('should delete a dictionary from a multilingual glossary', async () => {
+      // Mock a multilingual glossary with 3 dictionaries
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'multi-gloss-123',
+        name: 'multi-glossary',
+        source_lang: 'en',
+        target_langs: ['es', 'fr', 'de'],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 10,
+          },
+          {
+            source_lang: 'en',
+            target_lang: 'fr',
+            entry_count: 12,
+          },
+          {
+            source_lang: 'en',
+            target_lang: 'de',
+            entry_count: 8,
+          },
+        ],
+        creation_time: '2024-01-01T00:00:00Z',
+      });
+
+      mockDeepLClient.deleteGlossaryDictionary.mockResolvedValue(undefined);
+
+      await glossaryService.deleteGlossaryDictionary('multi-gloss-123', 'en', 'fr');
+
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('multi-gloss-123');
+      expect(mockDeepLClient.deleteGlossaryDictionary).toHaveBeenCalledWith(
+        'multi-gloss-123',
+        'en',
+        'fr'
+      );
+    });
+
+    it('should throw error when deleting dictionary from single-language glossary', async () => {
+      // Mock a single-language glossary
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'single-gloss-123',
+        name: 'single-glossary',
+        source_lang: 'en',
+        target_langs: ['es'],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 10,
+          },
+        ],
+        creation_time: '2024-01-01T00:00:00Z',
+      });
+
+      await expect(
+        glossaryService.deleteGlossaryDictionary('single-gloss-123', 'en', 'es')
+      ).rejects.toThrow('Cannot delete dictionary from single-language glossary. Delete the entire glossary instead.');
+
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('single-gloss-123');
+      expect(mockDeepLClient.deleteGlossaryDictionary).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when deleting last dictionary from multilingual glossary', async () => {
+      // Mock a glossary that has 2 target_langs but only 1 remaining dictionary
+      // (e.g., after deleting other dictionaries)
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'last-dict-123',
+        name: 'last-dict-glossary',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'], // Still marked as multilingual
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 10,
+          },
+        ],
+        creation_time: '2024-01-01T00:00:00Z',
+      });
+
+      await expect(
+        glossaryService.deleteGlossaryDictionary('last-dict-123', 'en', 'es')
+      ).rejects.toThrow('Cannot delete last dictionary from glossary. Delete the entire glossary instead.');
+
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('last-dict-123');
+      expect(mockDeepLClient.deleteGlossaryDictionary).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when specified dictionary does not exist in glossary', async () => {
+      // Mock a multilingual glossary without the requested dictionary
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'multi-gloss-123',
+        name: 'multi-glossary',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 10,
+          },
+          {
+            source_lang: 'en',
+            target_lang: 'fr',
+            entry_count: 12,
+          },
+        ],
+        creation_time: '2024-01-01T00:00:00Z',
+      });
+
+      await expect(
+        glossaryService.deleteGlossaryDictionary('multi-gloss-123', 'en', 'de')
+      ).rejects.toThrow('Dictionary en-de not found in glossary');
+
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('multi-gloss-123');
+      expect(mockDeepLClient.deleteGlossaryDictionary).not.toHaveBeenCalled();
+    });
+
+    it('should handle case-insensitive language code matching', async () => {
+      // Mock a multilingual glossary - API might return uppercase codes
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'multi-gloss-123',
+        name: 'multi-glossary',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 10,
+          },
+          {
+            source_lang: 'en',
+            target_lang: 'fr',
+            entry_count: 12,
+          },
+        ],
+        creation_time: '2024-01-01T00:00:00Z',
+      } as any); // Cast to any to allow runtime uppercase comparison test
+
+      // Override dictionaries with uppercase for case-insensitivity test
+      const glossaryResponse = {
+        glossary_id: 'multi-gloss-123',
+        name: 'multi-glossary',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          {
+            source_lang: 'EN',
+            target_lang: 'ES',
+            entry_count: 10,
+          },
+          {
+            source_lang: 'EN',
+            target_lang: 'FR',
+            entry_count: 12,
+          },
+        ],
+        creation_time: '2024-01-01T00:00:00Z',
+      };
+
+      mockDeepLClient.getGlossary.mockResolvedValue(glossaryResponse as any);
+      mockDeepLClient.deleteGlossaryDictionary.mockResolvedValue(undefined);
+
+      // Request with lowercase codes should still match uppercase dictionary entries
+      await glossaryService.deleteGlossaryDictionary('multi-gloss-123', 'en', 'fr');
+
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('multi-gloss-123');
+      expect(mockDeepLClient.deleteGlossaryDictionary).toHaveBeenCalledWith(
+        'multi-gloss-123',
+        'en',
+        'fr'
+      );
+    });
+
+    it('should handle API errors from getGlossary', async () => {
+      mockDeepLClient.getGlossary.mockRejectedValue(
+        new Error('Glossary not found')
+      );
+
+      await expect(
+        glossaryService.deleteGlossaryDictionary('non-existent', 'en', 'es')
+      ).rejects.toThrow('Glossary not found');
+
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('non-existent');
+      expect(mockDeepLClient.deleteGlossaryDictionary).not.toHaveBeenCalled();
+    });
+
+    it('should handle API errors from deleteGlossaryDictionary', async () => {
+      // Mock a valid multilingual glossary
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'multi-gloss-123',
+        name: 'multi-glossary',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 10,
+          },
+          {
+            source_lang: 'en',
+            target_lang: 'fr',
+            entry_count: 12,
+          },
+        ],
+        creation_time: '2024-01-01T00:00:00Z',
+      });
+
+      mockDeepLClient.deleteGlossaryDictionary.mockRejectedValue(
+        new Error('Dictionary deletion failed')
+      );
+
+      await expect(
+        glossaryService.deleteGlossaryDictionary('multi-gloss-123', 'en', 'fr')
+      ).rejects.toThrow('Dictionary deletion failed');
+
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('multi-gloss-123');
+      expect(mockDeepLClient.deleteGlossaryDictionary).toHaveBeenCalledWith(
+        'multi-gloss-123',
+        'en',
+        'fr'
+      );
     });
   });
 });
