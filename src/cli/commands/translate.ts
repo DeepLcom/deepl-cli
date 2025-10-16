@@ -4,6 +4,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import ora from 'ora';
 import { TranslationService } from '../../services/translation.js';
 import { FileTranslationService } from '../../services/file-translation.js';
@@ -14,6 +15,10 @@ import { ConfigService } from '../../storage/config.js';
 import { Language } from '../../types/index.js';
 import { formatTranslationJson, formatMultiTranslationJson, formatMultiTranslationTable } from '../../utils/formatters.js';
 import { Logger } from '../../utils/logger.js';
+
+// Constants for text-based file caching
+const TEXT_BASED_EXTENSIONS = ['.txt', '.md', '.html', '.htm', '.srt', '.xlf', '.xliff'];
+const SAFE_TEXT_SIZE_LIMIT = 100 * 1024; // 100 KiB (safe threshold, API limit is 128 KiB)
 
 interface TranslateOptions {
   to: string;
@@ -116,11 +121,49 @@ export class TranslateCommand {
   }
 
   /**
+   * Check if a file is text-based (can use text API with caching)
+   */
+  private isTextBasedFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return TEXT_BASED_EXTENSIONS.includes(ext);
+  }
+
+  /**
+   * Check if a file is small enough to use text API
+   */
+  private isSmallEnoughForTextApi(filePath: string): boolean {
+    try {
+      const stats = fs.statSync(filePath);
+      return stats.size <= SAFE_TEXT_SIZE_LIMIT;
+    } catch {
+      // If file doesn't exist or can't be accessed, return false
+      return false;
+    }
+  }
+
+  /**
    * Translate file
    */
   private async translateFile(filePath: string, options: TranslateOptions): Promise<string> {
     if (!options.output) {
       throw new Error('Output file path is required for file translation. Use --output <path>');
+    }
+
+    // Smart routing for text-based files
+    // Use text API (cached) for small text files, document API for large files or binaries
+    if (this.isTextBasedFile(filePath)) {
+      if (this.isSmallEnoughForTextApi(filePath)) {
+        // Use text API with caching for small text-based files
+        return this.translateTextFile(filePath, options);
+      } else if (this.documentTranslationService.isDocumentSupported(filePath)) {
+        // Text file too large for cached API, fall back to document API with warning
+        const fileSize = (fs.statSync(filePath).size / 1024).toFixed(1);
+        const warning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSize} KiB), using document API instead`;
+        Logger.warn(warning);
+        const result = await this.translateDocument(filePath, options);
+        return `${warning}\n${result}`;
+      }
+      // If text file is large and not supported by document API, fall through to file translation service
     }
 
     // Check if it's a binary document (PDF, DOCX, etc.)
@@ -452,6 +495,68 @@ export class TranslateCommand {
       }
       throw error;
     }
+  }
+
+  /**
+   * Translate text-based file using text API (with caching)
+   * Used for small .txt, .md, .html, .srt, .xlf files
+   */
+  private async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
+    // Read file content
+    const content = fs.readFileSync(filePath, 'utf-8');
+
+    // Build translation options
+    const translationOptions: {
+      targetLang: Language;
+      sourceLang?: Language;
+      formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      context?: string;
+      glossaryId?: string;
+      preserveFormatting?: boolean;
+    } = {
+      targetLang: options.to as Language,
+    };
+
+    if (options.from) {
+      translationOptions.sourceLang = options.from as Language;
+    }
+
+    if (options.formality) {
+      translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+    }
+
+    if (options.context) {
+      translationOptions.context = options.context;
+    }
+
+    if (options.glossary) {
+      translationOptions.glossaryId = await this.resolveGlossaryId(options.glossary);
+    }
+
+    if (options.preserveFormatting !== undefined) {
+      translationOptions.preserveFormatting = options.preserveFormatting;
+    }
+
+    // Translate using text API (cached)
+    const result = await this.translationService.translate(
+      content,
+      translationOptions,
+      {
+        preserveCode: options.preserveCode,
+        skipCache: !options.cache
+      }
+    );
+
+    // Ensure output directory exists
+    const outputDir = path.dirname(options.output!);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Write translated content to output file
+    fs.writeFileSync(options.output!, result.text, 'utf-8');
+
+    return `Translated ${filePath} -> ${options.output}`;
   }
 
   /**

@@ -10,6 +10,7 @@ import { TranslationService } from '../../src/services/translation';
 import { DocumentTranslationService } from '../../src/services/document-translation';
 import { GlossaryService } from '../../src/services/glossary';
 import { ConfigService } from '../../src/storage/config';
+import { Logger } from '../../src/utils/logger';
 
 // Mock ESM dependencies
 jest.mock('ora', () => {
@@ -1059,6 +1060,265 @@ describe('TranslateCommand', () => {
         },
         { preserveCode: undefined, skipCache: true }
       );
+    });
+  });
+
+  describe('text-based file caching', () => {
+    // Mock fs module for file operations
+    let mockFs: any;
+
+    beforeEach(() => {
+      mockFs = jest.requireActual('fs');
+      jest.spyOn(mockFs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(mockFs, 'readFileSync');
+      jest.spyOn(mockFs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(mockFs, 'mkdirSync').mockImplementation(() => undefined);
+
+      // Mock Logger.shouldShowSpinner() to skip spinner code path in document translation
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should use cached text API for small .txt files (under 100 KiB)', async () => {
+      const smallContent = 'Hello world!'.repeat(100); // Small file content
+
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 50 * 1024, // 50 KiB
+        isDirectory: () => false
+      } as any);
+      jest.spyOn(mockFs, 'readFileSync').mockReturnValue(smallContent);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Translated content',
+      });
+
+      const result = await (translateCommand as any).translateFile('/path/to/small.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      // Should use text translation API (cached)
+      expect(mockTranslationService.translate).toHaveBeenCalled();
+      expect(mockDocumentTranslationService.translateDocument).not.toHaveBeenCalled();
+      expect(result).toContain('Translated /path/to/small.txt');
+    });
+
+    it('should fall back to document API for large .txt files (over 100 KiB)', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 150 * 1024, // 150 KiB
+        isDirectory: () => false
+      } as any);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValueOnce({
+        success: true,
+        outputPath: '/out.txt',
+      });
+
+      const result = await (translateCommand as any).translateFile('/path/to/large.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      // Should use document API (not cached)
+      expect(mockDocumentTranslationService.translateDocument).toHaveBeenCalled();
+      expect(mockTranslationService.translate).not.toHaveBeenCalled();
+      expect(result).toContain('File exceeds');
+      expect(result).toContain('using document API');
+    });
+
+    it('should use cached text API for small .md files', async () => {
+      const smallContent = '# Markdown\n\nHello world!';
+
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 10 * 1024, // 10 KiB
+        isDirectory: () => false
+      } as any);
+      jest.spyOn(mockFs, 'readFileSync').mockReturnValue(smallContent);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(false);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Translated markdown',
+      });
+
+      const result = await (translateCommand as any).translateFile('/path/to/doc.md', {
+        to: 'es',
+        output: '/out.md',
+      });
+
+      // Should use text translation API (cached)
+      expect(mockTranslationService.translate).toHaveBeenCalled();
+      expect(result).toContain('Translated /path/to/doc.md');
+    });
+
+    it('should use cached text API for small .html files', async () => {
+      const smallContent = '<html><body>Hello</body></html>';
+
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 5 * 1024, // 5 KiB
+        isDirectory: () => false
+      } as any);
+      jest.spyOn(mockFs, 'readFileSync').mockReturnValue(smallContent);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: '<html><body>Hola</body></html>',
+      });
+
+      await (translateCommand as any).translateFile('/path/to/page.html', {
+        to: 'es',
+        output: '/out.html',
+      });
+
+      // Should use text translation API (cached)
+      expect(mockTranslationService.translate).toHaveBeenCalled();
+      expect(mockDocumentTranslationService.translateDocument).not.toHaveBeenCalled();
+    });
+
+    it('should use cached text API for .srt subtitle files', async () => {
+      const srtContent = '1\n00:00:01,000 --> 00:00:02,000\nHello world';
+
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 5 * 1024, // 5 KiB
+        isDirectory: () => false
+      } as any);
+      jest.spyOn(mockFs, 'readFileSync').mockReturnValue(srtContent);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Translated subtitles',
+      });
+
+      await (translateCommand as any).translateFile('/path/to/movie.srt', {
+        to: 'es',
+        output: '/out.srt',
+      });
+
+      // Should use text translation API (cached)
+      expect(mockTranslationService.translate).toHaveBeenCalled();
+      expect(mockDocumentTranslationService.translateDocument).not.toHaveBeenCalled();
+    });
+
+    it('should use cached text API for .xlf translation files', async () => {
+      const xlfContent = '<?xml version="1.0"?><xliff><file><trans-unit><source>Hello</source></trans-unit></file></xliff>';
+
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 10 * 1024, // 10 KiB
+        isDirectory: () => false
+      } as any);
+      jest.spyOn(mockFs, 'readFileSync').mockReturnValue(xlfContent);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Translated XML',
+      });
+
+      await (translateCommand as any).translateFile('/path/to/strings.xlf', {
+        to: 'es',
+        output: '/out.xlf',
+      });
+
+      // Should use text translation API (cached)
+      expect(mockTranslationService.translate).toHaveBeenCalled();
+      expect(mockDocumentTranslationService.translateDocument).not.toHaveBeenCalled();
+    });
+
+    it('should always use document API for binary files (.pdf, .docx)', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 10 * 1024, // 10 KiB (small, but still binary)
+        isDirectory: () => false
+      } as any);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValueOnce({
+        success: true,
+        outputPath: '/out.pdf',
+      });
+
+      await (translateCommand as any).translateFile('/path/to/document.pdf', {
+        to: 'es',
+        output: '/out.pdf',
+      });
+
+      // Should use document API (even though small)
+      expect(mockDocumentTranslationService.translateDocument).toHaveBeenCalled();
+      expect(mockTranslationService.translate).not.toHaveBeenCalled();
+    });
+
+    it('should show warning when falling back to document API', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 150 * 1024, // 150 KiB
+        isDirectory: () => false
+      } as any);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValueOnce({
+        success: true,
+        outputPath: '/out.txt',
+      });
+
+      const result = await (translateCommand as any).translateFile('/path/to/large.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      // Should include warning message
+      expect(result).toContain('File exceeds');
+      expect(result).toContain('100 KiB');
+      expect(result).toContain('document API');
+    });
+
+    it('should write translated content to output file when using text API', async () => {
+      const smallContent = 'Hello world!';
+      const translatedContent = 'Hola mundo!';
+
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 1 * 1024, // 1 KiB
+        isDirectory: () => false
+      } as any);
+      jest.spyOn(mockFs, 'readFileSync').mockReturnValue(smallContent);
+      jest.spyOn(mockFs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(mockFs, 'mkdirSync').mockImplementation(() => undefined);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: translatedContent,
+      });
+
+      await (translateCommand as any).translateFile('/path/to/small.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      // Should write translated content to file
+      expect(mockFs.writeFileSync).toHaveBeenCalledWith('/out.txt', translatedContent, 'utf-8');
+    });
+
+    it('should handle UTF-8 encoding correctly', async () => {
+      const unicodeContent = 'Hello 世界 🌍';
+
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 5 * 1024, // 5 KiB
+        isDirectory: () => false
+      } as any);
+      jest.spyOn(mockFs, 'readFileSync').mockReturnValue(unicodeContent);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola 世界 🌍',
+      });
+
+      await (translateCommand as any).translateFile('/path/to/unicode.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      // Should read with UTF-8 encoding
+      expect(mockFs.readFileSync).toHaveBeenCalledWith('/path/to/unicode.txt', 'utf-8');
     });
   });
 });
