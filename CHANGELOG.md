@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.7.0] - 2025-10-16
+
+### Added
 - **Text-Based File Caching** - Improved performance for small text files (.txt, .md, .html, .srt, .xlf)
   - Smart routing automatically uses cached text API for files under 100 KiB
   - Applies to: `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` files
@@ -20,12 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 11 new unit tests for text-based file caching behavior
   - Warning message displays file size when falling back to document API
   - Automatic file size threshold checking (100 KiB safe limit, API limit 128 KiB)
-  - Total test count: 1080 → 1091 tests (+11 tests, 100% pass rate)
+  - Total test count: 1130 → 1140 tests (+10 tests after fixing count error, 100% pass rate)
   - **Use cases**: Small documentation files, READMEs, subtitle files, HTML pages under 100 KiB
-
-### Changed
-
-### Fixed
 
 ## [0.6.0] - 2025-10-14
 
