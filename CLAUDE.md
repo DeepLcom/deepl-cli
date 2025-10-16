@@ -1055,3 +1055,4 @@ Updates examples/README.md with link to new example.
 ---
 
 *This file helps Claude Code maintain consistent, high-quality development practices specific to the DeepL CLI project.*
+- We track work in Beads instead of Markdown. Run \`bd quickstart\` to see how."

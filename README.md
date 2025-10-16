@@ -210,10 +210,20 @@ cat input.txt | deepl translate --to ja
 
 #### File Translation
 
-**Text Files:** `.txt`, `.md`
+**Text Files:** `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff`
+
+**Smart Caching for Text Files:**
+
+Small text-based files (under 100 KiB) automatically use the cached text translation API for faster performance and reduced API calls. Larger files automatically fall back to the document translation API with a warning message.
+
+- **Cached formats:** `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` (files under 100 KiB)
+- **Fallback:** Files over 100 KiB automatically use document API (with warning)
+- **Binary formats:** `.pdf`, `.docx`, `.pptx`, `.xlsx` always use document API (no caching)
+- **Performance:** Cached translations are instant for repeated translations
+- **Cost savings:** Reduces API calls for frequently translated files
 
 ```bash
-# Single file translation
+# Single file translation (uses cache for small text files)
 deepl translate README.md --to es --output README.es.md
 # Translated README.md to 1 language(s):
 #   [ES] README.es.md
@@ -227,6 +237,12 @@ deepl translate docs.md --to es,fr,de --output ./translated/
 
 # With code preservation (preserves code blocks in markdown)
 deepl translate tutorial.md --to ja --output tutorial.ja.md --preserve-code
+
+# Large text file (over 100 KiB) - automatic fallback with warning
+deepl translate large-document.txt --to es --output large-document.es.txt
+# ⚠ File exceeds 100 KiB limit for cached translation (150.5 KiB), using document API instead
+# Translated large-document.txt to 1 language(s):
+#   [ES] large-document.es.txt
 ```
 
 #### Document Translation

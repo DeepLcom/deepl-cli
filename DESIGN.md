@@ -1980,6 +1980,13 @@ jobs:
 2. **TTL**: 30-day default TTL for cached entries
 3. **Cache invalidation**: Smart invalidation based on content changes
 4. **Size limits**: Configurable max cache size with LRU eviction
+5. **Smart text file routing**: Small text-based files automatically use cached text API
+   - **Cached formats**: `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` (under 100 KiB)
+   - **Threshold**: 100 KiB safe limit (DeepL API text endpoint supports up to 128 KiB)
+   - **Automatic fallback**: Files exceeding threshold use document translation API
+   - **Warning message**: Users see file size warning when fallback occurs
+   - **Benefits**: Instant repeated translations, reduced API calls, cost savings
+   - **Binary formats**: `.pdf`, `.docx`, `.pptx`, `.xlsx` always use document API (no caching)
 
 ### Batch Processing
 

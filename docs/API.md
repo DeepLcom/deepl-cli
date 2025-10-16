@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
-**Version**: 0.5.1
-**Last Updated**: October 14, 2025
+**Version**: 0.6.0
+**Last Updated**: October 16, 2025
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -233,6 +233,55 @@ deepl translate README.md --to es,fr,de --output translations/
 deepl translate tutorial.md --to es --output tutorial.es.md --preserve-code
 ```
 
+**Smart caching for text-based files:**
+
+Small text-based files are automatically routed to the cached text API for faster, more efficient translations:
+
+```bash
+# Text files under 100 KiB are automatically cached
+deepl translate README.md --to es --output README.es.md
+# First translation: Makes API call
+# Subsequent identical translations: Instant (from cache)
+
+# HTML files also benefit from caching
+deepl translate index.html --to fr --output index.fr.html
+
+# Subtitle files
+deepl translate subtitles.srt --to ja --output subtitles.ja.srt
+
+# XLIFF localization files
+deepl translate strings.xlf --to de --output strings.de.xlf
+```
+
+**Cached text-based formats:**
+
+The following formats use the cached text API when files are under 100 KiB:
+
+- `.txt` - Plain text files
+- `.md` - Markdown files
+- `.html`, `.htm` - HTML files
+- `.srt` - Subtitle files
+- `.xlf`, `.xliff` - XLIFF localization files
+
+**Large file automatic fallback:**
+
+When text-based files exceed 100 KiB, they automatically fall back to the document API:
+
+```bash
+# Large text file (>100 KiB) - uses document API
+deepl translate large-document.txt --to es --output large-document.es.txt
+# ⚠ File exceeds 100 KiB limit for cached translation (150.5 KiB), using document API instead
+# Translated large-document.txt -> large-document.es.txt
+```
+
+**Benefits of smart caching:**
+
+- **Performance**: Cached translations are instant on repeated requests
+- **Efficiency**: Reduces API calls and character usage
+- **Cost savings**: Cached translations don't consume API quota
+- **Automatic**: No configuration needed - works out of the box
+- **Transparent**: Warning shown when falling back to document API
+
 **Document translation:**
 
 ```bash
@@ -258,23 +307,26 @@ deepl translate report.docx --to fr --output report.fr.docx --enable-minificatio
 
 **Supported Document Formats:**
 
-- `.pdf` - PDF documents (up to 10MB)
-- `.docx`, `.doc` - Microsoft Word
-- `.pptx` - Microsoft PowerPoint
-- `.xlsx` - Microsoft Excel
-- `.html`, `.htm` - HTML files
-- `.txt` - Plain text files (up to 30MB)
-- `.srt` - Subtitle files
-- `.xlf`, `.xliff` - XLIFF localization files
+- `.pdf` - PDF documents (up to 10MB) - **Document API only**
+- `.docx`, `.doc` - Microsoft Word - **Document API only**
+- `.pptx` - Microsoft PowerPoint - **Document API only**
+- `.xlsx` - Microsoft Excel - **Document API only**
+- `.html`, `.htm` - HTML files - **Smart routing** (cached text API <100 KiB, document API ≥100 KiB)
+- `.txt` - Plain text files (up to 30MB) - **Smart routing** (cached text API <100 KiB, document API ≥100 KiB)
+- `.srt` - Subtitle files - **Smart routing** (cached text API <100 KiB, document API ≥100 KiB)
+- `.xlf`, `.xliff` - XLIFF localization files - **Smart routing** (cached text API <100 KiB, document API ≥100 KiB)
+- `.md` - Markdown files - **Cached text API** (all sizes)
 
 **Document Translation Notes:**
 
+- **Smart routing**: Text-based files (`.txt`, `.md`, `.html`, `.srt`, `.xlf`, `.xliff`) under 100 KiB automatically use the cached text API for better performance
+- **Binary formats** (PDF, DOCX, PPTX, XLSX) always use the document API regardless of size
 - Documents are translated on DeepL servers using async processing
 - Progress updates show status (queued → translating → done)
 - Billed characters are displayed after completion
 - Formatting, structure, and layout are automatically preserved
 - Large documents may take several seconds to translate
-- Maximum file sizes: 10MB (PDF), 30MB (other formats)
+- Maximum file sizes: 10MB (PDF), 30MB (other formats), 100 KiB (cached text API)
 - **Document minification** (`--enable-minification`): Reduces file size for PPTX and DOCX files only. Useful for large presentations and documents.
 
 **Directory translation:**
@@ -1540,5 +1592,5 @@ export NO_COLOR=1
 
 ---
 
-**Last Updated**: October 14, 2025
+**Last Updated**: October 16, 2025
 **DeepL CLI Version**: 0.6.0
