@@ -1,6 +1,6 @@
 #!/bin/bash
-# Example 2: File Translation
-# Demonstrates translating files with format preservation
+# Example 2: File Translation & Caching
+# Demonstrates translating files with format preservation and smart caching
 
 set -e  # Exit on error
 
@@ -113,7 +113,107 @@ echo "   Output: $OUTPUT_DIR/formal.de.txt"
 cat "$OUTPUT_DIR/formal.de.txt"
 echo
 
+# Example 6: Smart caching for text files
+echo "6. Smart caching for text-based files"
+echo "   Text files under 100 KiB are automatically cached for fast repeated translations"
+echo
+
+# Create HTML file
+cat > "$SAMPLE_DIR/page.html" << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sample Page</title>
+</head>
+<body>
+  <h1>Welcome</h1>
+  <p>This HTML file demonstrates smart caching for text-based formats.</p>
+</body>
+</html>
+EOF
+
+# Create SRT subtitle file
+cat > "$SAMPLE_DIR/subtitles.srt" << 'EOF'
+1
+00:00:00,000 --> 00:00:02,000
+Welcome to the video
+
+2
+00:00:02,000 --> 00:00:05,000
+This subtitle file is cached automatically
+EOF
+
+echo "   Created additional text-based files:"
+echo "   - page.html (HTML format)"
+echo "   - subtitles.srt (subtitle format)"
+echo
+
+# Example 7: Translate HTML (cached)
+echo "7. Translate HTML file (uses cached text API)"
+deepl translate "$SAMPLE_DIR/page.html" --to de --output "$OUTPUT_DIR/page.de.html"
+echo "   ✓ Translated page.html to German"
+echo
+
+# Example 8: Translate SRT (cached)
+echo "8. Translate subtitle file (uses cached text API)"
+deepl translate "$SAMPLE_DIR/subtitles.srt" --to ja --output "$OUTPUT_DIR/subtitles.ja.srt"
+echo "   ✓ Translated subtitles.srt to Japanese"
+echo
+
+# Example 9: Cache effectiveness demonstration
+echo "9. Cache effectiveness (translate same file twice)"
+echo "   Clearing cache first..."
+deepl cache clear &>/dev/null || true
+echo "   ✓ Cache cleared"
+echo
+
+echo "   First translation (API call - not cached):"
+time deepl translate "$SAMPLE_DIR/sample.txt" --to es --output "$OUTPUT_DIR/sample.cached.1.txt" 2>&1 | grep -v "^$" | tail -1
+echo
+
+echo "   Second translation (from cache - instant):"
+time deepl translate "$SAMPLE_DIR/sample.txt" --to es --output "$OUTPUT_DIR/sample.cached.2.txt" 2>&1 | grep -v "^$" | tail -1
+echo
+
+echo "   Note: Second translation is much faster due to caching!"
+echo
+
+# Example 10: Large file fallback
+echo "10. Large file automatic fallback (>100 KiB)"
+echo "    Creating a large text file (>100 KiB)..."
+
+# Generate approximately 110 KiB of text
+{
+  echo "Large Text File - Over 100 KiB"
+  echo
+  for i in {1..3000}; do
+    echo "Line $i: This is a sample line of text that will make the file exceed the 100 KiB caching threshold."
+  done
+} > "$SAMPLE_DIR/large.txt"
+
+FILE_SIZE=$(du -h "$SAMPLE_DIR/large.txt" | cut -f1)
+echo "    File size: $FILE_SIZE"
+echo
+echo "    Translating (should show warning about falling back to document API):"
+deepl translate "$SAMPLE_DIR/large.txt" --to es --output "$OUTPUT_DIR/large.es.txt"
+echo
+
+# Example 11: Cache statistics
+echo "11. Cache statistics"
+deepl cache stats
+echo
+
 echo "=== All file translation examples completed! ==="
+echo
+echo "Summary:"
+echo "  ✓ Basic file translation (.txt, .md)"
+echo "  ✓ Multiple target languages"
+echo "  ✓ Code preservation in markdown"
+echo "  ✓ Formality control"
+echo "  ✓ Smart caching for small text files (<100 KiB)"
+echo "  ✓ Multiple text formats (.html, .srt)"
+echo "  ✓ Automatic fallback for large files (>100 KiB)"
+echo "  ✓ Cache performance benefits"
 echo
 
 # Cleanup

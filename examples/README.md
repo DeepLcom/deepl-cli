@@ -5,7 +5,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 ## Quick Links
 
 - [Basic Translation](./01-basic-translation.sh) - Simple text translation examples
-- [File Translation](./02-file-translation.sh) - Translating files and documents
+- [File Translation & Caching](./02-file-translation.sh) - Translating files with smart caching for text-based formats
 - [Glossaries](./03-glossaries.sh) - Managing glossaries for consistent terminology
 - [Configuration](./04-configuration.sh) - Setting up and managing configuration
 - [Cache Management](./05-cache.sh) - Working with the translation cache
