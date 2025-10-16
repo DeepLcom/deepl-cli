@@ -11,15 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Text-Based File Caching** - Improved performance for small text files (.txt, .md, .html, .srt, .xlf)
   - Smart routing automatically uses cached text API for files under 100 KiB
   - Applies to: `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` files
-  - Falls back to document API for large files (>100 KiB) with warning message
-  - Binary files (.pdf, .docx, .pptx, .xlsx) always use document API
-  - **Performance Impact**: Cached translations for repeated file translation
-  - **Cost Savings**: Reduces API calls for frequently translated files
+  - Falls back to document API for large files (≥100 KiB) with warning message
+  - **Important**: Large files and binary documents use document API (not cached)
+  - Binary files (.pdf, .docx, .pptx, .xlsx) always use document API (not cached)
+  - **Performance Impact**: Only small text files (<100 KiB) benefit from instant cached translations
+  - **Cost Savings**: Only small text files avoid repeated API calls
+  - Document API translations always make fresh API calls (no caching)
   - 11 new unit tests for text-based file caching behavior
   - Warning message displays file size when falling back to document API
   - Automatic file size threshold checking (100 KiB safe limit, API limit 128 KiB)
   - Total test count: 1080 → 1091 tests (+11 tests, 100% pass rate)
-  - **Use cases**: Documentation translation, README localization, subtitle files, HTML pages
+  - **Use cases**: Small documentation files, READMEs, subtitle files, HTML pages under 100 KiB
 
 ### Changed
 

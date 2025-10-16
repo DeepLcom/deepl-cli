@@ -276,11 +276,13 @@ deepl translate large-document.txt --to es --output large-document.es.txt
 
 **Benefits of smart caching:**
 
-- **Performance**: Cached translations are instant on repeated requests
-- **Efficiency**: Reduces API calls and character usage
-- **Cost savings**: Cached translations don't consume API quota
+- **Performance**: Only small text files (<100 KiB) benefit from instant cached translations
+- **Efficiency**: Reduces API calls and character usage for small text files
+- **Cost savings**: Only small text files avoid repeated API quota consumption
 - **Automatic**: No configuration needed - works out of the box
 - **Transparent**: Warning shown when falling back to document API
+
+**Important**: Large text files (≥100 KiB) and all binary documents use the document API, which is NOT cached. Repeated translations of large files always make fresh API calls.
 
 **Document translation:**
 

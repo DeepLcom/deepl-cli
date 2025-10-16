@@ -1976,17 +1976,18 @@ jobs:
 
 ### Caching Strategy
 
-1. **Translation cache**: Cache all translations locally (SQLite)
+1. **Translation cache**: Cache text API translations locally (SQLite)
 2. **TTL**: 30-day default TTL for cached entries
 3. **Cache invalidation**: Smart invalidation based on content changes
 4. **Size limits**: Configurable max cache size with LRU eviction
 5. **Smart text file routing**: Small text-based files automatically use cached text API
-   - **Cached formats**: `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` (under 100 KiB)
+   - **Cached formats**: `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` (under 100 KiB only)
    - **Threshold**: 100 KiB safe limit (DeepL API text endpoint supports up to 128 KiB)
-   - **Automatic fallback**: Files exceeding threshold use document translation API
+   - **Automatic fallback**: Files ≥100 KiB use document translation API (not cached)
    - **Warning message**: Users see file size warning when fallback occurs
-   - **Benefits**: Instant repeated translations, reduced API calls, cost savings
-   - **Binary formats**: `.pdf`, `.docx`, `.pptx`, `.xlsx` always use document API (no caching)
+   - **Benefits**: Only small text files benefit from instant repeated translations and cost savings
+   - **Binary formats**: `.pdf`, `.docx`, `.pptx`, `.xlsx` always use document API (not cached)
+   - **Document API limitation**: Document translations are never cached (always fresh API calls)
 
 ### Batch Processing
 
