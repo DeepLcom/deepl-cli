@@ -8,10 +8,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **XML Tag Validation** - Comprehensive validation for XML tag handling options
+  - Validates `--splitting-tags`, `--non-splitting-tags`, and `--ignore-tags` parameters
+  - Ensures tag names match XML specification (start with letter/underscore, valid characters only)
+  - Prevents use of reserved "xml" prefix (case-insensitive)
+  - Clear error messages guide users to correct invalid tag names
+  - Example: `--splitting-tags="p,div,br"` is validated before sending to API
+  - Improves user experience by catching errors early instead of API-side failures
 
 ### Changed
+- **Performance Optimization: File Operations** - Eliminated duplicate filesystem syscalls
+  - Replaced `existsSync() + statSync()` pattern with single `statSync()` call in directory detection
+  - Cached file size to avoid calling `statSync()` twice on the same file path
+  - Reduces filesystem operations in `translate` command file routing logic
+  - **Performance Impact**: Saves 2 syscalls per file translation (1 for directory check, 1 for size warning)
+  - No behavior changes, maintains exact same functionality
+
+- **Refactoring: DeepL API Client** - Eliminated code duplication
+  - Extracted 56 lines of duplicate parameter building code into shared `buildTranslationParams()` method
+  - Both `translate()` and `translateBatch()` now use centralized parameter construction
+  - Eliminates risk of divergence between single and batch translation options
+  - Easier maintenance for future API parameter additions
+  - No behavior changes, all 1140 tests pass
+
+- **Logging Consistency** - Unified logging through Logger service
+  - Replaced `console.warn()` with `Logger.warn()` in glossary TSV/CSV parsing (5 occurrences)
+  - Replaced `console.error()` with `Logger.error()` in watch service (3 occurrences)
+  - Ensures all logging respects quiet mode (`--quiet` flag)
+  - Maintains consistent logging patterns across entire codebase
+  - Exception: Config service intentionally uses `console.error()` during bootstrap (before Logger available)
 
 ### Fixed
+- **Critical: Fire-and-forget async in watch service** - Fixed unhandled rejection risk
+  - Watch service was using `void (async () => {...})()` pattern that could hide errors
+  - Removed `void` operator and properly awaited async `translateFile()` in setTimeout callback
+  - Prevents silent failures during file translation in watch mode
+  - Error handling now properly increments error count and calls onError callback
+  - **Impact**: Previously, translation errors in watch mode could be silently ignored
+  - Location: `src/services/watch.ts:156-170`
+
+- **Critical: Race condition in document translation polling** - Fixed concurrent execution bug
+  - AbortSignal cleanup and timeout completion could execute simultaneously
+  - Added `isSettled` flag to ensure only one path (resolve or reject) executes
+  - Prevents potential memory leaks and duplicate event handler cleanup
+  - **Impact**: Previously, aborting a document translation could cause race condition
+  - Race occurred when: timeout fires at same moment as abort signal
+  - Location: `src/services/document-translation.ts:195-224`
+
+- **Critical: Silent data loss in batch translation** - Added user warning for failures
+  - Batch translations could silently filter out failed translations without notification
+  - Now logs warning when some translations fail: "⚠️  Warning: N of M translations failed silently"
+  - Helps users identify incomplete batch operations instead of assuming success
+  - **Impact**: Previously, users wouldn't know if 3 out of 10 translations failed
+  - Location: `src/services/translation.ts:225-230`
 
 ## [0.7.0] - 2025-10-16
 
