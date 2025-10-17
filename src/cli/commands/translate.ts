@@ -95,8 +95,14 @@ export class TranslateCommand {
    */
   async translate(textOrPath: string, options: TranslateOptions): Promise<string> {
     // Check if input is a directory
-    if (fs.existsSync(textOrPath) && fs.statSync(textOrPath).isDirectory()) {
-      return this.translateDirectory(textOrPath, options);
+    // Use statSync() directly to avoid duplicate syscalls (existsSync + statSync)
+    try {
+      const stats = fs.statSync(textOrPath);
+      if (stats.isDirectory()) {
+        return this.translateDirectory(textOrPath, options);
+      }
+    } catch {
+      // Not a file/directory, treat as text
     }
 
     // Check if input is a file path
@@ -129,15 +135,42 @@ export class TranslateCommand {
   }
 
   /**
-   * Check if a file is small enough to use text API
+   * Validate XML tag names
+   * Tags must start with a letter or underscore, contain only valid XML name characters,
+   * and not start with "xml" (case-insensitive)
    */
-  private isSmallEnoughForTextApi(filePath: string): boolean {
+  private validateXmlTags(tags: string[], paramName: string): void {
+    const xmlNamePattern = /^[a-zA-Z_][\w.-]*$/;
+
+    for (const tag of tags) {
+      // Check if tag is empty
+      if (!tag || tag.trim() === '') {
+        throw new Error(`${paramName}: Tag name cannot be empty`);
+      }
+
+      // Check if tag starts with "xml" (case-insensitive)
+      if (tag.toLowerCase().startsWith('xml')) {
+        throw new Error(`${paramName}: Tag name "${tag}" cannot start with "xml" (reserved)`);
+      }
+
+      // Check if tag matches valid XML name pattern
+      if (!xmlNamePattern.test(tag)) {
+        throw new Error(`${paramName}: Invalid XML tag name "${tag}". Tags must start with a letter or underscore and contain only letters, digits, hyphens, underscores, or periods.`);
+      }
+    }
+  }
+
+  /**
+   * Get file stats with caching to avoid duplicate syscalls
+   * Returns file size in bytes, or null if file doesn't exist
+   */
+  private getFileSize(filePath: string): number | null {
     try {
       const stats = fs.statSync(filePath);
-      return stats.size <= SAFE_TEXT_SIZE_LIMIT;
+      return stats.size;
     } catch {
-      // If file doesn't exist or can't be accessed, return false
-      return false;
+      // If file doesn't exist or can't be accessed, return null
+      return null;
     }
   }
 
@@ -152,13 +185,16 @@ export class TranslateCommand {
     // Smart routing for text-based files
     // Use text API (cached) for small text files, document API for large files or binaries
     if (this.isTextBasedFile(filePath)) {
-      if (this.isSmallEnoughForTextApi(filePath)) {
+      // Get file size once to avoid duplicate stat() calls
+      const fileSize = this.getFileSize(filePath);
+
+      if (fileSize !== null && fileSize <= SAFE_TEXT_SIZE_LIMIT) {
         // Use text API with caching for small text-based files
         return this.translateTextFile(filePath, options);
-      } else if (this.documentTranslationService.isDocumentSupported(filePath)) {
+      } else if (fileSize !== null && this.documentTranslationService.isDocumentSupported(filePath)) {
         // Text file too large for cached API, fall back to document API with warning
-        const fileSize = (fs.statSync(filePath).size / 1024).toFixed(1);
-        const warning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSize} KiB), using document API instead`;
+        const fileSizeKiB = (fileSize / 1024).toFixed(1);
+        const warning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSizeKiB} KiB), using document API instead`;
         Logger.warn(warning);
         const result = await this.translateDocument(filePath, options);
         return `${warning}\n${result}`;
@@ -317,15 +353,21 @@ export class TranslateCommand {
     }
 
     if (options.splittingTags) {
-      (translationOptions as {splittingTags?: string[]}).splittingTags = options.splittingTags.split(',').map(tag => tag.trim());
+      const tags = options.splittingTags.split(',').map(tag => tag.trim());
+      this.validateXmlTags(tags, '--splitting-tags');
+      (translationOptions as {splittingTags?: string[]}).splittingTags = tags;
     }
 
     if (options.nonSplittingTags) {
-      (translationOptions as {nonSplittingTags?: string[]}).nonSplittingTags = options.nonSplittingTags.split(',').map(tag => tag.trim());
+      const tags = options.nonSplittingTags.split(',').map(tag => tag.trim());
+      this.validateXmlTags(tags, '--non-splitting-tags');
+      (translationOptions as {nonSplittingTags?: string[]}).nonSplittingTags = tags;
     }
 
     if (options.ignoreTags) {
-      (translationOptions as {ignoreTags?: string[]}).ignoreTags = options.ignoreTags.split(',').map(tag => tag.trim());
+      const tags = options.ignoreTags.split(',').map(tag => tag.trim());
+      this.validateXmlTags(tags, '--ignore-tags');
+      (translationOptions as {ignoreTags?: string[]}).ignoreTags = tags;
     }
 
     // Translate
