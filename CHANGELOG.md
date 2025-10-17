@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Critical: Document translation infinite loop risk** - Added timeout and max attempts to prevent infinite polling
+  - Added `MAX_POLL_ATTEMPTS` (180 attempts) and `TOTAL_TIMEOUT_MS` (90 minutes) constants
+  - Polling now terminates after 180 attempts or 90 minutes total time
+  - Prevents CLI from hanging indefinitely if DeepL API status doesn't update
+  - Clear error messages indicate timeout exceeded and suggest document may still be processing
+  - **Impact**: Previously, misbehaving API responses could cause infinite loops
+  - Location: `src/services/document-translation.ts:136-191`
+
+- **Critical: Cache service memory leak** - Fixed duplicate event handler registration
+  - Added `handlersRegistered` flag to prevent registering exit handlers multiple times
+  - Now uses `process.once()` instead of `process.on()` for cleanup handlers
+  - Prevents memory leak when `getInstance()` called multiple times in tests or long-running processes
+  - **Impact**: Previously, each `getInstance()` call added new event handlers to process
+  - Location: `src/storage/cache.ts:62-89`
+
+- **High Priority: Type safety violations** - Fixed 2 linter errors
+  - Fixed unsafe array assignment in `translateBatch()` using explicit type constructor
+  - Fixed Promise-in-setTimeout warning by properly wrapping async callback
+  - **Impact**: Improved type safety and eliminated compiler warnings
+  - Locations: `src/services/translation.ts:163`, `src/services/watch.ts:156-178`
+
+- **Logging Consistency** - Replaced console.warn with Logger.warn in DeepL client
+  - Replaced direct `console.warn()` with `Logger.warn()` for proxy URL warnings
+  - Ensures all logging respects quiet mode (`--quiet` flag)
+  - Maintains consistent logging patterns across entire codebase
+  - **Impact**: Previously, proxy warnings would bypass quiet mode
+  - Location: `src/api/deepl-client.ts:177`
+
 ### Added
 - **XML Tag Validation** - Comprehensive validation for XML tag handling options
   - Validates `--splitting-tags`, `--non-splitting-tags`, and `--ignore-tags` parameters
@@ -47,6 +76,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Impact**: Previously, translation errors in watch mode could be silently ignored
   - Location: `src/services/watch.ts:156-170`
 
+- **Critical: Watch service race condition on stop** - Fixed race condition in file translation
+  - Debounced translation timers could fire after watch service was stopped
+  - Added guard check to prevent translations from running after `stop()` is called
+  - Prevents "Cannot read property of null" errors when translations execute after cleanup
+  - **Impact**: Previously, stopping watch mode could cause unhandled errors from pending translations
+  - Location: `src/services/watch.ts` debounce timer callback
+
 - **Critical: Race condition in document translation polling** - Fixed concurrent execution bug
   - AbortSignal cleanup and timeout completion could execute simultaneously
   - Added `isSettled` flag to ensure only one path (resolve or reject) executes
@@ -55,12 +91,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Race occurred when: timeout fires at same moment as abort signal
   - Location: `src/services/document-translation.ts:195-224`
 
-- **Critical: Silent data loss in batch translation** - Added user warning for failures
-  - Batch translations could silently filter out failed translations without notification
-  - Now logs warning when some translations fail: "⚠️  Warning: N of M translations failed silently"
-  - Helps users identify incomplete batch operations instead of assuming success
-  - **Impact**: Previously, users wouldn't know if 3 out of 10 translations failed
-  - Location: `src/services/translation.ts:225-230`
+- **Critical: Batch translation failure handling** - Improved error propagation and user feedback
+  - Fixed batch translation to properly track failures and warn users about partial failures
+  - When all batches fail, now throws error instead of returning empty array
+  - When some batches fail, logs warning: "⚠️  Warning: N of M translations failed"
+  - Helps users identify incomplete batch operations and propagates errors correctly
+  - **Impact**: Previously, all-failure case returned empty array; partial failures were silent
+  - Location: `src/services/translation.ts:199-260`
+
+- **High Priority: Resource leaks in cache service** - Implemented proper disposal pattern
+  - CacheService singleton now automatically closes database on process exit
+  - Added handlers for `exit`, `SIGINT`, and `SIGTERM` signals
+  - Prevents "database is locked" errors and ensures clean shutdowns
+  - Added `isClosed` flag to prevent double-close errors
+  - **Impact**: Previously, process termination could leave database connections open
+  - Location: `src/storage/cache.ts` singleton getInstance()
+
+- **High Priority: Non-cryptographic random in security context** - Replaced with crypto.randomBytes
+  - Variable placeholder generation now uses `crypto.randomBytes()` instead of `Math.random()`
+  - Uses cryptographically secure random bytes with SHA-256 hashing
+  - Eliminates collision risk in high-volume translation scenarios
+  - **Impact**: Previously, `Math.random()` could produce collisions in variable placeholders
+  - Location: `src/services/translation.ts:369-381` preserveVariables()
+
+- **High Priority: Silent proxy URL errors** - Added validation warnings
+  - Invalid proxy URLs now log warning instead of silently failing
+  - Helps users identify proxy configuration issues early
+  - Warning: "⚠️  Warning: Invalid proxy URL: [url]. Proxy will not be used."
+  - **Impact**: Previously, invalid proxy URLs caused silent failures in HTTP requests
+  - Location: `src/api/deepl-client.ts:174-176`
+
+- **Performance: Concurrency validation** - Added bounds checking
+  - BatchTranslationService now validates concurrency is between 1-100
+  - Prevents invalid concurrency values that could cause performance issues
+  - Throws descriptive error for out-of-bounds values
+  - **Impact**: Previously, invalid concurrency values could cause unexpected behavior
+  - Location: `src/services/batch-translation.ts` constructor
+
+- **Performance: Unnecessary array copy in getSupportedFileTypes** - Optimized to return readonly reference
+  - Changed return type from copied array to `readonly string[]`
+  - Eliminates unnecessary memory allocation on every call
+  - TypeScript enforces immutability at compile time
+  - **Impact**: Reduces memory allocations for frequently called method
+  - Location: `src/services/file-translation.ts:35-37`
+
+- **Logic Bug: File size null handling** - Fixed error handling for missing files
+  - `getFileSize()` now correctly handles case when file doesn't exist
+  - Returns `null` instead of throwing, allowing caller to handle gracefully
+  - Improved error message: "File not found or cannot be accessed: [path]"
+  - **Impact**: Previously, missing files could cause unclear errors
+  - Location: `src/cli/commands/translate.ts:167-175`
+
+- **Code Smell: Redundant null check in watch service** - Removed unnecessary check
+  - Removed redundant null check after non-null assertion operator
+  - Code already used `!` operator, making additional check unreachable
+  - **Impact**: Cleaner code, no behavior change
+  - Location: `src/services/watch.ts:208-210`
+
+- **Code Smell: Deprecated _batchOptions parameter** - Removed unused parameter
+  - Removed deprecated `_batchOptions` parameter from `translateBatch()` method signature
+  - Parameter was never used and cluttered the API
+  - **Impact**: Cleaner API surface, no behavior change
+  - Location: `src/services/translation.ts:139-142`
+
+- **UX: Poor API error messages** - Added context to error messages
+  - API errors now include request details for easier debugging
+  - Example: "Translation count mismatch: sent 2 texts but received 1 translations. Target language: es"
+  - Example: "No translation returned from DeepL API. Request: translate text (150 chars) to de"
+  - **Impact**: Users can now understand what went wrong without inspecting code
+  - Location: `src/api/deepl-client.ts` translate() and translateBatch()
+
+- **UX: Cache disabled logging** - Added informative logging
+  - Now logs when cache is disabled globally: "ℹ️  Cache is disabled"
+  - Now logs when cache is bypassed per-request: "ℹ️  Cache bypassed for this request (--no-cache)"
+  - Helps users understand why translations aren't being cached
+  - **Impact**: Users no longer confused about caching behavior
+  - Location: `src/services/translation.ts:88-92`
 
 ## [0.7.0] - 2025-10-16
 

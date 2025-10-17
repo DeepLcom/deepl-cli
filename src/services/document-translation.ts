@@ -52,6 +52,8 @@ export class DocumentTranslationService {
   private readonly INITIAL_POLL_INTERVAL = 1000; // 1 second
   private readonly MAX_POLL_INTERVAL = 30000; // 30 seconds
   private readonly BACKOFF_MULTIPLIER = 1.5;
+  private readonly MAX_POLL_ATTEMPTS = 180; // 90 minutes with 30s max interval
+  private readonly TOTAL_TIMEOUT_MS = 90 * 60 * 1000; // 90 minutes total
 
   constructor(client: DeepLClient) {
     this.client = client;
@@ -129,6 +131,7 @@ export class DocumentTranslationService {
   /**
    * Poll document status until translation is complete
    * Can be cancelled via abortSignal
+   * Has maximum retry attempts and total timeout to prevent infinite loops
    */
   private async pollDocumentStatus(
     handle: DocumentHandle,
@@ -136,10 +139,21 @@ export class DocumentTranslationService {
     abortSignal?: AbortSignal
   ): Promise<DocumentStatus> {
     let pollInterval = this.INITIAL_POLL_INTERVAL;
+    let attempts = 0;
+    const startTime = Date.now();
     let status: DocumentStatus;
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    while (attempts < this.MAX_POLL_ATTEMPTS) {
+      attempts++;
+
+      // Check if total timeout exceeded
+      const elapsed = Date.now() - startTime;
+      if (elapsed > this.TOTAL_TIMEOUT_MS) {
+        throw new Error(
+          `Document translation timeout exceeded (${this.TOTAL_TIMEOUT_MS / 1000 / 60} minutes). The document may still be processing on DeepL servers.`
+        );
+      }
+
       // Check if operation was cancelled
       if (abortSignal?.aborted) {
         throw new Error('Document translation cancelled');
@@ -159,7 +173,7 @@ export class DocumentTranslationService {
 
       // Check if translation is complete
       if (status.status === 'done' || status.status === 'error') {
-        break;
+        return status;
       }
 
       // Wait before next poll with exponential backoff
@@ -170,7 +184,11 @@ export class DocumentTranslationService {
       );
     }
 
-    return status;
+    // Exceeded maximum attempts
+    const totalElapsed = Date.now() - startTime;
+    throw new Error(
+      `Document translation exceeded maximum polling attempts (${this.MAX_POLL_ATTEMPTS} attempts over ${(totalElapsed / 1000 / 60).toFixed(1)} minutes). The document may still be processing on DeepL servers.`
+    );
   }
 
   /**

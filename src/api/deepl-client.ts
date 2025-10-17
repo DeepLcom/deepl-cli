@@ -18,6 +18,7 @@ import {
   GlossaryLanguagePair,
 } from '../types';
 import { normalizeGlossaryInfo, GlossaryApiResponse } from '../types/glossary.js';
+import { Logger } from '../utils/logger.js';
 
 interface ProxyConfig {
   protocol?: 'http' | 'https';
@@ -171,8 +172,9 @@ export class DeepLClient {
               password: url.password,
             };
           }
-        } catch {
-          // Invalid proxy URL, ignore and continue without proxy
+        } catch (error) {
+          // Invalid proxy URL, warn user and continue without proxy
+          Logger.warn(`⚠️  Invalid proxy URL "${proxyUrl}", proceeding without proxy. Error: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
     }
@@ -211,12 +213,12 @@ export class DeepLClient {
       );
 
       if (!response.translations || response.translations.length === 0) {
-        throw new Error('No translation returned');
+        throw new Error(`No translation returned from DeepL API. Request: translate text (${text.length} chars) to ${options.targetLang}`);
       }
 
       const translation = response.translations[0];
       if (!translation) {
-        throw new Error('No translation returned');
+        throw new Error(`Empty translation in API response. Request: translate text (${text.length} chars) to ${options.targetLang}`);
       }
 
       return {
@@ -255,12 +257,12 @@ export class DeepLClient {
       );
 
       if (!response.translations) {
-        throw new Error('No translations returned');
+        throw new Error(`No translations returned from DeepL API. Request: batch translate ${texts.length} texts to ${options.targetLang}`);
       }
 
       // Verify we got the same number of translations as texts
       if (response.translations.length !== texts.length) {
-        throw new Error('Mismatch between texts sent and translations received');
+        throw new Error(`Translation count mismatch: sent ${texts.length} texts but received ${response.translations.length} translations. Target language: ${options.targetLang}`);
       }
 
       // Map response translations to results

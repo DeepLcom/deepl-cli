@@ -769,12 +769,20 @@ describe('TranslateCommand', () => {
     });
 
     it('should translate single file to single language', async () => {
-      // Mock file translation service
-      const mockFileService = {
-        translateFile: jest.fn().mockResolvedValue(undefined),
-        isSupportedFile: jest.fn(),
-      };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      // Mock fs to make file appear to exist and be a regular file
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'statSync').mockReturnValue({
+        size: 1024, // 1KB
+        isDirectory: () => false
+      } as any);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
+      jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola mundo',
+      });
 
       const result = await (translateCommand as any).translateFile('/input.txt', {
         to: 'es',
@@ -783,15 +791,18 @@ describe('TranslateCommand', () => {
 
       expect(result).toContain('Translated /input.txt');
       expect(result).toContain('/output.txt');
-      expect(mockFileService.translateFile).toHaveBeenCalledWith(
-        '/input.txt',
-        '/output.txt',
-        { targetLang: 'es' },
-        { preserveCode: undefined }
-      );
+      expect(mockTranslationService.translate).toHaveBeenCalled();
     });
 
     it('should translate file to multiple languages', async () => {
+      // Mock fs to make file appear to exist
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'statSync').mockReturnValue({
+        size: 1024, // 1KB
+        isDirectory: () => false
+      } as any);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
+
       const mockFileService = {
         translateFileToMultiple: jest.fn().mockResolvedValue([
           { targetLang: 'es', outputPath: '/output.es.txt' },
@@ -814,10 +825,16 @@ describe('TranslateCommand', () => {
     });
 
     it('should pass source language when specified', async () => {
-      const mockFileService = {
-        translateFile: jest.fn().mockResolvedValue(undefined),
-      };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1024, isDirectory: () => false } as any);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
+      jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola mundo',
+      });
 
       await (translateCommand as any).translateFile('/input.txt', {
         to: 'es',
@@ -825,19 +842,24 @@ describe('TranslateCommand', () => {
         output: '/output.txt',
       });
 
-      expect(mockFileService.translateFile).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        expect.objectContaining({ sourceLang: 'en' }),
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello world',
+        expect.objectContaining({ sourceLang: 'en', targetLang: 'es' }),
         expect.any(Object)
       );
     });
 
     it('should pass formality when specified', async () => {
-      const mockFileService = {
-        translateFile: jest.fn().mockResolvedValue(undefined),
-      };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1024, isDirectory: () => false } as any);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
+      jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola mundo',
+      });
 
       await (translateCommand as any).translateFile('/input.txt', {
         to: 'es',
@@ -845,19 +867,24 @@ describe('TranslateCommand', () => {
         output: '/output.txt',
       });
 
-      expect(mockFileService.translateFile).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        expect.objectContaining({ formality: 'more' }),
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello world',
+        expect.objectContaining({ formality: 'more', targetLang: 'es' }),
         expect.any(Object)
       );
     });
 
     it('should pass preserveCode option', async () => {
-      const mockFileService = {
-        translateFile: jest.fn().mockResolvedValue(undefined),
-      };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1024, isDirectory: () => false } as any);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
+      jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola mundo',
+      });
 
       await (translateCommand as any).translateFile('/input.txt', {
         to: 'es',
@@ -865,15 +892,18 @@ describe('TranslateCommand', () => {
         preserveCode: true,
       });
 
-      expect(mockFileService.translateFile).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello world',
         expect.any(Object),
-        { preserveCode: true }
+        { preserveCode: true, skipCache: true }
       );
     });
 
     it('should pass source language to multi-file translation', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1024, isDirectory: () => false } as any);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
+
       const mockFileService = {
         translateFileToMultiple: jest.fn().mockResolvedValue([
           { targetLang: 'es', outputPath: '/output.es.txt' },
@@ -896,6 +926,10 @@ describe('TranslateCommand', () => {
     });
 
     it('should pass formality to multi-file translation', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1024, isDirectory: () => false } as any);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
+
       const mockFileService = {
         translateFileToMultiple: jest.fn().mockResolvedValue([
           { targetLang: 'es', outputPath: '/output.es.txt' },

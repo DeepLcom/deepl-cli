@@ -47,7 +47,17 @@ export class BatchTranslationService {
     options: { concurrency?: number } = {}
   ) {
     this.fileTranslationService = fileTranslationService;
-    this.concurrency = options.concurrency ?? 5;
+
+    // Validate concurrency parameter
+    const concurrency = options.concurrency ?? 5;
+    if (concurrency < 1) {
+      throw new Error('Concurrency must be at least 1');
+    }
+    if (concurrency > 100) {
+      throw new Error('Concurrency cannot exceed 100');
+    }
+
+    this.concurrency = concurrency;
   }
 
   /**

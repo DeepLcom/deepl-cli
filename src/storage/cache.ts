@@ -32,10 +32,13 @@ const DEFAULT_MAX_SIZE = 1024 * 1024 * 1024; // 1GB
 const DEFAULT_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
 
 export class CacheService {
+  private static instance: CacheService | null = null;
+  private static handlersRegistered: boolean = false;
   private db: Database.Database;
   private maxSize: number;
   private ttl: number;
   private enabled: boolean = true;
+  private isClosed: boolean = false;
 
   constructor(options: CacheServiceOptions = {}) {
     const dbPath = options.dbPath ?? path.join(os.homedir(), '.deepl-cli', 'cache.db');
@@ -50,6 +53,39 @@ export class CacheService {
 
     this.db = new Database(dbPath);
     this.initialize();
+  }
+
+  /**
+   * Get singleton cache instance
+   * Uses a shared instance to prevent resource leaks
+   */
+  static getInstance(options?: CacheServiceOptions): CacheService {
+    if (!CacheService.instance || CacheService.instance.isClosed) {
+      CacheService.instance = new CacheService(options);
+
+      // Register cleanup handlers only once to prevent memory leaks
+      if (!CacheService.handlersRegistered) {
+        CacheService.handlersRegistered = true;
+
+        // Register cleanup on process exit (use 'once' to prevent duplicate handlers)
+        process.once('exit', () => {
+          CacheService.instance?.close();
+        });
+
+        // Handle unexpected termination
+        process.once('SIGINT', () => {
+          CacheService.instance?.close();
+          process.exit(0);
+        });
+
+        process.once('SIGTERM', () => {
+          CacheService.instance?.close();
+          process.exit(0);
+        });
+      }
+    }
+
+    return CacheService.instance;
   }
 
   /**
@@ -193,7 +229,10 @@ export class CacheService {
    * Close database connection
    */
   close(): void {
-    this.db.close();
+    if (!this.isClosed) {
+      this.db.close();
+      this.isClosed = true;
+    }
   }
 
   /**

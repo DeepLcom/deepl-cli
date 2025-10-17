@@ -487,7 +487,7 @@ describe('DeepLClient', () => {
 
       await expect(
         client.translate('Hello', { targetLang: 'es' })
-      ).rejects.toThrow('No translation returned');
+      ).rejects.toThrow('No translation returned from DeepL API');
     });
   });
 
@@ -1433,7 +1433,7 @@ describe('DeepLClient', () => {
 
       await expect(
         client.translateBatch(['Hello', 'Goodbye'], { targetLang: 'es' })
-      ).rejects.toThrow('Mismatch between texts sent and translations received');
+      ).rejects.toThrow('Translation count mismatch');
     });
 
     it('should throw error if response has more translations than texts', async () => {
@@ -1449,7 +1449,7 @@ describe('DeepLClient', () => {
 
       await expect(
         client.translateBatch(['Hello', 'Goodbye'], { targetLang: 'es' })
-      ).rejects.toThrow('Mismatch between texts sent and translations received');
+      ).rejects.toThrow('Translation count mismatch');
     });
 
     it('should handle batch with different detected languages', async () => {

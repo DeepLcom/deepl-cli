@@ -182,32 +182,7 @@ export class TranslateCommand {
       throw new Error('Output file path is required for file translation. Use --output <path>');
     }
 
-    // Smart routing for text-based files
-    // Use text API (cached) for small text files, document API for large files or binaries
-    if (this.isTextBasedFile(filePath)) {
-      // Get file size once to avoid duplicate stat() calls
-      const fileSize = this.getFileSize(filePath);
-
-      if (fileSize !== null && fileSize <= SAFE_TEXT_SIZE_LIMIT) {
-        // Use text API with caching for small text-based files
-        return this.translateTextFile(filePath, options);
-      } else if (fileSize !== null && this.documentTranslationService.isDocumentSupported(filePath)) {
-        // Text file too large for cached API, fall back to document API with warning
-        const fileSizeKiB = (fileSize / 1024).toFixed(1);
-        const warning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSizeKiB} KiB), using document API instead`;
-        Logger.warn(warning);
-        const result = await this.translateDocument(filePath, options);
-        return `${warning}\n${result}`;
-      }
-      // If text file is large and not supported by document API, fall through to file translation service
-    }
-
-    // Check if it's a binary document (PDF, DOCX, etc.)
-    if (this.documentTranslationService.isDocumentSupported(filePath)) {
-      return this.translateDocument(filePath, options);
-    }
-
-    // Check if translating to multiple languages
+    // Check if translating to multiple languages (must be done BEFORE text file optimization)
     if (options.to.includes(',')) {
       const targetLangs = options.to.split(',').map(lang => lang.trim()) as Language[];
 
@@ -237,7 +212,36 @@ export class TranslateCommand {
         results.map(r => `  [${r.targetLang}] ${r.outputPath}`).join('\n');
     }
 
-    // Single language translation
+    // Smart routing for text-based files
+    // Use text API (cached) for small text files, document API for large files or binaries
+    if (this.isTextBasedFile(filePath)) {
+      // Get file size once to avoid duplicate stat() calls
+      const fileSize = this.getFileSize(filePath);
+
+      if (fileSize === null) {
+        throw new Error(`File not found or cannot be accessed: ${filePath}`);
+      }
+
+      if (fileSize <= SAFE_TEXT_SIZE_LIMIT) {
+        // Use text API with caching for small text-based files
+        return this.translateTextFile(filePath, options);
+      } else if (this.documentTranslationService.isDocumentSupported(filePath)) {
+        // Text file too large for cached API, fall back to document API with warning
+        const fileSizeKiB = (fileSize / 1024).toFixed(1);
+        const warning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSizeKiB} KiB), using document API instead`;
+        Logger.warn(warning);
+        const result = await this.translateDocument(filePath, options);
+        return `${warning}\n${result}`;
+      }
+      // If text file is large and not supported by document API, fall through to file translation service
+    }
+
+    // Check if it's a binary document (PDF, DOCX, etc.)
+    if (this.documentTranslationService.isDocumentSupported(filePath)) {
+      return this.translateDocument(filePath, options);
+    }
+
+    // Single language translation using file translation service
     const translationOptions: {
       targetLang: Language;
       sourceLang?: Language;

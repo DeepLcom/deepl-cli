@@ -153,19 +153,28 @@ export class WatchService {
       clearTimeout(existingTimer);
     }
 
-    const timer = setTimeout(async () => {
-      try {
-        await this.translateFile(filePath);
-      } catch (error) {
-        this.stats.errorsCount++;
-        if (this.watchOptions?.onError) {
-          this.watchOptions.onError(filePath, error as Error);
+    const timer = setTimeout(() => {
+      // Wrap async code to handle Promise properly (void operator tells TypeScript we intentionally ignore the Promise)
+      void (async () => {
+        try {
+          // Check if watch is still active (prevent race condition with stop())
+          if (!this.watchOptions) {
+            this.debounceTimers.delete(filePath);
+            return;
+          }
+
+          await this.translateFile(filePath);
+        } catch (error) {
+          this.stats.errorsCount++;
+          if (this.watchOptions?.onError) {
+            this.watchOptions.onError(filePath, error as Error);
+          }
+          Logger.error(`Translation failed for ${filePath}:`, error);
+        } finally {
+          // Always delete timer, even on error, to prevent memory leaks
+          this.debounceTimers.delete(filePath);
         }
-        Logger.error(`Translation failed for ${filePath}:`, error);
-      } finally {
-        // Always delete timer, even on error, to prevent memory leaks
-        this.debounceTimers.delete(filePath);
-      }
+      })();
     }, this.options.debounceMs);
 
     this.debounceTimers.set(filePath, timer);
@@ -201,13 +210,9 @@ export class WatchService {
     const ext = path.extname(filePath);
 
     if (targetLangs.length === 1) {
-      // Single target language
-      const outputPath = path.join(outputDir, `${fileName}.${targetLangs[0]}${ext}`);
-
-      const targetLang = targetLangs[0];
-      if (!targetLang) {
-        throw new Error('No target language specified');
-      }
+      // Single target language (length === 1 guarantees targetLangs[0] exists)
+      const targetLang = targetLangs[0]!;
+      const outputPath = path.join(outputDir, `${fileName}.${targetLang}${ext}`);
 
       await this.fileTranslationService.translateFile(
         filePath,

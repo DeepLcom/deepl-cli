@@ -15,10 +15,6 @@ interface TranslateServiceOptions {
   skipCache?: boolean;
 }
 
-interface BatchOptions {
-  concurrency?: number;
-}
-
 interface MultiTargetResult {
   targetLang: Language;
   text: string;
@@ -41,7 +37,7 @@ export class TranslationService {
   constructor(client: DeepLClient, config: ConfigService, cache?: CacheService) {
     this.client = client;
     this.config = config;
-    this.cache = cache ?? new CacheService();
+    this.cache = cache ?? CacheService.getInstance();
   }
 
   /**
@@ -87,6 +83,14 @@ export class TranslationService {
     // Check cache (only if cache is enabled AND skipCache is not set)
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
     const shouldUseCache = cacheEnabled && !serviceOptions.skipCache;
+
+    // Log when cache is bypassed
+    if (!cacheEnabled) {
+      Logger.info('ℹ️  Cache is disabled');
+    } else if (serviceOptions.skipCache) {
+      Logger.info('ℹ️  Cache bypassed for this request (--no-cache)');
+    }
+
     const cacheKey = this.generateCacheKey(processedText, translationOptions);
 
     if (shouldUseCache) {
@@ -131,12 +135,10 @@ export class TranslationService {
    *
    * @param texts - Array of texts to translate
    * @param options - Translation options
-   * @param _batchOptions - Batch options (deprecated, kept for backward compatibility)
    */
   async translateBatch(
     texts: string[],
-    options: TranslationOptions,
-    _batchOptions: BatchOptions = {}
+    options: TranslationOptions
   ): Promise<TranslationResult[]> {
     if (texts.length === 0) {
       return [];
@@ -158,7 +160,7 @@ export class TranslationService {
     // Check cache and separate cached vs non-cached texts
     const textsToTranslate: string[] = [];
     const textIndexMap = new Map<string, number>(); // Maps text to original index
-    const results: (TranslationResult | null)[] = Array(texts.length).fill(null);
+    const results: (TranslationResult | null)[] = new Array<TranslationResult | null>(texts.length).fill(null);
 
     for (let i = 0; i < texts.length; i++) {
       const text = texts[i];
@@ -194,16 +196,41 @@ export class TranslationService {
       batches.push(textsToTranslate.slice(i, i + BATCH_SIZE));
     }
 
-    // Process all batches
+    // Process all batches and track failures
     const batchResults: TranslationResult[] = [];
+    const failedIndices: number[] = [];
+    let lastError: Error | null = null;
+
     for (const batch of batches) {
-      const batchResult = await this.client.translateBatch(batch, translationOptions);
-      batchResults.push(...batchResult);
+      try {
+        const batchResult = await this.client.translateBatch(batch, translationOptions);
+        batchResults.push(...batchResult);
+      } catch (error) {
+        lastError = error as Error;
+        // Track which texts failed in this batch
+        const startIdx = batchResults.length;
+        for (let i = 0; i < batch.length; i++) {
+          failedIndices.push(startIdx + i);
+        }
+        Logger.error(`Batch translation failed: ${error instanceof Error ? error.message : String(error)}`);
+        // Continue with other batches rather than failing completely
+      }
+    }
+
+    // If all batches failed, throw the last error
+    if (batchResults.length === 0 && lastError) {
+      throw lastError;
     }
 
     // Store results in cache and map back to original indices
     for (let i = 0; i < textsToTranslate.length; i++) {
       const text = textsToTranslate[i];
+
+      // Skip if this translation failed
+      if (failedIndices.includes(i)) {
+        continue;
+      }
+
       const result = batchResults[i];
       if (!text || !result) {
         continue;
@@ -221,11 +248,13 @@ export class TranslationService {
       }
     }
 
-    // Filter out null results and warn if some translations failed
+    // Filter out null results (these are actual failures, not cached successes)
     const filteredResults = results.filter((r): r is TranslationResult => r !== null);
-    if (filteredResults.length !== texts.length) {
-      const missing = texts.length - filteredResults.length;
-      Logger.warn(`⚠️  Warning: ${missing} of ${texts.length} translations failed silently`);
+
+    // Calculate actual failures (excluding cached successes)
+    const actualFailures = texts.length - filteredResults.length;
+    if (actualFailures > 0) {
+      Logger.warn(`⚠️  Warning: ${actualFailures} of ${texts.length} translations failed`);
     }
 
     return filteredResults;
@@ -338,11 +367,12 @@ export class TranslationService {
 
     for (const pattern of patterns) {
       processed = processed.replace(pattern, (match) => {
-        // Use hash of match + random value to ensure uniqueness
-        // This makes collisions virtually impossible
+        // Use cryptographically secure random bytes for uniqueness
+        // This ensures collision-free placeholders even in high-volume scenarios
+        const randomBytes = crypto.randomBytes(8).toString('hex');
         const hash = crypto
           .createHash('sha256')
-          .update(match + Math.random().toString())
+          .update(match + randomBytes)
           .digest('hex')
           .slice(0, 16);
         const placeholder = `__VAR_${hash}__`;

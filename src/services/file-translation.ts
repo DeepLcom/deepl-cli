@@ -135,9 +135,10 @@ export class FileTranslationService {
 
   /**
    * Get list of supported file extensions
+   * Returns a readonly array to avoid unnecessary copies
    */
-  getSupportedFileTypes(): string[] {
-    return [...this.supportedExtensions];
+  getSupportedFileTypes(): readonly string[] {
+    return this.supportedExtensions;
   }
 
   /**
