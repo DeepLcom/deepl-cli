@@ -200,20 +200,26 @@ export class DocumentTranslationService {
         return;
       }
 
-      const timeout = setTimeout(resolve, ms);
+      let isSettled = false;
+
+      const timeout = setTimeout(() => {
+        isSettled = true;
+        if (abortSignal) {
+          abortSignal.removeEventListener('abort', abortHandler);
+        }
+        resolve();
+      }, ms);
 
       // Listen for abort event
       const abortHandler = () => {
-        clearTimeout(timeout);
-        reject(new Error('Document translation cancelled'));
+        if (!isSettled) {
+          isSettled = true;
+          clearTimeout(timeout);
+          reject(new Error('Document translation cancelled'));
+        }
       };
 
       abortSignal?.addEventListener('abort', abortHandler, { once: true });
-
-      // Clean up listener when timeout completes
-      setTimeout(() => {
-        abortSignal?.removeEventListener('abort', abortHandler);
-      }, ms);
     });
   }
 }

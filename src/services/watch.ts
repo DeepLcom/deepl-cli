@@ -8,6 +8,7 @@ import * as path from 'path';
 import chokidar, { FSWatcher } from 'chokidar';
 import { FileTranslationService } from './file-translation.js';
 import { Language, TranslationOptions } from '../types/index.js';
+import { Logger } from '../utils/logger.js';
 
 export interface FileTranslationResult {
   targetLang: Language;
@@ -113,7 +114,7 @@ export class WatchService {
       try {
         this.handleFileChange(filePath);
       } catch (error) {
-        console.error(`Error handling file change for ${filePath}:`, error);
+        Logger.error(`Error handling file change for ${filePath}:`, error);
       }
     });
 
@@ -121,7 +122,7 @@ export class WatchService {
       try {
         this.handleFileChange(filePath);
       } catch (error) {
-        console.error(`Error handling file add for ${filePath}:`, error);
+        Logger.error(`Error handling file add for ${filePath}:`, error);
       }
     });
 
@@ -152,21 +153,19 @@ export class WatchService {
       clearTimeout(existingTimer);
     }
 
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          await this.translateFile(filePath);
-        } catch (error) {
-          this.stats.errorsCount++;
-          if (this.watchOptions?.onError) {
-            this.watchOptions.onError(filePath, error as Error);
-          }
-          console.error(`Translation failed for ${filePath}:`, error);
-        } finally {
-          // Always delete timer, even on error, to prevent memory leaks
-          this.debounceTimers.delete(filePath);
+    const timer = setTimeout(async () => {
+      try {
+        await this.translateFile(filePath);
+      } catch (error) {
+        this.stats.errorsCount++;
+        if (this.watchOptions?.onError) {
+          this.watchOptions.onError(filePath, error as Error);
         }
-      })();
+        Logger.error(`Translation failed for ${filePath}:`, error);
+      } finally {
+        // Always delete timer, even on error, to prevent memory leaks
+        this.debounceTimers.delete(filePath);
+      }
     }, this.options.debounceMs);
 
     this.debounceTimers.set(filePath, timer);
