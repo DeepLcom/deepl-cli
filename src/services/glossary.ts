@@ -6,6 +6,7 @@
 import { DeepLClient } from '../api/deepl-client.js';
 import { GlossaryInfo, GlossaryLanguagePair, Language } from '../types/index.js';
 import { isMultilingual } from '../types/glossary.js';
+import { Logger } from '../utils/logger.js';
 
 export class GlossaryService {
   private client: DeepLClient;
@@ -327,19 +328,19 @@ export class GlossaryService {
         parts = trimmed.split(',');
       } else {
         // Line has no separator - skip it
-        console.warn(`Line ${lineNumber}: No tab or comma separator found, skipping`);
+        Logger.warn(`Line ${lineNumber}: No tab or comma separator found, skipping`);
         continue;
       }
 
       // Validate we have at least 2 columns
       if (parts.length < 2) {
-        console.warn(`Line ${lineNumber}: Expected 2 columns, found ${parts.length}, skipping`);
+        Logger.warn(`Line ${lineNumber}: Expected 2 columns, found ${parts.length}, skipping`);
         continue;
       }
 
       // Warn if more than 2 columns (extra data will be ignored)
       if (parts.length > 2) {
-        console.warn(`Line ${lineNumber}: Found ${parts.length} columns, expected 2. Using first 2 columns.`);
+        Logger.warn(`Line ${lineNumber}: Found ${parts.length} columns, expected 2. Using first 2 columns.`);
       }
 
       const source = parts[0]?.trim();
@@ -347,13 +348,13 @@ export class GlossaryService {
 
       // Validate both source and target are non-empty
       if (!source || !target) {
-        console.warn(`Line ${lineNumber}: Empty source or target, skipping`);
+        Logger.warn(`Line ${lineNumber}: Empty source or target, skipping`);
         continue;
       }
 
       // Add to entries (duplicates will overwrite earlier entries)
       if (entries[source] !== undefined) {
-        console.warn(`Line ${lineNumber}: Duplicate source "${source}", overwriting previous entry`);
+        Logger.warn(`Line ${lineNumber}: Duplicate source "${source}", overwriting previous entry`);
       }
 
       entries[source] = target;
