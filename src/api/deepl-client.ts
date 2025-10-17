@@ -201,62 +201,7 @@ export class DeepLClient {
       throw new Error('Text cannot be empty');
     }
 
-    const params: Record<string, string | string[] | number | boolean> = {
-      text: [text],
-      target_lang: this.normalizeLanguage(options.targetLang).toUpperCase(),
-    };
-
-    if (options.sourceLang) {
-      params['source_lang'] = this.normalizeLanguage(options.sourceLang).toUpperCase();
-    }
-
-    if (options.formality) {
-      params['formality'] = options.formality;
-    }
-
-    if (options.glossaryId) {
-      params['glossary_id'] = options.glossaryId;
-    }
-
-    if (options.preserveFormatting) {
-      params['preserve_formatting'] = '1';
-    }
-
-    if (options.context) {
-      params['context'] = options.context;
-    }
-
-    if (options.splitSentences) {
-      params['split_sentences'] = options.splitSentences;
-    }
-
-    if (options.tagHandling) {
-      params['tag_handling'] = options.tagHandling;
-    }
-
-    if (options.modelType) {
-      params['model_type'] = options.modelType;
-    }
-
-    if (options.showBilledCharacters) {
-      params['show_billed_characters'] = '1';
-    }
-
-    if (options.outlineDetection !== undefined) {
-      params['outline_detection'] = options.outlineDetection ? '1' : '0';
-    }
-
-    if (options.splittingTags && options.splittingTags.length > 0) {
-      params['splitting_tags'] = options.splittingTags.join(',');
-    }
-
-    if (options.nonSplittingTags && options.nonSplittingTags.length > 0) {
-      params['non_splitting_tags'] = options.nonSplittingTags.join(',');
-    }
-
-    if (options.ignoreTags && options.ignoreTags.length > 0) {
-      params['ignore_tags'] = options.ignoreTags.join(',');
-    }
+    const params = this.buildTranslationParams([text], options);
 
     try {
       const response = await this.makeRequest<DeepLTranslateResponse>(
@@ -299,63 +244,8 @@ export class DeepLClient {
       return [];
     }
 
-    // Build request parameters
-    const params: Record<string, string | string[] | number | boolean> = {
-      text: texts,
-      target_lang: this.normalizeLanguage(options.targetLang).toUpperCase(),
-    };
-
-    if (options.sourceLang) {
-      params['source_lang'] = this.normalizeLanguage(options.sourceLang).toUpperCase();
-    }
-
-    if (options.formality) {
-      params['formality'] = options.formality;
-    }
-
-    if (options.glossaryId) {
-      params['glossary_id'] = options.glossaryId;
-    }
-
-    if (options.preserveFormatting) {
-      params['preserve_formatting'] = '1';
-    }
-
-    if (options.context) {
-      params['context'] = options.context;
-    }
-
-    if (options.splitSentences) {
-      params['split_sentences'] = options.splitSentences;
-    }
-
-    if (options.tagHandling) {
-      params['tag_handling'] = options.tagHandling;
-    }
-
-    if (options.modelType) {
-      params['model_type'] = options.modelType;
-    }
-
-    if (options.showBilledCharacters) {
-      params['show_billed_characters'] = '1';
-    }
-
-    if (options.outlineDetection !== undefined) {
-      params['outline_detection'] = options.outlineDetection ? '1' : '0';
-    }
-
-    if (options.splittingTags && options.splittingTags.length > 0) {
-      params['splitting_tags'] = options.splittingTags.join(',');
-    }
-
-    if (options.nonSplittingTags && options.nonSplittingTags.length > 0) {
-      params['non_splitting_tags'] = options.nonSplittingTags.join(',');
-    }
-
-    if (options.ignoreTags && options.ignoreTags.length > 0) {
-      params['ignore_tags'] = options.ignoreTags.join(',');
-    }
+    // Build request parameters using shared helper
+    const params = this.buildTranslationParams(texts, options);
 
     try {
       const response = await this.makeRequest<DeepLTranslateResponse>(
@@ -564,6 +454,74 @@ export class DeepLClient {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Build translation parameters from options
+   * Shared between translate() and translateBatch()
+   */
+  private buildTranslationParams(
+    texts: string[],
+    options: TranslationOptions
+  ): Record<string, string | string[] | number | boolean> {
+    const params: Record<string, string | string[] | number | boolean> = {
+      text: texts,
+      target_lang: this.normalizeLanguage(options.targetLang).toUpperCase(),
+    };
+
+    if (options.sourceLang) {
+      params['source_lang'] = this.normalizeLanguage(options.sourceLang).toUpperCase();
+    }
+
+    if (options.formality) {
+      params['formality'] = options.formality;
+    }
+
+    if (options.glossaryId) {
+      params['glossary_id'] = options.glossaryId;
+    }
+
+    if (options.preserveFormatting) {
+      params['preserve_formatting'] = '1';
+    }
+
+    if (options.context) {
+      params['context'] = options.context;
+    }
+
+    if (options.splitSentences) {
+      params['split_sentences'] = options.splitSentences;
+    }
+
+    if (options.tagHandling) {
+      params['tag_handling'] = options.tagHandling;
+    }
+
+    if (options.modelType) {
+      params['model_type'] = options.modelType;
+    }
+
+    if (options.showBilledCharacters) {
+      params['show_billed_characters'] = '1';
+    }
+
+    if (options.outlineDetection !== undefined) {
+      params['outline_detection'] = options.outlineDetection ? '1' : '0';
+    }
+
+    if (options.splittingTags && options.splittingTags.length > 0) {
+      params['splitting_tags'] = options.splittingTags.join(',');
+    }
+
+    if (options.nonSplittingTags && options.nonSplittingTags.length > 0) {
+      params['non_splitting_tags'] = options.nonSplittingTags.join(',');
+    }
+
+    if (options.ignoreTags && options.ignoreTags.length > 0) {
+      params['ignore_tags'] = options.ignoreTags.join(',');
+    }
+
+    return params;
   }
 
   /**
