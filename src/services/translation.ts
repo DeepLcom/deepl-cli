@@ -8,6 +8,7 @@ import { DeepLClient, TranslationResult, UsageInfo, LanguageInfo } from '../api/
 import { ConfigService } from '../storage/config.js';
 import { CacheService } from '../storage/cache.js';
 import { TranslationOptions, Language } from '../types/index.js';
+import { Logger } from '../utils/logger.js';
 
 interface TranslateServiceOptions {
   preserveCode?: boolean;
@@ -157,7 +158,7 @@ export class TranslationService {
     // Check cache and separate cached vs non-cached texts
     const textsToTranslate: string[] = [];
     const textIndexMap = new Map<string, number>(); // Maps text to original index
-    const results: (TranslationResult | null)[] = new Array(texts.length).fill(null) as (TranslationResult | null)[];
+    const results: (TranslationResult | null)[] = Array(texts.length).fill(null);
 
     for (let i = 0; i < texts.length; i++) {
       const text = texts[i];
@@ -220,7 +221,14 @@ export class TranslationService {
       }
     }
 
-    return results.filter((r): r is TranslationResult => r !== null);
+    // Filter out null results and warn if some translations failed
+    const filteredResults = results.filter((r): r is TranslationResult => r !== null);
+    if (filteredResults.length !== texts.length) {
+      const missing = texts.length - filteredResults.length;
+      Logger.warn(`⚠️  Warning: ${missing} of ${texts.length} translations failed silently`);
+    }
+
+    return filteredResults;
   }
 
   /**
