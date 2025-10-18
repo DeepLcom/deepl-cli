@@ -130,17 +130,18 @@ export class DeepLClient {
         'Connection': 'keep-alive',
       },
       // Enable HTTP keep-alive for better performance in batch operations
+      // Issue #9: Reduced maxSockets from 50 to 10 for CLI tool resource management
       httpAgent: new http.Agent({
         keepAlive: true,
         keepAliveMsecs: 1000,
-        maxSockets: 50,
+        maxSockets: 10, // Conservative value for CLI tool to prevent resource exhaustion
         maxFreeSockets: 10,
         timeout: options.timeout ?? DEFAULT_TIMEOUT,
       }),
       httpsAgent: new https.Agent({
         keepAlive: true,
         keepAliveMsecs: 1000,
-        maxSockets: 50,
+        maxSockets: 10, // Conservative value for CLI tool to prevent resource exhaustion
         maxFreeSockets: 10,
         timeout: options.timeout ?? DEFAULT_TIMEOUT,
       }),

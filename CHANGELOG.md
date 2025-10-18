@@ -52,6 +52,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Performance Benefit**: Avoids expensive database aggregation on every cache write
   - Location: `src/storage/cache.ts` (currentSize field, initialize, set, clear, cleanupExpired, evictIfNeeded)
 
+- **Performance Optimization: HTTP Connection Pool Size** - Reduced resource consumption for CLI tool (Issue #9)
+  - Reduced maxSockets from 50 to 10 for both HTTP and HTTPS agents
+  - Conservative value prevents resource exhaustion on user machines
+  - 50 concurrent sockets was excessive for a CLI tool's typical workload
+  - Still allows reasonable parallelism for batch operations
+  - Matches maxFreeSockets value for consistency
+  - **Impact**: Lower memory footprint and reduced system resource usage
+  - **Performance Trade-off**: Minimal impact on throughput; CLI rarely needs >10 concurrent connections
+  - Location: `src/api/deepl-client.ts:133-147` (HTTP/HTTPS agent configuration)
+
 ### Security
 - **Symlink Path Validation** - Prevents directory traversal attacks (Issue #6)
   - Rejects symlinks at translate() entry point before processing files
