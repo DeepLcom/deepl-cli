@@ -64,6 +64,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Example Attack Prevented**: User creating symlink to `/etc/passwd` and attempting to translate it
   - Location: `src/cli/commands/translate.ts:118-149` (translate method with lstatSync check)
 
+### Refactoring
+- **Dead Code Removal: Undefined Marker** - Cleaned up unreachable code (Issue #7)
+  - Removed undefined marker check from CacheService.get() method
+  - Check was dead code: undefined values are never cached (Issue #10 fix prevents caching undefined)
+  - Removed lines checking `if (row.value === '__UNDEFINED__')`
+  - Added clarifying comment explaining why check is unnecessary
+  - **Impact**: Cleaner, more maintainable code; removes confusion about undefined handling
+  - **Code Quality**: Eliminates unreachable code path that could never be executed
+  - Location: `src/storage/cache.ts:150-152` (get method, removed dead code check)
+
 ### Fixed
 - **Critical: Duplicate text handling in batch translation** - Fixed data loss bug for duplicate inputs
   - When input array contained duplicate texts (e.g., `["Hello", "Hello", "World"]`), only the last occurrence received translation

@@ -147,11 +147,8 @@ export class CacheService {
       return null;
     }
 
-    // Check for undefined marker
-    if (row.value === '__UNDEFINED__') {
-      return undefined;
-    }
-
+    // Parse cached value (Issue #7: undefined marker check removed as dead code)
+    // Undefined values are never cached (see set() method Issue #10)
     try {
       return JSON.parse(row.value) as unknown;
     } catch (error) {
