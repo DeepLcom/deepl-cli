@@ -169,7 +169,7 @@ export class WatchService {
           // Double-check watch is still active (prevent race condition with stop())
           // Use isWatching flag for reliable state checking
           if (!this.stats.isWatching) {
-            this.debounceTimers.delete(filePath);
+            // Issue #11: Don't delete here - finally block handles cleanup
             return;
           }
 
@@ -181,7 +181,8 @@ export class WatchService {
           }
           Logger.error(`Translation failed for ${filePath}:`, error);
         } finally {
-          // Always delete timer, even on error, to prevent memory leaks
+          // Issue #11: Always delete timer here, even when stopped or on error
+          // This prevents double deletion and ensures consistent cleanup
           this.debounceTimers.delete(filePath);
         }
       })();

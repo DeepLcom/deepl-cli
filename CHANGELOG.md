@@ -74,6 +74,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Technical Detail**: Defensive programming - catches edge case where abort happens just as sleep completes
   - Location: `src/services/document-translation.ts:182-186` (post-sleep abort check)
 
+- **Watch Service Timer Cleanup** - Fixed redundant timer deletion (Issue #11)
+  - Removed double deletion of debounce timer from Map
+  - Previously deleted at line 172 (when !isWatching), then again in finally block at line 185
+  - Now only deletes in finally block for consistent cleanup path
+  - finally block always executes (on return, error, or normal completion)
+  - While Map.delete() is safe to call twice, redundant calls are poor code quality
+  - **Impact**: Cleaner code, more maintainable timer management
+  - **Technical Detail**: Consolidates cleanup logic to single location (finally block)
+  - Location: `src/services/watch.ts:172-186` (timer callback cleanup)
+
 ### Security
 - **Symlink Path Validation** - Prevents directory traversal attacks (Issue #6)
   - Rejects symlinks at translate() entry point before processing files
