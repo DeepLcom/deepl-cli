@@ -646,7 +646,7 @@ describe('TranslationService', () => {
       });
 
       // Should preserve all three {name} instances
-      const nameCount = (result.text.match(/\{name\}/g) || []).length;
+      const nameCount = (result.text.match(/\{name\}/g) ?? []).length;
       expect(nameCount).toBe(3);
     });
 
@@ -664,7 +664,7 @@ describe('TranslationService', () => {
 
       // Check that the text sent to API has three DIFFERENT placeholders
       // (even though the original had three identical variables)
-      const placeholders = receivedText.match(/__VAR_\w+__/g) || [];
+      const placeholders = receivedText.match(/__VAR_\w+__/g) ?? [];
       expect(placeholders.length).toBe(3);
 
       // All placeholders should be unique (no collisions)

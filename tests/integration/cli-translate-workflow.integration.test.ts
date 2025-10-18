@@ -38,7 +38,7 @@ describe('Translation Workflow Integration', () => {
         proxy: {},
       }),
       getValue: (key: string) => {
-        if (key === 'cache.enabled') return true;
+        if (key === 'cache.enabled') {return true;}
         return undefined;
       },
     } as unknown as ConfigService;
@@ -275,7 +275,7 @@ describe('Translation Workflow Integration', () => {
       mockConfig = {
         get: () => ({ defaults: {} }),
         getValue: (key: string) => {
-          if (key === 'cache.enabled') return false;
+          if (key === 'cache.enabled') {return false;}
           return undefined;
         },
       } as ConfigService;
@@ -653,11 +653,18 @@ describe('Translation Workflow Integration', () => {
       expect(results[0]?.outputPath).toBe(path.join(outputDir, 'input.es.txt'));
       expect(results[1]?.outputPath).toBe(path.join(outputDir, 'input.fr.txt'));
 
-      expect(fs.existsSync(results[0]?.outputPath!)).toBe(true);
-      expect(fs.existsSync(results[1]?.outputPath!)).toBe(true);
+      const outputPath0 = results[0]?.outputPath;
+      const outputPath1 = results[1]?.outputPath;
+      expect(outputPath0).toBeDefined();
+      expect(outputPath1).toBeDefined();
 
-      expect(fs.readFileSync(results[0]?.outputPath!, 'utf-8')).toBe('Hola');
-      expect(fs.readFileSync(results[1]?.outputPath!, 'utf-8')).toBe('Bonjour');
+      if (outputPath0 && outputPath1) {
+        expect(fs.existsSync(outputPath0)).toBe(true);
+        expect(fs.existsSync(outputPath1)).toBe(true);
+
+        expect(fs.readFileSync(outputPath0, 'utf-8')).toBe('Hola');
+        expect(fs.readFileSync(outputPath1, 'utf-8')).toBe('Bonjour');
+      }
     });
 
     it('should throw error for non-existent input file', async () => {

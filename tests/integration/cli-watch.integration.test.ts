@@ -170,44 +170,52 @@ describe('Watch Service Integration', () => {
   });
 
   describe('handleFileChange() - Callbacks', () => {
-    it('should call onChange callback when file changes', (done) => {
+    it('should call onChange callback when file changes', async () => {
       const testFile = path.join(tmpDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
-      const onChangeMock = jest.fn((filePath: string) => {
-        expect(filePath).toBe(testFile);
-        done();
+      const callbackPromise = new Promise<void>((resolve) => {
+        const onChangeMock = jest.fn((filePath: string) => {
+          expect(filePath).toBe(testFile);
+          resolve();
+        });
+
+        watchService.watch(testFile, {
+          targetLangs: ['es'],
+          outputDir: tmpDir,
+          onChange: onChangeMock,
+        });
+
+        watchService.handleFileChange(testFile);
       });
 
-      watchService.watch(testFile, {
-        targetLangs: ['es'],
-        outputDir: tmpDir,
-        onChange: onChangeMock,
-      });
-
-      watchService.handleFileChange(testFile);
+      await callbackPromise;
     });
 
-    it('should call onError callback when translation fails', (done) => {
+    it('should call onError callback when translation fails', async () => {
       const testFile = path.join(tmpDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
       // Mock translation service to throw error
       jest.spyOn(fileTranslationService, 'translateFile').mockRejectedValue(new Error('API error'));
 
-      const onErrorMock = jest.fn((filePath: string, error: Error) => {
-        expect(filePath).toBe(testFile);
-        expect(error.message).toContain('API error');
-        done();
+      const callbackPromise = new Promise<void>((resolve) => {
+        const onErrorMock = jest.fn((filePath: string, error: Error) => {
+          expect(filePath).toBe(testFile);
+          expect(error.message).toContain('API error');
+          resolve();
+        });
+
+        watchService.watch(testFile, {
+          targetLangs: ['es'],
+          outputDir: tmpDir,
+          onError: onErrorMock,
+        });
+
+        watchService.handleFileChange(testFile);
       });
 
-      watchService.watch(testFile, {
-        targetLangs: ['es'],
-        outputDir: tmpDir,
-        onError: onErrorMock,
-      });
-
-      watchService.handleFileChange(testFile);
+      await callbackPromise;
     });
   });
 
@@ -234,23 +242,27 @@ describe('Watch Service Integration', () => {
       expect(stats.isWatching).toBe(true);
     });
 
-    it('should increment error count on translation failure', (done) => {
+    it('should increment error count on translation failure', async () => {
       const testFile = path.join(tmpDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
       jest.spyOn(fileTranslationService, 'translateFile').mockRejectedValue(new Error('Fail'));
 
-      watchService.watch(testFile, {
-        targetLangs: ['es'],
-        outputDir: tmpDir,
-        onError: () => {
-          const stats = watchService.getStats();
-          expect(stats.errorsCount).toBeGreaterThan(0);
-          done();
-        },
+      const callbackPromise = new Promise<void>((resolve) => {
+        watchService.watch(testFile, {
+          targetLangs: ['es'],
+          outputDir: tmpDir,
+          onError: () => {
+            const stats = watchService.getStats();
+            expect(stats.errorsCount).toBeGreaterThan(0);
+            resolve();
+          },
+        });
+
+        watchService.handleFileChange(testFile);
       });
 
-      watchService.handleFileChange(testFile);
+      await callbackPromise;
     });
   });
 
@@ -355,7 +367,7 @@ describe('Watch Service Integration', () => {
   });
 
   describe('Debouncing', () => {
-    it('should debounce rapid file changes', (done) => {
+    it('should debounce rapid file changes', async () => {
       const testFile = path.join(tmpDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
@@ -376,10 +388,8 @@ describe('Watch Service Integration', () => {
       watchService.handleFileChange(testFile);
 
       // onChange should be called 3 times (once per trigger)
-      setTimeout(() => {
-        expect(changeCount).toBe(3);
-        done();
-      }, 100);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(changeCount).toBe(3);
     });
   });
 });

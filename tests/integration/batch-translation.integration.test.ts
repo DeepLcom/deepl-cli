@@ -19,14 +19,14 @@ jest.mock('p-limit', () => ({
 // Mock fast-glob with implementation inline
 jest.mock('fast-glob', () => ({
   __esModule: true,
-  default: async (pattern: string | string[], options: any) => {
+  default: (pattern: string | string[], options: any) => {
     // Simple mock implementation that scans directories
-    const globPattern = (Array.isArray(pattern) ? pattern[0] : pattern) || '';
+    const globPattern = (Array.isArray(pattern) ? pattern[0] : pattern) ?? '';
 
     // Extract base directory from pattern by removing glob parts
     let baseDir = globPattern;
     if (baseDir.includes('**')) {
-      baseDir = baseDir.split('**')[0] || '';
+      baseDir = baseDir.split('**')[0] ?? '';
     }
     baseDir = baseDir.replace(/[/*]+$/, '');
 
@@ -36,7 +36,7 @@ jest.mock('fast-glob', () => ({
 
     // Recursively scan directory
     const scanDir = (dir: string, currentDepth: number = 0): string[] => {
-      if (!fs.existsSync(dir)) return [];
+      if (!fs.existsSync(dir)) {return [];}
 
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       const files: string[] = [];

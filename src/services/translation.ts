@@ -210,7 +210,6 @@ export class TranslationService {
     // Use a Map to correctly track which text maps to which result
     const textToResultMap = new Map<string, TranslationResult>();
     let lastError: Error | null = null;
-    let processedTextsCount = 0; // Track position in textsToTranslate array
 
     for (const batch of batches) {
       try {
@@ -224,13 +223,10 @@ export class TranslationService {
             textToResultMap.set(text, result);
           }
         }
-
-        processedTextsCount += batch.length;
       } catch (error) {
         lastError = error as Error;
         Logger.error(`Batch translation failed: ${error instanceof Error ? error.message : String(error)}`);
         // Mark all texts in this batch as processed (but failed)
-        processedTextsCount += batch.length;
         // Continue with other batches rather than failing completely
       }
     }
