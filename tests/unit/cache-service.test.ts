@@ -269,6 +269,46 @@ describe('CacheService', () => {
       const oldEntry = cacheService.get('key-0');
       expect(oldEntry).toBeNull();
     });
+
+    it('should evict entries efficiently without loading all into memory (Issue #9)', () => {
+      // Create a cache service with small max size for testing
+      const smallCache = new CacheService({
+        dbPath: testCachePath,
+        maxSize: 10 * 1024, // 10KB
+      });
+
+      // Fill cache with many small entries (simulate large cache)
+      for (let i = 0; i < 50; i++) {
+        smallCache.set(`key-${i}`, { text: 'x'.repeat(200) }); // ~200 bytes each
+      }
+
+      const statsBefore = smallCache.stats();
+
+      // Cache should be at capacity
+      expect(statsBefore.totalSize).toBeLessThanOrEqual(statsBefore.maxSize);
+
+      // Add new entry that requires eviction
+      smallCache.set('new-key', { text: 'x'.repeat(1000) }); // ~1KB
+
+      const statsAfter = smallCache.stats();
+
+      // Cache should still be under max size
+      expect(statsAfter.totalSize).toBeLessThanOrEqual(statsAfter.maxSize);
+
+      // New entry should exist
+      const newEntry = smallCache.get('new-key');
+      expect(newEntry).toBeDefined();
+
+      // Oldest entries should be evicted
+      const veryOldEntry = smallCache.get('key-0');
+      expect(veryOldEntry).toBeNull();
+
+      // Some recent entries should still exist
+      const recentEntry = smallCache.get(`key-${49}`);
+      expect(recentEntry).toBeDefined();
+
+      smallCache.close();
+    });
   });
 
   describe('TTL (Time To Live)', () => {

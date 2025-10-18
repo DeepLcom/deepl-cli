@@ -92,12 +92,14 @@ export class TranslateCommand {
 
   /**
    * Translate text, file, or directory
+   * Fix for Issue #8: Cache stats to avoid redundant filesystem calls
    */
   async translate(textOrPath: string, options: TranslateOptions): Promise<string> {
-    // Check if input is a directory
-    // Use statSync() directly to avoid duplicate syscalls (existsSync + statSync)
+    // Check if input is a file/directory with a single stat() call
+    // Cache the stats result to avoid duplicate syscalls later
+    let stats: fs.Stats | null = null;
     try {
-      const stats = fs.statSync(textOrPath);
+      stats = fs.statSync(textOrPath);
       if (stats.isDirectory()) {
         return this.translateDirectory(textOrPath, options);
       }
@@ -105,9 +107,9 @@ export class TranslateCommand {
       // Not a file/directory, treat as text
     }
 
-    // Check if input is a file path
-    if (this.isFilePath(textOrPath)) {
-      return this.translateFile(textOrPath, options);
+    // Check if input is a file path (passing cached stats to avoid re-stating)
+    if (this.isFilePath(textOrPath, stats)) {
+      return this.translateFile(textOrPath, options, stats);
     }
 
     return this.translateText(textOrPath, options);
@@ -117,10 +119,16 @@ export class TranslateCommand {
    * Check if input is a file path
    * Handles cross-platform paths (Windows backslashes and Unix forward slashes)
    * Excludes URLs from being treated as file paths
+   * Fix for Issue #8: Accept cached stats to avoid redundant filesystem calls
    */
-  private isFilePath(input: string): boolean {
-    // Check if file exists
-    if (fs.existsSync(input)) {
+  private isFilePath(input: string, cachedStats?: fs.Stats | null): boolean {
+    // If we have cached stats and it's a file, return true immediately
+    if (cachedStats && cachedStats.isFile()) {
+      return true;
+    }
+
+    // Check if file exists (only if we don't have cached stats)
+    if (!cachedStats && fs.existsSync(input)) {
       return true;
     }
 
@@ -190,8 +198,9 @@ export class TranslateCommand {
 
   /**
    * Translate file
+   * Fix for Issue #8: Accept cached stats to avoid redundant filesystem calls
    */
-  private async translateFile(filePath: string, options: TranslateOptions): Promise<string> {
+  private async translateFile(filePath: string, options: TranslateOptions, cachedStats?: fs.Stats | null): Promise<string> {
     if (!options.output) {
       throw new Error('Output file path is required for file translation. Use --output <path>');
     }
@@ -229,8 +238,13 @@ export class TranslateCommand {
     // Smart routing for text-based files
     // Use text API (cached) for small text files, document API for large files or binaries
     if (this.isTextBasedFile(filePath)) {
-      // Get file size once to avoid duplicate stat() calls
-      const fileSize = this.getFileSize(filePath);
+      // Get file size from cached stats or stat the file (Fix for Issue #8)
+      let fileSize: number | null;
+      if (cachedStats) {
+        fileSize = cachedStats.size;
+      } else {
+        fileSize = this.getFileSize(filePath);
+      }
 
       if (fileSize === null) {
         throw new Error(`File not found or cannot be accessed: ${filePath}`);

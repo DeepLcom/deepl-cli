@@ -258,6 +258,7 @@ export class CacheService {
 
   /**
    * Evict oldest entries if needed to make space
+   * Fix for Issue #9: Use SQL DELETE ... LIMIT to avoid loading all entries into memory
    */
   private evictIfNeeded(newEntrySize: number): void {
     const stats = this.stats();
@@ -270,27 +271,24 @@ export class CacheService {
     // Add a small buffer to ensure we have enough space
     const toFree = stats.totalSize + newEntrySize - this.maxSize + 1;
 
-    // Get oldest entries to delete
-    const stmt = this.db.prepare(`
-      SELECT key, size
-      FROM cache
-      ORDER BY timestamp ASC
-    `);
+    // Estimate how many entries to delete based on average size
+    // This avoids loading all entries into memory for large caches
+    const avgSize = stats.entries > 0 ? stats.totalSize / stats.entries : 1024;
+    const estimatedEntries = Math.ceil(toFree / avgSize);
 
-    const rows = stmt.all() as Array<{ key: string; size: number }>;
+    // Add 20% buffer to ensure we delete enough entries
+    // This handles cases where oldest entries are larger than average
+    const entriesToDelete = Math.ceil(estimatedEntries * 1.2);
 
-    // Delete entries until we've freed enough space
-    let freed = 0;
-    const deleteStmt = this.db.prepare('DELETE FROM cache WHERE key = ?');
-
-    for (const row of rows) {
-      deleteStmt.run(row.key);
-      freed += row.size;
-
-      // Keep deleting until we've freed enough
-      if (freed >= toFree) {
-        break;
-      }
-    }
+    // Delete oldest entries efficiently using SQL subquery
+    // This executes entirely in SQLite without loading data into Node.js memory
+    this.db.prepare(`
+      DELETE FROM cache
+      WHERE key IN (
+        SELECT key FROM cache
+        ORDER BY timestamp ASC
+        LIMIT ?
+      )
+    `).run(entriesToDelete);
   }
 }
