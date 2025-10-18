@@ -63,12 +63,7 @@ export class ConfigService {
     return this.config;
   }
 
-  /**
-   * Set a configuration value by path
-   * Issue #12: Security validation on original key before splitting
-   */
   set(key: string, value: unknown): void {
-    // Issue #12: Validate original key string before splitting
     this.validateKeyString(key);
 
     const keys = key.split('.');
@@ -269,43 +264,28 @@ export class ConfigService {
     };
   }
 
-  /**
-   * Validate configuration path and value
-   * Issue #12: Security validation to prevent directory traversal and injection attacks
-   */
   private validatePath(keys: string[], value: unknown): void {
     if (keys.length === 0) {
       throw new Error('Invalid path: empty');
     }
 
-    // Issue #12: Security validation - check each path segment for malicious patterns
     for (const key of keys) {
-      // Check for null bytes first (common injection technique)
       if (key.includes('\0')) {
         throw new Error('Invalid path: contains null byte');
       }
 
-      // Check for path separators (Unix and Windows)
       if (key.includes('/') || key.includes('\\')) {
         throw new Error('Invalid path: contains path separator');
       }
 
-      // Check for directory traversal patterns
-      // Note: ".." in a path like "../auth" becomes ["", "", "auth"] after split
-      // So we check for ".." OR check if key is empty AND previous key was also empty
       if (key === '..' || key.includes('..')) {
         throw new Error('Invalid path: contains directory traversal');
       }
 
-      // Check for leading dots (handles paths starting with "." like ".auth")
-      // Note: ".auth" becomes ["", "auth"] after split, so first element is empty
-      // We check if segment is exactly "." or starts with "." (for segments like ".hidden")
       if (key === '.' || (key.startsWith('.') && key.length > 0)) {
         throw new Error('Invalid path: segment starts with dot');
       }
 
-      // Check for empty segments last (catch-all for other cases)
-      // This catches cases like "auth..apiKey" which splits to ["auth", "", "apiKey"]
       if (key === '') {
         throw new Error('Invalid path: empty segment');
       }
@@ -382,24 +362,15 @@ export class ConfigService {
     }
   }
 
-  /**
-   * Validate key string for security issues (Issue #12)
-   * Checks original key before splitting to catch patterns that would be lost in split
-   */
   private validateKeyString(key: string): void {
-    // Check for directory traversal in original string
-    // This catches patterns like "../auth" or "auth/../key"
     if (key.includes('../') || key.includes('..\\') || key.startsWith('..')) {
       throw new Error('Invalid path: contains directory traversal');
     }
 
-    // Check for leading dot (hidden files/directories)
-    // This catches ".auth.apiKey" before it's split into ["", "auth", "apiKey"]
     if (key.startsWith('.')) {
       throw new Error('Invalid path: segment starts with dot');
     }
 
-    // Check for consecutive dots (empty segments)
     if (key.includes('..')) {
       throw new Error('Invalid path: contains directory traversal');
     }

@@ -67,7 +67,6 @@ export class ConfigCommand {
       if (!isNaN(num)) return num;
     }
 
-    // Return as string
     return value;
   }
 

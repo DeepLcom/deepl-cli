@@ -93,7 +93,6 @@ function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
     process.exit(ExitCode.AuthError);
   }
 
-  // Get API configuration
   const baseUrl = overrideBaseUrl ?? configService.getValue<string>('api.baseUrl');
   const usePro = configService.getValue<boolean>('api.usePro');
 

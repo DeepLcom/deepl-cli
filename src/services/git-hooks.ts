@@ -71,7 +71,6 @@ export class GitHooksService {
       throw new Error('Hook is not a DeepL CLI hook. Remove it manually if needed.');
     }
 
-    // Remove the hook
     fs.unlinkSync(hookPath);
 
     // Restore backup if it exists

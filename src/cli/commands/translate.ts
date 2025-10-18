@@ -78,11 +78,6 @@ export class TranslateCommand {
     this.config = config;
   }
 
-  /**
-   * Validate language codes
-   * Throws error if any language code is invalid
-   * Fix for Issue #3: Validate language codes upfront to provide clear error messages
-   */
   private validateLanguageCodes(langCodes: string[]): void {
     for (const lang of langCodes) {
       if (!VALID_LANGUAGES.has(lang)) {
@@ -110,37 +105,24 @@ export class TranslateCommand {
     return glossary.glossary_id;
   }
 
-  /**
-   * Translate text, file, or directory
-   * Fix for Issue #8: Cache stats to avoid redundant filesystem calls
-   * Fix for Issue #6: Reject symlinks for security (prevent directory traversal attacks)
-   */
   async translate(textOrPath: string, options: TranslateOptions): Promise<string> {
-    // Check if input is a file/directory with a single stat() call
-    // Cache the stats result to avoid duplicate syscalls later
     let stats: fs.Stats | null = null;
     try {
-      // First check if the path is a symlink using lstatSync (doesn't follow symlinks)
-      // This prevents directory traversal attacks and accessing sensitive files
       const lstat = fs.lstatSync(textOrPath);
       if (lstat.isSymbolicLink()) {
         throw new Error(`Symlinks are not supported for security reasons: ${textOrPath}`);
       }
 
-      // Now safe to use statSync (follows symlinks if any, but we already checked)
       stats = fs.statSync(textOrPath);
       if (stats.isDirectory()) {
         return this.translateDirectory(textOrPath, options);
       }
     } catch (error) {
-      // Re-throw symlink errors
       if (error instanceof Error && error.message.includes('Symlinks are not supported')) {
         throw error;
       }
-      // Not a file/directory, treat as text
     }
 
-    // Check if input is a file path (passing cached stats to avoid re-stating)
     if (this.isFilePath(textOrPath, stats)) {
       return this.translateFile(textOrPath, options, stats);
     }
@@ -148,36 +130,23 @@ export class TranslateCommand {
     return this.translateText(textOrPath, options);
   }
 
-  /**
-   * Check if input is a file path
-   * Handles cross-platform paths (Windows backslashes and Unix forward slashes)
-   * Excludes URLs from being treated as file paths
-   * Fix for Issue #8: Accept cached stats to avoid redundant filesystem calls
-   */
   private isFilePath(input: string, cachedStats?: fs.Stats | null): boolean {
-    // If we have cached stats and it's a file, return true immediately
     if (cachedStats && cachedStats.isFile()) {
       return true;
     }
 
-    // Check if file exists (only if we don't have cached stats)
     if (!cachedStats && fs.existsSync(input)) {
       return true;
     }
 
-    // Don't treat URLs as file paths
-    // Check for common URL protocols: http://, https://, ftp://, file://
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(input)) {
       return false;
     }
 
-    // Check for path separators (cross-platform)
-    // Windows: backslash (\), Unix: forward slash (/)
     const hasPathSep = input.includes(path.sep) ||
                        input.includes('/') ||
                        input.includes('\\');
 
-    // Must have path separator AND supported extension to be considered a file path
     return hasPathSep && this.fileTranslationService.isSupportedFile(input);
   }
 
@@ -229,20 +198,13 @@ export class TranslateCommand {
     }
   }
 
-  /**
-   * Translate file
-   * Fix for Issue #8: Accept cached stats to avoid redundant filesystem calls
-   */
   private async translateFile(filePath: string, options: TranslateOptions, cachedStats?: fs.Stats | null): Promise<string> {
     if (!options.output) {
       throw new Error('Output file path is required for file translation. Use --output <path>');
     }
 
-    // Check if translating to multiple languages (must be done BEFORE text file optimization)
     if (options.to.includes(',')) {
       const targetLangs = options.to.split(',').map(lang => lang.trim());
-
-      // Validate all language codes (Issue #3)
       this.validateLanguageCodes(targetLangs);
 
       // Now safe to cast as Language[]
@@ -274,10 +236,7 @@ export class TranslateCommand {
         results.map(r => `  [${r.targetLang}] ${r.outputPath}`).join('\n');
     }
 
-    // Smart routing for text-based files
-    // Use text API (cached) for small text files, document API for large files or binaries
     if (this.isTextBasedFile(filePath)) {
-      // Get file size from cached stats or stat the file (Fix for Issue #8)
       let fileSize: number | null;
       if (cachedStats) {
         fileSize = cachedStats.size;
@@ -308,7 +267,6 @@ export class TranslateCommand {
       return this.translateDocument(filePath, options);
     }
 
-    // Validate single language code for file translation (Issue #3)
     this.validateLanguageCodes([options.to]);
 
     // Single language translation using file translation service
@@ -359,7 +317,6 @@ export class TranslateCommand {
       return this.translateToMultiple(text, options);
     }
 
-    // Validate single language code (Issue #3)
     this.validateLanguageCodes([options.to]);
 
     // Build translation options
@@ -475,8 +432,6 @@ export class TranslateCommand {
    */
   private async translateToMultiple(text: string, options: TranslateOptions): Promise<string> {
     const targetLangs = options.to.split(',').map(lang => lang.trim());
-
-    // Validate all language codes (Issue #3)
     this.validateLanguageCodes(targetLangs);
 
     // Now safe to cast as Language[]
@@ -539,7 +494,6 @@ export class TranslateCommand {
       throw new Error('Output directory is required for batch translation. Use --output <dir>');
     }
 
-    // Validate language code (Issue #3)
     this.validateLanguageCodes([options.to]);
 
     // Build translation options
@@ -625,12 +579,7 @@ export class TranslateCommand {
     }
   }
 
-  /**
-   * Translate text-based file using text API (with caching)
-   * Used for small .txt, .md, .html, .srt, .xlf files
-   */
   private async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
-    // Validate language code (Issue #3)
     this.validateLanguageCodes([options.to]);
 
     // Read file content
@@ -727,11 +676,7 @@ export class TranslateCommand {
     });
   }
 
-  /**
-   * Translate binary document (PDF, DOCX, etc.)
-   */
   private async translateDocument(filePath: string, options: TranslateOptions): Promise<string> {
-    // Validate language code (Issue #3)
     this.validateLanguageCodes([options.to]);
 
     const outputPath = options.output!;

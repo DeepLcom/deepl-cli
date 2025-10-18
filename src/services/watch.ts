@@ -90,8 +90,6 @@ export class WatchService {
       ignoreInitial: true,
     };
 
-    // Apply pattern filter if specified
-    // Fix for Issue #6: Use proper glob matching with minimatch
     if (this.options.pattern ?? options.pattern) {
       watcherOptions.ignored = (filePath: string) => {
         const pattern = options.pattern ?? this.options.pattern;
@@ -100,10 +98,6 @@ export class WatchService {
         }
 
         const basename = path.basename(filePath);
-
-        // Use minimatch for proper glob pattern matching
-        // Returns true if file should be IGNORED (pattern does NOT match)
-        // Returns false if file should be WATCHED (pattern matches)
         return !minimatch(basename, pattern);
       };
     }
@@ -166,10 +160,7 @@ export class WatchService {
       // Wrap async code to handle Promise properly (void operator tells TypeScript we intentionally ignore the Promise)
       void (async () => {
         try {
-          // Double-check watch is still active (prevent race condition with stop())
-          // Use isWatching flag for reliable state checking
           if (!this.stats.isWatching) {
-            // Issue #11: Don't delete here - finally block handles cleanup
             return;
           }
 
@@ -181,8 +172,6 @@ export class WatchService {
           }
           Logger.error(`Translation failed for ${filePath}:`, error);
         } finally {
-          // Issue #11: Always delete timer here, even when stopped or on error
-          // This prevents double deletion and ensures consistent cleanup
           this.debounceTimers.delete(filePath);
         }
       })();

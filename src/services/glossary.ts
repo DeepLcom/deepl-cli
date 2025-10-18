@@ -364,11 +364,6 @@ export class GlossaryService {
     return entries;
   }
 
-  /**
-   * Parse a CSV line following RFC 4180
-   * Handles quoted fields, escaped quotes (double quotes), and commas inside quotes
-   * Fix for Issue #5: CSV parsing bug with quoted commas
-   */
   private parseCsvLine(line: string): string[] {
     const fields: string[] = [];
     let currentField = '';

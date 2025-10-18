@@ -129,19 +129,17 @@ export class DeepLClient {
         'Authorization': `DeepL-Auth-Key ${apiKey}`,
         'Connection': 'keep-alive',
       },
-      // Enable HTTP keep-alive for better performance in batch operations
-      // Issue #9: Reduced maxSockets from 50 to 10 for CLI tool resource management
       httpAgent: new http.Agent({
         keepAlive: true,
         keepAliveMsecs: 1000,
-        maxSockets: 10, // Conservative value for CLI tool to prevent resource exhaustion
+        maxSockets: 10,
         maxFreeSockets: 10,
         timeout: options.timeout ?? DEFAULT_TIMEOUT,
       }),
       httpsAgent: new https.Agent({
         keepAlive: true,
         keepAliveMsecs: 1000,
-        maxSockets: 10, // Conservative value for CLI tool to prevent resource exhaustion
+        maxSockets: 10,
         maxFreeSockets: 10,
         timeout: options.timeout ?? DEFAULT_TIMEOUT,
       }),
@@ -173,8 +171,6 @@ export class DeepLClient {
             };
           }
         } catch (error) {
-          // Invalid proxy URL - fail fast since user explicitly configured proxy via environment variable
-          // This prevents security issues where users think they're using a proxy but aren't (Issue #2)
           const errorMessage = error instanceof Error ? error.message : String(error);
           throw new Error(`Invalid proxy URL "${proxyUrl}": ${errorMessage}`);
         }
