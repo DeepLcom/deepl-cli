@@ -123,6 +123,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Location: `src/services/batch-translation.ts:81` (pLimit instance creation)
 
 ### Refactoring
+- **Code Cleanup: Extraneous Comments Removal** - Removed unnecessary comments across codebase
+  - Removed 37 issue reference comments (Issue #2-#12) from 7 files
+  - Removed 3 obvious/redundant comments from utility methods
+  - Total: 40 comments removed, 185 lines deleted
+  - Files affected: cache.ts, translate.ts, config.ts, deepl-client.ts, glossary.ts, document-translation.ts, watch.ts, git-hooks.ts, cli/index.ts, cli/commands/config.ts
+  - Follows project guideline: "Comment as sparsely as possible and only when it's unclear how certain code behaves"
+  - **Impact**: Cleaner, more maintainable code; easier to read without distracting issue references
+  - **Code Quality**: Removed outdated issue references and obvious comments that didn't add value
+  - All 1460 tests continue to pass (100% pass rate)
+
 - **Dead Code Removal: Undefined Marker** - Cleaned up unreachable code (Issue #7)
   - Removed undefined marker check from CacheService.get() method
   - Check was dead code: undefined values are never cached (Issue #10 fix prevents caching undefined)
