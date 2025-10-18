@@ -18,7 +18,6 @@ import {
   GlossaryLanguagePair,
 } from '../types';
 import { normalizeGlossaryInfo, GlossaryApiResponse } from '../types/glossary.js';
-import { Logger } from '../utils/logger.js';
 
 interface ProxyConfig {
   protocol?: 'http' | 'https';
@@ -173,8 +172,10 @@ export class DeepLClient {
             };
           }
         } catch (error) {
-          // Invalid proxy URL, warn user and continue without proxy
-          Logger.warn(`⚠️  Invalid proxy URL "${proxyUrl}", proceeding without proxy. Error: ${error instanceof Error ? error.message : String(error)}`);
+          // Invalid proxy URL - fail fast since user explicitly configured proxy via environment variable
+          // This prevents security issues where users think they're using a proxy but aren't (Issue #2)
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          throw new Error(`Invalid proxy URL "${proxyUrl}": ${errorMessage}`);
         }
       }
     }

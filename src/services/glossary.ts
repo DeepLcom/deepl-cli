@@ -325,7 +325,8 @@ export class GlossaryService {
       if (trimmed.includes('\t')) {
         parts = trimmed.split('\t');
       } else if (trimmed.includes(',')) {
-        parts = trimmed.split(',');
+        // Use proper CSV parsing for comma-separated values (handles quoted fields)
+        parts = this.parseCsvLine(trimmed);
       } else {
         // Line has no separator - skip it
         Logger.warn(`Line ${lineNumber}: No tab or comma separator found, skipping`);
@@ -361,5 +362,48 @@ export class GlossaryService {
     }
 
     return entries;
+  }
+
+  /**
+   * Parse a CSV line following RFC 4180
+   * Handles quoted fields, escaped quotes (double quotes), and commas inside quotes
+   * Fix for Issue #5: CSV parsing bug with quoted commas
+   */
+  private parseCsvLine(line: string): string[] {
+    const fields: string[] = [];
+    let currentField = '';
+    let inQuotes = false;
+    let i = 0;
+
+    while (i < line.length) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          // Escaped quote (two consecutive quotes = one quote character)
+          currentField += '"';
+          i += 2;
+        } else {
+          // Toggle quote state (entering or leaving quoted field)
+          inQuotes = !inQuotes;
+          i++;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // Field separator (only when not inside quotes)
+        fields.push(currentField);
+        currentField = '';
+        i++;
+      } else {
+        // Regular character
+        currentField += char;
+        i++;
+      }
+    }
+
+    // Add the last field
+    fields.push(currentField);
+
+    return fields;
   }
 }

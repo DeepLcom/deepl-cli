@@ -379,6 +379,54 @@ describe('GlossaryService', () => {
         REST: 'REST',
       });
     });
+
+    // Issue #5: CSV parsing with quoted commas
+    it('should handle CSV with quoted commas (Issue #5)', () => {
+      // CSV standard: commas inside quotes should not split fields
+      const csv = '"hello, world",hola mundo\n"goodbye, friend",adiós amigo';
+
+      const entries = glossaryService.tsvToEntries(csv);
+
+      expect(entries).toEqual({
+        'hello, world': 'hola mundo',
+        'goodbye, friend': 'adiós amigo',
+      });
+    });
+
+    it('should handle CSV with escaped quotes inside quoted fields (Issue #5)', () => {
+      // CSV standard: quotes inside quotes are escaped by doubling them
+      const csv = '"say ""hello""","di ""hola"""';
+
+      const entries = glossaryService.tsvToEntries(csv);
+
+      expect(entries).toEqual({
+        'say "hello"': 'di "hola"',
+      });
+    });
+
+    it('should handle CSV with mixed quoted and unquoted fields (Issue #5)', () => {
+      const csv = 'API,API\n"hello, world",hola\nREST,REST';
+
+      const entries = glossaryService.tsvToEntries(csv);
+
+      expect(entries).toEqual({
+        API: 'API',
+        'hello, world': 'hola',
+        REST: 'REST',
+      });
+    });
+
+    it('should handle CSV with whitespace around quoted fields (Issue #5)', () => {
+      // Whitespace outside quotes is typically preserved in CSV
+      const csv = ' "hello, world" , hola mundo ';
+
+      const entries = glossaryService.tsvToEntries(csv);
+
+      // After trimming quotes and whitespace
+      expect(entries).toEqual({
+        'hello, world': 'hola mundo',
+      });
+    });
   });
 
   describe('addEntry()', () => {

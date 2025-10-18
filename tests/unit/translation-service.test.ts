@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { TranslationService } from '../../src/services/translation';
-import { DeepLClient } from '../../src/api/deepl-client';
+import { DeepLClient, TranslationResult } from '../../src/api/deepl-client';
 import { ConfigService } from '../../src/storage/config';
 import { CacheService } from '../../src/storage/cache';
 import { Language } from '../../src/types';
@@ -325,6 +325,70 @@ describe('TranslationService', () => {
       // Should split into 2 batches of 50
       expect(mockDeepLClient.translateBatch).toHaveBeenCalledTimes(2);
     });
+
+    it('should correctly map results when first batch fails (CRITICAL BUG #3)', async () => {
+      // This test demonstrates the critical index mismatch bug
+      // Scenario: 100 texts, first batch (50 texts) fails, second batch (50 texts) succeeds
+      const batch1Texts = Array(50).fill(0).map((_, i) => `Text${i}`);
+      const batch2Texts = Array(50).fill(0).map((_, i) => `Text${i + 50}`);
+      const allTexts = [...batch1Texts, ...batch2Texts];
+
+      // First batch fails, second batch succeeds
+      mockDeepLClient.translateBatch
+        .mockRejectedValueOnce(new Error('API error for first batch'))
+        .mockResolvedValueOnce(batch2Texts.map(t => ({ text: `${t}_translated` })));
+
+      const results = await translationService.translateBatch(allTexts, {
+        targetLang: 'es',
+      });
+
+      // Should have 50 successful translations from second batch
+      expect(results).toHaveLength(50);
+
+      // CRITICAL: Verify correct mapping
+      // Bug would map second batch results to first batch indices
+      // Correct: second batch results should map to second batch indices
+
+      // Check that we got translations for batch2, not batch1
+      for (let i = 0; i < 50; i++) {
+        expect(results[i]?.text).toBe(`Text${i + 50}_translated`);
+      }
+
+      // Verify cache was populated with correct mappings
+      const cacheSetCalls = mockCacheService.set.mock.calls;
+      expect(cacheSetCalls.length).toBe(50); // 50 successful translations cached
+
+      // Verify a specific text was cached correctly
+      const text55CacheCall = cacheSetCalls.find(call => {
+        const result = call[1] as TranslationResult;
+        return result.text === 'Text55_translated';
+      });
+      expect(text55CacheCall).toBeDefined();
+    });
+
+    it('should handle partial batch failures correctly', async () => {
+      // Test with 100 texts split into 2 batches (50 each)
+      // Batch 1 succeeds, Batch 2 fails
+      const batch1Texts = Array(50).fill(0).map((_, i) => `Text${i}`);
+      const batch2Texts = Array(50).fill(0).map((_, i) => `Text${i + 50}`);
+      const allTexts = [...batch1Texts, ...batch2Texts];
+
+      mockDeepLClient.translateBatch
+        .mockResolvedValueOnce(batch1Texts.map(t => ({ text: `${t}_translated` }))) // Batch 1 succeeds
+        .mockRejectedValueOnce(new Error('API error for second batch')); // Batch 2 fails
+
+      const results = await translationService.translateBatch(allTexts, {
+        targetLang: 'es',
+      });
+
+      // Should return 50 successful translations from first batch
+      expect(results).toHaveLength(50);
+
+      // Verify correct translations for first batch
+      for (let i = 0; i < 50; i++) {
+        expect(results[i]?.text).toBe(`Text${i}_translated`);
+      }
+    });
   });
 
   describe('translateToMultiple()', () => {
@@ -522,6 +586,60 @@ describe('TranslationService', () => {
       expect(result.text).toContain('{name}');
       expect(result.text).toContain('${count}');
       expect(result.text).toContain('%s');
+    });
+
+    it('should preserve many variables efficiently (Issue #7)', async () => {
+      // Test with many variables to ensure efficient placeholder generation
+      const text = Array(100).fill(0).map((_, i) => `{var${i}}`).join(' ');
+
+      mockDeepLClient.translate.mockImplementation((translatedText) => Promise.resolve({
+        text: translatedText, // Echo back with placeholders
+      }));
+
+      const result = await translationService.translate(text, {
+        targetLang: 'es',
+      });
+
+      // All variables should be preserved
+      for (let i = 0; i < 100; i++) {
+        expect(result.text).toContain(`{var${i}}`);
+      }
+    });
+
+    it('should handle duplicate variable names correctly', async () => {
+      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
+        text: text.replace('and', 'y'),
+      }));
+
+      const result = await translationService.translate('{name} and {name} and {name}', {
+        targetLang: 'es',
+      });
+
+      // Should preserve all three {name} instances
+      const nameCount = (result.text.match(/\{name\}/g) || []).length;
+      expect(nameCount).toBe(3);
+    });
+
+    it('should generate unique placeholders for each variable instance', async () => {
+      // Test that placeholders don't collide even with same variable names
+      const text = '{x} {x} {x}'; // Three instances of {x}
+
+      let receivedText = '';
+      mockDeepLClient.translate.mockImplementation((text) => {
+        receivedText = text;
+        return Promise.resolve({ text });
+      });
+
+      await translationService.translate(text, { targetLang: 'es' });
+
+      // Check that the text sent to API has three DIFFERENT placeholders
+      // (even though the original had three identical variables)
+      const placeholders = receivedText.match(/__VAR_\w+__/g) || [];
+      expect(placeholders.length).toBe(3);
+
+      // All placeholders should be unique (no collisions)
+      const uniquePlaceholders = new Set(placeholders);
+      expect(uniquePlaceholders.size).toBe(3);
     });
   });
 

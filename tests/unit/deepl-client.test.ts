@@ -795,6 +795,39 @@ describe('DeepLClient', () => {
       expect(proxyClient).toBeDefined();
       delete process.env['HTTPS_PROXY'];
     });
+
+    // Issue #2: Invalid proxy URL should throw error, not continue silently
+    it('should throw error for invalid proxy URL from environment variable (Issue #2)', () => {
+      process.env['HTTP_PROXY'] = 'not-a-valid-url';
+      expect(() => {
+        new DeepLClient(apiKey);
+      }).toThrow('Invalid proxy URL');
+      delete process.env['HTTP_PROXY'];
+    });
+
+    it('should throw error for malformed proxy URL from environment variable (Issue #2)', () => {
+      process.env['HTTP_PROXY'] = 'http://';
+      expect(() => {
+        new DeepLClient(apiKey);
+      }).toThrow('Invalid proxy URL');
+      delete process.env['HTTP_PROXY'];
+    });
+
+    it('should throw error for proxy URL with spaces (Issue #2)', () => {
+      process.env['HTTP_PROXY'] = 'http://proxy example.com:8080';
+      expect(() => {
+        new DeepLClient(apiKey);
+      }).toThrow('Invalid proxy URL');
+      delete process.env['HTTP_PROXY'];
+    });
+
+    it('should include original error message when proxy URL is invalid (Issue #2)', () => {
+      process.env['HTTP_PROXY'] = 'not-a-valid-url';
+      expect(() => {
+        new DeepLClient(apiKey);
+      }).toThrow(/Invalid proxy URL.*not-a-valid-url/);
+      delete process.env['HTTP_PROXY'];
+    });
   });
 
   describe('improveText()', () => {
