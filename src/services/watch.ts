@@ -131,10 +131,19 @@ export class WatchService {
 
   /**
    * Handle file change event
+   * Uses isWatching flag to prevent race conditions with stop()
    */
   handleFileChange(filePath: string): void {
+    // Check if watch has been started at least once
     if (!this.watchOptions) {
       throw new Error('Watch not started');
+    }
+
+    // Early check: Don't schedule new timers if watch is being stopped or has stopped
+    // This prevents race conditions where stop() is called between the check above
+    // and scheduling the timer below
+    if (!this.stats.isWatching) {
+      return;
     }
 
     // Check if file is supported
@@ -157,8 +166,9 @@ export class WatchService {
       // Wrap async code to handle Promise properly (void operator tells TypeScript we intentionally ignore the Promise)
       void (async () => {
         try {
-          // Check if watch is still active (prevent race condition with stop())
-          if (!this.watchOptions) {
+          // Double-check watch is still active (prevent race condition with stop())
+          // Use isWatching flag for reliable state checking
+          if (!this.stats.isWatching) {
             this.debounceTimers.delete(filePath);
             return;
           }

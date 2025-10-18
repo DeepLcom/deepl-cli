@@ -115,6 +115,8 @@ export class TranslateCommand {
 
   /**
    * Check if input is a file path
+   * Handles cross-platform paths (Windows backslashes and Unix forward slashes)
+   * Excludes URLs from being treated as file paths
    */
   private isFilePath(input: string): boolean {
     // Check if file exists
@@ -122,8 +124,20 @@ export class TranslateCommand {
       return true;
     }
 
-    // If input contains file extensions, might be a file
-    return this.fileTranslationService.isSupportedFile(input) && input.includes('/');
+    // Don't treat URLs as file paths
+    // Check for common URL protocols: http://, https://, ftp://, file://
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(input)) {
+      return false;
+    }
+
+    // Check for path separators (cross-platform)
+    // Windows: backslash (\), Unix: forward slash (/)
+    const hasPathSep = input.includes(path.sep) ||
+                       input.includes('/') ||
+                       input.includes('\\');
+
+    // Must have path separator AND supported extension to be considered a file path
+    return hasPathSep && this.fileTranslationService.isSupportedFile(input);
   }
 
   /**

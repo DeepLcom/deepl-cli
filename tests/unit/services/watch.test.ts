@@ -663,4 +663,157 @@ describe('WatchService', () => {
       expect(() => watchService.handleFileChange(testFile)).toThrow('Watch not started');
     });
   });
+
+  describe('race condition handling (Issue #1)', () => {
+    it('should not execute timer callback if watch is stopped after timer is scheduled', async () => {
+      jest.useFakeTimers();
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: 500,
+      });
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      await service.watch(testDir, options);
+
+      // Schedule timer (file change event)
+      service.handleFileChange(testFile);
+
+      // Stop immediately (before timer fires)
+      await service.stop();
+
+      // Now advance time (timer callback should be cancelled or should check watch state)
+      jest.advanceTimersByTime(500);
+      await Promise.resolve();
+
+      // Translation should NOT occur because watch was stopped
+      expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
+
+      jest.useRealTimers();
+    });
+
+    it('should not schedule new timers if watch is stopped', async () => {
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      await watchService.watch(testDir, options);
+      await watchService.stop();
+
+      // Try to trigger file change after stop
+      // Should not throw, but also should not schedule translation
+      expect(() => watchService.handleFileChange(testFile)).toThrow('Watch not started');
+    });
+
+    it('should handle rapid start/stop cycles without orphaned timers', async () => {
+      jest.useFakeTimers();
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: 300,
+      });
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      // Rapid start/stop cycles
+      await service.watch(testDir, options);
+      service.handleFileChange(testFile);
+      await service.stop();
+
+      await service.watch(testDir, options);
+      service.handleFileChange(testFile);
+      await service.stop();
+
+      await service.watch(testDir, options);
+      service.handleFileChange(testFile);
+      await service.stop();
+
+      // Fast-forward all timers
+      jest.advanceTimersByTime(1000);
+      await Promise.resolve();
+
+      // No translations should occur (all timers cancelled on stop)
+      expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
+
+      jest.useRealTimers();
+    });
+
+    it('should check watch state inside timer callback to prevent race condition', async () => {
+      jest.useFakeTimers();
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: 500,
+      });
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      await service.watch(testDir, options);
+      service.handleFileChange(testFile);
+
+      // Fast-forward to just before timer fires
+      jest.advanceTimersByTime(499);
+
+      // Stop now (timer is about to fire in 1ms)
+      await service.stop();
+
+      // Fire the timer (it's already in the event loop queue)
+      jest.advanceTimersByTime(1);
+      await Promise.resolve();
+
+      // Translation should NOT occur - the timer callback should check watch state
+      expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
+
+      jest.useRealTimers();
+    });
+
+    it('should not throw errors if timer callback executes after stop', async () => {
+      jest.useFakeTimers();
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: 300,
+      });
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      await service.watch(testDir, options);
+      service.handleFileChange(testFile);
+      await service.stop();
+
+      // Should not throw when timer fires after stop
+      expect(() => {
+        jest.advanceTimersByTime(300);
+      }).not.toThrow();
+
+      jest.useRealTimers();
+    });
+  });
 });

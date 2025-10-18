@@ -1355,4 +1355,157 @@ describe('TranslateCommand', () => {
       expect(mockFs.readFileSync).toHaveBeenCalledWith('/path/to/unicode.txt', 'utf-8');
     });
   });
+
+  describe('isFilePath() - cross-platform path detection (Issue #4)', () => {
+    it('should detect Windows paths with backslashes (C:\\Users\\file.txt)', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      // Access the private isFilePath method via translate()
+      // Windows path should be detected as file path
+      const spy = jest.spyOn(translateCommand as any, 'translateFile')
+        .mockResolvedValue('File translation result');
+
+      // Mock fileTranslationService.isSupportedFile to return true for .txt
+      const mockFileService = (translateCommand as any).fileTranslationService;
+      jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
+
+      await translateCommand.translate('C:\\Users\\Documents\\file.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      expect(spy).toHaveBeenCalledWith('C:\\Users\\Documents\\file.txt', { to: 'es', output: '/out.txt' });
+      spy.mockRestore();
+    });
+
+    it('should detect Unix paths with forward slashes (/home/user/file.txt)', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      const spy = jest.spyOn(translateCommand as any, 'translateFile')
+        .mockResolvedValue('File translation result');
+
+      const mockFileService = (translateCommand as any).fileTranslationService;
+      jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
+
+      await translateCommand.translate('/home/user/documents/file.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      expect(spy).toHaveBeenCalledWith('/home/user/documents/file.txt', { to: 'es', output: '/out.txt' });
+      spy.mockRestore();
+    });
+
+    it('should NOT treat URLs as file paths (http://example.com/file.txt)', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      const mockFileService = (translateCommand as any).fileTranslationService;
+      jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
+
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Texto traducido',
+      });
+
+      // URL should be treated as text, not file path
+      await translateCommand.translate('http://example.com/file.txt', {
+        to: 'es',
+      });
+
+      // Should call translateText, NOT translateFile
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'http://example.com/file.txt',
+        expect.any(Object),
+        expect.any(Object)
+      );
+    });
+
+    it('should NOT treat text containing "/" as file path', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      const mockFileService = (translateCommand as any).fileTranslationService;
+      jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(false);
+
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Texto traducido',
+      });
+
+      // Text with / should be treated as text, not file path
+      await translateCommand.translate('Check https://example.com for details', {
+        to: 'es',
+      });
+
+      // Should call translateText, NOT translateFile
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Check https://example.com for details',
+        expect.any(Object),
+        expect.any(Object)
+      );
+    });
+
+    it('should detect relative Windows paths (folder\\file.txt)', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      const spy = jest.spyOn(translateCommand as any, 'translateFile')
+        .mockResolvedValue('File translation result');
+
+      const mockFileService = (translateCommand as any).fileTranslationService;
+      jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
+
+      await translateCommand.translate('folder\\subfolder\\file.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      expect(spy).toHaveBeenCalledWith('folder\\subfolder\\file.txt', { to: 'es', output: '/out.txt' });
+      spy.mockRestore();
+    });
+
+    it('should detect relative Unix paths (folder/file.txt)', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      const spy = jest.spyOn(translateCommand as any, 'translateFile')
+        .mockResolvedValue('File translation result');
+
+      const mockFileService = (translateCommand as any).fileTranslationService;
+      jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
+
+      await translateCommand.translate('folder/subfolder/file.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      expect(spy).toHaveBeenCalledWith('folder/subfolder/file.txt', { to: 'es', output: '/out.txt' });
+      spy.mockRestore();
+    });
+
+    it('should handle files with no path separator (file.txt) as text when file doesn\'t exist', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      const mockFileService = (translateCommand as any).fileTranslationService;
+      jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
+
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'archivo.txt',
+      });
+
+      // No path separator and file doesn't exist -> treat as text
+      await translateCommand.translate('file.txt', {
+        to: 'es',
+      });
+
+      // Should call translateText, NOT translateFile
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'file.txt',
+        expect.any(Object),
+        expect.any(Object)
+      );
+    });
+  });
 });
