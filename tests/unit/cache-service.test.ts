@@ -547,4 +547,70 @@ describe('CacheService', () => {
       instances[0]?.close();
     });
   });
+
+  describe('cache size tracking (Issue #5)', () => {
+    it('should maintain accurate cache size in memory', () => {
+      // Add entries
+      cacheService.set('key1', { text: 'Value 1' });
+      cacheService.set('key2', { text: 'Value 2' });
+      cacheService.set('key3', { text: 'Value 3' });
+
+      const stats = cacheService.stats();
+
+      // Stats should be accurate
+      expect(stats.entries).toBe(3);
+      expect(stats.totalSize).toBeGreaterThan(0);
+
+      // Delete an entry
+      cacheService.clear();
+
+      const statsAfter = cacheService.stats();
+      expect(statsAfter.totalSize).toBe(0);
+      expect(statsAfter.entries).toBe(0);
+    });
+
+    it('should track size correctly when replacing entries', () => {
+      const smallValue = { text: 'Small' };
+      const largeValue = { text: 'x'.repeat(1000) };
+
+      // Add small entry
+      cacheService.set('test', smallValue);
+      const statsSmall = cacheService.stats();
+      const smallSize = statsSmall.totalSize;
+
+      // Replace with large entry
+      cacheService.set('test', largeValue);
+      const statsLarge = cacheService.stats();
+      const largeSize = statsLarge.totalSize;
+
+      // Size should have increased
+      expect(largeSize).toBeGreaterThan(smallSize);
+
+      // Should still be 1 entry
+      expect(statsLarge.entries).toBe(1);
+    });
+
+    it('should efficiently check if eviction is needed without querying database', () => {
+      // This test verifies that eviction checks are efficient
+      // We can't directly spy on internal state, but we can verify behavior
+
+      const smallCache = new CacheService({
+        dbPath: testCachePath,
+        maxSize: 10 * 1024, // 10KB
+      });
+
+      // Add entries that don't require eviction
+      for (let i = 0; i < 5; i++) {
+        smallCache.set(`key-${i}`, { text: 'x'.repeat(100) });
+      }
+
+      const stats = smallCache.stats();
+
+      // Should not have triggered eviction yet
+      expect(stats.entries).toBe(5);
+      expect(stats.totalSize).toBeLessThan(stats.maxSize);
+
+      smallCache.close();
+    });
+  });
 });

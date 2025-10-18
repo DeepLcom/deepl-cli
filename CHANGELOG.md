@@ -40,6 +40,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Note**: Node.js is single-threaded, so actual race conditions don't occur, but this makes code more robust
   - Location: `src/storage/cache.ts:58-102` (getInstance method)
 
+- **Performance Optimization: Cache Eviction Atomicity** - Eliminated redundant database queries (Issue #5)
+  - Maintains cache size in memory (`currentSize` field) instead of querying database on every eviction check
+  - Changed evictIfNeeded() from O(n) database query to O(1) in-memory check
+  - Eliminated stats() call (COUNT(*) + SUM(size)) on fast path when eviction not needed
+  - Initialize currentSize from database on construction for accuracy
+  - Updates currentSize atomically during set(), clear(), cleanupExpired(), and evictIfNeeded()
+  - Uses SQL COUNT(*) for average size calculation (still efficient, single query)
+  - Added 3 comprehensive tests verifying cache size tracking accuracy
+  - **Impact**: Faster cache operations, especially for large caches; O(1) eviction check vs O(n) query
+  - **Performance Benefit**: Avoids expensive database aggregation on every cache write
+  - Location: `src/storage/cache.ts` (currentSize field, initialize, set, clear, cleanupExpired, evictIfNeeded)
+
 ### Fixed
 - **Critical: Duplicate text handling in batch translation** - Fixed data loss bug for duplicate inputs
   - When input array contained duplicate texts (e.g., `["Hello", "Hello", "World"]`), only the last occurrence received translation

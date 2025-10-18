@@ -39,6 +39,7 @@ export class CacheService {
   private ttl: number;
   private enabled: boolean = true;
   private isClosed: boolean = false;
+  private currentSize: number = 0; // Track total cache size in memory (Issue #5)
 
   constructor(options: CacheServiceOptions = {}) {
     const dbPath = options.dbPath ?? path.join(os.homedir(), '.deepl-cli', 'cache.db');
@@ -103,6 +104,7 @@ export class CacheService {
 
   /**
    * Initialize database schema
+   * Fix for Issue #5: Initialize currentSize from database
    */
   private initialize(): void {
     this.db.exec(`
@@ -114,6 +116,10 @@ export class CacheService {
       );
       CREATE INDEX IF NOT EXISTS idx_timestamp ON cache(timestamp);
     `);
+
+    // Initialize currentSize from existing database entries
+    const row = this.db.prepare('SELECT COALESCE(SUM(size), 0) as total FROM cache').get() as { total: number };
+    this.currentSize = row.total;
   }
 
   /**
@@ -161,6 +167,7 @@ export class CacheService {
 
   /**
    * Set value in cache
+   * Fix for Issue #5: Update currentSize in memory
    */
   set(key: string, value: unknown): void {
     if (!this.enabled) {
@@ -196,13 +203,19 @@ export class CacheService {
     `);
 
     stmt.run(key, json, timestamp, size);
+
+    // Update in-memory size tracker (Issue #5)
+    // If replacing, subtract old size and add new size
+    this.currentSize = this.currentSize - existingSize + size;
   }
 
   /**
    * Clear all cache entries
+   * Fix for Issue #5: Reset currentSize to 0
    */
   clear(): void {
     this.db.exec('DELETE FROM cache');
+    this.currentSize = 0;
   }
 
   /**
@@ -259,6 +272,7 @@ export class CacheService {
 
   /**
    * Clean up expired entries
+   * Fix for Issue #5: Update currentSize after cleanup
    */
   private cleanupExpired(): void {
     if (this.ttl === 0) {
@@ -266,32 +280,60 @@ export class CacheService {
     }
 
     const expirationTime = Date.now() - this.ttl;
+
+    // Calculate size of entries being deleted before deleting them
+    const sizeStmt = this.db.prepare('SELECT COALESCE(SUM(size), 0) as total FROM cache WHERE timestamp < ?');
+    const sizeRow = sizeStmt.get(expirationTime) as { total: number };
+    const deletedSize = sizeRow.total;
+
+    // Delete expired entries
     this.db.prepare('DELETE FROM cache WHERE timestamp < ?').run(expirationTime);
+
+    // Update in-memory size tracker
+    this.currentSize -= deletedSize;
   }
 
   /**
    * Evict oldest entries if needed to make space
+   * Fix for Issue #5: Use in-memory currentSize instead of querying database
    * Fix for Issue #9: Use SQL DELETE ... LIMIT to avoid loading all entries into memory
    */
   private evictIfNeeded(newEntrySize: number): void {
-    const stats = this.stats();
-
-    if (stats.totalSize + newEntrySize <= this.maxSize) {
+    // Use in-memory currentSize for O(1) check instead of O(n) database query
+    if (this.currentSize + newEntrySize <= this.maxSize) {
       return; // Enough space available
     }
 
     // Calculate how much space we need to free
     // Add a small buffer to ensure we have enough space
-    const toFree = stats.totalSize + newEntrySize - this.maxSize + 1;
+    const toFree = this.currentSize + newEntrySize - this.maxSize + 1;
+
+    // Get count for average size calculation (single query)
+    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM cache');
+    const countRow = countStmt.get() as { count: number };
+    const entries = countRow.count;
 
     // Estimate how many entries to delete based on average size
     // This avoids loading all entries into memory for large caches
-    const avgSize = stats.entries > 0 ? stats.totalSize / stats.entries : 1024;
+    const avgSize = entries > 0 ? this.currentSize / entries : 1024;
     const estimatedEntries = Math.ceil(toFree / avgSize);
 
     // Add 20% buffer to ensure we delete enough entries
     // This handles cases where oldest entries are larger than average
     const entriesToDelete = Math.ceil(estimatedEntries * 1.2);
+
+    // Calculate total size of entries we're about to delete
+    const deleteSizeStmt = this.db.prepare(`
+      SELECT COALESCE(SUM(size), 0) as total
+      FROM cache
+      WHERE key IN (
+        SELECT key FROM cache
+        ORDER BY timestamp ASC
+        LIMIT ?
+      )
+    `);
+    const deleteSizeRow = deleteSizeStmt.get(entriesToDelete) as { total: number };
+    const deletedSize = deleteSizeRow.total;
 
     // Delete oldest entries efficiently using SQL subquery
     // This executes entirely in SQLite without loading data into Node.js memory
@@ -303,5 +345,8 @@ export class CacheService {
         LIMIT ?
       )
     `).run(entriesToDelete);
+
+    // Update in-memory size tracker
+    this.currentSize -= deletedSize;
   }
 }
