@@ -62,6 +62,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Performance Trade-off**: Minimal impact on throughput; CLI rarely needs >10 concurrent connections
   - Location: `src/api/deepl-client.ts:133-147` (HTTP/HTTPS agent configuration)
 
+### Fixed
+- **Document Translation Cancellation Responsiveness** - Improved abort handling after sleep (Issue #10)
+  - Added defensive check after sleep() completes to detect cancellation immediately
+  - Previously, cancellation detection waited until next polling iteration
+  - Now exits immediately if AbortSignal was triggered during sleep
+  - sleep() method already had isSettled flag to prevent double settlement (correct)
+  - This change adds explicit abort check after await completes for faster response
+  - Avoids unnecessary poll interval calculation when operation is cancelled
+  - **Impact**: More responsive cancellation behavior; exits faster when Ctrl+C pressed
+  - **Technical Detail**: Defensive programming - catches edge case where abort happens just as sleep completes
+  - Location: `src/services/document-translation.ts:182-186` (post-sleep abort check)
+
 ### Security
 - **Symlink Path Validation** - Prevents directory traversal attacks (Issue #6)
   - Rejects symlinks at translate() entry point before processing files

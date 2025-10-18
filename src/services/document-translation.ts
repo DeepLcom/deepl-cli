@@ -178,6 +178,13 @@ export class DocumentTranslationService {
 
       // Wait before next poll with exponential backoff
       await this.sleep(pollInterval, abortSignal);
+
+      // Issue #10: Defensive check after sleep completes
+      // Exit immediately if cancelled during sleep instead of calculating new interval
+      if (abortSignal?.aborted) {
+        throw new Error('Document translation cancelled');
+      }
+
       pollInterval = Math.min(
         pollInterval * this.BACKOFF_MULTIPLIER,
         this.MAX_POLL_INTERVAL
