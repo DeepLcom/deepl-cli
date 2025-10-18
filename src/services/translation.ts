@@ -385,20 +385,29 @@ export class TranslationService {
 
   /**
    * Generate cache key from text and options
+   *
+   * IMPORTANT: This method creates a new object with properties in a FIXED order
+   * to ensure deterministic cache keys. Two translation requests with identical
+   * parameters must generate the same cache key, regardless of the order in which
+   * properties were specified in the input options object.
+   *
+   * The property order in `cacheData` is intentional and must not be changed,
+   * as it directly affects cache key generation via JSON.stringify().
    */
   private generateCacheKey(text: string, options: TranslationOptions): string {
-    // Create a stable representation of the translation request
+    // Create a stable representation with deterministic property order
+    // Property order matters because JSON.stringify() preserves insertion order
     const cacheData = {
-      text,
-      targetLang: options.targetLang,
-      sourceLang: options.sourceLang,
-      formality: options.formality,
-      glossaryId: options.glossaryId,
-      context: options.context,
-      // Note: preserveFormatting doesn't affect translation output caching
+      text,                      // 1. Text to translate
+      targetLang: options.targetLang,    // 2. Target language
+      sourceLang: options.sourceLang,    // 3. Source language (if specified)
+      formality: options.formality,      // 4. Formality level
+      glossaryId: options.glossaryId,    // 5. Glossary ID
+      context: options.context,          // 6. Context hint
+      // Note: preserveFormatting doesn't affect translation output, so not cached
     };
 
-    // Generate SHA-256 hash
+    // Generate SHA-256 hash of the stable representation
     const hash = crypto
       .createHash('sha256')
       .update(JSON.stringify(cacheData))

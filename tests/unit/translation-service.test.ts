@@ -907,5 +907,80 @@ describe('TranslationService', () => {
       expect(mockCacheService.set).not.toHaveBeenCalled();
       expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1);
     });
+
+    it('should generate deterministic cache keys regardless of option order (BUG #1)', async () => {
+      // This test demonstrates that cache keys must be deterministic
+      // Two requests with identical options but different ordering should use the same cache key
+
+      // Reset mocks to ensure clean state
+      mockCacheService.get.mockReturnValue(null); // No cache hits
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola',
+      });
+
+      // First call with options in one order
+      await translationService.translate('Hello', {
+        targetLang: 'es',
+        sourceLang: 'en',
+        formality: 'more',
+        glossaryId: 'glossary-123',
+        context: 'greeting',
+      });
+
+      // Second call with identical options but different ordering
+      await translationService.translate('Hello', {
+        context: 'greeting',
+        glossaryId: 'glossary-123',
+        formality: 'more',
+        sourceLang: 'en',
+        targetLang: 'es',
+      });
+
+      // Verify the cache keys are the same by checking cache.set calls
+      const cacheSetCalls = mockCacheService.set.mock.calls;
+      expect(cacheSetCalls.length).toBe(2); // Two calls, should generate same key
+
+      // Extract the cache keys (first parameter of each set call)
+      const key1 = cacheSetCalls[0]?.[0] as string;
+      const key2 = cacheSetCalls[1]?.[0] as string;
+
+      // The cache keys MUST be identical despite different option ordering
+      // This is critical for cache hit rate - identical requests should use the same key
+      expect(key1).toBe(key2);
+    });
+
+    it('should use cached result when options are provided in different order', async () => {
+      // Set up cache to return a hit for the second call
+      let callCount = 0;
+      mockCacheService.get.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return null; // First call: miss
+        }
+        return { text: 'Hola (cached)' }; // Second call: hit
+      });
+
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola (fresh)',
+      });
+
+      // First call
+      const result1 = await translationService.translate('Hello', {
+        targetLang: 'es',
+        formality: 'more',
+      });
+      expect(result1.text).toBe('Hola (fresh)');
+      expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1);
+
+      // Second call with same options but different order
+      const result2 = await translationService.translate('Hello', {
+        formality: 'more',
+        targetLang: 'es',
+      });
+
+      // Should use cached result
+      expect(result2.text).toBe('Hola (cached)');
+      expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1); // Still only 1 API call
+    });
   });
 });

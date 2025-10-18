@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Cache Key Determinism Documentation** - Documented intentional property ordering for cache keys
+  - Added comprehensive test to verify cache keys are identical regardless of option order
+  - Added detailed documentation explaining why property order matters in `generateCacheKey()`
+  - Property order in cache data object is now explicitly documented as intentional
+  - Prevents accidental cache key breakage from property reordering
+  - **Impact**: Ensures future developers understand the importance of property order
+  - Location: `src/services/translation.ts:386-417`, test added to `tests/unit/translation-service.test.ts`
+
 ### Changed
 - **Test Coverage Enhancement** - Comprehensive integration and E2E test expansion
   - Created 10 new test files covering critical workflows and CLI behavior
