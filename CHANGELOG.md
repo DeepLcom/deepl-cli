@@ -16,6 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Impact**: Ensures future developers understand the importance of property order
   - Location: `src/services/translation.ts:386-417`, test added to `tests/unit/translation-service.test.ts`
 
+- **Language Code Validation** - Upfront validation prevents late API errors (Issue #3)
+  - Validates all language codes before making API calls
+  - Applies to single language (`--to es`) and multiple languages (`--to es,fr,de`)
+  - Validates across all translation workflows: text, file, directory, and document translation
+  - Clear error messages list all 30 valid language codes
+  - Empty language codes after trimming are detected and rejected
+  - **Impact**: Users get immediate feedback about invalid language codes instead of cryptic API errors
+  - **Example**: `deepl translate "Hello" --to invalid` now shows: "Invalid target language code: "invalid". Valid codes: ar, bg, cs, ..."
+  - Added 6 comprehensive tests covering single/multi-language validation
+  - Location: `src/cli/commands/translate.ts:81-92` (validation method), multiple call sites
+
 ### Fixed
 - **Critical: Duplicate text handling in batch translation** - Fixed data loss bug for duplicate inputs
   - When input array contained duplicate texts (e.g., `["Hello", "Hello", "World"]`), only the last occurrence received translation

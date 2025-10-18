@@ -1509,4 +1509,82 @@ describe('TranslateCommand', () => {
       );
     });
   });
+
+  describe('multi-language validation (Issue #3)', () => {
+    it('should reject invalid language codes in comma-separated list', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'es,invalid,fr',
+        })
+      ).rejects.toThrow('Invalid target language code: "invalid"');
+    });
+
+    it('should accept all valid language codes', async () => {
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'fr', text: 'Bonjour' },
+        { targetLang: 'de', text: 'Hallo' },
+      ]);
+
+      const result = await translateCommand.translateText('Hello', {
+        to: 'es,fr,de',
+      });
+
+      expect(result).toContain('Hola');
+      expect(result).toContain('Bonjour');
+      expect(result).toContain('Hallo');
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        ['es', 'fr', 'de'],
+        expect.any(Object)
+      );
+    });
+
+    it('should reject invalid single language code', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'invalid',
+        })
+      ).rejects.toThrow('Invalid target language code: "invalid"');
+    });
+
+    it('should trim whitespace in language codes', async () => {
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'fr', text: 'Bonjour' },
+      ]);
+
+      const result = await translateCommand.translateText('Hello', {
+        to: ' es , fr ',
+      });
+
+      expect(result).toContain('Hola');
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        ['es', 'fr'],
+        expect.any(Object)
+      );
+    });
+
+    it('should reject empty language codes after trimming', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'es,,fr',
+        })
+      ).rejects.toThrow('Invalid target language code: ""');
+    });
+
+    it('should validate language codes for file translation', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1024, isDirectory: () => false } as any);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
+
+      await expect(
+        (translateCommand as any).translateFile('/input.txt', {
+          to: 'es,invalid,fr',
+          output: '/output',
+        })
+      ).rejects.toThrow('Invalid target language code: "invalid"');
+    });
+  });
 });

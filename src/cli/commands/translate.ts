@@ -16,6 +16,13 @@ import { Language } from '../../types/index.js';
 import { formatTranslationJson, formatMultiTranslationJson, formatMultiTranslationTable } from '../../utils/formatters.js';
 import { Logger } from '../../utils/logger.js';
 
+// Valid language codes supported by DeepL
+const VALID_LANGUAGES: ReadonlySet<string> = new Set([
+  'ar', 'bg', 'cs', 'da', 'de', 'el', 'en', 'es', 'et', 'fi', 'fr',
+  'hu', 'id', 'it', 'ja', 'ko', 'lt', 'lv', 'nb', 'nl', 'pl', 'pt',
+  'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'zh'
+]);
+
 // Constants for text-based file caching
 const TEXT_BASED_EXTENSIONS = ['.txt', '.md', '.html', '.htm', '.srt', '.xlf', '.xliff'];
 const SAFE_TEXT_SIZE_LIMIT = 100 * 1024; // 100 KiB (safe threshold, API limit is 128 KiB)
@@ -69,6 +76,19 @@ export class TranslateCommand {
     );
     this.glossaryService = glossaryService;
     this.config = config;
+  }
+
+  /**
+   * Validate language codes
+   * Throws error if any language code is invalid
+   * Fix for Issue #3: Validate language codes upfront to provide clear error messages
+   */
+  private validateLanguageCodes(langCodes: string[]): void {
+    for (const lang of langCodes) {
+      if (!VALID_LANGUAGES.has(lang)) {
+        throw new Error(`Invalid target language code: "${lang}". Valid codes: ${Array.from(VALID_LANGUAGES).sort().join(', ')}`);
+      }
+    }
   }
 
   /**
@@ -207,7 +227,13 @@ export class TranslateCommand {
 
     // Check if translating to multiple languages (must be done BEFORE text file optimization)
     if (options.to.includes(',')) {
-      const targetLangs = options.to.split(',').map(lang => lang.trim()) as Language[];
+      const targetLangs = options.to.split(',').map(lang => lang.trim());
+
+      // Validate all language codes (Issue #3)
+      this.validateLanguageCodes(targetLangs);
+
+      // Now safe to cast as Language[]
+      const validTargetLangs = targetLangs as Language[];
 
       const translationOptions: {
         sourceLang?: Language;
@@ -227,11 +253,11 @@ export class TranslateCommand {
 
       const results = await this.fileTranslationService.translateFileToMultiple(
         filePath,
-        targetLangs,
+        validTargetLangs,
         translationOptions
       );
 
-      return `Translated ${filePath} to ${targetLangs.length} languages:\n` +
+      return `Translated ${filePath} to ${validTargetLangs.length} languages:\n` +
         results.map(r => `  [${r.targetLang}] ${r.outputPath}`).join('\n');
     }
 
@@ -268,6 +294,9 @@ export class TranslateCommand {
     if (this.documentTranslationService.isDocumentSupported(filePath)) {
       return this.translateDocument(filePath, options);
     }
+
+    // Validate single language code for file translation (Issue #3)
+    this.validateLanguageCodes([options.to]);
 
     // Single language translation using file translation service
     const translationOptions: {
@@ -316,6 +345,9 @@ export class TranslateCommand {
     if (options.to.includes(',')) {
       return this.translateToMultiple(text, options);
     }
+
+    // Validate single language code (Issue #3)
+    this.validateLanguageCodes([options.to]);
 
     // Build translation options
     const translationOptions: {
@@ -429,7 +461,13 @@ export class TranslateCommand {
    * Translate to multiple target languages
    */
   private async translateToMultiple(text: string, options: TranslateOptions): Promise<string> {
-    const targetLangs = options.to.split(',').map(lang => lang.trim()) as Language[];
+    const targetLangs = options.to.split(',').map(lang => lang.trim());
+
+    // Validate all language codes (Issue #3)
+    this.validateLanguageCodes(targetLangs);
+
+    // Now safe to cast as Language[]
+    const validTargetLangs = targetLangs as Language[];
 
     const translationOptions: {
       sourceLang?: Language;
@@ -461,7 +499,7 @@ export class TranslateCommand {
 
     const results = await this.translationService.translateToMultiple(
       text,
-      targetLangs,
+      validTargetLangs,
       { ...translationOptions, skipCache: !options.cache }
     );
 
@@ -487,6 +525,9 @@ export class TranslateCommand {
     if (!options.output) {
       throw new Error('Output directory is required for batch translation. Use --output <dir>');
     }
+
+    // Validate language code (Issue #3)
+    this.validateLanguageCodes([options.to]);
 
     // Build translation options
     const targetLang = options.to as Language;
@@ -576,6 +617,9 @@ export class TranslateCommand {
    * Used for small .txt, .md, .html, .srt, .xlf files
    */
   private async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
+    // Validate language code (Issue #3)
+    this.validateLanguageCodes([options.to]);
+
     // Read file content
     const content = fs.readFileSync(filePath, 'utf-8');
 
@@ -674,6 +718,9 @@ export class TranslateCommand {
    * Translate binary document (PDF, DOCX, etc.)
    */
   private async translateDocument(filePath: string, options: TranslateOptions): Promise<string> {
+    // Validate language code (Issue #3)
+    this.validateLanguageCodes([options.to]);
+
     const outputPath = options.output!;
 
     // Build translation options
