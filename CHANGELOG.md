@@ -16,6 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Impact**: Ensures future developers understand the importance of property order
   - Location: `src/services/translation.ts:386-417`, test added to `tests/unit/translation-service.test.ts`
 
+### Fixed
+- **Critical: Duplicate text handling in batch translation** - Fixed data loss bug for duplicate inputs
+  - When input array contained duplicate texts (e.g., `["Hello", "Hello", "World"]`), only the last occurrence received translation
+  - Fixed by tracking ALL indices for each unique text using `Map<string, number[]>`
+  - Added automatic deduplication of API requests (sends each unique text only once)
+  - All occurrences of duplicate texts now receive correct translations
+  - Added comprehensive test demonstrating the fix
+  - **Impact**: Previously, duplicate texts in batch translation would return incomplete results
+  - **Example**: `translateBatch(["Hello", "Hello", "World"], {targetLang: "es"})` now returns 3 results instead of 2
+  - Location: `src/services/translation.ts:160-265`
+
 ### Changed
 - **Test Coverage Enhancement** - Comprehensive integration and E2E test expansion
   - Created 10 new test files covering critical workflows and CLI behavior

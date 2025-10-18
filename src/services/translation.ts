@@ -158,8 +158,9 @@ export class TranslationService {
     };
 
     // Check cache and separate cached vs non-cached texts
-    const textsToTranslate: string[] = [];
-    const textIndexMap = new Map<string, number>(); // Maps text to original index
+    // Use Set for deduplication and Map to track all indices for each text
+    const textsToTranslateSet = new Set<string>();
+    const textIndexMap = new Map<string, number[]>(); // Maps text to ALL original indices
     const results: (TranslationResult | null)[] = new Array<TranslationResult | null>(texts.length).fill(null);
 
     for (let i = 0; i < texts.length; i++) {
@@ -179,9 +180,18 @@ export class TranslationService {
       }
 
       // Not cached, need to translate
-      textsToTranslate.push(text);
-      textIndexMap.set(text, i);
+      // Track this text for translation (deduplicated via Set)
+      textsToTranslateSet.add(text);
+
+      // Track ALL indices for this text (handles duplicates)
+      if (!textIndexMap.has(text)) {
+        textIndexMap.set(text, []);
+      }
+      textIndexMap.get(text)!.push(i);
     }
+
+    // Convert Set to Array for batch translation
+    const textsToTranslate = Array.from(textsToTranslateSet);
 
     // If all texts were cached, return cached results
     if (textsToTranslate.length === 0) {
@@ -230,7 +240,7 @@ export class TranslationService {
       throw lastError;
     }
 
-    // Store results in cache and map back to original indices
+    // Store results in cache and map back to ALL original indices
     for (const text of textsToTranslate) {
       const result = textToResultMap.get(text);
 
@@ -239,11 +249,14 @@ export class TranslationService {
         continue;
       }
 
-      const originalIndex = textIndexMap.get(text);
-      if (originalIndex !== undefined) {
-        results[originalIndex] = result;
+      const originalIndices = textIndexMap.get(text);
+      if (originalIndices) {
+        // Assign result to ALL indices where this text appeared (handles duplicates)
+        for (const index of originalIndices) {
+          results[index] = result;
+        }
 
-        // Cache the result
+        // Cache the result (only once per unique text)
         if (cacheEnabled) {
           const cacheKey = this.generateCacheKey(text, translationOptions);
           this.cache.set(cacheKey, result);

@@ -313,16 +313,17 @@ describe('TranslationService', () => {
     });
 
     it('should handle batch size limits (50 texts per batch)', async () => {
-      const largeTextArray = Array(100).fill('test');
+      // Create 100 UNIQUE texts to avoid deduplication
+      const largeTextArray = Array(100).fill(0).map((_, i) => `test${i}`);
       mockDeepLClient.translateBatch
-        .mockResolvedValueOnce(Array(50).fill({ text: 'traducido' }))
-        .mockResolvedValueOnce(Array(50).fill({ text: 'traducido' }));
+        .mockResolvedValueOnce(Array(50).fill(0).map((_, i) => ({ text: `traducido${i}` })))
+        .mockResolvedValueOnce(Array(50).fill(0).map((_, i) => ({ text: `traducido${i + 50}` })));
 
       await translationService.translateBatch(largeTextArray, {
         targetLang: 'es',
       });
 
-      // Should split into 2 batches of 50
+      // Should split into 2 batches of 50 (100 unique texts)
       expect(mockDeepLClient.translateBatch).toHaveBeenCalledTimes(2);
     });
 
@@ -388,6 +389,35 @@ describe('TranslationService', () => {
       for (let i = 0; i < 50; i++) {
         expect(results[i]?.text).toBe(`Text${i}_translated`);
       }
+    });
+
+    it('should handle duplicate texts correctly (BUG #2)', async () => {
+      // This test demonstrates the duplicate text bug
+      // When the same text appears multiple times, all occurrences should get translations
+      mockDeepLClient.translateBatch.mockResolvedValue([
+        { text: 'Hola' },     // Translation for "Hello"
+        { text: 'Mundo' },    // Translation for "World"
+      ]);
+
+      // Input has "Hello" twice - both should be translated
+      const results = await translationService.translateBatch(
+        ['Hello', 'Hello', 'World'],  // "Hello" appears twice
+        { targetLang: 'es' }
+      );
+
+      // Should have 3 results (not 2!)
+      expect(results).toHaveLength(3);
+
+      // Both "Hello" instances should have translations
+      expect(results[0]?.text).toBe('Hola');
+      expect(results[1]?.text).toBe('Hola');  // Second "Hello" should also be translated
+      expect(results[2]?.text).toBe('Mundo');
+
+      // Verify API was called with deduplicated texts (only unique texts sent)
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalledWith(
+        ['Hello', 'World'],  // Deduplicated!
+        expect.any(Object)
+      );
     });
   });
 
