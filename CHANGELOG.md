@@ -85,6 +85,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Location: `src/services/watch.ts:172-186` (timer callback cleanup)
 
 ### Security
+- **Config Path Validation** - Prevents directory traversal and injection attacks (Issue #12)
+  - Added comprehensive validation for configuration path keys
+  - Rejects directory traversal patterns: "..", "../", "..\\"
+  - Rejects path separators: "/" and "\\" in path segments
+  - Rejects null bytes: "\0" (common injection technique)
+  - Rejects leading dots: paths starting with "." (hidden files/directories)
+  - Rejects empty path segments: "auth..apiKey" creates empty segment
+  - Validation happens in two stages: original string + split segments
+  - Added 7 comprehensive security tests covering all attack vectors
+  - **Impact**: Closes security vulnerability allowing malicious config keys
+  - **Example Attack Prevented**: `configService.set('../../../etc/passwd', 'data')`
+  - **Technical Detail**: validateKeyString() checks original key, validatePath() checks segments
+  - Location: `src/storage/config.ts:72,389-406` (validation methods)
+
 - **Symlink Path Validation** - Prevents directory traversal attacks (Issue #6)
   - Rejects symlinks at translate() entry point before processing files
   - Uses `fs.lstatSync()` to detect symlinks (doesn't follow symlinks)

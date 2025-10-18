@@ -299,4 +299,50 @@ describe('ConfigService', () => {
       expect(Array.isArray(langs)).toBe(true);
     });
   });
+
+  describe('path security validation (Issue #12)', () => {
+    it('should reject paths with directory traversal (..)', () => {
+      expect(() => {
+        configService.set('../auth.apiKey', 'malicious');
+      }).toThrow('Invalid path: contains directory traversal');
+    });
+
+    it('should reject paths with forward slashes', () => {
+      expect(() => {
+        configService.set('auth/apiKey', 'malicious');
+      }).toThrow('Invalid path: contains path separator');
+    });
+
+    it('should reject paths with backslashes', () => {
+      expect(() => {
+        configService.set('auth\\apiKey', 'malicious');
+      }).toThrow('Invalid path: contains path separator');
+    });
+
+    it('should reject paths with null bytes', () => {
+      expect(() => {
+        configService.set('auth\0apiKey', 'malicious');
+      }).toThrow('Invalid path: contains null byte');
+    });
+
+    it('should reject empty path segments (consecutive dots)', () => {
+      // Note: ".." is caught by directory traversal check (more serious security issue)
+      expect(() => {
+        configService.set('auth..apiKey', 'malicious');
+      }).toThrow('Invalid path: contains directory traversal');
+    });
+
+    it('should reject paths with leading dots', () => {
+      expect(() => {
+        configService.set('.auth.apiKey', 'malicious');
+      }).toThrow('Invalid path: segment starts with dot');
+    });
+
+    it('should accept valid paths with dots in segments', () => {
+      // This should be allowed: segments themselves are just "auth" and "apiKey"
+      expect(() => {
+        configService.set('auth.apiKey', 'valid-key');
+      }).not.toThrow();
+    });
+  });
 });
