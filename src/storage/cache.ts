@@ -58,34 +58,47 @@ export class CacheService {
   /**
    * Get singleton cache instance
    * Uses a shared instance to prevent resource leaks
+   * Fix for Issue #4: Improved defensive programming with atomic handler registration
    */
   static getInstance(options?: CacheServiceOptions): CacheService {
-    if (!CacheService.instance || CacheService.instance.isClosed) {
-      CacheService.instance = new CacheService(options);
+    // Check if we need to create a new instance
+    const needsNewInstance = !CacheService.instance || CacheService.instance.isClosed;
 
-      // Register cleanup handlers only once to prevent memory leaks
-      if (!CacheService.handlersRegistered) {
-        CacheService.handlersRegistered = true;
-
-        // Register cleanup on process exit (use 'once' to prevent duplicate handlers)
-        process.once('exit', () => {
-          CacheService.instance?.close();
-        });
-
-        // Handle unexpected termination
-        process.once('SIGINT', () => {
-          CacheService.instance?.close();
-          process.exit(0);
-        });
-
-        process.once('SIGTERM', () => {
-          CacheService.instance?.close();
-          process.exit(0);
-        });
-      }
+    // Register handlers atomically before instance creation for defensive programming
+    // Set flag first to prevent any theoretical race conditions (even though Node.js is single-threaded)
+    const needsHandlerRegistration = needsNewInstance && !CacheService.handlersRegistered;
+    if (needsHandlerRegistration) {
+      // Set flag immediately to make the operation atomic
+      CacheService.handlersRegistered = true;
     }
 
-    return CacheService.instance;
+    // Create instance if needed
+    if (needsNewInstance) {
+      CacheService.instance = new CacheService(options);
+    }
+
+    // Register cleanup handlers only once to prevent memory leaks
+    // This happens after instance creation to ensure instance exists
+    if (needsHandlerRegistration) {
+      // Register cleanup on process exit (use 'once' to prevent duplicate handlers)
+      process.once('exit', () => {
+        CacheService.instance?.close();
+      });
+
+      // Handle unexpected termination
+      process.once('SIGINT', () => {
+        CacheService.instance?.close();
+        process.exit(0);
+      });
+
+      process.once('SIGTERM', () => {
+        CacheService.instance?.close();
+        process.exit(0);
+      });
+    }
+
+    // Instance is guaranteed to exist at this point (either already existed or just created)
+    return CacheService.instance!;
   }
 
   /**

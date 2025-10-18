@@ -27,6 +27,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added 6 comprehensive tests covering single/multi-language validation
   - Location: `src/cli/commands/translate.ts:81-92` (validation method), multiple call sites
 
+### Changed
+- **Defensive Programming: CacheService Singleton Pattern** - Improved code robustness (Issue #4)
+  - Refactored getInstance() to set handlersRegistered flag before instance creation
+  - Makes handler registration more atomic and easier to reason about
+  - Calculates needsNewInstance and needsHandlerRegistration upfront
+  - Sets handlersRegistered=true immediately after checking, before any side effects
+  - Prevents theoretical race conditions in async scenarios (defensive programming)
+  - Added comprehensive comments explaining the defensive pattern
+  - Added 4 new tests verifying singleton behavior and handler registration
+  - **Impact**: More maintainable code with clearer intent, prevents future bugs
+  - **Note**: Node.js is single-threaded, so actual race conditions don't occur, but this makes code more robust
+  - Location: `src/storage/cache.ts:58-102` (getInstance method)
+
 ### Fixed
 - **Critical: Duplicate text handling in batch translation** - Fixed data loss bug for duplicate inputs
   - When input array contained duplicate texts (e.g., `["Hello", "Hello", "World"]`), only the last occurrence received translation

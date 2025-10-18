@@ -473,4 +473,78 @@ describe('CacheService', () => {
       newService.close();
     });
   });
+
+  describe('singleton pattern (Issue #4)', () => {
+    it('should return same instance on multiple getInstance calls', () => {
+      const instance1 = CacheService.getInstance({ dbPath: testCachePath });
+      const instance2 = CacheService.getInstance({ dbPath: testCachePath });
+
+      expect(instance1).toBe(instance2);
+
+      instance1.close();
+    });
+
+    it('should register exit handlers only once', () => {
+      // Spy on process.once to verify handlers are only registered once
+      const processOnceSpy = jest.spyOn(process, 'once');
+
+      // Reset the singleton (access private static field via any cast)
+      (CacheService as any).instance = null;
+      (CacheService as any).handlersRegistered = false;
+
+      // Call getInstance multiple times
+      const instance1 = CacheService.getInstance({ dbPath: testCachePath });
+      const instance2 = CacheService.getInstance({ dbPath: testCachePath });
+      const instance3 = CacheService.getInstance({ dbPath: testCachePath });
+
+      // Should only have registered handlers once (3 calls: exit, SIGINT, SIGTERM)
+      expect(processOnceSpy).toHaveBeenCalledTimes(3);
+
+      // All instances should be the same
+      expect(instance1).toBe(instance2);
+      expect(instance2).toBe(instance3);
+
+      processOnceSpy.mockRestore();
+      instance1.close();
+    });
+
+    it('should create new instance after close', () => {
+      const instance1 = CacheService.getInstance({ dbPath: testCachePath });
+      instance1.close();
+
+      const instance2 = CacheService.getInstance({ dbPath: testCachePath });
+
+      // Should be a different instance since first was closed
+      expect(instance1).not.toBe(instance2);
+
+      instance2.close();
+    });
+
+    it('should handle rapid getInstance calls without race condition', () => {
+      // Reset singleton
+      (CacheService as any).instance = null;
+      (CacheService as any).handlersRegistered = false;
+
+      // Spy on handler registration
+      const processOnceSpy = jest.spyOn(process, 'once');
+
+      // Simulate rapid calls (even though Node.js is single-threaded,
+      // this tests the logic is correct)
+      const instances = [];
+      for (let i = 0; i < 10; i++) {
+        instances.push(CacheService.getInstance({ dbPath: testCachePath }));
+      }
+
+      // All should be the same instance
+      for (let i = 1; i < instances.length; i++) {
+        expect(instances[i]).toBe(instances[0]);
+      }
+
+      // Handlers should only be registered once (3 calls: exit, SIGINT, SIGTERM)
+      expect(processOnceSpy).toHaveBeenCalledTimes(3);
+
+      processOnceSpy.mockRestore();
+      instances[0]?.close();
+    });
+  });
 });
