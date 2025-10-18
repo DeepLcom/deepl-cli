@@ -704,8 +704,9 @@ describe('TranslateCommand', () => {
 
   describe('translate() - file/directory detection', () => {
     it('should detect and route to translateDirectory() for directory paths', async () => {
-      // Mock fs to indicate directory
+      // Mock fs to indicate directory (Issue #6: must check lstatSync for symlinks)
       const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({ isSymbolicLink: () => false, isDirectory: () => true } as any);
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
 
@@ -725,9 +726,10 @@ describe('TranslateCommand', () => {
     });
 
     it('should detect and route to translateFile() for file paths', async () => {
-      // Mock fs to indicate file (not directory)
+      // Mock fs to indicate file (not directory) (Issue #6: must check lstatSync for symlinks)
       const fs = jest.requireActual('fs');
       const mockStats = { isDirectory: () => false, isFile: () => true };
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({ isSymbolicLink: () => false, isFile: () => true } as any);
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'statSync').mockReturnValue(mockStats as any);
 
@@ -1585,6 +1587,117 @@ describe('TranslateCommand', () => {
           output: '/output',
         })
       ).rejects.toThrow('Invalid target language code: "invalid"');
+    });
+  });
+
+  describe('symlink path validation (Issue #6)', () => {
+    it('should reject symlink file paths', async () => {
+      const fs = jest.requireActual('fs');
+      // Mock lstatSync to indicate it's a symlink
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => true,
+        isDirectory: () => false,
+        isFile: () => false,
+      } as any);
+
+      await expect(
+        translateCommand.translate('/path/to/symlink.txt', {
+          to: 'es',
+          output: '/out.txt',
+        })
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
+    });
+
+    it('should reject symlink directory paths', async () => {
+      const fs = jest.requireActual('fs');
+      // Mock lstatSync to indicate it's a symlink directory
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => true,
+        isDirectory: () => true,
+        isFile: () => false,
+      } as any);
+
+      await expect(
+        translateCommand.translate('/path/to/symlink-dir', {
+          to: 'es',
+          output: '/out',
+        })
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
+    });
+
+    it('should accept regular file paths', async () => {
+      const fs = jest.requireActual('fs');
+      // Mock lstatSync to indicate it's a regular file (not a symlink)
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => false,
+        isDirectory: () => false,
+        isFile: () => true,
+        size: 1024,
+      } as any);
+      jest.spyOn(fs, 'statSync').mockReturnValue({
+        isDirectory: () => false,
+        isFile: () => true,
+        size: 1024,
+      } as any);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
+      jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola mundo',
+      });
+
+      const result = await translateCommand.translate('/path/to/regular-file.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      expect(result).toContain('Translated');
+      expect(result).toContain('/out.txt');
+    });
+
+    it('should accept regular directory paths', async () => {
+      const fs = jest.requireActual('fs');
+      // Mock lstatSync to indicate it's a regular directory (not a symlink)
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => false,
+        isDirectory: () => true,
+        isFile: () => false,
+      } as any);
+      jest.spyOn(fs, 'statSync').mockReturnValue({
+        isDirectory: () => true,
+        isFile: () => false,
+      } as any);
+
+      // Mock translateDirectory to return success
+      const spy = jest.spyOn(translateCommand as any, 'translateDirectory')
+        .mockResolvedValue('Directory translation complete');
+
+      const result = await translateCommand.translate('/path/to/regular-dir', {
+        to: 'es',
+        output: '/out',
+      });
+
+      expect(result).toBe('Directory translation complete');
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('should provide clear error message for symlinks', async () => {
+      const fs = jest.requireActual('fs');
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => true,
+        isDirectory: () => false,
+        isFile: () => false,
+      } as any);
+
+      await expect(
+        translateCommand.translate('/path/to/symlink.txt', {
+          to: 'es',
+          output: '/out.txt',
+        })
+      ).rejects.toThrow('Symlinks are not supported for security reasons: /path/to/symlink.txt');
     });
   });
 });

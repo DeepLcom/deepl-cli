@@ -113,17 +113,30 @@ export class TranslateCommand {
   /**
    * Translate text, file, or directory
    * Fix for Issue #8: Cache stats to avoid redundant filesystem calls
+   * Fix for Issue #6: Reject symlinks for security (prevent directory traversal attacks)
    */
   async translate(textOrPath: string, options: TranslateOptions): Promise<string> {
     // Check if input is a file/directory with a single stat() call
     // Cache the stats result to avoid duplicate syscalls later
     let stats: fs.Stats | null = null;
     try {
+      // First check if the path is a symlink using lstatSync (doesn't follow symlinks)
+      // This prevents directory traversal attacks and accessing sensitive files
+      const lstat = fs.lstatSync(textOrPath);
+      if (lstat.isSymbolicLink()) {
+        throw new Error(`Symlinks are not supported for security reasons: ${textOrPath}`);
+      }
+
+      // Now safe to use statSync (follows symlinks if any, but we already checked)
       stats = fs.statSync(textOrPath);
       if (stats.isDirectory()) {
         return this.translateDirectory(textOrPath, options);
       }
-    } catch {
+    } catch (error) {
+      // Re-throw symlink errors
+      if (error instanceof Error && error.message.includes('Symlinks are not supported')) {
+        throw error;
+      }
       // Not a file/directory, treat as text
     }
 

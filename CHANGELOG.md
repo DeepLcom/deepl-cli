@@ -52,6 +52,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Performance Benefit**: Avoids expensive database aggregation on every cache write
   - Location: `src/storage/cache.ts` (currentSize field, initialize, set, clear, cleanupExpired, evictIfNeeded)
 
+### Security
+- **Symlink Path Validation** - Prevents directory traversal attacks (Issue #6)
+  - Rejects symlinks at translate() entry point before processing files
+  - Uses `fs.lstatSync()` to detect symlinks (doesn't follow symlinks)
+  - Prevents attackers from using symlinks to access sensitive files outside intended scope
+  - Clear error message: "Symlinks are not supported for security reasons: <path>"
+  - Applies to both file and directory paths
+  - Added 5 comprehensive tests covering symlink rejection and regular path acceptance
+  - **Impact**: Closes security vulnerability allowing directory traversal via symlinks
+  - **Example Attack Prevented**: User creating symlink to `/etc/passwd` and attempting to translate it
+  - Location: `src/cli/commands/translate.ts:118-149` (translate method with lstatSync check)
+
 ### Fixed
 - **Critical: Duplicate text handling in batch translation** - Fixed data loss bug for duplicate inputs
   - When input array contained duplicate texts (e.g., `["Hello", "Hello", "World"]`), only the last occurrence received translation
