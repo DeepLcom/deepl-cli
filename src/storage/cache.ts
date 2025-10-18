@@ -135,8 +135,12 @@ export class CacheService {
 
     try {
       return JSON.parse(row.value) as unknown;
-    } catch {
-      // Invalid JSON, remove entry
+    } catch (error) {
+      // Cache corruption detected - log for debugging (Issue #11)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn(`⚠ Cache corruption detected for key "${key}": ${errorMessage}. Removing entry.`);
+
+      // Remove corrupted entry
       this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
       return null;
     }
@@ -150,9 +154,14 @@ export class CacheService {
       return;
     }
 
-    // Handle undefined - JSON.stringify(undefined) returns undefined (not a string)
-    // We store it as a special marker
-    const json = value === undefined ? '__UNDEFINED__' : JSON.stringify(value);
+    // Don't cache undefined values (Issue #10)
+    // Undefined typically indicates "no value" or an error, so caching it doesn't provide benefit
+    // This eliminates the fragile magic string approach
+    if (value === undefined) {
+      return;
+    }
+
+    const json = JSON.stringify(value);
     const size = Buffer.byteLength(json, 'utf8');
     const timestamp = Date.now();
 

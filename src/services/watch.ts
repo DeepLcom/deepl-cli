@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import chokidar, { FSWatcher } from 'chokidar';
+import { minimatch } from 'minimatch';
 import { FileTranslationService } from './file-translation.js';
 import { Language, TranslationOptions } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
@@ -90,6 +91,7 @@ export class WatchService {
     };
 
     // Apply pattern filter if specified
+    // Fix for Issue #6: Use proper glob matching with minimatch
     if (this.options.pattern ?? options.pattern) {
       watcherOptions.ignored = (filePath: string) => {
         const pattern = options.pattern ?? this.options.pattern;
@@ -99,12 +101,10 @@ export class WatchService {
 
         const basename = path.basename(filePath);
 
-        // Simple glob matching for extensions
-        if (pattern.startsWith('*')) {
-          return !basename.endsWith(pattern.slice(1));
-        }
-
-        return false;
+        // Use minimatch for proper glob pattern matching
+        // Returns true if file should be IGNORED (pattern does NOT match)
+        // Returns false if file should be WATCHED (pattern matches)
+        return !minimatch(basename, pattern);
       };
     }
 

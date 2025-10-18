@@ -321,10 +321,18 @@ describe('CacheService', () => {
       expect(value).toBeNull();
     });
 
-    it('should handle undefined values', () => {
-      cacheService.set('undefined', undefined);
-      const value = cacheService.get('undefined');
-      expect(value).toBeUndefined();
+    it('should not cache undefined values (Issue #10)', () => {
+      // Undefined values should not be cached (no entry created)
+      // This avoids the fragile magic string approach
+      cacheService.set('undefined-key', undefined);
+
+      // Should return null (cache miss) since undefined wasn't stored
+      const value = cacheService.get('undefined-key');
+      expect(value).toBeNull();
+
+      // No cache entry should exist
+      const stats = cacheService.stats();
+      expect(stats.entries).toBe(0);
     });
 
     it('should handle very large entries', () => {
@@ -351,6 +359,43 @@ describe('CacheService', () => {
 
       const stats = cacheService.stats();
       expect(stats.entries).toBe(10);
+    });
+
+    it('should log warning when cache corruption is detected (Issue #11)', () => {
+      // Mock console.warn to verify logging
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      // Manually insert corrupted data into the cache database
+      // This simulates cache corruption that could happen due to:
+      // - Database corruption
+      // - Incomplete writes
+      // - Concurrent modifications
+      const db = (cacheService as any).db;
+      const timestamp = Date.now();
+      db.prepare(`
+        INSERT INTO cache (key, value, timestamp, size)
+        VALUES (?, ?, ?, ?)
+      `).run('corrupted-key', 'invalid-json-{', timestamp, 15);
+
+      // Attempt to retrieve the corrupted entry
+      const value = cacheService.get('corrupted-key');
+
+      // Should return null (entry was removed)
+      expect(value).toBeNull();
+
+      // Should have logged a warning about corruption
+      expect(consoleWarnSpy).toHaveBeenCalled();
+      expect(consoleWarnSpy.mock.calls.length).toBeGreaterThan(0);
+      const firstCall = consoleWarnSpy.mock.calls[0];
+      expect(firstCall).toBeDefined();
+      expect(firstCall![0]).toContain('corruption');
+      expect(firstCall![0]).toContain('corrupted-key');
+
+      // Entry should be deleted from cache
+      const stats = cacheService.stats();
+      expect(stats.entries).toBe(0);
+
+      consoleWarnSpy.mockRestore();
     });
   });
 

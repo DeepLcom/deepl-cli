@@ -502,6 +502,78 @@ describe('WatchService', () => {
       expect(ignored('/path/to/file.md')).toBe(false);
       expect(ignored('/path/to/file.txt')).toBe(true);
     });
+
+    it('should handle exact filename pattern (Issue #6)', async () => {
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        pattern: 'readme.md',
+      };
+
+      watchService.watch(testDir, options);
+
+      const watchCall = (chokidar.watch as jest.Mock).mock.calls[0];
+      const ignored = watchCall[1].ignored;
+
+      // Should only match readme.md
+      expect(ignored('/path/to/readme.md')).toBe(false);   // Should NOT ignore readme.md
+      expect(ignored('/path/to/README.md')).toBe(true);    // Should ignore README.md (case sensitive)
+      expect(ignored('/path/to/other.md')).toBe(true);     // Should ignore other.md
+    });
+
+    it('should handle prefix wildcard pattern (Issue #6)', async () => {
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        pattern: 'test*',
+      };
+
+      watchService.watch(testDir, options);
+
+      const watchCall = (chokidar.watch as jest.Mock).mock.calls[0];
+      const ignored = watchCall[1].ignored;
+
+      // Should match files starting with "test"
+      expect(ignored('/path/to/test.txt')).toBe(false);     // Should NOT ignore test.txt
+      expect(ignored('/path/to/test-file.md')).toBe(false); // Should NOT ignore test-file.md
+      expect(ignored('/path/to/testing.js')).toBe(false);   // Should NOT ignore testing.js
+      expect(ignored('/path/to/mytest.txt')).toBe(true);    // Should ignore mytest.txt
+    });
+
+    it('should handle complex glob patterns (Issue #6)', async () => {
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        pattern: '*.{md,txt}',
+      };
+
+      watchService.watch(testDir, options);
+
+      const watchCall = (chokidar.watch as jest.Mock).mock.calls[0];
+      const ignored = watchCall[1].ignored;
+
+      // Should match .md or .txt files
+      expect(ignored('/path/to/file.md')).toBe(false);  // Should NOT ignore .md
+      expect(ignored('/path/to/file.txt')).toBe(false); // Should NOT ignore .txt
+      expect(ignored('/path/to/file.js')).toBe(true);   // Should ignore .js
+    });
+
+    it('should handle case-insensitive patterns (Issue #6)', async () => {
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        pattern: 'README.md',
+      };
+
+      watchService.watch(testDir, options);
+
+      const watchCall = (chokidar.watch as jest.Mock).mock.calls[0];
+      const ignored = watchCall[1].ignored;
+
+      // Should match README.md exactly (case-sensitive by default)
+      expect(ignored('/path/to/README.md')).toBe(false);  // Should NOT ignore README.md
+      expect(ignored('/path/to/readme.md')).toBe(true);   // Should ignore readme.md
+    });
   });
 
   describe('translation options passthrough', () => {
