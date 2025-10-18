@@ -727,8 +727,9 @@ describe('TranslateCommand', () => {
     it('should detect and route to translateFile() for file paths', async () => {
       // Mock fs to indicate file (not directory)
       const fs = jest.requireActual('fs');
+      const mockStats = { isDirectory: () => false, isFile: () => true };
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-      jest.spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => false } as any);
+      jest.spyOn(fs, 'statSync').mockReturnValue(mockStats as any);
 
       // Create a spy on translateFile
       const spy = jest.spyOn(translateCommand as any, 'translateFile')
@@ -740,7 +741,7 @@ describe('TranslateCommand', () => {
       });
 
       expect(result).toBe('File translation result');
-      expect(spy).toHaveBeenCalledWith('/path/to/file.txt', { to: 'es', output: '/out.txt' });
+      expect(spy).toHaveBeenCalledWith('/path/to/file.txt', { to: 'es', output: '/out.txt' }, mockStats);
 
       spy.mockRestore();
     });
@@ -1375,7 +1376,7 @@ describe('TranslateCommand', () => {
         output: '/out.txt',
       });
 
-      expect(spy).toHaveBeenCalledWith('C:\\Users\\Documents\\file.txt', { to: 'es', output: '/out.txt' });
+      expect(spy).toHaveBeenCalledWith('C:\\Users\\Documents\\file.txt', { to: 'es', output: '/out.txt' }, null);
       spy.mockRestore();
     });
 
@@ -1394,7 +1395,7 @@ describe('TranslateCommand', () => {
         output: '/out.txt',
       });
 
-      expect(spy).toHaveBeenCalledWith('/home/user/documents/file.txt', { to: 'es', output: '/out.txt' });
+      expect(spy).toHaveBeenCalledWith('/home/user/documents/file.txt', { to: 'es', output: '/out.txt' }, null);
       spy.mockRestore();
     });
 
@@ -1461,7 +1462,7 @@ describe('TranslateCommand', () => {
         output: '/out.txt',
       });
 
-      expect(spy).toHaveBeenCalledWith('folder\\subfolder\\file.txt', { to: 'es', output: '/out.txt' });
+      expect(spy).toHaveBeenCalledWith('folder\\subfolder\\file.txt', { to: 'es', output: '/out.txt' }, null);
       spy.mockRestore();
     });
 
@@ -1480,7 +1481,7 @@ describe('TranslateCommand', () => {
         output: '/out.txt',
       });
 
-      expect(spy).toHaveBeenCalledWith('folder/subfolder/file.txt', { to: 'es', output: '/out.txt' });
+      expect(spy).toHaveBeenCalledWith('folder/subfolder/file.txt', { to: 'es', output: '/out.txt' }, null);
       spy.mockRestore();
     });
 
