@@ -110,6 +110,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Example Attack Prevented**: User creating symlink to `/etc/passwd` and attempting to translate it
   - Location: `src/cli/commands/translate.ts:118-149` (translate method with lstatSync check)
 
+### Changed
+- **Code Quality Review: BatchTranslationService** - Investigated re-initialization concern (Issue #13)
+  - Analyzed pLimit instance creation in translateFiles() method
+  - Confirmed current implementation is CORRECT and intentional
+  - Creating new pLimit per batch operation provides proper isolation
+  - Prevents queue mixing between different batch operations
+  - Service is stateless with no mutable state between calls
+  - All 39 tests pass, no bugs identified
+  - **Conclusion**: No changes needed - current code follows best practices
+  - **Technical Detail**: Each batch operation gets its own pLimit queue for isolation
+  - Location: `src/services/batch-translation.ts:81` (pLimit instance creation)
+
 ### Refactoring
 - **Dead Code Removal: Undefined Marker** - Cleaned up unreachable code (Issue #7)
   - Removed undefined marker check from CacheService.get() method
