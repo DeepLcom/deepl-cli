@@ -17,8 +17,6 @@
 - **🎯 Context-Aware** - Preserves code blocks, variables, and formatting
 - **📦 Batch Processing** - Translate multiple files with parallel processing
 - **💰 Cost Transparency** - Track actual billed characters for budget planning
-- **🎨 Modern TUI** - Interactive terminal UI (coming in Phase 3)
-- **👥 Team Collaboration** - Shared glossaries and translation memory (coming in Phase 3)
 - **🔧 Developer Workflows** - Git hooks, CI/CD integration
 - **🔒 Privacy-First** - Local caching, no telemetry, secure key storage
 
@@ -120,16 +118,19 @@ $ deepl --quiet translate docs/ --to es --output docs-es/
 ```
 
 **What's suppressed in quiet mode:**
+
 - ❌ Informational messages (`API Key: ...`)
 - ❌ Success confirmations (`✓ Cache enabled`)
 - ❌ Progress spinners and status updates
 - ❌ Decorative output
 
 **What's always shown:**
+
 - ✅ Errors and critical warnings
 - ✅ Essential command output (translation results, JSON data, statistics)
 
 **Use cases:**
+
 - **CI/CD pipelines**: Clean output for log parsing
 - **Scripting**: Extract just the translation result
 - **Automation**: Reduce noise in automated workflows
@@ -163,6 +164,7 @@ $ deepl -c /path/to/test-config.json usage
 ```
 
 **Use cases:**
+
 - **Multiple API keys**: Switch between free and paid accounts
 - **Project isolation**: Different settings per project (glossaries, formality defaults, etc.)
 - **Team configurations**: Share standardized configs via version control
@@ -174,8 +176,6 @@ $ deepl -c /path/to/test-config.json usage
 See [docs/API.md#global-options](./docs/API.md#global-options) for more details.
 
 ## 📖 Usage
-
-All examples below are **working and tested** in v0.7.0.
 
 ### Translation
 
@@ -214,12 +214,12 @@ cat input.txt | deepl translate --to ja
 
 **Smart Caching for Text Files:**
 
-Small text-based files (under 100 KiB) automatically use the cached text translation API for faster performance and reduced API calls. Larger files automatically fall back to the document translation API (not cached).
+Small text-based files (under 100 KB) automatically use the cached text translation API for faster performance and reduced API calls. Larger files automatically fall back to the document translation API (not cached).
 
-- **Cached formats:** `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` (files under 100 KiB only)
-- **Large file fallback:** Files ≥100 KiB use document API (not cached, always makes API calls)
+- **Cached formats:** `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` (files under 100 KB only)
+- **Large file fallback:** Files ≥100 KB use document API (not cached, always makes API calls)
 - **Binary formats:** `.pdf`, `.docx`, `.pptx`, `.xlsx` always use document API (not cached)
-- **Performance:** Only small text files (<100 KiB) benefit from instant cached translations
+- **Performance:** Only small text files (<100 KB) benefit from instant cached translations
 - **Cost savings:** Only small text files avoid repeated API calls
 
 ```bash
@@ -296,6 +296,7 @@ deepl translate document.pdf --to es --output-format docx --output document.es.d
 - ✅ **Async Processing** - Documents are translated on DeepL servers with polling
 
 **Supported Formats:**
+
 - `.pdf` - PDF documents
 - `.docx`, `.doc` - Microsoft Word
 - `.pptx` - Microsoft PowerPoint
@@ -433,6 +434,7 @@ deepl translate complex.xml --to de --tag-handling xml \
 **XML Tag Handling Use Cases:**
 
 Advanced XML/HTML tag handling is perfect for:
+
 - 🌐 Localizing HTML websites while preserving structure
 - 📚 Translating technical documentation with code blocks
 - 📄 Processing custom XML formats with specific content rules
@@ -440,8 +442,6 @@ Advanced XML/HTML tag handling is perfect for:
 - ✂️ Fine-tuned control over sentence splitting for better context
 
 See [examples/19-xml-tag-handling.sh](./examples/19-xml-tag-handling.sh) for comprehensive XML tag handling examples with real-world scenarios.
-
-```
 
 **Model Types:**
 
@@ -645,7 +645,7 @@ deepl hooks uninstall pre-commit
 
 **Hook Status Example:**
 
-```
+```bash
 $ deepl hooks list
 
 Git Hooks Status:
@@ -1019,14 +1019,6 @@ npm run build
 
 ### Development Workflow
 
-This project follows **Test-Driven Development (TDD)**:
-
-1. 🔴 **RED** - Write a failing test
-2. 🟢 **GREEN** - Write minimal code to pass
-3. 🔵 **REFACTOR** - Improve the code
-4. ✅ **COMMIT** - Save your progress
-5. 🔁 **REPEAT**
-
 See [CLAUDE.md](./CLAUDE.md) for comprehensive development guidelines.
 
 ### Project Structure
@@ -1040,7 +1032,6 @@ deepl-cli/
 │   ├── storage/          # Data persistence (cache, config)
 │   ├── utils/            # Utility functions
 │   ├── types/            # Type definitions
-│   └── tui/              # Terminal UI components (Phase 3)
 ├── tests/
 │   ├── unit/             # Unit tests
 │   ├── integration/      # Integration tests
@@ -1082,10 +1073,10 @@ Storage (SQLite Cache, Config, Translation Memory)
 ### Key Components
 
 - **Translation Service** - Core translation logic with caching and preservation
-- **Write Service** - Grammar and style enhancement (Phase 2)
+- **Write Service** - Grammar and style enhancement
 - **Cache Service** - SQLite-based cache with LRU eviction
 - **Preservation Service** - Preserves code blocks, variables, formatting
-- **Watch Service** - File watching with debouncing (Phase 2)
+- **Watch Service** - File watching with debouncing
 - **Glossary Service** - Glossary management and application
 
 See [DESIGN.md](./DESIGN.md) for detailed architecture documentation.
@@ -1117,61 +1108,13 @@ npm run examples
 npm run examples:fast
 ```
 
-### Testing Approach
-
-- **TDD**: All features developed using Test-Driven Development
-- **Comprehensive**: Unit, integration, and E2E tests
-- **Mocking**: DeepL API calls mocked for deterministic tests
-- **Real API Testing**: Manual testing documented in `MANUAL_TEST_REPORT.md`
-
 ## 📚 Documentation
 
 - **[API.md](./docs/API.md)** - Complete API reference with all commands, flags, and options
-- **[Exit Codes](./docs/API.md#exit-codes)** - Semantic exit codes for CI/CD integration and error handling
 - **[DESIGN.md](./DESIGN.md)** - Comprehensive design and architecture
 - **[CLAUDE.md](./CLAUDE.md)** - Development guidelines and TDD workflow
 - **[DeepL API Docs](https://www.deepl.com/docs-api)** - Official API documentation
 - **[CLI Guidelines](https://clig.dev/)** - Command-line best practices
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these guidelines:
-
-1. **Follow TDD** - Write tests before implementation
-2. **Follow the style guide** - See [CLAUDE.md](./CLAUDE.md)
-3. **Write good commit messages** - Use conventional commits format
-4. **Update documentation** - Keep docs in sync with code changes
-5. **Test thoroughly** - Ensure all tests pass
-
-### Contribution Process
-
-```bash
-# Clone repository
-git clone https://git.deepl.dev/hack-projects/deepl-cli.git
-
-# Create a feature branch
-git checkout -b feat/my-feature
-
-# Write tests (RED)
-npm test -- --watch
-
-# Implement feature (GREEN)
-# ... write code ...
-
-# Refactor (REFACTOR)
-# ... improve code ...
-
-# Run all checks
-npm test && npm run lint && npm run type-check && npm run build
-
-# Commit with descriptive message
-git commit -m "feat(scope): description"
-
-# Push and create PR
-git push origin feat/my-feature
-```
-
-See [CLAUDE.md](./CLAUDE.md) for detailed PR guidelines.
 
 ## 🔒 Security & Privacy
 
@@ -1185,31 +1128,6 @@ See [CLAUDE.md](./CLAUDE.md) for detailed PR guidelines.
 
 Internal DeepL project - not yet publicly released.
 
-## 🙏 Acknowledgments
-
-- [DeepL](https://www.deepl.com/) - Excellent translation API
-- [Commander.js](https://github.com/tj/commander.js) - CLI framework
-- [Ink](https://github.com/vadimdemedes/ink) - React for terminal
-- [Jest](https://jestjs.io/) - Testing framework
-
-## 📞 Support
-
-- **Issues** - [GitLab Issues](https://git.deepl.dev/hack-projects/deepl-cli/-/issues)
-- **Merge Requests** - [GitLab MRs](https://git.deepl.dev/hack-projects/deepl-cli/-/merge_requests)
-- **Documentation** - See [docs/](./docs/) folder
-
-## 🗺️ Roadmap
-
-See [TODO.md](./TODO.md) for the complete development roadmap.
-
-**Phase 1 (✅ Complete)** - MVP with basic translation, config, caching
-**Phase 2 (✅ Complete)** - Write API, watch mode, batch processing, git hooks
-**Phase 3 Write Enhancements (✅ Complete)** - File operations, diff, check, fix, interactive mode
-**Phase 3 Document Translation (✅ Complete)** - PDF, DOCX, PPTX, XLSX translation with async processing
-**Phase 3 TUI (Future)** - Interactive TUI, translation memory, team collaboration
-
 ---
-
-**Built with ❤️ using Test-Driven Development**
 
 _Powered by DeepL's next-generation language model_
