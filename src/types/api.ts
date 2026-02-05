@@ -27,6 +27,7 @@ export interface TranslationOptions {
   nonSplittingTags?: string[];
   ignoreTags?: string[];
   customInstructions?: string[];
+  styleId?: string;
 }
 
 export type WriteLanguage =
@@ -111,4 +112,26 @@ export interface DocumentTranslationOptions {
 export interface GlossaryLanguagePair {
   sourceLang: Language;
   targetLang: Language;
+}
+
+// Style Rules Types
+
+export interface StyleRule {
+  styleId: string;
+  name: string;
+  language: string;
+  version: number;
+  creationTime: string;
+  updatedTime: string;
+}
+
+export interface StyleRuleDetailed extends StyleRule {
+  configuredRules: string[];
+  customInstructions: string[];
+}
+
+export interface StyleRulesListOptions {
+  detailed?: boolean;
+  page?: number;
+  pageSize?: number;
 }

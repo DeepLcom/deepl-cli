@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Forces `quality_optimized` model (incompatible with `latency_optimized`)
   - Works with single and multi-language translations
   - Example: `deepl translate "Click Save" --to de --custom-instruction "This is a UI string"`
+- **Style Rules** - Apply pre-configured style rules to translations via `--style-id` flag
+  - New `style-rules list` command to view available style rules (Pro API only)
+  - Supports `--detailed` flag for configured rules and custom instructions
+  - Pagination with `--page` and `--page-size` flags
+  - JSON output with `--format json`
+  - Example: `deepl translate "Hello" --to de --style-id "abc-123-uuid"`
 
 ### Fixed
 - **Test Environment Isolation** - Fix 4 failing tests caused by environment variable leakage

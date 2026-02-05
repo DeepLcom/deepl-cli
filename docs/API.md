@@ -21,6 +21,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
   - [usage](#usage)
   - [languages](#languages)
   - [auth](#auth)
+  - [style-rules](#style-rules)
 - [Configuration](#configuration)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
@@ -183,6 +184,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
 - `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
 - `--custom-instruction INSTRUCTION` - Custom instruction for translation (repeatable, max 10, max 300 chars each). Forces `quality_optimized` model. Cannot be used with `latency_optimized`.
+- `--style-id UUID` - Style rule ID for translation (Pro API only). Forces `quality_optimized` model. Cannot be used with `latency_optimized`. Use `deepl style-rules list` to see available IDs.
 - `--no-cache` - Bypass cache for this translation (useful for testing/forcing fresh translation)
 
 **API Options:**
@@ -1435,6 +1437,54 @@ Clear stored API key from configuration.
 deepl auth clear
 # ✓ API key removed
 ```
+
+---
+
+### style-rules
+
+Manage DeepL style rules (Pro API only). Style rules are created via the DeepL web UI and applied to translations using their ID.
+
+#### Synopsis
+
+```bash
+deepl style-rules <SUBCOMMAND>
+```
+
+#### Subcommands
+
+##### `list`
+
+List all available style rules.
+
+**Options:**
+
+- `--detailed` - Show detailed information including configured rules and custom instructions
+- `--page NUMBER` - Page number for pagination
+- `--page-size NUMBER` - Number of results per page (1-25)
+- `--format FORMAT` - Output format: `json` (default: plain text)
+
+**Examples:**
+
+```bash
+# List all style rules
+deepl style-rules list
+
+# List with details
+deepl style-rules list --detailed
+
+# JSON output
+deepl style-rules list --format json
+
+# Pagination
+deepl style-rules list --page 1 --page-size 10
+```
+
+#### Notes
+
+- Style rules are created and managed via the DeepL web interface, not through the API
+- Style rules are Pro API only and datacenter-specific (EU and US rules don't cross)
+- Use the style ID from `style-rules list` with `deepl translate --style-id <uuid>`
+- Style rules force the `quality_optimized` model type
 
 ---
 

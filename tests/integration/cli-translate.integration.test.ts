@@ -608,4 +608,60 @@ describe('Translate CLI Integration', () => {
       }
     });
   });
+
+  describe('--style-id flag', () => {
+    it('should show --style-id in help text', () => {
+      const result = runCLI('deepl translate --help');
+      expect(result).toContain('--style-id');
+    });
+
+    it('should accept --style-id flag', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --style-id "abc-123-def"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept --style-id with other options', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --style-id "abc-123" --formality more', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+  });
+
+  describe('style-rules command', () => {
+    it('should show style-rules in main help', () => {
+      const result = runCLI('deepl --help');
+      expect(result).toContain('style-rules');
+    });
+
+    it('should show list subcommand in style-rules help', () => {
+      const result = runCLI('deepl style-rules --help');
+      expect(result).toContain('list');
+    });
+
+    it('should show --detailed flag in style-rules list help', () => {
+      const result = runCLI('deepl style-rules list --help');
+      expect(result).toContain('--detailed');
+      expect(result).toContain('--page');
+      expect(result).toContain('--page-size');
+      expect(result).toContain('--format');
+    });
+
+    it('should require API key for style-rules list', () => {
+      try {
+        runCLI('deepl style-rules list', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+  });
 });

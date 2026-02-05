@@ -1820,4 +1820,89 @@ describe('TranslateCommand', () => {
       ).rejects.toThrow('Symlinks are not supported for security reasons: /path/to/symlink.txt');
     });
   });
+
+  describe('style ID', () => {
+    it('should pass styleId to translation service', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        styleId: 'abc-123-uuid',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ styleId: 'abc-123-uuid' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should work without styleId', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', { to: 'es' });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.not.objectContaining({ styleId: expect.anything() }),
+        expect.any(Object)
+      );
+    });
+
+    it('should reject styleId with latency_optimized model', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'es',
+          styleId: 'abc-123-uuid',
+          modelType: 'latency_optimized',
+        })
+      ).rejects.toThrow('Style ID cannot be used with latency_optimized model type');
+    });
+
+    it('should pass styleId in translateToMultiple', async () => {
+      mockTranslationService.translateToMultiple.mockResolvedValue([
+        { targetLang: 'es' as any, text: 'Hola' },
+        { targetLang: 'fr' as any, text: 'Bonjour' },
+      ]);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es,fr',
+        styleId: 'abc-123-uuid',
+      });
+
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        ['es', 'fr'],
+        expect.objectContaining({ styleId: 'abc-123-uuid' })
+      );
+    });
+
+    it('should allow styleId with quality_optimized model', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        styleId: 'abc-123-uuid',
+        modelType: 'quality_optimized',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({
+          styleId: 'abc-123-uuid',
+          modelType: 'quality_optimized',
+        }),
+        expect.any(Object)
+      );
+    });
+  });
 });

@@ -68,6 +68,7 @@ EXAMPLES=(
   "19-xml-tag-handling.sh"
   "20-table-output.sh"
   "21-custom-instructions.sh"
+  "22-style-rules.sh"
 )
 
 # Skip slow examples in fast mode
@@ -94,6 +95,7 @@ if [ "$FAST_MODE" = true ]; then
     "19-xml-tag-handling.sh"
     "20-table-output.sh"
     "21-custom-instructions.sh"
+    "22-style-rules.sh"
   )
 fi
 

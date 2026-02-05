@@ -27,6 +27,7 @@ import { HooksCommand } from './commands/hooks.js';
 import { ConfigCommand as ConfigCmd } from './commands/config.js';
 import { CacheCommand } from './commands/cache.js';
 import { GlossaryCommand } from './commands/glossary.js';
+import { StyleRulesCommand } from './commands/style-rules.js';
 import { WriteLanguage, WritingStyle, WriteTone } from '../types/api.js';
 import { Language } from '../types/common.js';
 import { HookType } from '../services/git-hooks.js';
@@ -282,6 +283,7 @@ program
   .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
   .option('--glossary <name-or-id>', 'Use glossary by name or ID')
   .option('--custom-instruction <instruction>', 'Custom instruction for translation (repeatable, max 10, max 300 chars each)', (val: string, prev: string[]) => prev.concat([val]), [] as string[])
+  .option('--style-id <uuid>', 'Style rule ID for translation (Pro API only, forces quality_optimized model)')
   .option('--no-cache', 'Bypass cache for this translation (useful for testing)')
   .option('--format <format>', 'Output format: json, table (default: plain text)')
   .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
@@ -308,6 +310,7 @@ program
     concurrency?: number;
     glossary?: string;
     customInstruction?: string[];
+    styleId?: string;
     noCache?: boolean;
     format?: string;
     apiUrl?: string;
@@ -978,6 +981,44 @@ program
         } catch (error) {
           handleError(error);
 
+        }
+      })
+  );
+
+// Style Rules command
+program
+  .command('style-rules')
+  .description('Manage DeepL style rules (Pro API only)')
+  .addCommand(
+    new Command('list')
+      .description('List all style rules')
+      .option('--detailed', 'Show detailed information including configured rules and custom instructions')
+      .option('--page <number>', 'Page number for pagination', parseInt)
+      .option('--page-size <number>', 'Number of results per page (1-25)', parseInt)
+      .option('--format <format>', 'Output format: json (default: plain text)')
+      .action(async (options: {
+        detailed?: boolean;
+        page?: number;
+        pageSize?: number;
+        format?: string;
+      }) => {
+        try {
+          const client = createDeepLClient();
+          const styleRulesCommand = new StyleRulesCommand(client);
+
+          const rules = await styleRulesCommand.list({
+            detailed: options.detailed,
+            page: options.page,
+            pageSize: options.pageSize,
+          });
+
+          if (options.format === 'json') {
+            Logger.output(styleRulesCommand.formatStyleRulesJson(rules));
+          } else {
+            Logger.output(styleRulesCommand.formatStyleRulesList(rules));
+          }
+        } catch (error) {
+          handleError(error);
         }
       })
   );

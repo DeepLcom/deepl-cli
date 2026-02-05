@@ -389,6 +389,9 @@ deepl translate "Meeting at the bank" --to es \
   --custom-instruction "This is about financial institutions" \
   --formality more
 
+# Apply a style rule (Pro API only - get IDs with: deepl style-rules list)
+deepl translate "Hello" --to de --style-id "abc-123-def-456"
+
 # Custom API endpoint (for DeepL Pro accounts or testing)
 deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
 
@@ -963,6 +966,24 @@ authentication	Authentifizierung
 - **Smart defaults** - `--target` flag only required for multilingual glossaries
 - **Visual indicators** - 📖 for single-target, 📚 for multilingual glossaries
 - **Translation integration** - Use `--glossary` flag in translate and watch commands to apply glossary terms
+
+### Style Rules
+
+Style rules are pre-configured translation rules created via the DeepL web UI and applied to translations using their ID (Pro API only).
+
+```bash
+# List available style rules
+deepl style-rules list
+
+# List with detailed information
+deepl style-rules list --detailed
+
+# JSON output
+deepl style-rules list --format json
+
+# Apply a style rule to a translation
+deepl translate "Hello" --to de --style-id "abc-123-def-456"
+```
 
 ### Cache Management
 

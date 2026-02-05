@@ -1375,4 +1375,57 @@ describe('CLI Workflow E2E', () => {
       }
     });
   });
+
+  describe('Style ID', () => {
+    it('should accept --style-id flag without error', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --style-id "abc-123-def-456"');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+      }
+    });
+
+    it('should combine --style-id with other flags', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --style-id "abc-123" --formality more');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+      }
+    });
+  });
+
+  describe('Style Rules Command', () => {
+    it('should show style-rules command in help', () => {
+      const result = runCLI('deepl --help');
+      expect(result).toContain('style-rules');
+    });
+
+    it('should require API key for style-rules list', () => {
+      try {
+        runCLI('deepl style-rules list');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept --detailed and pagination flags', () => {
+      try {
+        runCLI('deepl style-rules list --detailed --page 1 --page-size 10');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not flag parsing
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+      }
+    });
+  });
 });

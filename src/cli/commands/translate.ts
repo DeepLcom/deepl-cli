@@ -50,6 +50,7 @@ interface TranslateOptions {
   concurrency?: number;
   glossary?: string;
   customInstruction?: string[];
+  styleId?: string;
   cache?: boolean;  // Commander.js converts --no-cache to cache: false
   format?: string;
 }
@@ -372,6 +373,13 @@ export class TranslateCommand {
       (translationOptions as { customInstructions?: string[] }).customInstructions = options.customInstruction;
     }
 
+    if (options.styleId) {
+      if (options.modelType === 'latency_optimized') {
+        throw new Error('Style ID cannot be used with latency_optimized model type');
+      }
+      (translationOptions as { styleId?: string }).styleId = options.styleId;
+    }
+
     // XML tag handling parameters (only valid with --tag-handling xml)
     if (options.outlineDetection !== undefined || options.splittingTags || options.nonSplittingTags || options.ignoreTags) {
       if (options.tagHandling !== 'xml') {
@@ -468,6 +476,10 @@ export class TranslateCommand {
 
     if (options.customInstruction && options.customInstruction.length > 0) {
       (translationOptions as { customInstructions?: string[] }).customInstructions = options.customInstruction;
+    }
+
+    if (options.styleId) {
+      (translationOptions as { styleId?: string }).styleId = options.styleId;
     }
 
     const results = await this.translationService.translateToMultiple(

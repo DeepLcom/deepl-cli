@@ -1702,4 +1702,153 @@ describe('DeepLClient', () => {
       await expect(client.getGlossaryLanguages()).rejects.toThrow();
     });
   });
+
+  describe('style_id parameter', () => {
+    it('should send style_id parameter in translation request', async () => {
+      const scope = nock(baseUrl)
+        .post('/v2/translate', (body: string) => {
+          const params = new URLSearchParams(body);
+          return params.get('style_id') === 'abc-123-def-456';
+        })
+        .reply(200, {
+          translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+        });
+
+      await client.translate('Hello', {
+        targetLang: 'es',
+        styleId: 'abc-123-def-456',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should not send style_id when not specified', async () => {
+      const scope = nock(baseUrl)
+        .post('/v2/translate', (body: string) => {
+          const params = new URLSearchParams(body);
+          return !params.has('style_id');
+        })
+        .reply(200, {
+          translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+        });
+
+      await client.translate('Hello', { targetLang: 'es' });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should send style_id in batch translation', async () => {
+      const scope = nock(baseUrl)
+        .post('/v2/translate', (body: string) => {
+          const params = new URLSearchParams(body);
+          return params.get('style_id') === 'style-uuid-123';
+        })
+        .reply(200, {
+          translations: [
+            { text: 'Hola', detected_source_language: 'EN' },
+            { text: 'Mundo', detected_source_language: 'EN' },
+          ],
+        });
+
+      await client.translateBatch(['Hello', 'World'], {
+        targetLang: 'es',
+        styleId: 'style-uuid-123',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getStyleRules', () => {
+    it('should fetch style rules from v3 API', async () => {
+      nock(baseUrl)
+        .get('/v3/style_rules')
+        .reply(200, {
+          style_rules: [
+            {
+              style_id: 'uuid-1',
+              name: 'My Style',
+              language: 'en',
+              version: 1,
+              creation_time: '2024-01-01T00:00:00Z',
+              updated_time: '2024-01-02T00:00:00Z',
+            },
+          ],
+        });
+
+      const rules = await client.getStyleRules();
+
+      expect(rules).toHaveLength(1);
+      expect(rules[0]).toEqual({
+        styleId: 'uuid-1',
+        name: 'My Style',
+        language: 'en',
+        version: 1,
+        creationTime: '2024-01-01T00:00:00Z',
+        updatedTime: '2024-01-02T00:00:00Z',
+      });
+    });
+
+    it('should pass detailed query parameter', async () => {
+      nock(baseUrl)
+        .get('/v3/style_rules')
+        .query({ detailed: true })
+        .reply(200, {
+          style_rules: [
+            {
+              style_id: 'uuid-1',
+              name: 'My Style',
+              language: 'en',
+              version: 1,
+              creation_time: '2024-01-01T00:00:00Z',
+              updated_time: '2024-01-02T00:00:00Z',
+              configured_rules: ['rule1', 'rule2'],
+              custom_instructions: ['instruction1'],
+            },
+          ],
+        });
+
+      const rules = await client.getStyleRules({ detailed: true });
+
+      expect(rules).toHaveLength(1);
+      const detailed = rules[0] as any;
+      expect(detailed.configuredRules).toEqual(['rule1', 'rule2']);
+      expect(detailed.customInstructions).toEqual(['instruction1']);
+    });
+
+    it('should pass pagination parameters', async () => {
+      nock(baseUrl)
+        .get('/v3/style_rules')
+        .query({ page: 2, page_size: 10 })
+        .reply(200, {
+          style_rules: [],
+        });
+
+      const rules = await client.getStyleRules({ page: 2, pageSize: 10 });
+
+      expect(rules).toHaveLength(0);
+    });
+
+    it('should handle empty results', async () => {
+      nock(baseUrl)
+        .get('/v3/style_rules')
+        .reply(200, {
+          style_rules: [],
+        });
+
+      const rules = await client.getStyleRules();
+
+      expect(rules).toHaveLength(0);
+    });
+
+    it('should handle API errors', async () => {
+      nock(baseUrl)
+        .get('/v3/style_rules')
+        .reply(403, {
+          message: 'Authentication failed',
+        });
+
+      await expect(client.getStyleRules()).rejects.toThrow('Authentication failed');
+    });
+  });
 });
