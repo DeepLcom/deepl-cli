@@ -65,7 +65,7 @@ npm link
 
 # Verify installation
 deepl --version
-# Output: 0.7.0
+# Output: 0.8.0
 ```
 
 ## 🚀 Quick Start

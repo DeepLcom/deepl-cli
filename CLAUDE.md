@@ -17,14 +17,13 @@ DeepL CLI is a next-generation command-line interface for the DeepL API that int
 
 ### Current Status
 
-- **Version**: 0.6.0 (CI/CD automation, git hooks, table output, cost transparency)
-- **Tests**: 1020+ tests passing (100% pass rate)
+- **Version**: 0.8.0 (custom instructions, style rules, admin API, expanded languages, security hardening)
+- **Tests**: 1586 tests passing (100% pass rate)
   - Unit tests: ~70-75%
   - Integration tests: ~25-30%
   - E2E tests: Comprehensive CLI coverage
 - **Coverage**: ~91% overall with excellent integration/e2e coverage
-- **Git Status**: Local repository, not yet pushed to remote
-- **Next Milestone**: v0.6.0 (Phase 3: TUI & Collaboration)
+- **Next Milestone**: v0.9.0 (Phase 3: TUI & Collaboration) or 1.0.0 (stable public API)
 
 ### Architecture
 
@@ -215,9 +214,9 @@ Keep entries imperative and short. Focus on user-facing changes.
 
 ### Current Version Status
 
-- **Current Version**: 0.6.0 (CI/CD automation, git hooks, table output, cost transparency)
+- **Current Version**: 0.8.0 (custom instructions, style rules, admin API, expanded languages, security hardening)
 - **Status**: Pre-1.0 indicates API may change as Phase 3 features are implemented
-- **Next Milestone**: 0.6.0 (Phase 3: TUI features) or 1.0.0 (stable public API)
+- **Next Milestone**: 0.9.0 (Phase 3: TUI features) or 1.0.0 (stable public API)
 
 ---
 
@@ -239,7 +238,7 @@ Follow the phased approach outlined in DESIGN.md:
 - v0.4.0: Document format conversion (--output-format), proxy config, retry/timeout, batch optimization, glossary CRUD operations
 - v0.5.0: v3 Glossary API (multilingual glossaries), delete-dictionary command
 
-**Phase 3: TUI & Collaboration (🚧 NEXT - v0.6.0)**
+**Phase 3: TUI & Collaboration (🚧 NEXT - v0.9.0)**
 - Interactive TUI with Ink
 - Translation memory
 - Team features

@@ -7,436 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-02-05
+
 ### Added
-- **Custom Instructions** - Guide translations with domain-specific rules via `--custom-instruction` flag
-  - Repeatable flag: up to 10 instructions, max 300 characters each
-  - Forces `quality_optimized` model (incompatible with `latency_optimized`)
-  - Works with single and multi-language translations
-  - Example: `deepl translate "Click Save" --to de --custom-instruction "This is a UI string"`
-- **Style Rules** - Apply pre-configured style rules to translations via `--style-id` flag
-  - New `style-rules list` command to view available style rules (Pro API only)
-  - Supports `--detailed` flag for configured rules and custom instructions
-  - Pagination with `--page` and `--page-size` flags
-  - JSON output with `--format json`
-  - Example: `deepl translate "Hello" --to de --style-id "abc-123-uuid"`
-- **Expanded Language Support** - Add 81 new GA languages + regional variants
-  - 81 extended languages (quality_optimized only, e.g., Swahili, Hindi, Thai, Welsh)
-  - New target variants: ES-419, ZH-HANS, ZH-HANT, plus EN-GB, EN-US, PT-BR, PT-PT
-  - Newly added core languages: Hebrew (HE), Vietnamese (VI)
-  - Client-side validation: error when using formality, glossary, or latency_optimized with extended languages
-- **Tag Handling Version** - Add `--tag-handling-version` flag (v1/v2) for improved XML/HTML structure handling
-  - v2 improves tag handling with next-gen models
-  - Requires `--tag-handling` to be set (xml or html)
-- **Image Translation** - Add JPEG/PNG image support for document translation
-  - Supported extensions: `.jpg`, `.jpeg`, `.png`
-  - Images are uploaded via document translation API, text is extracted and translated
-- **Admin API** - Manage API keys and view organization usage analytics
-  - `admin keys list/create/deactivate/rename/set-limit` for API key management
-  - `admin usage --start --end [--group-by] [--format]` for usage analytics
-  - JSON output with `--format json` for scripting
-  - Requires admin-level API key
+- **Custom Instructions** - Guide translations with domain-specific rules via repeatable `--custom-instruction` flag (up to 10 instructions, max 300 chars each)
+- **Style Rules** - Apply pre-configured style rules via `--style-id` flag; new `style-rules list` command with `--detailed`, pagination, and JSON output (Pro API only)
+- **Expanded Language Support** - 81 new GA languages and regional variants (ES-419, ZH-HANS, ZH-HANT, HE, VI); client-side validation rejects incompatible options for extended languages
+- **Tag Handling Version** - `--tag-handling-version` flag (v1/v2) for improved XML/HTML structure handling with next-gen models
+- **Image Translation** - JPEG/PNG image support (`.jpg`, `.jpeg`, `.png`) via document translation API
+- **Admin API** - `admin keys list/create/deactivate/rename/set-limit` for API key management; `admin usage` for organization usage analytics with date range, grouping, and JSON output
+- **Language Code Validation** - Upfront validation of all language codes before API calls with clear error messages
+- **XML Tag Validation** - Validates `--splitting-tags`, `--non-splitting-tags`, and `--ignore-tags` against XML specification
 
 ### Fixed
-- **Test Environment Isolation** - Fix 4 failing tests caused by environment variable leakage
-  - Auth command test now saves/restores DEEPL_API_KEY env var
-  - CLI auth integration test strips DEEPL_API_KEY from child process env
-  - CLI translate integration test uses more precise assertion patterns
-  - E2E workflow test accepts both empty input and auth error responses
+- **Batch translation data loss** - Duplicate texts in batch input now all receive correct translations
+- **Batch translation index mismatch** - Partial batch failures no longer cause wrong text-translation pairing
+- **Windows path detection** - Cross-platform path separator detection; URLs no longer treated as file paths
+- **Watch service race conditions** - Prevent timers from firing after `stop()` is called; proper async error handling
+- **Document translation infinite loop** - Added 90-minute timeout and max 180 poll attempts
+- **Document translation cancellation** - Faster abort detection after sleep completes
+- **Cache service memory leak** - Prevent duplicate event handler registration with `process.once()`
+- **Variable preservation performance** - 10-20x speedup by replacing crypto hashing with simple counters
+- **CSV parsing in glossary** - Proper RFC 4180 parsing for quoted fields with commas
+- **Silent proxy failures** - Invalid proxy URLs now throw immediately instead of failing silently
+- **API error messages** - Include request context (text length, target language) for easier debugging
+- **Test environment isolation** - Fix 4 tests leaking environment variables across test suites
 
 ### Security
-- **Config File Permissions** - Write config files with mode 0o600 (owner read/write only)
-- **API Key Masking** - Mask API keys in `config get auth.apiKey` output (show first 8 + last 4 chars)
-- **Stdin API Key Input** - Support `--from-stdin` flag for `auth set-key` to avoid shell history exposure
-- **HTTPS Enforcement** - Reject non-HTTPS URLs for `api.baseUrl` configuration
-- **Glossary ID Validation** - Validate glossary IDs against alphanumeric+hyphen pattern to prevent injection
+- **Config file permissions** - Write with mode 0o600 (owner read/write only)
+- **API key masking** - `config get auth.apiKey` shows masked output (first 8 + last 4 chars)
+- **Stdin API key input** - `--from-stdin` flag for `auth set-key` to avoid shell history exposure
+- **HTTPS enforcement** - Reject non-HTTPS URLs for `api.baseUrl`
+- **Glossary ID validation** - Alphanumeric+hyphen pattern to prevent injection
+- **Config path validation** - Reject directory traversal patterns, null bytes, and path separators
+- **Symlink path validation** - Reject symlinks in translate command to prevent directory traversal
 
 ### Changed
-- **Remove Unused Dependencies** - Remove 8 production deps (deepl-node, lodash, conf, date-fns, yaml, xml2js, zod, mime-types) and 7 @types dev deps
-- **Fix npm Audit Vulnerabilities** - Resolve diff, js-yaml, and lodash security advisories
-
-### Refactoring
-- **Extract resolveGlossaryId** - Move glossary name-to-ID resolution to GlossaryService, eliminating duplication in translate and watch commands
-- **Type Safety** - Replace 5 `any` callback types in watch command with proper FileTranslationResult/WatchTranslationResult types
-- **Formality Type** - Replace 7 inline formality type assertions with imported `Formality` type
-- **Remove Unused Parameters** - Remove unused `config` parameter from WriteService and WriteCommand constructors
-- **Remove Duplicate Type** - Remove duplicate TranslationResult interface from types/api.ts
-
-### Added
-- **Cache Key Determinism Documentation** - Documented intentional property ordering for cache keys
-  - Added comprehensive test to verify cache keys are identical regardless of option order
-  - Added detailed documentation explaining why property order matters in `generateCacheKey()`
-  - Property order in cache data object is now explicitly documented as intentional
-  - Prevents accidental cache key breakage from property reordering
-  - **Impact**: Ensures future developers understand the importance of property order
-  - Location: `src/services/translation.ts:386-417`, test added to `tests/unit/translation-service.test.ts`
-
-- **Language Code Validation** - Upfront validation prevents late API errors (Issue #3)
-  - Validates all language codes before making API calls
-  - Applies to single language (`--to es`) and multiple languages (`--to es,fr,de`)
-  - Validates across all translation workflows: text, file, directory, and document translation
-  - Clear error messages list all 30 valid language codes
-  - Empty language codes after trimming are detected and rejected
-  - **Impact**: Users get immediate feedback about invalid language codes instead of cryptic API errors
-  - **Example**: `deepl translate "Hello" --to invalid` now shows: "Invalid target language code: "invalid". Valid codes: ar, bg, cs, ..."
-  - Added 6 comprehensive tests covering single/multi-language validation
-  - Location: `src/cli/commands/translate.ts:81-92` (validation method), multiple call sites
-
-### Changed
-- **Defensive Programming: CacheService Singleton Pattern** - Improved code robustness (Issue #4)
-  - Refactored getInstance() to set handlersRegistered flag before instance creation
-  - Makes handler registration more atomic and easier to reason about
-  - Calculates needsNewInstance and needsHandlerRegistration upfront
-  - Sets handlersRegistered=true immediately after checking, before any side effects
-  - Prevents theoretical race conditions in async scenarios (defensive programming)
-  - Added comprehensive comments explaining the defensive pattern
-  - Added 4 new tests verifying singleton behavior and handler registration
-  - **Impact**: More maintainable code with clearer intent, prevents future bugs
-  - **Note**: Node.js is single-threaded, so actual race conditions don't occur, but this makes code more robust
-  - Location: `src/storage/cache.ts:58-102` (getInstance method)
-
-- **Performance Optimization: Cache Eviction Atomicity** - Eliminated redundant database queries (Issue #5)
-  - Maintains cache size in memory (`currentSize` field) instead of querying database on every eviction check
-  - Changed evictIfNeeded() from O(n) database query to O(1) in-memory check
-  - Eliminated stats() call (COUNT(*) + SUM(size)) on fast path when eviction not needed
-  - Initialize currentSize from database on construction for accuracy
-  - Updates currentSize atomically during set(), clear(), cleanupExpired(), and evictIfNeeded()
-  - Uses SQL COUNT(*) for average size calculation (still efficient, single query)
-  - Added 3 comprehensive tests verifying cache size tracking accuracy
-  - **Impact**: Faster cache operations, especially for large caches; O(1) eviction check vs O(n) query
-  - **Performance Benefit**: Avoids expensive database aggregation on every cache write
-  - Location: `src/storage/cache.ts` (currentSize field, initialize, set, clear, cleanupExpired, evictIfNeeded)
-
-- **Performance Optimization: HTTP Connection Pool Size** - Reduced resource consumption for CLI tool (Issue #9)
-  - Reduced maxSockets from 50 to 10 for both HTTP and HTTPS agents
-  - Conservative value prevents resource exhaustion on user machines
-  - 50 concurrent sockets was excessive for a CLI tool's typical workload
-  - Still allows reasonable parallelism for batch operations
-  - Matches maxFreeSockets value for consistency
-  - **Impact**: Lower memory footprint and reduced system resource usage
-  - **Performance Trade-off**: Minimal impact on throughput; CLI rarely needs >10 concurrent connections
-  - Location: `src/api/deepl-client.ts:133-147` (HTTP/HTTPS agent configuration)
-
-### Fixed
-- **Document Translation Cancellation Responsiveness** - Improved abort handling after sleep (Issue #10)
-  - Added defensive check after sleep() completes to detect cancellation immediately
-  - Previously, cancellation detection waited until next polling iteration
-  - Now exits immediately if AbortSignal was triggered during sleep
-  - sleep() method already had isSettled flag to prevent double settlement (correct)
-  - This change adds explicit abort check after await completes for faster response
-  - Avoids unnecessary poll interval calculation when operation is cancelled
-  - **Impact**: More responsive cancellation behavior; exits faster when Ctrl+C pressed
-  - **Technical Detail**: Defensive programming - catches edge case where abort happens just as sleep completes
-  - Location: `src/services/document-translation.ts:182-186` (post-sleep abort check)
-
-- **Watch Service Timer Cleanup** - Fixed redundant timer deletion (Issue #11)
-  - Removed double deletion of debounce timer from Map
-  - Previously deleted at line 172 (when !isWatching), then again in finally block at line 185
-  - Now only deletes in finally block for consistent cleanup path
-  - finally block always executes (on return, error, or normal completion)
-  - While Map.delete() is safe to call twice, redundant calls are poor code quality
-  - **Impact**: Cleaner code, more maintainable timer management
-  - **Technical Detail**: Consolidates cleanup logic to single location (finally block)
-  - Location: `src/services/watch.ts:172-186` (timer callback cleanup)
-
-### Security
-- **Config Path Validation** - Prevents directory traversal and injection attacks (Issue #12)
-  - Added comprehensive validation for configuration path keys
-  - Rejects directory traversal patterns: "..", "../", "..\\"
-  - Rejects path separators: "/" and "\\" in path segments
-  - Rejects null bytes: "\0" (common injection technique)
-  - Rejects leading dots: paths starting with "." (hidden files/directories)
-  - Rejects empty path segments: "auth..apiKey" creates empty segment
-  - Validation happens in two stages: original string + split segments
-  - Added 7 comprehensive security tests covering all attack vectors
-  - **Impact**: Closes security vulnerability allowing malicious config keys
-  - **Example Attack Prevented**: `configService.set('../../../etc/passwd', 'data')`
-  - **Technical Detail**: validateKeyString() checks original key, validatePath() checks segments
-  - Location: `src/storage/config.ts:72,389-406` (validation methods)
-
-- **Symlink Path Validation** - Prevents directory traversal attacks (Issue #6)
-  - Rejects symlinks at translate() entry point before processing files
-  - Uses `fs.lstatSync()` to detect symlinks (doesn't follow symlinks)
-  - Prevents attackers from using symlinks to access sensitive files outside intended scope
-  - Clear error message: "Symlinks are not supported for security reasons: <path>"
-  - Applies to both file and directory paths
-  - Added 5 comprehensive tests covering symlink rejection and regular path acceptance
-  - **Impact**: Closes security vulnerability allowing directory traversal via symlinks
-  - **Example Attack Prevented**: User creating symlink to `/etc/passwd` and attempting to translate it
-  - Location: `src/cli/commands/translate.ts:118-149` (translate method with lstatSync check)
-
-### Changed
-- **Code Quality Review: BatchTranslationService** - Investigated re-initialization concern (Issue #13)
-  - Analyzed pLimit instance creation in translateFiles() method
-  - Confirmed current implementation is CORRECT and intentional
-  - Creating new pLimit per batch operation provides proper isolation
-  - Prevents queue mixing between different batch operations
-  - Service is stateless with no mutable state between calls
-  - All 39 tests pass, no bugs identified
-  - **Conclusion**: No changes needed - current code follows best practices
-  - **Technical Detail**: Each batch operation gets its own pLimit queue for isolation
-  - Location: `src/services/batch-translation.ts:81` (pLimit instance creation)
-
-### Refactoring
-- **Code Cleanup: Extraneous Comments Removal** - Removed unnecessary comments across codebase
-  - Removed 37 issue reference comments (Issue #2-#12) from 7 files
-  - Removed 3 obvious/redundant comments from utility methods
-  - Total: 40 comments removed, 185 lines deleted
-  - Files affected: cache.ts, translate.ts, config.ts, deepl-client.ts, glossary.ts, document-translation.ts, watch.ts, git-hooks.ts, cli/index.ts, cli/commands/config.ts
-  - Follows project guideline: "Comment as sparsely as possible and only when it's unclear how certain code behaves"
-  - **Impact**: Cleaner, more maintainable code; easier to read without distracting issue references
-  - **Code Quality**: Removed outdated issue references and obvious comments that didn't add value
-  - All 1460 tests continue to pass (100% pass rate)
-
-- **Dead Code Removal: Undefined Marker** - Cleaned up unreachable code (Issue #7)
-  - Removed undefined marker check from CacheService.get() method
-  - Check was dead code: undefined values are never cached (Issue #10 fix prevents caching undefined)
-  - Removed lines checking `if (row.value === '__UNDEFINED__')`
-  - Added clarifying comment explaining why check is unnecessary
-  - **Impact**: Cleaner, more maintainable code; removes confusion about undefined handling
-  - **Code Quality**: Eliminates unreachable code path that could never be executed
-  - Location: `src/storage/cache.ts:150-152` (get method, removed dead code check)
-
-### Fixed
-- **Critical: Duplicate text handling in batch translation** - Fixed data loss bug for duplicate inputs
-  - When input array contained duplicate texts (e.g., `["Hello", "Hello", "World"]`), only the last occurrence received translation
-  - Fixed by tracking ALL indices for each unique text using `Map<string, number[]>`
-  - Added automatic deduplication of API requests (sends each unique text only once)
-  - All occurrences of duplicate texts now receive correct translations
-  - Added comprehensive test demonstrating the fix
-  - **Impact**: Previously, duplicate texts in batch translation would return incomplete results
-  - **Example**: `translateBatch(["Hello", "Hello", "World"], {targetLang: "es"})` now returns 3 results instead of 2
-  - Location: `src/services/translation.ts:160-265`
-
-### Changed
-- **Test Coverage Enhancement** - Comprehensive integration and E2E test expansion
-  - Created 10 new test files covering critical workflows and CLI behavior
-  - **Integration tests**: Added 158 tests for service interactions and API contract validation
-    - cli-write.integration.test.ts (29 tests) - WriteService with all styles/tones
-    - cli-watch.integration.test.ts (25 tests) - File watching workflows
-    - cli-hooks.integration.test.ts (29 tests) - Git hooks management
-    - cli-translate-workflow.integration.test.ts (52 tests) - Complete translation workflows
-    - batch-translation.integration.test.ts (23 tests) - Parallel file translation
-  - **E2E tests**: Added 104 tests for end-to-end CLI workflows
-    - cli-languages.e2e.test.ts (15 tests) - Languages command behavior
-    - cli-usage.e2e.test.ts (12 tests) - Usage command behavior
-    - cli-document-translation.e2e.test.ts (26 tests) - Document translation features
-    - cli-integration-scenarios.e2e.test.ts (30 tests) - Real-world workflows
-    - cli-stdin-stdout.e2e.test.ts (21 tests) - Stdin/stdout and piping
-  - **Test distribution**: Now ~27-30% integration/E2E tests, ~70-75% unit tests (meeting best practices)
-  - **Total**: 1020 → 1433 tests (+413 tests, +40% increase)
-  - **Test suites**: 40 → 50 suites (+10 suites)
-  - **Pass rate**: 100% (1433/1433 passing)
-  - **Impact**: Validates components work correctly in isolation, together, and in real-world scenarios
-  - Addresses previous gap: High unit test coverage but insufficient integration/E2E coverage
-  - All tests use proper mocking (nock for HTTP, jest.mock for modules, isolated config directories)
-
-### Fixed
-- **Critical: Batch translation index mismatch** - Fixed data corruption risk in partial batch failures
-  - When batch translations partially failed, index mapping could break causing wrong text-translation pairing
-  - Now uses Map-based tracking to correctly map results to source texts
-  - Added 2 comprehensive tests for batch failure scenarios
-  - **Impact**: Previously, partial batch failures could return translations for wrong source texts
-  - Location: `src/services/translation.ts:204-249`
-
-- **Critical: Windows path detection bug** - Fixed cross-platform compatibility issue
-  - Path detection only checked for Unix `/` separator, breaking CLI for all Windows users
-  - URLs like `"http://example.com/file.txt"` were incorrectly treated as file paths
-  - Added cross-platform path separator detection (`/`, `\`) and URL exclusion
-  - Added 7 comprehensive tests for Windows/Unix path detection
-  - **Impact**: Previously, CLI was completely broken for Windows users
-  - Location: `src/cli/commands/translate.ts:119-141`
-
-- **Critical: Watch service race condition** - Fixed reliability issue in watch mode
-  - File change events could trigger timers that execute after `stop()` was called
-  - Added `isWatching` flag to prevent race conditions between events and stop command
-  - Handles rapid start/stop cycles correctly without orphaned timers
-  - Added 5 comprehensive tests for race condition scenarios
-  - **Impact**: Previously, stopping watch mode could cause "Cannot read property of null" errors
-  - Location: `src/services/watch.ts:136-191`
-
-- **High Priority: Variable preservation performance** - Improved translation speed 10-20x
-  - Using `crypto.randomBytes()` and SHA-256 hashing for every variable was ~10-20ms for 100 variables
-  - Replaced with simple counter (`__VAR_0__`, `__VAR_1__`, etc.) for ephemeral placeholders
-  - Collision risk negligible since variables are replaced immediately during translation
-  - Added 3 comprehensive tests for variable preservation efficiency
-  - **Impact**: 10-20x performance improvement for texts with many variables
-  - Location: `src/services/translation.ts:361-384`
-
-- **High Priority: CSV parsing bug in glossary service** - Fixed functionality for quoted commas
-  - Simple `split(',')` broke on CSV with quoted commas (e.g., `"hello, world",hola`)
-  - Implemented proper RFC 4180 CSV parser handling quoted fields and escaped quotes
-  - Glossary import now works correctly for entries containing commas
-  - Added 4 comprehensive tests for CSV parsing edge cases
-  - **Impact**: Previously, glossary import failed for any entry with commas in terms
-  - Location: `src/services/glossary.ts:327-407`
-
-- **High Priority: Silent proxy configuration failure** - Fixed security/compliance risk
-  - Invalid proxy URLs from environment variables logged warning and continued (dangerous)
-  - Users might not notice warning and think they're using proxy when they're not
-  - Now throws error immediately for invalid proxy URLs (fail-fast)
-  - Added 4 comprehensive tests for proxy URL validation
-  - **Impact**: Previously, could expose traffic users intended to hide (compliance violation)
-  - Location: `src/api/deepl-client.ts:175-180`
-
-- **Critical: Document translation infinite loop risk** - Added timeout and max attempts to prevent infinite polling
-  - Added `MAX_POLL_ATTEMPTS` (180 attempts) and `TOTAL_TIMEOUT_MS` (90 minutes) constants
-  - Polling now terminates after 180 attempts or 90 minutes total time
-  - Prevents CLI from hanging indefinitely if DeepL API status doesn't update
-  - Clear error messages indicate timeout exceeded and suggest document may still be processing
-  - **Impact**: Previously, misbehaving API responses could cause infinite loops
-  - Location: `src/services/document-translation.ts:136-191`
-
-- **Critical: Cache service memory leak** - Fixed duplicate event handler registration
-  - Added `handlersRegistered` flag to prevent registering exit handlers multiple times
-  - Now uses `process.once()` instead of `process.on()` for cleanup handlers
-  - Prevents memory leak when `getInstance()` called multiple times in tests or long-running processes
-  - **Impact**: Previously, each `getInstance()` call added new event handlers to process
-  - Location: `src/storage/cache.ts:62-89`
-
-- **High Priority: Type safety violations** - Fixed 2 linter errors
-  - Fixed unsafe array assignment in `translateBatch()` using explicit type constructor
-  - Fixed Promise-in-setTimeout warning by properly wrapping async callback
-  - **Impact**: Improved type safety and eliminated compiler warnings
-  - Locations: `src/services/translation.ts:163`, `src/services/watch.ts:156-178`
-
-- **Logging Consistency** - Replaced console.warn with Logger.warn in DeepL client
-  - Replaced direct `console.warn()` with `Logger.warn()` for proxy URL warnings
-  - Ensures all logging respects quiet mode (`--quiet` flag)
-  - Maintains consistent logging patterns across entire codebase
-  - **Impact**: Previously, proxy warnings would bypass quiet mode
-  - Location: `src/api/deepl-client.ts:177`
-
-### Added
-- **XML Tag Validation** - Comprehensive validation for XML tag handling options
-  - Validates `--splitting-tags`, `--non-splitting-tags`, and `--ignore-tags` parameters
-  - Ensures tag names match XML specification (start with letter/underscore, valid characters only)
-  - Prevents use of reserved "xml" prefix (case-insensitive)
-  - Clear error messages guide users to correct invalid tag names
-  - Example: `--splitting-tags="p,div,br"` is validated before sending to API
-  - Improves user experience by catching errors early instead of API-side failures
-
-### Changed
-- **Performance Optimization: File Operations** - Eliminated duplicate filesystem syscalls
-  - Replaced `existsSync() + statSync()` pattern with single `statSync()` call in directory detection
-  - Cached file size to avoid calling `statSync()` twice on the same file path
-  - Reduces filesystem operations in `translate` command file routing logic
-  - **Performance Impact**: Saves 2 syscalls per file translation (1 for directory check, 1 for size warning)
-  - No behavior changes, maintains exact same functionality
-
-- **Refactoring: DeepL API Client** - Eliminated code duplication
-  - Extracted 56 lines of duplicate parameter building code into shared `buildTranslationParams()` method
-  - Both `translate()` and `translateBatch()` now use centralized parameter construction
-  - Eliminates risk of divergence between single and batch translation options
-  - Easier maintenance for future API parameter additions
-  - No behavior changes, all 1140 tests pass
-
-- **Logging Consistency** - Unified logging through Logger service
-  - Replaced `console.warn()` with `Logger.warn()` in glossary TSV/CSV parsing (5 occurrences)
-  - Replaced `console.error()` with `Logger.error()` in watch service (3 occurrences)
-  - Ensures all logging respects quiet mode (`--quiet` flag)
-  - Maintains consistent logging patterns across entire codebase
-  - Exception: Config service intentionally uses `console.error()` during bootstrap (before Logger available)
-
-### Fixed
-- **Critical: Fire-and-forget async in watch service** - Fixed unhandled rejection risk
-  - Watch service was using `void (async () => {...})()` pattern that could hide errors
-  - Removed `void` operator and properly awaited async `translateFile()` in setTimeout callback
-  - Prevents silent failures during file translation in watch mode
-  - Error handling now properly increments error count and calls onError callback
-  - **Impact**: Previously, translation errors in watch mode could be silently ignored
-  - Location: `src/services/watch.ts:156-170`
-
-- **Critical: Watch service race condition on stop** - Fixed race condition in file translation
-  - Debounced translation timers could fire after watch service was stopped
-  - Added guard check to prevent translations from running after `stop()` is called
-  - Prevents "Cannot read property of null" errors when translations execute after cleanup
-  - **Impact**: Previously, stopping watch mode could cause unhandled errors from pending translations
-  - Location: `src/services/watch.ts` debounce timer callback
-
-- **Critical: Race condition in document translation polling** - Fixed concurrent execution bug
-  - AbortSignal cleanup and timeout completion could execute simultaneously
-  - Added `isSettled` flag to ensure only one path (resolve or reject) executes
-  - Prevents potential memory leaks and duplicate event handler cleanup
-  - **Impact**: Previously, aborting a document translation could cause race condition
-  - Race occurred when: timeout fires at same moment as abort signal
-  - Location: `src/services/document-translation.ts:195-224`
-
-- **Critical: Batch translation failure handling** - Improved error propagation and user feedback
-  - Fixed batch translation to properly track failures and warn users about partial failures
-  - When all batches fail, now throws error instead of returning empty array
-  - When some batches fail, logs warning: "⚠️  Warning: N of M translations failed"
-  - Helps users identify incomplete batch operations and propagates errors correctly
-  - **Impact**: Previously, all-failure case returned empty array; partial failures were silent
-  - Location: `src/services/translation.ts:199-260`
-
-- **High Priority: Resource leaks in cache service** - Implemented proper disposal pattern
-  - CacheService singleton now automatically closes database on process exit
-  - Added handlers for `exit`, `SIGINT`, and `SIGTERM` signals
-  - Prevents "database is locked" errors and ensures clean shutdowns
-  - Added `isClosed` flag to prevent double-close errors
-  - **Impact**: Previously, process termination could leave database connections open
-  - Location: `src/storage/cache.ts` singleton getInstance()
-
-- **High Priority: Non-cryptographic random in security context** - Replaced with crypto.randomBytes
-  - Variable placeholder generation now uses `crypto.randomBytes()` instead of `Math.random()`
-  - Uses cryptographically secure random bytes with SHA-256 hashing
-  - Eliminates collision risk in high-volume translation scenarios
-  - **Impact**: Previously, `Math.random()` could produce collisions in variable placeholders
-  - Location: `src/services/translation.ts:369-381` preserveVariables()
-
-- **High Priority: Silent proxy URL errors** - Added validation warnings
-  - Invalid proxy URLs now log warning instead of silently failing
-  - Helps users identify proxy configuration issues early
-  - Warning: "⚠️  Warning: Invalid proxy URL: [url]. Proxy will not be used."
-  - **Impact**: Previously, invalid proxy URLs caused silent failures in HTTP requests
-  - Location: `src/api/deepl-client.ts:174-176`
-
-- **Performance: Concurrency validation** - Added bounds checking
-  - BatchTranslationService now validates concurrency is between 1-100
-  - Prevents invalid concurrency values that could cause performance issues
-  - Throws descriptive error for out-of-bounds values
-  - **Impact**: Previously, invalid concurrency values could cause unexpected behavior
-  - Location: `src/services/batch-translation.ts` constructor
-
-- **Performance: Unnecessary array copy in getSupportedFileTypes** - Optimized to return readonly reference
-  - Changed return type from copied array to `readonly string[]`
-  - Eliminates unnecessary memory allocation on every call
-  - TypeScript enforces immutability at compile time
-  - **Impact**: Reduces memory allocations for frequently called method
-  - Location: `src/services/file-translation.ts:35-37`
-
-- **Logic Bug: File size null handling** - Fixed error handling for missing files
-  - `getFileSize()` now correctly handles case when file doesn't exist
-  - Returns `null` instead of throwing, allowing caller to handle gracefully
-  - Improved error message: "File not found or cannot be accessed: [path]"
-  - **Impact**: Previously, missing files could cause unclear errors
-  - Location: `src/cli/commands/translate.ts:167-175`
-
-- **Code Smell: Redundant null check in watch service** - Removed unnecessary check
-  - Removed redundant null check after non-null assertion operator
-  - Code already used `!` operator, making additional check unreachable
-  - **Impact**: Cleaner code, no behavior change
-  - Location: `src/services/watch.ts:208-210`
-
-- **Code Smell: Deprecated _batchOptions parameter** - Removed unused parameter
-  - Removed deprecated `_batchOptions` parameter from `translateBatch()` method signature
-  - Parameter was never used and cluttered the API
-  - **Impact**: Cleaner API surface, no behavior change
-  - Location: `src/services/translation.ts:139-142`
-
-- **UX: Poor API error messages** - Added context to error messages
-  - API errors now include request details for easier debugging
-  - Example: "Translation count mismatch: sent 2 texts but received 1 translations. Target language: es"
-  - Example: "No translation returned from DeepL API. Request: translate text (150 chars) to de"
-  - **Impact**: Users can now understand what went wrong without inspecting code
-  - Location: `src/api/deepl-client.ts` translate() and translateBatch()
-
-- **UX: Cache disabled logging** - Added informative logging
-  - Now logs when cache is disabled globally: "ℹ️  Cache is disabled"
-  - Now logs when cache is bypassed per-request: "ℹ️  Cache bypassed for this request (--no-cache)"
-  - Helps users understand why translations aren't being cached
-  - **Impact**: Users no longer confused about caching behavior
-  - Location: `src/services/translation.ts:88-92`
+- Remove 8 unused production deps (deepl-node, lodash, conf, date-fns, yaml, xml2js, zod, mime-types) and 7 @types dev deps
+- Fix npm audit vulnerabilities (diff, js-yaml, lodash)
+- Cache eviction now uses O(1) in-memory size tracking instead of O(n) database queries
+- HTTP connection pool reduced from 50 to 10 sockets (appropriate for CLI workloads)
+- Extract `buildTranslationParams()` to eliminate duplicate parameter building code
+- Unified logging through Logger service (respects `--quiet` flag consistently)
+- Comprehensive test expansion: 1020 to 1586 tests (+55%), 40 to 53 suites, 100% pass rate
 
 ## [0.7.0] - 2025-10-16
 
