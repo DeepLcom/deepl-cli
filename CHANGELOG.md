@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Test Environment Isolation** - Fix 4 failing tests caused by environment variable leakage
+  - Auth command test now saves/restores DEEPL_API_KEY env var
+  - CLI auth integration test strips DEEPL_API_KEY from child process env
+  - CLI translate integration test uses more precise assertion patterns
+  - E2E workflow test accepts both empty input and auth error responses
+
+### Security
+- **Config File Permissions** - Write config files with mode 0o600 (owner read/write only)
+- **API Key Masking** - Mask API keys in `config get auth.apiKey` output (show first 8 + last 4 chars)
+- **Stdin API Key Input** - Support `--from-stdin` flag for `auth set-key` to avoid shell history exposure
+- **HTTPS Enforcement** - Reject non-HTTPS URLs for `api.baseUrl` configuration
+- **Glossary ID Validation** - Validate glossary IDs against alphanumeric+hyphen pattern to prevent injection
+
+### Changed
+- **Remove Unused Dependencies** - Remove 8 production deps (deepl-node, lodash, conf, date-fns, yaml, xml2js, zod, mime-types) and 7 @types dev deps
+- **Fix npm Audit Vulnerabilities** - Resolve diff, js-yaml, and lodash security advisories
+
+### Refactoring
+- **Extract resolveGlossaryId** - Move glossary name-to-ID resolution to GlossaryService, eliminating duplication in translate and watch commands
+- **Type Safety** - Replace 5 `any` callback types in watch command with proper FileTranslationResult/WatchTranslationResult types
+- **Formality Type** - Replace 7 inline formality type assertions with imported `Formality` type
+- **Remove Unused Parameters** - Remove unused `config` parameter from WriteService and WriteCommand constructors
+- **Remove Duplicate Type** - Remove duplicate TranslationResult interface from types/api.ts
+
 ### Added
 - **Cache Key Determinism Documentation** - Documented intentional property ordering for cache keys
   - Added comprehensive test to verify cache keys are identical regardless of option order
