@@ -77,6 +77,7 @@ interface TranslateOptions {
   glossary?: string;
   customInstruction?: string[];
   styleId?: string;
+  tagHandlingVersion?: string;
   cache?: boolean;  // Commander.js converts --no-cache to cache: false
   format?: string;
 }
@@ -461,6 +462,16 @@ export class TranslateCommand {
       const tags = options.ignoreTags.split(',').map(tag => tag.trim());
       this.validateXmlTags(tags, '--ignore-tags');
       (translationOptions as {ignoreTags?: string[]}).ignoreTags = tags;
+    }
+
+    if (options.tagHandlingVersion) {
+      if (!options.tagHandling) {
+        throw new Error('--tag-handling-version requires --tag-handling to be set (xml or html)');
+      }
+      if (options.tagHandlingVersion !== 'v1' && options.tagHandlingVersion !== 'v2') {
+        throw new Error('--tag-handling-version must be "v1" or "v2"');
+      }
+      (translationOptions as {tagHandlingVersion?: 'v1' | 'v2'}).tagHandlingVersion = options.tagHandlingVersion as 'v1' | 'v2';
     }
 
     // Translate

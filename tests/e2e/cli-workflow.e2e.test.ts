@@ -1463,4 +1463,17 @@ describe('CLI Workflow E2E', () => {
       }
     });
   });
+
+  describe('Tag Handling Version', () => {
+    it('should accept --tag-handling-version flag', () => {
+      try {
+        runCLI('deepl translate "<p>Hello</p>" --to es --tag-handling html --tag-handling-version v2');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+      }
+    });
+  });
 });

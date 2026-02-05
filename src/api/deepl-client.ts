@@ -597,6 +597,10 @@ export class DeepLClient {
       params['style_id'] = options.styleId;
     }
 
+    if (options.tagHandlingVersion) {
+      params['tag_handling_version'] = options.tagHandlingVersion;
+    }
+
     return params;
   }
 

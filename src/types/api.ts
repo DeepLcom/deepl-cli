@@ -28,6 +28,7 @@ export interface TranslationOptions {
   ignoreTags?: string[];
   customInstructions?: string[];
   styleId?: string;
+  tagHandlingVersion?: 'v1' | 'v2';
 }
 
 export type WriteLanguage =

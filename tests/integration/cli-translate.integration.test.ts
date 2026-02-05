@@ -707,4 +707,21 @@ describe('Translate CLI Integration', () => {
       }
     });
   });
+
+  describe('--tag-handling-version flag', () => {
+    it('should show --tag-handling-version in help text', () => {
+      const result = runCLI('deepl translate --help');
+      expect(result).toContain('--tag-handling-version');
+    });
+
+    it('should accept --tag-handling-version with --tag-handling', () => {
+      try {
+        runCLI('deepl translate "<p>Hello</p>" --to es --tag-handling html --tag-handling-version v2', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+  });
 });

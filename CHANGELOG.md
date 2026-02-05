@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New target variants: ES-419, ZH-HANS, ZH-HANT, plus EN-GB, EN-US, PT-BR, PT-PT
   - Newly added core languages: Hebrew (HE), Vietnamese (VI)
   - Client-side validation: error when using formality, glossary, or latency_optimized with extended languages
+- **Tag Handling Version** - Add `--tag-handling-version` flag (v1/v2) for improved XML/HTML structure handling
+  - v2 improves tag handling with next-gen models
+  - Requires `--tag-handling` to be set (xml or html)
 
 ### Fixed
 - **Test Environment Isolation** - Fix 4 failing tests caused by environment variable leakage

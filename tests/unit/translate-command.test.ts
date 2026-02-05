@@ -2050,4 +2050,81 @@ describe('TranslateCommand', () => {
       expect(mockTranslationService.translate).toHaveBeenCalled();
     });
   });
+
+  describe('tag handling version', () => {
+    it('should pass tagHandlingVersion to translation service', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: '<p>Hola</p>',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('<p>Hello</p>', {
+        to: 'es',
+        tagHandling: 'html',
+        tagHandlingVersion: 'v2',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<p>Hello</p>',
+        expect.objectContaining({ tagHandlingVersion: 'v2' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should reject tag-handling-version without tag-handling', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'es',
+          tagHandlingVersion: 'v2',
+        })
+      ).rejects.toThrow('--tag-handling-version requires --tag-handling');
+    });
+
+    it('should reject invalid tag-handling-version value', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'es',
+          tagHandling: 'xml',
+          tagHandlingVersion: 'v3',
+        })
+      ).rejects.toThrow('--tag-handling-version must be "v1" or "v2"');
+    });
+
+    it('should accept v1 tag-handling-version', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('<p>Hello</p>', {
+        to: 'es',
+        tagHandling: 'xml',
+        tagHandlingVersion: 'v1',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<p>Hello</p>',
+        expect.objectContaining({ tagHandlingVersion: 'v1' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should work without tag-handling-version', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('<p>Hello</p>', {
+        to: 'es',
+        tagHandling: 'html',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<p>Hello</p>',
+        expect.not.objectContaining({ tagHandlingVersion: expect.anything() }),
+        expect.any(Object)
+      );
+    });
+  });
 });

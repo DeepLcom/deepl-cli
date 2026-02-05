@@ -1851,4 +1851,40 @@ describe('DeepLClient', () => {
       await expect(client.getStyleRules()).rejects.toThrow('Authentication failed');
     });
   });
+
+  describe('tag_handling_version parameter', () => {
+    it('should send tag_handling_version in translation request', async () => {
+      const scope = nock(baseUrl)
+        .post('/v2/translate', (body: string) => {
+          const params = new URLSearchParams(body);
+          return params.get('tag_handling_version') === 'v2';
+        })
+        .reply(200, {
+          translations: [{ text: '<p>Hola</p>', detected_source_language: 'EN' }],
+        });
+
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'html',
+        tagHandlingVersion: 'v2',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should not send tag_handling_version when not specified', async () => {
+      const scope = nock(baseUrl)
+        .post('/v2/translate', (body: string) => {
+          const params = new URLSearchParams(body);
+          return !params.has('tag_handling_version');
+        })
+        .reply(200, {
+          translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+        });
+
+      await client.translate('Hello', { targetLang: 'es' });
+
+      expect(scope.isDone()).toBe(true);
+    });
+  });
 });
