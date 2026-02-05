@@ -26,6 +26,7 @@ export interface TranslationOptions {
   splittingTags?: string[];
   nonSplittingTags?: string[];
   ignoreTags?: string[];
+  customInstructions?: string[];
 }
 
 export type WriteLanguage =

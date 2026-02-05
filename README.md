@@ -379,6 +379,16 @@ deepl translate "Real-time chat message" --to es --model-type latency_optimized
 deepl translate "Important email" --to de --model-type prefer_quality_optimized
 # Prefer quality, fall back to latency if unavailable
 
+# Custom instructions for tailored translations (repeatable, max 10)
+deepl translate "Click Save to confirm" --to de \
+  --custom-instruction "This is a software UI string" \
+  --custom-instruction "Keep it concise"
+
+# Combine custom instructions with other options
+deepl translate "Meeting at the bank" --to es \
+  --custom-instruction "This is about financial institutions" \
+  --formality more
+
 # Custom API endpoint (for DeepL Pro accounts or testing)
 deepl translate "Hello" --to es --api-url https://api.deepl.com/v2
 

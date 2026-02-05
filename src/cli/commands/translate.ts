@@ -49,6 +49,7 @@ interface TranslateOptions {
   pattern?: string;
   concurrency?: number;
   glossary?: string;
+  customInstruction?: string[];
   cache?: boolean;  // Commander.js converts --no-cache to cache: false
   format?: string;
 }
@@ -356,6 +357,21 @@ export class TranslateCommand {
       translationOptions.showBilledCharacters = true;
     }
 
+    if (options.customInstruction && options.customInstruction.length > 0) {
+      if (options.customInstruction.length > 10) {
+        throw new Error('Maximum 10 custom instructions allowed');
+      }
+      for (const instruction of options.customInstruction) {
+        if (instruction.length > 300) {
+          throw new Error(`Custom instruction exceeds 300 character limit (${instruction.length} chars): "${instruction.substring(0, 50)}..."`);
+        }
+      }
+      if (options.modelType === 'latency_optimized') {
+        throw new Error('Custom instructions cannot be used with latency_optimized model type');
+      }
+      (translationOptions as { customInstructions?: string[] }).customInstructions = options.customInstruction;
+    }
+
     // XML tag handling parameters (only valid with --tag-handling xml)
     if (options.outlineDetection !== undefined || options.splittingTags || options.nonSplittingTags || options.ignoreTags) {
       if (options.tagHandling !== 'xml') {
@@ -448,6 +464,10 @@ export class TranslateCommand {
 
     if (options.showBilledCharacters) {
       translationOptions.showBilledCharacters = true;
+    }
+
+    if (options.customInstruction && options.customInstruction.length > 0) {
+      (translationOptions as { customInstructions?: string[] }).customInstructions = options.customInstruction;
     }
 
     const results = await this.translationService.translateToMultiple(

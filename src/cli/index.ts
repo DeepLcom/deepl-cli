@@ -281,6 +281,7 @@ program
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
   .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
   .option('--glossary <name-or-id>', 'Use glossary by name or ID')
+  .option('--custom-instruction <instruction>', 'Custom instruction for translation (repeatable, max 10, max 300 chars each)', (val: string, prev: string[]) => prev.concat([val]), [] as string[])
   .option('--no-cache', 'Bypass cache for this translation (useful for testing)')
   .option('--format <format>', 'Output format: json, table (default: plain text)')
   .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
@@ -306,6 +307,7 @@ program
     pattern?: string;
     concurrency?: number;
     glossary?: string;
+    customInstruction?: string[];
     noCache?: boolean;
     format?: string;
     apiUrl?: string;

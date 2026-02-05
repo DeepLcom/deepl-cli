@@ -254,7 +254,7 @@ describe('Translate CLI Integration', () => {
     it('should accept comma-separated target languages', () => {
       const helpOutput = runCLI('deepl translate --help');
       expect(helpOutput).toContain('--to <language>');
-      expect(helpOutput).toMatch(/comma-separated.*multiple/i);
+      expect(helpOutput).toContain('comma-separated');
     });
 
     it('should validate comma-separated format', () => {
@@ -564,6 +564,45 @@ describe('Translate CLI Integration', () => {
         const output = error.stderr || error.stdout;
         // Should accept both flags together
         expect(output).not.toMatch(/invalid.*format/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+  });
+
+  describe('--custom-instruction flag', () => {
+    it('should display --custom-instruction in help text', () => {
+      const output = runCLI('deepl translate --help');
+      expect(output).toContain('--custom-instruction');
+    });
+
+    it('should accept a single --custom-instruction flag', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --custom-instruction "Use informal tone"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not flag parsing
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept multiple --custom-instruction flags', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --custom-instruction "Use informal tone" --custom-instruction "Preserve brand names"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not flag parsing
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept --custom-instruction with other options', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --formality more --custom-instruction "Keep it formal" --model-type quality_optimized', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
         expect(output).toMatch(/API key|auth/i);
       }

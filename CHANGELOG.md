@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Custom Instructions** - Guide translations with domain-specific rules via `--custom-instruction` flag
+  - Repeatable flag: up to 10 instructions, max 300 characters each
+  - Forces `quality_optimized` model (incompatible with `latency_optimized`)
+  - Works with single and multi-language translations
+  - Example: `deepl translate "Click Save" --to de --custom-instruction "This is a UI string"`
+
 ### Fixed
 - **Test Environment Isolation** - Fix 4 failing tests caused by environment variable leakage
   - Auth command test now saves/restores DEEPL_API_KEY env var

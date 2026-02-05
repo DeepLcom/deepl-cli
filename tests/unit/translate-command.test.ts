@@ -703,6 +703,140 @@ describe('TranslateCommand', () => {
     });
   });
 
+  describe('custom instructions', () => {
+    it('should pass custom instructions to translation service', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola mundo',
+      });
+
+      await translateCommand.translateText('Hello world', {
+        to: 'es',
+        customInstruction: ['Use informal tone', 'Preserve brand names'],
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello world',
+        expect.objectContaining({
+          targetLang: 'es',
+          customInstructions: ['Use informal tone', 'Preserve brand names'],
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should work without custom instructions', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola',
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.not.objectContaining({
+          customInstructions: expect.anything(),
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should reject more than 10 custom instructions', async () => {
+      const instructions = Array.from({ length: 11 }, (_, i) => `Instruction ${i + 1}`);
+
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'es',
+          customInstruction: instructions,
+        })
+      ).rejects.toThrow('Maximum 10 custom instructions allowed');
+    });
+
+    it('should reject instructions exceeding 300 characters', async () => {
+      const longInstruction = 'x'.repeat(301);
+
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'es',
+          customInstruction: [longInstruction],
+        })
+      ).rejects.toThrow('Custom instruction exceeds 300 character limit');
+    });
+
+    it('should reject custom instructions with latency_optimized model', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'es',
+          customInstruction: ['Use informal tone'],
+          modelType: 'latency_optimized',
+        })
+      ).rejects.toThrow('Custom instructions cannot be used with latency_optimized model type');
+    });
+
+    it('should pass custom instructions to translateToMultiple', async () => {
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'fr', text: 'Bonjour' },
+      ]);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es,fr',
+        customInstruction: ['Keep it casual'],
+      });
+
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        ['es', 'fr'],
+        expect.objectContaining({
+          customInstructions: ['Keep it casual'],
+        })
+      );
+    });
+
+    it('should allow exactly 10 custom instructions', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola',
+      });
+
+      const instructions = Array.from({ length: 10 }, (_, i) => `Instruction ${i + 1}`);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        customInstruction: instructions,
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({
+          customInstructions: instructions,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should allow instructions with exactly 300 characters', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola',
+      });
+
+      const instruction = 'x'.repeat(300);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        customInstruction: [instruction],
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({
+          customInstructions: [instruction],
+        }),
+        expect.any(Object)
+      );
+    });
+  });
+
   describe('translate() - file/directory detection', () => {
     it('should detect and route to translateDirectory() for directory paths', async () => {
       // Mock fs to indicate directory (Issue #6: must check lstatSync for symlinks)

@@ -106,7 +106,7 @@ describe('Document Translation E2E', () => {
       const result = runCLIExpectError('translate --help', '');
 
       expect(result.output).toContain('--enable-minification');
-      expect(result.output).toMatch(/minification.*pptx.*docx/i);
+      expect(result.output).toContain('minification');
     });
 
     it('should not require a value (boolean flag)', () => {

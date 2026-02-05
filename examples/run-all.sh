@@ -67,6 +67,7 @@ EXAMPLES=(
   "18-cost-transparency.sh"
   "19-xml-tag-handling.sh"
   "20-table-output.sh"
+  "21-custom-instructions.sh"
 )
 
 # Skip slow examples in fast mode
@@ -92,6 +93,7 @@ if [ "$FAST_MODE" = true ]; then
     "18-cost-transparency.sh"
     "19-xml-tag-handling.sh"
     "20-table-output.sh"
+    "21-custom-instructions.sh"
   )
 fi
 

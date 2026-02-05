@@ -1340,4 +1340,39 @@ describe('CLI Workflow E2E', () => {
       }
     });
   });
+
+  describe('Custom Instructions', () => {
+    it('should accept --custom-instruction flag without error', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --custom-instruction "Use informal tone"');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        // Should fail on API key, not flag parsing
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+      }
+    });
+
+    it('should accept multiple --custom-instruction flags', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --custom-instruction "Be concise" --custom-instruction "Preserve acronyms"');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should combine --custom-instruction with other flags', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --custom-instruction "Use formal tone" --formality more --model-type quality_optimized');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unknown.*option/i);
+      }
+    });
+  });
 });

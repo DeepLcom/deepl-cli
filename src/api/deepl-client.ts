@@ -527,6 +527,10 @@ export class DeepLClient {
       params['ignore_tags'] = options.ignoreTags.join(',');
     }
 
+    if (options.customInstructions && options.customInstructions.length > 0) {
+      params['custom_instructions'] = options.customInstructions;
+    }
+
     return params;
   }
 

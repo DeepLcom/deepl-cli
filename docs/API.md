@@ -182,6 +182,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--non-splitting-tags TAGS` - Comma-separated XML tags for non-translatable text (requires `--tag-handling xml`)
 - `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
 - `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
+- `--custom-instruction INSTRUCTION` - Custom instruction for translation (repeatable, max 10, max 300 chars each). Forces `quality_optimized` model. Cannot be used with `latency_optimized`.
 - `--no-cache` - Bypass cache for this translation (useful for testing/forcing fresh translation)
 
 **API Options:**

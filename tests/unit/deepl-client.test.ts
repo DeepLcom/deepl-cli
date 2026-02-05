@@ -395,6 +395,72 @@ describe('DeepLClient', () => {
       expect(nock.isDone()).toBe(true);
     });
 
+    it('should send custom_instructions parameter as array', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return Array.isArray(body.custom_instructions) &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.custom_instructions.length === 2 &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.custom_instructions[0] === 'Use informal tone' &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.custom_instructions[1] === 'Preserve brand names';
+        })
+        .reply(200, {
+          translations: [{ text: 'Hola mundo' }],
+        });
+
+      await client.translate('Hello world', {
+        targetLang: 'es',
+        customInstructions: ['Use informal tone', 'Preserve brand names'],
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should not send custom_instructions when not specified', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.custom_instructions === undefined;
+        })
+        .reply(200, {
+          translations: [{ text: 'Hola' }],
+        });
+
+      await client.translate('Hello', {
+        targetLang: 'es',
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should send custom_instructions in batch translation', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return Array.isArray(body.custom_instructions) &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.custom_instructions[0] === 'Keep it short' &&
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            body.custom_instructions[1] === 'Preserve names';
+        })
+        .reply(200, {
+          translations: [
+            { text: 'Hola' },
+            { text: 'Mundo' },
+          ],
+        });
+
+      await client.translateBatch(['Hello', 'World'], {
+        targetLang: 'es',
+        customInstructions: ['Keep it short', 'Preserve names'],
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
     it('should throw error for invalid target language', async () => {
       await expect(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
