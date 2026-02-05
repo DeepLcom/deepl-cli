@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Pagination with `--page` and `--page-size` flags
   - JSON output with `--format json`
   - Example: `deepl translate "Hello" --to de --style-id "abc-123-uuid"`
+- **Expanded Language Support** - Add 81 new GA languages + regional variants
+  - 81 extended languages (quality_optimized only, e.g., Swahili, Hindi, Thai, Welsh)
+  - New target variants: ES-419, ZH-HANS, ZH-HANT, plus EN-GB, EN-US, PT-BR, PT-PT
+  - Newly added core languages: Hebrew (HE), Vietnamese (VI)
+  - Client-side validation: error when using formality, glossary, or latency_optimized with extended languages
 
 ### Fixed
 - **Test Environment Isolation** - Fix 4 failing tests caused by environment variable leakage

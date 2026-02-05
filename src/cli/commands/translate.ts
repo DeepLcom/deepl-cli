@@ -18,9 +18,35 @@ import { Logger } from '../../utils/logger.js';
 
 // Valid language codes supported by DeepL
 const VALID_LANGUAGES: ReadonlySet<string> = new Set([
+  // Core languages (full feature support)
   'ar', 'bg', 'cs', 'da', 'de', 'el', 'en', 'es', 'et', 'fi', 'fr',
-  'hu', 'id', 'it', 'ja', 'ko', 'lt', 'lv', 'nb', 'nl', 'pl', 'pt',
-  'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'zh'
+  'he', 'hu', 'id', 'it', 'ja', 'ko', 'lt', 'lv', 'nb', 'nl', 'pl',
+  'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi', 'zh',
+  // Target-only regional variants
+  'en-gb', 'en-us', 'es-419', 'pt-br', 'pt-pt', 'zh-hans', 'zh-hant',
+  // Extended languages (quality_optimized only, no formality/glossary)
+  'ace', 'af', 'an', 'as', 'ay', 'az', 'ba', 'be', 'bho', 'bn',
+  'br', 'bs', 'ca', 'ceb', 'ckb', 'cy', 'eo', 'eu', 'fa', 'ga',
+  'gl', 'gn', 'gom', 'gu', 'ha', 'hi', 'hr', 'ht', 'hy', 'ig',
+  'is', 'jv', 'ka', 'kk', 'kmr', 'ky', 'la', 'lb', 'lmo', 'ln',
+  'mai', 'mg', 'mi', 'mk', 'ml', 'mn', 'mr', 'ms', 'mt', 'my',
+  'ne', 'oc', 'om', 'pa', 'pag', 'pam', 'prs', 'ps', 'qu', 'sa',
+  'scn', 'sq', 'sr', 'st', 'su', 'sw', 'ta', 'te', 'tg', 'th',
+  'tk', 'tl', 'tn', 'ts', 'tt', 'ur', 'uz', 'wo', 'xh', 'yi',
+  'yue', 'zu',
+]);
+
+// Extended-only languages: quality_optimized only, no formality or glossary support
+const EXTENDED_ONLY_LANGUAGES: ReadonlySet<string> = new Set([
+  'ace', 'af', 'an', 'as', 'ay', 'az', 'ba', 'be', 'bho', 'bn',
+  'br', 'bs', 'ca', 'ceb', 'ckb', 'cy', 'eo', 'eu', 'fa', 'ga',
+  'gl', 'gn', 'gom', 'gu', 'ha', 'hi', 'hr', 'ht', 'hy', 'ig',
+  'is', 'jv', 'ka', 'kk', 'kmr', 'ky', 'la', 'lb', 'lmo', 'ln',
+  'mai', 'mg', 'mi', 'mk', 'ml', 'mn', 'mr', 'ms', 'mt', 'my',
+  'ne', 'oc', 'om', 'pa', 'pag', 'pam', 'prs', 'ps', 'qu', 'sa',
+  'scn', 'sq', 'sr', 'st', 'su', 'sw', 'ta', 'te', 'tg', 'th',
+  'tk', 'tl', 'tn', 'ts', 'tt', 'ur', 'uz', 'wo', 'xh', 'yi',
+  'yue', 'zu',
 ]);
 
 // Constants for text-based file caching
@@ -85,6 +111,29 @@ export class TranslateCommand {
       if (!VALID_LANGUAGES.has(lang)) {
         throw new Error(`Invalid target language code: "${lang}". Valid codes: ${Array.from(VALID_LANGUAGES).sort().join(', ')}`);
       }
+    }
+  }
+
+  private validateExtendedLanguageConstraints(targetLang: string, options: TranslateOptions): void {
+    const langs = targetLang.includes(',')
+      ? targetLang.split(',').map(l => l.trim())
+      : [targetLang];
+
+    const extendedLangs = langs.filter(l => EXTENDED_ONLY_LANGUAGES.has(l));
+    if (extendedLangs.length === 0) return;
+
+    const langList = extendedLangs.join(', ');
+
+    if (options.modelType === 'latency_optimized') {
+      throw new Error(`Language(s) ${langList} only support quality_optimized model type, not latency_optimized`);
+    }
+
+    if (options.formality && options.formality !== 'default') {
+      throw new Error(`Language(s) ${langList} do not support formality settings`);
+    }
+
+    if (options.glossary) {
+      throw new Error(`Language(s) ${langList} do not support glossaries`);
     }
   }
 
@@ -305,6 +354,7 @@ export class TranslateCommand {
     }
 
     this.validateLanguageCodes([options.to]);
+    this.validateExtendedLanguageConstraints(options.to, options);
 
     // Build translation options
     const translationOptions: {
@@ -442,6 +492,7 @@ export class TranslateCommand {
   private async translateToMultiple(text: string, options: TranslateOptions): Promise<string> {
     const targetLangs = options.to.split(',').map(lang => lang.trim());
     this.validateLanguageCodes(targetLangs);
+    this.validateExtendedLanguageConstraints(options.to, options);
 
     // Now safe to cast as Language[]
     const validTargetLangs = targetLangs as Language[];

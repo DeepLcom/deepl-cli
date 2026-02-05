@@ -1428,4 +1428,39 @@ describe('CLI Workflow E2E', () => {
       }
     });
   });
+
+  describe('Expanded Language Support', () => {
+    it('should accept extended language codes like Swahili', () => {
+      try {
+        runCLI('deepl translate "Hello" --to sw');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/Invalid target language/i);
+      }
+    });
+
+    it('should accept ES-419 Latin American Spanish', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es-419');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/Invalid target language/i);
+      }
+    });
+
+    it('should accept Chinese simplified/traditional variants', () => {
+      try {
+        runCLI('deepl translate "Hello" --to zh-hant');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/Invalid target language/i);
+      }
+    });
+  });
 });

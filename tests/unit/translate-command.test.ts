@@ -1905,4 +1905,149 @@ describe('TranslateCommand', () => {
       );
     });
   });
+
+  describe('expanded language support', () => {
+    it('should accept extended language codes', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hujambo',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', { to: 'sw' });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ targetLang: 'sw' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should accept target-only regional variants', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', { to: 'es-419' });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ targetLang: 'es-419' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should accept zh-hans and zh-hant variants', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', { to: 'zh-hans' });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ targetLang: 'zh-hans' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should reject latency_optimized model with extended languages', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'sw',
+          modelType: 'latency_optimized',
+        })
+      ).rejects.toThrow('only support quality_optimized model type');
+    });
+
+    it('should reject formality with extended languages', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'sw',
+          formality: 'more',
+        })
+      ).rejects.toThrow('do not support formality');
+    });
+
+    it('should reject glossary with extended languages', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'sw',
+          glossary: 'my-glossary',
+        })
+      ).rejects.toThrow('do not support glossaries');
+    });
+
+    it('should allow formality=default with extended languages', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'sw',
+        formality: 'default',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalled();
+    });
+
+    it('should reject latency_optimized with extended languages in multi-target', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'sw,hi',
+          modelType: 'latency_optimized',
+        })
+      ).rejects.toThrow('only support quality_optimized model type');
+    });
+
+    it('should allow core + extended mix without restricted options', async () => {
+      mockTranslationService.translateToMultiple.mockResolvedValue([
+        { targetLang: 'es' as any, text: 'Hola' },
+        { targetLang: 'sw' as any, text: 'Hujambo' },
+      ]);
+
+      await translateCommand.translateText('Hello', { to: 'es,sw' });
+
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalled();
+    });
+
+    it('should reject formality with mixed core+extended targets', async () => {
+      await expect(
+        translateCommand.translateText('Hello', {
+          to: 'es,sw',
+          formality: 'more',
+        })
+      ).rejects.toThrow('do not support formality');
+    });
+
+    it('should accept newly added core languages (he, vi)', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', { to: 'he' });
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ targetLang: 'he' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should allow formality with newly added core languages', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'vi',
+        formality: 'more',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalled();
+    });
+  });
 });

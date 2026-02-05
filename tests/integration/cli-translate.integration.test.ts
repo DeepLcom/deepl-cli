@@ -664,4 +664,47 @@ describe('Translate CLI Integration', () => {
       }
     });
   });
+
+  describe('expanded language support', () => {
+    it('should accept extended language codes', () => {
+      try {
+        runCLI('deepl translate "Hello" --to sw', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not language validation
+        expect(output).not.toMatch(/Invalid target language/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept ES-419 target variant', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es-419', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).not.toMatch(/Invalid target language/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept zh-hans and zh-hant variants', () => {
+      try {
+        runCLI('deepl translate "Hello" --to zh-hans', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).not.toMatch(/Invalid target language/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept newly added core languages (he, vi)', () => {
+      try {
+        runCLI('deepl translate "Hello" --to he', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).not.toMatch(/Invalid target language/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+  });
 });
