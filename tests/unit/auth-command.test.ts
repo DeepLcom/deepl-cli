@@ -109,9 +109,17 @@ describe('AuthCommand', () => {
     });
 
     it('should return undefined when no key is set', async () => {
-      const key = await authCommand.getKey();
+      const originalEnv = process.env['DEEPL_API_KEY'];
+      delete process.env['DEEPL_API_KEY'];
 
-      expect(key).toBeUndefined();
+      try {
+        const key = await authCommand.getKey();
+        expect(key).toBeUndefined();
+      } finally {
+        if (originalEnv !== undefined) {
+          process.env['DEEPL_API_KEY'] = originalEnv;
+        }
+      }
     });
 
     it('should check environment variable DEEPL_API_KEY', async () => {

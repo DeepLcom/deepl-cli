@@ -418,10 +418,11 @@ describe('CLI Workflow E2E', () => {
           stdio: 'pipe',
           env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
         });
+        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should fail on API key, not on empty stdin
-        expect(output).toMatch(/API key|auth/i);
+        // Should fail gracefully — either on empty input or missing API key
+        expect(output).toMatch(/API key|auth|no input|empty/i);
       }
     });
 

@@ -14,9 +14,10 @@ describe('Auth CLI Integration', () => {
 
   // Helper to run CLI commands with isolated config directory
   const runCLI = (command: string, options: { stdio?: any } = {}): string => {
+    const { DEEPL_API_KEY: _, ...envWithoutKey } = process.env;
     return execSync(command, {
       encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+      env: { ...envWithoutKey, DEEPL_CONFIG_DIR: testConfigDir },
       ...options,
     });
   };

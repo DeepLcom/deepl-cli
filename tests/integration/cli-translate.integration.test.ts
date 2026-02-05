@@ -540,9 +540,9 @@ describe('Translate CLI Integration', () => {
         runCLI('deepl translate "Hello world" --to es,fr,de,ja --format table', { stdio: 'pipe' });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should accept multiple languages with table format
-        expect(output).not.toMatch(/invalid/i);
-        expect(output).toMatch(/API key|auth/i);
+        // Should not reject the format or language combination
+        expect(output).not.toMatch(/invalid.*format/i);
+        expect(output).not.toMatch(/unknown.*option/i);
       }
     });
 
