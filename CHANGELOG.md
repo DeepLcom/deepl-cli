@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Image Translation** - Add JPEG/PNG image support for document translation
   - Supported extensions: `.jpg`, `.jpeg`, `.png`
   - Images are uploaded via document translation API, text is extracted and translated
+- **Admin API** - Manage API keys and view organization usage analytics
+  - `admin keys list/create/deactivate/rename/set-limit` for API key management
+  - `admin usage --start --end [--group-by] [--format]` for usage analytics
+  - JSON output with `--format json` for scripting
+  - Requires admin-level API key
 
 ### Fixed
 - **Test Environment Isolation** - Fix 4 failing tests caused by environment variable leakage

@@ -985,6 +985,27 @@ deepl style-rules list --format json
 deepl translate "Hello" --to de --style-id "abc-123-def-456"
 ```
 
+### Admin API
+
+Manage API keys and view organization usage analytics (requires admin-level API key).
+
+```bash
+# List all API keys in the organization
+deepl admin keys list
+
+# Create a new API key
+deepl admin keys create --label "Production Key"
+
+# Set character usage limit
+deepl admin keys set-limit <key-id> 1000000
+
+# View organization usage for a date range
+deepl admin usage --start 2024-01-01 --end 2024-12-31
+
+# Usage grouped by key
+deepl admin usage --start 2024-01-01 --end 2024-12-31 --group-by key
+```
+
 ### Cache Management
 
 The CLI uses a local SQLite database to cache translations and reduce API calls.

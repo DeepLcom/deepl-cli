@@ -136,3 +136,28 @@ export interface StyleRulesListOptions {
   page?: number;
   pageSize?: number;
 }
+
+// Admin API Types
+
+export interface AdminApiKey {
+  keyId: string;
+  label: string;
+  creationTime: string;
+  isDeactivated: boolean;
+  usageLimits?: {
+    characters?: number | null;
+  };
+}
+
+export interface AdminUsageEntry {
+  keyId?: string;
+  date?: string;
+  charactersTranslated: number;
+  charactersBilled: number;
+}
+
+export interface AdminUsageOptions {
+  startDate: string;
+  endDate: string;
+  groupBy?: 'key' | 'key_and_day';
+}

@@ -69,6 +69,7 @@ EXAMPLES=(
   "20-table-output.sh"
   "21-custom-instructions.sh"
   "22-style-rules.sh"
+  "23-admin.sh"
 )
 
 # Skip slow examples in fast mode
@@ -96,6 +97,7 @@ if [ "$FAST_MODE" = true ]; then
     "20-table-output.sh"
     "21-custom-instructions.sh"
     "22-style-rules.sh"
+    "23-admin.sh"
   )
 fi
 

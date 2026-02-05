@@ -26,6 +26,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Table Output Format](./20-table-output.sh) - Structured table output for comparing translations across multiple languages
 - [Custom Instructions](./21-custom-instructions.sh) - Guide translations with custom instructions for domain, style, and terminology
 - [Style Rules](./22-style-rules.sh) - Listing and using pre-configured style rules for consistent translations
+- [Admin API](./23-admin.sh) - Managing API keys and viewing organization usage analytics
 
 ## Prerequisites
 

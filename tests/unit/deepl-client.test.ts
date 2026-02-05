@@ -1887,4 +1887,162 @@ describe('DeepLClient', () => {
       expect(scope.isDone()).toBe(true);
     });
   });
+
+  describe('Admin API', () => {
+    describe('listApiKeys', () => {
+      it('should fetch API keys', async () => {
+        nock(baseUrl)
+          .get('/v2/admin/developer-keys')
+          .reply(200, [
+            {
+              key_id: 'key-1',
+              label: 'Production',
+              creation_time: '2024-01-01T00:00:00Z',
+              is_deactivated: false,
+              usage_limits: { characters: 1000000 },
+            },
+          ]);
+
+        const keys = await client.listApiKeys();
+
+        expect(keys).toHaveLength(1);
+        expect(keys[0]).toEqual({
+          keyId: 'key-1',
+          label: 'Production',
+          creationTime: '2024-01-01T00:00:00Z',
+          isDeactivated: false,
+          usageLimits: { characters: 1000000 },
+        });
+      });
+
+      it('should handle empty list', async () => {
+        nock(baseUrl)
+          .get('/v2/admin/developer-keys')
+          .reply(200, []);
+
+        const keys = await client.listApiKeys();
+        expect(keys).toHaveLength(0);
+      });
+
+      it('should handle API errors', async () => {
+        nock(baseUrl)
+          .get('/v2/admin/developer-keys')
+          .reply(403, { message: 'Authentication failed' });
+
+        await expect(client.listApiKeys()).rejects.toThrow('Authentication failed');
+      });
+    });
+
+    describe('createApiKey', () => {
+      it('should create a key with label', async () => {
+        nock(baseUrl)
+          .post('/v2/admin/developer-keys', { label: 'Test Key' })
+          .reply(200, {
+            key_id: 'key-new',
+            label: 'Test Key',
+            creation_time: '2024-01-01T00:00:00Z',
+            is_deactivated: false,
+          });
+
+        const key = await client.createApiKey('Test Key');
+        expect(key.keyId).toBe('key-new');
+        expect(key.label).toBe('Test Key');
+      });
+
+      it('should create a key without label', async () => {
+        nock(baseUrl)
+          .post('/v2/admin/developer-keys', {})
+          .reply(200, {
+            key_id: 'key-new',
+            label: '',
+            creation_time: '2024-01-01T00:00:00Z',
+            is_deactivated: false,
+          });
+
+        const key = await client.createApiKey();
+        expect(key.keyId).toBe('key-new');
+      });
+    });
+
+    describe('deactivateApiKey', () => {
+      it('should deactivate a key', async () => {
+        nock(baseUrl)
+          .put('/v2/admin/developer-keys/deactivate', { key_id: 'key-1' })
+          .reply(204);
+
+        await expect(client.deactivateApiKey('key-1')).resolves.toBeUndefined();
+      });
+    });
+
+    describe('renameApiKey', () => {
+      it('should rename a key', async () => {
+        nock(baseUrl)
+          .put('/v2/admin/developer-keys/label', { key_id: 'key-1', label: 'New Name' })
+          .reply(204);
+
+        await expect(client.renameApiKey('key-1', 'New Name')).resolves.toBeUndefined();
+      });
+    });
+
+    describe('setApiKeyLimit', () => {
+      it('should set a character limit', async () => {
+        nock(baseUrl)
+          .put('/v2/admin/developer-keys/limits', { key_id: 'key-1', characters: 500000 })
+          .reply(204);
+
+        await expect(client.setApiKeyLimit('key-1', 500000)).resolves.toBeUndefined();
+      });
+
+      it('should remove limit with null', async () => {
+        nock(baseUrl)
+          .put('/v2/admin/developer-keys/limits', { key_id: 'key-1', characters: null })
+          .reply(204);
+
+        await expect(client.setApiKeyLimit('key-1', null)).resolves.toBeUndefined();
+      });
+    });
+
+    describe('getAdminUsage', () => {
+      it('should fetch usage data', async () => {
+        nock(baseUrl)
+          .get('/v2/admin/usage')
+          .query({ start_date: '2024-01-01', end_date: '2024-01-31' })
+          .reply(200, [
+            {
+              characters_translated: 5000,
+              characters_billed: 5000,
+            },
+          ]);
+
+        const entries = await client.getAdminUsage({
+          startDate: '2024-01-01',
+          endDate: '2024-01-31',
+        });
+
+        expect(entries).toHaveLength(1);
+        expect(entries[0]?.charactersTranslated).toBe(5000);
+      });
+
+      it('should pass group_by parameter', async () => {
+        nock(baseUrl)
+          .get('/v2/admin/usage')
+          .query({ start_date: '2024-01-01', end_date: '2024-01-31', group_by: 'key' })
+          .reply(200, [
+            {
+              key_id: 'key-1',
+              characters_translated: 3000,
+              characters_billed: 3000,
+            },
+          ]);
+
+        const entries = await client.getAdminUsage({
+          startDate: '2024-01-01',
+          endDate: '2024-01-31',
+          groupBy: 'key',
+        });
+
+        expect(entries[0]?.keyId).toBe('key-1');
+      });
+    });
+  });
 });

@@ -19,6 +19,9 @@ import {
   StyleRule,
   StyleRuleDetailed,
   StyleRulesListOptions,
+  AdminApiKey,
+  AdminUsageEntry,
+  AdminUsageOptions,
 } from '../types';
 import { normalizeGlossaryInfo, GlossaryApiResponse } from '../types/glossary.js';
 
@@ -338,6 +341,138 @@ export class DeepLClient {
     } catch (error) {
       throw this.handleError(error);
     }
+  }
+
+  /**
+   * List all API keys (Admin API)
+   */
+  async listApiKeys(): Promise<AdminApiKey[]> {
+    try {
+      const response = await this.client.get<Array<{
+        key_id: string;
+        label: string;
+        creation_time: string;
+        is_deactivated: boolean;
+        usage_limits?: { characters?: number | null };
+      }>>('/v2/admin/developer-keys');
+
+      return response.data.map((key) => this.normalizeApiKey(key));
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Create a new API key (Admin API)
+   */
+  async createApiKey(label?: string): Promise<AdminApiKey> {
+    try {
+      const body: Record<string, string> = {};
+      if (label) {
+        body['label'] = label;
+      }
+
+      const response = await this.client.post<{
+        key_id: string;
+        label: string;
+        creation_time: string;
+        is_deactivated: boolean;
+        usage_limits?: { characters?: number | null };
+      }>('/v2/admin/developer-keys', body, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      return this.normalizeApiKey(response.data);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Deactivate an API key (Admin API, permanent)
+   */
+  async deactivateApiKey(keyId: string): Promise<void> {
+    try {
+      await this.client.put('/v2/admin/developer-keys/deactivate', { key_id: keyId }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Rename an API key (Admin API)
+   */
+  async renameApiKey(keyId: string, label: string): Promise<void> {
+    try {
+      await this.client.put('/v2/admin/developer-keys/label', { key_id: keyId, label }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Set usage limit for an API key (Admin API)
+   */
+  async setApiKeyLimit(keyId: string, characters: number | null): Promise<void> {
+    try {
+      await this.client.put('/v2/admin/developer-keys/limits', { key_id: keyId, characters }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Get organization usage analytics (Admin API)
+   */
+  async getAdminUsage(options: AdminUsageOptions): Promise<AdminUsageEntry[]> {
+    try {
+      const params: Record<string, string> = {
+        start_date: options.startDate,
+        end_date: options.endDate,
+      };
+
+      if (options.groupBy) {
+        params['group_by'] = options.groupBy;
+      }
+
+      const response = await this.client.get<Array<{
+        key_id?: string;
+        date?: string;
+        characters_translated: number;
+        characters_billed: number;
+      }>>('/v2/admin/usage', { params });
+
+      return response.data.map((entry) => ({
+        keyId: entry.key_id,
+        date: entry.date,
+        charactersTranslated: entry.characters_translated,
+        charactersBilled: entry.characters_billed,
+      }));
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  private normalizeApiKey(key: {
+    key_id: string;
+    label: string;
+    creation_time: string;
+    is_deactivated: boolean;
+    usage_limits?: { characters?: number | null };
+  }): AdminApiKey {
+    return {
+      keyId: key.key_id,
+      label: key.label,
+      creationTime: key.creation_time,
+      isDeactivated: key.is_deactivated,
+      usageLimits: key.usage_limits,
+    };
   }
 
   /**

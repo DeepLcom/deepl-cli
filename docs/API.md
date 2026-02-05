@@ -22,6 +22,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
   - [languages](#languages)
   - [auth](#auth)
   - [style-rules](#style-rules)
+  - [admin](#admin)
 - [Configuration](#configuration)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
@@ -1486,6 +1487,140 @@ deepl style-rules list --page 1 --page-size 10
 - Style rules are Pro API only and datacenter-specific (EU and US rules don't cross)
 - Use the style ID from `style-rules list` with `deepl translate --style-id <uuid>`
 - Style rules force the `quality_optimized` model type
+
+### admin
+
+Admin API for managing API keys and viewing organization usage analytics. Requires an admin-level API key.
+
+#### Synopsis
+
+```bash
+deepl admin <SUBCOMMAND>
+```
+
+#### Subcommands
+
+##### `keys list`
+
+List all API keys in the organization.
+
+**Options:**
+
+- `--format FORMAT` - Output format: `json` (default: plain text)
+
+**Examples:**
+
+```bash
+# List all API keys
+deepl admin keys list
+
+# JSON output
+deepl admin keys list --format json
+```
+
+##### `keys create`
+
+Create a new API key.
+
+**Options:**
+
+- `--label LABEL` - Label for the new key
+- `--format FORMAT` - Output format: `json` (default: plain text)
+
+**Examples:**
+
+```bash
+# Create a key with a label
+deepl admin keys create --label "Production Key"
+
+# Create a key without a label
+deepl admin keys create
+
+# JSON output
+deepl admin keys create --label "CI Key" --format json
+```
+
+##### `keys deactivate`
+
+Deactivate an API key (permanent, cannot be undone).
+
+**Arguments:**
+
+- `<key-id>` - Key ID to deactivate (required)
+
+**Examples:**
+
+```bash
+deepl admin keys deactivate abc123-def456
+```
+
+##### `keys rename`
+
+Rename an API key.
+
+**Arguments:**
+
+- `<key-id>` - Key ID to rename (required)
+- `<label>` - New label (required)
+
+**Examples:**
+
+```bash
+deepl admin keys rename abc123-def456 "New Label"
+```
+
+##### `keys set-limit`
+
+Set character usage limit for an API key.
+
+**Arguments:**
+
+- `<key-id>` - Key ID (required)
+- `<characters>` - Character limit (number or "unlimited") (required)
+
+**Examples:**
+
+```bash
+# Set a limit of 1 million characters
+deepl admin keys set-limit abc123-def456 1000000
+
+# Remove the limit
+deepl admin keys set-limit abc123-def456 unlimited
+```
+
+##### `usage`
+
+View organization usage analytics.
+
+**Options:**
+
+- `--start DATE` - Start date in YYYY-MM-DD format (required)
+- `--end DATE` - End date in YYYY-MM-DD format (required)
+- `--group-by GROUPING` - Group results: `key`, `key_and_day`
+- `--format FORMAT` - Output format: `json` (default: plain text)
+
+**Examples:**
+
+```bash
+# View total usage for a date range
+deepl admin usage --start 2024-01-01 --end 2024-12-31
+
+# Group usage by key
+deepl admin usage --start 2024-01-01 --end 2024-12-31 --group-by key
+
+# Daily usage per key
+deepl admin usage --start 2024-01-01 --end 2024-01-31 --group-by key_and_day
+
+# JSON output
+deepl admin usage --start 2024-01-01 --end 2024-12-31 --format json
+```
+
+#### Notes
+
+- Admin API endpoints require an admin-level API key (not a regular developer key)
+- Key deactivation is permanent and cannot be undone
+- Usage analytics reflect translated and billed character counts
+- The `--group-by` option provides granular breakdowns for cost allocation
 
 ---
 

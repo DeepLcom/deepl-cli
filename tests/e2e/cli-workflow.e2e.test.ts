@@ -1476,4 +1476,73 @@ describe('CLI Workflow E2E', () => {
       }
     });
   });
+
+  describe('Admin Command', () => {
+    it('should show admin command in main help', () => {
+      const output = runCLI('deepl --help');
+      expect(output).toContain('admin');
+    });
+
+    it('should display help for admin command', () => {
+      const output = runCLI('deepl admin --help');
+      expect(output).toContain('keys');
+      expect(output).toContain('usage');
+      expect(output).toContain('admin');
+    });
+
+    it('should display help for admin keys subcommand', () => {
+      const output = runCLI('deepl admin keys --help');
+      expect(output).toContain('list');
+      expect(output).toContain('create');
+      expect(output).toContain('deactivate');
+      expect(output).toContain('rename');
+      expect(output).toContain('set-limit');
+    });
+
+    it('should display help for admin usage subcommand', () => {
+      const output = runCLI('deepl admin usage --help');
+      expect(output).toContain('--start');
+      expect(output).toContain('--end');
+      expect(output).toContain('--group-by');
+      expect(output).toContain('--format');
+    });
+
+    it('should require API key for admin keys list', () => {
+      try {
+        runCLI('deepl auth clear');
+      } catch {
+        // Ignore
+      }
+
+      try {
+        const env = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir } as NodeJS.ProcessEnv;
+        delete env['DEEPL_API_KEY'];
+        execSync('deepl admin keys list', {
+          encoding: 'utf-8',
+          env,
+          stdio: 'pipe',
+        });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(error.status).toBeGreaterThan(0);
+      }
+    });
+
+    it('should require --start and --end flags for admin usage', () => {
+      try {
+        execSync('deepl admin usage', {
+          encoding: 'utf-8',
+          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+          stdio: 'pipe',
+        });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/required|start/i);
+        expect(error.status).toBeGreaterThan(0);
+      }
+    });
+  });
 });
