@@ -6,19 +6,16 @@
 import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { WriteService } from '../../src/services/write.js';
-import { ConfigService } from '../../src/storage/config.js';
 
 describe('Write Command Integration', () => {
   const API_KEY = 'test-api-key-123:fx';
   const FREE_API_URL = 'https://api-free.deepl.com';
   let client: DeepLClient;
   let writeService: WriteService;
-  let mockConfig: ConfigService;
 
   beforeEach(() => {
     client = new DeepLClient(API_KEY);
-    mockConfig = {} as ConfigService; // Mock config (not used in tests)
-    writeService = new WriteService(client, mockConfig);
+    writeService = new WriteService(client);
   });
 
   afterEach(() => {

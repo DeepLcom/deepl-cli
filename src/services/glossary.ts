@@ -91,6 +91,21 @@ export class GlossaryService {
   }
 
   /**
+   * Resolve a glossary name or ID to a glossary ID.
+   * If the input is a UUID, returns it directly. Otherwise looks up by name.
+   */
+  async resolveGlossaryId(nameOrId: string): Promise<string> {
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nameOrId)) {
+      return nameOrId;
+    }
+    const glossary = await this.getGlossaryByName(nameOrId);
+    if (!glossary) {
+      throw new Error(`Glossary "${nameOrId}" not found`);
+    }
+    return glossary.glossary_id;
+  }
+
+  /**
    * Delete a glossary
    */
   async deleteGlossary(glossaryId: string): Promise<void> {

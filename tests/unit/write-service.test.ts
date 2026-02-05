@@ -5,27 +5,18 @@
 
 import { WriteService } from '../../src/services/write.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
-import { ConfigService } from '../../src/storage/config.js';
 import { WriteImprovement } from '../../src/types/index.js';
 
 describe('WriteService', () => {
   let writeService: WriteService;
   let mockClient: jest.Mocked<DeepLClient>;
-  let mockConfig: jest.Mocked<ConfigService>;
 
   beforeEach(() => {
     mockClient = {
       improveText: jest.fn(),
     } as unknown as jest.Mocked<DeepLClient>;
 
-    mockConfig = {
-      get: jest.fn().mockReturnValue({
-        apiKey: 'test-key',
-        defaults: {},
-      }),
-    } as unknown as jest.Mocked<ConfigService>;
-
-    writeService = new WriteService(mockClient, mockConfig);
+    writeService = new WriteService(mockClient);
   });
 
   describe('initialization', () => {
@@ -35,13 +26,7 @@ describe('WriteService', () => {
 
     it('should throw error if client is not provided', () => {
       expect(() => {
-        new WriteService(null as unknown as DeepLClient, mockConfig);
-      }).toThrow();
-    });
-
-    it('should throw error if config is not provided', () => {
-      expect(() => {
-        new WriteService(mockClient, null as unknown as ConfigService);
+        new WriteService(null as unknown as DeepLClient);
       }).toThrow();
     });
   });

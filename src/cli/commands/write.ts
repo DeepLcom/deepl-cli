@@ -4,7 +4,6 @@
  */
 
 import { WriteService } from '../../services/write.js';
-import { ConfigService } from '../../storage/config.js';
 import { WriteLanguage, WritingStyle, WriteTone } from '../../types/index.js';
 import { promises as fs } from 'fs';
 import { resolve, dirname } from 'path';
@@ -27,10 +26,7 @@ interface WriteOptions {
 export class WriteCommand {
   private writeService: WriteService;
 
-  constructor(writeService: WriteService, config: ConfigService) {
-    if (!config) {
-      throw new Error('Config service is required');
-    }
+  constructor(writeService: WriteService) {
     this.writeService = writeService;
   }
 

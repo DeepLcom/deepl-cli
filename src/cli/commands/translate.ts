@@ -12,7 +12,7 @@ import { BatchTranslationService } from '../../services/batch-translation.js';
 import { DocumentTranslationService } from '../../services/document-translation.js';
 import { GlossaryService } from '../../services/glossary.js';
 import { ConfigService } from '../../storage/config.js';
-import { Language } from '../../types/index.js';
+import { Language, Formality } from '../../types/index.js';
 import { formatTranslationJson, formatMultiTranslationJson, formatMultiTranslationTable } from '../../utils/formatters.js';
 import { Logger } from '../../utils/logger.js';
 
@@ -86,23 +86,8 @@ export class TranslateCommand {
     }
   }
 
-  /**
-   * Resolve glossary ID from name or ID
-   * If input looks like a UUID (glossary-*), use it directly as ID
-   * Otherwise, lookup by name
-   */
   private async resolveGlossaryId(nameOrId: string): Promise<string> {
-    // If it looks like a glossary ID (UUID format), use it directly
-    if (nameOrId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-      return nameOrId;
-    }
-
-    // Otherwise, lookup by name
-    const glossary = await this.glossaryService.getGlossaryByName(nameOrId);
-    if (!glossary) {
-      throw new Error(`Glossary "${nameOrId}" not found`);
-    }
-    return glossary.glossary_id;
+    return this.glossaryService.resolveGlossaryId(nameOrId);
   }
 
   async translate(textOrPath: string, options: TranslateOptions): Promise<string> {
@@ -223,7 +208,7 @@ export class TranslateCommand {
       }
 
       if (options.formality) {
-        translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+        translationOptions.formality = options.formality as Formality;
       }
 
       const results = await this.fileTranslationService.translateFileToMultiple(
@@ -283,7 +268,7 @@ export class TranslateCommand {
     }
 
     if (options.formality) {
-      translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      translationOptions.formality = options.formality as Formality;
     }
 
     await this.fileTranslationService.translateFile(
@@ -340,7 +325,7 @@ export class TranslateCommand {
     }
 
     if (options.formality) {
-      translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      translationOptions.formality = options.formality as Formality;
     }
 
     if (options.context) {
@@ -450,7 +435,7 @@ export class TranslateCommand {
     }
 
     if (options.formality) {
-      translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      translationOptions.formality = options.formality as Formality;
     }
 
     if (options.context) {
@@ -511,7 +496,7 @@ export class TranslateCommand {
     }
 
     if (options.formality) {
-      translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      translationOptions.formality = options.formality as Formality;
     }
 
     // Create spinner (conditional based on quiet mode)
@@ -602,7 +587,7 @@ export class TranslateCommand {
     }
 
     if (options.formality) {
-      translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      translationOptions.formality = options.formality as Formality;
     }
 
     if (options.context) {
@@ -698,7 +683,7 @@ export class TranslateCommand {
     }
 
     if (options.formality) {
-      translationOptions.formality = options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+      translationOptions.formality = options.formality as Formality;
     }
 
     if (options.outputFormat) {

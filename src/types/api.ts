@@ -28,17 +28,6 @@ export interface TranslationOptions {
   ignoreTags?: string[];
 }
 
-export interface TranslationResult {
-  text: string;
-  detectedSourceLang?: Language;
-  confidence?: number;
-  cached: boolean;
-  usage?: {
-    characterCount: number;
-    billableCharacters: number;
-  };
-}
-
 export type WriteLanguage =
   | 'de'
   | 'en-GB'

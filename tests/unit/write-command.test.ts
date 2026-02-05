@@ -5,7 +5,6 @@
 
 import { WriteCommand } from '../../src/cli/commands/write.js';
 import { WriteService } from '../../src/services/write.js';
-import { ConfigService } from '../../src/storage/config.js';
 import { WriteImprovement } from '../../src/types/index.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
@@ -43,7 +42,6 @@ const mockPrompt = inquirer.prompt as jest.MockedFunction<typeof inquirer.prompt
 describe('WriteCommand', () => {
   let writeCommand: WriteCommand;
   let mockWriteService: jest.Mocked<WriteService>;
-  let mockConfig: jest.Mocked<ConfigService>;
   let testDir: string;
 
   beforeEach(async () => {
@@ -52,14 +50,7 @@ describe('WriteCommand', () => {
       getBestImprovement: jest.fn(),
     } as unknown as jest.Mocked<WriteService>;
 
-    mockConfig = {
-      get: jest.fn().mockReturnValue({
-        apiKey: 'test-key',
-        defaults: {},
-      }),
-    } as unknown as jest.Mocked<ConfigService>;
-
-    writeCommand = new WriteCommand(mockWriteService, mockConfig);
+    writeCommand = new WriteCommand(mockWriteService);
 
     // Create temporary directory for file tests with more entropy to avoid collisions
     testDir = join(tmpdir(), `deepl-cli-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);

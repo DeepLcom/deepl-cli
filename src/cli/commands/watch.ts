@@ -9,7 +9,8 @@ import { WatchService } from '../../services/watch.js';
 import { FileTranslationService } from '../../services/file-translation.js';
 import { TranslationService } from '../../services/translation.js';
 import { GlossaryService } from '../../services/glossary.js';
-import { Language } from '../../types/index.js';
+import { Language, Formality } from '../../types/index.js';
+import { FileTranslationResult, WatchTranslationResult } from '../../services/watch.js';
 import { Logger } from '../../utils/logger.js';
 
 interface WatchOptions {
@@ -36,21 +37,8 @@ export class WatchCommand {
     this.glossaryService = glossaryService;
   }
 
-  /**
-   * Resolve glossary ID from name or ID
-   */
   private async resolveGlossaryId(nameOrId: string): Promise<string> {
-    // If it looks like a glossary ID (UUID format), use it directly
-    if (nameOrId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-      return nameOrId;
-    }
-
-    // Otherwise, lookup by name
-    const glossary = await this.glossaryService.getGlossaryByName(nameOrId);
-    if (!glossary) {
-      throw new Error(`Glossary "${nameOrId}" not found`);
-    }
-    return glossary.glossary_id;
+    return this.glossaryService.resolveGlossaryId(nameOrId);
   }
 
   /**
@@ -109,18 +97,18 @@ export class WatchCommand {
       targetLangs,
       outputDir,
       sourceLang: options.from as Language | undefined,
-      formality: options.formality as 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less' | undefined,
+      formality: options.formality as Formality | undefined,
       glossaryId,
       preserveCode: options.preserveCode,
       preserveFormatting: options.preserveFormatting,
       onChange: (filePath: string) => {
         Logger.info(chalk.blue('📝 Change detected:'), filePath);
       },
-      onTranslate: async (filePath: string, result: any) => {
+      onTranslate: async (filePath: string, result: WatchTranslationResult) => {
         if (Array.isArray(result)) {
           // Multiple languages
           Logger.success(chalk.green(`✓ Translated ${filePath} to ${result.length} languages`));
-          result.forEach((r: any) => {
+          result.forEach((r: FileTranslationResult) => {
             Logger.info(chalk.gray(`  → [${r.targetLang}] ${r.outputPath}`));
           });
         } else {
@@ -181,7 +169,7 @@ export class WatchCommand {
    * Auto-commit translated files to git
    * SECURITY: Uses execFile instead of exec to prevent command injection
    */
-  private async autoCommit(sourceFile: string, result: any): Promise<void> {
+  private async autoCommit(sourceFile: string, result: WatchTranslationResult): Promise<void> {
     try {
       const { execFile } = await import('child_process');
       const { promisify } = await import('util');
@@ -198,7 +186,7 @@ export class WatchCommand {
       // Collect output files
       const outputFiles: string[] = [];
       if (Array.isArray(result)) {
-        result.forEach((r: any) => {
+        result.forEach((r: FileTranslationResult) => {
           if (r.outputPath) {
             outputFiles.push(r.outputPath);
           }
@@ -218,7 +206,7 @@ export class WatchCommand {
 
       // Create commit message
       const langs = Array.isArray(result)
-        ? result.map((r: any) => r.targetLang).join(', ')
+        ? result.map((r: FileTranslationResult) => r.targetLang).join(', ')
         : result.targetLang;
 
       const commitMsg = `chore(i18n): auto-translate ${sourceFile} to ${langs}`;

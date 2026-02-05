@@ -4,19 +4,14 @@
  */
 
 import { DeepLClient } from '../api/deepl-client.js';
-import { ConfigService } from '../storage/config.js';
 import { WriteOptions, WriteImprovement } from '../types/index.js';
 
 export class WriteService {
   private client: DeepLClient;
 
-  constructor(client: DeepLClient, config: ConfigService) {
+  constructor(client: DeepLClient) {
     if (!client) {
       throw new Error('DeepL client is required');
-    }
-
-    if (!config) {
-      throw new Error('Config service is required');
     }
 
     this.client = client;
