@@ -241,7 +241,7 @@ export class ConfigService {
       fs.writeFileSync(
         this.configPath,
         JSON.stringify(this.config, null, 2),
-        'utf-8'
+        { encoding: 'utf-8', mode: 0o600 }
       );
     } catch (error) {
       throw new Error(`Failed to save config: ${String(error)}`);
@@ -324,8 +324,8 @@ export class ConfigService {
     }
 
     if (path === 'api.baseUrl') {
-      if (typeof value !== 'string' || !value.startsWith('http')) {
-        throw new Error('API base URL must be a valid HTTP(S) URL');
+      if (typeof value !== 'string' || !value.startsWith('https://')) {
+        throw new Error('API base URL must be an HTTPS URL');
       }
     }
 

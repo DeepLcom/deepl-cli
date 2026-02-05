@@ -143,11 +143,24 @@ program
   .addCommand(
     new Command('set-key')
       .description('Set your DeepL API key')
-      .argument('<api-key>', 'Your DeepL API key')
-      .action(async (apiKey: string) => {
+      .argument('[api-key]', 'Your DeepL API key (or pipe via stdin)')
+      .option('--from-stdin', 'Read API key from stdin')
+      .action(async (apiKey: string | undefined, opts: { fromStdin?: boolean }) => {
         try {
+          let key = apiKey;
+          if (opts.fromStdin === true || !key) {
+            if (process.stdin.isTTY && !key) {
+              handleError(new Error('API key required: provide as argument or use --from-stdin'));
+              return;
+            }
+            const chunks: Buffer[] = [];
+            for await (const chunk of process.stdin) {
+              chunks.push(chunk as Buffer);
+            }
+            key = Buffer.concat(chunks).toString('utf-8').trim();
+          }
           const authCommand = new AuthCommand(configService);
-          await authCommand.setKey(apiKey);
+          await authCommand.setKey(key);
           Logger.success(chalk.green('✓ API key saved and validated successfully'));
         } catch (error) {
           handleError(error);
@@ -412,8 +425,8 @@ program
       }
 
       const client = createDeepLClient();
-      const writeService = new WriteService(client, configService);
-      const writeCommand = new WriteCommand(writeService, configService);
+      const writeService = new WriteService(client);
+      const writeCommand = new WriteCommand(writeService);
 
       const writeOptions = {
         lang: options.lang as WriteLanguage,

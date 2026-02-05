@@ -442,6 +442,12 @@ export class DeepLClient {
     return lang.toLowerCase() as Language;
   }
 
+  private validateGlossaryId(glossaryId: string): void {
+    if (!/^[a-zA-Z0-9-]+$/.test(glossaryId)) {
+      throw new Error('Invalid glossary ID format');
+    }
+  }
+
   /**
    * Type guard for Axios errors
    */
@@ -591,6 +597,7 @@ export class DeepLClient {
    * Get glossary information (v3 API)
    */
   async getGlossary(glossaryId: string): Promise<GlossaryInfo> {
+    this.validateGlossaryId(glossaryId);
     try {
       const response = await this.makeRequest<GlossaryApiResponse>(
         'GET',
@@ -607,6 +614,7 @@ export class DeepLClient {
    * Delete a glossary (v3 API)
    */
   async deleteGlossary(glossaryId: string): Promise<void> {
+    this.validateGlossaryId(glossaryId);
     try {
       await this.makeRequest<void>(
         'DELETE',
@@ -626,6 +634,7 @@ export class DeepLClient {
     sourceLang: Language,
     targetLang: Language
   ): Promise<string> {
+    this.validateGlossaryId(glossaryId);
     try {
       // v3 API requires source and target lang query params
       // v3 always returns JSON with structure: { dictionaries: [{ entries: "tsv data" }] }
@@ -671,6 +680,7 @@ export class DeepLClient {
     targetLang: Language,
     entries: string
   ): Promise<void> {
+    this.validateGlossaryId(glossaryId);
     try {
       await this.makeRequest<void>(
         'PATCH',
@@ -689,6 +699,7 @@ export class DeepLClient {
    * Rename a glossary (v3 API)
    */
   async renameGlossary(glossaryId: string, newName: string): Promise<void> {
+    this.validateGlossaryId(glossaryId);
     try {
       await this.makeRequest<void>(
         'PATCH',
@@ -711,6 +722,7 @@ export class DeepLClient {
     sourceLang: Language,
     targetLang: Language
   ): Promise<void> {
+    this.validateGlossaryId(glossaryId);
     try {
       await this.makeRequest<void>(
         'DELETE',

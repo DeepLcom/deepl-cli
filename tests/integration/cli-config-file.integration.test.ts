@@ -71,12 +71,12 @@ describe('CLI --config flag integration', () => {
   describe('config get command', () => {
     it('should use default config when --config is not specified', () => {
       const output = runCLI('deepl config get auth.apiKey');
-      expect(output.trim()).toBe('"default-test-key"');
+      expect(output.trim()).toBe('"default-...-key"');
     });
 
     it('should use custom config when --config is specified', () => {
       const output = runCLI(`deepl --config "${customConfigPath}" config get auth.apiKey`);
-      expect(output.trim()).toBe('"custom-test-key"');
+      expect(output.trim()).toBe('"custom-t...-key"');
     });
 
     it('should read nested config values from custom config', () => {
@@ -194,7 +194,7 @@ describe('CLI --config flag integration', () => {
     it('should handle relative paths for --config', () => {
       const relativeConfigPath = path.relative(process.cwd(), customConfigPath);
       const output = runCLI(`deepl --config "${relativeConfigPath}" config get auth.apiKey`);
-      expect(output.trim()).toBe('"custom-test-key"');
+      expect(output.trim()).toBe('"custom-t...-key"');
     });
   });
 });

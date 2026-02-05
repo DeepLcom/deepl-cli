@@ -17,7 +17,11 @@ export class ConfigCommand {
    */
   async get(key?: string): Promise<unknown> {
     if (key) {
-      return this.config.getValue(key);
+      const value = this.config.getValue(key);
+      if (key === 'auth.apiKey' && typeof value === 'string' && value.length > 12) {
+        return value.substring(0, 8) + '...' + value.substring(value.length - 4);
+      }
+      return value;
     }
     return this.config.get();
   }
