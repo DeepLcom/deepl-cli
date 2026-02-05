@@ -326,7 +326,7 @@ deepl translate report.docx --to fr --output report.fr.docx --enable-minificatio
 **Document Translation Notes:**
 
 - **Smart routing**: Text-based files (`.txt`, `.md`, `.html`, `.srt`, `.xlf`, `.xliff`) under 100 KiB automatically use the cached text API for better performance
-- **Binary formats** (PDF, DOCX, PPTX, XLSX) always use the document API regardless of size
+- **Binary formats** (PDF, DOCX, PPTX, XLSX) and **image formats** (JPEG, PNG) always use the document API regardless of size
 - Documents are translated on DeepL servers using async processing
 - Progress updates show status (queued → translating → done)
 - Billed characters are displayed after completion

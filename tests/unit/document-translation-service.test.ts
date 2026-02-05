@@ -425,6 +425,9 @@ describe('DocumentTranslationService', () => {
       expect(supportedTypes).toContain('.xlsx');
       expect(supportedTypes).toContain('.txt');
       expect(supportedTypes).toContain('.html');
+      expect(supportedTypes).toContain('.jpg');
+      expect(supportedTypes).toContain('.jpeg');
+      expect(supportedTypes).toContain('.png');
     });
   });
 
@@ -438,10 +441,15 @@ describe('DocumentTranslationService', () => {
       expect(service.isDocumentSupported('/test/file.html')).toBe(true);
     });
 
+    it('should return true for image file types', () => {
+      expect(service.isDocumentSupported('/test/file.jpg')).toBe(true);
+      expect(service.isDocumentSupported('/test/file.jpeg')).toBe(true);
+      expect(service.isDocumentSupported('/test/file.png')).toBe(true);
+    });
+
     it('should return false for unsupported file types', () => {
-      expect(service.isDocumentSupported('/test/file.jpg')).toBe(false);
-      expect(service.isDocumentSupported('/test/file.png')).toBe(false);
       expect(service.isDocumentSupported('/test/file.mp4')).toBe(false);
+      expect(service.isDocumentSupported('/test/file.gif')).toBe(false);
       expect(service.isDocumentSupported('/test/file.unknown')).toBe(false);
     });
 

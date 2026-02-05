@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tag Handling Version** - Add `--tag-handling-version` flag (v1/v2) for improved XML/HTML structure handling
   - v2 improves tag handling with next-gen models
   - Requires `--tag-handling` to be set (xml or html)
+- **Image Translation** - Add JPEG/PNG image support for document translation
+  - Supported extensions: `.jpg`, `.jpeg`, `.png`
+  - Images are uploaded via document translation API, text is extracted and translated
 
 ### Fixed
 - **Test Environment Isolation** - Fix 4 failing tests caused by environment variable leakage

@@ -46,6 +46,9 @@ export class DocumentTranslationService {
     '.xlf',
     '.xliff',
     '.srt',
+    '.jpg',
+    '.jpeg',
+    '.png',
   ];
 
   // Polling configuration
