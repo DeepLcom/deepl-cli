@@ -587,7 +587,7 @@ export class DeepLClient {
    * Make HTTP request with retry logic
    */
   private async makeRequest<T>(
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     data?: Record<string, unknown>
   ): Promise<T> {
@@ -599,7 +599,7 @@ export class DeepLClient {
 
         if (method === 'GET') {
           config = { params: data };
-        } else if (method === 'POST' || method === 'PATCH') {
+        } else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
           // DeepL API uses form-encoded data
           const formData = new URLSearchParams();
           if (data) {
@@ -942,6 +942,31 @@ export class DeepLClient {
     try {
       await this.makeRequest<void>(
         'PATCH',
+        `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`,
+        {
+          entries,
+          entries_format: 'tsv',
+        }
+      );
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Replace all entries in a glossary dictionary (v3 API)
+   * Unlike PATCH (updateGlossaryEntries), PUT replaces the entire dictionary
+   */
+  async replaceGlossaryDictionary(
+    glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language,
+    entries: string
+  ): Promise<void> {
+    this.validateGlossaryId(glossaryId);
+    try {
+      await this.makeRequest<void>(
+        'PUT',
         `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`,
         {
           entries,

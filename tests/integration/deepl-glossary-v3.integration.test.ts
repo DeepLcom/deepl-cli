@@ -542,4 +542,56 @@ describe('DeepLClient v3 Glossary Integration', () => {
       ).rejects.toThrow();
     });
   });
+
+  describe('replaceGlossaryDictionary() - v3 API', () => {
+    it('should make correct HTTP PUT request', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL)
+        .put('/v3/glossaries/glossary-123/dictionaries/EN-ES', (body) => {
+          expect(body.entries).toBe('hello\thola');
+          expect(body.entries_format).toBe('tsv');
+          return true;
+        })
+        .reply(204);
+
+      await client.replaceGlossaryDictionary('glossary-123', 'en', 'es', 'hello\thola');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should uppercase language codes in URL', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL)
+        .put('/v3/glossaries/glossary-456/dictionaries/EN-FR')
+        .reply(204);
+
+      await client.replaceGlossaryDictionary('glossary-456', 'en', 'fr', 'hello\tbonjour');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle 404 glossary not found errors', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .put('/v3/glossaries/nonexistent/dictionaries/EN-ES')
+        .reply(404, { message: 'Glossary not found' });
+
+      await expect(
+        client.replaceGlossaryDictionary('nonexistent', 'en', 'es', 'hello\thola')
+      ).rejects.toThrow();
+    });
+
+    it('should handle 404 dictionary not found errors', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .put('/v3/glossaries/glossary-123/dictionaries/EN-ZH')
+        .reply(404, { message: 'Dictionary not found' });
+
+      await expect(
+        client.replaceGlossaryDictionary('glossary-123', 'en', 'zh', 'hello\t你好')
+      ).rejects.toThrow();
+    });
+  });
 });

@@ -26,6 +26,7 @@ describe('GlossaryService', () => {
       updateGlossaryEntries: jest.fn(),
       renameGlossary: jest.fn(),
       deleteGlossaryDictionary: jest.fn(),
+      replaceGlossaryDictionary: jest.fn(),
     } as unknown as jest.Mocked<DeepLClient>;
 
     glossaryService = new GlossaryService(mockDeepLClient);
@@ -831,6 +832,44 @@ describe('GlossaryService', () => {
         'en',
         'fr'
       );
+    });
+  });
+
+  describe('replaceGlossaryDictionary()', () => {
+    it('should replace dictionary entries via PUT', async () => {
+      mockDeepLClient.replaceGlossaryDictionary.mockResolvedValue(undefined);
+
+      await glossaryService.replaceGlossaryDictionary(
+        'glossary-123', 'en', 'es', 'hello\thola\nworld\tmundo'
+      );
+
+      expect(mockDeepLClient.replaceGlossaryDictionary).toHaveBeenCalledWith(
+        'glossary-123', 'en', 'es', 'hello\thola\nworld\tmundo'
+      );
+    });
+
+    it('should reject empty TSV content', async () => {
+      await expect(
+        glossaryService.replaceGlossaryDictionary('glossary-123', 'en', 'es', '')
+      ).rejects.toThrow('No valid entries found');
+    });
+
+    it('should reject TSV with only invalid lines', async () => {
+      await expect(
+        glossaryService.replaceGlossaryDictionary('glossary-123', 'en', 'es', 'invalid-no-tab')
+      ).rejects.toThrow('No valid entries found');
+    });
+
+    it('should handle API errors', async () => {
+      mockDeepLClient.replaceGlossaryDictionary.mockRejectedValue(
+        new Error('API error')
+      );
+
+      await expect(
+        glossaryService.replaceGlossaryDictionary(
+          'glossary-123', 'en', 'es', 'hello\thola'
+        )
+      ).rejects.toThrow('API error');
     });
   });
 });

@@ -1254,6 +1254,24 @@ describe('CLI Workflow E2E', () => {
         }
       });
     });
+
+    describe('replace-dictionary subcommand', () => {
+      it('should display replace-dictionary help text', () => {
+        const helpOutput = execSync('deepl glossary replace-dictionary --help', { encoding: 'utf-8' });
+
+        expect(helpOutput).toContain('Usage:');
+        expect(helpOutput).toContain('replace-dictionary');
+        expect(helpOutput).toContain('<name-or-id>');
+        expect(helpOutput).toContain('<target-lang>');
+        expect(helpOutput).toContain('<file>');
+      });
+
+      it('should mention replace-dictionary in glossary help', () => {
+        const helpOutput = execSync('deepl glossary --help', { encoding: 'utf-8' });
+
+        expect(helpOutput).toContain('replace-dictionary');
+      });
+    });
   });
 
   describe('Cost Transparency Workflow', () => {

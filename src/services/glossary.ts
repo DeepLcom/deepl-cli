@@ -265,6 +265,25 @@ export class GlossaryService {
   }
 
   /**
+   * Replace all entries in a glossary dictionary (v3 API)
+   * Unlike updateGlossaryEntries (PATCH/merge), this replaces the entire dictionary
+   */
+  async replaceGlossaryDictionary(
+    glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language,
+    tsvContent: string
+  ): Promise<void> {
+    const entries = this.tsvToEntries(tsvContent);
+    if (Object.keys(entries).length === 0) {
+      throw new Error('No valid entries found in TSV content');
+    }
+
+    const tsv = this.entriesToTSV(entries);
+    await this.client.replaceGlossaryDictionary(glossaryId, sourceLang, targetLang, tsv);
+  }
+
+  /**
    * Delete a dictionary from a multilingual glossary (v3 API)
    * Removes a specific language pair from the glossary
    */

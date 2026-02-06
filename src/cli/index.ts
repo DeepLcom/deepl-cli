@@ -914,6 +914,25 @@ program
       })
   )
   .addCommand(
+    new Command('replace-dictionary')
+      .description('Replace all entries in a glossary dictionary from a TSV/CSV file (v3)')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .argument('<target-lang>', 'Target language of dictionary to replace')
+      .argument('<file>', 'TSV/CSV file with replacement entries')
+      .action(async (nameOrId: string, targetLang: string, file: string) => {
+        try {
+          const client = createDeepLClient();
+          const glossaryService = new GlossaryService(client);
+          const glossaryCommand = new GlossaryCommand(glossaryService);
+
+          await glossaryCommand.replaceDictionary(nameOrId, targetLang as Language, file);
+          Logger.success(chalk.green(`✓ Dictionary replaced successfully (${targetLang})`));
+        } catch (error) {
+          handleError(error);
+        }
+      })
+  )
+  .addCommand(
     new Command('delete-dictionary')
       .description('Delete a dictionary from a multilingual glossary (v3)')
       .argument('<name-or-id>', 'Glossary name or ID')

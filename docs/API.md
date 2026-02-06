@@ -1137,6 +1137,35 @@ deepl glossary rename abc-123-def-456 "Product Names 2024"
 
 **Note:** v3 API uses PATCH for efficient rename. The glossary ID remains unchanged and all entries are preserved.
 
+##### `replace-dictionary <name-or-id> <target-lang> <file>`
+
+Replace all entries in a glossary dictionary from a TSV/CSV file (v3 API only). Unlike updating individual entries (which merges), this replaces the entire dictionary contents.
+
+**Arguments:**
+
+- `name-or-id` - Glossary name or ID
+- `target-lang` - Target language of the dictionary to replace (e.g., `es`, `fr`, `de`)
+- `file` - TSV/CSV file path with replacement entries
+
+**Examples:**
+
+```bash
+# Replace all Spanish entries from a new file
+deepl glossary replace-dictionary my-glossary es new-entries.tsv
+# ✓ Dictionary replaced successfully (es)
+
+# Replace by glossary ID
+deepl glossary replace-dictionary abc-123-def-456 fr updated-fr.tsv
+```
+
+**Notes:**
+
+- Replaces the entire dictionary via the v3 PUT endpoint (not a merge)
+- All existing entries for the specified language pair are removed and replaced with the file contents
+- The file format is the same as for `glossary create` (TSV or CSV)
+
+---
+
 ##### `delete-dictionary <name-or-id> <target-lang>`
 
 Delete a specific language pair from a multilingual glossary (v3 API only).

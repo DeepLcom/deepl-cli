@@ -164,6 +164,28 @@ export class GlossaryCommand {
   }
 
   /**
+   * Replace all entries in a glossary dictionary from a TSV/CSV file (v3 API)
+   */
+  async replaceDictionary(
+    nameOrId: string,
+    targetLang: Language,
+    filePath: string
+  ): Promise<void> {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    const glossary = await this.show(nameOrId);
+    const content = fs.readFileSync(filePath, 'utf-8');
+    await this.glossaryService.replaceGlossaryDictionary(
+      glossary.glossary_id,
+      glossary.source_lang,
+      targetLang,
+      content
+    );
+  }
+
+  /**
    * Delete a dictionary from a multilingual glossary (v3 API)
    */
   async deleteDictionary(
