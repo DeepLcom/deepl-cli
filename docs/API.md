@@ -1295,11 +1295,27 @@ Display your DeepL API character usage and remaining quota. Helps you monitor co
 #### Examples
 
 ```bash
-# Show usage statistics
+# Show usage statistics (Free account)
 deepl usage
 # Character Usage:
 #   Used: 123,456 / 500,000 (24.7%)
 #   Remaining: 376,544
+
+# Pro account output (additional sections)
+deepl usage
+# Character Usage:
+#   Used: 2,150,000 / 20,000,000 (10.8%)
+#   Remaining: 17,850,000
+#
+# Billing Period:
+#   2025-04-24 to 2025-05-24
+#
+# API Key Usage:
+#   Used: 1,880,000 / unlimited
+#
+# Product Breakdown:
+#   translate: 900,000 characters (API key: 880,000)
+#   write: 1,250,000 characters (API key: 1,000,000)
 ```
 
 **Output Fields:**
@@ -1309,11 +1325,17 @@ deepl usage
 - **Percentage**: Usage as a percentage of total quota
 - **Remaining**: Characters remaining in your quota
 
+**Pro accounts show additional fields:**
+
+- **Billing Period**: Start and end dates of the current billing cycle
+- **API Key Usage**: Characters used by this specific API key (vs. the whole account)
+- **Product Breakdown**: Per-product character counts (translate, write) with API key-level breakdown
+
 **Notes:**
 
 - Usage resets monthly for most accounts
 - Free tier: typically 500,000 characters/month
-- Pro accounts: varies by subscription level
+- Pro accounts: varies by subscription level; additional sections shown automatically
 - Shows warning when usage exceeds 80%
 
 ---

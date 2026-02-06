@@ -348,6 +348,57 @@ describe('DeepLClient Integration', () => {
 
       await expect(client.getUsage()).rejects.toThrow('Authentication failed');
     });
+
+    it('should parse Pro API usage response with all fields', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .get('/v2/usage')
+        .reply(200, {
+          character_count: 2150000,
+          character_limit: 20000000,
+          api_key_character_count: 1880000,
+          api_key_character_limit: 0,
+          start_time: '2025-04-24T14:58:02Z',
+          end_time: '2025-05-24T14:58:02Z',
+          products: [
+            { product_type: 'translate', character_count: 900000, api_key_character_count: 880000 },
+            { product_type: 'write', character_count: 1250000, api_key_character_count: 1000000 },
+          ],
+        });
+
+      const result = await client.getUsage();
+
+      expect(result.characterCount).toBe(2150000);
+      expect(result.characterLimit).toBe(20000000);
+      expect(result.apiKeyCharacterCount).toBe(1880000);
+      expect(result.apiKeyCharacterLimit).toBe(0);
+      expect(result.startTime).toBe('2025-04-24T14:58:02Z');
+      expect(result.endTime).toBe('2025-05-24T14:58:02Z');
+      expect(result.products).toEqual([
+        { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
+        { productType: 'write', characterCount: 1250000, apiKeyCharacterCount: 1000000 },
+      ]);
+    });
+
+    it('should handle Free API response without Pro fields', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .get('/v2/usage')
+        .reply(200, {
+          character_count: 12345,
+          character_limit: 50000,
+        });
+
+      const result = await client.getUsage();
+
+      expect(result.characterCount).toBe(12345);
+      expect(result.characterLimit).toBe(50000);
+      expect(result.products).toBeUndefined();
+      expect(result.apiKeyCharacterCount).toBeUndefined();
+      expect(result.startTime).toBeUndefined();
+    });
   });
 
   describe('getSupportedLanguages()', () => {

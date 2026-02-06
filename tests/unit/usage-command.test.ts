@@ -138,5 +138,101 @@ describe('UsageCommand', () => {
 
       expect(formatted).toContain('0');
     });
+
+    it('should display billing period when available', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        startTime: '2025-04-24T14:58:02Z',
+        endTime: '2025-05-24T14:58:02Z',
+      });
+
+      expect(formatted).toContain('Billing Period:');
+      expect(formatted).toContain('2025-04-24');
+      expect(formatted).toContain('2025-05-24');
+    });
+
+    it('should display per-product breakdown when available', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        products: [
+          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
+          { productType: 'write', characterCount: 1250000, apiKeyCharacterCount: 1000000 },
+        ],
+      });
+
+      expect(formatted).toContain('Product Breakdown:');
+      expect(formatted).toContain('translate');
+      expect(formatted).toContain('900,000');
+      expect(formatted).toContain('write');
+      expect(formatted).toContain('1,250,000');
+    });
+
+    it('should display API key-level usage when available', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        apiKeyCharacterCount: 1880000,
+        apiKeyCharacterLimit: 0,
+      });
+
+      expect(formatted).toContain('API Key Usage:');
+      expect(formatted).toContain('1,880,000');
+    });
+
+    it('should display full Pro response with all fields', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        apiKeyCharacterCount: 1880000,
+        apiKeyCharacterLimit: 0,
+        startTime: '2025-04-24T14:58:02Z',
+        endTime: '2025-05-24T14:58:02Z',
+        products: [
+          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
+          { productType: 'write', characterCount: 1250000, apiKeyCharacterCount: 1000000 },
+        ],
+      });
+
+      expect(formatted).toContain('Character Usage:');
+      expect(formatted).toContain('Billing Period:');
+      expect(formatted).toContain('Product Breakdown:');
+      expect(formatted).toContain('API Key Usage:');
+    });
+
+    it('should omit Pro sections for Free API response', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 123456,
+        characterLimit: 500000,
+      });
+
+      expect(formatted).not.toContain('Billing Period:');
+      expect(formatted).not.toContain('Product Breakdown:');
+      expect(formatted).not.toContain('API Key Usage:');
+    });
+
+    it('should show unlimited for zero API key character limit', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        apiKeyCharacterCount: 1880000,
+        apiKeyCharacterLimit: 0,
+      });
+
+      expect(formatted).toContain('unlimited');
+    });
+
+    it('should display API key usage with per-product breakdown', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        products: [
+          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
+        ],
+      });
+
+      expect(formatted).toContain('880,000');
+    });
   });
 });

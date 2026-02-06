@@ -55,6 +55,15 @@ interface DeepLTranslateResponse {
 interface DeepLUsageResponse {
   character_count: number;
   character_limit: number;
+  api_key_character_count?: number;
+  api_key_character_limit?: number;
+  start_time?: string;
+  end_time?: string;
+  products?: Array<{
+    product_type: string;
+    character_count: number;
+    api_key_character_count: number;
+  }>;
 }
 
 interface DeepLLanguageResponse {
@@ -98,9 +107,20 @@ export interface TranslationResult {
   billedCharacters?: number;
 }
 
+export interface ProductUsage {
+  productType: string;
+  characterCount: number;
+  apiKeyCharacterCount: number;
+}
+
 export interface UsageInfo {
   characterCount: number;
   characterLimit: number;
+  apiKeyCharacterCount?: number;
+  apiKeyCharacterLimit?: number;
+  startTime?: string;
+  endTime?: string;
+  products?: ProductUsage[];
 }
 
 export interface LanguageInfo {
@@ -293,10 +313,32 @@ export class DeepLClient {
         '/v2/usage'
       );
 
-      return {
+      const usage: UsageInfo = {
         characterCount: response.character_count,
         characterLimit: response.character_limit,
       };
+
+      if (response.api_key_character_count !== undefined) {
+        usage.apiKeyCharacterCount = response.api_key_character_count;
+      }
+      if (response.api_key_character_limit !== undefined) {
+        usage.apiKeyCharacterLimit = response.api_key_character_limit;
+      }
+      if (response.start_time) {
+        usage.startTime = response.start_time;
+      }
+      if (response.end_time) {
+        usage.endTime = response.end_time;
+      }
+      if (response.products) {
+        usage.products = response.products.map(p => ({
+          productType: p.product_type,
+          characterCount: p.character_count,
+          apiKeyCharacterCount: p.api_key_character_count,
+        }));
+      }
+
+      return usage;
     } catch (error) {
       throw this.handleError(error);
     }
