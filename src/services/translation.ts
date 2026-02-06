@@ -20,6 +20,7 @@ interface MultiTargetResult {
   text: string;
   detectedSourceLang?: Language;
   billedCharacters?: number;
+  modelTypeUsed?: string;
 }
 
 interface ExtendedUsageInfo extends UsageInfo {
@@ -295,6 +296,7 @@ export class TranslationService {
         text: result.text,
         detectedSourceLang: result.detectedSourceLang,
         billedCharacters: result.billedCharacters,
+        modelTypeUsed: result.modelTypeUsed,
       };
     });
 

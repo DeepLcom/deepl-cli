@@ -163,6 +163,36 @@ describe('DeepLClient Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
+    it('should parse model_type_used from response', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [{
+            text: 'Hola',
+            detected_source_language: 'EN',
+            model_type_used: 'quality_optimized',
+          }],
+        });
+
+      const result = await client.translate('Hello', { targetLang: 'es' });
+      expect(result.modelTypeUsed).toBe('quality_optimized');
+    });
+
+    it('should handle response without model_type_used', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [{ text: 'Hola' }],
+        });
+
+      const result = await client.translate('Hello', { targetLang: 'es' });
+      expect(result.modelTypeUsed).toBeUndefined();
+    });
+
     it('should use correct Authorization header', async () => {
       const client = new DeepLClient(API_KEY);
 

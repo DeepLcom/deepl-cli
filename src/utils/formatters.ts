@@ -11,6 +11,7 @@ export interface TranslateJsonOutput {
   text: string;
   targetLang: Language;
   detectedSourceLang?: Language;
+  modelTypeUsed?: string;
   cached?: boolean;
 }
 
@@ -27,6 +28,7 @@ export interface MultiTranslateJsonOutput {
     text: string;
     detectedSourceLang?: Language;
     billedCharacters?: number;
+    modelTypeUsed?: string;
   }>;
 }
 
@@ -44,6 +46,10 @@ export function formatTranslationJson(
     detectedSourceLang: result.detectedSourceLang,
   };
 
+  if (result.modelTypeUsed) {
+    output.modelTypeUsed = result.modelTypeUsed;
+  }
+
   if (cached !== undefined) {
     output.cached = cached;
   }
@@ -55,7 +61,7 @@ export function formatTranslationJson(
  * Format multiple translation results as JSON
  */
 export function formatMultiTranslationJson(
-  results: Array<{ targetLang: Language; text: string; detectedSourceLang?: Language; billedCharacters?: number }>
+  results: Array<{ targetLang: Language; text: string; detectedSourceLang?: Language; billedCharacters?: number; modelTypeUsed?: string }>
 ): string {
   const output: MultiTranslateJsonOutput = {
     translations: results.map(r => ({
@@ -63,6 +69,7 @@ export function formatMultiTranslationJson(
       text: r.text,
       detectedSourceLang: r.detectedSourceLang,
       ...(r.billedCharacters !== undefined && { billedCharacters: r.billedCharacters }),
+      ...(r.modelTypeUsed && { modelTypeUsed: r.modelTypeUsed }),
     })),
   };
 

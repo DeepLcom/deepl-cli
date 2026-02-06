@@ -48,6 +48,7 @@ interface DeepLTranslateResponse {
     detected_source_language?: string;
     text: string;
     billed_characters?: number;
+    model_type_used?: string;
   }>;
   billed_characters?: number;
 }
@@ -105,6 +106,7 @@ export interface TranslationResult {
   text: string;
   detectedSourceLang?: Language;
   billedCharacters?: number;
+  modelTypeUsed?: string;
 }
 
 export interface ProductUsage {
@@ -251,6 +253,7 @@ export class DeepLClient {
           ? this.normalizeLanguage(translation.detected_source_language)
           : undefined,
         billedCharacters: translation.billed_characters ?? response.billed_characters,
+        modelTypeUsed: translation.model_type_used,
       };
     } catch (error) {
       throw this.handleError(error);
@@ -297,6 +300,7 @@ export class DeepLClient {
           ? this.normalizeLanguage(translation.detected_source_language)
           : undefined,
         billedCharacters: translation.billed_characters ?? response.billed_characters,
+        modelTypeUsed: translation.model_type_used,
       }));
     } catch (error) {
       throw this.handleError(error);

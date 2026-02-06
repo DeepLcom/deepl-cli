@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Extended languages in `deepl languages`** - Command now shows all 121 languages grouped by category (core/regional first, then extended with limitation note), merging API results with local registry data
 - **Graceful degradation without API key** - `deepl languages` works without an API key by showing registry-only data with a warning, instead of exiting with an error
 - **Pro usage fields in `deepl usage`** - Pro API accounts now see billing period, per-product breakdown (translate/write), and API key-level usage alongside existing character counts
+- **Model type in translation output** - `deepl translate` now shows which model was used (e.g., `quality_optimized`) when returned by the API; included in both plain text and JSON output
 
 ### Changed
 - Deduplicated language validation sets: `translate.ts` and `config.ts` now import from the shared language registry instead of maintaining separate copies

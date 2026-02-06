@@ -460,9 +460,16 @@ export class TranslateCommand {
       return formatTranslationJson(result, options.to as Language);
     }
 
-    // Display billed characters if available
+    // Display metadata if available
+    const metadata: string[] = [];
     if (result.billedCharacters !== undefined) {
-      return `${result.text}\n\nBilled characters: ${result.billedCharacters.toLocaleString()}`;
+      metadata.push(`Billed characters: ${result.billedCharacters.toLocaleString()}`);
+    }
+    if (result.modelTypeUsed) {
+      metadata.push(`Model: ${result.modelTypeUsed}`);
+    }
+    if (metadata.length > 0) {
+      return `${result.text}\n\n${metadata.join('\n')}`;
     }
 
     return result.text;
