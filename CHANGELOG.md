@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **API.md accuracy** - Fix 8 documentation discrepancies: wrong dates, non-existent `--preserve-vars` flag, incomplete hook types, missing JPEG/PNG in format list, `auth set-key` argument optionality and `--from-stdin` option, wrong config paths, glossary `--target` vs `--target-lang` flags, and outdated config schema defaults
+
 ## [0.8.0] - 2026-02-05
 
 ### Added

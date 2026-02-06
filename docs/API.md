@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
 **Version**: 0.8.0
-**Last Updated**: October 16, 2025
+**Last Updated**: February 5, 2026
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -175,7 +175,6 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--formality LEVEL` - Formality: `default`, `less`, `more`, `prefer_less`, `prefer_more`
 - `--model-type TYPE` - Model type: `quality_optimized` (default), `prefer_quality_optimized`, `latency_optimized`
 - `--preserve-code` - Preserve code blocks (markdown, etc.)
-- `--preserve-vars` - Preserve variables like `{name}`, `${var}`
 - `--preserve-formatting` - Preserve line breaks and whitespace formatting
 - `--split-sentences LEVEL` - Sentence splitting: `on` (default), `off`, `nonewlines`
 - `--tag-handling MODE` - XML tag handling: `xml`, `html`
@@ -318,6 +317,8 @@ deepl translate report.docx --to fr --output report.fr.docx --enable-minificatio
 - `.docx`, `.doc` - Microsoft Word - **Document API only**
 - `.pptx` - Microsoft PowerPoint - **Document API only**
 - `.xlsx` - Microsoft Excel - **Document API only**
+- `.jpg`, `.jpeg` - JPEG images - **Document API only**
+- `.png` - PNG images - **Document API only**
 - `.html`, `.htm` - HTML files - **Smart routing** (cached text API <100 KiB, document API ≥100 KiB)
 - `.txt` - Plain text files (up to 30MB) - **Smart routing** (cached text API <100 KiB, document API ≥100 KiB)
 - `.srt` - Subtitle files - **Smart routing** (cached text API <100 KiB, document API ≥100 KiB)
@@ -775,13 +776,15 @@ Install a git hook.
 
 **Arguments:**
 
-- `hook-type` - Hook type: `pre-commit`, `pre-push`
+- `hook-type` - Hook type: `pre-commit`, `pre-push`, `commit-msg`, `post-commit`
 
 **Examples:**
 
 ```bash
 deepl hooks install pre-commit
 deepl hooks install pre-push
+deepl hooks install commit-msg
+deepl hooks install post-commit
 ```
 
 ##### `uninstall <hook-type>`
@@ -793,6 +796,8 @@ Uninstall a git hook.
 ```bash
 deepl hooks uninstall pre-commit
 deepl hooks uninstall pre-push
+deepl hooks uninstall commit-msg
+deepl hooks uninstall post-commit
 ```
 
 ##### `list`
@@ -1002,7 +1007,7 @@ deepl glossary languages
 # ...
 ```
 
-##### `add-entry <name-or-id> <source> <target> [--target <lang>]`
+##### `add-entry <name-or-id> <source> <target> [--target-lang <lang>]`
 
 Add a new entry to an existing glossary.
 
@@ -1014,7 +1019,7 @@ Add a new entry to an existing glossary.
 
 **Options:**
 
-- `--target <lang>` - Target language (required for multilingual glossaries, optional for single-target)
+- `--target-lang <lang>` - Target language (required for multilingual glossaries, optional for single-target)
 
 **Behavior:**
 
@@ -1029,9 +1034,9 @@ Add a new entry to an existing glossary.
 # Add entry to single-target glossary
 deepl glossary add-entry tech-terms "database" "Datenbank"
 
-# Add entry to multilingual glossary (--target required)
-deepl glossary add-entry multilingual-terms "cache" "caché" --target es
-deepl glossary add-entry multilingual-terms "cache" "cache" --target fr
+# Add entry to multilingual glossary (--target-lang required)
+deepl glossary add-entry multilingual-terms "cache" "caché" --target-lang es
+deepl glossary add-entry multilingual-terms "cache" "cache" --target-lang fr
 
 # Add phrase
 deepl glossary add-entry tech-terms "user interface" "Schnittstelle"
@@ -1039,7 +1044,7 @@ deepl glossary add-entry tech-terms "user interface" "Schnittstelle"
 
 **Note:** v3 API uses PATCH for efficient updates. The glossary ID remains unchanged.
 
-##### `update-entry <name-or-id> <source> <new-target> [--target <lang>]`
+##### `update-entry <name-or-id> <source> <new-target> [--target-lang <lang>]`
 
 Update an existing entry in a glossary.
 
@@ -1051,7 +1056,7 @@ Update an existing entry in a glossary.
 
 **Options:**
 
-- `--target <lang>` - Target language (required for multilingual glossaries, optional for single-target)
+- `--target-lang <lang>` - Target language (required for multilingual glossaries, optional for single-target)
 
 **Behavior:**
 
@@ -1065,14 +1070,14 @@ Update an existing entry in a glossary.
 # Update entry in single-target glossary
 deepl glossary update-entry tech-terms "API" "API (Programmierschnittstelle)"
 
-# Update entry in multilingual glossary (--target required)
-deepl glossary update-entry multilingual-terms "API" "API (Interfaz)" --target es
-deepl glossary update-entry multilingual-terms "API" "API (Interface)" --target fr
+# Update entry in multilingual glossary (--target-lang required)
+deepl glossary update-entry multilingual-terms "API" "API (Interfaz)" --target-lang es
+deepl glossary update-entry multilingual-terms "API" "API (Interface)" --target-lang fr
 ```
 
 **Note:** v3 API uses PATCH for efficient updates. The glossary ID remains unchanged.
 
-##### `remove-entry <name-or-id> <source> [--target <lang>]`
+##### `remove-entry <name-or-id> <source> [--target-lang <lang>]`
 
 Remove an entry from a glossary.
 
@@ -1083,7 +1088,7 @@ Remove an entry from a glossary.
 
 **Options:**
 
-- `--target <lang>` - Target language (required for multilingual glossaries, optional for single-target)
+- `--target-lang <lang>` - Target language (required for multilingual glossaries, optional for single-target)
 
 **Behavior:**
 
@@ -1098,8 +1103,8 @@ Remove an entry from a glossary.
 # Remove entry from single-target glossary
 deepl glossary remove-entry tech-terms "obsolete-term"
 
-# Remove entry from multilingual glossary (--target required)
-deepl glossary remove-entry multilingual-terms "deprecated" --target es
+# Remove entry from multilingual glossary (--target-lang required)
+deepl glossary remove-entry multilingual-terms "deprecated" --target-lang es
 ```
 
 **Note:** You cannot remove the last entry from a glossary. If you need to remove all entries, use `deepl glossary delete` instead.
@@ -1398,19 +1403,30 @@ deepl auth <SUBCOMMAND>
 
 #### Subcommands
 
-##### `set-key <api-key>`
+##### `set-key [api-key]`
 
 Set your DeepL API key and validate it with the DeepL API.
 
 **Arguments:**
 
-- `api-key` - Your DeepL API authentication key
+- `api-key` (optional) - Your DeepL API authentication key. If omitted, reads from stdin.
+
+**Options:**
+
+- `--from-stdin` - Read API key from stdin
 
 **Examples:**
 
 ```bash
+# Provide key as argument
 deepl auth set-key YOUR-API-KEY-HERE
 # ✓ API key saved and validated successfully
+
+# Pipe key from stdin
+echo "YOUR-API-KEY" | deepl auth set-key --from-stdin
+
+# Read from file
+deepl auth set-key --from-stdin < ~/.deepl-api-key
 ```
 
 ##### `show`
@@ -1628,9 +1644,7 @@ deepl admin usage --start 2024-01-01 --end 2024-12-31 --format json
 
 **Configuration file location:**
 
-- **macOS**: `~/Library/Preferences/deepl-cli-nodejs/config.json`
-- **Linux**: `~/.config/deepl-cli-nodejs/config.json`
-- **Windows**: `%APPDATA%\deepl-cli-nodejs\Config\config.json`
+- **All platforms**: `~/.deepl-cli/config.json`
 
 **Override location:** Set `DEEPL_CONFIG_DIR` environment variable
 
@@ -1642,24 +1656,33 @@ deepl admin usage --start 2024-01-01 --end 2024-12-31 --format json
     "apiKey": "your-api-key"
   },
   "api": {
-    "baseUrl": null,
-    "usePro": false
+    "baseUrl": "https://api.deepl.com",
+    "usePro": true
   },
   "defaults": {
-    "targetLangs": [],
     "sourceLang": null,
+    "targetLangs": [],
     "formality": "default",
-    "preserveCode": false,
-    "splitSentences": "on"
+    "preserveFormatting": true
   },
   "cache": {
     "enabled": true,
-    "maxSize": 104857600,
+    "maxSize": 1073741824,
     "ttl": 2592000
   },
   "output": {
     "format": "text",
+    "verbose": false,
     "color": true
+  },
+  "watch": {
+    "debounceMs": 500,
+    "autoCommit": false,
+    "pattern": "*.md"
+  },
+  "team": {
+    "org": null,
+    "workspace": null
   }
 }
 ```
@@ -1781,5 +1804,5 @@ export NO_COLOR=1
 
 ---
 
-**Last Updated**: October 16, 2025
+**Last Updated**: February 5, 2026
 **DeepL CLI Version**: 0.8.0

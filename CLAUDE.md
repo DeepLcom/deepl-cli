@@ -39,8 +39,8 @@ Storage (SQLite Cache, Config Management)
 
 ### Configuration
 
-- **Config**: `~/.config/deepl-cli-nodejs/config.json` (macOS/Linux), `%APPDATA%\deepl-cli-nodejs\Config\config.json` (Windows)
-- **Cache**: `~/.config/deepl-cli-nodejs/cache.db` (SQLite)
+- **Config**: `~/.deepl-cli/config.json` (all platforms)
+- **Cache**: `~/.deepl-cli/cache.db` (SQLite)
 - **Environment Variables**:
   - `DEEPL_API_KEY` - API authentication
   - `DEEPL_CONFIG_DIR` - Override config directory (used for test isolation)
