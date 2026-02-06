@@ -480,6 +480,10 @@ deepl translate document.md --to es --output document.es.md --show-billed-charac
 deepl translate "Hello" --to es --format json
 # {"text":"Hola","detectedSourceLang":"en","targetLang":"es","cached":false}
 
+# JSON output may include modelTypeUsed when the API reports which model was used
+deepl translate "Hello" --to es --format json --no-cache
+# {"text":"Hola","detectedSourceLang":"en","targetLang":"es","modelTypeUsed":"quality_optimized"}
+
 # Useful for scripting and automation
 deepl translate "Test" --to es,fr,de --format json
 ```
@@ -522,6 +526,7 @@ deepl translate "This is a very long sentence that demonstrates word wrapping." 
 - Table format is only available when translating to multiple target languages. For single language translations, use default plain text or JSON format.
 - The Characters column is only shown when using `--show-billed-characters` flag.
 - Without `--show-billed-characters`, the Translation column is wider (70 characters vs 60) for better readability.
+- When the API returns metadata (billed characters, model type used), it is appended below the translated text in plain text output and included as fields in JSON output.
 
 ---
 
@@ -1774,6 +1779,17 @@ The CLI automatically classifies errors based on error messages and HTTP status 
 - **Network (5)**: "timeout", "econnrefused", "enotfound", "connection", HTTP 503
 - **Invalid Input (6)**: "cannot be empty", "not found", "unsupported", "invalid", "required"
 - **Configuration (7)**: "config", "configuration"
+
+**Trace IDs for Debugging:**
+
+API error messages include the DeepL `X-Trace-ID` header when available. This trace ID is useful for debugging and when contacting DeepL support:
+
+```bash
+deepl translate "Hello" --to es
+# Error: Authentication failed: Invalid API key (Trace ID: abc123-def456-ghi789)
+```
+
+The trace ID is also accessible programmatically via `DeepLClient.lastTraceId` after any API call.
 
 **CI/CD Integration:**
 
