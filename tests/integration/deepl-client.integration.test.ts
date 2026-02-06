@@ -1067,4 +1067,75 @@ describe('DeepLClient Integration', () => {
       ).rejects.toThrow('Service temporarily unavailable');
     });
   });
+
+  describe('X-Trace-ID handling', () => {
+    it('should capture trace ID from successful response', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, { translations: [{ text: 'Hola' }] }, {
+          'x-trace-id': 'abc-123-trace',
+        });
+
+      await client.translate('Hello', { targetLang: 'es' });
+      expect(client.lastTraceId).toBe('abc-123-trace');
+    });
+
+    it('should capture trace ID from error response', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .get('/v2/usage')
+        .reply(403, { message: 'Invalid API key' }, {
+          'x-trace-id': 'err-456-trace',
+        });
+
+      try {
+        await client.getUsage();
+      } catch {
+        // expected error
+      }
+      expect(client.lastTraceId).toBe('err-456-trace');
+    });
+
+    it('should include trace ID in error messages', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .get('/v2/usage')
+        .reply(403, { message: 'Invalid API key' }, {
+          'x-trace-id': 'trace-for-support',
+        });
+
+      await expect(client.getUsage()).rejects.toThrow('Trace ID: trace-for-support');
+    });
+
+    it('should return undefined when no trace ID present', () => {
+      const client = new DeepLClient(API_KEY);
+      expect(client.lastTraceId).toBeUndefined();
+    });
+
+    it('should update trace ID on each request', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, { translations: [{ text: 'Hola' }] }, {
+          'x-trace-id': 'first-trace',
+        });
+
+      await client.translate('Hello', { targetLang: 'es' });
+      expect(client.lastTraceId).toBe('first-trace');
+
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, { translations: [{ text: 'Bonjour' }] }, {
+          'x-trace-id': 'second-trace',
+        });
+
+      await client.translate('Hello', { targetLang: 'fr' });
+      expect(client.lastTraceId).toBe('second-trace');
+    });
+  });
 });

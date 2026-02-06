@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Model type in translation output** - `deepl translate` now shows which model was used (e.g., `quality_optimized`) when returned by the API; included in both plain text and JSON output
 - **Formality support indicator in `deepl languages`** - Target languages that support the `--formality` parameter are marked with `[F]` when API data is available
 - **`glossary replace-dictionary` command** - Replace all entries in a glossary dictionary from a TSV/CSV file using the v3 PUT endpoint (unlike `update-entry` which merges)
+- **X-Trace-ID in error messages** - API error messages now include the DeepL trace ID for easier debugging and support requests
 
 ### Changed
 - Deduplicated language validation sets: `translate.ts` and `config.ts` now import from the shared language registry instead of maintaining separate copies

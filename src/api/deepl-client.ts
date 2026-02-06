@@ -140,6 +140,7 @@ const DEFAULT_MAX_RETRIES = 3;
 export class DeepLClient {
   private client: AxiosInstance;
   private maxRetries: number;
+  private _lastTraceId?: string;
 
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
     if (!apiKey || apiKey.trim() === '') {
@@ -218,6 +219,10 @@ export class DeepLClient {
     }
 
     this.client = axios.create(axiosConfig);
+  }
+
+  get lastTraceId(): string | undefined {
+    return this._lastTraceId;
   }
 
   /**
@@ -628,9 +633,21 @@ export class DeepLClient {
           ...config,
         });
 
+        const traceId = response.headers?.['x-trace-id'] as string | undefined;
+        if (traceId) {
+          this._lastTraceId = traceId;
+        }
+
         return response.data;
       } catch (error) {
         lastError = error as Error;
+
+        if (this.isAxiosError(error)) {
+          const traceId = error.response?.headers?.['x-trace-id'] as string | undefined;
+          if (traceId) {
+            this._lastTraceId = traceId;
+          }
+        }
 
         // Don't retry on client errors (4xx)
         if (this.isAxiosError(error)) {
@@ -655,6 +672,8 @@ export class DeepLClient {
    * Handle and normalize errors
    */
   private handleError(error: unknown): Error {
+    const traceIdSuffix = this._lastTraceId ? ` (Trace ID: ${this._lastTraceId})` : '';
+
     if (this.isAxiosError(error)) {
       const status = error.response?.status;
       const responseData = error.response?.data as { message?: string } | undefined;
@@ -662,15 +681,15 @@ export class DeepLClient {
 
       switch (status) {
         case 403:
-          return new Error('Authentication failed: Invalid API key');
+          return new Error(`Authentication failed: Invalid API key${traceIdSuffix}`);
         case 456:
-          return new Error('Quota exceeded: Character limit reached');
+          return new Error(`Quota exceeded: Character limit reached${traceIdSuffix}`);
         case 429:
-          return new Error('Rate limit exceeded: Too many requests');
+          return new Error(`Rate limit exceeded: Too many requests${traceIdSuffix}`);
         case 503:
-          return new Error('Service temporarily unavailable: Please try again later');
+          return new Error(`Service temporarily unavailable: Please try again later${traceIdSuffix}`);
         default:
-          return new Error(`API error: ${message}`);
+          return new Error(`API error: ${message}${traceIdSuffix}`);
       }
     }
 
