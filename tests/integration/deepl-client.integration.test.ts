@@ -484,6 +484,36 @@ describe('DeepLClient Integration', () => {
 
       expect(result[0]?.language).toBe('en-us');
     });
+
+    it('should parse supports_formality for target languages', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .get('/v2/languages')
+        .query({ type: 'target' })
+        .reply(200, [
+          { language: 'DE', name: 'German', supports_formality: true },
+          { language: 'EN-US', name: 'English (American)', supports_formality: false },
+        ]);
+
+      const result = await client.getSupportedLanguages('target');
+
+      expect(result[0]?.supportsFormality).toBe(true);
+      expect(result[1]?.supportsFormality).toBe(false);
+    });
+
+    it('should omit supportsFormality when not in response', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .get('/v2/languages')
+        .query({ type: 'source' })
+        .reply(200, [{ language: 'EN', name: 'English' }]);
+
+      const result = await client.getSupportedLanguages('source');
+
+      expect(result[0]?.supportsFormality).toBeUndefined();
+    });
   });
 
   describe('improveText() - Write API', () => {

@@ -278,4 +278,69 @@ describe('LanguagesCommand', () => {
       expect(parts[1]).toContain('Extended Languages');
     });
   });
+
+  describe('supports_formality display', () => {
+    it('should show [F] marker for target languages that support formality', () => {
+      const targetLangsWithFormality: LanguageInfo[] = [
+        { language: 'de' as any, name: 'German', supportsFormality: true },
+        { language: 'en-us' as any, name: 'English (American)', supportsFormality: false },
+      ];
+      const formatted = languagesCommand.formatLanguages(targetLangsWithFormality, 'target');
+
+      expect(formatted).toContain('German');
+      expect(formatted).toContain('[F]');
+    });
+
+    it('should not show [F] for languages that do not support formality', () => {
+      const targetLangsWithFormality: LanguageInfo[] = [
+        { language: 'en-us' as any, name: 'English (American)', supportsFormality: false },
+      ];
+      const formatted = languagesCommand.formatLanguages(targetLangsWithFormality, 'target');
+      const enUsLine = formatted.split('\n').find(l => l.includes('English (American)'));
+
+      expect(enUsLine).not.toContain('[F]');
+    });
+
+    it('should show legend when formality info is available', () => {
+      const targetLangsWithFormality: LanguageInfo[] = [
+        { language: 'de' as any, name: 'German', supportsFormality: true },
+      ];
+      const formatted = languagesCommand.formatLanguages(targetLangsWithFormality, 'target');
+
+      expect(formatted).toContain('[F] = supports formality parameter');
+    });
+
+    it('should not show formality markers for source languages', () => {
+      const sourceLangs: LanguageInfo[] = [
+        { language: 'de' as any, name: 'German', supportsFormality: true },
+      ];
+      const formatted = languagesCommand.formatLanguages(sourceLangs, 'source');
+
+      expect(formatted).not.toContain('[F]');
+    });
+
+    it('should propagate supportsFormality through mergeWithRegistry', () => {
+      const apiLangs: LanguageInfo[] = [
+        { language: 'de' as any, name: 'German', supportsFormality: true },
+        { language: 'fr' as any, name: 'French', supportsFormality: true },
+        { language: 'en-us' as any, name: 'English (American)', supportsFormality: false },
+      ];
+      const merged = languagesCommand.mergeWithRegistry(apiLangs, 'target');
+
+      const de = merged.find(e => e.code === 'de');
+      const enUs = merged.find(e => e.code === 'en-us');
+      expect(de?.supportsFormality).toBe(true);
+      expect(enUs?.supportsFormality).toBe(false);
+    });
+
+    it('should not have formality info for registry-only languages', () => {
+      const apiLangs: LanguageInfo[] = [
+        { language: 'de' as any, name: 'German', supportsFormality: true },
+      ];
+      const merged = languagesCommand.mergeWithRegistry(apiLangs, 'target');
+
+      const hi = merged.find(e => e.code === 'hi');
+      expect(hi?.supportsFormality).toBeUndefined();
+    });
+  });
 });

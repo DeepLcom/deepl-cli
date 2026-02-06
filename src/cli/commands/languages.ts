@@ -9,6 +9,7 @@ export interface LanguageDisplayEntry {
   code: string;
   name: string;
   category: 'core' | 'regional' | 'extended';
+  supportsFormality?: boolean;
 }
 
 export class LanguagesCommand {
@@ -35,20 +36,24 @@ export class LanguagesCommand {
     apiLanguages: LanguageInfo[],
     type: 'source' | 'target'
   ): LanguageDisplayEntry[] {
-    const apiMap = new Map<string, string>();
+    const apiMap = new Map<string, LanguageInfo>();
     for (const lang of apiLanguages) {
-      apiMap.set(lang.language.toLowerCase(), lang.name);
+      apiMap.set(lang.language.toLowerCase(), lang);
     }
 
     const registryEntries = type === 'source'
       ? getRegistrySourceLanguages()
       : getRegistryTargetLanguages();
 
-    return registryEntries.map(entry => ({
-      code: entry.code,
-      name: apiMap.get(entry.code) ?? entry.name,
-      category: entry.category,
-    }));
+    return registryEntries.map(entry => {
+      const apiLang = apiMap.get(entry.code);
+      return {
+        code: entry.code,
+        name: apiLang?.name ?? entry.name,
+        category: entry.category,
+        ...(apiLang?.supportsFormality !== undefined && { supportsFormality: apiLang.supportsFormality }),
+      };
+    });
   }
 
   /**
@@ -79,6 +84,7 @@ export class LanguagesCommand {
   formatDisplayEntries(entries: LanguageDisplayEntry[], type: 'source' | 'target'): string {
     const lines: string[] = [];
     const header = type === 'source' ? 'Source Languages:' : 'Target Languages:';
+    const showFormality = type === 'target' && entries.some(e => e.supportsFormality !== undefined);
 
     lines.push(chalk.bold(header));
 
@@ -95,7 +101,8 @@ export class LanguagesCommand {
 
     coreAndRegional.forEach(entry => {
       const code = entry.code.padEnd(maxCodeLength + 2);
-      lines.push(`  ${chalk.cyan(code)} ${entry.name}`);
+      const formalityMarker = showFormality && entry.supportsFormality ? chalk.green(' [F]') : '';
+      lines.push(`  ${chalk.cyan(code)} ${entry.name}${formalityMarker}`);
     });
 
     if (extended.length > 0) {
@@ -105,6 +112,11 @@ export class LanguagesCommand {
         const code = entry.code.padEnd(maxCodeLength + 2);
         lines.push(`  ${chalk.gray(code)} ${chalk.gray(entry.name)}`);
       });
+    }
+
+    if (showFormality) {
+      lines.push('');
+      lines.push(chalk.gray('  [F] = supports formality parameter'));
     }
 
     return lines.join('\n');

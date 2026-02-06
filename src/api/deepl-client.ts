@@ -70,6 +70,7 @@ interface DeepLUsageResponse {
 interface DeepLLanguageResponse {
   language: string;
   name: string;
+  supports_formality?: boolean;
 }
 
 interface DeepLWriteResponse {
@@ -128,6 +129,7 @@ export interface UsageInfo {
 export interface LanguageInfo {
   language: Language;
   name: string;
+  supportsFormality?: boolean;
 }
 
 const FREE_API_URL = 'https://api-free.deepl.com';
@@ -364,6 +366,7 @@ export class DeepLClient {
       return response.map((lang) => ({
         language: this.normalizeLanguage(lang.language),
         name: lang.name,
+        ...(lang.supports_formality !== undefined && { supportsFormality: lang.supports_formality }),
       }));
     } catch (error) {
       throw this.handleError(error);

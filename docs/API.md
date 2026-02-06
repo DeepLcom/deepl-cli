@@ -1378,7 +1378,7 @@ deepl languages
 #   ...
 #
 # Target Languages:
-#   ar        Arabic
+#   ar        Arabic [F]
 #   ...
 #   en-gb     English (British)
 #   en-us     English (American)
@@ -1387,6 +1387,8 @@ deepl languages
 #   Extended Languages (quality_optimized only, no formality/glossary):
 #   ace       Acehnese
 #   ...
+#
+#   [F] = supports formality parameter
 
 # Show only source languages
 deepl languages --source
@@ -1403,6 +1405,7 @@ deepl languages
 
 - Languages are grouped: core/regional first, then extended in a separate section
 - Extended languages are annotated with "quality_optimized only, no formality/glossary"
+- Target languages that support the `--formality` parameter are marked with `[F]` (requires API key)
 - Language codes are left-aligned and padded for readability
 
 **Notes:**

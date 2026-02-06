@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Graceful degradation without API key** - `deepl languages` works without an API key by showing registry-only data with a warning, instead of exiting with an error
 - **Pro usage fields in `deepl usage`** - Pro API accounts now see billing period, per-product breakdown (translate/write), and API key-level usage alongside existing character counts
 - **Model type in translation output** - `deepl translate` now shows which model was used (e.g., `quality_optimized`) when returned by the API; included in both plain text and JSON output
+- **Formality support indicator in `deepl languages`** - Target languages that support the `--formality` parameter are marked with `[F]` when API data is available
 
 ### Changed
 - Deduplicated language validation sets: `translate.ts` and `config.ts` now import from the shared language registry instead of maintaining separate copies
