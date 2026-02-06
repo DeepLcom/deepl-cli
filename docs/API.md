@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
-**Version**: 0.8.0
-**Last Updated**: February 5, 2026
+**Version**: 0.9.0
+**Last Updated**: February 6, 2026
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-02-06
+
 ### Added
 - **Language Registry** - Centralized language registry (`src/data/language-registry.ts`) as single source of truth for all 121 supported language codes with names and categories (core, regional, extended)
 - **Extended languages in `deepl languages`** - Command now shows all 121 languages grouped by category (core/regional first, then extended with limitation note), merging API results with local registry data
