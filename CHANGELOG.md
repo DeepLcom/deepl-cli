@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Language Registry** - Centralized language registry (`src/data/language-registry.ts`) as single source of truth for all 121 supported language codes with names and categories (core, regional, extended)
+- **Extended languages in `deepl languages`** - Command now shows all 121 languages grouped by category (core/regional first, then extended with limitation note), merging API results with local registry data
+- **Graceful degradation without API key** - `deepl languages` works without an API key by showing registry-only data with a warning, instead of exiting with an error
+
+### Changed
+- Deduplicated language validation sets: `translate.ts` and `config.ts` now import from the shared language registry instead of maintaining separate copies
+
 ### Fixed
 - **API.md accuracy** - Fix 8 documentation discrepancies: wrong dates, non-existent `--preserve-vars` flag, incomplete hook types, missing JPEG/PNG in format list, `auth set-key` argument optionality and `--from-stdin` option, wrong config paths, glossary `--target` vs `--target-lang` flags, and outdated config schema defaults
 

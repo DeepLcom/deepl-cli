@@ -46,8 +46,8 @@ describe('Languages CLI Integration', () => {
     });
   });
 
-  describe('deepl languages without API key', () => {
-    it('should require API key to be configured', () => {
+  describe('deepl languages without API key (graceful degradation)', () => {
+    it('should show registry-only output with warning when no API key', () => {
       // Ensure no API key is set
       try {
         runCLI('deepl auth clear', { stdio: 'pipe' });
@@ -55,14 +55,35 @@ describe('Languages CLI Integration', () => {
         // Ignore if already cleared
       }
 
-      try {
-        runCLI('deepl languages', { stdio: 'pipe' });
-        fail('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stderr || error.stdout;
-        // Should indicate API key is required
-        expect(output).toMatch(/API key|auth|not set/i);
-      }
+      // Remove DEEPL_API_KEY from env for this test
+      const output = execSync('deepl languages', {
+        encoding: 'utf-8',
+        env: {
+          ...process.env,
+          DEEPL_CONFIG_DIR: testConfigDir,
+          DEEPL_API_KEY: '',
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      // Should show languages from registry even without API key
+      expect(output).toContain('Source Languages:');
+      expect(output).toContain('Target Languages:');
+    });
+
+    it('should show extended languages without API key', () => {
+      const output = execSync('deepl languages --source', {
+        encoding: 'utf-8',
+        env: {
+          ...process.env,
+          DEEPL_CONFIG_DIR: testConfigDir,
+          DEEPL_API_KEY: '',
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      expect(output).toContain('Source Languages:');
+      expect(output).toContain('Extended Languages');
     });
   });
 

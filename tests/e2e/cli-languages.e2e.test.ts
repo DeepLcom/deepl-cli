@@ -6,7 +6,7 @@
  * Full API integration is tested separately in integration tests.
  */
 
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -36,6 +36,22 @@ describe('Languages Command E2E', () => {
         DEEPL_CONFIG_DIR: testConfigDir,
       },
     });
+  };
+
+  const runCLIWithEnv = (command: string, env: Record<string, string> = {}): { status: number; stdout: string; stderr: string } => {
+    const result = spawnSync('node', [CLI_PATH, ...command.split(' ')], {
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfigDir,
+        ...env,
+      },
+    });
+    return {
+      status: result.status ?? 1,
+      stdout: result.stdout || '',
+      stderr: result.stderr || '',
+    };
   };
 
   const runCLIExpectError = (command: string, apiKey?: string): { status: number; output: string } => {
@@ -83,36 +99,49 @@ describe('Languages Command E2E', () => {
     });
   });
 
+  describe('languages without API key (graceful degradation)', () => {
+    it('should show languages from registry without API key', () => {
+      const result = runCLIWithEnv('languages', { DEEPL_API_KEY: '' });
+
+      // Should succeed (not crash) and show registry data
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('Source Languages:');
+      expect(result.stdout).toContain('Target Languages:');
+    });
+
+    it('should show extended languages section without API key', () => {
+      const result = runCLIWithEnv('languages', { DEEPL_API_KEY: '' });
+
+      expect(result.stdout).toContain('Extended Languages');
+      expect(result.stdout).toContain('quality_optimized only');
+    });
+
+    it('should show core languages without API key', () => {
+      const result = runCLIWithEnv('languages --source', { DEEPL_API_KEY: '' });
+
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('English');
+      expect(result.stdout).toContain('German');
+      expect(result.stdout).toContain('French');
+    });
+
+    it('should show regional variants in target without API key', () => {
+      const result = runCLIWithEnv('languages --target', { DEEPL_API_KEY: '' });
+
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('English (British)');
+      expect(result.stdout).toContain('English (American)');
+    });
+
+    it('should warn about missing API key', () => {
+      const result = runCLIWithEnv('languages', { DEEPL_API_KEY: '' });
+
+      const combined = result.stdout + result.stderr;
+      expect(combined).toMatch(/no api key|local.*registry/i);
+    });
+  });
+
   describe('languages error handling', () => {
-    it('should require API key', () => {
-      const result = runCLIExpectError('languages', ''); // Empty API key
-
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/api key/i);
-    });
-
-    it('should show error for invalid API key format', () => {
-      const result = runCLIExpectError('languages', 'invalid-key');
-
-      expect(result.status).toBeGreaterThan(0);
-      // Should fail during API call or validation
-      expect(result.output).toBeTruthy();
-    });
-
-    it('should handle --source flag without API key', () => {
-      const result = runCLIExpectError('languages --source', '');
-
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/api key/i);
-    });
-
-    it('should handle --target flag without API key', () => {
-      const result = runCLIExpectError('languages --target', '');
-
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/api key/i);
-    });
-
     it('should reject invalid flags', () => {
       const result = runCLIExpectError('languages --invalid-flag', 'test-key');
 
@@ -130,50 +159,45 @@ describe('Languages Command E2E', () => {
     });
 
     it('should support --quiet flag', () => {
-      // Test that --quiet flag is accepted (even if command fails due to missing API key)
-      const result = runCLIExpectError('languages --quiet', '');
+      const result = runCLIWithEnv('languages --quiet', { DEEPL_API_KEY: '' });
 
-      // Should fail due to API key, not due to invalid flag
-      expect(result.output).not.toMatch(/unknown option.*quiet/i);
+      // Should not fail due to invalid flag
+      expect(result.stdout + result.stderr).not.toMatch(/unknown option.*quiet/i);
     });
 
     it('should support combining --source and --quiet', () => {
-      const result = runCLIExpectError('languages --source --quiet', '');
+      const result = runCLIWithEnv('languages --source --quiet', { DEEPL_API_KEY: '' });
 
-      // Should fail due to API key, not due to invalid flags
-      expect(result.output).not.toMatch(/unknown option/i);
+      expect(result.stdout + result.stderr).not.toMatch(/unknown option/i);
     });
 
     it('should support combining --target and --quiet', () => {
-      const result = runCLIExpectError('languages --target --quiet', '');
+      const result = runCLIWithEnv('languages --target --quiet', { DEEPL_API_KEY: '' });
 
-      // Should fail due to API key, not due to invalid flags
-      expect(result.output).not.toMatch(/unknown option/i);
+      expect(result.stdout + result.stderr).not.toMatch(/unknown option/i);
     });
   });
 
   describe('languages flag combinations', () => {
     it('should handle both --source and --target flags together', () => {
-      // When both flags are specified, should show both (or handle appropriately)
-      const result = runCLIExpectError('languages --source --target', 'test-key');
+      const result = runCLIWithEnv('languages --source --target', { DEEPL_API_KEY: '' });
 
-      // Should not fail due to flag conflict
-      expect(result.status).toBeGreaterThan(0); // Fails due to invalid API key
-      expect(result.output).not.toMatch(/cannot use both|conflicting options/i);
+      // Should show both (or handle appropriately), not fail due to flag conflict
+      expect(result.stdout + result.stderr).not.toMatch(/cannot use both|conflicting options/i);
     });
 
     it('should accept short flags', () => {
-      const result = runCLIExpectError('languages -s', '');
+      const result = runCLIWithEnv('languages -s', { DEEPL_API_KEY: '' });
 
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/api key/i); // Fails due to API key, not flag
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('Source Languages:');
     });
 
     it('should accept -t short flag', () => {
-      const result = runCLIExpectError('languages -t', '');
+      const result = runCLIWithEnv('languages -t', { DEEPL_API_KEY: '' });
 
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/api key/i);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('Target Languages:');
     });
   });
 });

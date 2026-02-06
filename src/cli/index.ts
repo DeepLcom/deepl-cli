@@ -229,21 +229,30 @@ program
   .option('-t, --target', 'Show only target languages')
   .action(async (options: { source?: boolean; target?: boolean }) => {
     try {
-      const client = createDeepLClient();
+      // Check for API key before creating client (createDeepLClient calls process.exit)
+      const apiKey = configService.getValue<string>('auth.apiKey');
+      const envKey = process.env['DEEPL_API_KEY'];
+      const hasApiKey = !!(apiKey ?? envKey);
+
+      let client: DeepLClient | null = null;
+      if (hasApiKey) {
+        client = createDeepLClient();
+      } else {
+        Logger.warn(chalk.yellow('Note: No API key configured. Showing local language registry only.'));
+        Logger.warn(chalk.yellow('Run: deepl auth set-key <your-api-key> for API-verified names.\n'));
+      }
+
       const languagesCommand = new LanguagesCommand(client);
 
       let output: string;
 
       if (options.source && !options.target) {
-        // Show only source languages
         const sourceLanguages = await languagesCommand.getSourceLanguages();
         output = languagesCommand.formatLanguages(sourceLanguages, 'source');
       } else if (options.target && !options.source) {
-        // Show only target languages
         const targetLanguages = await languagesCommand.getTargetLanguages();
         output = languagesCommand.formatLanguages(targetLanguages, 'target');
       } else {
-        // Show both (default)
         const [sourceLanguages, targetLanguages] = await Promise.all([
           languagesCommand.getSourceLanguages(),
           languagesCommand.getTargetLanguages(),

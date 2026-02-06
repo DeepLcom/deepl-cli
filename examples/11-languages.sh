@@ -1,6 +1,7 @@
 #!/bin/bash
 # Example 11: List Supported Languages
-# Demonstrates listing source and target languages supported by DeepL
+# Demonstrates listing source and target languages supported by DeepL,
+# including extended languages and graceful degradation without an API key
 
 set -e  # Exit on error
 
@@ -51,18 +52,18 @@ echo
 echo "=== Language listing example completed! ===="
 echo
 
-echo "💡 Language listing benefits:"
-echo "   - Discover all available languages"
-echo "   - Check source vs target language differences"
-echo "   - Validate language codes before translation"
-echo "   - Script-friendly output for automation"
+echo "💡 Language categories:"
+echo "   - Core (32): Full support - formality, glossaries, all model types"
+echo "   - Regional (7): Target-only variants (en-us, en-gb, pt-br, etc.)"
+echo "   - Extended (82): quality_optimized only, no formality or glossaries"
 echo
 
 echo "📚 Language notes:"
 echo "   - Source languages: Languages you can translate FROM"
 echo "   - Target languages: Languages you can translate TO"
-echo "   - Some languages only available as targets (e.g., en-us, en-gb)"
-echo "   - Language codes are case-insensitive in CLI commands"
+echo "   - Regional variants only available as targets (e.g., en-us, en-gb)"
+echo "   - Extended languages shown in a separate section"
+echo "   - Works without API key (shows local registry data with a warning)"
 echo
 
 echo "🔍 Common language codes:"
@@ -74,6 +75,8 @@ echo "   - fr: French"
 echo "   - es: Spanish"
 echo "   - ja: Japanese"
 echo "   - zh: Chinese"
+echo "   - hi: Hindi (extended)"
+echo "   - sw: Swahili (extended)"
 echo
 
 echo "=== All examples completed successfully! ==="

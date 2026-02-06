@@ -63,6 +63,12 @@ describe('LanguagesCommand', () => {
         'API connection failed'
       );
     });
+
+    it('should return empty array when client is null', async () => {
+      const noClientCommand = new LanguagesCommand(null);
+      const languages = await noClientCommand.getSourceLanguages();
+      expect(languages).toEqual([]);
+    });
   });
 
   describe('getTargetLanguages()', () => {
@@ -83,6 +89,12 @@ describe('LanguagesCommand', () => {
       await expect(languagesCommand.getTargetLanguages()).rejects.toThrow(
         'API connection failed'
       );
+    });
+
+    it('should return empty array when client is null', async () => {
+      const noClientCommand = new LanguagesCommand(null);
+      const languages = await noClientCommand.getTargetLanguages();
+      expect(languages).toEqual([]);
     });
   });
 
@@ -107,24 +119,34 @@ describe('LanguagesCommand', () => {
       expect(formatted).toContain('Japanese');
     });
 
+    it('should include extended languages section', () => {
+      const formatted = languagesCommand.formatLanguages(mockSourceLanguages, 'source');
+
+      expect(formatted).toContain('Extended Languages');
+      expect(formatted).toContain('quality_optimized only');
+      expect(formatted).toContain('Hindi');
+      expect(formatted).toContain('hi');
+    });
+
+    it('should show API names when available (API takes precedence)', () => {
+      const apiLangs: LanguageInfo[] = [
+        { language: 'en' as any, name: 'English (API Name)' },
+      ];
+      const formatted = languagesCommand.formatLanguages(apiLangs, 'source');
+
+      expect(formatted).toContain('English (API Name)');
+    });
+
     it('should align language codes and names properly', () => {
       const formatted = languagesCommand.formatLanguages(mockSourceLanguages, 'source');
       const lines = formatted.split('\n');
 
-      // Skip header and check that language entries are properly formatted
       const languageLines = lines.slice(1);
       languageLines.forEach(line => {
-        if (line.trim()) {
-          expect(line).toMatch(/^\s+\S+\s+.+$/); // Code followed by name
+        if (line.trim() && !line.includes('Extended Languages')) {
+          expect(line).toMatch(/^\s+\S+\s+.+$/);
         }
       });
-    });
-
-    it('should handle empty language list', () => {
-      const formatted = languagesCommand.formatLanguages([], 'source');
-
-      expect(formatted).toContain('Source Languages:');
-      expect(formatted).toContain('No languages available');
     });
 
     it('should format both types correctly', () => {
@@ -135,6 +157,88 @@ describe('LanguagesCommand', () => {
       expect(targetFormatted).toContain('Target Languages:');
       expect(sourceFormatted).not.toContain('Target Languages:');
       expect(targetFormatted).not.toContain('Source Languages:');
+    });
+  });
+
+  describe('formatLanguages() with null client (registry-only mode)', () => {
+    it('should show registry languages when client is null and API returns empty', () => {
+      const noClientCommand = new LanguagesCommand(null);
+      const formatted = noClientCommand.formatLanguages([], 'source');
+
+      expect(formatted).toContain('Source Languages:');
+      expect(formatted).toContain('en');
+      expect(formatted).toContain('English');
+      expect(formatted).toContain('Extended Languages');
+    });
+
+    it('should show target languages from registry when client is null', () => {
+      const noClientCommand = new LanguagesCommand(null);
+      const formatted = noClientCommand.formatLanguages([], 'target');
+
+      expect(formatted).toContain('Target Languages:');
+      expect(formatted).toContain('en-gb');
+      expect(formatted).toContain('English (British)');
+    });
+  });
+
+  describe('mergeWithRegistry()', () => {
+    it('should use API names when available', () => {
+      const apiLangs: LanguageInfo[] = [
+        { language: 'de' as any, name: 'Deutsch' },
+      ];
+      const merged = languagesCommand.mergeWithRegistry(apiLangs, 'source');
+      const de = merged.find(e => e.code === 'de');
+      expect(de?.name).toBe('Deutsch');
+    });
+
+    it('should fall back to registry names for languages not in API response', () => {
+      const merged = languagesCommand.mergeWithRegistry([], 'source');
+      const hi = merged.find(e => e.code === 'hi');
+      expect(hi?.name).toBe('Hindi');
+    });
+
+    it('should include all registry languages', () => {
+      const merged = languagesCommand.mergeWithRegistry(mockSourceLanguages, 'source');
+      expect(merged.length).toBeGreaterThan(mockSourceLanguages.length);
+      expect(merged.some(e => e.code === 'hi')).toBe(true);
+      expect(merged.some(e => e.code === 'sw')).toBe(true);
+    });
+
+    it('should correctly categorize languages', () => {
+      const merged = languagesCommand.mergeWithRegistry([], 'target');
+      const enGb = merged.find(e => e.code === 'en-gb');
+      const en = merged.find(e => e.code === 'en');
+      const hi = merged.find(e => e.code === 'hi');
+
+      expect(enGb?.category).toBe('regional');
+      expect(en?.category).toBe('core');
+      expect(hi?.category).toBe('extended');
+    });
+  });
+
+  describe('formatDisplayEntries()', () => {
+    it('should show "No languages available" for empty entries', () => {
+      const formatted = languagesCommand.formatDisplayEntries([], 'source');
+      expect(formatted).toContain('No languages available');
+    });
+
+    it('should group core/regional before extended', () => {
+      const entries = [
+        { code: 'en', name: 'English', category: 'core' as const },
+        { code: 'hi', name: 'Hindi', category: 'extended' as const },
+        { code: 'en-gb', name: 'English (British)', category: 'regional' as const },
+      ];
+      const formatted = languagesCommand.formatDisplayEntries(entries, 'target');
+      const lines = formatted.split('\n');
+
+      const enLine = lines.findIndex(l => l.includes('en') && !l.includes('en-gb') && !l.includes('Extended'));
+      const enGbLine = lines.findIndex(l => l.includes('en-gb'));
+      const extHeader = lines.findIndex(l => l.includes('Extended Languages'));
+      const hiLine = lines.findIndex(l => l.includes('Hindi'));
+
+      expect(enLine).toBeLessThan(extHeader);
+      expect(enGbLine).toBeLessThan(extHeader);
+      expect(hiLine).toBeGreaterThan(extHeader);
     });
   });
 
@@ -163,12 +267,15 @@ describe('LanguagesCommand', () => {
       expect(sections.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('should handle empty lists gracefully', () => {
-      const formatted = languagesCommand.formatAllLanguages([], []);
+    it('should include extended languages in both sections', () => {
+      const formatted = languagesCommand.formatAllLanguages(
+        mockSourceLanguages,
+        mockTargetLanguages
+      );
 
-      expect(formatted).toContain('Source Languages:');
-      expect(formatted).toContain('Target Languages:');
-      expect(formatted).toContain('No languages available');
+      const parts = formatted.split('Target Languages:');
+      expect(parts[0]).toContain('Extended Languages');
+      expect(parts[1]).toContain('Extended Languages');
     });
   });
 });

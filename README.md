@@ -721,39 +721,47 @@ See [examples/18-cost-transparency.sh](./examples/18-cost-transparency.sh) for c
 
 #### Supported Languages
 
-List all source and target languages supported by DeepL:
+List all 121 supported languages grouped by category:
 
 ```bash
 # Show all supported languages (both source and target)
 deepl languages
 # Source Languages:
-#   en      English
-#   de      German
-#   fr      French
+#   ar    Arabic
+#   bg    Bulgarian
+#   ...
+#   zh    Chinese
+#
+#   Extended Languages (quality_optimized only, no formality/glossary):
+#   ace   Acehnese
+#   af    Afrikaans
 #   ...
 #
 # Target Languages:
-#   en-us   English (American)
-#   en-gb   English (British)
-#   de      German
+#   ar        Arabic
+#   ...
+#   en-gb     English (British)
+#   en-us     English (American)
+#   ...
+#
+#   Extended Languages (quality_optimized only, no formality/glossary):
+#   ace       Acehnese
 #   ...
 
 # Show only source languages
 deepl languages --source
-# Source Languages:
-#   en      English
-#   de      German
-#   ...
 
 # Show only target languages
 deepl languages --target
-# Target Languages:
-#   en-us   English (American)
-#   en-gb   English (British)
-#   ...
+
+# Works without API key (shows local registry data)
+deepl languages
 ```
 
-**Note:** Source and target language lists may differ. Some languages are available only as target languages (e.g., `en-us`, `en-gb` for English variants).
+**Note:** Languages are grouped into three categories:
+- **Core** (32) — Full feature support including formality and glossaries
+- **Regional** (7) — Target-only variants like `en-us`, `en-gb`, `pt-br`
+- **Extended** (82) — Only support `quality_optimized` model, no formality or glossary
 
 See [examples/11-languages.sh](./examples/11-languages.sh) for a complete example.
 

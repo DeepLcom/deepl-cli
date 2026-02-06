@@ -1330,7 +1330,9 @@ deepl languages [OPTIONS]
 
 #### Description
 
-Display all languages supported by DeepL API. You can filter to show only source languages, only target languages, or both (default).
+Display all 121 supported languages grouped by category. Core and regional languages are shown first, followed by extended languages. When an API key is configured, language names are fetched from the DeepL API; otherwise, the local language registry is used.
+
+You can filter to show only source languages, only target languages, or both (default).
 
 #### Options
 
@@ -1343,51 +1345,49 @@ Display all languages supported by DeepL API. You can filter to show only source
 # Show all supported languages (both source and target)
 deepl languages
 # Source Languages:
-#   en      English
-#   de      German
-#   fr      French
-#   es      Spanish
+#   ar    Arabic
+#   bg    Bulgarian
+#   ...
+#   zh    Chinese
+#
+#   Extended Languages (quality_optimized only, no formality/glossary):
+#   ace   Acehnese
+#   af    Afrikaans
 #   ...
 #
 # Target Languages:
-#   en-us   English (American)
-#   en-gb   English (British)
-#   de      German
-#   fr      French
+#   ar        Arabic
+#   ...
+#   en-gb     English (British)
+#   en-us     English (American)
+#   ...
+#
+#   Extended Languages (quality_optimized only, no formality/glossary):
+#   ace       Acehnese
 #   ...
 
 # Show only source languages
 deepl languages --source
-# Source Languages:
-#   en      English
-#   de      German
-#   fr      French
-#   ...
 
 # Show only target languages
 deepl languages --target
-# Target Languages:
-#   en-us   English (American)
-#   en-gb   English (British)
-#   de      German
-#   fr      French
-#   es      Spanish
-#   ja      Japanese
-#   ...
+
+# Works without API key (shows local registry data)
+deepl languages
+# Note: No API key configured. Showing local language registry only.
 ```
 
 **Output Format:**
 
-- Language codes are displayed in the first column
-- Language names are displayed in the second column
-- Codes are left-aligned and padded for readability
+- Languages are grouped: core/regional first, then extended in a separate section
+- Extended languages are annotated with "quality_optimized only, no formality/glossary"
+- Language codes are left-aligned and padded for readability
 
 **Notes:**
 
-- Source and target language lists may differ
-- Some languages are only available as target languages (e.g., English variants `en-us`, `en-gb`)
-- Some languages are only available as source languages
-- The list is fetched directly from DeepL API and reflects current language support
+- Source and target language lists differ: 7 regional variants (en-gb, en-us, es-419, pt-br, pt-pt, zh-hans, zh-hant) are target-only
+- Extended languages (82 codes) only support `quality_optimized` model type and do not support formality or glossary features
+- Without an API key, the command shows all languages from the local registry with a warning
 
 ---
 
