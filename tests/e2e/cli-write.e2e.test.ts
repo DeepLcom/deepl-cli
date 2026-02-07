@@ -53,9 +53,9 @@ describe('Write Command E2E', () => {
     });
 
     it('should reject invalid language code', () => {
+      expect.assertions(1);
       try {
         execSync('deepl write "test" --lang invalid', { encoding: 'utf-8', stdio: 'pipe' });
-        fail('Should have thrown error');
       } catch (error: any) {
         // Exit code 6 = InvalidInput (validation error)
         expect(error.status).toBe(6);
@@ -63,12 +63,12 @@ describe('Write Command E2E', () => {
     });
 
     it('should reject combining --style and --tone', () => {
+      expect.assertions(1);
       try {
         execSync('deepl write "test" --lang en-US --style business --tone confident', {
           encoding: 'utf-8',
           stdio: 'pipe'
         });
-        fail('Should have thrown error');
       } catch (error: any) {
         // Exit code 6 = InvalidInput (validation error - "Cannot specify both")
         expect(error.status).toBe(6);

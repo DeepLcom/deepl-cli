@@ -781,9 +781,9 @@ describe('Document Translation CLI Integration', () => {
       const testFile = path.join(testDir, 'cli-doc.pdf');
       fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
+      expect.assertions(1);
       try {
         runCLI(`deepl translate "${testFile}"`, { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/required.*--to|target.*language/i);
@@ -794,13 +794,12 @@ describe('Document Translation CLI Integration', () => {
       const testFile = path.join(testDir, 'cli-doc2.txt');
       fs.writeFileSync(testFile, 'Hello world test content');
 
+      expect.assertions(1);
       try {
         runCLI(`deepl translate "${testFile}" --to es`, { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should fail on API key or output requirement
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/API key|auth|output/i);
       }
     });
 
@@ -808,11 +807,11 @@ describe('Document Translation CLI Integration', () => {
       const testFile = path.join(testDir, 'cli-doc3.pdf');
       fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
+      expect.assertions(1);
       try {
         runCLI(`deepl translate "${testFile}" --to es --output "${testDir}/out.pdf"`, {
           stdio: 'pipe',
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);

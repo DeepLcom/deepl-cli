@@ -91,6 +91,7 @@ describe('Admin CLI Integration', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         const env = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir } as NodeJS.ProcessEnv;
         delete env['DEEPL_API_KEY'];
@@ -99,7 +100,6 @@ describe('Admin CLI Integration', () => {
           env,
           stdio: 'pipe',
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
@@ -109,9 +109,9 @@ describe('Admin CLI Integration', () => {
 
   describe('deepl admin usage without required flags', () => {
     it('should require --start flag', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl admin usage --end 2024-01-31', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/required|start/i);
@@ -119,9 +119,9 @@ describe('Admin CLI Integration', () => {
     });
 
     it('should require --end flag', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl admin usage --start 2024-01-01', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/required|end/i);
@@ -131,9 +131,9 @@ describe('Admin CLI Integration', () => {
 
   describe('deepl admin keys deactivate', () => {
     it('should require key-id argument', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl admin keys deactivate', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/key-id|argument|missing/i);
@@ -158,9 +158,9 @@ describe('Admin CLI Integration', () => {
 
   describe('deepl admin keys rename without arguments', () => {
     it('should require key-id and label arguments', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl admin keys rename', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/key-id|argument|missing/i);
@@ -170,9 +170,9 @@ describe('Admin CLI Integration', () => {
 
   describe('deepl admin keys set-limit without arguments', () => {
     it('should require key-id and characters arguments', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl admin keys set-limit', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/key-id|argument|missing/i);

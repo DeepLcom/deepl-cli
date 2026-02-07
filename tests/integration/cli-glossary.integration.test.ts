@@ -65,9 +65,9 @@ describe('Glossary CLI Integration', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl glossary list', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // Should indicate API key is required
@@ -85,26 +85,24 @@ describe('Glossary CLI Integration', () => {
     });
 
     it('should validate missing file argument', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary create "Test" en de', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing arguments or file
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|file|API key|auth/i);
       }
     });
 
     it('should validate non-existent file', () => {
       const nonExistentFile = path.join(testDir, 'does-not-exist.tsv');
 
+      expect.assertions(1);
       try {
         runCLI(`deepl glossary create "Test" en de "${nonExistentFile}"`, { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should fail (either file not found or API key missing)
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/not found|does not exist|API key|auth/i);
       }
     });
 
@@ -168,13 +166,12 @@ describe('Glossary CLI Integration', () => {
     });
 
     it('should validate missing argument', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary show', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
@@ -199,13 +196,12 @@ describe('Glossary CLI Integration', () => {
     });
 
     it('should validate missing argument', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary entries', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
@@ -230,13 +226,12 @@ describe('Glossary CLI Integration', () => {
     });
 
     it('should validate missing argument', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary delete', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
@@ -359,7 +354,7 @@ describe('Glossary CLI Integration', () => {
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // Should fail (either too many args or auth)
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/argument|API key|auth/i);
       }
     });
 
@@ -386,35 +381,32 @@ describe('Glossary CLI Integration', () => {
     });
 
     it('should validate missing arguments', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary add-entry', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
     it('should validate missing source and target', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary add-entry "My Glossary"', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing arguments
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
     it('should validate missing target', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary add-entry "My Glossary" "Hello"', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
@@ -452,35 +444,32 @@ describe('Glossary CLI Integration', () => {
     });
 
     it('should validate missing arguments', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary update-entry', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
     it('should validate missing source and new-target', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary update-entry "My Glossary"', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing arguments
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
     it('should validate missing new-target', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary update-entry "My Glossary" "Hello"', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
@@ -518,24 +507,22 @@ describe('Glossary CLI Integration', () => {
     });
 
     it('should validate missing arguments', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary remove-entry', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
     it('should validate missing source', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary remove-entry "My Glossary"', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
@@ -573,24 +560,22 @@ describe('Glossary CLI Integration', () => {
     });
 
     it('should validate missing arguments', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary rename', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 
     it('should validate missing new-name', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl glossary rename "My Glossary"', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate missing argument
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/missing|argument|required/i);
       }
     });
 

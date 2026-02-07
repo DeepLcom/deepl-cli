@@ -163,9 +163,9 @@ describe('CLI --config flag integration', () => {
     });
 
     it('should fail if --config value is not provided', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl --config config get auth.apiKey');
-        fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
       }
@@ -197,9 +197,9 @@ describe('CLI --config flag integration', () => {
       const txtPath = path.join(testDir, 'config.txt');
       fs.writeFileSync(txtPath, '{}');
 
+      expect.assertions(2);
       try {
         runCLI(`deepl --config "${txtPath}" config get auth.apiKey`);
-        fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
         expect(error.stderr || error.stdout).toContain('.json extension');
@@ -210,9 +210,9 @@ describe('CLI --config flag integration', () => {
       const noExtPath = path.join(testDir, 'myconfig');
       fs.writeFileSync(noExtPath, '{}');
 
+      expect.assertions(1);
       try {
         runCLI(`deepl --config "${noExtPath}" config get auth.apiKey`);
-        fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
       }
@@ -224,9 +224,9 @@ describe('CLI --config flag integration', () => {
       fs.writeFileSync(realConfig, JSON.stringify({ auth: {} }));
       fs.symlinkSync(realConfig, symlinkConfig);
 
+      expect.assertions(2);
       try {
         runCLI(`deepl --config "${symlinkConfig}" config get auth.apiKey`);
-        fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
         expect(error.stderr || error.stdout).toContain('symlink');

@@ -65,9 +65,9 @@ describe('Style Rules CLI Integration', () => {
     });
 
     it('should require API key for style-rules list', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl style-rules list', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
@@ -75,9 +75,9 @@ describe('Style Rules CLI Integration', () => {
     });
 
     it('should require API key for style-rules list --detailed', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl style-rules list --detailed', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
@@ -85,9 +85,9 @@ describe('Style Rules CLI Integration', () => {
     });
 
     it('should require API key for style-rules list with pagination', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl style-rules list --page 1 --page-size 10', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);

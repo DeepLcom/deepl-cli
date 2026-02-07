@@ -69,9 +69,9 @@ describe('Translate CLI Integration', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl translate "Hello" --to es', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // Should indicate API key is required
@@ -82,9 +82,9 @@ describe('Translate CLI Integration', () => {
 
   describe('required arguments validation', () => {
     it('should require --to flag for translation', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl translate "Hello"', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/required.*--to|target language/i);
@@ -105,14 +105,13 @@ describe('Translate CLI Integration', () => {
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello world', 'utf-8');
 
+      expect.assertions(1);
       try {
         runCLI(`deepl translate "${testFile}" --to es`, { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // Will fail on API key or output requirement
-        // Both are valid error scenarios
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/API key|auth|output/i);
       }
     });
 
@@ -135,13 +134,13 @@ describe('Translate CLI Integration', () => {
     it('should handle non-existent file gracefully', () => {
       const nonExistentFile = path.join(testDir, 'does-not-exist.txt');
 
+      expect.assertions(1);
       try {
         runCLI(`deepl translate "${nonExistentFile}" --to es --output output.txt`, { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should indicate file not found (or API key missing)
-        expect(output.length).toBeGreaterThan(0);
+        // Should indicate file not found or API key missing
+        expect(output).toMatch(/not found|does not exist|API key|auth/i);
       }
     });
   });
@@ -153,14 +152,13 @@ describe('Translate CLI Integration', () => {
       fs.mkdirSync(testSubDir, { recursive: true });
       fs.writeFileSync(path.join(testSubDir, 'file1.txt'), 'Content 1', 'utf-8');
 
+      expect.assertions(1);
       try {
         runCLI(`deepl translate "${testSubDir}" --to es`, { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // Will fail on API key or output requirement
-        // Both are valid error scenarios
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/API key|auth|output/i);
       }
     });
 
@@ -292,13 +290,11 @@ describe('Translate CLI Integration', () => {
 
   describe('error messages', () => {
     it('should show clear error for missing required flags', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl translate "Hello"', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Error should be clear about what's missing
-        expect(output.length).toBeGreaterThan(0);
         expect(output).toMatch(/--to|target/i);
       }
     });
@@ -307,13 +303,12 @@ describe('Translate CLI Integration', () => {
       const testFile = path.join(testDir, 'error-test.txt');
       fs.writeFileSync(testFile, 'Test', 'utf-8');
 
+      expect.assertions(1);
       try {
         runCLI(`deepl translate "${testFile}" --to es`, { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Error should mention output requirement
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/API key|auth|output/i);
       }
     });
   });
@@ -738,9 +733,9 @@ describe('Translate CLI Integration', () => {
     };
 
     it('should reject http:// URLs for remote hosts', () => {
+      expect.assertions(2);
       try {
         runCLIWithKey('deepl translate "Hello" --to es --api-url http://evil-server.com/v2');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/Insecure HTTP URL rejected/i);
@@ -781,9 +776,9 @@ describe('Translate CLI Integration', () => {
 
   describe('choices validation for enum options', () => {
     it('should reject invalid --formality value', () => {
+      expect.assertions(8);
       try {
         runCLI('deepl translate "Hello" --to es --formality super_formal', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/--formality/);
@@ -810,9 +805,9 @@ describe('Translate CLI Integration', () => {
     });
 
     it('should reject invalid --tag-handling value', () => {
+      expect.assertions(5);
       try {
         runCLI('deepl translate "Hello" --to es --tag-handling json', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/--tag-handling/);
@@ -836,9 +831,9 @@ describe('Translate CLI Integration', () => {
     });
 
     it('should reject invalid --model-type value', () => {
+      expect.assertions(6);
       try {
         runCLI('deepl translate "Hello" --to es --model-type fast', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/--model-type/);
@@ -863,9 +858,9 @@ describe('Translate CLI Integration', () => {
     });
 
     it('should reject invalid --split-sentences value', () => {
+      expect.assertions(6);
       try {
         runCLI('deepl translate "Hello" --to es --split-sentences always', { stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/--split-sentences/);

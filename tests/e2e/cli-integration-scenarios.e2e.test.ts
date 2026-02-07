@@ -92,16 +92,16 @@ describe('CLI Integration Scenarios E2E', () => {
       // List all config (should return JSON or formatted output)
       const listOutput = runCLI('config list');
 
-      // Should show configuration (format may be JSON or plain text)
-      expect(listOutput).toBeTruthy();
-      expect(listOutput.length).toBeGreaterThan(0);
+      // Should show configuration as JSON containing standard sections
+      expect(listOutput).toContain('auth');
+      expect(listOutput).toContain('cache');
     });
 
     it('should handle config get for non-existent key', () => {
       const output = runCLI('config get nonexistent.key.that.does.not.exist');
 
-      // Should either show empty/null or indicate key not found
-      expect(output).toBeTruthy(); // Some output is returned
+      // Should return null for non-existent key
+      expect(output.trim()).toBe('null');
     });
 
     it('should support cache configuration', () => {

@@ -202,9 +202,9 @@ describe('CLI Workflow E2E', () => {
 
   describe('Error Handling Workflow', () => {
     it('should require --to flag for translation', () => {
+      expect.assertions(1);
       try {
         execSync('deepl translate "Hello"', { encoding: 'utf-8', stdio: 'pipe' });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         expect(output).toMatch(/required.*--to|target language/i);
@@ -216,16 +216,15 @@ describe('CLI Workflow E2E', () => {
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello world');
 
+      expect.assertions(1);
       try {
         execSync(`deepl translate "${testFile}" --to es`, {
           encoding: 'utf-8',
           stdio: 'pipe',
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
-        // Expected to fail - either due to missing output flag or missing API key
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/API key|auth|output/i);
       }
     });
 
@@ -242,9 +241,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl translate "Hello" --to es');
-        fail('Should have thrown an error about missing API key');
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         expect(output).toMatch(/API key|auth/i);
@@ -254,16 +253,15 @@ describe('CLI Workflow E2E', () => {
     it('should handle invalid glossary file path', () => {
       const nonExistentFile = path.join(testDir, 'does-not-exist.tsv');
 
+      expect.assertions(1);
       try {
         execSync(`deepl glossary create "test" en de "${nonExistentFile}"`, {
           encoding: 'utf-8',
           stdio: 'pipe',
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
-        // Expected to fail - either due to missing file or missing API key
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/not found|does not exist|API key|auth/i);
       }
     });
   });
@@ -292,20 +290,19 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should reject invalid API key format', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl auth set-key "invalid-key"');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should fail either on format validation or API validation
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/Authentication failed|invalid|error/i);
       }
     });
 
     it('should reject empty API key', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl auth set-key ""');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/empty|required/i);
@@ -420,6 +417,7 @@ describe('CLI Workflow E2E', () => {
 
   describe('Stdin/Stdout Integration', () => {
     it('should handle empty stdin gracefully', () => {
+      expect.assertions(1);
       try {
         // Echo empty string and pipe to translate
         execSync('echo "" | deepl translate --to es', {
@@ -427,10 +425,9 @@ describe('CLI Workflow E2E', () => {
           stdio: 'pipe',
           env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should fail gracefully — either on empty input or missing API key
+        // Should fail gracefully -- either on empty input or missing API key
         expect(output).toMatch(/API key|auth|no input|empty/i);
       }
     });
@@ -500,13 +497,13 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should exit with non-zero on invalid arguments', () => {
+      expect.assertions(1);
       try {
         execSync('deepl translate "Hello"', {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         // Non-zero exit code (error was thrown)
         expect(error.status).toBeGreaterThan(0);
@@ -521,9 +518,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl translate "Hello" --to es');
-        fail('Should have thrown an error');
       } catch (error: any) {
         // Non-zero exit code
         expect(error.status).toBeGreaterThan(0);
@@ -533,13 +530,13 @@ describe('CLI Workflow E2E', () => {
     it('should exit with non-zero on file not found', () => {
       const nonExistentFile = path.join(testDir, 'does-not-exist.txt');
 
+      expect.assertions(1);
       try {
         execSync(`deepl translate "${nonExistentFile}" --to es --output output.txt`, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         // Non-zero exit code
         expect(error.status).toBeGreaterThan(0);
@@ -550,9 +547,9 @@ describe('CLI Workflow E2E', () => {
   describe('CLI Argument Validation', () => {
     describe('translate command validation', () => {
       it('should validate --to flag is required', () => {
+        expect.assertions(1);
         try {
           execSync('deepl translate "Hello"', { encoding: 'utf-8', stdio: 'pipe' });
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
           expect(output).toMatch(/required.*--to|target language/i);
@@ -560,62 +557,58 @@ describe('CLI Workflow E2E', () => {
       });
 
       it('should validate --formality values', () => {
+        expect.assertions(1);
         try {
           execSync('deepl translate "Hello" --to es --formality invalid', {
             encoding: 'utf-8',
             stdio: 'pipe',
             env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
           });
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should reject invalid formality value
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/invalid|formality|Allowed choices/i);
         }
       });
 
       it('should validate --model-type values', () => {
+        expect.assertions(1);
         try {
           execSync('deepl translate "Hello" --to es --model-type invalid', {
             encoding: 'utf-8',
             stdio: 'pipe',
             env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
           });
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should reject invalid model-type value
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/invalid|model-type|Allowed choices/i);
         }
       });
 
       it('should validate --split-sentences values', () => {
+        expect.assertions(1);
         try {
           execSync('deepl translate "Hello" --to es --split-sentences invalid', {
             encoding: 'utf-8',
             stdio: 'pipe',
             env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
           });
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should reject invalid split-sentences value
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/invalid|split-sentences|Allowed choices/i);
         }
       });
 
       it('should validate --tag-handling values', () => {
+        expect.assertions(1);
         try {
           execSync('deepl translate "Hello" --to es --tag-handling invalid', {
             encoding: 'utf-8',
             stdio: 'pipe',
             env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
           });
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should reject invalid tag-handling value
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/invalid|tag-handling|Allowed choices/i);
         }
       });
 
@@ -623,26 +616,25 @@ describe('CLI Workflow E2E', () => {
         const testFile = path.join(testDir, 'validation-test.txt');
         fs.writeFileSync(testFile, 'Test content', 'utf-8');
 
+        expect.assertions(1);
         try {
           execSync(`deepl translate "${testFile}" --to es`, {
             encoding: 'utf-8',
             stdio: 'pipe',
             env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
           });
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should fail (either on output requirement or API key)
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/API key|auth|output/i);
         }
       });
     });
 
     describe('config command validation', () => {
       it('should validate config key paths', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl config set invalid.nonexistent.path value');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout || error.message;
           // Should reject invalid key path
@@ -669,9 +661,9 @@ describe('CLI Workflow E2E', () => {
 
     describe('auth command validation', () => {
       it('should reject empty API key', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl auth set-key ""');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
           expect(output).toMatch(/empty|required/i);
@@ -679,13 +671,12 @@ describe('CLI Workflow E2E', () => {
       });
 
       it('should require API key argument', () => {
+        expect.assertions(1);
         try {
           execSync('deepl auth set-key', { encoding: 'utf-8', stdio: 'pipe' });
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should indicate missing argument
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/missing|argument|required|empty/i);
         }
       });
     });
@@ -696,30 +687,29 @@ describe('CLI Workflow E2E', () => {
       const testFile = path.join(testDir, 'test-doc.html');
       fs.writeFileSync(testFile, '<html><body>Hello</body></html>', 'utf-8');
 
+      expect.assertions(1);
       try {
         execSync(`deepl translate "${testFile}" --to es`, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should fail on missing output flag or API key
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/API key|auth|output/i);
       }
     });
 
     it('should validate input file exists for document translation', () => {
       const nonExistentFile = path.join(testDir, 'does-not-exist.pdf');
 
+      expect.assertions(1);
       try {
         execSync(`deepl translate "${nonExistentFile}" --to es --output output.pdf`, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // Should fail with either file not found or API key error
@@ -769,8 +759,7 @@ describe('CLI Workflow E2E', () => {
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // May fail on API key or unsupported format
-        // Just verify it doesn't crash
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/API key|auth|unsupported|format/i);
       }
     });
 
@@ -778,13 +767,13 @@ describe('CLI Workflow E2E', () => {
       const testFile = path.join(testDir, 'test-exit.html');
       fs.writeFileSync(testFile, '<html><body>Test</body></html>', 'utf-8');
 
+      expect.assertions(1);
       try {
         execSync(`deepl translate "${testFile}" --to es --output test-exit.es.html`, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         // Should exit with non-zero (no API key)
         expect(error.status).toBeGreaterThan(0);
@@ -921,9 +910,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl glossary languages');
-        fail('Should have thrown an error about missing API key');
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         expect(output).toMatch(/API key|auth/i);
@@ -950,9 +939,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl glossary languages');
-        fail('Should have thrown an error');
       } catch (error: any) {
         // Non-zero exit code
         expect(error.status).toBeGreaterThan(0);
@@ -981,35 +970,32 @@ describe('CLI Workflow E2E', () => {
       });
 
       it('should require all three arguments', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl glossary add-entry');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should indicate missing arguments
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/missing|argument|required/i);
         }
       });
 
       it('should require source and target arguments', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl glossary add-entry "My Glossary"');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should indicate missing arguments
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/missing|argument|required/i);
         }
       });
 
       it('should require target argument', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl glossary add-entry "My Glossary" "Hello"');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should indicate missing argument
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/missing|argument|required/i);
         }
       });
 
@@ -1021,9 +1007,9 @@ describe('CLI Workflow E2E', () => {
           // Ignore if already cleared
         }
 
+        expect.assertions(1);
         try {
           runCLI('deepl glossary add-entry "My Glossary" "Hello" "Hola"');
-          fail('Should have thrown an error about missing API key');
         } catch (error: any) {
           const output = error.stderr || error.stdout || error.message;
           expect(output).toMatch(/API key|auth/i);
@@ -1038,9 +1024,9 @@ describe('CLI Workflow E2E', () => {
           // Ignore if already cleared
         }
 
+        expect.assertions(1);
         try {
           runCLI('deepl glossary add-entry "My Glossary" "Hello" "Hola"');
-          fail('Should have thrown an error');
         } catch (error: any) {
           // Non-zero exit code
           expect(error.status).toBeGreaterThan(0);
@@ -1068,35 +1054,32 @@ describe('CLI Workflow E2E', () => {
       });
 
       it('should require all three arguments', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl glossary update-entry');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should indicate missing arguments
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/missing|argument|required/i);
         }
       });
 
       it('should require source and new-target arguments', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl glossary update-entry "My Glossary"');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should indicate missing arguments
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/missing|argument|required/i);
         }
       });
 
       it('should require new-target argument', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl glossary update-entry "My Glossary" "Hello"');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should indicate missing argument
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/missing|argument|required/i);
         }
       });
 
@@ -1108,9 +1091,9 @@ describe('CLI Workflow E2E', () => {
           // Ignore if already cleared
         }
 
+        expect.assertions(1);
         try {
           runCLI('deepl glossary update-entry "My Glossary" "Hello" "Hola Updated"');
-          fail('Should have thrown an error about missing API key');
         } catch (error: any) {
           const output = error.stderr || error.stdout || error.message;
           expect(output).toMatch(/API key|auth/i);
@@ -1125,9 +1108,9 @@ describe('CLI Workflow E2E', () => {
           // Ignore if already cleared
         }
 
+        expect.assertions(1);
         try {
           runCLI('deepl glossary update-entry "My Glossary" "Hello" "Hola Updated"');
-          fail('Should have thrown an error');
         } catch (error: any) {
           // Non-zero exit code
           expect(error.status).toBeGreaterThan(0);
@@ -1154,24 +1137,22 @@ describe('CLI Workflow E2E', () => {
       });
 
       it('should require both arguments', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl glossary remove-entry');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should indicate missing arguments
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/missing|argument|required/i);
         }
       });
 
       it('should require source argument', () => {
+        expect.assertions(1);
         try {
           runCLI('deepl glossary remove-entry "My Glossary"');
-          fail('Should have thrown an error');
         } catch (error: any) {
           const output = error.stderr || error.stdout;
-          // Should indicate missing argument
-          expect(output.length).toBeGreaterThan(0);
+          expect(output).toMatch(/missing|argument|required/i);
         }
       });
 
@@ -1183,9 +1164,9 @@ describe('CLI Workflow E2E', () => {
           // Ignore if already cleared
         }
 
+        expect.assertions(1);
         try {
           runCLI('deepl glossary remove-entry "My Glossary" "Hello"');
-          fail('Should have thrown an error about missing API key');
         } catch (error: any) {
           const output = error.stderr || error.stdout || error.message;
           expect(output).toMatch(/API key|auth/i);
@@ -1200,9 +1181,9 @@ describe('CLI Workflow E2E', () => {
           // Ignore if already cleared
         }
 
+        expect.assertions(1);
         try {
           runCLI('deepl glossary remove-entry "My Glossary" "Hello"');
-          fail('Should have thrown an error');
         } catch (error: any) {
           // Non-zero exit code
           expect(error.status).toBeGreaterThan(0);
@@ -1300,9 +1281,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(2);
       try {
         runCLI('deepl translate "Hello" --to es --show-billed-characters');
-        fail('Should have thrown an error about missing API key');
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         // Should fail on auth, not on unknown option
@@ -1319,9 +1300,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(3);
       try {
         runCLI('deepl translate "Hello" --to es --from en --formality more --show-billed-characters');
-        fail('Should have thrown an error about missing API key');
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         // Should fail on auth, not on flag combination
@@ -1339,9 +1320,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(2);
       try {
         runCLI('deepl translate "Test" --to es --show-billed-characters --format json');
-        fail('Should have thrown an error about missing API key');
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         // Should fail on auth, not on flag parsing
@@ -1358,9 +1339,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl translate "Hello" --to es --show-billed-characters');
-        fail('Should have thrown an error');
       } catch (error: any) {
         // Non-zero exit code
         expect(error.status).toBeGreaterThan(0);
@@ -1370,9 +1351,9 @@ describe('CLI Workflow E2E', () => {
 
   describe('Custom Instructions', () => {
     it('should accept --custom-instruction flag without error', () => {
+      expect.assertions(2);
       try {
         runCLI('deepl translate "Hello" --to es --custom-instruction "Use informal tone"');
-        fail('Should have thrown an error');
       } catch (error: any) {
         // Should fail on API key, not flag parsing
         const output = error.stderr || error.stdout;
@@ -1382,9 +1363,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should accept multiple --custom-instruction flags', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl translate "Hello" --to es --custom-instruction "Be concise" --custom-instruction "Preserve acronyms"');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1392,9 +1373,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should combine --custom-instruction with other flags', () => {
+      expect.assertions(2);
       try {
         runCLI('deepl translate "Hello" --to es --custom-instruction "Use formal tone" --formality more --model-type quality_optimized');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1405,9 +1386,9 @@ describe('CLI Workflow E2E', () => {
 
   describe('Style ID', () => {
     it('should accept --style-id flag without error', () => {
+      expect.assertions(2);
       try {
         runCLI('deepl translate "Hello" --to es --style-id "abc-123-def-456"');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1416,9 +1397,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should combine --style-id with other flags', () => {
+      expect.assertions(2);
       try {
         runCLI('deepl translate "Hello" --to es --style-id "abc-123" --formality more');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1434,9 +1415,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should require API key for style-rules list', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl style-rules list');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1444,9 +1425,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should accept --detailed and pagination flags', () => {
+      expect.assertions(2);
       try {
         runCLI('deepl style-rules list --detailed --page 1 --page-size 10');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // Should fail on API key, not flag parsing
@@ -1458,9 +1439,9 @@ describe('CLI Workflow E2E', () => {
 
   describe('Expanded Language Support', () => {
     it('should accept extended language codes like Swahili', () => {
+      expect.assertions(2);
       try {
         runCLI('deepl translate "Hello" --to sw');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1469,9 +1450,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should accept ES-419 Latin American Spanish', () => {
+      expect.assertions(2);
       try {
         runCLI('deepl translate "Hello" --to es-419');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1480,9 +1461,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should accept Chinese simplified/traditional variants', () => {
+      expect.assertions(2);
       try {
         runCLI('deepl translate "Hello" --to zh-hant');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1493,9 +1474,9 @@ describe('CLI Workflow E2E', () => {
 
   describe('Tag Handling Version', () => {
     it('should accept --tag-handling-version flag', () => {
+      expect.assertions(2);
       try {
         runCLI('deepl translate "<p>Hello</p>" --to es --tag-handling html --tag-handling-version v2');
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1541,6 +1522,7 @@ describe('CLI Workflow E2E', () => {
         // Ignore
       }
 
+      expect.assertions(2);
       try {
         const env = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir } as NodeJS.ProcessEnv;
         delete env['DEEPL_API_KEY'];
@@ -1549,7 +1531,6 @@ describe('CLI Workflow E2E', () => {
           env,
           stdio: 'pipe',
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1558,13 +1539,13 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should require --start and --end flags for admin usage', () => {
+      expect.assertions(2);
       try {
         execSync('deepl admin usage', {
           encoding: 'utf-8',
           env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
           stdio: 'pipe',
         });
-        fail('Should have thrown an error');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/required|start/i);
