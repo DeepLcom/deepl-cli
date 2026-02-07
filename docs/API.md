@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
 **Version**: 0.9.0
-**Last Updated**: February 6, 2026
+**Last Updated**: February 7, 2026
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -585,11 +585,13 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 #### Supported Languages
 
 - `de` - German
+- `en` - English (generic, defaults to American English)
 - `en-GB` - British English
 - `en-US` - American English
 - `es` - Spanish
 - `fr` - French
 - `it` - Italian
+- `pt` - Portuguese (generic, defaults to Brazilian Portuguese)
 - `pt-BR` - Brazilian Portuguese
 - `pt-PT` - European Portuguese
 
@@ -1914,5 +1916,5 @@ export NO_COLOR=1
 
 ---
 
-**Last Updated**: February 5, 2026
-**DeepL CLI Version**: 0.8.0
+**Last Updated**: February 7, 2026
+**DeepL CLI Version**: 0.9.0

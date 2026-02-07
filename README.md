@@ -65,7 +65,7 @@ npm link
 
 # Verify installation
 deepl --version
-# Output: 0.8.0
+# Output: 0.9.0
 ```
 
 ## 🚀 Quick Start
@@ -468,9 +468,17 @@ See [examples/12-model-type-selection.sh](./examples/12-model-type-selection.sh)
 
 Improve your writing with AI-powered grammar, style, and tone suggestions using the **DeepL Write API**.
 
+The `--lang` flag is optional. If omitted, DeepL auto-detects the language and rephrases in the original language. Generic codes `en` and `pt` are also accepted (mapped to `en-US` and `pt-BR` respectively).
+
 ```bash
-# Basic text improvement
+# Auto-detect language (--lang is optional)
+deepl write "This is a sentence."
+
+# Specify language explicitly
 deepl write "This is a sentence." --lang en-US
+
+# Use generic language code (en maps to en-US, pt maps to pt-BR)
+deepl write "This is a sentence." --lang en
 
 # Apply business writing style
 deepl write "We want to tell you about our new product." --lang en-US --style business
@@ -488,7 +496,7 @@ deepl write "I think this will work." --lang en-US --tone confident
 deepl write "Try something else." --lang en-US --tone diplomatic
 
 # Show all alternative improvements
-deepl write "This is good." --lang en-US --tone enthusiastic --alternatives
+deepl write "This is good." --tone enthusiastic --alternatives
 
 # Improve files and save to output
 deepl write input.txt --lang en-US --output improved.txt
@@ -525,11 +533,13 @@ deepl write "This text could be better." --lang en-US --diff
 **Supported Languages:**
 
 - German (`de`)
+- English (`en`) - generic, defaults to American English
 - English - British (`en-GB`)
 - English - American (`en-US`)
 - Spanish (`es`)
 - French (`fr`)
 - Italian (`it`)
+- Portuguese (`pt`) - generic, defaults to Brazilian Portuguese
 - Portuguese - Brazilian (`pt-BR`)
 - Portuguese - European (`pt-PT`)
 
@@ -934,8 +944,8 @@ deepl glossary languages
 deepl glossary add-entry tech-terms "database" "Datenbank"
 # ✓ Entry added successfully
 
-# Add entry to multilingual glossary (requires --target flag)
-deepl glossary add-entry multilingual-terms "cache" "caché" --target es
+# Add entry to multilingual glossary (requires --target-lang flag)
+deepl glossary add-entry multilingual-terms "cache" "caché" --target-lang es
 
 # Update an existing entry in a glossary
 deepl glossary update-entry tech-terms "API" "API (Programmierschnittstelle)"

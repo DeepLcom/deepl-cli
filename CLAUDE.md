@@ -17,8 +17,8 @@ DeepL CLI is a next-generation command-line interface for the DeepL API that int
 
 ### Current Status
 
-- **Version**: 0.8.0 (custom instructions, style rules, admin API, expanded languages, security hardening)
-- **Tests**: 1586 tests passing (100% pass rate)
+- **Version**: 0.9.0 (custom instructions, style rules, admin API, expanded languages, security hardening)
+- **Tests**: 1669 tests passing (100% pass rate)
   - Unit tests: ~70-75%
   - Integration tests: ~25-30%
   - E2E tests: Comprehensive CLI coverage
