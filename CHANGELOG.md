@@ -7,11 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Extract magic numbers to named constants** - Replaced hardcoded numeric literals with descriptive constants across the codebase: `TRANSLATE_BATCH_SIZE` (50), `MAX_SOCKETS`/`MAX_FREE_SOCKETS`/`KEEP_ALIVE_MSECS` and retry delay constants in HTTP client, `DEFAULT_CONCURRENCY`/`MAX_CONCURRENCY` in batch translation, `MAX_CUSTOM_INSTRUCTIONS`/`MAX_CUSTOM_INSTRUCTION_CHARS` in translate command, `DEFAULT_DEBOUNCE_MS` in watch service
+- **Remove unused `errorMessage` field from `DocumentTranslationResult`** - The field was defined but never populated (error cases throw instead of returning)
+- **Simplify redundant config path validation** - Replaced `key === '.' || (key.startsWith('.') && key.length > 0)` with equivalent `key.startsWith('.')`
+
+### Fixed
+- **Async file I/O in batch paths** - Replaced synchronous `readFileSync` with `await fs.promises.readFile` in `FileTranslationService` and `DocumentTranslationService` to avoid blocking the event loop during batch/concurrent operations
+- **TOCTOU race conditions in file operations** - Eliminated time-of-check-to-time-of-use races where `existsSync()` followed by `readFileSync()`/`statSync()` could fail if a file was removed between the two calls. Now uses try/catch around the read with `ENOENT` handling
+
 ### Added
+- **`deepl completion` command for shell tab completion** - Generates completion scripts for bash, zsh, and fish shells. Dynamically introspects all registered commands, subcommands, and options from the Commander.js program tree. Usage: `deepl completion bash`, `deepl completion zsh`, `deepl completion fish`. Scripts can be sourced directly or saved to shell completion directories.
+- **`--dry-run` flag for destructive/batch operations** - Added `--dry-run` to `translate` (file/directory mode), `glossary delete`, `cache clear`, and `watch` commands. Shows what would happen without performing the operation, using yellow-highlighted `[dry-run]` messages. No API calls are made and no side effects occur.
 - **Input length validation before API calls** - Text is validated against the DeepL API's 128KB (131072 bytes) limit before sending requests. Single translations check text byte length; batch translations check both per-item and aggregate sizes. Prevents unnecessary API round-trips and provides clear error messages suggesting to split text or use file translation.
 - **Per-product breakdown in `deepl admin usage`** - Usage analytics now show character counts per product (text translation, document translation, write) instead of aggregate totals only. Uses the new `/v2/admin/analytics` endpoint.
 - **Generic `en`/`pt` language codes for `deepl write`** - The Write API accepts generic `en` and `pt` in addition to regional variants (`en-GB`, `en-US`, `pt-BR`, `pt-PT`)
 - **CONTRIBUTING.md** - External contributor guide covering setup, TDD workflow, testing, code style, and PR process
+- **Actionable error suggestions** - All CLI error classes now carry an optional `suggestion` field displayed below the error message. Default suggestions: auth errors suggest `deepl auth set-key`, quota errors suggest `deepl usage` and plan upgrade, rate limit errors suggest waiting/reducing concurrency, network errors suggest checking connection and proxy settings, unsupported language errors suggest `deepl languages`, and unsupported file format errors suggest `deepl languages --type document`
 
 ### Security
 - **HTTPS enforcement for `--api-url` flag** - The `--api-url` flag now rejects insecure `http://` URLs to prevent API keys from being sent over unencrypted connections. Only `https://` URLs are accepted, with an exception for `http://localhost` and `http://127.0.0.1` for local development/testing. The same validation applies to the `api.baseUrl` config value when used at runtime.
