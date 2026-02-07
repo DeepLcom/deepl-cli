@@ -452,6 +452,248 @@ describe('VoiceService', () => {
         }),
       );
     });
+
+    it('should reject with VoiceError when WebSocket emits error', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-ws-error',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('error', new Error('Connection refused'));
+        }, 5);
+        return mockWs;
+      });
+
+      await expect(
+        service.translateFile(testFile, {
+          targetLangs: ['de'],
+          chunkInterval: 0,
+        }),
+      ).rejects.toThrow(VoiceError);
+      await expect(
+        service.translateFile(testFile, {
+          targetLangs: ['de'],
+          chunkInterval: 0,
+        }),
+      ).rejects.toThrow(/WebSocket connection failed: Connection refused/);
+    });
+
+    it('should remove SIGINT listener when WebSocket closes', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const listenerCountBefore = process.listenerCount('SIGINT');
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-close',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            callbacks.onEndOfStream?.();
+            // Simulate real WebSocket behavior: close() triggers 'close' event
+            mockWs.emit('close');
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      await service.translateFile(testFile, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      });
+
+      expect(process.listenerCount('SIGINT')).toBe(listenerCountBefore);
+    });
+
+    it('should call sendEndOfSource when SIGINT is received', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-sigint',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            process.emit('SIGINT' as any);
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 5);
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      await service.translateFile(testFile, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      });
+
+      expect(mockClient.sendEndOfSource).toHaveBeenCalledWith(mockWs);
+    });
+
+    it('should break chunking loop when WebSocket readyState is not OPEN', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const largeFile = path.join(tmpDir, 'large.mp3');
+      await fs.writeFile(largeFile, Buffer.alloc(10000));
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-readystate',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            mockWs.readyState = 3; // CLOSED
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 50);
+          }, 20);
+        }, 0);
+        return mockWs;
+      });
+
+      const result = await service.translateFile(largeFile, {
+        targetLangs: ['de'],
+        chunkSize: 100,
+        chunkInterval: 10,
+      });
+
+      expect(result.sessionId).toBe('session-readystate');
+    });
+
+    it('should reject when chunk reading throws an error', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-chunk-error',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+        }, 0);
+        return mockWs;
+      });
+
+      // stat() passes, but file is removed before createReadStream runs
+      const trickyFile = path.join(tmpDir, 'tricky.mp3');
+      await fs.writeFile(trickyFile, Buffer.alloc(100));
+
+      const promise = service.translateFile(trickyFile, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      });
+
+      await fs.unlink(trickyFile);
+
+      await expect(promise).rejects.toThrow();
+      expect(mockWs.close).toHaveBeenCalled();
+    });
+
+    it('should proxy onEndOfSourceTranscript callback', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const onEndOfSourceTranscript = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-eos-transcript',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            callbacks.onEndOfSourceTranscript?.();
+            callbacks.onEndOfStream?.();
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      await service.translateFile(testFile, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      }, {
+        onEndOfSourceTranscript,
+      });
+
+      expect(onEndOfSourceTranscript).toHaveBeenCalledTimes(1);
+    });
+
+    it('should proxy onEndOfTargetTranscript callback with language', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const onEndOfTargetTranscript = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-eot-transcript',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            callbacks.onEndOfTargetTranscript?.('de');
+            callbacks.onEndOfStream?.();
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      await service.translateFile(testFile, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      }, {
+        onEndOfTargetTranscript,
+      });
+
+      expect(onEndOfTargetTranscript).toHaveBeenCalledTimes(1);
+      expect(onEndOfTargetTranscript).toHaveBeenCalledWith('de');
+    });
   });
 
   describe('translateStdin()', () => {
@@ -475,6 +717,135 @@ describe('VoiceService', () => {
           contentType: 'audio/mpeg',
         }),
       ).rejects.toThrow(ValidationError);
+    });
+
+    it('should stream from stdin when content-type is provided', async () => {
+      const EventEmitter = require('events');
+      const { PassThrough } = require('stream');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const mockStdin = new PassThrough();
+      jest.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any);
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-stdin',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            mockStdin.write(Buffer.alloc(100));
+            mockStdin.end();
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 20);
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      const result = await service.translateStdin({
+        targetLangs: ['de'],
+        contentType: 'audio/mpeg',
+        chunkInterval: 0,
+      });
+
+      expect(result.sessionId).toBe('session-stdin');
+      expect(mockClient.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source_media_content_type: 'audio/mpeg',
+        }),
+      );
+      expect(mockClient.sendAudioChunk).toHaveBeenCalled();
+    });
+
+    it('should use default chunkSize and chunkInterval when not specified', async () => {
+      const EventEmitter = require('events');
+      const { PassThrough } = require('stream');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const mockStdin = new PassThrough();
+      jest.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any);
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-stdin-defaults',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            // Write more than default chunkSize (6400) to verify chunking
+            mockStdin.write(Buffer.alloc(7000));
+            mockStdin.end();
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 250);
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      const result = await service.translateStdin({
+        targetLangs: ['de'],
+        contentType: 'audio/mpeg',
+      });
+
+      expect(result.sessionId).toBe('session-stdin-defaults');
+      // With 7000 bytes and default chunkSize 6400, we should get 2 chunks (6400 + 600)
+      expect(mockClient.sendAudioChunk).toHaveBeenCalledTimes(2);
+    });
+
+    it('should yield remaining buffer from stdin when stream ends', async () => {
+      const EventEmitter = require('events');
+      const { PassThrough } = require('stream');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const mockStdin = new PassThrough();
+      jest.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any);
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-stdin-remainder',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            // Write less than one chunk to test remainder yielding (line 242-243)
+            mockStdin.write(Buffer.alloc(50));
+            mockStdin.end();
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 20);
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      const result = await service.translateStdin({
+        targetLangs: ['de'],
+        contentType: 'audio/mpeg',
+        chunkSize: 6400,
+        chunkInterval: 0,
+      });
+
+      expect(result.sessionId).toBe('session-stdin-remainder');
+      // 50 bytes < 6400 chunkSize, so remainder path yields one chunk
+      expect(mockClient.sendAudioChunk).toHaveBeenCalledTimes(1);
     });
   });
 });

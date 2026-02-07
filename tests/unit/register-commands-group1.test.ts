@@ -56,6 +56,9 @@ const mockAdminCmdObj = { name: 'admin-cmd' };
 const mockWriteCmdObj = { name: 'write-cmd' };
 const mockTranslateCmdObj = { name: 'translate-cmd' };
 const mockWatchCmdObj = { name: 'watch-cmd' };
+const mockVoiceClientObj = { name: 'voice-client' };
+const mockVoiceServiceObj = { name: 'voice-svc' };
+const mockVoiceCmdObj = { name: 'voice-cmd' };
 
 // ── Mock all dynamic-imported modules ───────────────────────────────────────
 jest.mock('../../src/services/glossary', () => ({
@@ -84,6 +87,15 @@ jest.mock('../../src/cli/commands/translate', () => ({
 }));
 jest.mock('../../src/cli/commands/watch', () => ({
   WatchCommand: jest.fn(),
+}));
+jest.mock('../../src/api/voice-client', () => ({
+  VoiceClient: jest.fn(),
+}));
+jest.mock('../../src/services/voice', () => ({
+  VoiceService: jest.fn(),
+}));
+jest.mock('../../src/cli/commands/voice', () => ({
+  VoiceCommand: jest.fn(),
 }));
 jest.mock('../../src/cli/commands/style-rules', () => ({
   StyleRulesCommand: jest.fn(),
@@ -155,6 +167,15 @@ function resetAllMockImplementations() {
 
   const { WatchCommand } = require('../../src/cli/commands/watch');
   WatchCommand.mockImplementation(() => mockWatchCmdObj);
+
+  const { VoiceClient } = require('../../src/api/voice-client');
+  VoiceClient.mockImplementation(() => mockVoiceClientObj);
+
+  const { VoiceService } = require('../../src/services/voice');
+  VoiceService.mockImplementation(() => mockVoiceServiceObj);
+
+  const { VoiceCommand } = require('../../src/cli/commands/voice');
+  VoiceCommand.mockImplementation(() => mockVoiceCmdObj);
 
   const { StyleRulesCommand } = require('../../src/cli/commands/style-rules');
   StyleRulesCommand.mockImplementation(() => ({
@@ -322,6 +343,21 @@ describe('service-factory', () => {
     const { WatchCommand } = require('../../src/cli/commands/watch');
     expect(WatchCommand).toHaveBeenCalledWith(mockTranslationServiceObj, mockGlossaryServiceObj);
     expect(cmd).toBe(mockWatchCmdObj);
+  });
+
+  it('createVoiceCommand should wire up VoiceClient, VoiceService, and VoiceCommand', async () => {
+    const getApiKeyAndOptions = jest.fn().mockReturnValue({ apiKey: 'test-key', options: { usePro: true } });
+    const { createVoiceCommand } = await import('../../src/cli/commands/service-factory');
+    const cmd = await createVoiceCommand(getApiKeyAndOptions);
+
+    expect(getApiKeyAndOptions).toHaveBeenCalled();
+    const { VoiceClient } = require('../../src/api/voice-client');
+    expect(VoiceClient).toHaveBeenCalledWith('test-key', { usePro: true });
+    const { VoiceService } = require('../../src/services/voice');
+    expect(VoiceService).toHaveBeenCalledWith(mockVoiceClientObj);
+    const { VoiceCommand } = require('../../src/cli/commands/voice');
+    expect(VoiceCommand).toHaveBeenCalledWith(mockVoiceServiceObj);
+    expect(cmd).toBe(mockVoiceCmdObj);
   });
 });
 

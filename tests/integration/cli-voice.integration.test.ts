@@ -79,6 +79,7 @@ describe('Voice CLI Integration', () => {
       expect(output).toContain('prefer_more');
       expect(output).toContain('prefer_less');
     });
+
   });
 
   describe('argument validation', () => {
