@@ -468,6 +468,7 @@ deepl admin usage --start 2026-01-01 --end 2026-01-31 --format json
 - **CacheService**: Translation caching with LRU eviction (SQLite, lazy instantiation)
 - **WatchService**: File watching and auto-translation with debouncing
 - **GitHooksService**: Git hook lifecycle management (4 hook types)
+- **VoiceService**: Real-time speech translation via Voice API WebSocket streaming
 
 #### API Client Layer
 
@@ -478,6 +479,7 @@ deepl admin usage --start 2026-01-01 --end 2026-01-31 --format json
 - **WriteClient**: `/v2/write` endpoint
 - **StyleRulesClient**: `/v2/style-rules` endpoint (Pro)
 - **AdminClient**: `/v2/admin/keys`, `/v2/admin/analytics` endpoints
+- **VoiceClient**: `/v3/voice/realtime` REST endpoint + WebSocket streaming (always uses Pro URL)
 - **HttpClient**: Axios-based HTTP with retry, exponential backoff, connection pooling, and typed error classification
 
 #### Storage Layer

@@ -13,6 +13,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
 - [Commands](#commands)
   - [translate](#translate)
   - [write](#write)
+  - [voice](#voice)
   - [watch](#watch)
   - [hooks](#hooks)
   - [glossary](#glossary)
@@ -682,6 +683,106 @@ deepl write file.txt --lang en-US --diff
 deepl write "This are good." --lang en-US --format json
 # {"original":"This are good.","improved":"This is good.","changes":1,"language":"en-US"}
 ```
+
+---
+
+### voice
+
+Translate audio using the DeepL Voice API with real-time WebSocket streaming.
+
+#### Synopsis
+
+```
+deepl voice [options] <file>
+```
+
+#### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `file` | Audio file to translate. Use `-` for stdin. |
+
+#### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--to <languages>` | `-t` | Target language(s), comma-separated, max 5 (required) | - |
+| `--from <language>` | `-f` | Source language (auto-detect if not specified) | auto |
+| `--formality <level>` | | Formality level: `default`, `more`, `less`, `prefer_more`, `prefer_less` | `default` |
+| `--glossary <id>` | | Glossary ID to use for translation | - |
+| `--content-type <type>` | | Audio content type (auto-detected from file extension) | auto |
+| `--chunk-size <bytes>` | | Audio chunk size in bytes | `6400` |
+| `--chunk-interval <ms>` | | Interval between audio chunks in milliseconds | `200` |
+| `--no-stream` | | Disable live streaming output, collect and print at end | - |
+| `--format <format>` | | Output format: `text`, `json` | `text` |
+
+#### Supported Audio Formats
+
+| Extension | Content Type |
+|-----------|-------------|
+| `.ogg`, `.opus` | `audio/opus;container=ogg` |
+| `.webm` | `audio/opus;container=webm` |
+| `.mka` | `audio/opus;container=matroska` |
+| `.flac` | `audio/flac` |
+| `.mp3` | `audio/mpeg` |
+| `.pcm`, `.raw` | `audio/pcm;encoding=s16le;rate=16000` |
+
+#### Examples
+
+```bash
+# Basic audio translation
+deepl voice recording.ogg --to de
+
+# Multiple target languages
+deepl voice meeting.mp3 --to de,fr,es
+
+# With source language and formality
+deepl voice audio.flac --to ja --from en --formality more
+
+# Pipe from ffmpeg
+ffmpeg -i video.mp4 -f ogg - | deepl voice - --to es --content-type 'audio/opus;container=ogg'
+
+# Pipe raw PCM from stdin
+cat audio.pcm | deepl voice - --to es --content-type 'audio/pcm;encoding=s16le;rate=16000'
+
+# JSON output for scripting
+deepl voice speech.ogg --to de --format json | jq .targets[0].text
+
+# Disable live streaming
+deepl voice speech.ogg --to de --no-stream
+```
+
+#### JSON Output Format
+
+```json
+{
+  "sessionId": "session-abc123",
+  "source": {
+    "lang": "en",
+    "text": "Hello world",
+    "segments": [
+      { "text": "Hello world", "startTime": 0, "endTime": 1.5 }
+    ]
+  },
+  "targets": [
+    {
+      "lang": "de",
+      "text": "Hallo Welt",
+      "segments": [
+        { "text": "Hallo Welt", "startTime": 0, "endTime": 1.5 }
+      ]
+    }
+  ]
+}
+```
+
+#### Notes
+
+- The Voice API requires a DeepL Pro or Enterprise plan.
+- Maximum 5 target languages per session.
+- Maximum audio chunk size: 100KB, recommended pacing: 200ms between chunks.
+- Sessions have a 30-second inactivity timeout and 1-hour maximum duration.
+- The Voice API always uses the Pro endpoint (`api.deepl.com`).
 
 ---
 
@@ -1806,6 +1907,8 @@ The CLI uses semantic exit codes to enable intelligent error handling in scripts
 | 5    | Network Error                   | Connection timeout, refused, or service unavailable (HTTP 503) | Yes       |
 | 6    | Invalid Input                   | Missing arguments, unsupported format, or validation error     | No        |
 | 7    | Configuration Error             | Invalid configuration file or settings                         | No        |
+| 8    | Check Failed                    | Text needs improvement (`deepl write --check`)                 | No        |
+| 9    | Voice Error                     | Voice API error (unsupported plan or session failure)          | No        |
 
 **Special Cases:**
 

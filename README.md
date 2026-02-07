@@ -11,6 +11,7 @@
 
 - **🌍 Translation** - High-quality translation using DeepL's next-gen LLM
 - **📄 Document Translation** - Translate PDF, DOCX, PPTX, XLSX with formatting preservation
+- **🎙️ Voice Translation** - Real-time speech translation via WebSocket streaming (Voice API)
 - **👀 Watch Mode** - Real-time file watching with auto-translation
 - **✍️ Writing Enhancement** - Grammar, style, and tone suggestions (DeepL Write API)
 - **💾 Smart Caching** - Local SQLite cache with LRU eviction
@@ -30,6 +31,7 @@
 - [Usage](#-usage)
   - [Translation](#translation)
   - [Writing Enhancement](#writing-enhancement)
+  - [Voice Translation](#voice-translation)
   - [Watch Mode](#watch-mode)
   - [Configuration](#configuration)
   - [Glossaries](#glossaries)
@@ -575,6 +577,34 @@ When using `--interactive` without specifying a style or tone, the CLI automatic
 If you specify a style or tone with `--interactive`, you'll get a simple confirm/reject prompt for that single suggestion.
 
 **Note:** You cannot combine `--style` and `--tone` in a single request. Choose one or the other.
+
+### Voice Translation
+
+Translate audio in real-time using the DeepL Voice API. Supports multiple audio formats with automatic content type detection.
+
+```bash
+# Translate an audio file
+deepl voice recording.ogg --to de
+
+# Multiple target languages (max 5)
+deepl voice meeting.mp3 --to de,fr,es
+
+# Specify source language
+deepl voice audio.flac --to ja --from en
+
+# Pipe from stdin (content-type required)
+cat audio.pcm | deepl voice - --to es --content-type 'audio/pcm;encoding=s16le;rate=16000'
+
+# JSON output
+deepl voice speech.ogg --to de --format json
+
+# Disable live streaming (plain text at end)
+deepl voice speech.ogg --to de --no-stream
+```
+
+**Supported audio formats:** OGG (Opus), WebM (Opus), FLAC, MP3, PCM (16kHz s16le), Matroska (Opus)
+
+**Note:** The Voice API requires a DeepL Pro or Enterprise plan.
 
 ### Watch Mode
 

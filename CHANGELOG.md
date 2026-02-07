@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`deepl voice` command for real-time speech translation** - Translates audio files using the DeepL Voice API's WebSocket streaming protocol. Supports multiple audio formats (OGG, WebM, FLAC, MP3, PCM, Matroska) with automatic content type detection from file extension. Features include: up to 5 simultaneous target languages, TTY-aware live streaming display with concluded/tentative text, stdin piping for integration with `ffmpeg`/`sox`, `--no-stream` mode for scripting, JSON output format, formality and glossary support. Requires DeepL Pro or Enterprise plan.
+- **`VoiceClient` API client** - New client extending `HttpClient` for the Voice API REST endpoint (`POST /v3/voice/realtime`) and WebSocket streaming. Always uses the Pro API URL (`api.deepl.com`).
+- **`VoiceService` business logic** - Orchestrates Voice API sessions: file chunking with configurable pacing, stdin streaming, content type auto-detection, multi-target transcript accumulation, and graceful SIGINT handling.
+- **`VoiceError` error class** - New error type (exit code 9) with a default suggestion pointing to plan upgrade for Voice API access issues.
+- **Voice API type definitions** - Complete TypeScript types for the Voice API protocol: session request/response, WebSocket message types (audio chunks, transcript updates, end-of-stream), and service-level interfaces.
+- **113 new tests for voice feature** - 87 unit tests (VoiceClient, VoiceService, VoiceCommand, error types, formatters), 8 integration tests (CLI help, validation, auth), 20 e2e tests (full CLI workflows, exit codes, format validation).
+
 ## [0.9.1] - 2026-02-07
 
 ### Added
