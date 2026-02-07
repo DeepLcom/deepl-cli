@@ -959,6 +959,13 @@ deepl glossary remove-entry tech-terms "REST"
 deepl glossary rename tech-terms "Technical Terms v2"
 # ✓ Glossary renamed successfully
 
+# Replace all entries in a glossary dictionary from a new file (v3 API only)
+# Unlike individual entry updates (which merge), this replaces the entire dictionary
+deepl glossary replace-dictionary multilingual-terms es updated-entries.tsv
+# ✓ Dictionary replaced successfully (es)
+# Note: All existing entries for the target language are removed and replaced
+# The file format is the same as for 'glossary create' (TSV or CSV)
+
 # Delete a dictionary from a multilingual glossary (v3 API only)
 # Removes a specific language pair from a multilingual glossary
 deepl glossary delete-dictionary multilingual-terms es
@@ -1011,18 +1018,62 @@ Manage API keys and view organization usage analytics (requires admin-level API 
 # List all API keys in the organization
 deepl admin keys list
 
+# List keys in JSON format
+deepl admin keys list --format json
+
 # Create a new API key
 deepl admin keys create --label "Production Key"
+
+# Rename an API key
+deepl admin keys rename <key-id> "New Label"
 
 # Set character usage limit
 deepl admin keys set-limit <key-id> 1000000
 
-# View organization usage for a date range
-deepl admin usage --start 2024-01-01 --end 2024-12-31
+# Remove usage limit (unlimited)
+deepl admin keys set-limit <key-id> unlimited
 
-# Usage grouped by key
+# Deactivate an API key (permanent, cannot be undone)
+deepl admin keys deactivate <key-id>
+
+# Deactivate without confirmation prompt
+deepl admin keys deactivate <key-id> --yes
+
+# View organization usage for a date range (includes per-product breakdown)
+deepl admin usage --start 2024-01-01 --end 2024-12-31
+# Period: 2024-01-01 to 2024-12-31
+#
+# Total Usage:
+#   Total:       10,000
+#   Translation: 7,000
+#   Documents:   2,000
+#   Write:       1,000
+
+# Usage grouped by key (shows per-product breakdown per key)
 deepl admin usage --start 2024-01-01 --end 2024-12-31 --group-by key
+
+# Daily usage per key
+deepl admin usage --start 2024-01-01 --end 2024-01-31 --group-by key_and_day
+
+# JSON output for programmatic use
+deepl admin usage --start 2024-01-01 --end 2024-12-31 --format json
 ```
+
+**Key Management:**
+
+- **list** - View all API keys in the organization
+- **create** - Create a new key with an optional label
+- **rename** - Change the label of an existing key
+- **set-limit** - Set or remove character usage limits
+- **deactivate** - Permanently deactivate a key (requires confirmation)
+
+**Usage Analytics:**
+
+- Per-product character breakdowns (translation, documents, write)
+- Group by key or by key and day for cost allocation
+- JSON output for integration with monitoring tools
+
+**Note:** Admin API endpoints require an admin-level API key, not a regular developer key. Key deactivation is permanent and cannot be undone.
 
 ### Cache Management
 
