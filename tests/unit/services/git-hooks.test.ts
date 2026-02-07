@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
 import { GitHooksService } from '../../../src/services/git-hooks';
 
 describe('GitHooksService', () => {
@@ -50,7 +51,7 @@ describe('GitHooksService', () => {
       expect(fs.existsSync(hookPath)).toBe(true);
 
       const content = fs.readFileSync(hookPath, 'utf-8');
-      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toMatch(/# DeepL CLI Hook v1 \[sha256:[a-f0-9]{64}\]/);
       expect(content).toContain('pre-commit');
     });
 
@@ -61,7 +62,7 @@ describe('GitHooksService', () => {
       expect(fs.existsSync(hookPath)).toBe(true);
 
       const content = fs.readFileSync(hookPath, 'utf-8');
-      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toMatch(/# DeepL CLI Hook v1 \[sha256:[a-f0-9]{64}\]/);
       expect(content).toContain('pre-push');
     });
 
@@ -72,7 +73,7 @@ describe('GitHooksService', () => {
       expect(fs.existsSync(hookPath)).toBe(true);
 
       const content = fs.readFileSync(hookPath, 'utf-8');
-      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toMatch(/# DeepL CLI Hook v1 \[sha256:[a-f0-9]{64}\]/);
       expect(content).toContain('commit-msg');
       expect(content).toContain('commitlint');
     });
@@ -84,7 +85,7 @@ describe('GitHooksService', () => {
       expect(fs.existsSync(hookPath)).toBe(true);
 
       const content = fs.readFileSync(hookPath, 'utf-8');
-      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toMatch(/# DeepL CLI Hook v1 \[sha256:[a-f0-9]{64}\]/);
       expect(content).toContain('post-commit');
       expect(content).toContain('Commit successful');
     });
@@ -124,9 +125,9 @@ describe('GitHooksService', () => {
       expect(fs.existsSync(backupPath)).toBe(true);
       expect(fs.readFileSync(backupPath, 'utf-8')).toBe(existingContent);
 
-      // Check new hook was installed
+      // Check new hook was installed with versioned marker
       const newContent = fs.readFileSync(hookPath, 'utf-8');
-      expect(newContent).toContain('# DeepL CLI Hook');
+      expect(newContent).toMatch(/# DeepL CLI Hook v1 \[sha256:[a-f0-9]{64}\]/);
     });
 
     it('should not backup existing DeepL hook', () => {
@@ -368,11 +369,13 @@ describe('GitHooksService', () => {
   });
 
   describe('hook content generation', () => {
+    const MARKER_PATTERN = /^# DeepL CLI Hook v(\d+) \[sha256:([a-f0-9]{64})\]$/m;
+
     it('should generate valid pre-commit hook content', () => {
       const content = (gitHooksService as any).generateHookContent('pre-commit');
 
       expect(content).toContain('#!/bin/sh');
-      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toMatch(MARKER_PATTERN);
       expect(content).toContain('pre-commit');
       expect(content).toContain('deepl hooks uninstall pre-commit');
     });
@@ -381,7 +384,7 @@ describe('GitHooksService', () => {
       const content = (gitHooksService as any).generateHookContent('pre-push');
 
       expect(content).toContain('#!/bin/sh');
-      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toMatch(MARKER_PATTERN);
       expect(content).toContain('pre-push');
       expect(content).toContain('deepl hooks uninstall pre-push');
     });
@@ -390,7 +393,7 @@ describe('GitHooksService', () => {
       const content = (gitHooksService as any).generateHookContent('commit-msg');
 
       expect(content).toContain('#!/bin/sh');
-      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toMatch(MARKER_PATTERN);
       expect(content).toContain('commit-msg');
       expect(content).toContain('commitlint');
       expect(content).toContain('COMMIT_MSG_FILE=$1');
@@ -401,11 +404,46 @@ describe('GitHooksService', () => {
       const content = (gitHooksService as any).generateHookContent('post-commit');
 
       expect(content).toContain('#!/bin/sh');
-      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toMatch(MARKER_PATTERN);
       expect(content).toContain('post-commit');
       expect(content).toContain('Commit successful');
       expect(content).toContain('CHANGELOG.md');
       expect(content).toContain('deepl hooks uninstall post-commit');
+    });
+
+    it('should embed correct SHA-256 hash of the hook body', () => {
+      const content = (gitHooksService as any).generateHookContent('pre-commit');
+      const match = content.match(MARKER_PATTERN);
+      expect(match).not.toBeNull();
+
+      const embeddedHash = match![2];
+      const body = GitHooksService.extractHookBody(content);
+      const computedHash = GitHooksService.computeHash(body);
+
+      expect(embeddedHash).toBe(computedHash);
+    });
+
+    it('should use marker version 1', () => {
+      const content = (gitHooksService as any).generateHookContent('pre-commit');
+      const match = content.match(MARKER_PATTERN);
+      expect(match).not.toBeNull();
+      expect(match![1]).toBe('1');
+    });
+
+    it('should produce consistent hash for same hook type', () => {
+      const content1 = (gitHooksService as any).generateHookContent('pre-commit');
+      const content2 = (gitHooksService as any).generateHookContent('pre-commit');
+      expect(content1).toBe(content2);
+    });
+
+    it('should produce different hashes for different hook types', () => {
+      const content1 = (gitHooksService as any).generateHookContent('pre-commit');
+      const content2 = (gitHooksService as any).generateHookContent('pre-push');
+
+      const hash1 = content1.match(MARKER_PATTERN)![2];
+      const hash2 = content2.match(MARKER_PATTERN)![2];
+
+      expect(hash1).not.toBe(hash2);
     });
 
     it('should throw error for invalid hook type', () => {
@@ -416,16 +454,218 @@ describe('GitHooksService', () => {
   });
 
   describe('isDeepLHook()', () => {
-    it('should identify DeepL hook', () => {
+    it('should identify legacy DeepL hook', () => {
       const deeplContent = '#!/bin/sh\n# DeepL CLI Hook\necho "test"';
 
       expect((gitHooksService as any).isDeepLHook(deeplContent)).toBe(true);
+    });
+
+    it('should identify versioned DeepL hook', () => {
+      const hash = 'a'.repeat(64);
+      const content = `#!/bin/sh\n# DeepL CLI Hook v1 [sha256:${hash}]\necho "test"`;
+
+      expect((gitHooksService as any).isDeepLHook(content)).toBe(true);
     });
 
     it('should reject non-DeepL hook', () => {
       const customContent = '#!/bin/sh\necho "custom hook"';
 
       expect((gitHooksService as any).isDeepLHook(customContent)).toBe(false);
+    });
+
+    it('should match hook containing legacy marker as substring', () => {
+      const content = '#!/bin/sh\n# DeepL CLI Hooks\necho "test"';
+
+      expect((gitHooksService as any).isDeepLHook(content)).toBe(true);
+    });
+  });
+
+  describe('computeHash()', () => {
+    it('should return a 64-character hex string', () => {
+      const hash = GitHooksService.computeHash('hello');
+      expect(hash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it('should match known SHA-256 value', () => {
+      const expected = crypto.createHash('sha256').update('hello', 'utf-8').digest('hex');
+      expect(GitHooksService.computeHash('hello')).toBe(expected);
+    });
+
+    it('should produce different hashes for different inputs', () => {
+      const h1 = GitHooksService.computeHash('abc');
+      const h2 = GitHooksService.computeHash('def');
+      expect(h1).not.toBe(h2);
+    });
+
+    it('should produce consistent hashes for same input', () => {
+      const h1 = GitHooksService.computeHash('test content');
+      const h2 = GitHooksService.computeHash('test content');
+      expect(h1).toBe(h2);
+    });
+  });
+
+  describe('extractHookBody()', () => {
+    it('should extract body after legacy marker', () => {
+      const content = '#!/bin/sh\n# DeepL CLI Hook\necho "body"';
+      const body = GitHooksService.extractHookBody(content);
+      expect(body).toBe('echo "body"');
+    });
+
+    it('should extract body after versioned marker', () => {
+      const hash = 'a'.repeat(64);
+      const content = `#!/bin/sh\n# DeepL CLI Hook v1 [sha256:${hash}]\necho "body"`;
+      const body = GitHooksService.extractHookBody(content);
+      expect(body).toBe('echo "body"');
+    });
+
+    it('should return full content when no marker is found', () => {
+      const content = '#!/bin/sh\necho "no marker"';
+      const body = GitHooksService.extractHookBody(content);
+      expect(body).toBe(content);
+    });
+
+    it('should handle multiline body correctly', () => {
+      const hash = 'a'.repeat(64);
+      const content = `#!/bin/sh\n# DeepL CLI Hook v1 [sha256:${hash}]\nline1\nline2\nline3`;
+      const body = GitHooksService.extractHookBody(content);
+      expect(body).toBe('line1\nline2\nline3');
+    });
+  });
+
+  describe('verifyIntegrity()', () => {
+    beforeEach(() => {
+      fs.mkdirSync(testHooksDir, { recursive: true });
+    });
+
+    it('should return not-installed for missing hook', () => {
+      const result = gitHooksService.verifyIntegrity('pre-commit');
+      expect(result.installed).toBe(false);
+      expect(result.markerVersion).toBeNull();
+      expect(result.hashMatch).toBeNull();
+    });
+
+    it('should return not-installed for non-DeepL hook', () => {
+      const hookPath = path.join(testHooksDir, 'pre-commit');
+      fs.writeFileSync(hookPath, '#!/bin/sh\necho "custom"');
+
+      const result = gitHooksService.verifyIntegrity('pre-commit');
+      expect(result.installed).toBe(false);
+      expect(result.markerVersion).toBeNull();
+    });
+
+    it('should return legacy marker version for old-style hooks', () => {
+      const hookPath = path.join(testHooksDir, 'pre-commit');
+      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old style"');
+
+      const result = gitHooksService.verifyIntegrity('pre-commit');
+      expect(result.installed).toBe(true);
+      expect(result.markerVersion).toBe('legacy');
+      expect(result.hashMatch).toBeNull();
+      expect(result.expectedHash).toBeNull();
+      expect(result.actualHash).toBeNull();
+    });
+
+    it('should verify integrity of freshly installed hook', () => {
+      gitHooksService.install('pre-commit');
+
+      const result = gitHooksService.verifyIntegrity('pre-commit');
+      expect(result.installed).toBe(true);
+      expect(result.markerVersion).toBe(1);
+      expect(result.hashMatch).toBe(true);
+      expect(result.expectedHash).toBe(result.actualHash);
+    });
+
+    it('should detect tampered hook body', () => {
+      gitHooksService.install('pre-commit');
+
+      const hookPath = path.join(testHooksDir, 'pre-commit');
+      const content = fs.readFileSync(hookPath, 'utf-8');
+      const tampered = content + '\necho "injected malicious code"';
+      fs.writeFileSync(hookPath, tampered);
+
+      const result = gitHooksService.verifyIntegrity('pre-commit');
+      expect(result.installed).toBe(true);
+      expect(result.markerVersion).toBe(1);
+      expect(result.hashMatch).toBe(false);
+      expect(result.expectedHash).not.toBe(result.actualHash);
+    });
+
+    it('should detect modified hook body (replaced content)', () => {
+      gitHooksService.install('pre-commit');
+
+      const hookPath = path.join(testHooksDir, 'pre-commit');
+      const content = fs.readFileSync(hookPath, 'utf-8');
+      const modified = content.replace('Translation check passed', 'HACKED');
+      fs.writeFileSync(hookPath, modified);
+
+      const result = gitHooksService.verifyIntegrity('pre-commit');
+      expect(result.installed).toBe(true);
+      expect(result.hashMatch).toBe(false);
+    });
+
+    it('should verify integrity for all hook types', () => {
+      const hookTypes: Array<'pre-commit' | 'pre-push' | 'commit-msg' | 'post-commit'> = [
+        'pre-commit', 'pre-push', 'commit-msg', 'post-commit'
+      ];
+
+      for (const hookType of hookTypes) {
+        gitHooksService.install(hookType);
+        const result = gitHooksService.verifyIntegrity(hookType);
+        expect(result.installed).toBe(true);
+        expect(result.markerVersion).toBe(1);
+        expect(result.hashMatch).toBe(true);
+      }
+    });
+
+    it('should throw error for invalid hook type', () => {
+      expect(() => {
+        (gitHooksService as any).verifyIntegrity('invalid-hook');
+      }).toThrow('Invalid hook type');
+    });
+  });
+
+  describe('backward compatibility', () => {
+    beforeEach(() => {
+      fs.mkdirSync(testHooksDir, { recursive: true });
+    });
+
+    it('should detect old-style marker as installed', () => {
+      const hookPath = path.join(testHooksDir, 'pre-commit');
+      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"');
+
+      expect(gitHooksService.isInstalled('pre-commit')).toBe(true);
+    });
+
+    it('should allow uninstalling old-style hook', () => {
+      const hookPath = path.join(testHooksDir, 'pre-commit');
+      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"');
+
+      gitHooksService.uninstall('pre-commit');
+      expect(fs.existsSync(hookPath)).toBe(false);
+    });
+
+    it('should not backup old-style hook when reinstalling', () => {
+      const hookPath = path.join(testHooksDir, 'pre-commit');
+      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"');
+
+      gitHooksService.install('pre-commit');
+
+      const backupPath = hookPath + '.backup';
+      expect(fs.existsSync(backupPath)).toBe(false);
+
+      const content = fs.readFileSync(hookPath, 'utf-8');
+      expect(content).toMatch(/# DeepL CLI Hook v1 \[sha256:[a-f0-9]{64}\]/);
+    });
+
+    it('should upgrade old-style hook to versioned format on reinstall', () => {
+      const hookPath = path.join(testHooksDir, 'pre-commit');
+      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"');
+
+      gitHooksService.install('pre-commit');
+
+      const result = gitHooksService.verifyIntegrity('pre-commit');
+      expect(result.markerVersion).toBe(1);
+      expect(result.hashMatch).toBe(true);
     });
   });
 });

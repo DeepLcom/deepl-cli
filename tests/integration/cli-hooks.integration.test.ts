@@ -51,7 +51,7 @@ describe('Git Hooks Service Integration', () => {
 
       const content = fs.readFileSync(hookPath, 'utf-8');
       expect(content).toContain('#!/bin/sh');
-      expect(content).toContain('# DeepL CLI Hook');
+      expect(content).toMatch(/# DeepL CLI Hook v1 \[sha256:[a-f0-9]{64}\]/);
       expect(content).toContain('pre-commit');
     });
 
