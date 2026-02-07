@@ -10,24 +10,22 @@ import { DeepLClient } from '../../src/api/deepl-client.js';
 jest.mock('../../src/api/deepl-client.js');
 
 // Mock fs module with jest.mock
-const mockExistsSync = jest.fn();
-const mockReadFileSync = jest.fn();
-const mockWriteFileSync = jest.fn();
-const mockMkdirSync = jest.fn();
-const mockLstatSync = jest.fn();
-const mockStatSync = jest.fn();
+const mockWriteFile = jest.fn();
+const mockMkdir = jest.fn();
+const mockStat = jest.fn();
 
 jest.mock('fs', () => ({
-  existsSync: (...args: unknown[]) => mockExistsSync(...args),
-  readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
-  writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
-  mkdirSync: (...args: unknown[]) => mockMkdirSync(...args),
-  lstatSync: (...args: unknown[]) => mockLstatSync(...args),
-  statSync: (...args: unknown[]) => mockStatSync(...args),
   promises: {
-    lstat: jest.fn(),
-    readFile: jest.fn(),
+    stat: (...args: unknown[]) => mockStat(...args),
+    writeFile: (...args: unknown[]) => mockWriteFile(...args),
+    mkdir: (...args: unknown[]) => mockMkdir(...args),
   },
+}));
+
+// Mock safe-read-file module
+const mockSafeReadFile = jest.fn();
+jest.mock('../../src/utils/safe-read-file.js', () => ({
+  safeReadFile: (...args: unknown[]) => mockSafeReadFile(...args),
 }));
 
 const MockedDeepLClient = DeepLClient as jest.MockedClass<typeof DeepLClient>;
@@ -40,13 +38,11 @@ describe('DocumentTranslationService', () => {
     // Reset all mocks
     jest.clearAllMocks();
 
-    // Setup default fs mock behaviors
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(Buffer.from('test'));
-    mockWriteFileSync.mockImplementation(() => {});
-    mockMkdirSync.mockImplementation(() => '');
-    mockLstatSync.mockReturnValue({ isSymbolicLink: () => false });
-    mockStatSync.mockReturnValue({ size: 1024 }); // 1 KB default
+    // Setup default fs.promises mock behaviors
+    mockStat.mockResolvedValue({ size: 1024 }); // 1 KB default
+    mockWriteFile.mockResolvedValue(undefined);
+    mockMkdir.mockResolvedValue(undefined);
+    mockSafeReadFile.mockResolvedValue(Buffer.from('test'));
 
     mockClient = new MockedDeepLClient('test-key') as jest.Mocked<DeepLClient>;
     service = new DocumentTranslationService(mockClient);
@@ -60,7 +56,7 @@ describe('DocumentTranslationService', () => {
       const translatedBuffer = Buffer.from('translated pdf content');
 
       // Override fs mocks for this test
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       // Mock DeepL client methods
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
@@ -110,14 +106,16 @@ describe('DocumentTranslationService', () => {
         documentKey: 'key-456',
       });
 
-      expect(mockWriteFileSync).toHaveBeenCalledWith(
+      expect(mockWriteFile).toHaveBeenCalledWith(
         outputPath,
         translatedBuffer
       );
     });
 
     it('should throw error if input file does not exist', async () => {
-      mockExistsSync.mockReturnValue(false);
+      const enoentErr = new Error('ENOENT: no such file or directory') as Error & { code: string };
+      enoentErr.code = 'ENOENT';
+      mockStat.mockRejectedValue(enoentErr);
 
       await expect(
         service.translateDocument('/nonexistent.pdf', '/output.pdf', {
@@ -131,7 +129,7 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/doc.es.pdf';
       const fileBuffer = Buffer.from('content');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -157,7 +155,7 @@ describe('DocumentTranslationService', () => {
       const fileBuffer = Buffer.from('content');
       const progressCallback = jest.fn();
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -212,7 +210,7 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/doc.es.pdf';
       const fileBuffer = Buffer.from('content');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -235,7 +233,7 @@ describe('DocumentTranslationService', () => {
 
       // Should have made 5 status checks
       expect(mockClient.getDocumentStatus).toHaveBeenCalledTimes(5);
-      expect(mockWriteFileSync).toHaveBeenCalled();
+      expect(mockWriteFile).toHaveBeenCalled();
     });
 
     it('should pass outputFormat parameter to API client', async () => {
@@ -244,7 +242,7 @@ describe('DocumentTranslationService', () => {
       const fileBuffer = Buffer.from('docx content');
       const translatedBuffer = Buffer.from('translated pdf content');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -281,7 +279,7 @@ describe('DocumentTranslationService', () => {
       const fileBuffer = Buffer.from('pdf content');
       const translatedBuffer = Buffer.from('translated pdf content');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -315,7 +313,7 @@ describe('DocumentTranslationService', () => {
       const fileBuffer = Buffer.from('pptx content');
       const translatedBuffer = Buffer.from('translated pptx content');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -351,7 +349,7 @@ describe('DocumentTranslationService', () => {
       const fileBuffer = Buffer.from('docx content');
       const translatedBuffer = Buffer.from('translated docx content');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -428,7 +426,9 @@ describe('DocumentTranslationService', () => {
       const inputPath = '/test/symlink-doc.pdf';
       const outputPath = '/test/output.es.pdf';
 
-      mockLstatSync.mockReturnValue({ isSymbolicLink: () => true });
+      mockSafeReadFile.mockRejectedValue(
+        new Error(`Symlinks are not supported for security reasons: ${inputPath}`)
+      );
 
       await expect(
         service.translateDocument(inputPath, outputPath, {
@@ -443,7 +443,7 @@ describe('DocumentTranslationService', () => {
       const inputPath = '/test/huge-file.pdf';
       const outputPath = '/test/huge-file.es.pdf';
 
-      mockStatSync.mockReturnValue({ size: MAX_DOCUMENT_FILE_SIZE + 1 });
+      mockStat.mockResolvedValue({ size: MAX_DOCUMENT_FILE_SIZE + 1 });
 
       await expect(
         service.translateDocument(inputPath, outputPath, {
@@ -459,7 +459,7 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/massive-file.es.pdf';
 
       const fileSize = 100 * 1024 * 1024; // 100 MB
-      mockStatSync.mockReturnValue({ size: fileSize });
+      mockStat.mockResolvedValue({ size: fileSize });
 
       await expect(
         service.translateDocument(inputPath, outputPath, {
@@ -475,8 +475,8 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/exact-limit.es.pdf';
       const fileBuffer = Buffer.from('content');
 
-      mockStatSync.mockReturnValue({ size: MAX_DOCUMENT_FILE_SIZE });
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockStat.mockResolvedValue({ size: MAX_DOCUMENT_FILE_SIZE });
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -504,8 +504,8 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/small-file.es.pdf';
       const fileBuffer = Buffer.from('content');
 
-      mockStatSync.mockReturnValue({ size: 1024 * 1024 }); // 1 MB
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockStat.mockResolvedValue({ size: 1024 * 1024 }); // 1 MB
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -531,7 +531,7 @@ describe('DocumentTranslationService', () => {
       const inputPath = '/test/big-file.pdf';
       const outputPath = '/test/big-file.es.pdf';
 
-      mockStatSync.mockReturnValue({ size: MAX_DOCUMENT_FILE_SIZE + 1 });
+      mockStat.mockResolvedValue({ size: MAX_DOCUMENT_FILE_SIZE + 1 });
 
       await expect(
         service.translateDocument(inputPath, outputPath, {
@@ -593,7 +593,7 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/doc.es.pdf';
       const fileBuffer = Buffer.from('content');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -624,7 +624,7 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/doc.es.pdf';
       const fileBuffer = Buffer.from('content');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -667,7 +667,7 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/doc.es.pdf';
       const fileBuffer = Buffer.from('content');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -708,7 +708,7 @@ describe('DocumentTranslationService', () => {
       const fileBuffer = Buffer.from('content');
       const translatedBuffer = Buffer.from('translated');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',
@@ -741,7 +741,7 @@ describe('DocumentTranslationService', () => {
       });
 
       expect(mockClient.downloadDocument).toHaveBeenCalled();
-      expect(mockWriteFileSync).toHaveBeenCalledWith(outputPath, translatedBuffer);
+      expect(mockWriteFile).toHaveBeenCalledWith(outputPath, translatedBuffer);
     });
 
     it('should work without AbortSignal (backward compatibility)', async () => {
@@ -750,7 +750,7 @@ describe('DocumentTranslationService', () => {
       const fileBuffer = Buffer.from('content');
       const translatedBuffer = Buffer.from('translated');
 
-      mockReadFileSync.mockReturnValue(fileBuffer);
+      mockSafeReadFile.mockResolvedValue(fileBuffer);
 
       mockClient.uploadDocument = jest.fn().mockResolvedValue({
         documentId: 'doc-123',

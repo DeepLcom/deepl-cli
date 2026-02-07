@@ -7,6 +7,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TranslationService } from './translation.js';
 import { TranslationOptions, Language } from '../types/index.js';
+import { ValidationError } from '../utils/errors.js';
+
+interface NodeErrno extends Error {
+  code?: string;
+}
 
 interface FileTranslationOptions {
   preserveCode?: boolean;
@@ -39,18 +44,25 @@ export class FileTranslationService {
     options: TranslationOptions,
     fileOptions: FileTranslationOptions = {}
   ): Promise<void> {
-    // Validate input file exists
-    if (!fs.existsSync(inputPath)) {
-      throw new Error(`Input file not found: ${inputPath}`);
-    }
-
     // Check file type is supported
     if (!this.isSupportedFile(inputPath)) {
-      throw new Error(`Unsupported file type: ${path.extname(inputPath)}`);
+      throw new ValidationError(
+        `Unsupported file type: ${path.extname(inputPath)}`,
+        'Run: deepl languages --type document  to see supported document formats'
+      );
     }
 
-    // Read file content
-    const content = fs.readFileSync(inputPath, 'utf-8');
+    // Read file content (eliminates TOCTOU race by catching ENOENT directly)
+    let content: string;
+    try {
+      content = await fs.promises.readFile(inputPath, 'utf-8');
+    } catch (err: unknown) {
+      const nodeErr = err as NodeErrno;
+      if (nodeErr.code === 'ENOENT') {
+        throw new Error(`Input file not found: ${inputPath}`);
+      }
+      throw err;
+    }
 
     // Check for empty files
     if (!content || content.trim() === '') {
@@ -66,12 +78,10 @@ export class FileTranslationService {
 
     // Create output directory if needed
     const outputDir = path.dirname(outputPath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
+    await fs.promises.mkdir(outputDir, { recursive: true });
 
     // Write translated content
-    fs.writeFileSync(outputPath, result.text, 'utf-8');
+    await fs.promises.writeFile(outputPath, result.text, 'utf-8');
   }
 
   /**
@@ -82,17 +92,24 @@ export class FileTranslationService {
     targetLangs: Language[],
     options: Omit<TranslationOptions, 'targetLang'> & MultipleFileOptions = {}
   ): Promise<FileMultiTargetResult[]> {
-    // Validate input file
-    if (!fs.existsSync(inputPath)) {
-      throw new Error(`Input file not found: ${inputPath}`);
-    }
-
     if (!this.isSupportedFile(inputPath)) {
-      throw new Error(`Unsupported file type: ${path.extname(inputPath)}`);
+      throw new ValidationError(
+        `Unsupported file type: ${path.extname(inputPath)}`,
+        'Run: deepl languages --type document  to see supported document formats'
+      );
     }
 
-    // Read file content
-    const content = fs.readFileSync(inputPath, 'utf-8');
+    // Read file content (eliminates TOCTOU race by catching ENOENT directly)
+    let content: string;
+    try {
+      content = await fs.promises.readFile(inputPath, 'utf-8');
+    } catch (err: unknown) {
+      const nodeErr = err as NodeErrno;
+      if (nodeErr.code === 'ENOENT') {
+        throw new Error(`Input file not found: ${inputPath}`);
+      }
+      throw err;
+    }
 
     if (!content || content.trim() === '') {
       throw new Error('Cannot translate empty file');
@@ -114,9 +131,7 @@ export class FileTranslationService {
     // If outputDir is specified, write files
     if (options.outputDir) {
       const outputDir = options.outputDir;
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
+      await fs.promises.mkdir(outputDir, { recursive: true });
 
       const inputFilename = path.basename(inputPath);
       const ext = path.extname(inputFilename);
@@ -125,7 +140,7 @@ export class FileTranslationService {
       for (const result of results) {
         const outputFilename = `${basename}.${result.targetLang}${ext}`;
         const outputPath = path.join(outputDir, outputFilename);
-        fs.writeFileSync(outputPath, result.text, 'utf-8');
+        await fs.promises.writeFile(outputPath, result.text, 'utf-8');
         result.outputPath = outputPath;
       }
     }

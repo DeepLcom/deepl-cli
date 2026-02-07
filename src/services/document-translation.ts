@@ -11,13 +11,16 @@ import {
   DocumentHandle,
   DocumentStatus,
 } from '../types/index.js';
-import { safeReadFileSync } from '../utils/safe-read-file.js';
+import { safeReadFile } from '../utils/safe-read-file.js';
+
+interface NodeErrno extends Error {
+  code?: string;
+}
 
 interface DocumentTranslationResult {
   success: boolean;
   billedCharacters?: number;
   outputPath: string;
-  errorMessage?: string;
 }
 
 interface DocumentProgressUpdate {
@@ -76,22 +79,6 @@ export class DocumentTranslationService {
     progressCallback?: ProgressCallback,
     serviceOptions?: TranslateDocumentOptions
   ): Promise<DocumentTranslationResult> {
-    // Validate input file exists
-    if (!fs.existsSync(inputPath)) {
-      throw new Error(`Input file not found: ${inputPath}`);
-    }
-
-    // Validate file size before reading into memory
-    const fileStat = fs.statSync(inputPath);
-    if (fileStat.size > MAX_DOCUMENT_FILE_SIZE) {
-      const sizeMB = (fileStat.size / (1024 * 1024)).toFixed(1);
-      const limitMB = (MAX_DOCUMENT_FILE_SIZE / (1024 * 1024)).toFixed(0);
-      throw new Error(
-        `File size (${sizeMB} MB) exceeds the maximum allowed size of ${limitMB} MB. ` +
-        `Please check DeepL's document size limits: https://developers.deepl.com/docs/api-reference/document`
-      );
-    }
-
     // Validate document minification is only used with PPTX/DOCX
     if (options.enableDocumentMinification) {
       const ext = path.extname(inputPath).toLowerCase();
@@ -102,8 +89,29 @@ export class DocumentTranslationService {
       }
     }
 
+    // Validate file size before reading into memory (eliminates TOCTOU race)
+    let fileStat: fs.Stats;
+    try {
+      fileStat = await fs.promises.stat(inputPath);
+    } catch (err: unknown) {
+      const nodeErr = err as NodeErrno;
+      if (nodeErr.code === 'ENOENT') {
+        throw new Error(`Input file not found: ${inputPath}`);
+      }
+      throw err;
+    }
+
+    if (fileStat.size > MAX_DOCUMENT_FILE_SIZE) {
+      const sizeMB = (fileStat.size / (1024 * 1024)).toFixed(1);
+      const limitMB = (MAX_DOCUMENT_FILE_SIZE / (1024 * 1024)).toFixed(0);
+      throw new Error(
+        `File size (${sizeMB} MB) exceeds the maximum allowed size of ${limitMB} MB. ` +
+        `Please check DeepL's document size limits: https://developers.deepl.com/docs/api-reference/document`
+      );
+    }
+
     // Read input file (with symlink security check)
-    const fileBuffer = safeReadFileSync(inputPath);
+    const fileBuffer = await safeReadFile(inputPath);
     const filename = path.basename(inputPath);
 
     // Upload document
@@ -131,12 +139,10 @@ export class DocumentTranslationService {
 
     // Create output directory if needed
     const outputDir = path.dirname(outputPath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
+    await fs.promises.mkdir(outputDir, { recursive: true });
 
     // Write translated document to output path
-    fs.writeFileSync(outputPath, translatedBuffer);
+    await fs.promises.writeFile(outputPath, translatedBuffer);
 
     return {
       success: true,
