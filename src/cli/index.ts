@@ -11,27 +11,11 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve, isAbsolute } from 'path';
 import { ConfigService } from '../storage/config.js';
-import { CacheService } from '../storage/cache.js';
-import { DeepLClient } from '../api/deepl-client.js';
-import { TranslationService } from '../services/translation.js';
-import { WriteService } from '../services/write.js';
-import { GlossaryService } from '../services/glossary.js';
-import { DocumentTranslationService } from '../services/document-translation.js';
-import { AuthCommand } from './commands/auth.js';
-import { UsageCommand } from './commands/usage.js';
-import { LanguagesCommand } from './commands/languages.js';
-import { TranslateCommand } from './commands/translate.js';
-import { WriteCommand } from './commands/write.js';
-import { WatchCommand } from './commands/watch.js';
-import { HooksCommand } from './commands/hooks.js';
-import { ConfigCommand as ConfigCmd } from './commands/config.js';
-import { CacheCommand } from './commands/cache.js';
-import { GlossaryCommand } from './commands/glossary.js';
-import { StyleRulesCommand } from './commands/style-rules.js';
-import { AdminCommand } from './commands/admin.js';
-import { WriteLanguage, WritingStyle, WriteTone } from '../types/api.js';
-import { Language } from '../types/common.js';
-import { HookType } from '../services/git-hooks.js';
+import type { CacheService } from '../storage/cache.js';
+import type { DeepLClient } from '../api/deepl-client.js';
+import type { WriteLanguage, WritingStyle, WriteTone } from '../types/api.js';
+import type { Language } from '../types/common.js';
+import type { HookType } from '../services/git-hooks.js';
 import { Logger } from '../utils/logger.js';
 import { ExitCode, getExitCodeFromError } from '../utils/exit-codes.js';
 
@@ -54,9 +38,10 @@ const defaultConfigPath = process.env['DEEPL_CONFIG_DIR']
 let configService = new ConfigService(defaultConfigPath);
 let cacheService: CacheService | null = null;
 
-function getCacheService(): CacheService {
+async function getCacheService(): Promise<CacheService> {
   if (!cacheService) {
-    cacheService = CacheService.getInstance();
+    const { CacheService: CacheSvc } = await import('../storage/cache.js');
+    cacheService = CacheSvc.getInstance();
   }
   return cacheService;
 }
@@ -75,7 +60,7 @@ function handleError(error: unknown): never {
 /**
  * Create DeepL client with API key from config or env
  */
-function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
+async function createDeepLClient(overrideBaseUrl?: string): Promise<DeepLClient> {
   const apiKey = configService.getValue<string>('auth.apiKey');
   const envKey = process.env['DEEPL_API_KEY'];
 
@@ -90,7 +75,13 @@ function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
   const baseUrl = overrideBaseUrl ?? configService.getValue<string>('api.baseUrl');
   const usePro = configService.getValue<boolean>('api.usePro');
 
-  return new DeepLClient(key, { baseUrl, usePro });
+  if (baseUrl) {
+    const { validateApiUrl } = await import('../utils/validate-url.js');
+    validateApiUrl(baseUrl);
+  }
+
+  const { DeepLClient: Client } = await import('../api/deepl-client.js');
+  return new Client(key, { baseUrl, usePro });
 }
 
 // Create program
@@ -160,6 +151,7 @@ program
             }
             key = Buffer.concat(chunks).toString('utf-8').trim();
           }
+          const { AuthCommand } = await import('./commands/auth.js');
           const authCommand = new AuthCommand(configService);
           await authCommand.setKey(key);
           Logger.success(chalk.green('✓ API key saved and validated successfully'));
@@ -174,6 +166,7 @@ program
       .description('Show current API key (masked)')
       .action(async () => {
         try {
+          const { AuthCommand } = await import('./commands/auth.js');
           const authCommand = new AuthCommand(configService);
           const key = await authCommand.getKey();
           if (key) {
@@ -193,6 +186,7 @@ program
       .description('Remove stored API key')
       .action(async () => {
         try {
+          const { AuthCommand } = await import('./commands/auth.js');
           const authCommand = new AuthCommand(configService);
           await authCommand.clearKey();
           Logger.success(chalk.green('✓ API key removed'));
@@ -209,7 +203,8 @@ program
   .description('Show API usage statistics')
   .action(async () => {
     try {
-      const client = createDeepLClient();
+      const client = await createDeepLClient();
+      const { UsageCommand } = await import('./commands/usage.js');
       const usageCommand = new UsageCommand(client);
 
       const usage = await usageCommand.getUsage();
@@ -235,12 +230,13 @@ program
 
       let client: DeepLClient | null = null;
       if (hasApiKey) {
-        client = createDeepLClient();
+        client = await createDeepLClient();
       } else {
         Logger.warn(chalk.yellow('Note: No API key configured. Showing local language registry only.'));
         Logger.warn(chalk.yellow('Run: deepl auth set-key <your-api-key> for API-verified names.\n'));
       }
 
+      const { LanguagesCommand } = await import('./commands/languages.js');
       const languagesCommand = new LanguagesCommand(client);
 
       let output: string;
@@ -327,8 +323,12 @@ program
     apiUrl?: string;
   }) => {
     try {
-      const client = createDeepLClient();
-      const translationService = new TranslationService(client, configService, getCacheService());
+      const client = await createDeepLClient(options.apiUrl);
+      const { TranslationService } = await import('../services/translation.js');
+      const { DocumentTranslationService } = await import('../services/document-translation.js');
+      const { GlossaryService } = await import('../services/glossary.js');
+      const { TranslateCommand } = await import('./commands/translate.js');
+      const translationService = new TranslationService(client, configService, await getCacheService());
       const documentTranslationService = new DocumentTranslationService(client);
       const glossaryService = new GlossaryService(client);
       const translateCommand = new TranslateCommand(translationService, documentTranslationService, glossaryService, configService);
@@ -383,8 +383,11 @@ program
         Logger.warn(chalk.yellow('Warning: --git-staged is not yet implemented'));
       }
 
-      const client = createDeepLClient();
-      const translationService = new TranslationService(client, configService, getCacheService());
+      const client = await createDeepLClient();
+      const { TranslationService } = await import('../services/translation.js');
+      const { GlossaryService } = await import('../services/glossary.js');
+      const { WatchCommand } = await import('./commands/watch.js');
+      const translationService = new TranslationService(client, configService, await getCacheService());
       const glossaryService = new GlossaryService(client);
       const watchCommand = new WatchCommand(translationService, glossaryService);
 
@@ -440,7 +443,9 @@ program
         throw new Error('Cannot specify both --style and --tone. Use one or the other.');
       }
 
-      const client = createDeepLClient();
+      const client = await createDeepLClient();
+      const { WriteService } = await import('../services/write.js');
+      const { WriteCommand } = await import('./commands/write.js');
       const writeService = new WriteService(client);
       const writeCommand = new WriteCommand(writeService);
 
@@ -578,6 +583,7 @@ program
       .argument('[key]', 'Config key (dot notation) or empty for all')
       .action(async (key?: string) => {
         try {
+          const { ConfigCommand: ConfigCmd } = await import('./commands/config.js');
           const configCommand = new ConfigCmd(configService);
           const value = await configCommand.get(key);
           // Convert undefined to null for proper JSON output
@@ -595,6 +601,7 @@ program
       .argument('<value>', 'Value to set')
       .action(async (key: string, value: string) => {
         try {
+          const { ConfigCommand: ConfigCmd } = await import('./commands/config.js');
           const configCommand = new ConfigCmd(configService);
           await configCommand.set(key, value);
           Logger.success(chalk.green(`✓ Set ${key} = ${value}`));
@@ -609,6 +616,7 @@ program
       .description('List all configuration values')
       .action(async () => {
         try {
+          const { ConfigCommand: ConfigCmd } = await import('./commands/config.js');
           const configCommand = new ConfigCmd(configService);
           const config = await configCommand.list();
           Logger.output(JSON.stringify(config, null, 2));
@@ -623,6 +631,7 @@ program
       .description('Reset configuration to defaults')
       .action(async () => {
         try {
+          const { ConfigCommand: ConfigCmd } = await import('./commands/config.js');
           const configCommand = new ConfigCmd(configService);
           await configCommand.reset();
           Logger.success(chalk.green('✓ Configuration reset to defaults'));
@@ -642,7 +651,8 @@ program
       .description('Show cache statistics')
       .action(async () => {
         try {
-          const cacheCommand = new CacheCommand(getCacheService(), configService);
+          const { CacheCommand } = await import('./commands/cache.js');
+          const cacheCommand = new CacheCommand(await getCacheService(), configService);
           const stats = await cacheCommand.stats();
           const formatted = cacheCommand.formatStats(stats);
           Logger.output(formatted);
@@ -657,7 +667,8 @@ program
       .description('Clear all cached translations')
       .action(async () => {
         try {
-          const cacheCommand = new CacheCommand(getCacheService(), configService);
+          const { CacheCommand } = await import('./commands/cache.js');
+          const cacheCommand = new CacheCommand(await getCacheService(), configService);
           await cacheCommand.clear();
           Logger.success(chalk.green('✓ Cache cleared successfully'));
         } catch (error) {
@@ -680,7 +691,8 @@ program
             maxSizeBytes = parseSize(options.maxSize);
           }
 
-          const cacheCommand = new CacheCommand(getCacheService(), configService);
+          const { CacheCommand } = await import('./commands/cache.js');
+          const cacheCommand = new CacheCommand(await getCacheService(), configService);
           await cacheCommand.enable(maxSizeBytes);
           Logger.success(chalk.green('✓ Cache enabled'));
 
@@ -699,7 +711,8 @@ program
       .description('Disable translation cache')
       .action(async () => {
         try {
-          const cacheCommand = new CacheCommand(getCacheService(), configService);
+          const { CacheCommand } = await import('./commands/cache.js');
+          const cacheCommand = new CacheCommand(await getCacheService(), configService);
           await cacheCommand.disable();
           Logger.success(chalk.green('✓ Cache disabled'));
         } catch (error) {
@@ -722,7 +735,9 @@ program
       .argument('<file>', 'TSV/CSV file path')
       .action(async (name: string, sourceLang: string, targetLang: string, file: string) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -743,7 +758,9 @@ program
       .description('List all glossaries')
       .action(async () => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -761,7 +778,9 @@ program
       .argument('<name-or-id>', 'Glossary name or ID')
       .action(async (nameOrId: string) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -780,7 +799,9 @@ program
       .option('--target <lang>', 'Target language (required for multilingual glossaries)')
       .action(async (nameOrId: string, options: { target?: string }) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -799,7 +820,9 @@ program
       .argument('<name-or-id>', 'Glossary name or ID')
       .action(async (nameOrId: string) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -816,7 +839,9 @@ program
       .description('List supported glossary language pairs')
       .action(async () => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -837,7 +862,9 @@ program
       .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
       .action(async (nameOrId: string, source: string, target: string, options: { targetLang?: string }) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -859,7 +886,9 @@ program
       .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
       .action(async (nameOrId: string, source: string, newTarget: string, options: { targetLang?: string }) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -880,7 +909,9 @@ program
       .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
       .action(async (nameOrId: string, source: string, options: { targetLang?: string }) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -900,7 +931,9 @@ program
       .argument('<new-name>', 'New glossary name')
       .action(async (nameOrId: string, newName: string) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -920,7 +953,9 @@ program
       .argument('<file>', 'TSV/CSV file with replacement entries')
       .action(async (nameOrId: string, targetLang: string, file: string) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -938,7 +973,9 @@ program
       .argument('<target-lang>', 'Target language of dictionary to delete')
       .action(async (nameOrId: string, targetLang: string) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { GlossaryService } = await import('../services/glossary.js');
+          const { GlossaryCommand } = await import('./commands/glossary.js');
           const glossaryService = new GlossaryService(client);
           const glossaryCommand = new GlossaryCommand(glossaryService);
 
@@ -959,8 +996,9 @@ program
     new Command('install')
       .description('Install a git hook')
       .argument('<hook-type>', 'Hook type: pre-commit, pre-push, commit-msg, or post-commit')
-      .action((hookType: string) => {
+      .action(async (hookType: string) => {
         try {
+          const { HooksCommand } = await import('./commands/hooks.js');
           const hooksCommand = new HooksCommand();
           const result = hooksCommand.install(hookType as HookType);
           Logger.output(result);
@@ -974,8 +1012,9 @@ program
     new Command('uninstall')
       .description('Uninstall a git hook')
       .argument('<hook-type>', 'Hook type: pre-commit, pre-push, commit-msg, or post-commit')
-      .action((hookType: string) => {
+      .action(async (hookType: string) => {
         try {
+          const { HooksCommand } = await import('./commands/hooks.js');
           const hooksCommand = new HooksCommand();
           const result = hooksCommand.uninstall(hookType as HookType);
           Logger.output(result);
@@ -988,8 +1027,9 @@ program
   .addCommand(
     new Command('list')
       .description('List all hooks and their status')
-      .action(() => {
+      .action(async () => {
         try {
+          const { HooksCommand } = await import('./commands/hooks.js');
           const hooksCommand = new HooksCommand();
           const result = hooksCommand.list();
           Logger.output(result);
@@ -1003,8 +1043,9 @@ program
     new Command('path')
       .description('Show path to a hook file')
       .argument('<hook-type>', 'Hook type: pre-commit, pre-push, commit-msg, or post-commit')
-      .action((hookType: string) => {
+      .action(async (hookType: string) => {
         try {
+          const { HooksCommand } = await import('./commands/hooks.js');
           const hooksCommand = new HooksCommand();
           const result = hooksCommand.showPath(hookType as HookType);
           Logger.output(result);
@@ -1033,7 +1074,8 @@ program
         format?: string;
       }) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { StyleRulesCommand } = await import('./commands/style-rules.js');
           const styleRulesCommand = new StyleRulesCommand(client);
 
           const rules = await styleRulesCommand.list({
@@ -1069,7 +1111,8 @@ adminKeysCmd
       .option('--format <format>', 'Output format: json (default: plain text)')
       .action(async (options: { format?: string }) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { AdminCommand } = await import('./commands/admin.js');
           const admin = new AdminCommand(client);
           const keys = await admin.listKeys();
           if (options.format === 'json') {
@@ -1089,7 +1132,8 @@ adminKeysCmd
       .option('--format <format>', 'Output format: json (default: plain text)')
       .action(async (options: { label?: string; format?: string }) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { AdminCommand } = await import('./commands/admin.js');
           const admin = new AdminCommand(client);
           const key = await admin.createKey(options.label);
           if (options.format === 'json') {
@@ -1109,7 +1153,8 @@ adminKeysCmd
       .argument('<key-id>', 'Key ID to deactivate')
       .action(async (keyId: string) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { AdminCommand } = await import('./commands/admin.js');
           const admin = new AdminCommand(client);
           await admin.deactivateKey(keyId);
           Logger.success(chalk.green(`✓ API key ${keyId} deactivated`));
@@ -1125,7 +1170,8 @@ adminKeysCmd
       .argument('<label>', 'New label')
       .action(async (keyId: string, label: string) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { AdminCommand } = await import('./commands/admin.js');
           const admin = new AdminCommand(client);
           await admin.renameKey(keyId, label);
           Logger.success(chalk.green(`✓ API key ${keyId} renamed to "${label}"`));
@@ -1141,7 +1187,8 @@ adminKeysCmd
       .argument('<characters>', 'Character limit (number or "unlimited")')
       .action(async (keyId: string, characters: string) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { AdminCommand } = await import('./commands/admin.js');
           const admin = new AdminCommand(client);
           const limit = characters === 'unlimited' ? null : parseInt(characters, 10);
           if (limit !== null && isNaN(limit)) {
@@ -1171,7 +1218,8 @@ adminCmd
         format?: string;
       }) => {
         try {
-          const client = createDeepLClient();
+          const client = await createDeepLClient();
+          const { AdminCommand } = await import('./commands/admin.js');
           const admin = new AdminCommand(client);
           const report = await admin.getUsage({
             startDate: options.start,
