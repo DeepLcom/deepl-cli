@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-02-07
+
+### Added
+- **Unit tests for all command registration modules** - Added 150 tests across 8 new test files covering `register-admin`, `register-auth`, `register-cache`, `register-completion`, `register-config`, `register-glossary`, `register-hooks`, `register-languages`, `register-style-rules`, `register-usage`, `register-write`, and `service-factory`. Function coverage improved from 81.58% to 97.23%, well above the 86% CI threshold.
+
 ### Changed
 - **Extract magic numbers to named constants** - Replaced hardcoded numeric literals with descriptive constants across the codebase: `TRANSLATE_BATCH_SIZE` (50), `MAX_SOCKETS`/`MAX_FREE_SOCKETS`/`KEEP_ALIVE_MSECS` and retry delay constants in HTTP client, `DEFAULT_CONCURRENCY`/`MAX_CONCURRENCY` in batch translation, `MAX_CUSTOM_INSTRUCTIONS`/`MAX_CUSTOM_INSTRUCTION_CHARS` in translate command, `DEFAULT_DEBOUNCE_MS` in watch service
 - **Remove unused `errorMessage` field from `DocumentTranslationResult`** - The field was defined but never populated (error cases throw instead of returning)
