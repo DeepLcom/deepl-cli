@@ -28,7 +28,7 @@ export function registerWrite(
     .option('--in-place', 'Edit file in place (use with file input)')
     .option('-i, --interactive', 'Interactive mode - choose from multiple suggestions')
     .option('-d, --diff', 'Show diff between original and improved text')
-    .option('-c, --check', 'Check if text needs improvement (exit code 0 if no changes)')
+    .option('-c, --check', 'Check if text needs improvement (exit 0 if clean, exit 8 if changes needed)')
     .option('-f, --fix', 'Automatically fix file in place')
     .option('-b, --backup', 'Create backup file before fixing (use with --fix)')
     .option('--format <format>', 'Output format: json, table (default: plain text)')
@@ -93,7 +93,7 @@ Examples:
 
           if (needsImprovement) {
             Logger.warn(chalk.yellow(`\u26a0 Text needs improvement (${changes} potential changes)`));
-            process.exit(ExitCode.GeneralError);
+            process.exit(ExitCode.CheckFailed);
           } else {
             Logger.success(chalk.green('\u2713 Text looks good'));
             process.exit(ExitCode.Success);

@@ -16,6 +16,7 @@ describe('ExitCode', () => {
       expect(ExitCode.NetworkError).toBe(5);
       expect(ExitCode.InvalidInput).toBe(6);
       expect(ExitCode.ConfigError).toBe(7);
+      expect(ExitCode.CheckFailed).toBe(8);
     });
   });
 
@@ -238,6 +239,10 @@ describe('ExitCode', () => {
 
     it('should mark general errors as not retryable', () => {
       expect(isRetryableError(ExitCode.GeneralError)).toBe(false);
+    });
+
+    it('should mark check failed as not retryable', () => {
+      expect(isRetryableError(ExitCode.CheckFailed)).toBe(false);
     });
 
     it('should mark success as not retryable', () => {

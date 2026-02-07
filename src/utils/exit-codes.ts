@@ -18,6 +18,7 @@ export enum ExitCode {
   NetworkError = 5,
   InvalidInput = 6,
   ConfigError = 7,
+  CheckFailed = 8,
 }
 
 /**
@@ -32,6 +33,7 @@ export const EXIT_CODE_DESCRIPTIONS: Record<ExitCode, string> = {
   [ExitCode.NetworkError]: 'Network error (timeout, connection refused)',
   [ExitCode.InvalidInput]: 'Invalid input (missing arguments, unsupported format)',
   [ExitCode.ConfigError]: 'Configuration error (invalid config file)',
+  [ExitCode.CheckFailed]: 'Check found issues (text needs improvement)',
 };
 
 /**
