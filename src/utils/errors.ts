@@ -53,3 +53,10 @@ export class ValidationError extends DeepLCLIError {
 export class ConfigError extends DeepLCLIError {
   readonly exitCode = 7;
 }
+
+export class VoiceError extends DeepLCLIError {
+  readonly exitCode = 9;
+  constructor(message: string, suggestion?: string) {
+    super(message, suggestion ?? 'The Voice API requires a DeepL Pro or Enterprise plan. Visit https://www.deepl.com/pro to upgrade.');
+  }
+}

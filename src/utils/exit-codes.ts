@@ -19,6 +19,7 @@ export enum ExitCode {
   InvalidInput = 6,
   ConfigError = 7,
   CheckFailed = 8,
+  VoiceError = 9,
 }
 
 /**
@@ -34,6 +35,7 @@ export const EXIT_CODE_DESCRIPTIONS: Record<ExitCode, string> = {
   [ExitCode.InvalidInput]: 'Invalid input (missing arguments, unsupported format)',
   [ExitCode.ConfigError]: 'Configuration error (invalid config file)',
   [ExitCode.CheckFailed]: 'Check found issues (text needs improvement)',
+  [ExitCode.VoiceError]: 'Voice API error (unsupported plan or session failure)',
 };
 
 /**
@@ -113,6 +115,14 @@ function classifyByMessage(rawMessage: string): ExitCode {
     message.includes('configuration')
   ) {
     return ExitCode.ConfigError;
+  }
+
+  // Voice API errors
+  if (
+    message.includes('voice api') ||
+    message.includes('voice session')
+  ) {
+    return ExitCode.VoiceError;
   }
 
   // Default to general error

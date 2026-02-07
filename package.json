@@ -52,7 +52,8 @@
     "inquirer": "^12.2.0",
     "minimatch": "^9.0.5",
     "ora": "^8.1.1",
-    "p-limit": "^6.1.0"
+    "p-limit": "^6.1.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
@@ -60,6 +61,7 @@
     "@types/better-sqlite3": "^7.6.8",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.10.6",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^6.17.0",
     "@typescript-eslint/parser": "^6.17.0",
     "diff": "^8.0.2",
