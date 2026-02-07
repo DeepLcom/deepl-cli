@@ -25,7 +25,7 @@ class LoggerClass {
    */
   info(...args: unknown[]): void {
     if (!this.quiet) {
-      console.log(...args);
+      console.error(...args);
     }
   }
 
@@ -34,7 +34,7 @@ class LoggerClass {
    */
   success(...args: unknown[]): void {
     if (!this.quiet) {
-      console.log(...args);
+      console.error(...args);
     }
   }
 

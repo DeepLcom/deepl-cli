@@ -37,33 +37,33 @@ describe('Logger', () => {
   });
 
   describe('info()', () => {
-    it('should log info messages in normal mode', () => {
+    it('should log info messages to stderr in normal mode', () => {
       Logger.info('Test message');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Test message');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Test message');
     });
 
     it('should suppress info messages in quiet mode', () => {
       Logger.setQuiet(true);
       Logger.info('Test message');
-      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
 
     it('should handle multiple arguments', () => {
       Logger.info('Message', 'with', 'args');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Message', 'with', 'args');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Message', 'with', 'args');
     });
   });
 
   describe('success()', () => {
-    it('should log success messages in normal mode', () => {
+    it('should log success messages to stderr in normal mode', () => {
       Logger.success('Success message');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Success message');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Success message');
     });
 
     it('should suppress success messages in quiet mode', () => {
       Logger.setQuiet(true);
       Logger.success('Success message');
-      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
   });
 
