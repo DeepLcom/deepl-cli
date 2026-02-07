@@ -5,7 +5,7 @@
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import { TranslationService, MAX_TEXT_BYTES } from '../../src/services/translation';
+import { TranslationService, MAX_TEXT_BYTES, MULTI_TARGET_CONCURRENCY } from '../../src/services/translation';
 import { DeepLClient, TranslationResult } from '../../src/api/deepl-client';
 import { ConfigService } from '../../src/storage/config';
 import { CacheService } from '../../src/storage/cache';
@@ -443,30 +443,72 @@ describe('TranslationService', () => {
       expect(results[2]?.text).toBe('Hallo');
     });
 
-    it('should translate in parallel', async () => {
-      const callOrder: string[] = [];
+    it('should translate concurrently up to the concurrency limit', async () => {
+      const langs: Language[] = ['es', 'fr', 'de'];
       const resolvers: Array<(value: { text: string }) => void> = [];
 
       mockDeepLClient.translate.mockImplementation(
-        (_text: string, opts: { targetLang: string }) => {
-          callOrder.push(`start:${opts.targetLang}`);
+        () => new Promise<{ text: string }>((resolve) => {
+          resolvers.push(resolve);
+        })
+      );
+
+      const resultPromise = translationService.translateToMultiple('Hello', langs);
+
+      // With 3 languages and concurrency limit of 5, all 3 should start immediately
+      await new Promise(r => setTimeout(r, 10));
+      expect(resolvers).toHaveLength(3);
+
+      resolvers.forEach(r => r({ text: 'Translated' }));
+      const results = await resultPromise;
+      expect(results).toHaveLength(3);
+    });
+
+    it('should enforce concurrency limit when target languages exceed it', async () => {
+      const langs = Array.from(
+        { length: MULTI_TARGET_CONCURRENCY + 3 }, (_, i) => `lang${i}`
+      ) as Language[];
+      let inflight = 0;
+      let maxInflight = 0;
+
+      mockDeepLClient.translate.mockImplementation(
+        () => {
+          inflight++;
+          maxInflight = Math.max(maxInflight, inflight);
           return new Promise<{ text: string }>((resolve) => {
-            resolvers.push(resolve);
+            setTimeout(() => {
+              inflight--;
+              resolve({ text: 'Translated' });
+            }, 5);
           });
         }
       );
 
-      const resultPromise = translationService.translateToMultiple('Hello', ['es', 'fr', 'de']);
+      const results = await translationService.translateToMultiple('Hello', langs);
 
-      // All three translate calls should be started before any resolves
-      await Promise.resolve();
-      expect(callOrder).toEqual(['start:es', 'start:fr', 'start:de']);
-      expect(resolvers).toHaveLength(3);
+      expect(results).toHaveLength(langs.length);
+      expect(maxInflight).toBeLessThanOrEqual(MULTI_TARGET_CONCURRENCY);
+      expect(maxInflight).toBe(MULTI_TARGET_CONCURRENCY);
+    });
 
-      // Now resolve all
-      resolvers.forEach(r => r({ text: 'Translated' }));
-      const results = await resultPromise;
-      expect(results).toHaveLength(3);
+    it('should process all items even when concurrency is limited', async () => {
+      const count = MULTI_TARGET_CONCURRENCY * 3;
+      const langs = Array.from(
+        { length: count }, (_, i) => `lang${i}`
+      ) as Language[];
+
+      mockDeepLClient.translate.mockImplementation(
+        (_text: string, opts: { targetLang: string }) =>
+          Promise.resolve({ text: `translated-${opts.targetLang}` })
+      );
+
+      const results = await translationService.translateToMultiple('Hello', langs);
+
+      expect(results).toHaveLength(count);
+      for (let i = 0; i < count; i++) {
+        expect(results[i]?.targetLang).toBe(`lang${i}`);
+        expect(results[i]?.text).toBe(`translated-lang${i}`);
+      }
     });
 
     it('should pass through translation options', async () => {

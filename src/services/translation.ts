@@ -29,6 +29,7 @@ interface ExtendedUsageInfo extends UsageInfo {
 }
 
 export const MAX_TEXT_BYTES = 131072; // 128KB - DeepL API limit per request
+export const MULTI_TARGET_CONCURRENCY = 5;
 
 export class TranslationService {
   private client: DeepLClient;
@@ -306,7 +307,7 @@ export class TranslationService {
   }
 
   /**
-   * Translate text to multiple target languages in parallel
+   * Translate text to multiple target languages with bounded concurrency
    */
   async translateToMultiple(
     text: string,
@@ -317,22 +318,24 @@ export class TranslationService {
       throw new Error('At least one target language is required');
     }
 
-    const promises = targetLangs.map(async (targetLang) => {
-      const result = await this.translate(text, {
-        ...options,
-        targetLang,
-      }, { skipCache: options.skipCache });
+    return mapWithConcurrency(
+      targetLangs,
+      async (targetLang) => {
+        const result = await this.translate(text, {
+          ...options,
+          targetLang,
+        }, { skipCache: options.skipCache });
 
-      return {
-        targetLang,
-        text: result.text,
-        detectedSourceLang: result.detectedSourceLang,
-        billedCharacters: result.billedCharacters,
-        modelTypeUsed: result.modelTypeUsed,
-      };
-    });
-
-    return Promise.all(promises);
+        return {
+          targetLang,
+          text: result.text,
+          detectedSourceLang: result.detectedSourceLang,
+          billedCharacters: result.billedCharacters,
+          modelTypeUsed: result.modelTypeUsed,
+        };
+      },
+      MULTI_TARGET_CONCURRENCY
+    );
   }
 
   /**
@@ -458,4 +461,23 @@ export class TranslationService {
 
     return `translation:${hash}`;
   }
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency: number
+): Promise<R[]> {
+  const results: R[] = [];
+  let index = 0;
+  async function worker() {
+    while (index < items.length) {
+      const i = index++;
+      results[i] = await fn(items[i] as T);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+  );
+  return results;
 }
