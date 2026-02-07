@@ -12,13 +12,23 @@ describe('Auth CLI Integration', () => {
   const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-${Date.now()}`);
   const configPath = path.join(testConfigDir, 'config.json');
 
-  // Helper to run CLI commands with isolated config directory
+  // Helper to run CLI commands with isolated config directory (captures stdout only)
   const runCLI = (command: string, options: { stdio?: any } = {}): string => {
     const { DEEPL_API_KEY: _, ...envWithoutKey } = process.env;
     return execSync(command, {
       encoding: 'utf-8',
       env: { ...envWithoutKey, DEEPL_CONFIG_DIR: testConfigDir },
       ...options,
+    });
+  };
+
+  // Helper that captures both stdout and stderr (for success messages via Logger.success)
+  const runCLIAll = (command: string): string => {
+    const { DEEPL_API_KEY: _, ...envWithoutKey } = process.env;
+    return execSync(`${command} 2>&1`, {
+      encoding: 'utf-8',
+      env: { ...envWithoutKey, DEEPL_CONFIG_DIR: testConfigDir },
+      shell: '/bin/sh',
     });
   };
 
@@ -87,7 +97,7 @@ describe('Auth CLI Integration', () => {
   describe('deepl auth clear', () => {
     it('should successfully clear API key', () => {
       // Even without a key set, clear should succeed
-      const output = runCLI('deepl auth clear');
+      const output = runCLIAll('deepl auth clear');
       expect(output).toContain('✓ API key removed');
     });
   });

@@ -21,6 +21,8 @@ const mockWatcher = {
   close: jest.fn().mockResolvedValue(undefined),
 };
 
+const flushPromises = () => new Promise<void>(resolve => process.nextTick(resolve));
+
 describe('WatchService', () => {
   let watchService: WatchService;
   let mockFileTranslationService: jest.Mocked<FileTranslationService>;
@@ -53,6 +55,8 @@ describe('WatchService', () => {
   });
 
   afterEach(() => {
+    jest.useRealTimers();
+
     // Cleanup test directory
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
@@ -142,6 +146,8 @@ describe('WatchService', () => {
 
   describe('file change handling', () => {
     it('should translate file on change event', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
@@ -155,16 +161,17 @@ describe('WatchService', () => {
       await watchService.watch(testDir, options);
 
       // Simulate file change
-      await watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
 
-      // Wait for debounce timer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance past debounce timer and flush async callbacks
+      jest.advanceTimersByTime(350);
+      await flushPromises();
 
       expect(mockFileTranslationService.translateFile).toHaveBeenCalled();
     });
 
     it('should debounce rapid file changes', async () => {
-      jest.useFakeTimers();
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
 
       const service = new WatchService(mockFileTranslationService, {
         debounceMs: 500,
@@ -189,12 +196,10 @@ describe('WatchService', () => {
 
       // Fast-forward time
       jest.advanceTimersByTime(500);
-      await Promise.resolve(); // Allow promises to resolve
+      await flushPromises();
 
       // Should only translate once due to debouncing
       expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
-
-      jest.useRealTimers();
     });
 
     it('should skip unsupported file types', async () => {
@@ -232,6 +237,8 @@ describe('WatchService', () => {
     });
 
     it('should translate to multiple target languages', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
@@ -246,10 +253,11 @@ describe('WatchService', () => {
       };
 
       await watchService.watch(testDir, options);
-      await watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
 
-      // Wait for debounce timer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance past debounce timer and flush async callbacks
+      jest.advanceTimersByTime(350);
+      await flushPromises();
 
       expect(mockFileTranslationService.translateFileToMultiple).toHaveBeenCalled();
     });
@@ -274,7 +282,7 @@ describe('WatchService', () => {
     });
 
     it('should cancel pending translations on stop', async () => {
-      jest.useFakeTimers();
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
 
       const service = new WatchService(mockFileTranslationService, {
         debounceMs: 500,
@@ -295,12 +303,10 @@ describe('WatchService', () => {
       await service.stop();
 
       jest.advanceTimersByTime(500);
-      await Promise.resolve();
+      await flushPromises();
 
       // Translation should not occur
       expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
-
-      jest.useRealTimers();
     });
   });
 
@@ -323,6 +329,8 @@ describe('WatchService', () => {
     });
 
     it('should call onTranslate callback after translation', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
       const onTranslate = jest.fn();
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
@@ -336,10 +344,11 @@ describe('WatchService', () => {
       };
 
       await watchService.watch(testDir, options);
-      await watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
 
-      // Wait for debounce timer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance past debounce timer and flush async callbacks
+      jest.advanceTimersByTime(350);
+      await flushPromises();
 
       expect(onTranslate).toHaveBeenCalledWith(
         expect.stringContaining('test.txt'),
@@ -348,6 +357,8 @@ describe('WatchService', () => {
     });
 
     it('should call onError callback on translation failure', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
       // Suppress expected console.error
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
@@ -366,10 +377,11 @@ describe('WatchService', () => {
       };
 
       await watchService.watch(testDir, options);
-      await watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
 
-      // Wait for debounce timer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance past debounce timer and flush async callbacks
+      jest.advanceTimersByTime(350);
+      await flushPromises();
 
       expect(onError).toHaveBeenCalledWith(
         expect.stringContaining('test.txt'),
@@ -399,6 +411,8 @@ describe('WatchService', () => {
     });
 
     it('should increment translation count after successful translation', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
@@ -410,16 +424,19 @@ describe('WatchService', () => {
       };
 
       await watchService.watch(testDir, options);
-      await watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
 
-      // Wait for debounce timer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance past debounce timer and flush async callbacks
+      jest.advanceTimersByTime(350);
+      await flushPromises();
 
       const stats = watchService.getStats();
       expect(stats.translationsCount).toBeGreaterThan(0);
     });
 
     it('should increment error count after failed translation', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
       // Suppress expected console.error
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
@@ -436,10 +453,11 @@ describe('WatchService', () => {
       };
 
       await watchService.watch(testDir, options);
-      await watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
 
-      // Wait for debounce timer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance past debounce timer and flush async callbacks
+      jest.advanceTimersByTime(350);
+      await flushPromises();
 
       const stats = watchService.getStats();
       expect(stats.errorsCount).toBeGreaterThan(0);
@@ -578,6 +596,8 @@ describe('WatchService', () => {
 
   describe('translation options passthrough', () => {
     it('should pass sourceLang to translation service', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
@@ -590,10 +610,11 @@ describe('WatchService', () => {
       };
 
       await watchService.watch(testDir, options);
-      await watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
 
-      // Wait for debounce timer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance past debounce timer and flush async callbacks
+      jest.advanceTimersByTime(350);
+      await flushPromises();
 
       expect(mockFileTranslationService.translateFile).toHaveBeenCalledWith(
         expect.any(String),
@@ -604,6 +625,8 @@ describe('WatchService', () => {
     });
 
     it('should pass formality to translation service', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
@@ -616,10 +639,11 @@ describe('WatchService', () => {
       };
 
       await watchService.watch(testDir, options);
-      await watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
 
-      // Wait for debounce timer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance past debounce timer and flush async callbacks
+      jest.advanceTimersByTime(350);
+      await flushPromises();
 
       expect(mockFileTranslationService.translateFile).toHaveBeenCalledWith(
         expect.any(String),
@@ -630,6 +654,8 @@ describe('WatchService', () => {
     });
 
     it('should call onTranslate callback for multiple languages', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
       const onTranslate = jest.fn();
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
@@ -646,10 +672,11 @@ describe('WatchService', () => {
       };
 
       await watchService.watch(testDir, options);
-      await watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
 
-      // Wait for debounce timer
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance past debounce timer and flush async callbacks
+      jest.advanceTimersByTime(350);
+      await flushPromises();
 
       expect(onTranslate).toHaveBeenCalledWith(
         expect.stringContaining('test.txt'),
@@ -738,7 +765,7 @@ describe('WatchService', () => {
 
   describe('race condition handling (Issue #1)', () => {
     it('should not execute timer callback if watch is stopped after timer is scheduled', async () => {
-      jest.useFakeTimers();
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
 
       const service = new WatchService(mockFileTranslationService, {
         debounceMs: 500,
@@ -762,12 +789,10 @@ describe('WatchService', () => {
 
       // Now advance time (timer callback should be cancelled or should check watch state)
       jest.advanceTimersByTime(500);
-      await Promise.resolve();
+      await flushPromises();
 
       // Translation should NOT occur because watch was stopped
       expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
-
-      jest.useRealTimers();
     });
 
     it('should not schedule new timers if watch is stopped', async () => {
@@ -788,7 +813,7 @@ describe('WatchService', () => {
     });
 
     it('should handle rapid start/stop cycles without orphaned timers', async () => {
-      jest.useFakeTimers();
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
 
       const service = new WatchService(mockFileTranslationService, {
         debounceMs: 300,
@@ -817,16 +842,14 @@ describe('WatchService', () => {
 
       // Fast-forward all timers
       jest.advanceTimersByTime(1000);
-      await Promise.resolve();
+      await flushPromises();
 
       // No translations should occur (all timers cancelled on stop)
       expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
-
-      jest.useRealTimers();
     });
 
     it('should check watch state inside timer callback to prevent race condition', async () => {
-      jest.useFakeTimers();
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
 
       const service = new WatchService(mockFileTranslationService, {
         debounceMs: 500,
@@ -853,16 +876,14 @@ describe('WatchService', () => {
 
       // Fire the timer (it's already in the event loop queue)
       jest.advanceTimersByTime(1);
-      await Promise.resolve();
+      await flushPromises();
 
       // Translation should NOT occur - the timer callback should check watch state
       expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
-
-      jest.useRealTimers();
     });
 
     it('should not throw errors if timer callback executes after stop', async () => {
-      jest.useFakeTimers();
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
 
       const service = new WatchService(mockFileTranslationService, {
         debounceMs: 300,
@@ -884,8 +905,6 @@ describe('WatchService', () => {
       expect(() => {
         jest.advanceTimersByTime(300);
       }).not.toThrow();
-
-      jest.useRealTimers();
     });
   });
 });

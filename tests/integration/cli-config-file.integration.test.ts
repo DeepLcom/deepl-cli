@@ -25,6 +25,19 @@ describe('CLI --config flag integration', () => {
     });
   };
 
+  // Helper that captures both stdout and stderr (for messages via Logger.info/success)
+  const runCLIAll = (command: string, env: Record<string, string> = {}) => {
+    return execSync(`${command} 2>&1`, {
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        DEEPL_CONFIG_DIR: defaultConfigDir,
+        ...env
+      },
+      shell: '/bin/sh',
+    });
+  };
+
   beforeEach(() => {
     // Create test directory
     if (!fs.existsSync(testDir)) {
@@ -161,7 +174,7 @@ describe('CLI --config flag integration', () => {
 
   describe('integration with other commands', () => {
     it('should use custom config API key for auth show', () => {
-      const output = runCLI(`deepl --config "${customConfigPath}" auth show`);
+      const output = runCLIAll(`deepl --config "${customConfigPath}" auth show`);
       expect(output).toContain('custom-t');
       expect(output).toContain('-key'); // Masked key
     });

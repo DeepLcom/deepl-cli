@@ -45,6 +45,19 @@ describe('CLI Integration Scenarios E2E', () => {
     });
   };
 
+  // Helper that captures both stdout and stderr (for success messages via Logger.success)
+  const runCLIAll = (command: string, apiKey?: string): string => {
+    return execSync(`node ${CLI_PATH} ${command} 2>&1`, {
+      encoding: 'utf-8',
+      env: {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfigDir,
+        ...(apiKey !== undefined && { DEEPL_API_KEY: apiKey }),
+      },
+      shell: '/bin/sh',
+    });
+  };
+
   const runCLIExpectError = (command: string, apiKey?: string): { status: number; output: string } => {
     try {
       const output = execSync(`node ${CLI_PATH} ${command}`, {
@@ -67,7 +80,7 @@ describe('CLI Integration Scenarios E2E', () => {
   describe('configuration workflows', () => {
     it('should persist config settings across invocations', () => {
       // Set a config value using valid path (e.g., cache.enabled)
-      const setOutput = runCLI('config set cache.enabled true');
+      const setOutput = runCLIAll('config set cache.enabled true');
       expect(setOutput).toMatch(/set|saved|updated/i);
 
       // Retrieve the value in a separate invocation
@@ -93,7 +106,7 @@ describe('CLI Integration Scenarios E2E', () => {
 
     it('should support cache configuration', () => {
       // Enable cache
-      const enableOutput = runCLI('config set cache.enabled true');
+      const enableOutput = runCLIAll('config set cache.enabled true');
       expect(enableOutput).toMatch(/set|saved/i);
 
       // Verify it was set
@@ -101,7 +114,7 @@ describe('CLI Integration Scenarios E2E', () => {
       expect(getOutput).toMatch(/true|enabled/i);
 
       // Disable cache
-      const disableOutput = runCLI('config set cache.enabled false');
+      const disableOutput = runCLIAll('config set cache.enabled false');
       expect(disableOutput).toMatch(/set|saved/i);
     });
   });
@@ -115,7 +128,7 @@ describe('CLI Integration Scenarios E2E', () => {
     });
 
     it('should clear cache successfully', () => {
-      const output = runCLI('cache clear');
+      const output = runCLIAll('cache clear');
 
       expect(output).toMatch(/cleared|empty|deleted/i);
     });

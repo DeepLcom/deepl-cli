@@ -444,19 +444,29 @@ describe('TranslationService', () => {
     });
 
     it('should translate in parallel', async () => {
-      const startTime = Date.now();
+      const callOrder: string[] = [];
+      const resolvers: Array<(value: { text: string }) => void> = [];
 
       mockDeepLClient.translate.mockImplementation(
-        async () =>
-          new Promise((resolve) =>
-            setTimeout(() => resolve({ text: 'Translated' }), 100)
-          )
+        (_text: string, opts: { targetLang: string }) => {
+          callOrder.push(`start:${opts.targetLang}`);
+          return new Promise<{ text: string }>((resolve) => {
+            resolvers.push(resolve);
+          });
+        }
       );
 
-      await translationService.translateToMultiple('Hello', ['es', 'fr', 'de']);
+      const resultPromise = translationService.translateToMultiple('Hello', ['es', 'fr', 'de']);
 
-      const duration = Date.now() - startTime;
-      expect(duration).toBeLessThan(200);
+      // All three translate calls should be started before any resolves
+      await Promise.resolve();
+      expect(callOrder).toEqual(['start:es', 'start:fr', 'start:de']);
+      expect(resolvers).toHaveLength(3);
+
+      // Now resolve all
+      resolvers.forEach(r => r({ text: 'Translated' }));
+      const results = await resultPromise;
+      expect(results).toHaveLength(3);
     });
 
     it('should pass through translation options', async () => {

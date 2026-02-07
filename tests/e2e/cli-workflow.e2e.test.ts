@@ -12,11 +12,20 @@ describe('CLI Workflow E2E', () => {
   const testDir = path.join(os.tmpdir(), `.deepl-cli-e2e-${Date.now()}`);
   const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-e2e-config-${Date.now()}`);
 
-  // Helper to run CLI commands with isolated config directory
+  // Helper to run CLI commands with isolated config directory (captures stdout only)
   const runCLI = (command: string): string => {
     return execSync(command, {
       encoding: 'utf-8',
       env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+    });
+  };
+
+  // Helper that captures both stdout and stderr (for success messages via Logger.success)
+  const runCLIAll = (command: string): string => {
+    return execSync(`${command} 2>&1`, {
+      encoding: 'utf-8',
+      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+      shell: '/bin/sh',
     });
   };
 
@@ -128,8 +137,8 @@ describe('CLI Workflow E2E', () => {
       const getValue = runCLI('deepl config get cache.enabled');
       expect(getValue.trim()).toBe('false');
 
-      // Step 4: Reset config
-      const resetOutput = runCLI('deepl config reset');
+      // Step 4: Reset config (success message goes to stderr via Logger.success)
+      const resetOutput = runCLIAll('deepl config reset');
       expect(resetOutput).toContain('reset');
 
       // Step 5: Verify reset worked (should be back to default true)
@@ -170,20 +179,20 @@ describe('CLI Workflow E2E', () => {
       expect(statsOutput).toContain('Cache Status:');
       expect(statsOutput).toContain('Entries:');
 
-      // Step 2: Clear cache
-      const clearOutput = runCLI('deepl cache clear');
+      // Step 2: Clear cache (success message goes to stderr via Logger.success)
+      const clearOutput = runCLIAll('deepl cache clear');
       expect(clearOutput).toContain('cleared');
 
       // Step 3: Verify cache is empty
       const statsAfterClear = runCLI('deepl cache stats');
       expect(statsAfterClear).toContain('Entries: 0');
 
-      // Step 4: Test enable command
-      const enableOutput = runCLI('deepl cache enable');
+      // Step 4: Test enable command (success message goes to stderr)
+      const enableOutput = runCLIAll('deepl cache enable');
       expect(enableOutput).toContain('enabled');
 
-      // Step 5: Test disable command
-      const disableOutput = runCLI('deepl cache disable');
+      // Step 5: Test disable command (success message goes to stderr)
+      const disableOutput = runCLIAll('deepl cache disable');
       expect(disableOutput).toContain('disabled');
 
       // Note: enable/disable commands work but don't persist to config,
@@ -268,8 +277,8 @@ describe('CLI Workflow E2E', () => {
         // If no key is set, that's expected
       }
 
-      // Step 2: Clear the key
-      const clearOutput = runCLI('deepl auth clear');
+      // Step 2: Clear the key (success message goes to stderr via Logger.success)
+      const clearOutput = runCLIAll('deepl auth clear');
       expect(clearOutput).toMatch(/cleared|removed/i);
 
       // Step 3: Show should now indicate no key is set
