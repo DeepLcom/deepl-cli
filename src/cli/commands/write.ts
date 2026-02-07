@@ -13,7 +13,7 @@ import inquirer from 'inquirer';
 import { formatWriteJson } from '../../utils/formatters.js';
 
 interface WriteOptions {
-  lang: WriteLanguage;
+  lang?: WriteLanguage;
   style?: WritingStyle;
   tone?: WriteTone;
   showAlternatives?: boolean;
@@ -38,21 +38,19 @@ export class WriteCommand {
       throw new Error('Text cannot be empty');
     }
 
-    if (!options.lang) {
-      throw new Error('Language is required');
-    }
-
     if (options.style && options.tone) {
       throw new Error('Cannot specify both style and tone in a single request');
     }
 
     const writeOptions: {
-      targetLang: WriteLanguage;
+      targetLang?: WriteLanguage;
       writingStyle?: WritingStyle;
       tone?: WriteTone;
-    } = {
-      targetLang: options.lang,
-    };
+    } = {};
+
+    if (options.lang) {
+      writeOptions.targetLang = options.lang;
+    }
 
     if (options.style) {
       writeOptions.writingStyle = options.style;
@@ -71,7 +69,7 @@ export class WriteCommand {
 
     // Format output based on format option
     if (options.format === 'json') {
-      return formatWriteJson(text, improvement.text, options.lang);
+      return formatWriteJson(text, improvement.text, options.lang ?? 'auto-detected');
     }
 
     return improvement.text;
@@ -83,10 +81,6 @@ export class WriteCommand {
   async improveFile(filePath: string, options: WriteOptions): Promise<string> {
     if (!filePath || filePath.trim() === '') {
       throw new Error('File path cannot be empty');
-    }
-
-    if (!options.lang) {
-      throw new Error('Language is required');
     }
 
     // Read file content
@@ -321,19 +315,17 @@ export class WriteCommand {
       throw new Error('Text cannot be empty');
     }
 
-    if (!options.lang) {
-      throw new Error('Language is required');
-    }
-
     // If user specified a style or tone, only use that
     if (options.style || options.tone) {
       const writeOptions: {
-        targetLang: WriteLanguage;
+        targetLang?: WriteLanguage;
         writingStyle?: WritingStyle;
         tone?: WriteTone;
-      } = {
-        targetLang: options.lang,
-      };
+      } = {};
+
+      if (options.lang) {
+        writeOptions.targetLang = options.lang;
+      }
 
       if (options.style) {
         writeOptions.writingStyle = options.style;
@@ -376,7 +368,7 @@ export class WriteCommand {
     for (const style of styles) {
       try {
         const improvements = await this.writeService.improve(text, {
-          targetLang: options.lang,
+          ...(options.lang ? { targetLang: options.lang } : {}),
           writingStyle: style,
         });
 
@@ -461,12 +453,14 @@ export class WriteCommand {
 
     // Get alternatives
     const writeOptions: {
-      targetLang: WriteLanguage;
+      targetLang?: WriteLanguage;
       writingStyle?: WritingStyle;
       tone?: WriteTone;
-    } = {
-      targetLang: options.lang,
-    };
+    } = {};
+
+    if (options.lang) {
+      writeOptions.targetLang = options.lang;
+    }
 
     if (options.style) {
       writeOptions.writingStyle = options.style;

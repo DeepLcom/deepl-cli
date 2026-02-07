@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`deepl write --lang` is now optional** - When omitted, the API auto-detects the language and rephrases in the original language. Previously `--lang` was required.
+
 ## [0.9.0] - 2026-02-06
 
 ### Added

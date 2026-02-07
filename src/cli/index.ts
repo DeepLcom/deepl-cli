@@ -400,7 +400,7 @@ program
   .command('write')
   .description('Improve text using DeepL Write API (grammar, style, tone)')
   .argument('<text>', 'Text to improve (or file path when used with file operations)')
-  .requiredOption('-l, --lang <language>', 'Target language (de, en-GB, en-US, es, fr, it, pt-BR, pt-PT)')
+  .option('-l, --lang <language>', 'Target language (de, en-GB, en-US, es, fr, it, pt-BR, pt-PT). Omit to auto-detect.')
   .option('-s, --style <style>', 'Writing style: simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
   .option('-t, --tone <tone>', 'Tone: enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
   .option('-a, --alternatives', 'Show all alternative improvements')
@@ -413,7 +413,7 @@ program
   .option('-b, --backup', 'Create backup file before fixing (use with --fix)')
   .option('--format <format>', 'Output format: json, table (default: plain text)')
   .action(async (text: string, options: {
-    lang: string;
+    lang?: string;
     style?: string;
     tone?: string;
     alternatives?: boolean;
@@ -430,9 +430,9 @@ program
       // Validate arguments BEFORE creating client (to check API key)
       // This ensures validation errors (exit code 6) come before auth errors (exit code 2)
 
-      // Validate language code
+      // Validate language code if provided
       const validLanguages = ['de', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt-BR', 'pt-PT'];
-      if (!validLanguages.includes(options.lang)) {
+      if (options.lang && !validLanguages.includes(options.lang)) {
         throw new Error(`Invalid language code: ${options.lang}. Valid options: ${validLanguages.join(', ')}`);
       }
 
@@ -446,7 +446,7 @@ program
       const writeCommand = new WriteCommand(writeService);
 
       const writeOptions = {
-        lang: options.lang as WriteLanguage,
+        lang: options.lang as WriteLanguage | undefined,
         style: options.style as WritingStyle | undefined,
         tone: options.tone as WriteTone | undefined,
         showAlternatives: options.alternatives,

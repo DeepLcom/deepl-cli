@@ -28,10 +28,6 @@ export class WriteService {
       throw new Error('Text cannot be empty');
     }
 
-    if (!options.targetLang) {
-      throw new Error('Target language is required');
-    }
-
     if (options.writingStyle && options.tone) {
       throw new Error('Cannot specify both writing_style and tone in a single request');
     }

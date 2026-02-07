@@ -1052,8 +1052,11 @@ export class DeepLClient {
 
     const params: Record<string, string | string[]> = {
       text: [text],
-      target_lang: options.targetLang,
     };
+
+    if (options.targetLang) {
+      params['target_lang'] = options.targetLang;
+    }
 
     if (options.writingStyle) {
       params['writing_style'] = options.writingStyle;

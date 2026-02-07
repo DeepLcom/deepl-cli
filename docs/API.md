@@ -548,9 +548,9 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 #### Options
 
-**Required:**
+**Language:**
 
-- `--lang, -l LANG` - Target language: `de`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt-BR`, `pt-PT`
+- `--lang, -l LANG` - Target language: `de`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt-BR`, `pt-PT`. Optional — omit to auto-detect the language and rephrase in the original language.
 
 **Style Options (mutually exclusive with tone):**
 
@@ -595,7 +595,14 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 #### Examples
 
-**Basic improvement:**
+**Basic improvement (auto-detect language):**
+
+```bash
+deepl write "Me and him went to store."
+# → "He and I went to the store."
+```
+
+**With explicit language:**
 
 ```bash
 deepl write "Me and him went to store." --lang en-US

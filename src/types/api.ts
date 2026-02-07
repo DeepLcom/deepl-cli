@@ -64,7 +64,7 @@ export type WriteTone =
   | 'prefer_diplomatic';
 
 export interface WriteOptions {
-  targetLang: WriteLanguage;
+  targetLang?: WriteLanguage;
   writingStyle?: WritingStyle;
   tone?: WriteTone;
 }

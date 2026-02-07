@@ -67,10 +67,20 @@ describe('WriteService', () => {
         ).rejects.toThrow('Text cannot be empty');
       });
 
-      it('should throw error for missing target language', async () => {
-        await expect(
-          writeService.improve('Test', { targetLang: '' as any })
-        ).rejects.toThrow('Target language is required');
+      it('should allow omitting target language for auto-detection', async () => {
+        const mockImprovements: WriteImprovement[] = [
+          {
+            text: 'Improved text.',
+            targetLanguage: 'en-US',
+            detectedSourceLanguage: 'en',
+          },
+        ];
+        mockClient.improveText.mockResolvedValue(mockImprovements);
+
+        const result = await writeService.improve('Test', {});
+
+        expect(result).toHaveLength(1);
+        expect(mockClient.improveText).toHaveBeenCalledWith('Test', {});
       });
     });
 

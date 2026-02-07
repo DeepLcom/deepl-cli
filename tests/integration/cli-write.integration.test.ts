@@ -73,6 +73,43 @@ describe('Write Command Integration', () => {
     });
   });
 
+  describe('improve() - Language Auto-Detection', () => {
+    it('should improve text without target_lang (auto-detect)', async () => {
+      const scope = nock(FREE_API_URL)
+        .post('/v2/write/rephrase', (body) => {
+          expect(body.text).toBe('Hallo Welt');
+          expect(body.target_lang).toBeUndefined();
+          return true;
+        })
+        .reply(200, {
+          improvements: [{ text: 'Hallo, Welt!', target_language: 'de', detected_source_language: 'de' }],
+        });
+
+      const result = await writeService.improve('Hallo Welt', {});
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.text).toBe('Hallo, Welt!');
+      expect(result[0]?.detectedSourceLanguage).toBe('de');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should still accept explicit target_lang', async () => {
+      const scope = nock(FREE_API_URL)
+        .post('/v2/write/rephrase', (body) => {
+          expect(body.target_lang).toBe('en-GB');
+          return true;
+        })
+        .reply(200, {
+          improvements: [{ text: 'Hello, world!', target_language: 'en-GB' }],
+        });
+
+      const result = await writeService.improve('Hello world', { targetLang: 'en-GB' });
+
+      expect(result[0]?.text).toBe('Hello, world!');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
   describe('improve() - Writing Styles', () => {
     it('should apply business writing style', async () => {
       const scope = nock(FREE_API_URL)
