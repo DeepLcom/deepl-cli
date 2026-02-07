@@ -2127,4 +2127,1213 @@ describe('TranslateCommand', () => {
       );
     });
   });
+
+  describe('XML tag handling parameters', () => {
+    it('should reject XML tag params without --tag-handling xml', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          outlineDetection: 'true',
+        })
+      ).rejects.toThrow('XML tag handling parameters');
+    });
+
+    it('should reject splittingTags without --tag-handling xml', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          splittingTags: 'p,div',
+        })
+      ).rejects.toThrow('require --tag-handling xml');
+    });
+
+    it('should reject nonSplittingTags without --tag-handling xml', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          nonSplittingTags: 'span,em',
+        })
+      ).rejects.toThrow('require --tag-handling xml');
+    });
+
+    it('should reject ignoreTags without --tag-handling xml', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          ignoreTags: 'code,pre',
+        })
+      ).rejects.toThrow('require --tag-handling xml');
+    });
+
+    it('should reject invalid outlineDetection value', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          tagHandling: 'xml',
+          outlineDetection: 'invalid',
+        })
+      ).rejects.toThrow('--outline-detection must be "true" or "false"');
+    });
+
+    it('should pass outlineDetection=true', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('<p>Hello</p>', {
+        to: 'es',
+        tagHandling: 'xml',
+        outlineDetection: 'true',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<p>Hello</p>',
+        expect.objectContaining({ outlineDetection: true }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass outlineDetection=false', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('<p>Hello</p>', {
+        to: 'es',
+        tagHandling: 'xml',
+        outlineDetection: 'false',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<p>Hello</p>',
+        expect.objectContaining({ outlineDetection: false }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass splittingTags as array', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('<p>Hello</p>', {
+        to: 'es',
+        tagHandling: 'xml',
+        splittingTags: 'p,div,section',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<p>Hello</p>',
+        expect.objectContaining({ splittingTags: ['p', 'div', 'section'] }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass nonSplittingTags as array', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('<span>Hello</span>', {
+        to: 'es',
+        tagHandling: 'xml',
+        nonSplittingTags: 'span,em,strong',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<span>Hello</span>',
+        expect.objectContaining({ nonSplittingTags: ['span', 'em', 'strong'] }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass ignoreTags as array', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('<code>test</code>', {
+        to: 'es',
+        tagHandling: 'xml',
+        ignoreTags: 'code,pre',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<code>test</code>',
+        expect.objectContaining({ ignoreTags: ['code', 'pre'] }),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('validateXmlTags()', () => {
+    it('should reject empty tag names', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          tagHandling: 'xml',
+          splittingTags: 'p,,div',
+        })
+      ).rejects.toThrow('Tag name cannot be empty');
+    });
+
+    it('should reject tags starting with "xml" (case-insensitive)', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          tagHandling: 'xml',
+          splittingTags: 'xmlFoo',
+        })
+      ).rejects.toThrow('cannot start with "xml"');
+    });
+
+    it('should reject tags starting with "XML" (uppercase)', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          tagHandling: 'xml',
+          nonSplittingTags: 'XMLBar',
+        })
+      ).rejects.toThrow('cannot start with "xml"');
+    });
+
+    it('should reject invalid XML tag names (starting with digit)', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          tagHandling: 'xml',
+          ignoreTags: '1invalid',
+        })
+      ).rejects.toThrow('Invalid XML tag name');
+    });
+
+    it('should reject tag names with spaces', async () => {
+      await expect(
+        translateCommand.translateText('<p>Hello</p>', {
+          to: 'es',
+          tagHandling: 'xml',
+          splittingTags: 'my tag',
+        })
+      ).rejects.toThrow('Invalid XML tag name');
+    });
+
+    it('should accept valid XML tag names with underscores, hyphens, periods', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'result',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('<p>Hello</p>', {
+        to: 'es',
+        tagHandling: 'xml',
+        splittingTags: '_tag,my-tag,my.tag',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '<p>Hello</p>',
+        expect.objectContaining({ splittingTags: ['_tag', 'my-tag', 'my.tag'] }),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('output format - JSON', () => {
+    it('should return JSON format for single text translation', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: 'en' as any,
+      });
+
+      const result = await translateCommand.translateText('Hello', {
+        to: 'es',
+        format: 'json',
+      });
+
+      const parsed = JSON.parse(result);
+      expect(parsed.text).toBe('Hola');
+      expect(parsed.targetLang).toBe('es');
+    });
+
+    it('should return JSON format for multi-target translation', async () => {
+      mockTranslationService.translateToMultiple.mockResolvedValue([
+        { targetLang: 'es' as any, text: 'Hola' },
+        { targetLang: 'fr' as any, text: 'Bonjour' },
+      ]);
+
+      const result = await translateCommand.translateText('Hello', {
+        to: 'es,fr',
+        format: 'json',
+      });
+
+      const parsed = JSON.parse(result);
+      expect(parsed.translations).toHaveLength(2);
+      expect(parsed.translations[0].text).toBe('Hola');
+      expect(parsed.translations[1].text).toBe('Bonjour');
+    });
+
+    it('should return table format for multi-target translation', async () => {
+      mockTranslationService.translateToMultiple.mockResolvedValue([
+        { targetLang: 'es' as any, text: 'Hola' },
+        { targetLang: 'fr' as any, text: 'Bonjour' },
+      ]);
+
+      const result = await translateCommand.translateText('Hello', {
+        to: 'es,fr',
+        format: 'table',
+      });
+
+      expect(result).toContain('ES');
+      expect(result).toContain('FR');
+      expect(result).toContain('Hola');
+      expect(result).toContain('Bonjour');
+    });
+  });
+
+  describe('metadata display', () => {
+    it('should display billed characters when returned by API', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+        billedCharacters: 5,
+      });
+
+      const result = await translateCommand.translateText('Hello', {
+        to: 'es',
+        showBilledCharacters: true,
+      });
+
+      expect(result).toContain('Hola');
+      expect(result).toContain('Billed characters: 5');
+    });
+
+    it('should display model type when returned by API', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+        modelTypeUsed: 'quality_optimized',
+      });
+
+      const result = await translateCommand.translateText('Hello', {
+        to: 'es',
+      });
+
+      expect(result).toContain('Hola');
+      expect(result).toContain('Model: quality_optimized');
+    });
+
+    it('should display both billedCharacters and modelTypeUsed', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+        billedCharacters: 42,
+        modelTypeUsed: 'latency_optimized',
+      });
+
+      const result = await translateCommand.translateText('Hello', {
+        to: 'es',
+        showBilledCharacters: true,
+      });
+
+      expect(result).toContain('Billed characters: 42');
+      expect(result).toContain('Model: latency_optimized');
+    });
+
+    it('should pass showBilledCharacters option to service', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        showBilledCharacters: true,
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ showBilledCharacters: true }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass showBilledCharacters to translateToMultiple', async () => {
+      mockTranslationService.translateToMultiple.mockResolvedValue([
+        { targetLang: 'es' as any, text: 'Hola' },
+      ]);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es,fr',
+        showBilledCharacters: true,
+      });
+
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        expect.any(Array),
+        expect.objectContaining({ showBilledCharacters: true })
+      );
+    });
+  });
+
+  describe('preserveFormatting option', () => {
+    it('should pass preserveFormatting=true to service', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        preserveFormatting: true,
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ preserveFormatting: true }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass preserveFormatting=false to service', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        preserveFormatting: false,
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ preserveFormatting: false }),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('cache option', () => {
+    it('should set skipCache=false when cache is true', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        cache: true,
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.any(Object),
+        expect.objectContaining({ skipCache: false })
+      );
+    });
+
+    it('should set skipCache=true when cache is false (--no-cache)', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await translateCommand.translateText('Hello', {
+        to: 'es',
+        cache: false,
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.any(Object),
+        expect.objectContaining({ skipCache: true })
+      );
+    });
+
+    it('should pass skipCache to translateToMultiple', async () => {
+      mockTranslationService.translateToMultiple.mockResolvedValue([
+        { targetLang: 'es' as any, text: 'Hola' },
+      ]);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es,fr',
+        cache: true,
+      });
+
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        expect.any(Array),
+        expect.objectContaining({ skipCache: false })
+      );
+    });
+  });
+
+  describe('translateDirectory() - full path', () => {
+    beforeEach(() => {
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should translate directory with successful results', async () => {
+      const mockBatchService = {
+        translateDirectory: jest.fn().mockResolvedValue({
+          successful: [
+            { file: 'a.txt', outputPath: '/out/a.txt' },
+            { file: 'b.txt', outputPath: '/out/b.txt' },
+          ],
+          failed: [],
+          skipped: [],
+        }),
+        getStatistics: jest.fn().mockReturnValue({
+          total: 2,
+          successful: 2,
+          failed: 0,
+          skipped: 0,
+        }),
+      };
+      (translateCommand as any).batchTranslationService = mockBatchService;
+
+      const result = await (translateCommand as any).translateDirectory('/src', {
+        to: 'es',
+        output: '/out',
+      });
+
+      expect(result).toContain('Translation Statistics');
+      expect(result).toContain('Total files: 2');
+      expect(result).toContain('Successful: 2');
+      expect(mockBatchService.translateDirectory).toHaveBeenCalled();
+    });
+
+    it('should show failed files in output', async () => {
+      const mockBatchService = {
+        translateDirectory: jest.fn().mockResolvedValue({
+          successful: [{ file: 'a.txt', outputPath: '/out/a.txt' }],
+          failed: [{ file: 'b.txt', error: 'Network error' }],
+          skipped: [],
+        }),
+        getStatistics: jest.fn().mockReturnValue({
+          total: 2,
+          successful: 1,
+          failed: 1,
+          skipped: 0,
+        }),
+      };
+      (translateCommand as any).batchTranslationService = mockBatchService;
+
+      const result = await (translateCommand as any).translateDirectory('/src', {
+        to: 'es',
+        output: '/out',
+      });
+
+      expect(result).toContain('Failed: 1');
+      expect(result).toContain('Failed files');
+      expect(result).toContain('b.txt: Network error');
+    });
+
+    it('should show skipped files in output', async () => {
+      const mockBatchService = {
+        translateDirectory: jest.fn().mockResolvedValue({
+          successful: [{ file: 'a.txt', outputPath: '/out/a.txt' }],
+          failed: [],
+          skipped: [{ file: 'c.bin', reason: 'Unsupported format' }],
+        }),
+        getStatistics: jest.fn().mockReturnValue({
+          total: 2,
+          successful: 1,
+          failed: 0,
+          skipped: 1,
+        }),
+      };
+      (translateCommand as any).batchTranslationService = mockBatchService;
+
+      const result = await (translateCommand as any).translateDirectory('/src', {
+        to: 'es',
+        output: '/out',
+      });
+
+      expect(result).toContain('Skipped: 1');
+    });
+
+    it('should pass source language and formality', async () => {
+      const mockBatchService = {
+        translateDirectory: jest.fn().mockResolvedValue({
+          successful: [],
+          failed: [],
+          skipped: [],
+        }),
+        getStatistics: jest.fn().mockReturnValue({
+          total: 0,
+          successful: 0,
+          failed: 0,
+          skipped: 0,
+        }),
+      };
+      (translateCommand as any).batchTranslationService = mockBatchService;
+
+      await (translateCommand as any).translateDirectory('/src', {
+        to: 'es',
+        from: 'en',
+        formality: 'more',
+        output: '/out',
+      });
+
+      expect(mockBatchService.translateDirectory).toHaveBeenCalledWith(
+        '/src',
+        expect.objectContaining({ targetLang: 'es', sourceLang: 'en', formality: 'more' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should override concurrency when specified', async () => {
+      // When concurrency is specified, a new BatchTranslationService is created
+      // which replaces the existing one. We need to mock the constructor.
+      const { BatchTranslationService } = jest.requireMock('../../src/services/batch-translation');
+      const mockInstance = {
+        translateDirectory: jest.fn().mockResolvedValue({
+          successful: [],
+          failed: [],
+          skipped: [],
+        }),
+        getStatistics: jest.fn().mockReturnValue({
+          total: 0,
+          successful: 0,
+          failed: 0,
+          skipped: 0,
+        }),
+      };
+      BatchTranslationService.mockImplementation(() => mockInstance);
+
+      await (translateCommand as any).translateDirectory('/src', {
+        to: 'es',
+        output: '/out',
+        concurrency: 10,
+      });
+
+      expect(BatchTranslationService).toHaveBeenCalledWith(
+        expect.anything(),
+        { concurrency: 10 }
+      );
+      expect(mockInstance.translateDirectory).toHaveBeenCalled();
+    });
+
+    it('should propagate errors from batch service', async () => {
+      const mockBatchService = {
+        translateDirectory: jest.fn().mockRejectedValue(new Error('Batch failed')),
+        getStatistics: jest.fn(),
+      };
+      (translateCommand as any).batchTranslationService = mockBatchService;
+
+      await expect(
+        (translateCommand as any).translateDirectory('/src', {
+          to: 'es',
+          output: '/out',
+        })
+      ).rejects.toThrow('Batch failed');
+    });
+
+    it('should use spinner when shouldShowSpinner returns true', async () => {
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(true);
+
+      // Re-setup ora mock since clearAllMocks resets it
+      const ora = jest.requireMock('ora');
+      const mockSpinner = {
+        start: jest.fn(function(this: any) { return this; }),
+        succeed: jest.fn(function(this: any) { return this; }),
+        fail: jest.fn(function(this: any) { return this; }),
+        text: '',
+      };
+      ora.mockReturnValue(mockSpinner);
+
+      const mockBatchService = {
+        translateDirectory: jest.fn().mockResolvedValue({
+          successful: [{ file: 'a.txt', outputPath: '/out/a.txt' }],
+          failed: [],
+          skipped: [],
+        }),
+        getStatistics: jest.fn().mockReturnValue({
+          total: 1,
+          successful: 1,
+          failed: 0,
+          skipped: 0,
+        }),
+      };
+      (translateCommand as any).batchTranslationService = mockBatchService;
+
+      const result = await (translateCommand as any).translateDirectory('/src', {
+        to: 'es',
+        output: '/out',
+      });
+
+      expect(result).toContain('Translation Statistics');
+      expect(mockSpinner.start).toHaveBeenCalled();
+      expect(mockSpinner.succeed).toHaveBeenCalled();
+    });
+
+    it('should pass recursive and pattern options', async () => {
+      const mockBatchService = {
+        translateDirectory: jest.fn().mockResolvedValue({
+          successful: [],
+          failed: [],
+          skipped: [],
+        }),
+        getStatistics: jest.fn().mockReturnValue({
+          total: 0,
+          successful: 0,
+          failed: 0,
+          skipped: 0,
+        }),
+      };
+      (translateCommand as any).batchTranslationService = mockBatchService;
+
+      await (translateCommand as any).translateDirectory('/src', {
+        to: 'es',
+        output: '/out',
+        recursive: false,
+        pattern: '*.md',
+      });
+
+      expect(mockBatchService.translateDirectory).toHaveBeenCalledWith(
+        '/src',
+        expect.any(Object),
+        expect.objectContaining({
+          outputDir: '/out',
+          recursive: false,
+          pattern: '*.md',
+        })
+      );
+    });
+  });
+
+  describe('translateDocument()', () => {
+    beforeEach(() => {
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should translate a document successfully', async () => {
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValue({
+        success: true,
+        outputPath: '/out.pdf',
+      });
+
+      const result = await (translateCommand as any).translateDocument('/doc.pdf', {
+        to: 'es',
+        output: '/out.pdf',
+      });
+
+      expect(result).toContain('Translated /doc.pdf -> /out.pdf');
+      expect(mockDocumentTranslationService.translateDocument).toHaveBeenCalledWith(
+        '/doc.pdf',
+        '/out.pdf',
+        expect.objectContaining({ targetLang: 'es' }),
+        expect.any(Function)
+      );
+    });
+
+    it('should pass sourceLang to document translation', async () => {
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValue({
+        success: true,
+        outputPath: '/out.pdf',
+      });
+
+      await (translateCommand as any).translateDocument('/doc.pdf', {
+        to: 'es',
+        from: 'en',
+        output: '/out.pdf',
+      });
+
+      expect(mockDocumentTranslationService.translateDocument).toHaveBeenCalledWith(
+        '/doc.pdf',
+        '/out.pdf',
+        expect.objectContaining({ targetLang: 'es', sourceLang: 'en' }),
+        expect.any(Function)
+      );
+    });
+
+    it('should pass formality to document translation', async () => {
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValue({
+        success: true,
+        outputPath: '/out.pdf',
+      });
+
+      await (translateCommand as any).translateDocument('/doc.pdf', {
+        to: 'es',
+        formality: 'more',
+        output: '/out.pdf',
+      });
+
+      expect(mockDocumentTranslationService.translateDocument).toHaveBeenCalledWith(
+        '/doc.pdf',
+        '/out.pdf',
+        expect.objectContaining({ formality: 'more' }),
+        expect.any(Function)
+      );
+    });
+
+    it('should pass outputFormat to document translation', async () => {
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValue({
+        success: true,
+        outputPath: '/out.docx',
+      });
+
+      await (translateCommand as any).translateDocument('/doc.pdf', {
+        to: 'es',
+        output: '/out.docx',
+        outputFormat: 'docx',
+      });
+
+      expect(mockDocumentTranslationService.translateDocument).toHaveBeenCalledWith(
+        '/doc.pdf',
+        '/out.docx',
+        expect.objectContaining({ outputFormat: 'docx' }),
+        expect.any(Function)
+      );
+    });
+
+    it('should pass enableDocumentMinification option', async () => {
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValue({
+        success: true,
+        outputPath: '/out.pdf',
+      });
+
+      await (translateCommand as any).translateDocument('/doc.pdf', {
+        to: 'es',
+        output: '/out.pdf',
+        enableMinification: true,
+      });
+
+      expect(mockDocumentTranslationService.translateDocument).toHaveBeenCalledWith(
+        '/doc.pdf',
+        '/out.pdf',
+        expect.objectContaining({ enableDocumentMinification: true }),
+        expect.any(Function)
+      );
+    });
+
+    it('should display billed characters when returned', async () => {
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValue({
+        success: true,
+        outputPath: '/out.pdf',
+        billedCharacters: 1500,
+      });
+
+      const result = await (translateCommand as any).translateDocument('/doc.pdf', {
+        to: 'es',
+        output: '/out.pdf',
+      });
+
+      expect(result).toContain('Billed characters: 1,500');
+    });
+
+    it('should propagate errors from document service', async () => {
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockRejectedValue(
+        new Error('Document upload failed')
+      );
+
+      await expect(
+        (translateCommand as any).translateDocument('/doc.pdf', {
+          to: 'es',
+          output: '/out.pdf',
+        })
+      ).rejects.toThrow('Document upload failed');
+    });
+
+    it('should use spinner when shouldShowSpinner returns true', async () => {
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(true);
+
+      // Re-setup ora mock since clearAllMocks resets it
+      const ora = jest.requireMock('ora');
+      const mockSpinner = {
+        start: jest.fn(function(this: any) { return this; }),
+        succeed: jest.fn(function(this: any) { return this; }),
+        fail: jest.fn(function(this: any) { return this; }),
+        text: '',
+      };
+      ora.mockReturnValue(mockSpinner);
+
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockImplementation(
+        (_input: string, _output: string, _opts: any, onProgress: Function) => {
+          onProgress({ status: 'queued' });
+          onProgress({ status: 'translating', secondsRemaining: 10 });
+          onProgress({ status: 'translating' });
+          onProgress({ status: 'done' });
+          return Promise.resolve({ success: true, outputPath: '/out.pdf' });
+        }
+      );
+
+      const result = await (translateCommand as any).translateDocument('/doc.pdf', {
+        to: 'es',
+        output: '/out.pdf',
+      });
+
+      expect(result).toContain('Translated /doc.pdf -> /out.pdf');
+      expect(mockSpinner.start).toHaveBeenCalled();
+      expect(mockSpinner.succeed).toHaveBeenCalled();
+    });
+
+    it('should fail spinner when document service throws with spinner enabled', async () => {
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(true);
+
+      // Re-setup ora mock since clearAllMocks resets it
+      const ora = jest.requireMock('ora');
+      const mockSpinner = {
+        start: jest.fn(function(this: any) { return this; }),
+        succeed: jest.fn(function(this: any) { return this; }),
+        fail: jest.fn(function(this: any) { return this; }),
+        text: '',
+      };
+      ora.mockReturnValue(mockSpinner);
+
+      (mockDocumentTranslationService.translateDocument as jest.Mock).mockRejectedValue(
+        new Error('Network error')
+      );
+
+      await expect(
+        (translateCommand as any).translateDocument('/doc.pdf', {
+          to: 'es',
+          output: '/out.pdf',
+        })
+      ).rejects.toThrow('Network error');
+
+      expect(mockSpinner.fail).toHaveBeenCalledWith('Document translation failed');
+    });
+  });
+
+  describe('translateFile() - non-text-based files via fileTranslationService', () => {
+    let mockFs: any;
+
+    beforeEach(() => {
+      mockFs = jest.requireActual('fs');
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should use fileTranslationService for unsupported non-text-based files', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 1024,
+        isDirectory: () => false,
+      } as any);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(false);
+
+      const mockFileService = {
+        translateFile: jest.fn().mockResolvedValue(undefined),
+        isSupportedFile: jest.fn().mockReturnValue(true),
+        translateFileToMultiple: jest.fn(),
+      };
+      (translateCommand as any).fileTranslationService = mockFileService;
+
+      const result = await (translateCommand as any).translateFile('/input.csv', {
+        to: 'es',
+        output: '/output.csv',
+      });
+
+      expect(result).toBe('Translated /input.csv -> /output.csv');
+      expect(mockFileService.translateFile).toHaveBeenCalledWith(
+        '/input.csv',
+        '/output.csv',
+        expect.objectContaining({ targetLang: 'es' }),
+        { preserveCode: undefined }
+      );
+    });
+
+    it('should pass sourceLang and formality to fileTranslationService', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 1024,
+        isDirectory: () => false,
+      } as any);
+
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(false);
+
+      const mockFileService = {
+        translateFile: jest.fn().mockResolvedValue(undefined),
+        isSupportedFile: jest.fn().mockReturnValue(true),
+        translateFileToMultiple: jest.fn(),
+      };
+      (translateCommand as any).fileTranslationService = mockFileService;
+
+      await (translateCommand as any).translateFile('/input.csv', {
+        to: 'es',
+        from: 'en',
+        formality: 'less',
+        output: '/output.csv',
+      });
+
+      expect(mockFileService.translateFile).toHaveBeenCalledWith(
+        '/input.csv',
+        '/output.csv',
+        expect.objectContaining({ targetLang: 'es', sourceLang: 'en', formality: 'less' }),
+        { preserveCode: undefined }
+      );
+    });
+
+    it('should throw when file size is null for text-based file', async () => {
+      // Simulate statSync throwing for file that does not exist
+      jest.spyOn(mockFs, 'statSync').mockImplementation(() => {
+        throw new Error('ENOENT');
+      });
+
+      await expect(
+        (translateCommand as any).translateFile('/nonexistent.txt', {
+          to: 'es',
+          output: '/out.txt',
+        }, null)
+      ).rejects.toThrow('File not found or cannot be accessed');
+    });
+  });
+
+  describe('translateTextFile() - text-based file translation details', () => {
+    let mockFs: any;
+
+    beforeEach(() => {
+      mockFs = jest.requireActual('fs');
+      jest.spyOn(mockFs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(mockFs, 'readFileSync').mockReturnValue('Hello');
+      jest.spyOn(mockFs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(mockFs, 'mkdirSync').mockImplementation(() => undefined);
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 1024,
+        isDirectory: () => false,
+      } as any);
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should pass glossaryId to text translation for file', async () => {
+      (mockGlossaryService.resolveGlossaryId as jest.Mock).mockResolvedValue('glossary-file-123');
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await (translateCommand as any).translateTextFile('/doc.txt', {
+        to: 'es',
+        output: '/out.txt',
+        glossary: 'my-glossary',
+      });
+
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ glossaryId: 'glossary-file-123' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass preserveFormatting to text translation for file', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await (translateCommand as any).translateTextFile('/doc.txt', {
+        to: 'es',
+        output: '/out.txt',
+        preserveFormatting: true,
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ preserveFormatting: true }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass context to text translation for file', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await (translateCommand as any).translateTextFile('/doc.txt', {
+        to: 'es',
+        output: '/out.txt',
+        context: 'Technical documentation',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ context: 'Technical documentation' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should create output directory if it does not exist', async () => {
+      jest.spyOn(mockFs, 'existsSync').mockImplementation((...args: unknown[]) => {
+        if (args[0] === '/nested/dir') {
+          return false;
+        }
+        return true;
+      });
+
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await (translateCommand as any).translateTextFile('/doc.txt', {
+        to: 'es',
+        output: '/nested/dir/out.txt',
+      });
+
+      expect(mockFs.mkdirSync).toHaveBeenCalledWith('/nested/dir', { recursive: true });
+    });
+
+    it('should pass formality and sourceLang to text file translation', async () => {
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      await (translateCommand as any).translateTextFile('/doc.txt', {
+        to: 'es',
+        from: 'en',
+        formality: 'more',
+        output: '/out.txt',
+      });
+
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ targetLang: 'es', sourceLang: 'en', formality: 'more' }),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('translateFile() - large text file fallback without document support', () => {
+    let mockFs: any;
+
+    beforeEach(() => {
+      mockFs = jest.requireActual('fs');
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should fall through to fileTranslationService when large text file not supported by document API', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 150 * 1024,
+        isDirectory: () => false,
+      } as any);
+
+      // Large .txt, but document API does NOT support it
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(false);
+
+      const mockFileService = {
+        translateFile: jest.fn().mockResolvedValue(undefined),
+        isSupportedFile: jest.fn().mockReturnValue(true),
+        translateFileToMultiple: jest.fn(),
+      };
+      (translateCommand as any).fileTranslationService = mockFileService;
+
+      const result = await (translateCommand as any).translateFile('/large.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      // Falls through to the fileTranslationService path
+      expect(result).toBe('Translated /large.txt -> /out.txt');
+      expect(mockFileService.translateFile).toHaveBeenCalled();
+      expect(mockDocumentTranslationService.translateDocument).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getFileSize()', () => {
+    let mockFs: any;
+
+    beforeEach(() => {
+      mockFs = jest.requireActual('fs');
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should return null when file does not exist', () => {
+      jest.spyOn(mockFs, 'statSync').mockImplementation(() => {
+        throw new Error('ENOENT');
+      });
+
+      const result = (translateCommand as any).getFileSize('/nonexistent.txt');
+      expect(result).toBeNull();
+    });
+
+    it('should return file size when file exists', () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({ size: 42 } as any);
+
+      const result = (translateCommand as any).getFileSize('/existing.txt');
+      expect(result).toBe(42);
+    });
+  });
+
+  describe('translateFile() with cachedStats', () => {
+    let mockFs: any;
+
+    beforeEach(() => {
+      mockFs = jest.requireActual('fs');
+      jest.spyOn(mockFs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(mockFs, 'readFileSync').mockReturnValue('Hello');
+      jest.spyOn(mockFs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(mockFs, 'mkdirSync').mockImplementation(() => undefined);
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should use cachedStats size when provided for text-based file', async () => {
+      const cachedStats = { size: 5 * 1024, isDirectory: () => false } as any;
+
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      const result = await (translateCommand as any).translateFile('/doc.txt', {
+        to: 'es',
+        output: '/out.txt',
+      }, cachedStats);
+
+      expect(result).toContain('Translated /doc.txt');
+      expect(mockTranslationService.translate).toHaveBeenCalled();
+    });
+
+    it('should call getFileSize when cachedStats is null for text-based file', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 5 * 1024,
+        isDirectory: () => false,
+      } as any);
+
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: undefined,
+      });
+
+      const result = await (translateCommand as any).translateFile('/doc.txt', {
+        to: 'es',
+        output: '/out.txt',
+      }, null);
+
+      expect(result).toContain('Translated /doc.txt');
+    });
+  });
 });
