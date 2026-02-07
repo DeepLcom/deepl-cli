@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { Command } from 'commander';
 import { registerGlossary } from '../../src/cli/commands/register-glossary';
 import { createGlossaryCommand } from '../../src/cli/commands/service-factory';

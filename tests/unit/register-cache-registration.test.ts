@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { Command } from 'commander';
 
 jest.mock('chalk', () => {
@@ -43,8 +44,8 @@ jest.mock('../../src/utils/confirm', () => ({
 
 jest.mock('../../src/utils/parse-size', () => ({
   parseSize: jest.fn().mockImplementation((s: string) => {
-    if (s === '100M') return 104857600;
-    if (s === '1G') return 1073741824;
+    if (s === '100M') { return 104857600; }
+    if (s === '1G') { return 1073741824; }
     return parseInt(s, 10);
   }),
   formatSize: jest.fn().mockImplementation((n: number) => `${(n / (1024 * 1024)).toFixed(0)} MB`),

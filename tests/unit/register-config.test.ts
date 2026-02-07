@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { Command } from 'commander';
 
 jest.mock('chalk', () => {

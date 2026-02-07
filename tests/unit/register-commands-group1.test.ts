@@ -3,7 +3,7 @@
  *   register-auth, register-usage, register-completion, register-style-rules
  */
 
-/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-var-requires */
 
 import { Command } from 'commander';
 
