@@ -72,7 +72,7 @@ echo
 
 # Example 9: Clear cache
 echo "9. Clear all cached translations"
-deepl cache clear
+deepl cache clear --yes
 echo
 
 # Example 10: Verify cache is empty

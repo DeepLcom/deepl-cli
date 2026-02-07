@@ -191,7 +191,7 @@ echo
 echo "8. Demonstrate cache benefits in batch processing"
 echo "   First run (cache miss):"
 
-deepl cache clear >/dev/null 2>&1
+deepl cache clear --yes >/dev/null 2>&1
 
 START=$(date +%s)
 for file in "$SAMPLE_DIR"/*.md; do

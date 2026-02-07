@@ -121,10 +121,10 @@ echo
 
 echo "11. Clean up - delete glossaries"
 echo "   Deleting tech-terms-renamed..."
-deepl glossary delete tech-terms-renamed 2>/dev/null || echo "   (Already deleted)"
+deepl glossary delete tech-terms-renamed --yes 2>/dev/null || echo "   (Already deleted)"
 
 echo "   Deleting business-terms-demo..."
-deepl glossary delete business-terms-demo 2>/dev/null || echo "   (Already deleted)"
+deepl glossary delete business-terms-demo --yes 2>/dev/null || echo "   (Already deleted)"
 
 echo
 

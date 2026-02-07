@@ -163,7 +163,7 @@ echo
 # Example 9: Cache effectiveness demonstration
 echo "9. Cache effectiveness (translate same file twice)"
 echo "   Clearing cache first..."
-deepl cache clear &>/dev/null || true
+deepl cache clear --yes &>/dev/null || true
 echo "   ✓ Cache cleared"
 echo
 
