@@ -69,10 +69,6 @@ export class TranslationClient extends HttpClient {
     text: string,
     options: TranslationOptions
   ): Promise<TranslationResult> {
-    if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty');
-    }
-
     const params = this.buildTranslationParams([text], options);
 
     try {

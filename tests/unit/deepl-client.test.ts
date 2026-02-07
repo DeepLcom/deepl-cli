@@ -468,11 +468,6 @@ describe('DeepLClient', () => {
       ).rejects.toThrow();
     });
 
-    it('should throw error for empty text', async () => {
-      await expect(
-        client.translate('', { targetLang: 'es' })
-      ).rejects.toThrow('Text cannot be empty');
-    });
   });
 
   describe('error handling', () => {
@@ -954,18 +949,6 @@ describe('DeepLClient', () => {
         expect(result[0]?.detectedSourceLanguage).toBe('en');
       });
 
-      it('should throw error for empty text', async () => {
-        await expect(
-          client.improveText('', { targetLang: 'en-US' })
-        ).rejects.toThrow('Text cannot be empty');
-      });
-
-      it('should throw error for whitespace-only text', async () => {
-        await expect(
-          client.improveText('   ', { targetLang: 'en-US' })
-        ).rejects.toThrow('Text cannot be empty');
-      });
-
       it('should throw error when no improvements returned', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase')
@@ -1174,16 +1157,6 @@ describe('DeepLClient', () => {
     });
 
     describe('parameter constraints', () => {
-      it('should throw error when both writing_style and tone are specified', async () => {
-        await expect(
-          client.improveText('Test', {
-            targetLang: 'en-US',
-            writingStyle: 'business',
-            tone: 'enthusiastic',
-          })
-        ).rejects.toThrow('Cannot specify both writing_style and tone');
-      });
-
       it('should work with only target language', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {

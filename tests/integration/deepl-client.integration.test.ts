@@ -299,12 +299,6 @@ describe('DeepLClient Integration', () => {
       );
     });
 
-    it('should throw error for empty text', async () => {
-      const client = new DeepLClient(API_KEY);
-
-      await expect(client.translate('', { targetLang: 'es' })).rejects.toThrow('Text cannot be empty');
-    });
-
     it('should retry on 500 errors', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 2 });
 
@@ -569,25 +563,6 @@ describe('DeepLClient Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('should throw error when both style and tone are specified', async () => {
-      const client = new DeepLClient(API_KEY);
-
-      await expect(
-        client.improveText('Test', {
-          targetLang: 'en-US',
-          writingStyle: 'business',
-          tone: 'friendly',
-        })
-      ).rejects.toThrow('Cannot specify both writing_style and tone');
-    });
-
-    it('should throw error for empty text', async () => {
-      const client = new DeepLClient(API_KEY);
-
-      await expect(client.improveText('', { targetLang: 'en-US' })).rejects.toThrow(
-        'Text cannot be empty'
-      );
-    });
   });
 
   describe('custom API URLs', () => {

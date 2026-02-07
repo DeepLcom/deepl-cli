@@ -35,14 +35,6 @@ export class WriteCommand {
    * Improve text using DeepL Write API
    */
   async improve(text: string, options: WriteOptions): Promise<string> {
-    if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty');
-    }
-
-    if (options.style && options.tone) {
-      throw new Error('Cannot specify both style and tone in a single request');
-    }
-
     const writeOptions: {
       targetLang?: WriteLanguage;
       writingStyle?: WritingStyle;
@@ -324,10 +316,6 @@ export class WriteCommand {
    * Generates multiple alternatives by calling the API with different styles/tones
    */
   async improveInteractive(text: string, options: WriteOptions): Promise<string> {
-    if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty');
-    }
-
     // If user specified a style or tone, only use that
     if (options.style || options.tone) {
       const writeOptions: {

@@ -308,11 +308,6 @@ export class TranslateCommand {
    * Translate text
    */
   async translateText(text: string, options: TranslateOptions): Promise<string> {
-    // Validate input
-    if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty');
-    }
-
     // Check if API key is set
     const apiKey = this.config.getValue('auth.apiKey') as string | undefined;
     const envKey = process.env['DEEPL_API_KEY'];

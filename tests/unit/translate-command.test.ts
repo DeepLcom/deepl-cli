@@ -161,7 +161,11 @@ describe('TranslateCommand', () => {
       );
     });
 
-    it('should throw error for empty text', async () => {
+    it('should propagate service error for empty text', async () => {
+      (mockTranslationService.translate as jest.Mock).mockRejectedValueOnce(
+        new Error('Text cannot be empty')
+      );
+
       await expect(
         translateCommand.translateText('', { to: 'es' })
       ).rejects.toThrow('Text cannot be empty');

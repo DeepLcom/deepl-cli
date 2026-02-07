@@ -97,7 +97,11 @@ describe('WriteCommand', () => {
         );
       });
 
-      it('should throw error for empty text', async () => {
+      it('should propagate service error for empty text', async () => {
+        mockWriteService.getBestImprovement.mockRejectedValueOnce(
+          new Error('Text cannot be empty')
+        );
+
         await expect(
           writeCommand.improve('', { lang: 'en-US' })
         ).rejects.toThrow('Text cannot be empty');
@@ -300,14 +304,18 @@ describe('WriteCommand', () => {
     });
 
     describe('parameter constraints', () => {
-      it('should throw error when both style and tone are specified', async () => {
+      it('should propagate service error when both style and tone are specified', async () => {
+        mockWriteService.getBestImprovement.mockRejectedValueOnce(
+          new Error('Cannot specify both writing_style and tone in a single request')
+        );
+
         await expect(
           writeCommand.improve('Test', {
             lang: 'en-US',
             style: 'business',
             tone: 'enthusiastic',
           })
-        ).rejects.toThrow('Cannot specify both style and tone');
+        ).rejects.toThrow('Cannot specify both writing_style and tone');
       });
     });
 

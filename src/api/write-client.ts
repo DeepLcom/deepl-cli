@@ -18,14 +18,6 @@ export class WriteClient extends HttpClient {
     text: string,
     options: WriteOptions
   ): Promise<WriteImprovement[]> {
-    if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty');
-    }
-
-    if (options.writingStyle && options.tone) {
-      throw new Error('Cannot specify both writing_style and tone in a single request');
-    }
-
     const params: Record<string, string | string[]> = {
       text: [text],
     };
