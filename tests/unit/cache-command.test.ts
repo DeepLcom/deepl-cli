@@ -29,6 +29,7 @@ describe('CacheCommand', () => {
       enable: jest.fn(),
       disable: jest.fn(),
       setMaxSize: jest.fn(),
+      forceCleanup: jest.fn(),
       close: jest.fn(),
     } as unknown as jest.Mocked<CacheService>;
 

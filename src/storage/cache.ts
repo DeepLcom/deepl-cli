@@ -30,6 +30,7 @@ interface CacheRow {
 
 const DEFAULT_MAX_SIZE = 1024 * 1024 * 1024; // 1GB
 const DEFAULT_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+const CLEANUP_INTERVAL = 60_000; // 60 seconds
 
 export class CacheService {
   private static instance: CacheService | null = null;
@@ -40,19 +41,26 @@ export class CacheService {
   private enabled: boolean = true;
   private isClosed: boolean = false;
   private currentSize: number = 0;
+  private lastCleanupTime: number = Date.now();
 
+  /**
+   * Create a new CacheService instance. Production code should use
+   * getInstance() to share a single connection and avoid duplicate
+   * signal handlers. The constructor is public only for test isolation.
+   */
   constructor(options: CacheServiceOptions = {}) {
     const dbPath = options.dbPath ?? path.join(os.homedir(), '.deepl-cli', 'cache.db');
     this.maxSize = options.maxSize ?? DEFAULT_MAX_SIZE;
     this.ttl = options.ttl ?? DEFAULT_TTL;
 
-    // Ensure directory exists
+    // Ensure directory exists with restrictive permissions
     const dir = path.dirname(dbPath);
     if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     }
 
     this.db = new Database(dbPath);
+    fs.chmodSync(dbPath, 0o600);
     this.initialize();
   }
 
@@ -88,6 +96,8 @@ export class CacheService {
   }
 
   private initialize(): void {
+    this.db.pragma('journal_mode = WAL');
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS cache (
         key TEXT PRIMARY KEY,
@@ -226,12 +236,23 @@ export class CacheService {
     }
   }
 
+  forceCleanup(): void {
+    this.lastCleanupTime = 0;
+    this.cleanupExpired();
+  }
+
   private cleanupExpired(): void {
     if (this.ttl === 0) {
       return;
     }
 
-    const expirationTime = Date.now() - this.ttl;
+    const now = Date.now();
+    if (now - this.lastCleanupTime < CLEANUP_INTERVAL) {
+      return;
+    }
+    this.lastCleanupTime = now;
+
+    const expirationTime = now - this.ttl;
     const sizeStmt = this.db.prepare('SELECT COALESCE(SUM(size), 0) as total FROM cache WHERE timestamp < ?');
     const sizeRow = sizeStmt.get(expirationTime) as { total: number };
     const deletedSize = sizeRow.total;

@@ -56,6 +56,12 @@ describe('CacheService', () => {
       expect(stats.totalSize).toBe(0);
       expect(stats.enabled).toBe(true);
     });
+
+    it('should use WAL journal mode', () => {
+      const db = (cacheService as any).db;
+      const result = db.pragma('journal_mode', { simple: true });
+      expect(result).toBe('wal');
+    });
   });
 
   describe('get()', () => {
@@ -451,12 +457,74 @@ describe('CacheService', () => {
 
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Trigger cleanup by adding new entry
       service.set('key3', { text: 'Value 3' });
+
+      // Force cleanup since amortized interval hasn't elapsed
+      service.forceCleanup();
 
       const stats = service.stats();
       expect(stats.entries).toBe(1); // Only key3 should remain
 
+      service.close();
+    });
+
+    it('should skip cleanup when interval has not elapsed', () => {
+      const service = new CacheService({
+        dbPath: testCachePath,
+        ttl: 30 * 24 * 60 * 60 * 1000,
+      });
+
+      service.set('key1', { text: 'Value 1' });
+      service.set('key2', { text: 'Value 2' });
+
+      // Access the db to spy on prepare calls
+      const db = (service as any).db;
+      const originalPrepare = db.prepare.bind(db);
+      let deleteCalls = 0;
+      db.prepare = (sql: string) => {
+        if (sql.includes('DELETE') && sql.includes('timestamp')) {
+          deleteCalls++;
+        }
+        return originalPrepare(sql);
+      };
+
+      // Multiple get/set calls should not trigger cleanup each time
+      service.get('key1');
+      service.set('key3', { text: 'Value 3' });
+      service.get('key2');
+
+      expect(deleteCalls).toBe(0);
+
+      db.prepare = originalPrepare;
+      service.close();
+    });
+
+    it('should run cleanup when interval has elapsed', () => {
+      const service = new CacheService({
+        dbPath: testCachePath,
+        ttl: 30 * 24 * 60 * 60 * 1000,
+      });
+
+      service.set('key1', { text: 'Value 1' });
+
+      // Simulate elapsed time by setting lastCleanupTime to the past
+      (service as any).lastCleanupTime = 0;
+
+      const db = (service as any).db;
+      const originalPrepare = db.prepare.bind(db);
+      let deleteCalls = 0;
+      db.prepare = (sql: string) => {
+        if (sql.includes('DELETE') && sql.includes('timestamp')) {
+          deleteCalls++;
+        }
+        return originalPrepare(sql);
+      };
+
+      service.get('key1');
+
+      expect(deleteCalls).toBe(1);
+
+      db.prepare = originalPrepare;
       service.close();
     });
   });
