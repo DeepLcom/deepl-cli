@@ -1,4 +1,6 @@
 import type { Command } from 'commander';
+import { existsSync } from 'fs';
+import { writeFile } from 'fs/promises';
 import chalk from 'chalk';
 import type { DeepLClient } from '../../api/deepl-client.js';
 import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/api.js';
@@ -82,7 +84,6 @@ Examples:
           let needsImprovement: boolean;
           let changes = 0;
 
-          const { existsSync } = await import('fs');
           if (existsSync(text)) {
             const result = await writeCommand.checkFile(text, writeOptions);
             needsImprovement = result.needsImprovement;
@@ -104,7 +105,6 @@ Examples:
         }
 
         if (options.fix) {
-          const { existsSync } = await import('fs');
           if (!existsSync(text)) {
             throw new Error('--fix requires a file path as input');
           }
@@ -124,7 +124,6 @@ Examples:
         }
 
         if (options.diff) {
-          const { existsSync } = await import('fs');
           let result: { original: string; improved: string; diff: string };
 
           if (existsSync(text)) {
@@ -145,7 +144,6 @@ Examples:
         }
 
         if (options.interactive) {
-          const { existsSync } = await import('fs');
           let result: string;
 
           if (existsSync(text)) {
@@ -155,7 +153,6 @@ Examples:
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             if (options.output || options.inPlace) {
               const outputPath = options.inPlace ? text : options.output!;
-              const { writeFile } = await import('fs/promises');
               await writeFile(outputPath, result, 'utf-8');
               Logger.success(chalk.green(`\u2713 Saved to ${outputPath}`));
             }
@@ -169,7 +166,6 @@ Examples:
           return;
         }
 
-        const { existsSync } = await import('fs');
         if (existsSync(text)) {
           const result = await writeCommand.improveFile(text, writeOptions);
           Logger.output(result);
