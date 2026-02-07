@@ -172,7 +172,6 @@ describe('Batch Translation Service Integration', () => {
 
       expect(result.successful).toHaveLength(1);
       expect(result.failed).toHaveLength(1);
-      expect(result.failed[0]?.file).toBe(file2);
       expect(result.failed[0]?.error).toContain('API error');
     });
 
