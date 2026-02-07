@@ -550,7 +550,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 **Language:**
 
-- `--lang, -l LANG` - Target language: `de`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt-BR`, `pt-PT`. Optional — omit to auto-detect the language and rephrase in the original language.
+- `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT`. Optional — omit to auto-detect the language and rephrase in the original language.
 
 **Style Options (mutually exclusive with tone):**
 
@@ -1672,7 +1672,7 @@ deepl admin keys set-limit abc123-def456 unlimited
 
 ##### `usage`
 
-View organization usage analytics.
+View organization usage analytics with per-product character breakdowns.
 
 **Options:**
 
@@ -1680,6 +1680,13 @@ View organization usage analytics.
 - `--end DATE` - End date in YYYY-MM-DD format (required)
 - `--group-by GROUPING` - Group results: `key`, `key_and_day`
 - `--format FORMAT` - Output format: `json` (default: plain text)
+
+**Output includes:**
+
+- **Total characters** across all products
+- **Text translation characters** — characters used for `/v2/translate`
+- **Document translation characters** — characters used for document translation
+- **Text improvement characters** — characters used for DeepL Write
 
 **Examples:**
 
@@ -1697,11 +1704,37 @@ deepl admin usage --start 2024-01-01 --end 2024-01-31 --group-by key_and_day
 deepl admin usage --start 2024-01-01 --end 2024-12-31 --format json
 ```
 
+**Example output:**
+
+```
+Period: 2024-01-01 to 2024-01-31
+
+Total Usage:
+  Total:       10,000
+  Translation: 7,000
+  Documents:   2,000
+  Write:       1,000
+
+Per-Key Usage (2 entries):
+
+  Staging Key
+    Total:       6,000
+    Translation: 4,000
+    Documents:   1,500
+    Write:       500
+
+  Production Key
+    Total:       4,000
+    Translation: 3,000
+    Documents:   500
+    Write:       500
+```
+
 #### Notes
 
 - Admin API endpoints require an admin-level API key (not a regular developer key)
 - Key deactivation is permanent and cannot be undone
-- Usage analytics reflect translated and billed character counts
+- Usage analytics show per-product character breakdowns (translation, documents, write)
 - The `--group-by` option provides granular breakdowns for cost allocation
 
 ---

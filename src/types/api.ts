@@ -33,11 +33,13 @@ export interface TranslationOptions {
 
 export type WriteLanguage =
   | 'de'
+  | 'en'
   | 'en-GB'
   | 'en-US'
   | 'es'
   | 'fr'
   | 'it'
+  | 'pt'
   | 'pt-BR'
   | 'pt-PT';
 
@@ -149,11 +151,26 @@ export interface AdminApiKey {
   };
 }
 
+export interface UsageBreakdown {
+  totalCharacters: number;
+  textTranslationCharacters: number;
+  documentTranslationCharacters: number;
+  textImprovementCharacters: number;
+}
+
 export interface AdminUsageEntry {
-  keyId?: string;
-  date?: string;
-  charactersTranslated: number;
-  charactersBilled: number;
+  apiKey?: string;
+  apiKeyLabel?: string;
+  usageDate?: string;
+  usage: UsageBreakdown;
+}
+
+export interface AdminUsageReport {
+  totalUsage: UsageBreakdown;
+  startDate: string;
+  endDate: string;
+  groupBy?: string;
+  entries: AdminUsageEntry[];
 }
 
 export interface AdminUsageOptions {

@@ -400,7 +400,7 @@ program
   .command('write')
   .description('Improve text using DeepL Write API (grammar, style, tone)')
   .argument('<text>', 'Text to improve (or file path when used with file operations)')
-  .option('-l, --lang <language>', 'Target language (de, en-GB, en-US, es, fr, it, pt-BR, pt-PT). Omit to auto-detect.')
+  .option('-l, --lang <language>', 'Target language (de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT). Omit to auto-detect.')
   .option('-s, --style <style>', 'Writing style: simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
   .option('-t, --tone <tone>', 'Tone: enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
   .option('-a, --alternatives', 'Show all alternative improvements')
@@ -431,7 +431,7 @@ program
       // This ensures validation errors (exit code 6) come before auth errors (exit code 2)
 
       // Validate language code if provided
-      const validLanguages = ['de', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt-BR', 'pt-PT'];
+      const validLanguages = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt', 'pt-BR', 'pt-PT'];
       if (options.lang && !validLanguages.includes(options.lang)) {
         throw new Error(`Invalid language code: ${options.lang}. Valid options: ${validLanguages.join(', ')}`);
       }
@@ -1174,15 +1174,15 @@ adminCmd
         try {
           const client = createDeepLClient();
           const admin = new AdminCommand(client);
-          const entries = await admin.getUsage({
+          const report = await admin.getUsage({
             startDate: options.start,
             endDate: options.end,
             groupBy: options.groupBy as 'key' | 'key_and_day' | undefined,
           });
           if (options.format === 'json') {
-            Logger.output(admin.formatJson(entries));
+            Logger.output(admin.formatJson(report));
           } else {
-            Logger.output(admin.formatUsage(entries));
+            Logger.output(admin.formatUsage(report));
           }
         } catch (error) {
           handleError(error);

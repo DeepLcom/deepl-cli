@@ -43,12 +43,12 @@ describe('Write Command E2E', () => {
   });
 
   describe('Error Handling', () => {
-    it('should require --lang flag', () => {
+    it('should accept write without --lang flag (auto-detect)', () => {
       try {
         execSync('deepl write "test text"', { encoding: 'utf-8', stdio: 'pipe' });
-        fail('Should have thrown error');
       } catch (error: any) {
-        expect(error.status).toBe(1);
+        // May fail on API key, but should NOT fail on missing --lang (exit code 1)
+        expect(error.status).not.toBe(1);
       }
     });
 

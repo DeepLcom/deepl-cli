@@ -417,13 +417,15 @@ describe('WriteService', () => {
 
   describe('supported languages', () => {
     it('should work with all supported Write languages', async () => {
-      const languages: Array<'de' | 'en-GB' | 'en-US' | 'es' | 'fr' | 'it' | 'pt-BR' | 'pt-PT'> = [
+      const languages: Array<'de' | 'en' | 'en-GB' | 'en-US' | 'es' | 'fr' | 'it' | 'pt' | 'pt-BR' | 'pt-PT'> = [
         'de',
+        'en',
         'en-GB',
         'en-US',
         'es',
         'fr',
         'it',
+        'pt',
         'pt-BR',
         'pt-PT',
       ];
