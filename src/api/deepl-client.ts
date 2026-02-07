@@ -1,11 +1,10 @@
-/**
- * DeepL API Client
- * Wrapper around DeepL API with error handling and retry logic
- */
-
-import axios, { AxiosInstance, AxiosError } from 'axios';
-import * as http from 'http';
-import * as https from 'https';
+import { DeepLClientOptions } from './http-client.js';
+import { TranslationClient, TranslationResult, ProductUsage, UsageInfo, LanguageInfo } from './translation-client.js';
+import { GlossaryClient } from './glossary-client.js';
+import { DocumentClient } from './document-client.js';
+import { WriteClient } from './write-client.js';
+import { StyleRulesClient } from './style-rules-client.js';
+import { AdminClient } from './admin-client.js';
 import {
   TranslationOptions,
   Language,
@@ -22,1258 +21,167 @@ import {
   AdminApiKey,
   AdminUsageOptions,
   AdminUsageReport,
-  UsageBreakdown,
 } from '../types';
-import { normalizeGlossaryInfo, GlossaryApiResponse } from '../types/glossary.js';
 
-interface ProxyConfig {
-  protocol?: 'http' | 'https';
-  host: string;
-  port: number;
-  auth?: {
-    username: string;
-    password: string;
-  };
-}
-
-interface DeepLClientOptions {
-  usePro?: boolean;
-  timeout?: number;
-  maxRetries?: number;
-  baseUrl?: string;
-  proxy?: ProxyConfig;
-}
-
-interface DeepLTranslateResponse {
-  translations: Array<{
-    detected_source_language?: string;
-    text: string;
-    billed_characters?: number;
-    model_type_used?: string;
-  }>;
-  billed_characters?: number;
-}
-
-interface DeepLUsageResponse {
-  character_count: number;
-  character_limit: number;
-  api_key_character_count?: number;
-  api_key_character_limit?: number;
-  start_time?: string;
-  end_time?: string;
-  products?: Array<{
-    product_type: string;
-    character_count: number;
-    api_key_character_count: number;
-  }>;
-}
-
-interface DeepLLanguageResponse {
-  language: string;
-  name: string;
-  supports_formality?: boolean;
-}
-
-interface DeepLWriteResponse {
-  improvements: Array<{
-    text: string;
-    target_language: string;
-    detected_source_language?: string;
-  }>;
-}
-
-interface DeepLDocumentUploadResponse {
-  document_id: string;
-  document_key: string;
-}
-
-interface DeepLDocumentStatusResponse {
-  document_id: string;
-  status: 'queued' | 'translating' | 'done' | 'error';
-  seconds_remaining?: number;
-  billed_characters?: number;
-  error_message?: string;
-}
-
-interface DeepLGlossaryLanguagePairsResponse {
-  supported_languages: Array<{
-    source_lang: string;
-    target_lang: string;
-  }>;
-}
-
-// GlossaryInfo now imported from types
-
-export interface TranslationResult {
-  text: string;
-  detectedSourceLang?: Language;
-  billedCharacters?: number;
-  modelTypeUsed?: string;
-}
-
-export interface ProductUsage {
-  productType: string;
-  characterCount: number;
-  apiKeyCharacterCount: number;
-}
-
-export interface UsageInfo {
-  characterCount: number;
-  characterLimit: number;
-  apiKeyCharacterCount?: number;
-  apiKeyCharacterLimit?: number;
-  startTime?: string;
-  endTime?: string;
-  products?: ProductUsage[];
-}
-
-export interface LanguageInfo {
-  language: Language;
-  name: string;
-  supportsFormality?: boolean;
-}
-
-function sanitizeUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    if (parsed.username || parsed.password) {
-      parsed.username = '***';
-      parsed.password = '***';
-    }
-    return parsed.toString();
-  } catch {
-    return '[invalid URL]';
-  }
-}
-
-const FREE_API_URL = 'https://api-free.deepl.com';
-const PRO_API_URL = 'https://api.deepl.com';
-const DEFAULT_TIMEOUT = 30000; // 30 seconds
-const DEFAULT_MAX_RETRIES = 3;
+export { TranslationResult, ProductUsage, UsageInfo, LanguageInfo };
 
 export class DeepLClient {
-  private client: AxiosInstance;
-  private maxRetries: number;
-  private _lastTraceId?: string;
+  private translationClient: TranslationClient;
+  private glossaryClient: GlossaryClient;
+  private documentClient: DocumentClient;
+  private writeClient: WriteClient;
+  private styleRulesClient: StyleRulesClient;
+  private adminClient: AdminClient;
 
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
-    if (!apiKey || apiKey.trim() === '') {
-      throw new Error('API key is required');
-    }
-
-    const baseURL = options.baseUrl ?? (options.usePro ? PRO_API_URL : FREE_API_URL);
-
-    this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
-
-    // Build axios config with HTTP keep-alive for connection reuse
-    // This significantly improves performance for batch translations
-    const axiosConfig: Record<string, unknown> = {
-      baseURL,
-      timeout: options.timeout ?? DEFAULT_TIMEOUT,
-      headers: {
-        'Authorization': `DeepL-Auth-Key ${apiKey}`,
-        'Connection': 'keep-alive',
-      },
-      httpAgent: new http.Agent({
-        keepAlive: true,
-        keepAliveMsecs: 1000,
-        maxSockets: 10,
-        maxFreeSockets: 10,
-        timeout: options.timeout ?? DEFAULT_TIMEOUT,
-      }),
-      httpsAgent: new https.Agent({
-        keepAlive: true,
-        keepAliveMsecs: 1000,
-        maxSockets: 10,
-        maxFreeSockets: 10,
-        timeout: options.timeout ?? DEFAULT_TIMEOUT,
-      }),
-    };
-
-    // Add proxy configuration if provided
-    let proxyConfig = options.proxy;
-
-    // Check for proxy environment variables if no explicit proxy config
-    if (!proxyConfig) {
-      const httpProxy = process.env['HTTP_PROXY'] ?? process.env['http_proxy'];
-      const httpsProxy = process.env['HTTPS_PROXY'] ?? process.env['https_proxy'];
-      const proxyUrl = httpsProxy ?? httpProxy;
-
-      if (proxyUrl) {
-        try {
-          const url = new URL(proxyUrl);
-          proxyConfig = {
-            protocol: url.protocol.replace(':', '') as 'http' | 'https',
-            host: url.hostname,
-            port: parseInt(url.port || (url.protocol === 'https:' ? '443' : '80'), 10),
-          };
-
-          // Add auth if present in URL
-          if (url.username && url.password) {
-            proxyConfig.auth = {
-              username: url.username,
-              password: url.password,
-            };
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          throw new Error(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
-        }
-      }
-    }
-
-    // Apply proxy config to axios
-    if (proxyConfig) {
-      axiosConfig['proxy'] = {
-        protocol: proxyConfig.protocol,
-        host: proxyConfig.host,
-        port: proxyConfig.port,
-        ...(proxyConfig.auth && { auth: proxyConfig.auth }),
-      };
-    }
-
-    this.client = axios.create(axiosConfig);
+    this.translationClient = new TranslationClient(apiKey, options);
+    this.glossaryClient = new GlossaryClient(apiKey, options);
+    this.documentClient = new DocumentClient(apiKey, options);
+    this.writeClient = new WriteClient(apiKey, options);
+    this.styleRulesClient = new StyleRulesClient(apiKey, options);
+    this.adminClient = new AdminClient(apiKey, options);
   }
 
   get lastTraceId(): string | undefined {
-    return this._lastTraceId;
+    return this.translationClient.lastTraceId;
   }
 
-  /**
-   * Translate text
-   */
   async translate(
     text: string,
     options: TranslationOptions
   ): Promise<TranslationResult> {
-    if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty');
-    }
-
-    const params = this.buildTranslationParams([text], options);
-
-    try {
-      const response = await this.makeRequest<DeepLTranslateResponse>(
-        'POST',
-        '/v2/translate',
-        params
-      );
-
-      if (!response.translations || response.translations.length === 0) {
-        throw new Error(`No translation returned from DeepL API. Request: translate text (${text.length} chars) to ${options.targetLang}`);
-      }
-
-      const translation = response.translations[0];
-      if (!translation) {
-        throw new Error(`Empty translation in API response. Request: translate text (${text.length} chars) to ${options.targetLang}`);
-      }
-
-      return {
-        text: translation.text,
-        detectedSourceLang: translation.detected_source_language
-          ? this.normalizeLanguage(translation.detected_source_language)
-          : undefined,
-        billedCharacters: translation.billed_characters ?? response.billed_characters,
-        modelTypeUsed: translation.model_type_used,
-      };
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.translationClient.translate(text, options);
   }
 
-  /**
-   * Translate multiple texts in a single API call
-   * More efficient than calling translate() multiple times
-   */
   async translateBatch(
     texts: string[],
     options: TranslationOptions
   ): Promise<TranslationResult[]> {
-    // Handle empty array
-    if (texts.length === 0) {
-      return [];
-    }
-
-    // Build request parameters using shared helper
-    const params = this.buildTranslationParams(texts, options);
-
-    try {
-      const response = await this.makeRequest<DeepLTranslateResponse>(
-        'POST',
-        '/v2/translate',
-        params
-      );
-
-      if (!response.translations) {
-        throw new Error(`No translations returned from DeepL API. Request: batch translate ${texts.length} texts to ${options.targetLang}`);
-      }
-
-      // Verify we got the same number of translations as texts
-      if (response.translations.length !== texts.length) {
-        throw new Error(`Translation count mismatch: sent ${texts.length} texts but received ${response.translations.length} translations. Target language: ${options.targetLang}`);
-      }
-
-      // Map response translations to results
-      // Note: billed_characters can be returned per translation or at the batch level
-      return response.translations.map((translation) => ({
-        text: translation.text,
-        detectedSourceLang: translation.detected_source_language
-          ? this.normalizeLanguage(translation.detected_source_language)
-          : undefined,
-        billedCharacters: translation.billed_characters ?? response.billed_characters,
-        modelTypeUsed: translation.model_type_used,
-      }));
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.translationClient.translateBatch(texts, options);
   }
 
-  /**
-   * Get usage statistics
-   */
   async getUsage(): Promise<UsageInfo> {
-    try {
-      const response = await this.makeRequest<DeepLUsageResponse>(
-        'GET',
-        '/v2/usage'
-      );
-
-      const usage: UsageInfo = {
-        characterCount: response.character_count,
-        characterLimit: response.character_limit,
-      };
-
-      if (response.api_key_character_count !== undefined) {
-        usage.apiKeyCharacterCount = response.api_key_character_count;
-      }
-      if (response.api_key_character_limit !== undefined) {
-        usage.apiKeyCharacterLimit = response.api_key_character_limit;
-      }
-      if (response.start_time) {
-        usage.startTime = response.start_time;
-      }
-      if (response.end_time) {
-        usage.endTime = response.end_time;
-      }
-      if (response.products) {
-        usage.products = response.products.map(p => ({
-          productType: p.product_type,
-          characterCount: p.character_count,
-          apiKeyCharacterCount: p.api_key_character_count,
-        }));
-      }
-
-      return usage;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.translationClient.getUsage();
   }
 
-  /**
-   * Get supported languages
-   */
   async getSupportedLanguages(
     type: 'source' | 'target'
   ): Promise<LanguageInfo[]> {
-    try {
-      const response = await this.makeRequest<DeepLLanguageResponse[]>(
-        'GET',
-        '/v2/languages',
-        { type }
-      );
-
-      return response.map((lang) => ({
-        language: this.normalizeLanguage(lang.language),
-        name: lang.name,
-        ...(lang.supports_formality !== undefined && { supportsFormality: lang.supports_formality }),
-      }));
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.translationClient.getSupportedLanguages(type);
   }
 
-  /**
-   * Get supported glossary language pairs
-   */
   async getGlossaryLanguages(): Promise<GlossaryLanguagePair[]> {
-    try {
-      const response = await this.makeRequest<DeepLGlossaryLanguagePairsResponse>(
-        'GET',
-        '/v2/glossary-language-pairs'
-      );
-
-      return response.supported_languages.map((pair) => ({
-        sourceLang: this.normalizeLanguage(pair.source_lang),
-        targetLang: this.normalizeLanguage(pair.target_lang),
-      }));
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.getGlossaryLanguages();
   }
 
-  /**
-   * List all API keys (Admin API)
-   */
-  async listApiKeys(): Promise<AdminApiKey[]> {
-    try {
-      const response = await this.makeJsonRequest<Array<{
-        key_id: string;
-        label: string;
-        creation_time: string;
-        is_deactivated: boolean;
-        usage_limits?: { characters?: number | null };
-      }>>('GET', '/v2/admin/developer-keys');
-
-      return response.map((key) => this.normalizeApiKey(key));
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Create a new API key (Admin API)
-   */
-  async createApiKey(label?: string): Promise<AdminApiKey> {
-    try {
-      const body: Record<string, string> = {};
-      if (label) {
-        body['label'] = label;
-      }
-
-      const response = await this.makeJsonRequest<{
-        key_id: string;
-        label: string;
-        creation_time: string;
-        is_deactivated: boolean;
-        usage_limits?: { characters?: number | null };
-      }>('POST', '/v2/admin/developer-keys', body);
-
-      return this.normalizeApiKey(response);
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Deactivate an API key (Admin API, permanent)
-   */
-  async deactivateApiKey(keyId: string): Promise<void> {
-    try {
-      await this.makeJsonRequest<void>(
-        'PUT', '/v2/admin/developer-keys/deactivate', { key_id: keyId }
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Rename an API key (Admin API)
-   */
-  async renameApiKey(keyId: string, label: string): Promise<void> {
-    try {
-      await this.makeJsonRequest<void>(
-        'PUT', '/v2/admin/developer-keys/label', { key_id: keyId, label }
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Set usage limit for an API key (Admin API)
-   */
-  async setApiKeyLimit(keyId: string, characters: number | null): Promise<void> {
-    try {
-      await this.makeJsonRequest<void>(
-        'PUT', '/v2/admin/developer-keys/limits',
-        { key_id: keyId, characters } as unknown as Record<string, unknown>
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Get organization usage analytics (Admin API)
-   */
-  async getAdminUsage(options: AdminUsageOptions): Promise<AdminUsageReport> {
-    try {
-      const params: Record<string, string> = {
-        start_date: options.startDate,
-        end_date: options.endDate,
-      };
-
-      if (options.groupBy) {
-        params['group_by'] = options.groupBy;
-      }
-
-      interface RawUsageBreakdown {
-        total_characters: number;
-        text_translation_characters: number;
-        document_translation_characters: number;
-        text_improvement_characters: number;
-      }
-
-      interface RawEntry {
-        api_key?: string;
-        api_key_label?: string;
-        usage_date?: string;
-        usage: RawUsageBreakdown;
-      }
-
-      const response = await this.makeJsonRequest<{
-        usage_report: {
-          total_usage: RawUsageBreakdown;
-          start_date: string;
-          end_date: string;
-          group_by?: string;
-          key_usages?: RawEntry[];
-          key_and_day_usages?: RawEntry[];
-        };
-      }>('GET', '/v2/admin/analytics', params as unknown as Record<string, unknown>);
-
-      const report = response.usage_report;
-
-      const mapBreakdown = (raw: RawUsageBreakdown): UsageBreakdown => ({
-        totalCharacters: raw.total_characters,
-        textTranslationCharacters: raw.text_translation_characters,
-        documentTranslationCharacters: raw.document_translation_characters,
-        textImprovementCharacters: raw.text_improvement_characters,
-      });
-
-      const rawEntries = report.key_usages ?? report.key_and_day_usages ?? [];
-
-      return {
-        totalUsage: mapBreakdown(report.total_usage),
-        startDate: report.start_date,
-        endDate: report.end_date,
-        groupBy: report.group_by,
-        entries: rawEntries.map((entry) => ({
-          apiKey: entry.api_key,
-          apiKeyLabel: entry.api_key_label,
-          usageDate: entry.usage_date,
-          usage: mapBreakdown(entry.usage),
-        })),
-      };
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  private normalizeApiKey(key: {
-    key_id: string;
-    label: string;
-    creation_time: string;
-    is_deactivated: boolean;
-    usage_limits?: { characters?: number | null };
-  }): AdminApiKey {
-    return {
-      keyId: key.key_id,
-      label: key.label,
-      creationTime: key.creation_time,
-      isDeactivated: key.is_deactivated,
-      usageLimits: key.usage_limits,
-    };
-  }
-
-  /**
-   * Get style rules (v3 API)
-   */
-  async getStyleRules(
-    options: StyleRulesListOptions = {}
-  ): Promise<(StyleRule | StyleRuleDetailed)[]> {
-    try {
-      const params: Record<string, string | number | boolean> = {};
-
-      if (options.detailed) {
-        params['detailed'] = true;
-      }
-
-      if (options.page !== undefined) {
-        params['page'] = options.page;
-      }
-
-      if (options.pageSize !== undefined) {
-        params['page_size'] = options.pageSize;
-      }
-
-      const response = await this.makeJsonRequest<{
-        style_rules: Array<{
-          style_id: string;
-          name: string;
-          language: string;
-          version: number;
-          creation_time: string;
-          updated_time: string;
-          configured_rules?: string[];
-          custom_instructions?: string[];
-        }>;
-      }>('GET', '/v3/style_rules', params as unknown as Record<string, unknown>);
-
-      return response.style_rules.map((rule) => {
-        const base: StyleRule = {
-          styleId: rule.style_id,
-          name: rule.name,
-          language: rule.language,
-          version: rule.version,
-          creationTime: rule.creation_time,
-          updatedTime: rule.updated_time,
-        };
-
-        if (options.detailed && rule.configured_rules && rule.custom_instructions) {
-          return {
-            ...base,
-            configuredRules: rule.configured_rules,
-            customInstructions: rule.custom_instructions,
-          } as StyleRuleDetailed;
-        }
-
-        return base;
-      });
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Make HTTP request with retry logic (form-encoded body for POST/PUT/PATCH)
-   */
-  private async makeRequest<T>(
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
-    path: string,
-    data?: Record<string, unknown>
-  ): Promise<T> {
-    const buildConfig = (): Record<string, unknown> => {
-      if (method === 'GET') {
-        return { params: data };
-      } else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-        const formData = new URLSearchParams();
-        if (data) {
-          for (const [key, value] of Object.entries(data)) {
-            if (Array.isArray(value)) {
-              value.forEach(v => formData.append(key, String(v)));
-            } else {
-              formData.append(key, String(value));
-            }
-          }
-        }
-        return {
-          data: formData.toString(),
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        };
-      }
-      return {};
-    };
-
-    return this.executeWithRetry<T>(method, path, buildConfig);
-  }
-
-  /**
-   * Make HTTP request with retry logic (JSON body for POST/PUT/PATCH)
-   */
-  private async makeJsonRequest<T>(
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
-    path: string,
-    data?: Record<string, unknown>,
-    params?: Record<string, string | number | boolean>
-  ): Promise<T> {
-    const buildConfig = (): Record<string, unknown> => {
-      const config: Record<string, unknown> = {};
-
-      if (params) {
-        config['params'] = params;
-      }
-
-      if (method === 'GET') {
-        if (data) {
-          config['params'] = { ...params as Record<string, unknown>, ...data };
-        }
-      } else if (data !== undefined) {
-        config['data'] = data;
-        config['headers'] = {
-          'Content-Type': 'application/json',
-        };
-      }
-
-      return config;
-    };
-
-    return this.executeWithRetry<T>(method, path, buildConfig);
-  }
-
-  /**
-   * Make HTTP request with retry logic (raw axios config)
-   */
-  private async makeRawRequest<T>(
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
-    path: string,
-    buildConfig: () => Record<string, unknown>
-  ): Promise<T> {
-    return this.executeWithRetry<T>(method, path, buildConfig);
-  }
-
-  /**
-   * Core retry loop shared by all request methods
-   */
-  private async executeWithRetry<T>(
-    method: string,
-    path: string,
-    buildConfig: () => Record<string, unknown>
-  ): Promise<T> {
-    let lastError: Error | undefined;
-
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-      try {
-        const config = buildConfig();
-
-        const response = await this.client.request<T>({
-          method,
-          url: path,
-          ...config,
-        });
-
-        const traceId = response.headers?.['x-trace-id'] as string | undefined;
-        if (traceId) {
-          this._lastTraceId = traceId;
-        }
-
-        return response.data;
-      } catch (error) {
-        lastError = error as Error;
-
-        if (this.isAxiosError(error)) {
-          const traceId = error.response?.headers?.['x-trace-id'] as string | undefined;
-          if (traceId) {
-            this._lastTraceId = traceId;
-          }
-        }
-
-        // Don't retry on client errors (4xx)
-        if (this.isAxiosError(error)) {
-          const status = error.response?.status;
-          if (status && status >= 400 && status < 500) {
-            throw error;
-          }
-        }
-
-        // Wait before retry (exponential backoff)
-        if (attempt < this.maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-          await this.sleep(delay);
-        }
-      }
-    }
-
-    throw lastError;
-  }
-
-  /**
-   * Handle and normalize errors
-   */
-  private handleError(error: unknown): Error {
-    const traceIdSuffix = this._lastTraceId ? ` (Trace ID: ${this._lastTraceId})` : '';
-
-    if (this.isAxiosError(error)) {
-      const status = error.response?.status;
-      const responseData = error.response?.data as { message?: string } | undefined;
-      const message = responseData?.message ?? error.message;
-
-      switch (status) {
-        case 403:
-          return new Error(`Authentication failed: Invalid API key${traceIdSuffix}`);
-        case 456:
-          return new Error(`Quota exceeded: Character limit reached${traceIdSuffix}`);
-        case 429:
-          return new Error(`Rate limit exceeded: Too many requests${traceIdSuffix}`);
-        case 503:
-          return new Error(`Service temporarily unavailable: Please try again later${traceIdSuffix}`);
-        default:
-          return new Error(`API error: ${message}${traceIdSuffix}`);
-      }
-    }
-
-    if (error instanceof Error) {
-      return error;
-    }
-
-    return new Error('Unknown error occurred');
-  }
-
-  /**
-   * Normalize language code to lowercase
-   */
-  private normalizeLanguage(lang: string): Language {
-    return lang.toLowerCase() as Language;
-  }
-
-  private validateGlossaryId(glossaryId: string): void {
-    if (!/^[a-zA-Z0-9-]+$/.test(glossaryId)) {
-      throw new Error('Invalid glossary ID format');
-    }
-  }
-
-  /**
-   * Type guard for Axios errors
-   */
-  private isAxiosError(error: unknown): error is AxiosError {
-    return axios.isAxiosError(error);
-  }
-
-  /**
-   * Sleep helper for retry delays
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Build translation parameters from options
-   * Shared between translate() and translateBatch()
-   */
-  private buildTranslationParams(
-    texts: string[],
-    options: TranslationOptions
-  ): Record<string, string | string[] | number | boolean> {
-    const params: Record<string, string | string[] | number | boolean> = {
-      text: texts,
-      target_lang: this.normalizeLanguage(options.targetLang).toUpperCase(),
-    };
-
-    if (options.sourceLang) {
-      params['source_lang'] = this.normalizeLanguage(options.sourceLang).toUpperCase();
-    }
-
-    if (options.formality) {
-      params['formality'] = options.formality;
-    }
-
-    if (options.glossaryId) {
-      params['glossary_id'] = options.glossaryId;
-    }
-
-    if (options.preserveFormatting) {
-      params['preserve_formatting'] = '1';
-    }
-
-    if (options.context) {
-      params['context'] = options.context;
-    }
-
-    if (options.splitSentences) {
-      params['split_sentences'] = options.splitSentences;
-    }
-
-    if (options.tagHandling) {
-      params['tag_handling'] = options.tagHandling;
-    }
-
-    if (options.modelType) {
-      params['model_type'] = options.modelType;
-    }
-
-    if (options.showBilledCharacters) {
-      params['show_billed_characters'] = '1';
-    }
-
-    if (options.outlineDetection !== undefined) {
-      params['outline_detection'] = options.outlineDetection ? '1' : '0';
-    }
-
-    if (options.splittingTags && options.splittingTags.length > 0) {
-      params['splitting_tags'] = options.splittingTags.join(',');
-    }
-
-    if (options.nonSplittingTags && options.nonSplittingTags.length > 0) {
-      params['non_splitting_tags'] = options.nonSplittingTags.join(',');
-    }
-
-    if (options.ignoreTags && options.ignoreTags.length > 0) {
-      params['ignore_tags'] = options.ignoreTags.join(',');
-    }
-
-    if (options.customInstructions && options.customInstructions.length > 0) {
-      params['custom_instructions'] = options.customInstructions;
-    }
-
-    if (options.styleId) {
-      params['style_id'] = options.styleId;
-    }
-
-    if (options.tagHandlingVersion) {
-      params['tag_handling_version'] = options.tagHandlingVersion;
-    }
-
-    return params;
-  }
-
-  /**
-   * Create a glossary (v3 API - supports multilingual glossaries)
-   * v3 API requires dictionaries array in JSON format (not form-encoded)
-   */
   async createGlossary(
     name: string,
     sourceLang: Language,
     targetLangs: Language[],
     entries: string
   ): Promise<GlossaryInfo> {
-    if (targetLangs.length === 0) {
-      throw new Error('At least one target language is required');
-    }
-
-    try {
-      const dictionaries = targetLangs.map(targetLang => ({
-        source_lang: sourceLang.toUpperCase(),
-        target_lang: targetLang.toUpperCase(),
-        entries,
-        entries_format: 'tsv',
-      }));
-
-      const response = await this.makeJsonRequest<GlossaryApiResponse>(
-        'POST', '/v3/glossaries',
-        { name, dictionaries } as unknown as Record<string, unknown>
-      );
-
-      return normalizeGlossaryInfo(response);
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.createGlossary(name, sourceLang, targetLangs, entries);
   }
 
-  /**
-   * List all glossaries (v3 API)
-   */
   async listGlossaries(): Promise<GlossaryInfo[]> {
-    try {
-      const response = await this.makeRequest<{ glossaries: GlossaryApiResponse[] }>(
-        'GET',
-        '/v3/glossaries'
-      );
-
-      return (response.glossaries || []).map(normalizeGlossaryInfo);
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.listGlossaries();
   }
 
-  /**
-   * Get glossary information (v3 API)
-   */
   async getGlossary(glossaryId: string): Promise<GlossaryInfo> {
-    this.validateGlossaryId(glossaryId);
-    try {
-      const response = await this.makeRequest<GlossaryApiResponse>(
-        'GET',
-        `/v3/glossaries/${glossaryId}`
-      );
-
-      return normalizeGlossaryInfo(response);
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.getGlossary(glossaryId);
   }
 
-  /**
-   * Delete a glossary (v3 API)
-   */
   async deleteGlossary(glossaryId: string): Promise<void> {
-    this.validateGlossaryId(glossaryId);
-    try {
-      await this.makeRequest<void>(
-        'DELETE',
-        `/v3/glossaries/${glossaryId}`
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.deleteGlossary(glossaryId);
   }
 
-  /**
-   * Get glossary entries for a specific language pair (v3 API)
-   * Note: v3 API returns JSON with TSV data in entries field, not raw TSV
-   */
   async getGlossaryEntries(
     glossaryId: string,
     sourceLang: Language,
     targetLang: Language
   ): Promise<string> {
-    this.validateGlossaryId(glossaryId);
-    try {
-      const response = await this.makeJsonRequest<{
-        dictionaries: Array<{
-          source_lang: string;
-          target_lang: string;
-          entries: string;
-          entries_format: string;
-        }>;
-      }>('GET', `/v3/glossaries/${glossaryId}/entries`, {
-        source_lang: sourceLang.toUpperCase(),
-        target_lang: targetLang.toUpperCase(),
-      });
-
-      if (!response.dictionaries || response.dictionaries.length === 0) {
-        return '';
-      }
-
-      const dictionary = response.dictionaries[0];
-      if (!dictionary) {
-        return '';
-      }
-
-      return dictionary.entries;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.getGlossaryEntries(glossaryId, sourceLang, targetLang);
   }
 
-  /**
-   * Update glossary entries for a specific language pair (v3 API)
-   */
   async updateGlossaryEntries(
     glossaryId: string,
     sourceLang: Language,
     targetLang: Language,
     entries: string
   ): Promise<void> {
-    this.validateGlossaryId(glossaryId);
-    try {
-      await this.makeRequest<void>(
-        'PATCH',
-        `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`,
-        {
-          entries,
-          entries_format: 'tsv',
-        }
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.updateGlossaryEntries(glossaryId, sourceLang, targetLang, entries);
   }
 
-  /**
-   * Replace all entries in a glossary dictionary (v3 API)
-   * Unlike PATCH (updateGlossaryEntries), PUT replaces the entire dictionary
-   */
   async replaceGlossaryDictionary(
     glossaryId: string,
     sourceLang: Language,
     targetLang: Language,
     entries: string
   ): Promise<void> {
-    this.validateGlossaryId(glossaryId);
-    try {
-      await this.makeRequest<void>(
-        'PUT',
-        `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`,
-        {
-          entries,
-          entries_format: 'tsv',
-        }
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.replaceGlossaryDictionary(glossaryId, sourceLang, targetLang, entries);
   }
 
-  /**
-   * Rename a glossary (v3 API)
-   */
   async renameGlossary(glossaryId: string, newName: string): Promise<void> {
-    this.validateGlossaryId(glossaryId);
-    try {
-      await this.makeRequest<void>(
-        'PATCH',
-        `/v3/glossaries/${glossaryId}`,
-        {
-          name: newName,
-        }
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.renameGlossary(glossaryId, newName);
   }
 
-  /**
-   * Delete a dictionary from a multilingual glossary (v3 API)
-   * Removes a specific language pair from the glossary
-   */
   async deleteGlossaryDictionary(
     glossaryId: string,
     sourceLang: Language,
     targetLang: Language
   ): Promise<void> {
-    this.validateGlossaryId(glossaryId);
-    try {
-      await this.makeRequest<void>(
-        'DELETE',
-        `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.glossaryClient.deleteGlossaryDictionary(glossaryId, sourceLang, targetLang);
   }
 
-  /**
-   * Improve text using DeepL Write API
-   */
-  async improveText(
-    text: string,
-    options: WriteOptions
-  ): Promise<WriteImprovement[]> {
-    if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty');
-    }
-
-    if (options.writingStyle && options.tone) {
-      throw new Error('Cannot specify both writing_style and tone in a single request');
-    }
-
-    const params: Record<string, string | string[]> = {
-      text: [text],
-    };
-
-    if (options.targetLang) {
-      params['target_lang'] = options.targetLang;
-    }
-
-    if (options.writingStyle) {
-      params['writing_style'] = options.writingStyle;
-    }
-
-    if (options.tone) {
-      params['tone'] = options.tone;
-    }
-
-    try {
-      const response = await this.makeRequest<DeepLWriteResponse>(
-        'POST',
-        '/v2/write/rephrase',
-        params
-      );
-
-      if (!response.improvements || response.improvements.length === 0) {
-        throw new Error('No improvements returned');
-      }
-
-      return response.improvements.map(improvement => ({
-        text: improvement.text,
-        targetLanguage: improvement.target_language as WriteImprovement['targetLanguage'],
-        detectedSourceLanguage: improvement.detected_source_language,
-      }));
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Upload document for translation
-   */
   async uploadDocument(
     file: Buffer,
     options: DocumentTranslationOptions
   ): Promise<DocumentHandle> {
-    if (!file || file.length === 0) {
-      throw new Error('Document file cannot be empty');
-    }
-
-    if (!options.filename) {
-      throw new Error('filename is required when uploading document as Buffer');
-    }
-
-    const { default: FormData } = await import('form-data');
-
-    try {
-      const response = await this.makeRawRequest<DeepLDocumentUploadResponse>(
-        'POST',
-        '/v2/document',
-        () => {
-          const formData = new FormData();
-          formData.append('file', file, options.filename);
-          formData.append('target_lang', this.normalizeLanguage(options.targetLang).toUpperCase());
-
-          if (options.sourceLang) {
-            formData.append('source_lang', this.normalizeLanguage(options.sourceLang).toUpperCase());
-          }
-          if (options.formality) {
-            formData.append('formality', options.formality);
-          }
-          if (options.glossaryId) {
-            formData.append('glossary_id', options.glossaryId);
-          }
-          if (options.outputFormat) {
-            formData.append('output_format', options.outputFormat);
-          }
-          if (options.enableDocumentMinification) {
-            formData.append('enable_document_minification', '1');
-          }
-
-          return {
-            data: formData,
-            headers: {
-              ...formData.getHeaders(),
-            },
-          };
-        }
-      );
-
-      return {
-        documentId: response.document_id,
-        documentKey: response.document_key,
-      };
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.documentClient.uploadDocument(file, options);
   }
 
-  /**
-   * Get document translation status
-   */
   async getDocumentStatus(handle: DocumentHandle): Promise<DocumentStatus> {
-    try {
-      const response = await this.makeRequest<DeepLDocumentStatusResponse>(
-        'POST',
-        `/v2/document/${handle.documentId}`,
-        { document_key: handle.documentKey }
-      );
-
-      return {
-        documentId: response.document_id,
-        status: response.status,
-        secondsRemaining: response.seconds_remaining,
-        billedCharacters: response.billed_characters,
-        errorMessage: response.error_message,
-      };
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return this.documentClient.getDocumentStatus(handle);
   }
 
-  /**
-   * Download translated document
-   */
   async downloadDocument(handle: DocumentHandle): Promise<Buffer> {
-    try {
-      const response = await this.makeRawRequest<Buffer>(
-        'POST',
-        `/v2/document/${handle.documentId}/result`,
-        () => {
-          const formData = new URLSearchParams();
-          formData.append('document_key', handle.documentKey);
-          return {
-            data: formData.toString(),
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            responseType: 'arraybuffer',
-          };
-        }
-      );
+    return this.documentClient.downloadDocument(handle);
+  }
 
-      return Buffer.from(response);
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async improveText(
+    text: string,
+    options: WriteOptions
+  ): Promise<WriteImprovement[]> {
+    return this.writeClient.improveText(text, options);
+  }
+
+  async getStyleRules(
+    options: StyleRulesListOptions = {}
+  ): Promise<(StyleRule | StyleRuleDetailed)[]> {
+    return this.styleRulesClient.getStyleRules(options);
+  }
+
+  async listApiKeys(): Promise<AdminApiKey[]> {
+    return this.adminClient.listApiKeys();
+  }
+
+  async createApiKey(label?: string): Promise<AdminApiKey> {
+    return this.adminClient.createApiKey(label);
+  }
+
+  async deactivateApiKey(keyId: string): Promise<void> {
+    return this.adminClient.deactivateApiKey(keyId);
+  }
+
+  async renameApiKey(keyId: string, label: string): Promise<void> {
+    return this.adminClient.renameApiKey(keyId, label);
+  }
+
+  async setApiKeyLimit(keyId: string, characters: number | null): Promise<void> {
+    return this.adminClient.setApiKeyLimit(keyId, characters);
+  }
+
+  async getAdminUsage(options: AdminUsageOptions): Promise<AdminUsageReport> {
+    return this.adminClient.getAdminUsage(options);
   }
 }
