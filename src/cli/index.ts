@@ -14,6 +14,7 @@ import { ConfigService } from '../storage/config.js';
 import type { CacheService } from '../storage/cache.js';
 import type { DeepLClient } from '../api/deepl-client.js';
 import { Logger } from '../utils/logger.js';
+import { DeepLCLIError } from '../utils/errors.js';
 import { ExitCode, getExitCodeFromError } from '../utils/exit-codes.js';
 import { isSymlink } from '../utils/safe-read-file.js';
 import { registerAuth } from './commands/register-auth.js';
@@ -28,6 +29,7 @@ import { registerGlossary } from './commands/register-glossary.js';
 import { registerHooks } from './commands/register-hooks.js';
 import { registerStyleRules } from './commands/register-style-rules.js';
 import { registerAdmin } from './commands/register-admin.js';
+import { registerCompletion } from './commands/register-completion.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -64,6 +66,11 @@ function handleError(error: unknown): never {
   const exitCode = error instanceof Error ? getExitCodeFromError(error) : ExitCode.GeneralError;
 
   Logger.error(chalk.red('Error:'), errorMessage);
+
+  if (error instanceof DeepLCLIError && error.suggestion) {
+    Logger.error(chalk.yellow('Suggestion:'), error.suggestion);
+  }
+
   process.exit(exitCode);
 }
 
@@ -103,6 +110,7 @@ program
   .description('DeepL CLI - Next-generation translation tool powered by DeepL API')
   .version(version)
   .option('-q, --quiet', 'Suppress all non-essential output (errors and results only)')
+  .option('-v, --verbose', 'Show extra information (source language, timing, cache status)')
   .option('-c, --config <file>', 'Use alternate configuration file')
   .hook('preAction', (thisCommand) => {
     const options = thisCommand.opts();
@@ -138,6 +146,16 @@ program
       Logger.setQuiet(true);
     }
 
+    // Set verbose mode: --verbose flag takes precedence over config
+    if (options['verbose']) {
+      Logger.setVerbose(true);
+    } else {
+      const configVerbose = configService.getValue<boolean>('output.verbose');
+      if (configVerbose === true) {
+        Logger.setVerbose(true);
+      }
+    }
+
     // Disable colors if output.color is false in config
     const colorEnabled = configService.getValue<boolean>('output.color');
     if (colorEnabled === false) {
@@ -167,6 +185,7 @@ registerGlossary(program, deps);
 registerHooks(program, deps);
 registerStyleRules(program, deps);
 registerAdmin(program, deps);
+registerCompletion(program, deps);
 
 // Parse arguments
 program.parse(process.argv);
