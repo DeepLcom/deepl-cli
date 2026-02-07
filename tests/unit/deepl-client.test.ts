@@ -887,12 +887,45 @@ describe('DeepLClient', () => {
       delete process.env['HTTP_PROXY'];
     });
 
-    it('should include original error message when proxy URL is invalid (Issue #2)', () => {
+    it('should sanitize invalid proxy URL in error message (Issue #2)', () => {
       process.env['HTTP_PROXY'] = 'not-a-valid-url';
       expect(() => {
         new DeepLClient(apiKey);
-      }).toThrow(/Invalid proxy URL.*not-a-valid-url/);
+      }).toThrow(/Invalid proxy URL.*\[invalid URL\]/);
       delete process.env['HTTP_PROXY'];
+    });
+
+    it('should sanitize credentials from proxy URL in error messages', () => {
+      process.env['HTTP_PROXY'] = 'http://user:s3cret@proxy.example.com:8080';
+      const proxyClient = new DeepLClient(apiKey);
+      expect(proxyClient).toBeDefined();
+      delete process.env['HTTP_PROXY'];
+    });
+
+    it('should not leak credentials when proxy URL with auth fails to parse host', () => {
+      process.env['HTTP_PROXY'] = 'http://user:s3cret@';
+      try {
+        new DeepLClient(apiKey);
+      } catch (e: any) {
+        expect(e.message).not.toContain('s3cret');
+        expect(e.message).toMatch(/Invalid proxy URL/);
+      } finally {
+        delete process.env['HTTP_PROXY'];
+      }
+    });
+
+    it('should not leak credentials for invalid proxy URL with auth', () => {
+      process.env['HTTP_PROXY'] = 'http://user:s3cret@proxy.example.com:99999';
+      try {
+        new DeepLClient(apiKey);
+        fail('Should have thrown');
+      } catch (e: any) {
+        expect(e.message).not.toContain('s3cret');
+        expect(e.message).not.toContain('user');
+        expect(e.message).toContain('[invalid URL]');
+      } finally {
+        delete process.env['HTTP_PROXY'];
+      }
     });
   });
 

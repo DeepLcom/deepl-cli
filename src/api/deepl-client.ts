@@ -133,6 +133,19 @@ export interface LanguageInfo {
   supportsFormality?: boolean;
 }
 
+function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.username || parsed.password) {
+      parsed.username = '***';
+      parsed.password = '***';
+    }
+    return parsed.toString();
+  } catch {
+    return '[invalid URL]';
+  }
+}
+
 const FREE_API_URL = 'https://api-free.deepl.com';
 const PRO_API_URL = 'https://api.deepl.com';
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
@@ -204,7 +217,7 @@ export class DeepLClient {
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          throw new Error(`Invalid proxy URL "${proxyUrl}": ${errorMessage}`);
+          throw new Error(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
         }
       }
     }
@@ -403,15 +416,15 @@ export class DeepLClient {
    */
   async listApiKeys(): Promise<AdminApiKey[]> {
     try {
-      const response = await this.client.get<Array<{
+      const response = await this.makeJsonRequest<Array<{
         key_id: string;
         label: string;
         creation_time: string;
         is_deactivated: boolean;
         usage_limits?: { characters?: number | null };
-      }>>('/v2/admin/developer-keys');
+      }>>('GET', '/v2/admin/developer-keys');
 
-      return response.data.map((key) => this.normalizeApiKey(key));
+      return response.map((key) => this.normalizeApiKey(key));
     } catch (error) {
       throw this.handleError(error);
     }
@@ -427,17 +440,15 @@ export class DeepLClient {
         body['label'] = label;
       }
 
-      const response = await this.client.post<{
+      const response = await this.makeJsonRequest<{
         key_id: string;
         label: string;
         creation_time: string;
         is_deactivated: boolean;
         usage_limits?: { characters?: number | null };
-      }>('/v2/admin/developer-keys', body, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      }>('POST', '/v2/admin/developer-keys', body);
 
-      return this.normalizeApiKey(response.data);
+      return this.normalizeApiKey(response);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -448,9 +459,9 @@ export class DeepLClient {
    */
   async deactivateApiKey(keyId: string): Promise<void> {
     try {
-      await this.client.put('/v2/admin/developer-keys/deactivate', { key_id: keyId }, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      await this.makeJsonRequest<void>(
+        'PUT', '/v2/admin/developer-keys/deactivate', { key_id: keyId }
+      );
     } catch (error) {
       throw this.handleError(error);
     }
@@ -461,9 +472,9 @@ export class DeepLClient {
    */
   async renameApiKey(keyId: string, label: string): Promise<void> {
     try {
-      await this.client.put('/v2/admin/developer-keys/label', { key_id: keyId, label }, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      await this.makeJsonRequest<void>(
+        'PUT', '/v2/admin/developer-keys/label', { key_id: keyId, label }
+      );
     } catch (error) {
       throw this.handleError(error);
     }
@@ -474,9 +485,10 @@ export class DeepLClient {
    */
   async setApiKeyLimit(keyId: string, characters: number | null): Promise<void> {
     try {
-      await this.client.put('/v2/admin/developer-keys/limits', { key_id: keyId, characters }, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      await this.makeJsonRequest<void>(
+        'PUT', '/v2/admin/developer-keys/limits',
+        { key_id: keyId, characters } as unknown as Record<string, unknown>
+      );
     } catch (error) {
       throw this.handleError(error);
     }
@@ -510,7 +522,7 @@ export class DeepLClient {
         usage: RawUsageBreakdown;
       }
 
-      const response = await this.client.get<{
+      const response = await this.makeJsonRequest<{
         usage_report: {
           total_usage: RawUsageBreakdown;
           start_date: string;
@@ -519,9 +531,9 @@ export class DeepLClient {
           key_usages?: RawEntry[];
           key_and_day_usages?: RawEntry[];
         };
-      }>('/v2/admin/analytics', { params });
+      }>('GET', '/v2/admin/analytics', params as unknown as Record<string, unknown>);
 
-      const report = response.data.usage_report;
+      const report = response.usage_report;
 
       const mapBreakdown = (raw: RawUsageBreakdown): UsageBreakdown => ({
         totalCharacters: raw.total_characters,
@@ -586,7 +598,7 @@ export class DeepLClient {
         params['page_size'] = options.pageSize;
       }
 
-      const response = await this.client.get<{
+      const response = await this.makeJsonRequest<{
         style_rules: Array<{
           style_id: string;
           name: string;
@@ -597,9 +609,9 @@ export class DeepLClient {
           configured_rules?: string[];
           custom_instructions?: string[];
         }>;
-      }>('/v3/style_rules', { params });
+      }>('GET', '/v3/style_rules', params as unknown as Record<string, unknown>);
 
-      return response.data.style_rules.map((rule) => {
+      return response.style_rules.map((rule) => {
         const base: StyleRule = {
           styleId: rule.style_id,
           name: rule.name,
@@ -625,43 +637,97 @@ export class DeepLClient {
   }
 
   /**
-   * Make HTTP request with retry logic
+   * Make HTTP request with retry logic (form-encoded body for POST/PUT/PATCH)
    */
   private async makeRequest<T>(
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     data?: Record<string, unknown>
   ): Promise<T> {
+    const buildConfig = (): Record<string, unknown> => {
+      if (method === 'GET') {
+        return { params: data };
+      } else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+        const formData = new URLSearchParams();
+        if (data) {
+          for (const [key, value] of Object.entries(data)) {
+            if (Array.isArray(value)) {
+              value.forEach(v => formData.append(key, String(v)));
+            } else {
+              formData.append(key, String(value));
+            }
+          }
+        }
+        return {
+          data: formData.toString(),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        };
+      }
+      return {};
+    };
+
+    return this.executeWithRetry<T>(method, path, buildConfig);
+  }
+
+  /**
+   * Make HTTP request with retry logic (JSON body for POST/PUT/PATCH)
+   */
+  private async makeJsonRequest<T>(
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+    path: string,
+    data?: Record<string, unknown>,
+    params?: Record<string, string | number | boolean>
+  ): Promise<T> {
+    const buildConfig = (): Record<string, unknown> => {
+      const config: Record<string, unknown> = {};
+
+      if (params) {
+        config['params'] = params;
+      }
+
+      if (method === 'GET') {
+        if (data) {
+          config['params'] = { ...params as Record<string, unknown>, ...data };
+        }
+      } else if (data !== undefined) {
+        config['data'] = data;
+        config['headers'] = {
+          'Content-Type': 'application/json',
+        };
+      }
+
+      return config;
+    };
+
+    return this.executeWithRetry<T>(method, path, buildConfig);
+  }
+
+  /**
+   * Make HTTP request with retry logic (raw axios config)
+   */
+  private async makeRawRequest<T>(
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+    path: string,
+    buildConfig: () => Record<string, unknown>
+  ): Promise<T> {
+    return this.executeWithRetry<T>(method, path, buildConfig);
+  }
+
+  /**
+   * Core retry loop shared by all request methods
+   */
+  private async executeWithRetry<T>(
+    method: string,
+    path: string,
+    buildConfig: () => Record<string, unknown>
+  ): Promise<T> {
     let lastError: Error | undefined;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
-        let config: Record<string, unknown> = {};
-
-        if (method === 'GET') {
-          config = { params: data };
-        } else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-          // DeepL API uses form-encoded data
-          const formData = new URLSearchParams();
-          if (data) {
-            for (const [key, value] of Object.entries(data)) {
-              if (Array.isArray(value)) {
-                value.forEach(v => formData.append(key, String(v)));
-              } else {
-                formData.append(key, String(value));
-              }
-            }
-          }
-          config = {
-            data: formData.toString(),
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-          };
-        } else if (method === 'DELETE') {
-          // DELETE typically doesn't have a body
-          config = {};
-        }
+        const config = buildConfig();
 
         const response = await this.client.request<T>({
           method,
@@ -858,8 +924,6 @@ export class DeepLClient {
     }
 
     try {
-      // v3 API expects dictionaries array, not flat structure
-      // Create a dictionary for each target language
       const dictionaries = targetLangs.map(targetLang => ({
         source_lang: sourceLang.toUpperCase(),
         target_lang: targetLang.toUpperCase(),
@@ -867,24 +931,12 @@ export class DeepLClient {
         entries_format: 'tsv',
       }));
 
-      const requestBody = {
-        name,
-        dictionaries,
-      };
-
-      // v3 glossary creation requires JSON, not form-encoded data
-      // Use axios client directly instead of makeRequest
-      const response = await this.client.post<GlossaryApiResponse>(
-        '/v3/glossaries',
-        requestBody,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+      const response = await this.makeJsonRequest<GlossaryApiResponse>(
+        'POST', '/v3/glossaries',
+        { name, dictionaries } as unknown as Record<string, unknown>
       );
 
-      return normalizeGlossaryInfo(response.data);
+      return normalizeGlossaryInfo(response);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -949,31 +1001,23 @@ export class DeepLClient {
   ): Promise<string> {
     this.validateGlossaryId(glossaryId);
     try {
-      // v3 API requires source and target lang query params
-      // v3 always returns JSON with structure: { dictionaries: [{ entries: "tsv data" }] }
-      const response = await this.client.get<{
+      const response = await this.makeJsonRequest<{
         dictionaries: Array<{
           source_lang: string;
           target_lang: string;
           entries: string;
           entries_format: string;
         }>;
-      }>(
-        `/v3/glossaries/${glossaryId}/entries`,
-        {
-          params: {
-            source_lang: sourceLang.toUpperCase(),
-            target_lang: targetLang.toUpperCase(),
-          },
-        }
-      );
+      }>('GET', `/v3/glossaries/${glossaryId}/entries`, {
+        source_lang: sourceLang.toUpperCase(),
+        target_lang: targetLang.toUpperCase(),
+      });
 
-      // Extract TSV data from the first dictionary
-      if (!response.data.dictionaries || response.data.dictionaries.length === 0) {
+      if (!response.dictionaries || response.dictionaries.length === 0) {
         return '';
       }
 
-      const dictionary = response.data.dictionaries[0];
+      const dictionary = response.dictionaries[0];
       if (!dictionary) {
         return '';
       }
@@ -1138,46 +1182,45 @@ export class DeepLClient {
       throw new Error('filename is required when uploading document as Buffer');
     }
 
-    // Create form data with multipart/form-data
     const { default: FormData } = await import('form-data');
-    const formData = new FormData();
-
-    formData.append('file', file, options.filename);
-    formData.append('target_lang', this.normalizeLanguage(options.targetLang).toUpperCase());
-
-    if (options.sourceLang) {
-      formData.append('source_lang', this.normalizeLanguage(options.sourceLang).toUpperCase());
-    }
-
-    if (options.formality) {
-      formData.append('formality', options.formality);
-    }
-
-    if (options.glossaryId) {
-      formData.append('glossary_id', options.glossaryId);
-    }
-
-    if (options.outputFormat) {
-      formData.append('output_format', options.outputFormat);
-    }
-
-    if (options.enableDocumentMinification) {
-      formData.append('enable_document_minification', '1');
-    }
 
     try {
-      const response = await this.client.request<DeepLDocumentUploadResponse>({
-        method: 'POST',
-        url: '/v2/document',
-        data: formData,
-        headers: {
-          ...formData.getHeaders(),
-        },
-      });
+      const response = await this.makeRawRequest<DeepLDocumentUploadResponse>(
+        'POST',
+        '/v2/document',
+        () => {
+          const formData = new FormData();
+          formData.append('file', file, options.filename);
+          formData.append('target_lang', this.normalizeLanguage(options.targetLang).toUpperCase());
+
+          if (options.sourceLang) {
+            formData.append('source_lang', this.normalizeLanguage(options.sourceLang).toUpperCase());
+          }
+          if (options.formality) {
+            formData.append('formality', options.formality);
+          }
+          if (options.glossaryId) {
+            formData.append('glossary_id', options.glossaryId);
+          }
+          if (options.outputFormat) {
+            formData.append('output_format', options.outputFormat);
+          }
+          if (options.enableDocumentMinification) {
+            formData.append('enable_document_minification', '1');
+          }
+
+          return {
+            data: formData,
+            headers: {
+              ...formData.getHeaders(),
+            },
+          };
+        }
+      );
 
       return {
-        documentId: response.data.document_id,
-        documentKey: response.data.document_key,
+        documentId: response.document_id,
+        documentKey: response.document_key,
       };
     } catch (error) {
       throw this.handleError(error);
@@ -1188,25 +1231,19 @@ export class DeepLClient {
    * Get document translation status
    */
   async getDocumentStatus(handle: DocumentHandle): Promise<DocumentStatus> {
-    const formData = new URLSearchParams();
-    formData.append('document_key', handle.documentKey);
-
     try {
-      const response = await this.client.request<DeepLDocumentStatusResponse>({
-        method: 'POST',
-        url: `/v2/document/${handle.documentId}`,
-        data: formData.toString(),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
+      const response = await this.makeRequest<DeepLDocumentStatusResponse>(
+        'POST',
+        `/v2/document/${handle.documentId}`,
+        { document_key: handle.documentKey }
+      );
 
       return {
-        documentId: response.data.document_id,
-        status: response.data.status,
-        secondsRemaining: response.data.seconds_remaining,
-        billedCharacters: response.data.billed_characters,
-        errorMessage: response.data.error_message,
+        documentId: response.document_id,
+        status: response.status,
+        secondsRemaining: response.seconds_remaining,
+        billedCharacters: response.billed_characters,
+        errorMessage: response.error_message,
       };
     } catch (error) {
       throw this.handleError(error);
@@ -1217,21 +1254,24 @@ export class DeepLClient {
    * Download translated document
    */
   async downloadDocument(handle: DocumentHandle): Promise<Buffer> {
-    const formData = new URLSearchParams();
-    formData.append('document_key', handle.documentKey);
-
     try {
-      const response = await this.client.request<Buffer>({
-        method: 'POST',
-        url: `/v2/document/${handle.documentId}/result`,
-        data: formData.toString(),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        responseType: 'arraybuffer',
-      });
+      const response = await this.makeRawRequest<Buffer>(
+        'POST',
+        `/v2/document/${handle.documentId}/result`,
+        () => {
+          const formData = new URLSearchParams();
+          formData.append('document_key', handle.documentKey);
+          return {
+            data: formData.toString(),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            responseType: 'arraybuffer',
+          };
+        }
+      );
 
-      return Buffer.from(response.data);
+      return Buffer.from(response);
     } catch (error) {
       throw this.handleError(error);
     }

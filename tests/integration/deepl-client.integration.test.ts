@@ -1053,7 +1053,7 @@ describe('DeepLClient Integration', () => {
     });
 
     it('should handle 503 document not ready errors', async () => {
-      const client = new DeepLClient(API_KEY);
+      const client = new DeepLClient(API_KEY, { maxRetries: 0 });
 
       nock(FREE_API_URL)
         .post('/v2/document/doc-123/result')
