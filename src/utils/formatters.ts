@@ -6,6 +6,7 @@
 import Table from 'cli-table3';
 import { TranslationResult } from '../api/deepl-client.js';
 import { Language } from '../types/index.js';
+import type { VoiceSessionResult } from '../types/voice.js';
 
 export interface TranslateJsonOutput {
   text: string;
@@ -130,4 +131,47 @@ export function formatMultiTranslationTable(
   });
 
   return table.toString();
+}
+
+export interface VoiceJsonOutput {
+  sessionId: string;
+  source: {
+    lang: string;
+    text: string;
+    segments: Array<{ text: string; startTime: number; endTime: number }>;
+  };
+  targets: Array<{
+    lang: string;
+    text: string;
+    segments: Array<{ text: string; startTime: number; endTime: number }>;
+  }>;
+}
+
+/**
+ * Format voice translation result as JSON
+ */
+export function formatVoiceJson(result: VoiceSessionResult): string {
+  const output: VoiceJsonOutput = {
+    sessionId: result.sessionId,
+    source: {
+      lang: result.source.lang,
+      text: result.source.text,
+      segments: result.source.segments.map((s) => ({
+        text: s.text,
+        startTime: s.start_time,
+        endTime: s.end_time,
+      })),
+    },
+    targets: result.targets.map((t) => ({
+      lang: t.lang,
+      text: t.text,
+      segments: t.segments.map((s) => ({
+        text: s.text,
+        startTime: s.start_time,
+        endTime: s.end_time,
+      })),
+    })),
+  };
+
+  return JSON.stringify(output, null, 2);
 }

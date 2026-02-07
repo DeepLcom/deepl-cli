@@ -30,6 +30,7 @@ import { registerHooks } from './commands/register-hooks.js';
 import { registerStyleRules } from './commands/register-style-rules.js';
 import { registerAdmin } from './commands/register-admin.js';
 import { registerCompletion } from './commands/register-completion.js';
+import { registerVoice } from './commands/register-voice.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -163,12 +164,34 @@ program
     }
   });
 
+/**
+ * Get raw API key and client options without constructing a client.
+ * Used by VoiceClient which needs direct access to create its own client.
+ */
+function getApiKeyAndOptions(): { apiKey: string; options: import('../api/http-client.js').DeepLClientOptions } {
+  const apiKey = configService.getValue<string>('auth.apiKey');
+  const envKey = process.env['DEEPL_API_KEY'];
+  const key = apiKey ?? envKey;
+
+  if (!key) {
+    Logger.error(chalk.red('Error: API key not set'));
+    Logger.warn(chalk.yellow('Run: deepl auth set-key <your-api-key>'));
+    process.exit(ExitCode.AuthError);
+  }
+
+  const baseUrl = configService.getValue<string>('api.baseUrl');
+  const usePro = configService.getValue<boolean>('api.usePro');
+
+  return { apiKey: key, options: { baseUrl, usePro } };
+}
+
 // Shared dependencies passed to register functions
 // Use a getter for configService because the preAction hook may reassign it
 const deps = {
   getConfigService: () => configService,
   getCacheService,
   createDeepLClient,
+  getApiKeyAndOptions,
   handleError,
 };
 
@@ -186,6 +209,7 @@ registerHooks(program, deps);
 registerStyleRules(program, deps);
 registerAdmin(program, deps);
 registerCompletion(program, deps);
+registerVoice(program, deps);
 
 // Parse arguments
 program.parse(process.argv);

@@ -1,6 +1,7 @@
 import type { DeepLClient } from '../../api/deepl-client.js';
 import type { ConfigService } from '../../storage/config.js';
 import type { CacheService } from '../../storage/cache.js';
+import type { DeepLClientOptions } from '../../api/http-client.js';
 import type { GlossaryCommand } from './glossary.js';
 import type { AdminCommand } from './admin.js';
 import type { WriteCommand } from './write.js';
@@ -8,11 +9,14 @@ import type { StyleRulesCommand } from './style-rules.js';
 import type { UsageCommand } from './usage.js';
 import type { TranslateCommand } from './translate.js';
 import type { WatchCommand } from './watch.js';
+import type { VoiceCommand } from './voice.js';
 
 export type CreateDeepLClient = (overrideBaseUrl?: string) => Promise<DeepLClient>;
+export type GetApiKeyAndOptions = () => { apiKey: string; options: DeepLClientOptions };
 
 export interface ServiceDeps {
   createDeepLClient: CreateDeepLClient;
+  getApiKeyAndOptions: GetApiKeyAndOptions;
   getConfigService: () => ConfigService;
   getCacheService: () => Promise<CacheService>;
   handleError: (error: unknown) => never;
@@ -88,4 +92,16 @@ export async function createWatchCommand(
   const translationService = new TranslationService(client, deps.getConfigService(), await deps.getCacheService());
   const glossaryService = new GlossaryService(client);
   return new WatchCmd(translationService, glossaryService);
+}
+
+export async function createVoiceCommand(
+  getApiKeyAndOptions: GetApiKeyAndOptions,
+): Promise<VoiceCommand> {
+  const { apiKey, options } = getApiKeyAndOptions();
+  const { VoiceClient } = await import('../../api/voice-client.js');
+  const { VoiceService } = await import('../../services/voice.js');
+  const { VoiceCommand: VoiceCmd } = await import('./voice.js');
+  const voiceClient = new VoiceClient(apiKey, options);
+  const voiceService = new VoiceService(voiceClient);
+  return new VoiceCmd(voiceService);
 }

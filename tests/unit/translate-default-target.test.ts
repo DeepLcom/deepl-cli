@@ -73,6 +73,7 @@ describe('translate command default target language', () => {
 
     mockDeps = {
       createDeepLClient: jest.fn(),
+      getApiKeyAndOptions: jest.fn().mockReturnValue({ apiKey: 'test-key', options: {} }),
       getConfigService: jest.fn().mockReturnValue(mockConfigService),
       getCacheService: jest.fn(),
       handleError: handleErrorSpy as unknown as (error: unknown) => never,
