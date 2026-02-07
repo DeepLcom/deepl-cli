@@ -59,7 +59,7 @@ Examples:
             const authCommand = new AuthCommand(getConfigService());
             const key = await authCommand.getKey();
             if (key) {
-              const masked = key.substring(0, 8) + '...' + key.substring(key.length - 4);
+              const masked = key.substring(0, 4) + '...' + key.substring(key.length - 4);
               Logger.info(chalk.blue('API Key:'), masked);
             } else {
               Logger.output(chalk.yellow('No API key set'));

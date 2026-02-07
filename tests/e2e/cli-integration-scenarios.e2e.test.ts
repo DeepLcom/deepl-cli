@@ -128,14 +128,14 @@ describe('CLI Integration Scenarios E2E', () => {
     });
 
     it('should clear cache successfully', () => {
-      const output = runCLIAll('cache clear');
+      const output = runCLIAll('cache clear --yes');
 
       expect(output).toMatch(/cleared|empty|deleted/i);
     });
 
     it('should show stats after clearing cache', () => {
       // Clear cache
-      runCLI('cache clear');
+      runCLI('cache clear --yes');
 
       // Check stats show empty cache
       const output = runCLI('cache stats');
@@ -342,7 +342,7 @@ describe('CLI Integration Scenarios E2E', () => {
       fs.writeFileSync(testFile, 'Cache test');
 
       // Clear cache
-      runCLI('cache clear');
+      runCLI('cache clear --yes');
 
       // Attempt translation (will fail at API)
       runCLIExpectError(`translate "${testFile}" --to es`, 'test-key:fx');

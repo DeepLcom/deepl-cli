@@ -138,7 +138,7 @@ describe('CLI Workflow E2E', () => {
       expect(getValue.trim()).toBe('false');
 
       // Step 4: Reset config (success message goes to stderr via Logger.success)
-      const resetOutput = runCLIAll('deepl config reset');
+      const resetOutput = runCLIAll('deepl config reset --yes');
       expect(resetOutput).toContain('reset');
 
       // Step 5: Verify reset worked (should be back to default true)
@@ -155,7 +155,7 @@ describe('CLI Workflow E2E', () => {
       expect(output.trim()).toBe('false');
 
       // Reset
-      runCLI('deepl config reset');
+      runCLI('deepl config reset --yes');
     });
 
     it('should handle array config values', () => {
@@ -168,7 +168,7 @@ describe('CLI Workflow E2E', () => {
       expect(parsed).toEqual(['es', 'fr', 'de']);
 
       // Reset
-      runCLI('deepl config reset');
+      runCLI('deepl config reset --yes');
     });
   });
 
@@ -180,7 +180,7 @@ describe('CLI Workflow E2E', () => {
       expect(statsOutput).toContain('Entries:');
 
       // Step 2: Clear cache (success message goes to stderr via Logger.success)
-      const clearOutput = runCLIAll('deepl cache clear');
+      const clearOutput = runCLIAll('deepl cache clear --yes');
       expect(clearOutput).toContain('cleared');
 
       // Step 3: Verify cache is empty
@@ -331,7 +331,7 @@ describe('CLI Workflow E2E', () => {
       expect(cacheEnabled.trim()).toBe('true');
 
       // Clean up
-      runCLI('deepl config reset');
+      runCLI('deepl config reset --yes');
     });
 
     it('should handle cache configuration via config commands', () => {
@@ -371,7 +371,7 @@ describe('CLI Workflow E2E', () => {
       expect(JSON.parse(thirdCall.trim())).toEqual(['de', 'fr']);
 
       // Clean up
-      runCLI('deepl config reset');
+      runCLI('deepl config reset --yes');
     });
 
     it('should respect config hierarchy (CLI flags > config file)', () => {
@@ -385,7 +385,7 @@ describe('CLI Workflow E2E', () => {
       // CLI flags should override config when used
       // (This is validated by translate command requiring --to flag even with defaults)
       // Clean up
-      runCLI('deepl config reset');
+      runCLI('deepl config reset --yes');
     });
 
     it('should handle config file operations without corruption', () => {
@@ -412,7 +412,7 @@ describe('CLI Workflow E2E', () => {
       expect(JSON.parse(targetLangs.trim())).toEqual(['en', 'ja']);
 
       // Reset and verify clean state
-      runCLI('deepl config reset');
+      runCLI('deepl config reset --yes');
       const afterReset = runCLI('deepl config get defaults.targetLangs');
       expect(JSON.parse(afterReset.trim())).toEqual([]);
     });
@@ -495,7 +495,7 @@ describe('CLI Workflow E2E', () => {
       const value = runCLI('deepl config get output.color');
       expect(value.trim()).toBe('false');
 
-      runCLI('deepl config reset');
+      runCLI('deepl config reset --yes');
       // If we got here, all exit codes were 0
     });
 
@@ -663,7 +663,7 @@ describe('CLI Workflow E2E', () => {
         expect(value.trim()).toBe('false');
 
         // Reset
-        runCLI('deepl config reset');
+        runCLI('deepl config reset --yes');
       });
     });
 

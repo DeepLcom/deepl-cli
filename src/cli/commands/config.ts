@@ -33,8 +33,8 @@ export class ConfigCommand {
   async get(key?: string): Promise<unknown> {
     if (key) {
       const value = this.config.getValue(key);
-      if (key === 'auth.apiKey' && typeof value === 'string' && value.length > 12) {
-        return value.substring(0, 8) + '...' + value.substring(value.length - 4);
+      if (key === 'auth.apiKey' && typeof value === 'string' && value.length > 8) {
+        return value.substring(0, 4) + '...' + value.substring(value.length - 4);
       }
       return value;
     }
@@ -102,7 +102,7 @@ export class ConfigCommand {
       const auth = masked['auth'] as Record<string, unknown>;
       if (auth['apiKey'] && typeof auth['apiKey'] === 'string') {
         const apiKey = auth['apiKey'];
-        auth['apiKey'] = apiKey.substring(0, 8) + '...' + apiKey.substring(apiKey.length - 4);
+        auth['apiKey'] = apiKey.substring(0, 4) + '...' + apiKey.substring(apiKey.length - 4);
       }
     }
 
