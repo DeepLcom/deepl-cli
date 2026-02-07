@@ -9,12 +9,13 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname, join, resolve, isAbsolute } from 'path';
+import { dirname, join, resolve, isAbsolute, extname } from 'path';
 import { ConfigService } from '../storage/config.js';
 import type { CacheService } from '../storage/cache.js';
 import type { DeepLClient } from '../api/deepl-client.js';
 import { Logger } from '../utils/logger.js';
 import { ExitCode, getExitCodeFromError } from '../utils/exit-codes.js';
+import { isSymlink } from '../utils/safe-read-file.js';
 import { registerAuth } from './commands/register-auth.js';
 import { registerUsage } from './commands/register-usage.js';
 import { registerLanguages } from './commands/register-languages.js';
@@ -117,10 +118,17 @@ program
         ? resolve(customConfigPath)
         : resolve(process.cwd(), customConfigPath);
 
-      // SECURITY CHECK: After resolution, verify the path hasn't escaped
-      // the intended boundaries. Since we're allowing both absolute and
-      // relative paths for flexibility, we just ensure the path is normalized.
-      // The main protection is that resolve() handles '..' safely.
+      // SECURITY: Require .json extension to prevent overwriting arbitrary files
+      if (extname(safePath).toLowerCase() !== '.json') {
+        Logger.error(chalk.red('Error: --config path must have a .json extension'));
+        process.exit(ExitCode.InvalidInput);
+      }
+
+      // SECURITY: Reject symlinks to prevent path traversal
+      if (isSymlink(safePath)) {
+        Logger.error(chalk.red('Error: --config path must not be a symlink'));
+        process.exit(ExitCode.InvalidInput);
+      }
 
       configService = new ConfigService(safePath);
     }
