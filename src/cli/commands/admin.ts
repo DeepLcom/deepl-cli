@@ -4,7 +4,7 @@
  */
 
 import { DeepLClient } from '../../api/deepl-client.js';
-import { AdminApiKey, AdminUsageEntry, AdminUsageOptions } from '../../types/index.js';
+import { AdminApiKey, AdminUsageOptions, AdminUsageReport, UsageBreakdown } from '../../types/index.js';
 
 export class AdminCommand {
   private client: DeepLClient;
@@ -33,7 +33,7 @@ export class AdminCommand {
     return this.client.setApiKeyLimit(keyId, characters);
   }
 
-  async getUsage(options: AdminUsageOptions): Promise<AdminUsageEntry[]> {
+  async getUsage(options: AdminUsageOptions): Promise<AdminUsageReport> {
     return this.client.getAdminUsage(options);
   }
 
@@ -78,21 +78,32 @@ export class AdminCommand {
     return lines.join('\n');
   }
 
-  formatUsage(entries: AdminUsageEntry[]): string {
-    if (entries.length === 0) {
-      return 'No usage data found for the specified period.';
-    }
-
+  private formatBreakdown(usage: UsageBreakdown, indent = '  '): string[] {
     const lines: string[] = [];
-    lines.push(`Usage data (${entries.length} entries):\n`);
+    lines.push(`${indent}Total:       ${usage.totalCharacters.toLocaleString()}`);
+    lines.push(`${indent}Translation: ${usage.textTranslationCharacters.toLocaleString()}`);
+    lines.push(`${indent}Documents:   ${usage.documentTranslationCharacters.toLocaleString()}`);
+    lines.push(`${indent}Write:       ${usage.textImprovementCharacters.toLocaleString()}`);
+    return lines;
+  }
 
-    for (const entry of entries) {
-      const parts: string[] = [];
-      if (entry.keyId) parts.push(`Key: ${entry.keyId}`);
-      if (entry.date) parts.push(`Date: ${entry.date}`);
-      parts.push(`Translated: ${entry.charactersTranslated.toLocaleString()}`);
-      parts.push(`Billed: ${entry.charactersBilled.toLocaleString()}`);
-      lines.push(`  ${parts.join(' | ')}`);
+  formatUsage(report: AdminUsageReport): string {
+    const lines: string[] = [];
+    lines.push(`Period: ${report.startDate} to ${report.endDate}\n`);
+    lines.push('Total Usage:');
+    lines.push(...this.formatBreakdown(report.totalUsage));
+
+    if (report.entries.length > 0) {
+      lines.push('');
+      lines.push(`Per-Key Usage (${report.entries.length} entries):\n`);
+
+      for (const entry of report.entries) {
+        const label = entry.apiKeyLabel || entry.apiKey || 'unknown';
+        const datePart = entry.usageDate ? ` (${entry.usageDate})` : '';
+        lines.push(`  ${label}${datePart}`);
+        lines.push(...this.formatBreakdown(entry.usage, '    '));
+        lines.push('');
+      }
     }
 
     return lines.join('\n');

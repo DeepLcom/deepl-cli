@@ -20,8 +20,9 @@ import {
   StyleRuleDetailed,
   StyleRulesListOptions,
   AdminApiKey,
-  AdminUsageEntry,
   AdminUsageOptions,
+  AdminUsageReport,
+  UsageBreakdown,
 } from '../types';
 import { normalizeGlossaryInfo, GlossaryApiResponse } from '../types/glossary.js';
 
@@ -484,7 +485,7 @@ export class DeepLClient {
   /**
    * Get organization usage analytics (Admin API)
    */
-  async getAdminUsage(options: AdminUsageOptions): Promise<AdminUsageEntry[]> {
+  async getAdminUsage(options: AdminUsageOptions): Promise<AdminUsageReport> {
     try {
       const params: Record<string, string> = {
         start_date: options.startDate,
@@ -495,19 +496,54 @@ export class DeepLClient {
         params['group_by'] = options.groupBy;
       }
 
-      const response = await this.client.get<Array<{
-        key_id?: string;
-        date?: string;
-        characters_translated: number;
-        characters_billed: number;
-      }>>('/v2/admin/usage', { params });
+      interface RawUsageBreakdown {
+        total_characters: number;
+        text_translation_characters: number;
+        document_translation_characters: number;
+        text_improvement_characters: number;
+      }
 
-      return response.data.map((entry) => ({
-        keyId: entry.key_id,
-        date: entry.date,
-        charactersTranslated: entry.characters_translated,
-        charactersBilled: entry.characters_billed,
-      }));
+      interface RawEntry {
+        api_key?: string;
+        api_key_label?: string;
+        usage_date?: string;
+        usage: RawUsageBreakdown;
+      }
+
+      const response = await this.client.get<{
+        usage_report: {
+          total_usage: RawUsageBreakdown;
+          start_date: string;
+          end_date: string;
+          group_by?: string;
+          key_usages?: RawEntry[];
+          key_and_day_usages?: RawEntry[];
+        };
+      }>('/v2/admin/analytics', { params });
+
+      const report = response.data.usage_report;
+
+      const mapBreakdown = (raw: RawUsageBreakdown): UsageBreakdown => ({
+        totalCharacters: raw.total_characters,
+        textTranslationCharacters: raw.text_translation_characters,
+        documentTranslationCharacters: raw.document_translation_characters,
+        textImprovementCharacters: raw.text_improvement_characters,
+      });
+
+      const rawEntries = report.key_usages ?? report.key_and_day_usages ?? [];
+
+      return {
+        totalUsage: mapBreakdown(report.total_usage),
+        startDate: report.start_date,
+        endDate: report.end_date,
+        groupBy: report.group_by,
+        entries: rawEntries.map((entry) => ({
+          apiKey: entry.api_key,
+          apiKeyLabel: entry.api_key_label,
+          usageDate: entry.usage_date,
+          usage: mapBreakdown(entry.usage),
+        })),
+      };
     } catch (error) {
       throw this.handleError(error);
     }

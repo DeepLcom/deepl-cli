@@ -2005,43 +2005,73 @@ describe('DeepLClient', () => {
     describe('getAdminUsage', () => {
       it('should fetch usage data', async () => {
         nock(baseUrl)
-          .get('/v2/admin/usage')
+          .get('/v2/admin/analytics')
           .query({ start_date: '2024-01-01', end_date: '2024-01-31' })
-          .reply(200, [
-            {
-              characters_translated: 5000,
-              characters_billed: 5000,
+          .reply(200, {
+            usage_report: {
+              total_usage: {
+                total_characters: 5000,
+                text_translation_characters: 3000,
+                document_translation_characters: 1500,
+                text_improvement_characters: 500,
+              },
+              start_date: '2024-01-01',
+              end_date: '2024-01-31',
             },
-          ]);
+          });
 
-        const entries = await client.getAdminUsage({
+        const report = await client.getAdminUsage({
           startDate: '2024-01-01',
           endDate: '2024-01-31',
         });
 
-        expect(entries).toHaveLength(1);
-        expect(entries[0]?.charactersTranslated).toBe(5000);
+        expect(report.totalUsage.totalCharacters).toBe(5000);
+        expect(report.totalUsage.textTranslationCharacters).toBe(3000);
+        expect(report.totalUsage.documentTranslationCharacters).toBe(1500);
+        expect(report.totalUsage.textImprovementCharacters).toBe(500);
+        expect(report.entries).toHaveLength(0);
       });
 
       it('should pass group_by parameter', async () => {
         nock(baseUrl)
-          .get('/v2/admin/usage')
+          .get('/v2/admin/analytics')
           .query({ start_date: '2024-01-01', end_date: '2024-01-31', group_by: 'key' })
-          .reply(200, [
-            {
-              key_id: 'key-1',
-              characters_translated: 3000,
-              characters_billed: 3000,
+          .reply(200, {
+            usage_report: {
+              total_usage: {
+                total_characters: 3000,
+                text_translation_characters: 3000,
+                document_translation_characters: 0,
+                text_improvement_characters: 0,
+              },
+              start_date: '2024-01-01',
+              end_date: '2024-01-31',
+              group_by: 'key',
+              key_usages: [
+                {
+                  api_key: 'dc88****3a2c',
+                  api_key_label: 'Staging',
+                  usage: {
+                    total_characters: 3000,
+                    text_translation_characters: 3000,
+                    document_translation_characters: 0,
+                    text_improvement_characters: 0,
+                  },
+                },
+              ],
             },
-          ]);
+          });
 
-        const entries = await client.getAdminUsage({
+        const report = await client.getAdminUsage({
           startDate: '2024-01-01',
           endDate: '2024-01-31',
           groupBy: 'key',
         });
 
-        expect(entries[0]?.keyId).toBe('key-1');
+        expect(report.entries).toHaveLength(1);
+        expect(report.entries[0]?.apiKey).toBe('dc88****3a2c');
+        expect(report.entries[0]?.apiKeyLabel).toBe('Staging');
+        expect(report.entries[0]?.usage.totalCharacters).toBe(3000);
       });
     });
   });

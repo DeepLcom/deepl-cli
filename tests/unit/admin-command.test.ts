@@ -4,9 +4,21 @@
 
 import { AdminCommand } from '../../src/cli/commands/admin';
 import { DeepLClient } from '../../src/api/deepl-client';
-import { AdminApiKey, AdminUsageEntry } from '../../src/types/api';
+import { AdminApiKey, AdminUsageReport } from '../../src/types/api';
 
 jest.mock('../../src/api/deepl-client');
+
+const emptyReport: AdminUsageReport = {
+  totalUsage: {
+    totalCharacters: 0,
+    textTranslationCharacters: 0,
+    documentTranslationCharacters: 0,
+    textImprovementCharacters: 0,
+  },
+  startDate: '2024-01-01',
+  endDate: '2024-01-31',
+  entries: [],
+};
 
 describe('AdminCommand', () => {
   let mockClient: jest.Mocked<DeepLClient>;
@@ -26,7 +38,7 @@ describe('AdminCommand', () => {
       deactivateApiKey: jest.fn().mockResolvedValue(undefined),
       renameApiKey: jest.fn().mockResolvedValue(undefined),
       setApiKeyLimit: jest.fn().mockResolvedValue(undefined),
-      getAdminUsage: jest.fn().mockResolvedValue([]),
+      getAdminUsage: jest.fn().mockResolvedValue(emptyReport),
     } as unknown as jest.Mocked<DeepLClient>;
 
     command = new AdminCommand(mockClient);
@@ -153,24 +165,93 @@ describe('AdminCommand', () => {
   });
 
   describe('formatUsage', () => {
-    it('should format empty usage', () => {
-      expect(command.formatUsage([])).toBe('No usage data found for the specified period.');
+    it('should format report with total usage and per-product breakdown', () => {
+      const report: AdminUsageReport = {
+        totalUsage: {
+          totalCharacters: 10000,
+          textTranslationCharacters: 7000,
+          documentTranslationCharacters: 2000,
+          textImprovementCharacters: 1000,
+        },
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+        entries: [],
+      };
+
+      const result = command.formatUsage(report);
+      expect(result).toContain('2024-01-01');
+      expect(result).toContain('2024-01-31');
+      expect(result).toContain('Total Usage:');
+      expect(result).toContain('10,000');
+      expect(result).toContain('Translation: 7,000');
+      expect(result).toContain('Documents:   2,000');
+      expect(result).toContain('Write:       1,000');
     });
 
-    it('should format usage entries', () => {
-      const entries: AdminUsageEntry[] = [
-        {
-          keyId: 'key-1',
-          date: '2024-01-01',
-          charactersTranslated: 5000,
-          charactersBilled: 5000,
+    it('should format report with per-key entries', () => {
+      const report: AdminUsageReport = {
+        totalUsage: {
+          totalCharacters: 5000,
+          textTranslationCharacters: 5000,
+          documentTranslationCharacters: 0,
+          textImprovementCharacters: 0,
         },
-      ];
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+        entries: [
+          {
+            apiKey: 'dc88****3a2c',
+            apiKeyLabel: 'Staging Key',
+            usage: {
+              totalCharacters: 5000,
+              textTranslationCharacters: 5000,
+              documentTranslationCharacters: 0,
+              textImprovementCharacters: 0,
+            },
+          },
+        ],
+      };
 
-      const result = command.formatUsage(entries);
-      expect(result).toContain('1 entries');
-      expect(result).toContain('key-1');
+      const result = command.formatUsage(report);
+      expect(result).toContain('Per-Key Usage (1 entries)');
+      expect(result).toContain('Staging Key');
       expect(result).toContain('5,000');
+    });
+
+    it('should format report with per-key-and-day entries', () => {
+      const report: AdminUsageReport = {
+        totalUsage: {
+          totalCharacters: 3000,
+          textTranslationCharacters: 2000,
+          documentTranslationCharacters: 500,
+          textImprovementCharacters: 500,
+        },
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        entries: [
+          {
+            apiKey: 'dc88****3a2c',
+            apiKeyLabel: 'Staging Key',
+            usageDate: '2024-01-01T00:00:00Z',
+            usage: {
+              totalCharacters: 3000,
+              textTranslationCharacters: 2000,
+              documentTranslationCharacters: 500,
+              textImprovementCharacters: 500,
+            },
+          },
+        ],
+      };
+
+      const result = command.formatUsage(report);
+      expect(result).toContain('Staging Key');
+      expect(result).toContain('2024-01-01T00:00:00Z');
+    });
+
+    it('should show totals-only when no per-key entries', () => {
+      const result = command.formatUsage(emptyReport);
+      expect(result).toContain('Total Usage:');
+      expect(result).not.toContain('Per-Key Usage');
     });
   });
 

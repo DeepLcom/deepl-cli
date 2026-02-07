@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Per-product breakdown in `deepl admin usage`** - Usage analytics now show character counts per product (text translation, document translation, write) instead of aggregate totals only. Uses the new `/v2/admin/analytics` endpoint.
+- **Generic `en`/`pt` language codes for `deepl write`** - The Write API accepts generic `en` and `pt` in addition to regional variants (`en-GB`, `en-US`, `pt-BR`, `pt-PT`)
+
 ### Changed
 - **`deepl write --lang` is now optional** - When omitted, the API auto-detects the language and rephrases in the original language. Previously `--lang` was required.
+- **Admin usage endpoint migrated to `/v2/admin/analytics`** - Replaces the previous `/v2/admin/usage` endpoint with the richer analytics response format
 
 ## [0.9.0] - 2026-02-06
 
