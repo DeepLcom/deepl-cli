@@ -277,7 +277,7 @@ export class ConfigService {
         throw new Error('Invalid path: contains directory traversal');
       }
 
-      if (key === '.' || (key.startsWith('.') && key.length > 0)) {
+      if (key.startsWith('.')) {
         throw new Error('Invalid path: segment starts with dot');
       }
 

@@ -15,6 +15,7 @@ import { ConfigService } from '../../storage/config.js';
 import { Language, Formality } from '../../types/index.js';
 import { formatTranslationJson, formatMultiTranslationJson, formatMultiTranslationTable } from '../../utils/formatters.js';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 import { getAllLanguageCodes, getExtendedLanguageCodes } from '../../data/language-registry.js';
 
 const VALID_LANGUAGES: ReadonlySet<string> = getAllLanguageCodes();
@@ -23,6 +24,10 @@ const EXTENDED_ONLY_LANGUAGES: ReadonlySet<string> = getExtendedLanguageCodes();
 // Constants for text-based file caching
 const TEXT_BASED_EXTENSIONS = ['.txt', '.md', '.html', '.htm', '.srt', '.xlf', '.xliff'];
 const SAFE_TEXT_SIZE_LIMIT = 100 * 1024; // 100 KiB (safe threshold, API limit is 128 KiB)
+
+// Custom instruction limits
+const MAX_CUSTOM_INSTRUCTIONS = 10;
+const MAX_CUSTOM_INSTRUCTION_CHARS = 300;
 
 interface TranslateOptions {
   to: string;
@@ -81,7 +86,10 @@ export class TranslateCommand {
   private validateLanguageCodes(langCodes: string[]): void {
     for (const lang of langCodes) {
       if (!VALID_LANGUAGES.has(lang)) {
-        throw new Error(`Invalid target language code: "${lang}". Valid codes: ${Array.from(VALID_LANGUAGES).sort().join(', ')}`);
+        throw new ValidationError(
+          `Invalid target language code: "${lang}". Valid codes: ${Array.from(VALID_LANGUAGES).sort().join(', ')}`,
+          'Run: deepl languages  to see all available languages'
+        );
       }
     }
   }
@@ -376,12 +384,12 @@ export class TranslateCommand {
     }
 
     if (options.customInstruction && options.customInstruction.length > 0) {
-      if (options.customInstruction.length > 10) {
-        throw new Error('Maximum 10 custom instructions allowed');
+      if (options.customInstruction.length > MAX_CUSTOM_INSTRUCTIONS) {
+        throw new Error(`Maximum ${MAX_CUSTOM_INSTRUCTIONS} custom instructions allowed`);
       }
       for (const instruction of options.customInstruction) {
-        if (instruction.length > 300) {
-          throw new Error(`Custom instruction exceeds 300 character limit (${instruction.length} chars): "${instruction.substring(0, 50)}..."`);
+        if (instruction.length > MAX_CUSTOM_INSTRUCTION_CHARS) {
+          throw new Error(`Custom instruction exceeds ${MAX_CUSTOM_INSTRUCTION_CHARS} character limit (${instruction.length} chars): "${instruction.substring(0, 50)}..."`);
         }
       }
       if (options.modelType === 'latency_optimized') {
@@ -449,6 +457,15 @@ export class TranslateCommand {
         skipCache: !options.cache
       }
     );
+
+    // Verbose output
+    if (result.detectedSourceLang) {
+      Logger.verbose(`[verbose] Detected source language: ${result.detectedSourceLang}`);
+    }
+    if (result.modelTypeUsed) {
+      Logger.verbose(`[verbose] Model type used: ${result.modelTypeUsed}`);
+    }
+    Logger.verbose(`[verbose] Character count: ${text.length}`);
 
     // Format output based on format option
     if (options.format === 'json') {

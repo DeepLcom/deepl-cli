@@ -30,6 +30,7 @@ interface ExtendedUsageInfo extends UsageInfo {
 
 export const MAX_TEXT_BYTES = 131072; // 128KB - DeepL API limit per request
 export const MULTI_TARGET_CONCURRENCY = 5;
+export const TRANSLATE_BATCH_SIZE = 50; // DeepL API max texts per request
 
 export class TranslationService {
   private client: DeepLClient;
@@ -108,6 +109,7 @@ export class TranslationService {
     if (shouldUseCache) {
       const cachedResult = this.cache.get(cacheKey) as TranslationResult | null;
       if (cachedResult) {
+        Logger.verbose('[verbose] Cache hit');
         // Restore preserved content from cached result
         let finalText = cachedResult.text;
         for (const [placeholder, original] of preservationMap.entries()) {
@@ -118,10 +120,14 @@ export class TranslationService {
           text: finalText,
         };
       }
+      Logger.verbose('[verbose] Cache miss');
     }
 
     // Translate via API
+    const startTime = Date.now();
     const result = await this.client.translate(processedText, translationOptions);
+    const elapsed = Date.now() - startTime;
+    Logger.verbose(`[verbose] API response time: ${elapsed}ms`);
 
     // Store in cache
     if (shouldUseCache) {
@@ -233,8 +239,8 @@ export class TranslationService {
     }
 
     // Use batch API to translate all non-cached texts in a single request
-    // DeepL API supports up to 50 texts per request, so chunk if needed
-    const BATCH_SIZE = 50;
+    // DeepL API supports up to TRANSLATE_BATCH_SIZE texts per request, so chunk if needed
+    const BATCH_SIZE = TRANSLATE_BATCH_SIZE;
     const batches: string[][] = [];
     for (let i = 0; i < textsToTranslate.length; i += BATCH_SIZE) {
       batches.push(textsToTranslate.slice(i, i + BATCH_SIZE));

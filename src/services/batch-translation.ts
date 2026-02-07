@@ -38,6 +38,9 @@ interface BatchStatistics {
   skipped: number;
 }
 
+const DEFAULT_CONCURRENCY = 5;
+const MAX_CONCURRENCY = 100;
+
 export class BatchTranslationService {
   private fileTranslationService: FileTranslationService;
   private concurrency: number;
@@ -49,11 +52,11 @@ export class BatchTranslationService {
     this.fileTranslationService = fileTranslationService;
 
     // Validate concurrency parameter
-    const concurrency = options.concurrency ?? 5;
+    const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
     if (concurrency < 1) {
       throw new Error('Concurrency must be at least 1');
     }
-    if (concurrency > 100) {
+    if (concurrency > MAX_CONCURRENCY) {
       throw new Error('Concurrency cannot exceed 100');
     }
 

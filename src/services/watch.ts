@@ -45,6 +45,8 @@ export interface WatchStats {
   errorsCount: number;
 }
 
+const DEFAULT_DEBOUNCE_MS = 300;
+
 export class WatchService {
   private fileTranslationService: FileTranslationService;
   private watcher: FSWatcher | null = null;
@@ -64,7 +66,7 @@ export class WatchService {
   ) {
     this.fileTranslationService = fileTranslationService;
     this.options = {
-      debounceMs: 300,
+      debounceMs: DEFAULT_DEBOUNCE_MS,
       ...options,
     };
   }

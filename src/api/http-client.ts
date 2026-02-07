@@ -3,6 +3,7 @@ import * as http from 'http';
 import * as https from 'https';
 import { Language } from '../types';
 import { AuthError, RateLimitError, QuotaError, NetworkError } from '../utils/errors.js';
+import { Logger } from '../utils/logger.js';
 
 export interface ProxyConfig {
   protocol?: 'http' | 'https';
@@ -39,6 +40,11 @@ const FREE_API_URL = 'https://api-free.deepl.com';
 const PRO_API_URL = 'https://api.deepl.com';
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_MAX_RETRIES = 3;
+const MAX_SOCKETS = 10;
+const MAX_FREE_SOCKETS = 10;
+const KEEP_ALIVE_MSECS = 1000;
+const RETRY_INITIAL_DELAY_MS = 1000;
+const RETRY_MAX_DELAY_MS = 10000;
 
 export class HttpClient {
   protected client: AxiosInstance;
@@ -63,16 +69,16 @@ export class HttpClient {
       },
       httpAgent: new http.Agent({
         keepAlive: true,
-        keepAliveMsecs: 1000,
-        maxSockets: 10,
-        maxFreeSockets: 10,
+        keepAliveMsecs: KEEP_ALIVE_MSECS,
+        maxSockets: MAX_SOCKETS,
+        maxFreeSockets: MAX_FREE_SOCKETS,
         timeout: options.timeout ?? DEFAULT_TIMEOUT,
       }),
       httpsAgent: new https.Agent({
         keepAlive: true,
-        keepAliveMsecs: 1000,
-        maxSockets: 10,
-        maxFreeSockets: 10,
+        keepAliveMsecs: KEEP_ALIVE_MSECS,
+        maxSockets: MAX_SOCKETS,
+        maxFreeSockets: MAX_FREE_SOCKETS,
         timeout: options.timeout ?? DEFAULT_TIMEOUT,
       }),
     };
@@ -203,11 +209,14 @@ export class HttpClient {
       try {
         const config = buildConfig();
 
+        const requestStart = Date.now();
         const response = await this.client.request<T>({
           method,
           url: path,
           ...config,
         });
+        const requestElapsed = Date.now() - requestStart;
+        Logger.verbose(`[verbose] HTTP ${method} ${path} completed in ${requestElapsed}ms (status ${response.status})`);
 
         const traceId = response.headers?.['x-trace-id'] as string | undefined;
         if (traceId) {
@@ -233,7 +242,7 @@ export class HttpClient {
         }
 
         if (attempt < this.maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+          const delay = Math.min(RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
           await this.sleep(delay);
         }
       }
@@ -260,15 +269,30 @@ export class HttpClient {
         case 503:
           return new NetworkError(`Service temporarily unavailable: Please try again later${traceIdSuffix}`);
         default:
+          if (!error.response && this.isNetworkLevelError(error)) {
+            return new NetworkError(`Network error: ${error.message}`);
+          }
           return new Error(`API error: ${message}${traceIdSuffix}`);
       }
     }
 
     if (error instanceof Error) {
+      if (this.isNetworkLevelError(error)) {
+        return new NetworkError(`Network error: ${error.message}`);
+      }
       return error;
     }
 
     return new Error('Unknown error occurred');
+  }
+
+  private isNetworkLevelError(error: Error): boolean {
+    const msg = error.message.toLowerCase();
+    return msg.includes('econnrefused') ||
+      msg.includes('enotfound') ||
+      msg.includes('econnreset') ||
+      msg.includes('etimedout') ||
+      msg.includes('socket hang up');
   }
 
   protected normalizeLanguage(lang: string): Language {
