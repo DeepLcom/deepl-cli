@@ -1,75 +1,25 @@
 /**
  * Integration Tests for Batch Translation Service
  * Tests parallel file translation with progress tracking and error recovery
+ *
+ * Uses real temp directories with actual files instead of mocking fast-glob,
+ * so that changes to the fast-glob API are caught by these tests.
  */
 
-// Import fs and path BEFORE mocks since they're needed in mock implementation
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
+
+// Use real fast-glob instead of the automatic mock in __mocks__/fast-glob.ts
+jest.unmock('fast-glob');
 
 // Mock p-limit BEFORE other imports - return a factory function
 jest.mock('p-limit', () => ({
   __esModule: true,
   default: (_concurrency: number) => {
-    // Return a limit function that executes tasks immediately (ignoring concurrency for tests)
     return (fn: () => Promise<any>) => fn();
   },
 }));
-
-// Mock fast-glob with implementation inline
-jest.mock('fast-glob', () => ({
-  __esModule: true,
-  default: (pattern: string | string[], options: any) => {
-    // Simple mock implementation that scans directories
-    const globPattern = (Array.isArray(pattern) ? pattern[0] : pattern) ?? '';
-
-    // Extract base directory from pattern by removing glob parts
-    let baseDir = globPattern;
-    if (baseDir.includes('**')) {
-      baseDir = baseDir.split('**')[0] ?? '';
-    }
-    baseDir = baseDir.replace(/[/*]+$/, '');
-
-    if (!baseDir || !fs.existsSync(baseDir)) {
-      return [];
-    }
-
-    // Recursively scan directory
-    const scanDir = (dir: string, currentDepth: number = 0): string[] => {
-      if (!fs.existsSync(dir)) {return [];}
-
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      const files: string[] = [];
-
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-
-        if (entry.isDirectory()) {
-          // Check depth limit
-          if (options.deep === undefined || options.deep === null || currentDepth < options.deep - 1) {
-            files.push(...scanDir(fullPath, currentDepth + 1));
-          }
-        } else if (entry.isFile()) {
-          // Pattern matching
-          if (globPattern.includes('*.txt') && !fullPath.endsWith('.txt')) {
-            continue;
-          }
-          if (globPattern.includes('*.md') && !fullPath.endsWith('.md')) {
-            continue;
-          }
-
-          files.push(options.absolute ? fullPath : path.relative(baseDir, fullPath));
-        }
-      }
-
-      return files;
-    };
-
-    return scanDir(baseDir, 1);
-  },
-}));
-
-import * as os from 'os';
 import { BatchTranslationService } from '../../src/services/batch-translation.js';
 import { FileTranslationService } from '../../src/services/file-translation.js';
 import { TranslationService } from '../../src/services/translation.js';
