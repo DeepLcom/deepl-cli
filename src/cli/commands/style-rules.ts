@@ -6,6 +6,10 @@
 import { DeepLClient } from '../../api/deepl-client.js';
 import { StyleRule, StyleRuleDetailed, StyleRulesListOptions } from '../../types/index.js';
 
+/**
+ * Manages DeepL style rules for controlling translation tone and style.
+ * Style rules can be applied to translations via their style ID.
+ */
 export class StyleRulesCommand {
   private client: DeepLClient;
 
@@ -13,10 +17,15 @@ export class StyleRulesCommand {
     this.client = client;
   }
 
+  /**
+   * List available style rules, optionally filtered by language.
+   * Returns detailed rules (with configuredRules/customInstructions) when requested.
+   */
   async list(options: StyleRulesListOptions = {}): Promise<(StyleRule | StyleRuleDetailed)[]> {
     return this.client.getStyleRules(options);
   }
 
+  /** Format style rules for human-readable terminal output. */
   formatStyleRulesList(rules: (StyleRule | StyleRuleDetailed)[]): string {
     if (rules.length === 0) {
       return 'No style rules found.';
@@ -52,6 +61,7 @@ export class StyleRulesCommand {
     return lines.join('\n').trimEnd();
   }
 
+  /** Serialize style rules as pretty-printed JSON. */
   formatStyleRulesJson(rules: (StyleRule | StyleRuleDetailed)[]): string {
     return JSON.stringify(rules, null, 2);
   }

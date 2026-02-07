@@ -1,10 +1,30 @@
 /**
  * Language Registry
- * Single source of truth for all supported language codes, names, and categories.
+ *
+ * Single source of truth for all DeepL-supported language codes, display names,
+ * and feature categories. Every CLI component that needs to validate or display
+ * language codes should import from this module rather than maintaining its own list.
+ *
+ * Languages are organized into three categories that determine feature availability:
+ * - **core**: Full feature support (formality, glossary, all model types)
+ * - **regional**: Target-only variants of core languages (e.g., en-gb, pt-br)
+ * - **extended**: quality_optimized model only; no formality or glossary support
  */
 
+/**
+ * Feature-availability tier for a language.
+ * Determines which API features (formality, glossary, model types) are available.
+ */
 export type LanguageCategory = 'core' | 'regional' | 'extended';
 
+/**
+ * A single language entry in the registry.
+ * @property code - ISO 639 language code (lowercase), e.g. 'de', 'en-gb', 'zh-hans'
+ * @property name - Human-readable display name
+ * @property category - Feature-availability tier
+ * @property targetOnly - When true, the language can only be used as a translation target
+ *   (not as a source). Applies to regional variants like 'en-gb' and 'pt-br'.
+ */
 export interface LanguageEntry {
   code: string;
   name: string;
@@ -141,35 +161,43 @@ const ENTRIES: LanguageEntry[] = [
   { code: 'zu', name: 'Zulu', category: 'extended' },
 ];
 
+/** Read-only map of language code to its registry entry. Primary lookup structure. */
 export const LANGUAGE_REGISTRY: ReadonlyMap<string, LanguageEntry> = new Map(
   ENTRIES.map(entry => [entry.code, entry])
 );
 
+/** Check whether a language code is recognized by the registry. */
 export function isValidLanguage(code: string): boolean {
   return LANGUAGE_REGISTRY.has(code);
 }
 
+/** Check whether a language belongs to the 'extended' tier (quality_optimized only). */
 export function isExtendedLanguage(code: string): boolean {
   const entry = LANGUAGE_REGISTRY.get(code);
   return entry?.category === 'extended';
 }
 
+/** Return the human-readable name for a language code, or undefined if not found. */
 export function getLanguageName(code: string): string | undefined {
   return LANGUAGE_REGISTRY.get(code)?.name;
 }
 
+/** Return all languages that can be used as a source language (excludes regional target-only variants). */
 export function getSourceLanguages(): LanguageEntry[] {
   return ENTRIES.filter(e => !e.targetOnly);
 }
 
+/** Return all languages that can be used as a target language (includes regional variants). */
 export function getTargetLanguages(): LanguageEntry[] {
   return [...ENTRIES];
 }
 
+/** Return the set of all known language codes (core + regional + extended). */
 export function getAllLanguageCodes(): ReadonlySet<string> {
   return new Set(ENTRIES.map(e => e.code));
 }
 
+/** Return only the extended-tier language codes (no formality/glossary support). */
 export function getExtendedLanguageCodes(): ReadonlySet<string> {
   return new Set(ENTRIES.filter(e => e.category === 'extended').map(e => e.code));
 }

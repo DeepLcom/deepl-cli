@@ -6,6 +6,10 @@
 import { DeepLClient } from '../../api/deepl-client.js';
 import { AdminApiKey, AdminUsageOptions, AdminUsageReport, UsageBreakdown } from '../../types/index.js';
 
+/**
+ * Manages DeepL admin API operations for team accounts.
+ * Requires an admin API key with elevated permissions.
+ */
 export class AdminCommand {
   private client: DeepLClient;
 
@@ -13,30 +17,43 @@ export class AdminCommand {
     this.client = client;
   }
 
+  /** List all API keys in the team account. */
   async listKeys(): Promise<AdminApiKey[]> {
     return this.client.listApiKeys();
   }
 
+  /** Create a new API key with an optional human-readable label. */
   async createKey(label?: string): Promise<AdminApiKey> {
     return this.client.createApiKey(label);
   }
 
+  /** Permanently deactivate an API key. This cannot be undone. */
   async deactivateKey(keyId: string): Promise<void> {
     return this.client.deactivateApiKey(keyId);
   }
 
+  /** Rename an existing API key. */
   async renameKey(keyId: string, label: string): Promise<void> {
     return this.client.renameApiKey(keyId, label);
   }
 
+  /**
+   * Set the character usage limit for an API key.
+   * @param characters - Maximum characters allowed, or null for unlimited.
+   */
   async setKeyLimit(keyId: string, characters: number | null): Promise<void> {
     return this.client.setApiKeyLimit(keyId, characters);
   }
 
+  /**
+   * Retrieve usage analytics for the team account.
+   * Uses the /v2/admin/analytics endpoint with per-product breakdowns.
+   */
   async getUsage(options: AdminUsageOptions): Promise<AdminUsageReport> {
     return this.client.getAdminUsage(options);
   }
 
+  /** Format a list of API keys for human-readable terminal output. */
   formatKeyList(keys: AdminApiKey[]): string {
     if (keys.length === 0) {
       return 'No API keys found.';
@@ -62,6 +79,7 @@ export class AdminCommand {
     return lines.join('\n').trimEnd();
   }
 
+  /** Format a single API key's details for terminal output. */
   formatKeyInfo(key: AdminApiKey): string {
     const lines: string[] = [];
     const status = key.isDeactivated ? 'deactivated' : 'active';
@@ -78,6 +96,7 @@ export class AdminCommand {
     return lines.join('\n');
   }
 
+  /** Format a per-product usage breakdown (translation, documents, write). */
   private formatBreakdown(usage: UsageBreakdown, indent = '  '): string[] {
     const lines: string[] = [];
     lines.push(`${indent}Total:       ${usage.totalCharacters.toLocaleString()}`);
@@ -87,6 +106,7 @@ export class AdminCommand {
     return lines;
   }
 
+  /** Format a full usage report with totals and optional per-key entries. */
   formatUsage(report: AdminUsageReport): string {
     const lines: string[] = [];
     lines.push(`Period: ${report.startDate} to ${report.endDate}\n`);
@@ -109,6 +129,7 @@ export class AdminCommand {
     return lines.join('\n');
   }
 
+  /** Serialize any admin API response as pretty-printed JSON. */
   formatJson(data: unknown): string {
     return JSON.stringify(data, null, 2);
   }
