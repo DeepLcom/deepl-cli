@@ -5,7 +5,7 @@
  * Main command-line interface
  */
 
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -52,22 +52,14 @@ const defaultConfigPath = process.env['DEEPL_CONFIG_DIR']
 
 // Create config service - can be overridden by --config flag
 let configService = new ConfigService(defaultConfigPath);
-const cacheService = new CacheService();
+let cacheService: CacheService | null = null;
 
-// Cleanup on exit
-process.on('exit', () => {
-  cacheService.close();
-});
-
-process.on('SIGINT', () => {
-  cacheService.close();
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  cacheService.close();
-  process.exit(0);
-});
+function getCacheService(): CacheService {
+  if (!cacheService) {
+    cacheService = CacheService.getInstance();
+  }
+  return cacheService;
+}
 
 /**
  * Handle error and exit with appropriate exit code
@@ -103,6 +95,7 @@ function createDeepLClient(overrideBaseUrl?: string): DeepLClient {
 
 // Create program
 const program = new Command();
+program.showSuggestionAfterError(true);
 
 program
   .name('deepl')
@@ -135,6 +128,12 @@ program
     // Set quiet mode before any command runs
     if (options['quiet']) {
       Logger.setQuiet(true);
+    }
+
+    // Disable colors if output.color is false in config
+    const colorEnabled = configService.getValue<boolean>('output.color');
+    if (colorEnabled === false) {
+      chalk.level = 0;
     }
   });
 
@@ -274,14 +273,14 @@ program
   .requiredOption('-t, --to <language>', 'Target language(s), comma-separated for multiple')
   .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
   .option('-o, --output <path>', 'Output file path or directory (required for file/directory translation)')
-  .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
+  .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less']))
   .option('--output-format <format>', 'Convert document format during translation (e.g., pdf, docx, pptx, xlsx, html)')
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
   .option('--preserve-formatting', 'Preserve line breaks and whitespace formatting')
   .option('--context <text>', 'Additional context to improve translation quality')
-  .option('--split-sentences <mode>', 'Sentence splitting: on, off, nonewlines (default: on)')
-  .option('--tag-handling <mode>', 'Tag handling for XML/HTML: xml, html')
-  .option('--model-type <type>', 'Model type: quality_optimized, prefer_quality_optimized, latency_optimized')
+  .addOption(new Option('--split-sentences <mode>', 'Sentence splitting (default: on)').choices(['on', 'off', 'nonewlines']))
+  .addOption(new Option('--tag-handling <mode>', 'Tag handling for XML/HTML').choices(['xml', 'html']))
+  .addOption(new Option('--model-type <type>', 'Model type').choices(['quality_optimized', 'prefer_quality_optimized', 'latency_optimized']))
   .option('--show-billed-characters', 'Request and display actual billed character count for cost transparency')
   .option('--enable-minification', 'Enable document minification for PPTX/DOCX files (reduces file size)')
   .option('--outline-detection <bool>', 'Control automatic XML structure detection (true/false, default: true, requires --tag-handling xml)')
@@ -329,7 +328,7 @@ program
   }) => {
     try {
       const client = createDeepLClient();
-      const translationService = new TranslationService(client, configService, cacheService);
+      const translationService = new TranslationService(client, configService, getCacheService());
       const documentTranslationService = new DocumentTranslationService(client);
       const glossaryService = new GlossaryService(client);
       const translateCommand = new TranslateCommand(translationService, documentTranslationService, glossaryService, configService);
@@ -358,7 +357,7 @@ program
   .requiredOption('-t, --targets <languages>', 'Target language(s), comma-separated')
   .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
   .option('-o, --output <path>', 'Output directory (default: <path>/translations or same dir for files)')
-  .option('--formality <level>', 'Formality level: default, more, less, prefer_more, prefer_less')
+  .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less']))
   .option('--preserve-code', 'Preserve code blocks and variables during translation')
   .option('--preserve-formatting', 'Preserve line breaks and whitespace formatting')
   .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
@@ -385,7 +384,7 @@ program
       }
 
       const client = createDeepLClient();
-      const translationService = new TranslationService(client, configService, cacheService);
+      const translationService = new TranslationService(client, configService, getCacheService());
       const glossaryService = new GlossaryService(client);
       const watchCommand = new WatchCommand(translationService, glossaryService);
 
@@ -643,7 +642,7 @@ program
       .description('Show cache statistics')
       .action(async () => {
         try {
-          const cacheCommand = new CacheCommand(cacheService, configService);
+          const cacheCommand = new CacheCommand(getCacheService(), configService);
           const stats = await cacheCommand.stats();
           const formatted = cacheCommand.formatStats(stats);
           Logger.output(formatted);
@@ -658,7 +657,7 @@ program
       .description('Clear all cached translations')
       .action(async () => {
         try {
-          const cacheCommand = new CacheCommand(cacheService, configService);
+          const cacheCommand = new CacheCommand(getCacheService(), configService);
           await cacheCommand.clear();
           Logger.success(chalk.green('✓ Cache cleared successfully'));
         } catch (error) {
@@ -681,7 +680,7 @@ program
             maxSizeBytes = parseSize(options.maxSize);
           }
 
-          const cacheCommand = new CacheCommand(cacheService, configService);
+          const cacheCommand = new CacheCommand(getCacheService(), configService);
           await cacheCommand.enable(maxSizeBytes);
           Logger.success(chalk.green('✓ Cache enabled'));
 
@@ -700,7 +699,7 @@ program
       .description('Disable translation cache')
       .action(async () => {
         try {
-          const cacheCommand = new CacheCommand(cacheService, configService);
+          const cacheCommand = new CacheCommand(getCacheService(), configService);
           await cacheCommand.disable();
           Logger.success(chalk.green('✓ Cache disabled'));
         } catch (error) {

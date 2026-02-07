@@ -90,10 +90,79 @@ describe('ConfigCommand', () => {
       expect(mockConfigService.set).toHaveBeenCalledWith('cache.enabled', false);
     });
 
+    it('should coerce "true" to boolean true for known boolean keys', async () => {
+      await configCommand.set('cache.enabled', 'true');
+      expect(mockConfigService.set).toHaveBeenCalledWith('cache.enabled', true);
+    });
+
+    it('should coerce "false" to boolean false for all known boolean keys', async () => {
+      const booleanKeys = [
+        'api.usePro',
+        'cache.enabled',
+        'output.verbose',
+        'output.color',
+        'watch.autoCommit',
+        'defaults.preserveFormatting',
+      ];
+
+      for (const key of booleanKeys) {
+        (mockConfigService.set as jest.Mock).mockClear();
+        await configCommand.set(key, 'false');
+        expect(mockConfigService.set).toHaveBeenCalledWith(key, false);
+      }
+    });
+
+    it('should coerce "true" to boolean true for all known boolean keys', async () => {
+      const booleanKeys = [
+        'api.usePro',
+        'cache.enabled',
+        'output.verbose',
+        'output.color',
+        'watch.autoCommit',
+        'defaults.preserveFormatting',
+      ];
+
+      for (const key of booleanKeys) {
+        (mockConfigService.set as jest.Mock).mockClear();
+        await configCommand.set(key, 'true');
+        expect(mockConfigService.set).toHaveBeenCalledWith(key, true);
+      }
+    });
+
+    it('should not coerce "true" to boolean for non-boolean keys', async () => {
+      await configCommand.set('team.org', 'true');
+      expect(mockConfigService.set).toHaveBeenCalledWith('team.org', 'true');
+    });
+
+    it('should not coerce "false" to boolean for non-boolean keys', async () => {
+      await configCommand.set('team.org', 'false');
+      expect(mockConfigService.set).toHaveBeenCalledWith('team.org', 'false');
+    });
+
     it('should set number values', async () => {
       await configCommand.set('cache.maxSize', '2048');
 
       expect(mockConfigService.set).toHaveBeenCalledWith('cache.maxSize', 2048);
+    });
+
+    it('should coerce numeric strings for all known numeric keys', async () => {
+      const numericKeys = ['cache.maxSize', 'cache.ttl', 'watch.debounceMs'];
+
+      for (const key of numericKeys) {
+        (mockConfigService.set as jest.Mock).mockClear();
+        await configCommand.set(key, '42');
+        expect(mockConfigService.set).toHaveBeenCalledWith(key, 42);
+      }
+    });
+
+    it('should not coerce numeric strings for non-numeric keys', async () => {
+      await configCommand.set('team.org', '12345');
+      expect(mockConfigService.set).toHaveBeenCalledWith('team.org', '12345');
+    });
+
+    it('should pass non-boolean strings through for boolean keys', async () => {
+      await configCommand.set('cache.enabled', 'yes');
+      expect(mockConfigService.set).toHaveBeenCalledWith('cache.enabled', 'yes');
     });
 
     it('should throw error for invalid key', async () => {

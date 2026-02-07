@@ -5,6 +5,21 @@
 
 import { ConfigService } from '../../storage/config.js';
 
+const BOOLEAN_KEYS = [
+  'api.usePro',
+  'cache.enabled',
+  'output.verbose',
+  'output.color',
+  'watch.autoCommit',
+  'defaults.preserveFormatting',
+];
+
+const NUMERIC_KEYS = [
+  'cache.maxSize',
+  'cache.ttl',
+  'watch.debounceMs',
+];
+
 export class ConfigCommand {
   private config: ConfigService;
 
@@ -61,12 +76,14 @@ export class ConfigCommand {
       return value.split(',').map(v => v.trim());
     }
 
-    // Handle boolean values
-    if (value === 'true') return true;
-    if (value === 'false') return false;
+    // Auto-coerce string values to booleans for known boolean config keys
+    if (BOOLEAN_KEYS.includes(key)) {
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+    }
 
-    // Handle number values
-    if (key.includes('maxSize') || key.includes('ttl') || key.includes('debounceMs')) {
+    // Auto-coerce string values to numbers for known numeric config keys
+    if (NUMERIC_KEYS.includes(key)) {
       const num = parseInt(value, 10);
       if (!isNaN(num)) return num;
     }

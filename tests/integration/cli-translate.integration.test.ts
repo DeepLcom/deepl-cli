@@ -724,4 +724,123 @@ describe('Translate CLI Integration', () => {
       }
     });
   });
+
+  describe('choices validation for enum options', () => {
+    it('should reject invalid --formality value', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --formality super_formal', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/--formality/);
+        expect(output).toMatch(/invalid/i);
+        expect(output).toMatch(/Allowed choices/i);
+        expect(output).toContain('default');
+        expect(output).toContain('more');
+        expect(output).toContain('less');
+        expect(output).toContain('prefer_more');
+        expect(output).toContain('prefer_less');
+      }
+    });
+
+    it('should accept all valid --formality values', () => {
+      const validValues = ['default', 'more', 'less', 'prefer_more', 'prefer_less'];
+      for (const value of validValues) {
+        try {
+          runCLI(`deepl translate "Hello" --to es --formality ${value}`, { stdio: 'pipe' });
+        } catch (error: any) {
+          const output = error.stderr || error.stdout || '';
+          expect(output).not.toMatch(/invalid.*Allowed choices/i);
+        }
+      }
+    });
+
+    it('should reject invalid --tag-handling value', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --tag-handling json', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/--tag-handling/);
+        expect(output).toMatch(/invalid/i);
+        expect(output).toMatch(/Allowed choices/i);
+        expect(output).toContain('xml');
+        expect(output).toContain('html');
+      }
+    });
+
+    it('should accept valid --tag-handling values', () => {
+      const validValues = ['xml', 'html'];
+      for (const value of validValues) {
+        try {
+          runCLI(`deepl translate "<p>Hello</p>" --to es --tag-handling ${value}`, { stdio: 'pipe' });
+        } catch (error: any) {
+          const output = error.stderr || error.stdout || '';
+          expect(output).not.toMatch(/invalid.*Allowed choices/i);
+        }
+      }
+    });
+
+    it('should reject invalid --model-type value', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --model-type fast', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/--model-type/);
+        expect(output).toMatch(/invalid/i);
+        expect(output).toMatch(/Allowed choices/i);
+        expect(output).toContain('quality_optimized');
+        expect(output).toContain('prefer_quality_optimized');
+        expect(output).toContain('latency_optimized');
+      }
+    });
+
+    it('should accept valid --model-type values', () => {
+      const validValues = ['quality_optimized', 'prefer_quality_optimized', 'latency_optimized'];
+      for (const value of validValues) {
+        try {
+          runCLI(`deepl translate "Hello" --to es --model-type ${value}`, { stdio: 'pipe' });
+        } catch (error: any) {
+          const output = error.stderr || error.stdout || '';
+          expect(output).not.toMatch(/invalid.*Allowed choices/i);
+        }
+      }
+    });
+
+    it('should reject invalid --split-sentences value', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --split-sentences always', { stdio: 'pipe' });
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/--split-sentences/);
+        expect(output).toMatch(/invalid/i);
+        expect(output).toMatch(/Allowed choices/i);
+        expect(output).toContain('on');
+        expect(output).toContain('off');
+        expect(output).toContain('nonewlines');
+      }
+    });
+
+    it('should accept valid --split-sentences values', () => {
+      const validValues = ['on', 'off', 'nonewlines'];
+      for (const value of validValues) {
+        try {
+          runCLI(`deepl translate "Hello" --to es --split-sentences ${value}`, { stdio: 'pipe' });
+        } catch (error: any) {
+          const output = error.stderr || error.stdout || '';
+          expect(output).not.toMatch(/invalid.*Allowed choices/i);
+        }
+      }
+    });
+
+    it('should show choices in help text for constrained options', () => {
+      const helpOutput = runCLI('deepl translate --help');
+      expect(helpOutput).toMatch(/--formality.*choices/is);
+      expect(helpOutput).toMatch(/--tag-handling.*choices/is);
+      expect(helpOutput).toMatch(/--model-type.*choices/is);
+      expect(helpOutput).toMatch(/--split-sentences.*choices/is);
+    });
+  });
 });

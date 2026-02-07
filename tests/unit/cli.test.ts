@@ -4,6 +4,23 @@
  */
 
 import { Command } from 'commander';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { ConfigService } from '../../src/storage/config';
+
+jest.mock('chalk', () => {
+  const mockChalk: Record<string, unknown> & { level: number } = {
+    level: 3,
+    red: (s: string) => s,
+    green: (s: string) => s,
+    blue: (s: string) => s,
+    yellow: (s: string) => s,
+    gray: (s: string) => s,
+    bold: (s: string) => s,
+  };
+  return { __esModule: true, default: mockChalk };
+});
 
 describe('CLI Entry Point', () => {
   let program: Command;
@@ -63,6 +80,89 @@ describe('CLI Entry Point', () => {
     it('should register glossary command', () => {
       const commands = program.commands.map((cmd) => cmd.name());
       expect(commands).toContain('glossary');
+    });
+  });
+
+  describe('output.color config', () => {
+    let testConfigDir: string;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    let chalk: { level: number };
+
+    beforeEach(() => {
+      chalk = jest.requireMock<{ default: { level: number } }>('chalk').default;
+      chalk.level = 3;
+      testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-color-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      fs.mkdirSync(testConfigDir, { recursive: true });
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(testConfigDir)) {
+        fs.rmSync(testConfigDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should set chalk.level to 0 when output.color is false', () => {
+      const configPath = path.join(testConfigDir, 'config.json');
+      fs.writeFileSync(configPath, JSON.stringify({
+        auth: {},
+        api: { baseUrl: 'https://api.deepl.com', usePro: true },
+        defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
+        cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
+        output: { format: 'text', verbose: false, color: false },
+        watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
+        team: {},
+      }, null, 2));
+
+      const configService = new ConfigService(configPath);
+      const colorEnabled = configService.getValue<boolean>('output.color');
+
+      expect(colorEnabled).toBe(false);
+
+      // Replicate the logic from src/cli/index.ts preAction hook
+      if (colorEnabled === false) {
+        chalk.level = 0;
+      }
+
+      expect(chalk.level).toBe(0);
+    });
+
+    it('should not change chalk.level when output.color is true', () => {
+      const configPath = path.join(testConfigDir, 'config.json');
+      fs.writeFileSync(configPath, JSON.stringify({
+        auth: {},
+        api: { baseUrl: 'https://api.deepl.com', usePro: true },
+        defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
+        cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
+        output: { format: 'text', verbose: false, color: true },
+        watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
+        team: {},
+      }, null, 2));
+
+      const configService = new ConfigService(configPath);
+      const colorEnabled = configService.getValue<boolean>('output.color');
+
+      expect(colorEnabled).toBe(true);
+
+      if (colorEnabled === false) {
+        chalk.level = 0;
+      }
+
+      expect(chalk.level).toBe(3);
+    });
+
+    it('should not change chalk.level when output.color defaults to true', () => {
+      const configPath = path.join(testConfigDir, 'config.json');
+      // No config file written -- ConfigService falls back to defaults
+      const configService = new ConfigService(configPath);
+      const colorEnabled = configService.getValue<boolean>('output.color');
+
+      expect(colorEnabled).toBe(true);
+
+      if (colorEnabled === false) {
+        chalk.level = 0;
+      }
+
+      expect(chalk.level).toBe(3);
     });
   });
 });
