@@ -725,6 +725,60 @@ describe('Translate CLI Integration', () => {
     });
   });
 
+  describe('--api-url HTTPS enforcement', () => {
+    const runCLIWithKey = (command: string): string => {
+      return execSync(command, {
+        encoding: 'utf-8',
+        env: {
+          ...process.env,
+          DEEPL_CONFIG_DIR: testConfigDir,
+          DEEPL_API_KEY: 'fake-key-for-url-validation',
+        },
+      });
+    };
+
+    it('should reject http:// URLs for remote hosts', () => {
+      try {
+        runCLIWithKey('deepl translate "Hello" --to es --api-url http://evil-server.com/v2');
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/Insecure HTTP URL rejected/i);
+        expect(output).toMatch(/credential exposure/i);
+      }
+    });
+
+    it('should accept https:// URLs', () => {
+      try {
+        runCLIWithKey('deepl translate "Hello" --to es --api-url https://api-free.deepl.com/v2');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should NOT fail on URL validation; may fail on auth or network
+        expect(output).not.toMatch(/Insecure HTTP URL rejected/i);
+      }
+    });
+
+    it('should allow http://localhost for local testing', () => {
+      try {
+        runCLIWithKey('deepl translate "Hello" --to es --api-url http://localhost:3000/v2');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should NOT fail on URL validation; may fail on connection
+        expect(output).not.toMatch(/Insecure HTTP URL rejected/i);
+      }
+    });
+
+    it('should allow http://127.0.0.1 for local testing', () => {
+      try {
+        runCLIWithKey('deepl translate "Hello" --to es --api-url http://127.0.0.1:5000/v2');
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should NOT fail on URL validation; may fail on connection
+        expect(output).not.toMatch(/Insecure HTTP URL rejected/i);
+      }
+    });
+  });
+
   describe('choices validation for enum options', () => {
     it('should reject invalid --formality value', () => {
       try {
