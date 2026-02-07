@@ -104,15 +104,20 @@ export interface VoiceSessionResponse {
   session_id: string;
 }
 
+export interface VoiceReconnectResponse {
+  streaming_url: string;
+  token: string;
+}
+
 // WebSocket client → server messages
 
 export interface VoiceAudioChunkMessage {
-  type: 'audio_chunk';
+  type: 'source_media_chunk';
   data: string; // base64-encoded audio
 }
 
 export interface VoiceEndOfSourceMessage {
-  type: 'end_of_source_media';
+  type: 'end_of_source_audio';
 }
 
 // WebSocket server → client messages
@@ -174,6 +179,8 @@ export interface VoiceTranslateOptions {
   contentType?: VoiceSourceMediaContentType;
   chunkSize?: number;
   chunkInterval?: number;
+  reconnect?: boolean;
+  maxReconnectAttempts?: number;
 }
 
 export interface VoiceTranscript {
@@ -196,4 +203,5 @@ export interface VoiceStreamCallbacks {
   onEndOfTargetTranscript?: (lang: VoiceTargetLanguage) => void;
   onEndOfStream?: () => void;
   onError?: (error: VoiceErrorMessage) => void;
+  onReconnecting?: (attempt: number) => void;
 }

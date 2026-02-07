@@ -9,6 +9,7 @@ import { HttpClient, type DeepLClientOptions } from './http-client.js';
 import type {
   VoiceSessionRequest,
   VoiceSessionResponse,
+  VoiceReconnectResponse,
   VoiceServerMessage,
   VoiceStreamCallbacks,
 } from '../types/voice.js';
@@ -27,6 +28,16 @@ export class VoiceClient extends HttpClient {
         'POST',
         '/v3/voice/realtime',
         request as unknown as Record<string, unknown>,
+      );
+    } catch (error) {
+      throw this.handleVoiceError(error);
+    }
+  }
+
+  async reconnectSession(token: string): Promise<VoiceReconnectResponse> {
+    try {
+      return await this.makeJsonRequest<VoiceReconnectResponse>(
+        'GET', '/v3/voice/realtime', undefined, { token },
       );
     } catch (error) {
       throw this.handleVoiceError(error);
@@ -60,13 +71,13 @@ export class VoiceClient extends HttpClient {
 
   sendAudioChunk(ws: WebSocket, base64Data: string): void {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'audio_chunk', data: base64Data }));
+      ws.send(JSON.stringify({ type: 'source_media_chunk', data: base64Data }));
     }
   }
 
   sendEndOfSource(ws: WebSocket): void {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'end_of_source_media' }));
+      ws.send(JSON.stringify({ type: 'end_of_source_audio' }));
     }
   }
 

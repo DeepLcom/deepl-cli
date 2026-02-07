@@ -191,6 +191,65 @@ describe('VoiceClient', () => {
     });
   });
 
+  describe('reconnectSession()', () => {
+    it('should return new streaming_url and token on success', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { streaming_url: 'wss://voice.deepl.com/ws/456', token: 'new-token' },
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.reconnectSession('old-token');
+
+      expect(result).toEqual({
+        streaming_url: 'wss://voice.deepl.com/ws/456',
+        token: 'new-token',
+      });
+    });
+
+    it('should pass token as query parameter', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { streaming_url: 'wss://test', token: 'new' },
+        status: 200,
+        headers: {},
+      });
+
+      await client.reconnectSession('my-token');
+
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'GET',
+          url: '/v3/voice/realtime',
+          params: expect.objectContaining({ token: 'my-token' }),
+        }),
+      );
+    });
+
+    it('should throw VoiceError on 403', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 403, data: { message: 'Forbidden' }, headers: {} },
+        message: 'Forbidden',
+      };
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(client.reconnectSession('expired-token')).rejects.toThrow(VoiceError);
+    });
+
+    it('should throw VoiceError on 400', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 400, data: { message: 'Invalid token' }, headers: {} },
+        message: 'Bad request',
+      };
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(client.reconnectSession('bad-token')).rejects.toThrow(VoiceError);
+    });
+  });
+
   describe('createWebSocket()', () => {
     it('should create a WebSocket and route messages', () => {
       const callbacks: VoiceStreamCallbacks = {
@@ -315,7 +374,7 @@ describe('VoiceClient', () => {
       const ws = client.createWebSocket('wss://test', 'token', {});
       client.sendAudioChunk(ws, 'dGVzdA==');
       expect(ws.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'audio_chunk', data: 'dGVzdA==' }),
+        JSON.stringify({ type: 'source_media_chunk', data: 'dGVzdA==' }),
       );
     });
 
@@ -328,11 +387,11 @@ describe('VoiceClient', () => {
   });
 
   describe('sendEndOfSource()', () => {
-    it('should send end_of_source_media message', () => {
+    it('should send end_of_source_audio message', () => {
       const ws = client.createWebSocket('wss://test', 'token', {});
       client.sendEndOfSource(ws);
       expect(ws.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'end_of_source_media' }),
+        JSON.stringify({ type: 'end_of_source_audio' }),
       );
     });
 
