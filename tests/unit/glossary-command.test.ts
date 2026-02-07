@@ -8,6 +8,7 @@
 import { GlossaryCommand } from '../../src/cli/commands/glossary';
 import { GlossaryService } from '../../src/services/glossary';
 import { GlossaryInfo } from '../../src/types/glossary.js';
+import { GlossaryLanguagePair, Language } from '../../src/types/index.js';
 import * as fs from 'fs';
 
 // Mock dependencies
@@ -91,6 +92,14 @@ describe('GlossaryCommand', () => {
       ).rejects.toThrow('File not found');
     });
 
+    it('should include file path in file-not-found error', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(false);
+
+      await expect(
+        glossaryCommand.create('Tech Terms', 'en', ['es'], '/specific/path.tsv')
+      ).rejects.toThrow('File not found: /specific/path.tsv');
+    });
+
     it('should handle glossary service errors', async () => {
       (mockGlossaryService.createGlossaryFromTSV as jest.Mock).mockRejectedValueOnce(
         new Error('Invalid glossary format')
@@ -108,6 +117,18 @@ describe('GlossaryCommand', () => {
       await expect(
         glossaryCommand.create('Tech Terms', 'en', ['es'], '/path/to/symlink.tsv')
       ).rejects.toThrow('Symlinks are not supported for security reasons');
+    });
+
+    it('should support multiple target languages', async () => {
+      const result = await glossaryCommand.create('Multi Terms', 'en', ['es', 'fr', 'de'], '/path/to/glossary.tsv');
+
+      expect(result).toEqual(mockGlossary);
+      expect(mockGlossaryService.createGlossaryFromTSV).toHaveBeenCalledWith(
+        'Multi Terms',
+        'en',
+        ['es', 'fr', 'de'],
+        'hello\thola\nworld\tmundo'
+      );
     });
   });
 
@@ -176,6 +197,21 @@ describe('GlossaryCommand', () => {
       expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
       expect(mockGlossaryService.deleteGlossary).toHaveBeenCalledWith('123-456-789');
     });
+
+    it('should propagate error when glossary not found for deletion', async () => {
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      (mockGlossaryService.getGlossaryByName as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(glossaryCommand.delete('NonExistent')).rejects.toThrow('Glossary not found');
+    });
+
+    it('should handle delete service errors', async () => {
+      (mockGlossaryService.deleteGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('Permission denied')
+      );
+
+      await expect(glossaryCommand.delete('123-456-789')).rejects.toThrow('Permission denied');
+    });
   });
 
   describe('entries()', () => {
@@ -184,6 +220,36 @@ describe('GlossaryCommand', () => {
 
       expect(result).toEqual({ hello: 'hola', world: 'mundo' });
       expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith('123-456-789', 'en', 'es');
+    });
+
+    it('should get entries with explicit target language', async () => {
+      const multilingualGlossary: GlossaryInfo = {
+        glossary_id: 'multi-123',
+        name: 'Multi Terms',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'es', entry_count: 5 },
+          { source_lang: 'en', target_lang: 'fr', entry_count: 3 },
+        ],
+        creation_time: '2024-01-15T10:30:00Z',
+      };
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multilingualGlossary);
+
+      const result = await glossaryCommand.entries('multi-123', 'fr');
+
+      expect(result).toEqual({ hello: 'hola', world: 'mundo' });
+      expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith('multi-123', 'en', 'fr');
+    });
+
+    it('should get entries by glossary name', async () => {
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+
+      const result = await glossaryCommand.entries('Tech Terms');
+
+      expect(result).toEqual({ hello: 'hola', world: 'mundo' });
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
       expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith('123-456-789', 'en', 'es');
     });
   });
@@ -222,6 +288,36 @@ describe('GlossaryCommand', () => {
       expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
       expect(mockGlossaryService.addEntry).toHaveBeenCalledWith('123-456-789', 'en', 'es', 'hello', 'hola');
     });
+
+    it('should add entry with explicit target language for multilingual glossary', async () => {
+      const multilingualGlossary: GlossaryInfo = {
+        glossary_id: 'multi-123',
+        name: 'Multi Terms',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'es', entry_count: 5 },
+          { source_lang: 'en', target_lang: 'fr', entry_count: 3 },
+        ],
+        creation_time: '2024-01-15T10:30:00Z',
+      };
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multilingualGlossary);
+      (mockGlossaryService.addEntry as jest.Mock).mockResolvedValue(undefined);
+
+      await glossaryCommand.addEntry('multi-123', 'hello', 'bonjour', 'fr');
+
+      expect(mockGlossaryService.addEntry).toHaveBeenCalledWith('multi-123', 'en', 'fr', 'hello', 'bonjour');
+    });
+
+    it('should handle addEntry service errors', async () => {
+      (mockGlossaryService.addEntry as jest.Mock).mockRejectedValueOnce(
+        new Error('Entry already exists')
+      );
+
+      await expect(
+        glossaryCommand.addEntry('123-456-789', 'hello', 'hola')
+      ).rejects.toThrow('Entry already exists');
+    });
   });
 
   describe('updateEntry()', () => {
@@ -243,6 +339,26 @@ describe('GlossaryCommand', () => {
       expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
       expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith('123-456-789', 'en', 'es', 'hello', 'hola updated');
     });
+
+    it('should update entry with explicit target language for multilingual glossary', async () => {
+      const multilingualGlossary: GlossaryInfo = {
+        glossary_id: 'multi-123',
+        name: 'Multi Terms',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'es', entry_count: 5 },
+          { source_lang: 'en', target_lang: 'fr', entry_count: 3 },
+        ],
+        creation_time: '2024-01-15T10:30:00Z',
+      };
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multilingualGlossary);
+      (mockGlossaryService.updateEntry as jest.Mock).mockResolvedValue(undefined);
+
+      await glossaryCommand.updateEntry('multi-123', 'hello', 'bonjour updated', 'fr');
+
+      expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith('multi-123', 'en', 'fr', 'hello', 'bonjour updated');
+    });
   });
 
   describe('removeEntry()', () => {
@@ -263,6 +379,26 @@ describe('GlossaryCommand', () => {
 
       expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
       expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith('123-456-789', 'en', 'es', 'hello');
+    });
+
+    it('should remove entry with explicit target language for multilingual glossary', async () => {
+      const multilingualGlossary: GlossaryInfo = {
+        glossary_id: 'multi-123',
+        name: 'Multi Terms',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'es', entry_count: 5 },
+          { source_lang: 'en', target_lang: 'fr', entry_count: 3 },
+        ],
+        creation_time: '2024-01-15T10:30:00Z',
+      };
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multilingualGlossary);
+      (mockGlossaryService.removeEntry as jest.Mock).mockResolvedValue(undefined);
+
+      await glossaryCommand.removeEntry('multi-123', 'hello', 'fr');
+
+      expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith('multi-123', 'en', 'fr', 'hello');
     });
   });
 
@@ -306,6 +442,37 @@ describe('GlossaryCommand', () => {
       expect(result).toContain('Source language: en');
       expect(result).toContain('Target languages: es');
       expect(result).toContain('Total entries: 10');
+      expect(result).toContain('Type: Single target');
+    });
+
+    it('should format multilingual glossary info with language pairs', () => {
+      const multilingualGlossary: GlossaryInfo = {
+        glossary_id: 'multi-123',
+        name: 'Multi Terms',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'es', entry_count: 5 },
+          { source_lang: 'en', target_lang: 'fr', entry_count: 3 },
+        ],
+        creation_time: '2024-01-15T10:30:00Z',
+      };
+
+      const result = glossaryCommand.formatGlossaryInfo(multilingualGlossary);
+
+      expect(result).toContain('Name: Multi Terms');
+      expect(result).toContain('Target languages: es, fr');
+      expect(result).toContain('Type: Multilingual');
+      expect(result).toContain('Total entries: 8');
+      expect(result).toContain('Language pairs:');
+      expect(result).toContain('en → es: 5 entries');
+      expect(result).toContain('en → fr: 3 entries');
+    });
+
+    it('should include creation time', () => {
+      const result = glossaryCommand.formatGlossaryInfo(mockGlossary);
+
+      expect(result).toContain('Created:');
     });
   });
 
@@ -323,6 +490,47 @@ describe('GlossaryCommand', () => {
 
       expect(result).toBe('No glossaries found');
     });
+
+    it('should format multilingual glossary with target count', () => {
+      const multilingualGlossary: GlossaryInfo = {
+        glossary_id: 'multi-123',
+        name: 'Multi Terms',
+        source_lang: 'en',
+        target_langs: ['es', 'fr', 'de'],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'es', entry_count: 5 },
+          { source_lang: 'en', target_lang: 'fr', entry_count: 3 },
+          { source_lang: 'en', target_lang: 'de', entry_count: 4 },
+        ],
+        creation_time: '2024-01-15T10:30:00Z',
+      };
+
+      const result = glossaryCommand.formatGlossaryList([multilingualGlossary]);
+
+      expect(result).toContain('Multi Terms');
+      expect(result).toContain('(en→3 targets)');
+      expect(result).toContain('12 entries');
+    });
+
+    it('should format list with multiple glossaries', () => {
+      const secondGlossary: GlossaryInfo = {
+        glossary_id: 'second-456',
+        name: 'Medical Terms',
+        source_lang: 'de',
+        target_langs: ['en'],
+        dictionaries: [
+          { source_lang: 'de', target_lang: 'en', entry_count: 20 },
+        ],
+        creation_time: '2024-02-01T08:00:00Z',
+      };
+
+      const result = glossaryCommand.formatGlossaryList([mockGlossary, secondGlossary]);
+
+      expect(result).toContain('Tech Terms');
+      expect(result).toContain('Medical Terms');
+      expect(result).toContain('(de→en)');
+      expect(result).toContain('20 entries');
+    });
   });
 
   describe('replaceDictionary()', () => {
@@ -333,12 +541,87 @@ describe('GlossaryCommand', () => {
       mockGlossaryService.replaceGlossaryDictionary = jest.fn().mockResolvedValue(undefined);
     });
 
+    it('should replace dictionary entries from file', async () => {
+      await glossaryCommand.replaceDictionary('123-456-789', 'es', '/path/to/glossary.tsv');
+
+      expect(fs.existsSync).toHaveBeenCalledWith('/path/to/glossary.tsv');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.replaceGlossaryDictionary).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es',
+        'hello\thola\nworld\tmundo'
+      );
+    });
+
+    it('should throw error if file does not exist', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(false);
+
+      await expect(
+        glossaryCommand.replaceDictionary('123-456-789', 'es', '/path/to/missing.tsv')
+      ).rejects.toThrow('File not found: /path/to/missing.tsv');
+    });
+
     it('should reject symlinks for security', async () => {
       (fs.lstatSync as jest.Mock).mockReturnValue({ isSymbolicLink: () => true });
 
       await expect(
         glossaryCommand.replaceDictionary('123-456-789', 'es', '/path/to/symlink.tsv')
       ).rejects.toThrow('Symlinks are not supported for security reasons');
+    });
+
+    it('should resolve glossary by name for replaceDictionary', async () => {
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+
+      await glossaryCommand.replaceDictionary('Tech Terms', 'es', '/path/to/glossary.tsv');
+
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
+      expect(mockGlossaryService.replaceGlossaryDictionary).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es',
+        'hello\thola\nworld\tmundo'
+      );
+    });
+  });
+
+  describe('deleteDictionary()', () => {
+    beforeEach(() => {
+      mockGlossaryService.deleteGlossaryDictionary = jest.fn().mockResolvedValue(undefined);
+    });
+
+    it('should delete dictionary by glossary ID and target language', async () => {
+      await glossaryCommand.deleteDictionary('123-456-789', 'es');
+
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.deleteGlossaryDictionary).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es'
+      );
+    });
+
+    it('should delete dictionary by glossary name and target language', async () => {
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+
+      await glossaryCommand.deleteDictionary('Tech Terms', 'es');
+
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
+      expect(mockGlossaryService.deleteGlossaryDictionary).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es'
+      );
+    });
+
+    it('should handle delete dictionary service errors', async () => {
+      mockGlossaryService.deleteGlossaryDictionary = jest.fn().mockRejectedValueOnce(
+        new Error('Dictionary not found')
+      );
+
+      await expect(
+        glossaryCommand.deleteDictionary('123-456-789', 'fr')
+      ).rejects.toThrow('Dictionary not found');
     });
   });
 
@@ -356,6 +639,38 @@ describe('GlossaryCommand', () => {
       const result = glossaryCommand.formatEntries({});
 
       expect(result).toBe('No entries found');
+    });
+  });
+
+  describe('formatLanguagePairs()', () => {
+    it('should format language pairs for display', () => {
+      const pairs: GlossaryLanguagePair[] = [
+        { sourceLang: 'en' as Language, targetLang: 'es' as Language },
+        { sourceLang: 'de' as Language, targetLang: 'en' as Language },
+        { sourceLang: 'fr' as Language, targetLang: 'de' as Language },
+      ];
+
+      const result = glossaryCommand.formatLanguagePairs(pairs);
+
+      expect(result).toContain('en → es');
+      expect(result).toContain('de → en');
+      expect(result).toContain('fr → de');
+    });
+
+    it('should show empty message when no language pairs available', () => {
+      const result = glossaryCommand.formatLanguagePairs([]);
+
+      expect(result).toBe('No language pairs available');
+    });
+
+    it('should format single language pair', () => {
+      const pairs: GlossaryLanguagePair[] = [
+        { sourceLang: 'en' as Language, targetLang: 'de' as Language },
+      ];
+
+      const result = glossaryCommand.formatLanguagePairs(pairs);
+
+      expect(result).toBe('en → de');
     });
   });
 });
