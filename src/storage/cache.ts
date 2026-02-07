@@ -267,35 +267,25 @@ export class CacheService {
     }
 
     const toFree = this.currentSize + newEntrySize - this.maxSize + 1;
-    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM cache');
-    const countRow = countStmt.get() as { count: number };
-    const entries = countRow.count;
+    const { count: entries } = this.db.prepare(
+      'SELECT COUNT(*) as count FROM cache'
+    ).get() as { count: number };
 
     const avgSize = entries > 0 ? this.currentSize / entries : 1024;
     const estimatedEntries = Math.ceil(toFree / avgSize);
     const entriesToDelete = Math.ceil(estimatedEntries * 1.2);
 
-    const deleteSizeStmt = this.db.prepare(`
-      SELECT COALESCE(SUM(size), 0) as total
-      FROM cache
-      WHERE key IN (
-        SELECT key FROM cache
-        ORDER BY timestamp ASC
-        LIMIT ?
-      )
-    `);
-    const deleteSizeRow = deleteSizeStmt.get(entriesToDelete) as { total: number };
-    const deletedSize = deleteSizeRow.total;
-
-    this.db.prepare(`
+    const deleted = this.db.prepare(`
       DELETE FROM cache
       WHERE key IN (
         SELECT key FROM cache
         ORDER BY timestamp ASC
         LIMIT ?
       )
-    `).run(entriesToDelete);
+      RETURNING size
+    `).all(entriesToDelete) as { size: number }[];
 
+    const deletedSize = deleted.reduce((sum, row) => sum + row.size, 0);
     this.currentSize -= deletedSize;
   }
 }
