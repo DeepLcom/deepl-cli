@@ -714,6 +714,8 @@ deepl voice [options] <file>
 | `--chunk-size <bytes>` | | Audio chunk size in bytes | `6400` |
 | `--chunk-interval <ms>` | | Interval between audio chunks in milliseconds | `200` |
 | `--no-stream` | | Disable live streaming output, collect and print at end | - |
+| `--no-reconnect` | | Disable automatic reconnection on WebSocket drop | - |
+| `--max-reconnect-attempts <n>` | | Maximum reconnect attempts on WebSocket drop | `3` |
 | `--format <format>` | | Output format: `text`, `json` | `text` |
 
 #### Supported Audio Formats

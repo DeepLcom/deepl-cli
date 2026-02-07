@@ -24,6 +24,8 @@ interface VoiceCommandOptions {
   chunkSize?: number;
   chunkInterval?: number;
   stream?: boolean;
+  reconnect?: boolean;
+  maxReconnectAttempts?: number;
   format?: string;
 }
 
@@ -40,7 +42,7 @@ export class VoiceCommand {
 
     let callbacks: VoiceStreamCallbacks | undefined;
     if (isTTY) {
-      callbacks = this.createTTYCallbacks(translateOptions.targetLangs);
+      callbacks = this.createTTYCallbacks(translateOptions.targetLangs, translateOptions.maxReconnectAttempts);
     }
 
     const result = await this.voiceService.translateFile(filePath, translateOptions, callbacks);
@@ -59,7 +61,7 @@ export class VoiceCommand {
 
     let callbacks: VoiceStreamCallbacks | undefined;
     if (isTTY) {
-      callbacks = this.createTTYCallbacks(translateOptions.targetLangs);
+      callbacks = this.createTTYCallbacks(translateOptions.targetLangs, translateOptions.maxReconnectAttempts);
     }
 
     const result = await this.voiceService.translateStdin(translateOptions, callbacks);
@@ -82,10 +84,12 @@ export class VoiceCommand {
       contentType: options.contentType as VoiceSourceMediaContentType | undefined,
       chunkSize: options.chunkSize,
       chunkInterval: options.chunkInterval,
+      reconnect: options.reconnect,
+      maxReconnectAttempts: options.maxReconnectAttempts,
     };
   }
 
-  private createTTYCallbacks(targetLangs: VoiceTargetLanguage[]): VoiceStreamCallbacks {
+  private createTTYCallbacks(targetLangs: VoiceTargetLanguage[], maxReconnectAttempts?: number): VoiceStreamCallbacks {
     const state: Record<string, { concluded: string; tentative: string }> = {};
 
     // Initialize state for source + each target
@@ -120,7 +124,12 @@ export class VoiceCommand {
       process.stdout.write('\n');
     }
 
+    const maxAttempts = maxReconnectAttempts ?? 3;
+
     return {
+      onReconnecting: (attempt: number) => {
+        process.stdout.write(chalk.yellow(`[reconnecting ${attempt}/${maxAttempts}...]\n`));
+      },
       onSourceTranscript: (update) => {
         const src = state['source']!;
         const concludedText = update.concluded.map((s) => s.text).join(' ');

@@ -8,6 +8,7 @@ jest.mock('chalk', () => {
   const mockChalk = {
     bold: (text: string) => text,
     gray: (text: string) => text,
+    yellow: (text: string) => text,
   };
   return {
     __esModule: true,
@@ -205,6 +206,34 @@ describe('VoiceCommand', () => {
         expect.objectContaining({
           chunkSize: 3200,
           chunkInterval: 100,
+        }),
+        undefined,
+      );
+    });
+
+    it('should pass reconnect option when set to false', async () => {
+      mockService.translateFile.mockResolvedValue(mockResult);
+
+      await command.translate('test.mp3', { to: 'de', reconnect: false });
+
+      expect(mockService.translateFile).toHaveBeenCalledWith(
+        'test.mp3',
+        expect.objectContaining({
+          reconnect: false,
+        }),
+        undefined,
+      );
+    });
+
+    it('should pass maxReconnectAttempts option', async () => {
+      mockService.translateFile.mockResolvedValue(mockResult);
+
+      await command.translate('test.mp3', { to: 'de', maxReconnectAttempts: 5 });
+
+      expect(mockService.translateFile).toHaveBeenCalledWith(
+        'test.mp3',
+        expect.objectContaining({
+          maxReconnectAttempts: 5,
         }),
         undefined,
       );
@@ -456,6 +485,22 @@ describe('VoiceCommand', () => {
         (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('Hola')
       );
       expect(esWrites).toHaveLength(0);
+    });
+
+    it('should include onReconnecting callback in TTY mode', async () => {
+      mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
+        expect(callbacks).toHaveProperty('onReconnecting');
+        expect(typeof callbacks!.onReconnecting).toBe('function');
+        callbacks!.onReconnecting!(1);
+        return mockResult;
+      });
+
+      await command.translate('test.mp3', { to: 'de' });
+
+      const reconnectWrites = writeSpy.mock.calls.filter(
+        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('reconnecting'),
+      );
+      expect(reconnectWrites.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should use readline functions during render', async () => {

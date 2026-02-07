@@ -604,6 +604,8 @@ deepl voice speech.ogg --to de --no-stream
 
 **Supported audio formats:** OGG (Opus), WebM (Opus), FLAC, MP3, PCM (16kHz s16le), Matroska (Opus)
 
+Automatic WebSocket reconnection is enabled by default (up to 3 attempts). Disable with `--no-reconnect` or adjust with `--max-reconnect-attempts <n>`.
+
 **Note:** The Voice API requires a DeepL Pro or Enterprise plan.
 
 ### Watch Mode

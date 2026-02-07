@@ -71,6 +71,13 @@ describe('Voice CLI Integration', () => {
       expect(output).toContain('json');
     });
 
+    it('should show reconnection options in help', () => {
+      const output = runCLI('deepl voice --help');
+
+      expect(output).toContain('--no-reconnect');
+      expect(output).toContain('--max-reconnect-attempts');
+    });
+
     it('should show formality choices', () => {
       const output = runCLI('deepl voice --help');
 
