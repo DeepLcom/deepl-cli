@@ -28,6 +28,8 @@ interface ExtendedUsageInfo extends UsageInfo {
   remaining: number;
 }
 
+export const MAX_TEXT_BYTES = 131072; // 128KB - DeepL API limit per request
+
 export class TranslationService {
   private client: DeepLClient;
   private config: ConfigService;
@@ -56,6 +58,14 @@ export class TranslationService {
 
     if (!options.targetLang) {
       throw new Error('Target language is required');
+    }
+
+    const textBytes = Buffer.byteLength(text, 'utf8');
+    if (textBytes > MAX_TEXT_BYTES) {
+      throw new Error(
+        `Text too large: ${textBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
+        'Split the text into smaller chunks or use file translation for large documents.'
+      );
     }
 
     // Get defaults from config
@@ -143,6 +153,28 @@ export class TranslationService {
   ): Promise<TranslationResult[]> {
     if (texts.length === 0) {
       return [];
+    }
+
+    let totalBytes = 0;
+    for (let i = 0; i < texts.length; i++) {
+      const text = texts[i];
+      if (!text) {
+        continue;
+      }
+      const itemBytes = Buffer.byteLength(text, 'utf8');
+      if (itemBytes > MAX_TEXT_BYTES) {
+        throw new Error(
+          `Text at index ${i} too large: ${itemBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
+          'Split the text into smaller chunks or use file translation for large documents.'
+        );
+      }
+      totalBytes += itemBytes;
+    }
+    if (totalBytes > MAX_TEXT_BYTES) {
+      throw new Error(
+        `Batch text too large: ${totalBytes} bytes total exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
+        'Reduce the number of texts or split them into smaller batches.'
+      );
     }
 
     // Get config defaults

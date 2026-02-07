@@ -5,7 +5,7 @@
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import { TranslationService } from '../../src/services/translation';
+import { TranslationService, MAX_TEXT_BYTES } from '../../src/services/translation';
 import { DeepLClient, TranslationResult } from '../../src/api/deepl-client';
 import { ConfigService } from '../../src/storage/config';
 import { CacheService } from '../../src/storage/cache';
@@ -769,18 +769,129 @@ describe('TranslationService', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('should handle very long text', async () => {
-      const longText = 'a'.repeat(50000);
+  describe('input length validation', () => {
+    it('should accept text within the byte limit', async () => {
+      const text = 'a'.repeat(50000);
       mockDeepLClient.translate.mockResolvedValue({ text: 'a'.repeat(50000) });
 
-      const result = await translationService.translate(longText, {
-        targetLang: 'es',
-      });
+      const result = await translationService.translate(text, { targetLang: 'es' });
 
       expect(result.text.length).toBe(50000);
+      expect(mockDeepLClient.translate).toHaveBeenCalled();
     });
 
+    it('should accept text exactly at the byte limit', async () => {
+      const text = 'a'.repeat(MAX_TEXT_BYTES);
+      mockDeepLClient.translate.mockResolvedValue({ text });
+
+      const result = await translationService.translate(text, { targetLang: 'es' });
+
+      expect(result.text).toBe(text);
+    });
+
+    it('should reject text exceeding the byte limit', async () => {
+      const text = 'a'.repeat(MAX_TEXT_BYTES + 1);
+
+      await expect(
+        translationService.translate(text, { targetLang: 'es' })
+      ).rejects.toThrow('Text too large');
+    });
+
+    it('should include byte count in the error message', async () => {
+      const text = 'a'.repeat(MAX_TEXT_BYTES + 100);
+      const expectedBytes = Buffer.byteLength(text, 'utf8');
+
+      await expect(
+        translationService.translate(text, { targetLang: 'es' })
+      ).rejects.toThrow(`${expectedBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit`);
+    });
+
+    it('should suggest splitting text in the error message', async () => {
+      const text = 'a'.repeat(MAX_TEXT_BYTES + 1);
+
+      await expect(
+        translationService.translate(text, { targetLang: 'es' })
+      ).rejects.toThrow('Split the text into smaller chunks or use file translation');
+    });
+
+    it('should measure multi-byte characters correctly', async () => {
+      // Each CJK character is 3 bytes in UTF-8
+      const cjkChar = '\u4e16'; // 3 bytes
+      const charCount = Math.floor(MAX_TEXT_BYTES / 3);
+      const textAtLimit = cjkChar.repeat(charCount);
+      mockDeepLClient.translate.mockResolvedValue({ text: textAtLimit });
+
+      const result = await translationService.translate(textAtLimit, { targetLang: 'en' });
+      expect(result.text).toBe(textAtLimit);
+
+      // One more character pushes it over
+      const textOverLimit = cjkChar.repeat(charCount + 1);
+      await expect(
+        translationService.translate(textOverLimit, { targetLang: 'en' })
+      ).rejects.toThrow('Text too large');
+    });
+
+    it('should not call API when text exceeds the byte limit', async () => {
+      const text = 'a'.repeat(MAX_TEXT_BYTES + 1);
+
+      await expect(
+        translationService.translate(text, { targetLang: 'es' })
+      ).rejects.toThrow();
+
+      expect(mockDeepLClient.translate).not.toHaveBeenCalled();
+    });
+
+    it('should reject individual texts exceeding limit in batch', async () => {
+      const oversizedText = 'a'.repeat(MAX_TEXT_BYTES + 1);
+
+      await expect(
+        translationService.translateBatch(
+          ['Hello', oversizedText, 'World'],
+          { targetLang: 'es' }
+        )
+      ).rejects.toThrow('Text at index 1 too large');
+    });
+
+    it('should reject batch when aggregate size exceeds limit', async () => {
+      // Each text is within the per-item limit but total exceeds the limit
+      const halfLimit = Math.floor(MAX_TEXT_BYTES / 2) + 1;
+      const text1 = 'a'.repeat(halfLimit);
+      const text2 = 'b'.repeat(halfLimit);
+
+      await expect(
+        translationService.translateBatch([text1, text2], { targetLang: 'es' })
+      ).rejects.toThrow('Batch text too large');
+    });
+
+    it('should accept batch within the aggregate byte limit', async () => {
+      const smallText1 = 'Hello';
+      const smallText2 = 'World';
+      mockDeepLClient.translateBatch.mockResolvedValue([
+        { text: 'Hola' },
+        { text: 'Mundo' },
+      ]);
+
+      const results = await translationService.translateBatch(
+        [smallText1, smallText2],
+        { targetLang: 'es' }
+      );
+
+      expect(results).toHaveLength(2);
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalled();
+    });
+
+    it('should not call batch API when texts exceed the byte limit', async () => {
+      const oversizedText = 'a'.repeat(MAX_TEXT_BYTES + 1);
+
+      await expect(
+        translationService.translateBatch([oversizedText], { targetLang: 'es' })
+      ).rejects.toThrow();
+
+      expect(mockDeepLClient.translateBatch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('edge cases', () => {
     it('should handle special characters', async () => {
       mockDeepLClient.translate.mockResolvedValue({
         text: '¡Hola! ¿Cómo estás?',
