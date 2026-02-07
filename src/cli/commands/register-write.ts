@@ -1,0 +1,185 @@
+import type { Command } from 'commander';
+import chalk from 'chalk';
+import type { DeepLClient } from '../../api/deepl-client.js';
+import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/api.js';
+import { Logger } from '../../utils/logger.js';
+import { ExitCode } from '../../utils/exit-codes.js';
+
+export function registerWrite(
+  program: Command,
+  deps: {
+    createDeepLClient: (overrideBaseUrl?: string) => Promise<DeepLClient>;
+    handleError: (error: unknown) => never;
+  },
+): void {
+  const { createDeepLClient, handleError } = deps;
+
+  program
+    .command('write')
+    .description('Improve text using DeepL Write API (grammar, style, tone)')
+    .argument('<text>', 'Text to improve (or file path when used with file operations)')
+    .option('-l, --lang <language>', 'Target language (de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT). Omit to auto-detect.')
+    .option('-s, --style <style>', 'Writing style: simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
+    .option('-t, --tone <tone>', 'Tone: enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
+    .option('-a, --alternatives', 'Show all alternative improvements')
+    .option('-o, --output <file>', 'Write improved text to file')
+    .option('--in-place', 'Edit file in place (use with file input)')
+    .option('-i, --interactive', 'Interactive mode - choose from multiple suggestions')
+    .option('-d, --diff', 'Show diff between original and improved text')
+    .option('-c, --check', 'Check if text needs improvement (exit code 0 if no changes)')
+    .option('-f, --fix', 'Automatically fix file in place')
+    .option('-b, --backup', 'Create backup file before fixing (use with --fix)')
+    .option('--format <format>', 'Output format: json, table (default: plain text)')
+    .addHelpText('after', `
+Examples:
+  $ deepl write "Their going to the store" --lang en-US
+  $ deepl write report.txt --check
+  $ deepl write essay.md --fix --backup
+  $ deepl write "Make this formal" --style business --lang en
+`)
+    .action(async (text: string, options: {
+      lang?: string;
+      style?: string;
+      tone?: string;
+      alternatives?: boolean;
+      output?: string;
+      inPlace?: boolean;
+      interactive?: boolean;
+      diff?: boolean;
+      check?: boolean;
+      fix?: boolean;
+      backup?: boolean;
+      format?: string;
+    }) => {
+      try {
+        const validLanguages = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt', 'pt-BR', 'pt-PT'];
+        if (options.lang && !validLanguages.includes(options.lang)) {
+          throw new Error(`Invalid language code: ${options.lang}. Valid options: ${validLanguages.join(', ')}`);
+        }
+
+        if (options.style && options.tone) {
+          throw new Error('Cannot specify both --style and --tone. Use one or the other.');
+        }
+
+        const client = await createDeepLClient();
+        const { WriteService } = await import('../../services/write.js');
+        const { WriteCommand } = await import('./write.js');
+        const writeService = new WriteService(client);
+        const writeCommand = new WriteCommand(writeService);
+
+        const writeOptions = {
+          lang: options.lang as WriteLanguage | undefined,
+          style: options.style as WritingStyle | undefined,
+          tone: options.tone as WriteTone | undefined,
+          showAlternatives: options.alternatives,
+          outputFile: options.output,
+          inPlace: options.inPlace,
+          createBackup: options.backup,
+          format: options.format,
+        };
+
+        if (options.check) {
+          let needsImprovement: boolean;
+          let changes = 0;
+
+          const { existsSync } = await import('fs');
+          if (existsSync(text)) {
+            const result = await writeCommand.checkFile(text, writeOptions);
+            needsImprovement = result.needsImprovement;
+            changes = result.changes;
+            Logger.info(chalk.gray(`File: ${text}`));
+          } else {
+            const result = await writeCommand.checkText(text, writeOptions);
+            needsImprovement = result.needsImprovement;
+            changes = result.changes;
+          }
+
+          if (needsImprovement) {
+            Logger.warn(chalk.yellow(`\u26a0 Text needs improvement (${changes} potential changes)`));
+            process.exit(ExitCode.GeneralError);
+          } else {
+            Logger.success(chalk.green('\u2713 Text looks good'));
+            process.exit(ExitCode.Success);
+          }
+        }
+
+        if (options.fix) {
+          const { existsSync } = await import('fs');
+          if (!existsSync(text)) {
+            throw new Error('--fix requires a file path as input');
+          }
+
+          const result = await writeCommand.autoFixFile(text, writeOptions);
+
+          if (result.fixed) {
+            Logger.success(chalk.green('\u2713 File improved'));
+            if (result.backupPath) {
+              Logger.info(chalk.gray(`Backup: ${result.backupPath}`));
+            }
+            Logger.info(chalk.gray(`Changes: ${result.changes}`));
+          } else {
+            Logger.success(chalk.green('\u2713 No improvements needed'));
+          }
+          return;
+        }
+
+        if (options.diff) {
+          const { existsSync } = await import('fs');
+          let result: { original: string; improved: string; diff: string };
+
+          if (existsSync(text)) {
+            result = await writeCommand.improveFileWithDiff(text, writeOptions);
+          } else {
+            result = await writeCommand.improveWithDiff(text, writeOptions);
+          }
+
+          Logger.output(chalk.bold('Original:'));
+          Logger.output(result.original);
+          Logger.output();
+          Logger.output(chalk.bold('Improved:'));
+          Logger.output(result.improved);
+          Logger.output();
+          Logger.output(chalk.bold('Diff:'));
+          Logger.output(result.diff);
+          return;
+        }
+
+        if (options.interactive) {
+          const { existsSync } = await import('fs');
+          let result: string;
+
+          if (existsSync(text)) {
+            const interactiveResult = await writeCommand.improveFileInteractive(text, writeOptions);
+            result = interactiveResult.selected;
+
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            if (options.output || options.inPlace) {
+              const outputPath = options.inPlace ? text : options.output!;
+              const { writeFile } = await import('fs/promises');
+              await writeFile(outputPath, result, 'utf-8');
+              Logger.success(chalk.green(`\u2713 Saved to ${outputPath}`));
+            }
+          } else {
+            result = await writeCommand.improveInteractive(text, writeOptions);
+          }
+
+          Logger.output();
+          Logger.output(chalk.bold('Selected improvement:'));
+          Logger.output(result);
+          return;
+        }
+
+        const { existsSync } = await import('fs');
+        if (existsSync(text)) {
+          const result = await writeCommand.improveFile(text, writeOptions);
+          Logger.output(result);
+          return;
+        }
+
+        const result = await writeCommand.improve(text, writeOptions);
+        Logger.output(result);
+      } catch (error) {
+        handleError(error);
+      }
+    });
+}

@@ -1,0 +1,88 @@
+import { Command } from 'commander';
+import chalk from 'chalk';
+import type { ConfigService } from '../../storage/config.js';
+import { Logger } from '../../utils/logger.js';
+
+export function registerAuth(
+  program: Command,
+  deps: {
+    getConfigService: () => ConfigService;
+    handleError: (error: unknown) => never;
+  },
+): void {
+  const { getConfigService, handleError } = deps;
+
+  program
+    .command('auth')
+    .description('Manage DeepL API authentication')
+    .addHelpText('after', `
+Examples:
+  $ deepl auth set-key YOUR_API_KEY
+  $ deepl auth show
+  $ deepl auth clear
+`)
+    .addCommand(
+      new Command('set-key')
+        .description('Set your DeepL API key')
+        .argument('[api-key]', 'Your DeepL API key (or pipe via stdin)')
+        .option('--from-stdin', 'Read API key from stdin')
+        .action(async (apiKey: string | undefined, opts: { fromStdin?: boolean }) => {
+          try {
+            let key = apiKey;
+            if (opts.fromStdin === true || !key) {
+              if (process.stdin.isTTY && !key) {
+                handleError(new Error('API key required: provide as argument or use --from-stdin'));
+                return;
+              }
+              const chunks: Buffer[] = [];
+              for await (const chunk of process.stdin) {
+                chunks.push(chunk as Buffer);
+              }
+              key = Buffer.concat(chunks).toString('utf-8').trim();
+            }
+            const { AuthCommand } = await import('./auth.js');
+            const authCommand = new AuthCommand(getConfigService());
+            await authCommand.setKey(key);
+            Logger.success(chalk.green('\u2713 API key saved and validated successfully'));
+          } catch (error) {
+            handleError(error);
+
+          }
+        })
+    )
+    .addCommand(
+      new Command('show')
+        .description('Show current API key (masked)')
+        .action(async () => {
+          try {
+            const { AuthCommand } = await import('./auth.js');
+            const authCommand = new AuthCommand(getConfigService());
+            const key = await authCommand.getKey();
+            if (key) {
+              const masked = key.substring(0, 8) + '...' + key.substring(key.length - 4);
+              Logger.info(chalk.blue('API Key:'), masked);
+            } else {
+              Logger.output(chalk.yellow('No API key set'));
+            }
+          } catch (error) {
+            handleError(error);
+
+          }
+        })
+    )
+    .addCommand(
+      new Command('clear')
+        .description('Remove stored API key')
+        .action(async () => {
+          try {
+            const { AuthCommand } = await import('./auth.js');
+            const authCommand = new AuthCommand(getConfigService());
+            await authCommand.clearKey();
+            Logger.success(chalk.green('\u2713 API key removed'));
+          } catch (error) {
+            handleError(error);
+
+          }
+        })
+    );
+}
