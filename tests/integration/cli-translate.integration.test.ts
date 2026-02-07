@@ -506,7 +506,7 @@ describe('Translate CLI Integration', () => {
     it('should show --non-splitting-tags flag in help', () => {
       const helpOutput = runCLI('deepl translate --help');
       expect(helpOutput).toContain('--non-splitting-tags');
-      expect(helpOutput).toMatch(/non-translatable/i);
+      expect(helpOutput.replace(/\s+/g, ' ')).toMatch(/should not be used to split sentences/i);
     });
 
     it('should show --ignore-tags flag in help', () => {

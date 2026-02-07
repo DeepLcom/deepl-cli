@@ -20,6 +20,12 @@ export function registerLanguages(
     .description('List supported source and target languages')
     .option('-s, --source', 'Show only source languages')
     .option('-t, --target', 'Show only target languages')
+    .addHelpText('after', `
+Examples:
+  $ deepl languages
+  $ deepl languages --source
+  $ deepl languages --target
+`)
     .action(async (options: { source?: boolean; target?: boolean }) => {
       try {
         const apiKey = getConfigService().getValue<string>('auth.apiKey');

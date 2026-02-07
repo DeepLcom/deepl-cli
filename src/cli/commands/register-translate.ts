@@ -18,7 +18,7 @@ export function registerTranslate(
     .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
     .option('-o, --output <path>', 'Output file path or directory (required for file/directory translation)')
     .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less']))
-    .option('--output-format <format>', 'Convert document format during translation (e.g., pdf, docx, pptx, xlsx, html)')
+    .addOption(new Option('--output-format <format>', 'Convert document format during translation').choices(['pdf', 'docx', 'pptx', 'xlsx', 'html', 'htm', 'txt', 'srt', 'xlf', 'xliff']))
     .option('--preserve-code', 'Preserve code blocks and variables during translation')
     .option('--preserve-formatting', 'Preserve line breaks and whitespace formatting')
     .option('--context <text>', 'Additional context to improve translation quality')
@@ -26,12 +26,12 @@ export function registerTranslate(
     .addOption(new Option('--tag-handling <mode>', 'Tag handling for XML/HTML').choices(['xml', 'html']))
     .addOption(new Option('--model-type <type>', 'Model type').choices(['quality_optimized', 'prefer_quality_optimized', 'latency_optimized']))
     .option('--show-billed-characters', 'Request and display actual billed character count for cost transparency')
-    .option('--enable-minification', 'Enable document minification for PPTX/DOCX files (reduces file size)')
+    .option('--enable-minification', 'Enable document minification (PPTX/DOCX only, reduces file size)')
     .option('--outline-detection <bool>', 'Control automatic XML structure detection (true/false, default: true, requires --tag-handling xml)')
     .option('--splitting-tags <tags>', 'Comma-separated XML tags that split sentences (requires --tag-handling xml)')
-    .option('--non-splitting-tags <tags>', 'Comma-separated XML tags for non-translatable text (requires --tag-handling xml)')
+    .option('--non-splitting-tags <tags>', 'Comma-separated XML tags that should not be used to split sentences (requires --tag-handling xml)')
     .option('--ignore-tags <tags>', 'Comma-separated XML tags with content to ignore (requires --tag-handling xml)')
-    .option('--tag-handling-version <version>', 'Tag handling version: v1, v2 (v2 improves structure handling, requires --tag-handling)')
+    .addOption(new Option('--tag-handling-version <version>', 'Tag handling version (v2 improves structure handling, requires --tag-handling)').choices(['v1', 'v2']))
     .option('--recursive', 'Process subdirectories recursively (default: true)', true)
     .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
     .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
@@ -48,6 +48,11 @@ Examples:
   $ deepl translate README.md --to fr --output README.fr.md
   $ deepl translate ./docs --to de,es,fr --pattern "*.md"
   $ echo "Hello" | deepl translate --to ja
+  $ deepl translate report.docx --to de --output-format pdf
+  $ deepl translate "Hello" --to es --formality more --glossary my-glossary
+  $ deepl translate page.html --to fr --tag-handling html
+  $ deepl translate "Hello" --to es --custom-instruction "Use informal language"
+  $ deepl translate ./docs --to es --dry-run
 `)
     .action(async (text: string | undefined, options: {
       to?: string;

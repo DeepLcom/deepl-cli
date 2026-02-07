@@ -14,6 +14,10 @@ export function registerUsage(
   program
     .command('usage')
     .description('Show API usage statistics')
+    .addHelpText('after', `
+Examples:
+  $ deepl usage
+`)
     .action(async () => {
       try {
         const usageCommand = await createUsageCommand(createDeepLClient);

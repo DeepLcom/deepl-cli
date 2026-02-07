@@ -17,7 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **113 new tests for voice feature** - 87 unit tests (VoiceClient, VoiceService, VoiceCommand, error types, formatters), 8 integration tests (CLI help, validation, auth), 20 e2e tests (full CLI workflows, exit codes, format validation).
 - **Voice usage in admin analytics** - Added `speechToTextMilliseconds` to `UsageBreakdown` type and `AdminClient`, mapping the API's `speech_to_text_milliseconds` field. The `deepl admin usage` command now displays voice usage duration in human-readable format (e.g., `1h 23m 45s`).
 
+### Changed
+- **Comprehensive CLI help text audit** - Added usage examples to all commands missing them: `admin`, `cache`, `hooks`, `usage`, `languages`, `style-rules`. Expanded examples for `translate`, `write`, and `glossary` commands to cover more option combinations.
+- **`translate --non-splitting-tags` description corrected** - Fixed incorrect description from "non-translatable text" to "should not be used to split sentences" to match the DeepL API behavior.
+- **`translate --output-format` and `--tag-handling-version` now use `.choices()` validation** - Commander validates allowed values at parse time instead of deferring to API errors.
+- **`translate --enable-minification` description clarified** - Now explicitly states "PPTX/DOCX only" to prevent confusion with other document formats.
+- **`write --style` and `--tone` descriptions now include `default` value** - Previously omitted the `default` option that the API types support.
+- **`glossary entries --target` renamed to `--target-lang`** - Standardized with `add-entry`, `update-entry`, and `remove-entry` subcommands which already used `--target-lang`.
+- **`voice --to` now uses `.requiredOption()`** - Commander validates the required option at parse time with a standard error message instead of a manual check in the action handler.
+- **`voice --content-type` description lists supported formats** - Now shows `ogg, opus, webm, mka, flac, mp3, pcm` instead of just "auto-detected from file extension".
+
 ### Fixed
+- **Voice reconnect display shows correct max attempts** - The TTY reconnection display (`[reconnecting N/M...]`) previously hardcoded `M=3` regardless of `--max-reconnect-attempts` value. Now uses the user-configured value.
 - **Voice WebSocket message types** - Fixed client-to-server message types to match the API specification: `audio_chunk` → `source_media_chunk`, `end_of_source_media` → `end_of_source_audio`.
 
 ## [0.9.1] - 2026-02-07

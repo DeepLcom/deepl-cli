@@ -21,8 +21,8 @@ export function registerWrite(
     .description('Improve text using DeepL Write API (grammar, style, tone)')
     .argument('<text>', 'Text to improve (or file path when used with file operations)')
     .option('-l, --lang <language>', 'Target language (de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT). Omit to auto-detect.')
-    .option('-s, --style <style>', 'Writing style: simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
-    .option('-t, --tone <tone>', 'Tone: enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
+    .option('-s, --style <style>', 'Writing style: default, simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
+    .option('-t, --tone <tone>', 'Tone: default, enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
     .option('-a, --alternatives', 'Show all alternative improvements')
     .option('-o, --output <file>', 'Write improved text to file')
     .option('--in-place', 'Edit file in place (use with file input)')
@@ -38,6 +38,12 @@ Examples:
   $ deepl write report.txt --check
   $ deepl write essay.md --fix --backup
   $ deepl write "Make this formal" --style business --lang en
+  $ deepl write "Great news!" --tone diplomatic --lang en
+  $ deepl write document.txt --diff
+  $ deepl write article.md --interactive
+  $ deepl write "Hello world" --alternatives
+  $ deepl write report.txt --output improved.txt
+  $ deepl write "Text here" --format json
 `)
     .action(async (text: string, options: {
       lang?: string;

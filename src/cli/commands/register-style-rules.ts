@@ -14,6 +14,13 @@ export function registerStyleRules(
   program
     .command('style-rules')
     .description('Manage DeepL style rules (Pro API only)')
+    .addHelpText('after', `
+Examples:
+  $ deepl style-rules list
+  $ deepl style-rules list --detailed
+  $ deepl style-rules list --format json
+  $ deepl style-rules list --page 2 --page-size 10
+`)
     .addCommand(
       new Command('list')
         .description('List all style rules')

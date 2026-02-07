@@ -21,7 +21,15 @@ Examples:
   $ deepl glossary create my-terms en de terms.tsv
   $ deepl glossary list
   $ deepl glossary show my-terms
-  $ deepl glossary entries my-terms
+  $ deepl glossary entries my-terms --target-lang de
+  $ deepl glossary delete my-terms --yes
+  $ deepl glossary languages
+  $ deepl glossary add-entry my-terms "Hello" "Hallo" --target-lang de
+  $ deepl glossary update-entry my-terms "Hello" "Hej" --target-lang de
+  $ deepl glossary remove-entry my-terms "Hello" --target-lang de
+  $ deepl glossary rename my-terms new-name
+  $ deepl glossary replace-dictionary my-terms de updated.tsv
+  $ deepl glossary delete-dictionary my-terms de --yes
 `)
     .addCommand(
       new Command('create')
@@ -80,12 +88,12 @@ Examples:
       new Command('entries')
         .description('Show glossary entries')
         .argument('<name-or-id>', 'Glossary name or ID')
-        .option('--target <lang>', 'Target language (required for multilingual glossaries)')
-        .action(async (nameOrId: string, options: { target?: string }) => {
+        .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
+        .action(async (nameOrId: string, options: { targetLang?: string }) => {
           try {
             const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
-            const targetLang = options.target as Language | undefined;
+            const targetLang = options.targetLang as Language | undefined;
             const entries = await glossaryCommand.entries(nameOrId, targetLang);
             Logger.output(glossaryCommand.formatEntries(entries));
           } catch (error) {

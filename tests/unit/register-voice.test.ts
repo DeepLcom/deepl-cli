@@ -97,11 +97,7 @@ describe('registerVoice', () => {
     await loadAndRegister();
     await expect(
       program.parseAsync(['node', 'test', 'voice', 'recording.ogg']),
-    ).rejects.toThrow('Target language is required');
-
-    expect(handleError).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringContaining('Target language is required') }),
-    );
+    ).rejects.toThrow(/required option.*--to/i);
   });
 
   it('should call translate for file argument and Logger.output the result', async () => {

@@ -162,13 +162,13 @@ describe('registerGlossary', () => {
       expect(Logger.output).toHaveBeenCalledWith('entries-output');
     });
 
-    it('should pass --target option', async () => {
+    it('should pass --target-lang option', async () => {
       const mock = makeMockGlossaryCmd();
       mock.entries.mockResolvedValue([]);
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'entries', 'my-terms', '--target', 'de']);
+      await program.parseAsync(['node', 'test', 'glossary', 'entries', 'my-terms', '--target-lang', 'de']);
 
       expect(mock.entries).toHaveBeenCalledWith('my-terms', 'de');
     });

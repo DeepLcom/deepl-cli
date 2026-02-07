@@ -14,7 +14,18 @@ export function registerAdmin(
 
   const adminCmd = program
     .command('admin')
-    .description('Admin API: manage API keys and view organization usage (requires admin key)');
+    .description('Admin API: manage API keys and view organization usage (requires admin key)')
+    .addHelpText('after', `
+Examples:
+  $ deepl admin keys list
+  $ deepl admin keys create --label "CI/CD key"
+  $ deepl admin keys rename <key-id> "Production key"
+  $ deepl admin keys set-limit <key-id> 1000000
+  $ deepl admin keys deactivate <key-id> --yes
+  $ deepl admin usage --start 2024-01-01 --end 2024-01-31
+  $ deepl admin usage --start 2024-01-01 --end 2024-01-31 --group-by key
+  $ deepl admin keys list --format json
+`);
 
   const adminKeysCmd = adminCmd
     .command('keys')

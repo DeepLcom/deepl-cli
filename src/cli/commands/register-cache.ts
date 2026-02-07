@@ -17,6 +17,14 @@ export function registerCache(
   program
     .command('cache')
     .description('Manage translation cache')
+    .addHelpText('after', `
+Examples:
+  $ deepl cache stats
+  $ deepl cache clear --yes
+  $ deepl cache clear --dry-run
+  $ deepl cache enable --max-size 500M
+  $ deepl cache disable
+`)
     .addCommand(
       new Command('stats')
         .description('Show cache statistics')
