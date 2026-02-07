@@ -101,16 +101,28 @@ describe('Cache CLI Integration', () => {
   });
 
   describe('deepl cache clear', () => {
-    it('should clear cache successfully', () => {
-      const output = runCLIAll('deepl cache clear');
+    it('should clear cache successfully with --yes flag', () => {
+      const output = runCLIAll('deepl cache clear --yes');
 
       expect(output).toContain('Cache cleared successfully');
     });
 
     it('should not error when cache is empty', () => {
       // Clear twice
-      runCLI('deepl cache clear');
+      runCLI('deepl cache clear --yes');
+      const output = runCLIAll('deepl cache clear --yes');
+
+      expect(output).toContain('Cache cleared successfully');
+    });
+
+    it('should abort without --yes in non-TTY mode', () => {
       const output = runCLIAll('deepl cache clear');
+
+      expect(output).toContain('Aborted');
+    });
+
+    it('should accept -y short flag', () => {
+      const output = runCLIAll('deepl cache clear -y');
 
       expect(output).toContain('Cache cleared successfully');
     });
@@ -123,7 +135,7 @@ describe('Cache CLI Integration', () => {
       expect(enableOutput).toContain('Cache enabled');
 
       // Clear
-      const clearOutput = runCLIAll('deepl cache clear');
+      const clearOutput = runCLIAll('deepl cache clear --yes');
       expect(clearOutput).toContain('Cache cleared successfully');
 
       // Stats should show 0 entries

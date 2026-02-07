@@ -67,8 +67,18 @@ export function registerAdmin(
       new Command('deactivate')
         .description('Deactivate an API key (permanent)')
         .argument('<key-id>', 'Key ID to deactivate')
-        .action(async (keyId: string) => {
+        .option('-y, --yes', 'Skip confirmation prompt')
+        .action(async (keyId: string, options: { yes?: boolean }) => {
           try {
+            if (!options.yes) {
+              const { confirm } = await import('../../utils/confirm.js');
+              const confirmed = await confirm({ message: `Deactivate API key "${keyId}"? This action is permanent.` });
+              if (!confirmed) {
+                Logger.info('Aborted.');
+                return;
+              }
+            }
+
             const client = await createDeepLClient();
             const { AdminCommand } = await import('./admin.js');
             const admin = new AdminCommand(client);

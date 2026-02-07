@@ -73,8 +73,18 @@ Examples:
     .addCommand(
       new Command('reset')
         .description('Reset configuration to defaults')
-        .action(async () => {
+        .option('-y, --yes', 'Skip confirmation prompt')
+        .action(async (options: { yes?: boolean }) => {
           try {
+            if (!options.yes) {
+              const { confirm } = await import('../../utils/confirm.js');
+              const confirmed = await confirm({ message: 'Reset all configuration to defaults?' });
+              if (!confirmed) {
+                Logger.info('Aborted.');
+                return;
+              }
+            }
+
             const { ConfigCommand: ConfigCmd } = await import('./config.js');
             const configCommand = new ConfigCmd(getConfigService());
             await configCommand.reset();

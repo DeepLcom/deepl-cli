@@ -129,7 +129,7 @@ describe('Admin CLI Integration', () => {
     });
   });
 
-  describe('deepl admin keys deactivate without argument', () => {
+  describe('deepl admin keys deactivate', () => {
     it('should require key-id argument', () => {
       try {
         runCLI('deepl admin keys deactivate', { stdio: 'pipe' });
@@ -138,6 +138,21 @@ describe('Admin CLI Integration', () => {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/key-id|argument|missing/i);
       }
+    });
+
+    it('should abort without --yes in non-TTY mode', () => {
+      const output = execSync('deepl admin keys deactivate test-key-id 2>&1', {
+        encoding: 'utf-8',
+        env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        shell: '/bin/sh',
+      });
+      expect(output).toContain('Aborted');
+    });
+
+    it('should show --yes option in help', () => {
+      const output = runCLI('deepl admin keys deactivate --help');
+      expect(output).toContain('--yes');
+      expect(output).toContain('-y');
     });
   });
 

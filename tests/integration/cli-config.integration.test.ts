@@ -168,12 +168,12 @@ describe('Config CLI Integration', () => {
   });
 
   describe('deepl config reset', () => {
-    it('should reset configuration to defaults', () => {
+    it('should reset configuration to defaults with --yes flag', () => {
       // Change a value
       runCLI('deepl config set cache.enabled false');
 
       // Reset (success message goes to stderr via Logger.success, so just verify it runs)
-      runCLI('deepl config reset');
+      runCLI('deepl config reset --yes');
 
       // Verify defaults restored
       const cacheEnabled = runCLI('deepl config get cache.enabled');
@@ -181,12 +181,37 @@ describe('Config CLI Integration', () => {
     });
 
     it('should remove config file on reset', () => {
-      runCLI('deepl config reset');
+      runCLI('deepl config reset --yes');
 
       // Config file should be removed or reset
       // (implementation may vary - either delete or reset to defaults)
       // This test validates the reset command executes successfully
       expect(true).toBe(true);
+    });
+
+    it('should abort without --yes in non-TTY mode', () => {
+      // Change a value
+      runCLI('deepl config set cache.enabled false');
+
+      // Reset without --yes (non-TTY should abort)
+      const output = execSync('deepl config reset 2>&1', {
+        encoding: 'utf-8',
+        env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        shell: '/bin/sh',
+      });
+      expect(output).toContain('Aborted');
+
+      // Value should still be changed
+      const cacheEnabled = runCLI('deepl config get cache.enabled');
+      expect(JSON.parse(cacheEnabled)).toBe(false);
+    });
+
+    it('should accept -y short flag', () => {
+      runCLI('deepl config set cache.enabled false');
+      runCLI('deepl config reset -y');
+
+      const cacheEnabled = runCLI('deepl config get cache.enabled');
+      expect(JSON.parse(cacheEnabled)).toBe(true);
     });
   });
 

@@ -225,7 +225,7 @@ describe('Glossary CLI Integration', () => {
     it('should require name-or-id argument', () => {
       const helpOutput = runCLI('deepl glossary --help');
 
-      expect(helpOutput).toContain('delete <name-or-id>');
+      expect(helpOutput).toMatch(/delete.*<name-or-id>/);
       expect(helpOutput).toContain('Delete a glossary');
     });
 
@@ -240,15 +240,39 @@ describe('Glossary CLI Integration', () => {
       }
     });
 
-    it('should accept glossary name or ID', () => {
+    it('should accept glossary name or ID with --yes flag', () => {
       try {
         // Will fail without API key but should accept argument
-        runCLI('deepl glossary delete "My Glossary"', { stdio: 'pipe' });
+        runCLI('deepl glossary delete "My Glossary" --yes', { stdio: 'pipe' });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // Should fail on auth or not found, not argument validation
         expect(output).toMatch(/API key|auth|not found/i);
       }
+    });
+
+    it('should abort without --yes in non-TTY mode', () => {
+      const output = execSync('deepl glossary delete "My Glossary" 2>&1', {
+        encoding: 'utf-8',
+        env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
+        shell: '/bin/sh',
+      });
+      expect(output).toContain('Aborted');
+    });
+
+    it('should accept -y short flag', () => {
+      try {
+        runCLI('deepl glossary delete "My Glossary" -y', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth|not found/i);
+      }
+    });
+
+    it('should show --yes option in help', () => {
+      const helpOutput = runCLI('deepl glossary delete --help');
+      expect(helpOutput).toContain('--yes');
+      expect(helpOutput).toContain('-y');
     });
   });
 

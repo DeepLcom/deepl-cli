@@ -114,8 +114,18 @@ Examples:
       new Command('delete')
         .description('Delete a glossary')
         .argument('<name-or-id>', 'Glossary name or ID')
-        .action(async (nameOrId: string) => {
+        .option('-y, --yes', 'Skip confirmation prompt')
+        .action(async (nameOrId: string, options: { yes?: boolean }) => {
           try {
+            if (!options.yes) {
+              const { confirm } = await import('../../utils/confirm.js');
+              const confirmed = await confirm({ message: `Delete glossary "${nameOrId}"?` });
+              if (!confirmed) {
+                Logger.info('Aborted.');
+                return;
+              }
+            }
+
             const client = await createDeepLClient();
             const { GlossaryService } = await import('../../services/glossary.js');
             const { GlossaryCommand } = await import('./glossary.js');
@@ -267,8 +277,18 @@ Examples:
         .description('Delete a dictionary from a multilingual glossary (v3)')
         .argument('<name-or-id>', 'Glossary name or ID')
         .argument('<target-lang>', 'Target language of dictionary to delete')
-        .action(async (nameOrId: string, targetLang: string) => {
+        .option('-y, --yes', 'Skip confirmation prompt')
+        .action(async (nameOrId: string, targetLang: string, options: { yes?: boolean }) => {
           try {
+            if (!options.yes) {
+              const { confirm } = await import('../../utils/confirm.js');
+              const confirmed = await confirm({ message: `Delete dictionary "${targetLang}" from glossary "${nameOrId}"?` });
+              if (!confirmed) {
+                Logger.info('Aborted.');
+                return;
+              }
+            }
+
             const client = await createDeepLClient();
             const { GlossaryService } = await import('../../services/glossary.js');
             const { GlossaryCommand } = await import('./glossary.js');

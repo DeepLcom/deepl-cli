@@ -36,8 +36,18 @@ export function registerCache(
     .addCommand(
       new Command('clear')
         .description('Clear all cached translations')
-        .action(async () => {
+        .option('-y, --yes', 'Skip confirmation prompt')
+        .action(async (options: { yes?: boolean }) => {
           try {
+            if (!options.yes) {
+              const { confirm } = await import('../../utils/confirm.js');
+              const confirmed = await confirm({ message: 'Clear all cached translations?' });
+              if (!confirmed) {
+                Logger.info('Aborted.');
+                return;
+              }
+            }
+
             const { CacheCommand } = await import('./cache.js');
             const cacheCommand = new CacheCommand(await getCacheService(), getConfigService());
             await cacheCommand.clear();
