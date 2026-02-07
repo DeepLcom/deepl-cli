@@ -21,6 +21,7 @@ describe('Logger', () => {
     consoleErrorSpy.mockRestore();
     // Reset logger state
     Logger.setQuiet(false);
+    Logger.setVerbose(false);
   });
 
   describe('setQuiet()', () => {
@@ -115,6 +116,49 @@ describe('Logger', () => {
       const obj = { text: 'Hello' };
       Logger.output(obj);
       expect(consoleLogSpy).toHaveBeenCalledWith(obj);
+    });
+  });
+
+  describe('setVerbose()', () => {
+    it('should enable verbose mode', () => {
+      Logger.setVerbose(true);
+      expect(Logger.isVerbose()).toBe(true);
+    });
+
+    it('should disable verbose mode', () => {
+      Logger.setVerbose(true);
+      Logger.setVerbose(false);
+      expect(Logger.isVerbose()).toBe(false);
+    });
+
+    it('should default to disabled', () => {
+      expect(Logger.isVerbose()).toBe(false);
+    });
+  });
+
+  describe('verbose()', () => {
+    it('should not log when verbose mode is disabled', () => {
+      Logger.verbose('Verbose message');
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    it('should log to stderr when verbose mode is enabled', () => {
+      Logger.setVerbose(true);
+      Logger.verbose('Verbose message');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Verbose message');
+    });
+
+    it('should suppress verbose messages in quiet mode even when verbose is enabled', () => {
+      Logger.setVerbose(true);
+      Logger.setQuiet(true);
+      Logger.verbose('Verbose message');
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    it('should handle multiple arguments', () => {
+      Logger.setVerbose(true);
+      Logger.verbose('Key:', 'value', 123);
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Key:', 'value', 123);
     });
   });
 

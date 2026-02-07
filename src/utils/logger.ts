@@ -5,6 +5,7 @@
 
 class LoggerClass {
   private quiet: boolean = false;
+  private verboseMode: boolean = false;
 
   /**
    * Enable or disable quiet mode
@@ -18,6 +19,29 @@ class LoggerClass {
    */
   isQuiet(): boolean {
     return this.quiet;
+  }
+
+  /**
+   * Enable or disable verbose mode
+   */
+  setVerbose(enabled: boolean): void {
+    this.verboseMode = enabled;
+  }
+
+  /**
+   * Check if verbose mode is enabled
+   */
+  isVerbose(): boolean {
+    return this.verboseMode;
+  }
+
+  /**
+   * Log verbose messages (only shown when verbose mode is enabled, suppressed in quiet mode)
+   */
+  verbose(...args: unknown[]): void {
+    if (this.verboseMode && !this.quiet) {
+      console.error(...args);
+    }
   }
 
   /**
