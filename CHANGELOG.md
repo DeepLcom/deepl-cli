@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Symlink detection on all file-reading paths** - Added `safeReadFile` / `safeReadFileSync` utility that rejects symbolic links before reading. Applied to `write` command (all file operations), `glossary create` / `glossary replace-dictionary` (TSV/CSV loading), and `document translate` (document upload). Prevents symlink-based path traversal attacks.
 
 ### Changed
+- **Concurrency-limited `translateToMultiple()`** - Multi-target translations now run with a concurrency limit of 5 instead of firing all requests in parallel unbounded, preventing API overload when translating to many languages at once
+- **Decomposed DeepLClient into domain-specific clients** - Refactored the 1279-line monolithic API client into 7 focused modules (`HttpClient`, `TranslationClient`, `GlossaryClient`, `DocumentClient`, `WriteClient`, `StyleRulesClient`, `AdminClient`) with a thin facade preserving the public API surface
+- **Decomposed CLI entry point into per-command modules** - Refactored the 1246-line monolithic `index.ts` into 12 `register-*.ts` command modules, each self-contained with lazy-loaded dependencies
+- **Help text examples on CLI commands** - Added usage examples to `auth`, `translate`, `watch`, `write`, `config`, and `glossary` commands via Commander `.addHelpText('after', ...)`
 - **`deepl write --lang` is now optional** - When omitted, the API auto-detects the language and rephrases in the original language. Previously `--lang` was required.
 - **Admin usage endpoint migrated to `/v2/admin/analytics`** - Replaces the previous `/v2/admin/usage` endpoint with the richer analytics response format
 - **Lazy CacheService instantiation** - SQLite cache database is no longer opened on every CLI invocation. Commands that don't need the cache (`--help`, `--version`, `auth`, `config`, `languages`, `glossary`, etc.) now skip database creation entirely, improving startup performance.
