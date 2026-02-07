@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as http from 'http';
 import * as https from 'https';
 import { Language } from '../types';
+import { AuthError, RateLimitError, QuotaError, NetworkError } from '../utils/errors.js';
 
 export interface ProxyConfig {
   protocol?: 'http' | 'https';
@@ -251,13 +252,13 @@ export class HttpClient {
 
       switch (status) {
         case 403:
-          return new Error(`Authentication failed: Invalid API key${traceIdSuffix}`);
+          return new AuthError(`Authentication failed: Invalid API key${traceIdSuffix}`);
         case 456:
-          return new Error(`Quota exceeded: Character limit reached${traceIdSuffix}`);
+          return new QuotaError(`Quota exceeded: Character limit reached${traceIdSuffix}`);
         case 429:
-          return new Error(`Rate limit exceeded: Too many requests${traceIdSuffix}`);
+          return new RateLimitError(`Rate limit exceeded: Too many requests${traceIdSuffix}`);
         case 503:
-          return new Error(`Service temporarily unavailable: Please try again later${traceIdSuffix}`);
+          return new NetworkError(`Service temporarily unavailable: Please try again later${traceIdSuffix}`);
         default:
           return new Error(`API error: ${message}${traceIdSuffix}`);
       }

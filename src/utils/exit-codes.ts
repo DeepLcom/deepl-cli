@@ -3,6 +3,8 @@
  * Provides granular exit codes for better CI/CD integration
  */
 
+import { DeepLCLIError } from './errors.js';
+
 /**
  * Exit codes for different error types
  * Allows scripts to implement intelligent retry logic
@@ -33,10 +35,20 @@ export const EXIT_CODE_DESCRIPTIONS: Record<ExitCode, string> = {
 };
 
 /**
- * Determine exit code from error message
+ * Determine exit code from error type or message.
+ * Prefers instanceof checks on custom error classes; falls back to
+ * string matching for errors thrown outside the HTTP client layer.
  */
 export function getExitCodeFromError(error: Error): ExitCode {
-  const message = error.message.toLowerCase();
+  if (error instanceof DeepLCLIError) {
+    return error.exitCode;
+  }
+
+  return classifyByMessage(error.message);
+}
+
+function classifyByMessage(rawMessage: string): ExitCode {
+  const message = rawMessage.toLowerCase();
 
   // Authentication errors
   if (
