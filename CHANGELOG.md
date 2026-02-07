@@ -8,10 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Input length validation before API calls** - Text is validated against the DeepL API's 128KB (131072 bytes) limit before sending requests. Single translations check text byte length; batch translations check both per-item and aggregate sizes. Prevents unnecessary API round-trips and provides clear error messages suggesting to split text or use file translation.
 - **Per-product breakdown in `deepl admin usage`** - Usage analytics now show character counts per product (text translation, document translation, write) instead of aggregate totals only. Uses the new `/v2/admin/analytics` endpoint.
 - **Generic `en`/`pt` language codes for `deepl write`** - The Write API accepts generic `en` and `pt` in addition to regional variants (`en-GB`, `en-US`, `pt-BR`, `pt-PT`)
 
 ### Security
+- **HTTPS enforcement for `--api-url` flag** - The `--api-url` flag now rejects insecure `http://` URLs to prevent API keys from being sent over unencrypted connections. Only `https://` URLs are accepted, with an exception for `http://localhost` and `http://127.0.0.1` for local development/testing. The same validation applies to the `api.baseUrl` config value when used at runtime.
 - **Symlink detection on all file-reading paths** - Added `safeReadFile` / `safeReadFileSync` utility that rejects symbolic links before reading. Applied to `write` command (all file operations), `glossary create` / `glossary replace-dictionary` (TSV/CSV loading), and `document translate` (document upload). Prevents symlink-based path traversal attacks.
 
 ### Changed
@@ -20,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Lazy CacheService instantiation** - SQLite cache database is no longer opened on every CLI invocation. Commands that don't need the cache (`--help`, `--version`, `auth`, `config`, `languages`, `glossary`, etc.) now skip database creation entirely, improving startup performance.
 
 ### Fixed
+- **`--api-url` flag now takes effect** - The `--api-url` flag was defined on the translate command but its value was not passed to the DeepL client, so it was silently ignored. It is now correctly wired up.
 - **CLI boundary validation for `--formality`, `--tag-handling`, `--model-type`, `--split-sentences`** - Invalid values are now rejected at parse time by Commander's `.choices()` with clear error messages, instead of being passed through to the API with unhelpful errors
 
 ## [0.9.0] - 2026-02-06
