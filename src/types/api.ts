@@ -16,7 +16,6 @@ export interface TranslationOptions {
   formality?: Formality;
   preserveFormatting?: boolean;
   preserveCode?: boolean;
-  preserveVars?: boolean;
   context?: string;
   splitSentences?: 'on' | 'off' | 'nonewlines';
   tagHandling?: 'xml' | 'html';
