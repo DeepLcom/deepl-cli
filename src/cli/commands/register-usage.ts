@@ -1,11 +1,11 @@
 import type { Command } from 'commander';
-import type { DeepLClient } from '../../api/deepl-client.js';
 import { Logger } from '../../utils/logger.js';
+import { createUsageCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerUsage(
   program: Command,
   deps: {
-    createDeepLClient: (overrideBaseUrl?: string) => Promise<DeepLClient>;
+    createDeepLClient: CreateDeepLClient;
     handleError: (error: unknown) => never;
   },
 ): void {
@@ -16,9 +16,7 @@ export function registerUsage(
     .description('Show API usage statistics')
     .action(async () => {
       try {
-        const client = await createDeepLClient();
-        const { UsageCommand } = await import('./usage.js');
-        const usageCommand = new UsageCommand(client);
+        const usageCommand = await createUsageCommand(createDeepLClient);
 
         const usage = await usageCommand.getUsage();
         const formatted = usageCommand.formatUsage(usage);

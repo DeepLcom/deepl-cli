@@ -1,20 +1,13 @@
 import { Command, Option } from 'commander';
 import chalk from 'chalk';
-import type { ConfigService } from '../../storage/config.js';
-import type { CacheService } from '../../storage/cache.js';
-import type { DeepLClient } from '../../api/deepl-client.js';
 import { Logger } from '../../utils/logger.js';
+import { createWatchCommand, type ServiceDeps } from './service-factory.js';
 
 export function registerWatch(
   program: Command,
-  deps: {
-    getConfigService: () => ConfigService;
-    getCacheService: () => Promise<CacheService>;
-    createDeepLClient: (overrideBaseUrl?: string) => Promise<DeepLClient>;
-    handleError: (error: unknown) => never;
-  },
+  deps: ServiceDeps,
 ): void {
-  const { getConfigService, getCacheService, createDeepLClient, handleError } = deps;
+  const { handleError } = deps;
 
   program
     .command('watch')
@@ -55,13 +48,7 @@ Examples:
           Logger.warn(chalk.yellow('Warning: --git-staged is not yet implemented'));
         }
 
-        const client = await createDeepLClient();
-        const { TranslationService } = await import('../../services/translation.js');
-        const { GlossaryService } = await import('../../services/glossary.js');
-        const { WatchCommand } = await import('./watch.js');
-        const translationService = new TranslationService(client, getConfigService(), await getCacheService());
-        const glossaryService = new GlossaryService(client);
-        const watchCommand = new WatchCommand(translationService, glossaryService);
+        const watchCommand = await createWatchCommand(deps);
 
         await watchCommand.watch(path, options);
       } catch (error) {

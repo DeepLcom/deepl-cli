@@ -3,12 +3,13 @@ import chalk from 'chalk';
 import type { ConfigService } from '../../storage/config.js';
 import type { DeepLClient } from '../../api/deepl-client.js';
 import { Logger } from '../../utils/logger.js';
+import type { CreateDeepLClient } from './service-factory.js';
 
 export function registerLanguages(
   program: Command,
   deps: {
     getConfigService: () => ConfigService;
-    createDeepLClient: (overrideBaseUrl?: string) => Promise<DeepLClient>;
+    createDeepLClient: CreateDeepLClient;
     handleError: (error: unknown) => never;
   },
 ): void {

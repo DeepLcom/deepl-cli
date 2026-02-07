@@ -1,13 +1,13 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import type { DeepLClient } from '../../api/deepl-client.js';
 import type { Language } from '../../types/common.js';
 import { Logger } from '../../utils/logger.js';
+import { createGlossaryCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerGlossary(
   program: Command,
   deps: {
-    createDeepLClient: (overrideBaseUrl?: string) => Promise<DeepLClient>;
+    createDeepLClient: CreateDeepLClient;
     handleError: (error: unknown) => never;
   },
 ): void {
@@ -32,11 +32,7 @@ Examples:
         .argument('<file>', 'TSV/CSV file path')
         .action(async (name: string, sourceLang: string, targetLang: string, file: string) => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const targetLangs = [targetLang as Language];
 
@@ -54,11 +50,7 @@ Examples:
         .description('List all glossaries')
         .action(async () => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const glossaries = await glossaryCommand.list();
             Logger.output(glossaryCommand.formatGlossaryList(glossaries));
@@ -74,11 +66,7 @@ Examples:
         .argument('<name-or-id>', 'Glossary name or ID')
         .action(async (nameOrId: string) => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const glossary = await glossaryCommand.show(nameOrId);
             Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
@@ -95,11 +83,7 @@ Examples:
         .option('--target <lang>', 'Target language (required for multilingual glossaries)')
         .action(async (nameOrId: string, options: { target?: string }) => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const targetLang = options.target as Language | undefined;
             const entries = await glossaryCommand.entries(nameOrId, targetLang);
@@ -126,11 +110,7 @@ Examples:
               }
             }
 
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             await glossaryCommand.delete(nameOrId);
             Logger.success(chalk.green('\u2713 Glossary deleted successfully'));
@@ -145,11 +125,7 @@ Examples:
         .description('List supported glossary language pairs')
         .action(async () => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const pairs = await glossaryCommand.listLanguages();
             Logger.output(glossaryCommand.formatLanguagePairs(pairs));
@@ -168,11 +144,7 @@ Examples:
         .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
         .action(async (nameOrId: string, source: string, target: string, options: { targetLang?: string }) => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const targetLang = options.targetLang as Language | undefined;
             await glossaryCommand.addEntry(nameOrId, source, target, targetLang);
@@ -192,11 +164,7 @@ Examples:
         .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
         .action(async (nameOrId: string, source: string, newTarget: string, options: { targetLang?: string }) => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const targetLang = options.targetLang as Language | undefined;
             await glossaryCommand.updateEntry(nameOrId, source, newTarget, targetLang);
@@ -215,11 +183,7 @@ Examples:
         .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
         .action(async (nameOrId: string, source: string, options: { targetLang?: string }) => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const targetLang = options.targetLang as Language | undefined;
             await glossaryCommand.removeEntry(nameOrId, source, targetLang);
@@ -237,11 +201,7 @@ Examples:
         .argument('<new-name>', 'New glossary name')
         .action(async (nameOrId: string, newName: string) => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             await glossaryCommand.rename(nameOrId, newName);
             Logger.success(chalk.green('\u2713 Glossary renamed successfully'));
@@ -259,11 +219,7 @@ Examples:
         .argument('<file>', 'TSV/CSV file with replacement entries')
         .action(async (nameOrId: string, targetLang: string, file: string) => {
           try {
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             await glossaryCommand.replaceDictionary(nameOrId, targetLang as Language, file);
             Logger.success(chalk.green(`\u2713 Dictionary replaced successfully (${targetLang})`));
@@ -289,11 +245,7 @@ Examples:
               }
             }
 
-            const client = await createDeepLClient();
-            const { GlossaryService } = await import('../../services/glossary.js');
-            const { GlossaryCommand } = await import('./glossary.js');
-            const glossaryService = new GlossaryService(client);
-            const glossaryCommand = new GlossaryCommand(glossaryService);
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             await glossaryCommand.deleteDictionary(nameOrId, targetLang as Language);
             Logger.success(chalk.green(`\u2713 Dictionary deleted successfully (${targetLang})`));

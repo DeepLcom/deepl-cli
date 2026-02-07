@@ -1,19 +1,12 @@
 import { Command, Option } from 'commander';
-import type { ConfigService } from '../../storage/config.js';
-import type { CacheService } from '../../storage/cache.js';
-import type { DeepLClient } from '../../api/deepl-client.js';
 import { Logger } from '../../utils/logger.js';
+import { createTranslateCommand, type ServiceDeps } from './service-factory.js';
 
 export function registerTranslate(
   program: Command,
-  deps: {
-    getConfigService: () => ConfigService;
-    getCacheService: () => Promise<CacheService>;
-    createDeepLClient: (overrideBaseUrl?: string) => Promise<DeepLClient>;
-    handleError: (error: unknown) => never;
-  },
+  deps: ServiceDeps,
 ): void {
-  const { getConfigService, getCacheService, createDeepLClient, handleError } = deps;
+  const { handleError } = deps;
 
   program
     .command('translate')
@@ -83,16 +76,7 @@ Examples:
       apiUrl?: string;
     }) => {
       try {
-        const client = await createDeepLClient(options.apiUrl);
-        const { TranslationService } = await import('../../services/translation.js');
-        const { DocumentTranslationService } = await import('../../services/document-translation.js');
-        const { GlossaryService } = await import('../../services/glossary.js');
-        const { TranslateCommand } = await import('./translate.js');
-        const configService = getConfigService();
-        const translationService = new TranslationService(client, configService, await getCacheService());
-        const documentTranslationService = new DocumentTranslationService(client);
-        const glossaryService = new GlossaryService(client);
-        const translateCommand = new TranslateCommand(translationService, documentTranslationService, glossaryService, configService);
+        const translateCommand = await createTranslateCommand(deps, options.apiUrl);
 
         let result: string;
 

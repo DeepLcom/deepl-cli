@@ -2,15 +2,15 @@ import type { Command } from 'commander';
 import { existsSync } from 'fs';
 import { writeFile } from 'fs/promises';
 import chalk from 'chalk';
-import type { DeepLClient } from '../../api/deepl-client.js';
 import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/api.js';
 import { Logger } from '../../utils/logger.js';
 import { ExitCode } from '../../utils/exit-codes.js';
+import { createWriteCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerWrite(
   program: Command,
   deps: {
-    createDeepLClient: (overrideBaseUrl?: string) => Promise<DeepLClient>;
+    createDeepLClient: CreateDeepLClient;
     handleError: (error: unknown) => never;
   },
 ): void {
@@ -63,11 +63,7 @@ Examples:
           throw new Error('Cannot specify both --style and --tone. Use one or the other.');
         }
 
-        const client = await createDeepLClient();
-        const { WriteService } = await import('../../services/write.js');
-        const { WriteCommand } = await import('./write.js');
-        const writeService = new WriteService(client);
-        const writeCommand = new WriteCommand(writeService);
+        const writeCommand = await createWriteCommand(createDeepLClient);
 
         const writeOptions = {
           lang: options.lang as WriteLanguage | undefined,

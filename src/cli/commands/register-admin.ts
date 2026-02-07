@@ -1,12 +1,12 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import type { DeepLClient } from '../../api/deepl-client.js';
 import { Logger } from '../../utils/logger.js';
+import { createAdminCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerAdmin(
   program: Command,
   deps: {
-    createDeepLClient: (overrideBaseUrl?: string) => Promise<DeepLClient>;
+    createDeepLClient: CreateDeepLClient;
     handleError: (error: unknown) => never;
   },
 ): void {
@@ -27,9 +27,7 @@ export function registerAdmin(
         .option('--format <format>', 'Output format: json (default: plain text)')
         .action(async (options: { format?: string }) => {
           try {
-            const client = await createDeepLClient();
-            const { AdminCommand } = await import('./admin.js');
-            const admin = new AdminCommand(client);
+            const admin = await createAdminCommand(createDeepLClient);
             const keys = await admin.listKeys();
             if (options.format === 'json') {
               Logger.output(admin.formatJson(keys));
@@ -48,9 +46,7 @@ export function registerAdmin(
         .option('--format <format>', 'Output format: json (default: plain text)')
         .action(async (options: { label?: string; format?: string }) => {
           try {
-            const client = await createDeepLClient();
-            const { AdminCommand } = await import('./admin.js');
-            const admin = new AdminCommand(client);
+            const admin = await createAdminCommand(createDeepLClient);
             const key = await admin.createKey(options.label);
             if (options.format === 'json') {
               Logger.output(admin.formatJson(key));
@@ -79,9 +75,7 @@ export function registerAdmin(
               }
             }
 
-            const client = await createDeepLClient();
-            const { AdminCommand } = await import('./admin.js');
-            const admin = new AdminCommand(client);
+            const admin = await createAdminCommand(createDeepLClient);
             await admin.deactivateKey(keyId);
             Logger.success(chalk.green(`\u2713 API key ${keyId} deactivated`));
           } catch (error) {
@@ -96,9 +90,7 @@ export function registerAdmin(
         .argument('<label>', 'New label')
         .action(async (keyId: string, label: string) => {
           try {
-            const client = await createDeepLClient();
-            const { AdminCommand } = await import('./admin.js');
-            const admin = new AdminCommand(client);
+            const admin = await createAdminCommand(createDeepLClient);
             await admin.renameKey(keyId, label);
             Logger.success(chalk.green(`\u2713 API key ${keyId} renamed to "${label}"`));
           } catch (error) {
@@ -113,9 +105,7 @@ export function registerAdmin(
         .argument('<characters>', 'Character limit (number or "unlimited")')
         .action(async (keyId: string, characters: string) => {
           try {
-            const client = await createDeepLClient();
-            const { AdminCommand } = await import('./admin.js');
-            const admin = new AdminCommand(client);
+            const admin = await createAdminCommand(createDeepLClient);
             const limit = characters === 'unlimited' ? null : parseInt(characters, 10);
             if (limit !== null && isNaN(limit)) {
               throw new Error('Characters must be a number or "unlimited"');
@@ -144,9 +134,7 @@ export function registerAdmin(
           format?: string;
         }) => {
           try {
-            const client = await createDeepLClient();
-            const { AdminCommand } = await import('./admin.js');
-            const admin = new AdminCommand(client);
+            const admin = await createAdminCommand(createDeepLClient);
             const report = await admin.getUsage({
               startDate: options.start,
               endDate: options.end,

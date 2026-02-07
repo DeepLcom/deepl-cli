@@ -1,11 +1,11 @@
 import { Command } from 'commander';
-import type { DeepLClient } from '../../api/deepl-client.js';
 import { Logger } from '../../utils/logger.js';
+import { createStyleRulesCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerStyleRules(
   program: Command,
   deps: {
-    createDeepLClient: (overrideBaseUrl?: string) => Promise<DeepLClient>;
+    createDeepLClient: CreateDeepLClient;
     handleError: (error: unknown) => never;
   },
 ): void {
@@ -28,9 +28,7 @@ export function registerStyleRules(
           format?: string;
         }) => {
           try {
-            const client = await createDeepLClient();
-            const { StyleRulesCommand } = await import('./style-rules.js');
-            const styleRulesCommand = new StyleRulesCommand(client);
+            const styleRulesCommand = await createStyleRulesCommand(createDeepLClient);
 
             const rules = await styleRulesCommand.list({
               detailed: options.detailed,
