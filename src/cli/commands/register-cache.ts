@@ -37,8 +37,23 @@ export function registerCache(
       new Command('clear')
         .description('Clear all cached translations')
         .option('-y, --yes', 'Skip confirmation prompt')
-        .action(async (options: { yes?: boolean }) => {
+        .option('--dry-run', 'Show cache stats that would be cleared without performing the operation')
+        .action(async (options: { yes?: boolean; dryRun?: boolean }) => {
           try {
+            if (options.dryRun) {
+              const { CacheCommand } = await import('./cache.js');
+              const cacheCommand = new CacheCommand(await getCacheService(), getConfigService());
+              const stats = await cacheCommand.stats();
+              const totalSizeMB = (stats.totalSize / (1024 * 1024)).toFixed(2);
+              const lines = [
+                chalk.yellow('[dry-run] No cache entries will be cleared.'),
+                chalk.yellow(`[dry-run] Would clear ${stats.entries} cached entries (${totalSizeMB} MB)`),
+                chalk.yellow(`[dry-run] Cache status: ${stats.enabled ? 'enabled' : 'disabled'}`),
+              ];
+              Logger.output(lines.join('\n'));
+              return;
+            }
+
             if (!options.yes) {
               const { confirm } = await import('../../utils/confirm.js');
               const confirmed = await confirm({ message: 'Clear all cached translations?' });

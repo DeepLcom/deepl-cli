@@ -164,7 +164,7 @@ describe('CLI Stdin/Stdout E2E', () => {
       const result = runCLIExpectError(`translate "${testFile}"`, 'test-key:fx');
 
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/required option.*--to|missing.*--to/i);
+      expect(result.output).toMatch(/required option.*--to|missing.*--to|target language is required.*--to/i);
     });
   });
 
@@ -282,7 +282,7 @@ describe('CLI Stdin/Stdout E2E', () => {
       const result = runCLIExpectError(`translate "${testFile}" --quiet`, 'test-key:fx');
 
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/required option.*--to/i);
+      expect(result.output).toMatch(/required option.*--to|target language is required.*--to/i);
     });
   });
 });

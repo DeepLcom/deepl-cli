@@ -201,13 +201,16 @@ describe('CLI Workflow E2E', () => {
   });
 
   describe('Error Handling Workflow', () => {
-    it('should require --to flag for translation', () => {
+    it('should require --to flag or config default for translation', () => {
+      const env = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
+      (env as Record<string, string | undefined>)['DEEPL_API_KEY'] = undefined;
+
       expect.assertions(1);
       try {
-        execSync('deepl translate "Hello"', { encoding: 'utf-8', stdio: 'pipe' });
+        execSync('deepl translate "Hello"', { encoding: 'utf-8', stdio: 'pipe', env });
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
-        expect(output).toMatch(/required.*--to|target language/i);
+        expect(output).toMatch(/--to|target language/i);
       }
     });
 
@@ -233,17 +236,20 @@ describe('CLI Workflow E2E', () => {
       expect(output.trim()).toBe('null');
     });
 
-    it('should require target language for translation without API key', () => {
-      // Clear API key first (in isolated test config)
+    it('should require API key for translation', () => {
+      const env: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
+      delete env['DEEPL_API_KEY'];
+
+      // Clear API key from config
       try {
-        runCLI('deepl auth clear');
+        execSync('deepl auth clear', { encoding: 'utf-8', env });
       } catch {
         // Ignore if already cleared
       }
 
       expect.assertions(1);
       try {
-        runCLI('deepl translate "Hello" --to es');
+        execSync('deepl translate "Hello" --to es', { encoding: 'utf-8', env, stdio: 'pipe' });
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         expect(output).toMatch(/API key|auth/i);
@@ -546,13 +552,16 @@ describe('CLI Workflow E2E', () => {
 
   describe('CLI Argument Validation', () => {
     describe('translate command validation', () => {
-      it('should validate --to flag is required', () => {
+      it('should validate --to flag or config default is required', () => {
+        const env = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
+        (env as Record<string, string | undefined>)['DEEPL_API_KEY'] = undefined;
+
         expect.assertions(1);
         try {
-          execSync('deepl translate "Hello"', { encoding: 'utf-8', stdio: 'pipe' });
+          execSync('deepl translate "Hello"', { encoding: 'utf-8', stdio: 'pipe', env });
         } catch (error: any) {
-          const output = error.stderr || error.stdout;
-          expect(output).toMatch(/required.*--to|target language/i);
+          const output = error.stderr || error.stdout || error.message;
+          expect(output).toMatch(/--to|target language/i);
         }
       });
 

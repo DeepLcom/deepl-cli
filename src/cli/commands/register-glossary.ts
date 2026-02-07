@@ -99,8 +99,18 @@ Examples:
         .description('Delete a glossary')
         .argument('<name-or-id>', 'Glossary name or ID')
         .option('-y, --yes', 'Skip confirmation prompt')
-        .action(async (nameOrId: string, options: { yes?: boolean }) => {
+        .option('--dry-run', 'Show what would be deleted without performing the operation')
+        .action(async (nameOrId: string, options: { yes?: boolean; dryRun?: boolean }) => {
           try {
+            if (options.dryRun) {
+              const lines = [
+                chalk.yellow(`[dry-run] No deletions will be performed.`),
+                chalk.yellow(`[dry-run] Would delete glossary: "${nameOrId}"`),
+              ];
+              Logger.output(lines.join('\n'));
+              return;
+            }
+
             if (!options.yes) {
               const { confirm } = await import('../../utils/confirm.js');
               const confirmed = await confirm({ message: `Delete glossary "${nameOrId}"?` });

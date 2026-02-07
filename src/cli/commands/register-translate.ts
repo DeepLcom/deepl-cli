@@ -1,4 +1,6 @@
+import * as fs from 'fs';
 import { Command, Option } from 'commander';
+import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
 import { createTranslateCommand, type ServiceDeps } from './service-factory.js';
 
@@ -12,7 +14,7 @@ export function registerTranslate(
     .command('translate')
     .description('Translate text, files, or directories using DeepL API')
     .argument('[text]', 'Text, file path, or directory to translate (or read from stdin)')
-    .requiredOption('-t, --to <language>', 'Target language(s), comma-separated for multiple')
+    .option('-t, --to <language>', 'Target language(s), comma-separated for multiple (falls back to config defaults.targetLangs)')
     .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
     .option('-o, --output <path>', 'Output file path or directory (required for file/directory translation)')
     .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less']))
@@ -39,6 +41,7 @@ export function registerTranslate(
     .option('--no-cache', 'Bypass cache for this translation (useful for testing)')
     .option('--format <format>', 'Output format: json, table (default: plain text)')
     .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
+    .option('--dry-run', 'Show what would be translated without performing the operation (file/directory mode only)')
     .addHelpText('after', `
 Examples:
   $ deepl translate "Hello world" --to es
@@ -47,7 +50,7 @@ Examples:
   $ echo "Hello" | deepl translate --to ja
 `)
     .action(async (text: string | undefined, options: {
-      to: string;
+      to?: string;
       from?: string;
       output?: string;
       formality?: string;
@@ -74,16 +77,68 @@ Examples:
       noCache?: boolean;
       format?: string;
       apiUrl?: string;
+      dryRun?: boolean;
     }) => {
       try {
+        if (!options.to) {
+          const configService = deps.getConfigService();
+          const targetLangs = configService.getValue<string[]>('defaults.targetLangs');
+          if (targetLangs && targetLangs.length > 0) {
+            options.to = targetLangs[0];
+          } else {
+            throw new Error(
+              'Target language is required. Use --to <language> or set a default with: deepl config set defaults.targetLangs \'["es"]\'',
+            );
+          }
+        }
+
+        if (options.dryRun && text) {
+          const isDir = fs.existsSync(text) && fs.statSync(text).isDirectory();
+          const isFile = !isDir && fs.existsSync(text) && fs.statSync(text).isFile();
+
+          if (isDir || isFile) {
+            const targetLangs = options.to!.split(',').map(l => l.trim());
+            const lines: string[] = [
+              chalk.yellow('[dry-run] No translations will be performed.'),
+            ];
+
+            if (isDir) {
+              lines.push(chalk.yellow(`[dry-run] Would translate directory: ${text}`));
+              lines.push(chalk.yellow(`[dry-run] Target language(s): ${targetLangs.join(', ')}`));
+              lines.push(chalk.yellow(`[dry-run] Output directory: ${options.output ?? '<required>'}`));
+              if (options.pattern) {
+                lines.push(chalk.yellow(`[dry-run] File pattern: ${options.pattern}`));
+              }
+              lines.push(chalk.yellow(`[dry-run] Recursive: ${options.recursive !== false}`));
+            } else {
+              lines.push(chalk.yellow(`[dry-run] Would translate file: ${text}`));
+              lines.push(chalk.yellow(`[dry-run] Target language(s): ${targetLangs.join(', ')}`));
+              lines.push(chalk.yellow(`[dry-run] Output: ${options.output ?? '<required>'}`));
+            }
+
+            if (options.from) {
+              lines.push(chalk.yellow(`[dry-run] Source language: ${options.from}`));
+            }
+            if (options.glossary) {
+              lines.push(chalk.yellow(`[dry-run] Glossary: ${options.glossary}`));
+            }
+            if (options.formality) {
+              lines.push(chalk.yellow(`[dry-run] Formality: ${options.formality}`));
+            }
+
+            Logger.output(lines.join('\n'));
+            return;
+          }
+        }
+
         const translateCommand = await createTranslateCommand(deps, options.apiUrl);
 
         let result: string;
 
         if (text) {
-          result = await translateCommand.translate(text, options);
+          result = await translateCommand.translate(text, options as { to: string } & typeof options);
         } else {
-          result = await translateCommand.translateFromStdin(options);
+          result = await translateCommand.translateFromStdin(options as { to: string } & typeof options);
         }
 
         Logger.output(result);

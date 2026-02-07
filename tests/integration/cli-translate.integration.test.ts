@@ -81,13 +81,13 @@ describe('Translate CLI Integration', () => {
   });
 
   describe('required arguments validation', () => {
-    it('should require --to flag for translation', () => {
+    it('should require --to flag or config default for translation', () => {
       expect.assertions(1);
       try {
         runCLI('deepl translate "Hello"', { stdio: 'pipe' });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        expect(output).toMatch(/required.*--to|target language/i);
+        expect(output).toMatch(/target language|--to/i);
       }
     });
 
@@ -96,6 +96,64 @@ describe('Translate CLI Integration', () => {
       // Verify command structure accepts text argument
       expect(helpOutput).toContain('[text]');
       expect(helpOutput).toContain('--to <language>');
+    });
+  });
+
+  describe('default target language from config', () => {
+    const runCLINoApiKey = (command: string, options: { stdio?: any } = {}): string => {
+      const env: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
+      delete env['DEEPL_API_KEY'];
+      return execSync(command, {
+        encoding: 'utf-8',
+        env,
+        ...options,
+      });
+    };
+
+    it('should show error mentioning both --to and config when neither is set', () => {
+      // Clear any config that might have targetLangs set
+      const configPath = path.join(testConfigDir, 'config.json');
+      if (fs.existsSync(configPath)) {
+        fs.unlinkSync(configPath);
+      }
+
+      expect.assertions(2);
+      try {
+        runCLINoApiKey('deepl translate "Hello"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/--to/);
+        expect(output).toMatch(/defaults\.targetLangs/);
+      }
+    });
+
+    it('should use config default target language when --to is omitted', () => {
+      const configPath = path.join(testConfigDir, 'config.json');
+      const config = {
+        auth: {},
+        api: { baseUrl: 'https://api.deepl.com', usePro: true },
+        defaults: {
+          targetLangs: ['es'],
+          formality: 'default',
+          preserveFormatting: true,
+        },
+        cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
+        output: { format: 'text', verbose: false, color: true },
+        watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
+        team: {},
+      };
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+
+      expect.assertions(1);
+      try {
+        // Without --to, should fall back to config default 'es'
+        // Will still fail because no API key, but should NOT fail on missing --to
+        runCLINoApiKey('deepl translate "Hello"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        // Should fail on API key, not on missing target language
+        expect(output).toMatch(/API key|auth/i);
+      }
     });
   });
 
@@ -289,10 +347,23 @@ describe('Translate CLI Integration', () => {
   });
 
   describe('error messages', () => {
-    it('should show clear error for missing required flags', () => {
+    it('should show clear error when --to omitted and no config default', () => {
+      // Clear config to ensure no default targetLangs
+      const configPath = path.join(testConfigDir, 'config.json');
+      if (fs.existsSync(configPath)) {
+        fs.unlinkSync(configPath);
+      }
+
+      const env = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
+      (env as Record<string, string | undefined>)['DEEPL_API_KEY'] = undefined;
+
       expect.assertions(1);
       try {
-        runCLI('deepl translate "Hello"', { stdio: 'pipe' });
+        execSync('deepl translate "Hello"', {
+          encoding: 'utf-8',
+          env,
+          stdio: 'pipe',
+        });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/--to|target/i);
