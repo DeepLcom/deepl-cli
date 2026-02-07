@@ -155,6 +155,7 @@ export interface UsageBreakdown {
   textTranslationCharacters: number;
   documentTranslationCharacters: number;
   textImprovementCharacters: number;
+  speechToTextMilliseconds: number;
 }
 
 export interface AdminUsageEntry {

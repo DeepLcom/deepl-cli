@@ -14,6 +14,7 @@ const emptyReport: AdminUsageReport = {
     textTranslationCharacters: 0,
     documentTranslationCharacters: 0,
     textImprovementCharacters: 0,
+    speechToTextMilliseconds: 0,
   },
   startDate: '2024-01-01',
   endDate: '2024-01-31',
@@ -281,6 +282,7 @@ describe('AdminCommand', () => {
           textTranslationCharacters: 7000,
           documentTranslationCharacters: 2000,
           textImprovementCharacters: 1000,
+          speechToTextMilliseconds: 60000,
         },
         startDate: '2024-01-01',
         endDate: '2024-01-31',
@@ -295,6 +297,7 @@ describe('AdminCommand', () => {
       expect(result).toContain('Translation: 7,000');
       expect(result).toContain('Documents:   2,000');
       expect(result).toContain('Write:       1,000');
+      expect(result).toContain('Voice:       1m 0s');
     });
 
     it('should format report with per-key entries', () => {
@@ -304,6 +307,7 @@ describe('AdminCommand', () => {
           textTranslationCharacters: 5000,
           documentTranslationCharacters: 0,
           textImprovementCharacters: 0,
+          speechToTextMilliseconds: 0,
         },
         startDate: '2024-01-01',
         endDate: '2024-01-31',
@@ -316,6 +320,7 @@ describe('AdminCommand', () => {
               textTranslationCharacters: 5000,
               documentTranslationCharacters: 0,
               textImprovementCharacters: 0,
+              speechToTextMilliseconds: 0,
             },
           },
         ],
@@ -334,6 +339,7 @@ describe('AdminCommand', () => {
           textTranslationCharacters: 2000,
           documentTranslationCharacters: 500,
           textImprovementCharacters: 500,
+          speechToTextMilliseconds: 0,
         },
         startDate: '2024-01-01',
         endDate: '2024-01-02',
@@ -347,6 +353,7 @@ describe('AdminCommand', () => {
               textTranslationCharacters: 2000,
               documentTranslationCharacters: 500,
               textImprovementCharacters: 500,
+          speechToTextMilliseconds: 0,
             },
           },
         ],
@@ -370,6 +377,7 @@ describe('AdminCommand', () => {
           textTranslationCharacters: 1000,
           documentTranslationCharacters: 0,
           textImprovementCharacters: 0,
+          speechToTextMilliseconds: 0,
         },
         startDate: '2024-01-01',
         endDate: '2024-01-31',
@@ -381,6 +389,7 @@ describe('AdminCommand', () => {
               textTranslationCharacters: 1000,
               documentTranslationCharacters: 0,
               textImprovementCharacters: 0,
+              speechToTextMilliseconds: 0,
             },
           },
         ],
@@ -397,6 +406,7 @@ describe('AdminCommand', () => {
           textTranslationCharacters: 500,
           documentTranslationCharacters: 0,
           textImprovementCharacters: 0,
+          speechToTextMilliseconds: 0,
         },
         startDate: '2024-02-01',
         endDate: '2024-02-28',
@@ -407,6 +417,7 @@ describe('AdminCommand', () => {
               textTranslationCharacters: 500,
               documentTranslationCharacters: 0,
               textImprovementCharacters: 0,
+              speechToTextMilliseconds: 0,
             },
           },
         ],
@@ -423,6 +434,7 @@ describe('AdminCommand', () => {
           textTranslationCharacters: 2000,
           documentTranslationCharacters: 0,
           textImprovementCharacters: 0,
+          speechToTextMilliseconds: 0,
         },
         startDate: '2024-03-01',
         endDate: '2024-03-31',
@@ -434,6 +446,7 @@ describe('AdminCommand', () => {
               textTranslationCharacters: 2000,
               documentTranslationCharacters: 0,
               textImprovementCharacters: 0,
+              speechToTextMilliseconds: 0,
             },
           },
         ],

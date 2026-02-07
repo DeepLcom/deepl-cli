@@ -96,14 +96,31 @@ export class AdminCommand {
     return lines.join('\n');
   }
 
-  /** Format a per-product usage breakdown (translation, documents, write). */
+  /** Format a per-product usage breakdown (translation, documents, write, voice). */
   private formatBreakdown(usage: UsageBreakdown, indent = '  '): string[] {
     const lines: string[] = [];
     lines.push(`${indent}Total:       ${usage.totalCharacters.toLocaleString()}`);
     lines.push(`${indent}Translation: ${usage.textTranslationCharacters.toLocaleString()}`);
     lines.push(`${indent}Documents:   ${usage.documentTranslationCharacters.toLocaleString()}`);
     lines.push(`${indent}Write:       ${usage.textImprovementCharacters.toLocaleString()}`);
+    lines.push(`${indent}Voice:       ${this.formatMilliseconds(usage.speechToTextMilliseconds)}`);
     return lines;
+  }
+
+  private formatMilliseconds(ms: number): string {
+    if (ms === 0) {
+      return '0ms';
+    }
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    }
+    return `${seconds}s ${ms % 1000}ms`;
   }
 
   /** Format a full usage report with totals and optional per-key entries. */

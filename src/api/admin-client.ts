@@ -90,6 +90,7 @@ export class AdminClient extends HttpClient {
         text_translation_characters: number;
         document_translation_characters: number;
         text_improvement_characters: number;
+        speech_to_text_milliseconds: number;
       }
 
       interface RawEntry {
@@ -117,6 +118,7 @@ export class AdminClient extends HttpClient {
         textTranslationCharacters: raw.text_translation_characters,
         documentTranslationCharacters: raw.document_translation_characters,
         textImprovementCharacters: raw.text_improvement_characters,
+        speechToTextMilliseconds: raw.speech_to_text_milliseconds,
       });
 
       const rawEntries = report.key_usages ?? report.key_and_day_usages ?? [];

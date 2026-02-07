@@ -2020,6 +2020,7 @@ describe('DeepLClient', () => {
                 text_translation_characters: 3000,
                 document_translation_characters: 1500,
                 text_improvement_characters: 500,
+                speech_to_text_milliseconds: 120000,
               },
               start_date: '2024-01-01',
               end_date: '2024-01-31',
@@ -2035,6 +2036,7 @@ describe('DeepLClient', () => {
         expect(report.totalUsage.textTranslationCharacters).toBe(3000);
         expect(report.totalUsage.documentTranslationCharacters).toBe(1500);
         expect(report.totalUsage.textImprovementCharacters).toBe(500);
+        expect(report.totalUsage.speechToTextMilliseconds).toBe(120000);
         expect(report.entries).toHaveLength(0);
       });
 
@@ -2049,6 +2051,7 @@ describe('DeepLClient', () => {
                 text_translation_characters: 3000,
                 document_translation_characters: 0,
                 text_improvement_characters: 0,
+                speech_to_text_milliseconds: 0,
               },
               start_date: '2024-01-01',
               end_date: '2024-01-31',
@@ -2062,6 +2065,7 @@ describe('DeepLClient', () => {
                     text_translation_characters: 3000,
                     document_translation_characters: 0,
                     text_improvement_characters: 0,
+                    speech_to_text_milliseconds: 0,
                   },
                 },
               ],
