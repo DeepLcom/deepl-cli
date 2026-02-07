@@ -696,6 +696,239 @@ describe('VoiceService', () => {
     });
   });
 
+  describe('reconnection', () => {
+    let tmpDir: string;
+    let testFile: string;
+
+    beforeEach(async () => {
+      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'voice-reconnect-'));
+      testFile = path.join(tmpDir, 'test.mp3');
+      await fs.writeFile(testFile, Buffer.alloc(1024));
+    });
+
+    afterEach(async () => {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should reconnect on unexpected WebSocket close', async () => {
+      const EventEmitter = require('events');
+
+      // First WS: closes unexpectedly after open
+      const mockWs1 = new EventEmitter();
+      mockWs1.readyState = 1;
+      mockWs1.send = jest.fn();
+      mockWs1.close = jest.fn();
+
+      // Second WS: completes normally
+      const mockWs2 = new EventEmitter();
+      mockWs2.readyState = 1;
+      mockWs2.send = jest.fn();
+      mockWs2.close = jest.fn();
+
+      const onReconnecting = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token-1',
+        session_id: 'session-reconnect',
+      });
+
+      (mockClient as any).reconnectSession = jest.fn().mockResolvedValue({
+        streaming_url: 'wss://test-new',
+        token: 'token-2',
+      });
+
+      let wsCallCount = 0;
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        wsCallCount++;
+        if (wsCallCount === 1) {
+          setTimeout(() => {
+            mockWs1.emit('open');
+            setTimeout(() => {
+              // Simulate unexpected close (no end_of_stream)
+              mockWs1.readyState = 3;
+              mockWs1.emit('close');
+            }, 10);
+          }, 0);
+          return mockWs1;
+        } else {
+          setTimeout(() => {
+            mockWs2.emit('open');
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 10);
+          }, 0);
+          return mockWs2;
+        }
+      });
+
+      const result = await service.translateFile(testFile, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      }, { onReconnecting });
+
+      expect(result.sessionId).toBe('session-reconnect');
+      expect(onReconnecting).toHaveBeenCalledWith(1);
+      expect((mockClient as any).reconnectSession).toHaveBeenCalledWith('token-1');
+    });
+
+    it('should reject after max reconnect attempts exhausted', async () => {
+      const EventEmitter = require('events');
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token-1',
+        session_id: 'session-exhaust',
+      });
+
+      let tokenCounter = 1;
+      (mockClient as any).reconnectSession = jest.fn().mockImplementation(() => {
+        tokenCounter++;
+        return Promise.resolve({
+          streaming_url: `wss://test-${tokenCounter}`,
+          token: `token-${tokenCounter}`,
+        });
+      });
+
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
+        const mockWs = new EventEmitter();
+        mockWs.readyState = 1;
+        mockWs.send = jest.fn();
+        mockWs.close = jest.fn();
+
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            mockWs.readyState = 3;
+            mockWs.emit('close');
+          }, 5);
+        }, 0);
+        return mockWs;
+      });
+
+      await expect(
+        service.translateFile(testFile, {
+          targetLangs: ['de'],
+          chunkInterval: 0,
+          maxReconnectAttempts: 2,
+        }),
+      ).rejects.toThrow(VoiceError);
+      await expect(
+        service.translateFile(testFile, {
+          targetLangs: ['de'],
+          chunkInterval: 0,
+          maxReconnectAttempts: 2,
+        }),
+      ).rejects.toThrow(/WebSocket closed unexpectedly/);
+    });
+
+    it('should not reconnect when reconnect option is false', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token-1',
+        session_id: 'session-no-reconnect',
+      });
+      (mockClient as any).reconnectSession = jest.fn();
+
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            mockWs.readyState = 3;
+            mockWs.emit('close');
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      await expect(
+        service.translateFile(testFile, {
+          targetLangs: ['de'],
+          chunkInterval: 0,
+          reconnect: false,
+        }),
+      ).rejects.toThrow(VoiceError);
+
+      expect((mockClient as any).reconnectSession).not.toHaveBeenCalled();
+    });
+
+    it('should not reconnect on normal end_of_stream close', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token-1',
+        session_id: 'session-normal-close',
+      });
+      (mockClient as any).reconnectSession = jest.fn();
+
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            callbacks.onEndOfStream?.();
+            // Simulate ws.close() triggering 'close' event
+            mockWs.emit('close');
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      const result = await service.translateFile(testFile, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      });
+
+      expect(result.sessionId).toBe('session-normal-close');
+      expect((mockClient as any).reconnectSession).not.toHaveBeenCalled();
+    });
+
+    it('should reject if reconnectSession itself fails', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token-1',
+        session_id: 'session-reconnect-fail',
+      });
+      (mockClient as any).reconnectSession = jest.fn().mockRejectedValue(
+        new VoiceError('Voice API access denied.'),
+      );
+
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            mockWs.readyState = 3;
+            mockWs.emit('close');
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      await expect(
+        service.translateFile(testFile, {
+          targetLangs: ['de'],
+          chunkInterval: 0,
+        }),
+      ).rejects.toThrow(VoiceError);
+    });
+  });
+
   describe('translateStdin()', () => {
     it('should require content-type for stdin', async () => {
       await expect(

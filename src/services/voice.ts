@@ -25,6 +25,7 @@ import type {
 const MAX_TARGET_LANGS = 5;
 const DEFAULT_CHUNK_SIZE = 6400;
 const DEFAULT_CHUNK_INTERVAL = 200;
+const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 
 const EXTENSION_CONTENT_TYPE_MAP: Record<string, VoiceSourceMediaContentType> = {
   '.ogg': 'audio/opus;container=ogg',
@@ -132,6 +133,9 @@ export class VoiceService {
       source_media_content_type: options.contentType!,
     });
 
+    const reconnectEnabled = options.reconnect !== false;
+    const maxReconnectAttempts = options.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
+
     return new Promise<VoiceSessionResult>((resolve, reject) => {
       const sourceTranscript: VoiceTranscript = { lang: options.sourceLang ?? 'auto', text: '', segments: [] };
       const targetTranscripts = new Map<string, VoiceTranscript>();
@@ -139,6 +143,13 @@ export class VoiceService {
       for (const lang of options.targetLangs) {
         targetTranscripts.set(lang, { lang, text: '', segments: [] });
       }
+
+      let streamEnded = false;
+      let reconnectAttempts = 0;
+      let currentToken = session.token;
+      let ws: WebSocket;
+      let sigintHandler: () => void;
+      let chunkStreamingResolve: (() => void) | null = null;
 
       const internalCallbacks: VoiceStreamCallbacks = {
         onSourceTranscript: (update: VoiceSourceTranscriptUpdate) => {
@@ -160,7 +171,9 @@ export class VoiceService {
           callbacks?.onEndOfTargetTranscript?.(lang);
         },
         onEndOfStream: () => {
+          streamEnded = true;
           callbacks?.onEndOfStream?.();
+          process.removeListener('SIGINT', sigintHandler);
           ws.close();
           resolve({
             sessionId: session.session_id,
@@ -169,25 +182,72 @@ export class VoiceService {
           });
         },
         onError: (error) => {
+          streamEnded = true;
           callbacks?.onError?.(error);
+          process.removeListener('SIGINT', sigintHandler);
           ws.close();
           reject(new VoiceError(`Voice streaming error: ${error.message} (${error.code})`));
         },
       };
 
-      const ws = this.client.createWebSocket(session.streaming_url, session.token, internalCallbacks);
+      const handleClose = () => {
+        process.removeListener('SIGINT', sigintHandler);
 
-      const sigintHandler = () => {
-        this.client.sendEndOfSource(ws);
+        if (streamEnded) {
+          return;
+        }
+
+        if (reconnectEnabled && reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          callbacks?.onReconnecting?.(reconnectAttempts);
+
+          void (async () => {
+            try {
+              const reconnect = await this.client.reconnectSession(currentToken);
+              currentToken = reconnect.token;
+
+              ws = this.client.createWebSocket(reconnect.streaming_url, reconnect.token, internalCallbacks);
+
+              sigintHandler = () => { this.client.sendEndOfSource(ws); };
+              process.on('SIGINT', sigintHandler);
+
+              ws.on('close', handleClose);
+              ws.on('error', handleError);
+
+              ws.on('open', () => {
+                if (chunkStreamingResolve) {
+                  chunkStreamingResolve();
+                  chunkStreamingResolve = null;
+                }
+              });
+            } catch (error) {
+              reject(error instanceof Error ? error : new VoiceError(String(error)));
+            }
+          })();
+        } else if (!streamEnded) {
+          reject(new VoiceError('WebSocket closed unexpectedly'));
+        }
       };
+
+      const handleError = (error: Error) => {
+        process.removeListener('SIGINT', sigintHandler);
+        reject(new VoiceError(`WebSocket connection failed: ${error.message}`));
+      };
+
+      ws = this.client.createWebSocket(session.streaming_url, session.token, internalCallbacks);
+
+      sigintHandler = () => { this.client.sendEndOfSource(ws); };
       process.on('SIGINT', sigintHandler);
 
       ws.on('open', () => {
         void (async () => {
           try {
             for await (const chunk of this.paceChunks(chunks, chunkInterval)) {
-              if (ws.readyState !== WebSocket.OPEN) {
-                break;
+              while (ws.readyState !== WebSocket.OPEN) {
+                if (streamEnded) {
+                  return;
+                }
+                await new Promise<void>((r) => { chunkStreamingResolve = r; });
               }
               this.client.sendAudioChunk(ws, chunk.toString('base64'));
             }
@@ -199,14 +259,8 @@ export class VoiceService {
         })();
       });
 
-      ws.on('close', () => {
-        process.removeListener('SIGINT', sigintHandler);
-      });
-
-      ws.on('error', (error: Error) => {
-        process.removeListener('SIGINT', sigintHandler);
-        reject(new VoiceError(`WebSocket connection failed: ${error.message}`));
-      });
+      ws.on('close', handleClose);
+      ws.on('error', handleError);
     });
   }
 
