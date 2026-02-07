@@ -9,27 +9,41 @@
 
 export abstract class DeepLCLIError extends Error {
   abstract readonly exitCode: number;
+  readonly suggestion?: string;
 
-  constructor(message: string) {
+  constructor(message: string, suggestion?: string) {
     super(message);
     this.name = this.constructor.name;
+    this.suggestion = suggestion;
   }
 }
 
 export class AuthError extends DeepLCLIError {
   readonly exitCode = 2;
+  constructor(message: string, suggestion?: string) {
+    super(message, suggestion ?? 'Run: deepl auth set-key <your-api-key>');
+  }
 }
 
 export class RateLimitError extends DeepLCLIError {
   readonly exitCode = 3;
+  constructor(message: string, suggestion?: string) {
+    super(message, suggestion ?? 'Wait a moment and retry, or reduce concurrency with --concurrency flag');
+  }
 }
 
 export class QuotaError extends DeepLCLIError {
   readonly exitCode = 4;
+  constructor(message: string, suggestion?: string) {
+    super(message, suggestion ?? 'Run: deepl usage  to check your limits, or upgrade your plan at https://www.deepl.com/pro');
+  }
 }
 
 export class NetworkError extends DeepLCLIError {
   readonly exitCode = 5;
+  constructor(message: string, suggestion?: string) {
+    super(message, suggestion ?? 'Check your internet connection and proxy settings (deepl config set api.proxy <url>)');
+  }
 }
 
 export class ValidationError extends DeepLCLIError {
