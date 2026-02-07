@@ -12,7 +12,15 @@ import * as fs from 'fs';
 
 // Mock dependencies
 jest.mock('../../src/services/glossary');
-jest.mock('fs');
+jest.mock('fs', () => {
+  const actual = jest.requireActual('fs');
+  return {
+    ...actual,
+    existsSync: jest.fn(),
+    readFileSync: jest.fn(),
+    lstatSync: jest.fn(),
+  };
+});
 
 describe('GlossaryCommand', () => {
   let mockGlossaryService: jest.Mocked<GlossaryService>;
@@ -58,6 +66,7 @@ describe('GlossaryCommand', () => {
     beforeEach(() => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.readFileSync as jest.Mock).mockReturnValue('hello\thola\nworld\tmundo');
+      (fs.lstatSync as jest.Mock).mockReturnValue({ isSymbolicLink: () => false });
     });
 
     it('should create glossary from TSV file', async () => {
@@ -90,6 +99,15 @@ describe('GlossaryCommand', () => {
       await expect(
         glossaryCommand.create('Tech Terms', 'en', ['es'], '/path/to/glossary.tsv')
       ).rejects.toThrow('Invalid glossary format');
+    });
+
+    it('should reject symlinks for security', async () => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.lstatSync as jest.Mock).mockReturnValue({ isSymbolicLink: () => true });
+
+      await expect(
+        glossaryCommand.create('Tech Terms', 'en', ['es'], '/path/to/symlink.tsv')
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
   });
 
@@ -304,6 +322,23 @@ describe('GlossaryCommand', () => {
       const result = glossaryCommand.formatGlossaryList([]);
 
       expect(result).toBe('No glossaries found');
+    });
+  });
+
+  describe('replaceDictionary()', () => {
+    beforeEach(() => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.readFileSync as jest.Mock).mockReturnValue('hello\thola\nworld\tmundo');
+      (fs.lstatSync as jest.Mock).mockReturnValue({ isSymbolicLink: () => false });
+      mockGlossaryService.replaceGlossaryDictionary = jest.fn().mockResolvedValue(undefined);
+    });
+
+    it('should reject symlinks for security', async () => {
+      (fs.lstatSync as jest.Mock).mockReturnValue({ isSymbolicLink: () => true });
+
+      await expect(
+        glossaryCommand.replaceDictionary('123-456-789', 'es', '/path/to/symlink.tsv')
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
   });
 

@@ -11,6 +11,7 @@ import * as Diff from 'diff';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { formatWriteJson } from '../../utils/formatters.js';
+import { safeReadFile } from '../../utils/safe-read-file.js';
 
 interface WriteOptions {
   lang?: WriteLanguage;
@@ -83,13 +84,16 @@ export class WriteCommand {
       throw new Error('File path cannot be empty');
     }
 
-    // Read file content
+    // Read file content (with symlink security check)
     const absolutePath = resolve(filePath);
     let content: string;
 
     try {
-      content = await fs.readFile(absolutePath, 'utf-8');
+      content = await safeReadFile(absolutePath, 'utf-8');
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Symlinks are not supported')) {
+        throw error;
+      }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new Error(`File not found: ${filePath}`);
       }
@@ -168,13 +172,16 @@ export class WriteCommand {
       throw new Error('File path cannot be empty');
     }
 
-    // Read file content
+    // Read file content (with symlink security check)
     const absolutePath = resolve(filePath);
     let content: string;
 
     try {
-      content = await fs.readFile(absolutePath, 'utf-8');
+      content = await safeReadFile(absolutePath, 'utf-8');
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Symlinks are not supported')) {
+        throw error;
+      }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new Error(`File not found: ${filePath}`);
       }
@@ -227,13 +234,16 @@ export class WriteCommand {
       throw new Error('File path cannot be empty');
     }
 
-    // Read file content
+    // Read file content (with symlink security check)
     const absolutePath = resolve(filePath);
     let content: string;
 
     try {
-      content = await fs.readFile(absolutePath, 'utf-8');
+      content = await safeReadFile(absolutePath, 'utf-8');
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Symlinks are not supported')) {
+        throw error;
+      }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new Error(`File not found: ${filePath}`);
       }
@@ -264,13 +274,16 @@ export class WriteCommand {
       throw new Error('File path cannot be empty');
     }
 
-    // Read file content
+    // Read file content (with symlink security check)
     const absolutePath = resolve(filePath);
     let content: string;
 
     try {
-      content = await fs.readFile(absolutePath, 'utf-8');
+      content = await safeReadFile(absolutePath, 'utf-8');
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Symlinks are not supported')) {
+        throw error;
+      }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new Error(`File not found: ${filePath}`);
       }
@@ -438,13 +451,16 @@ export class WriteCommand {
       throw new Error('File path cannot be empty');
     }
 
-    // Read file content
+    // Read file content (with symlink security check)
     const absolutePath = resolve(filePath);
     let content: string;
 
     try {
-      content = await fs.readFile(absolutePath, 'utf-8');
+      content = await safeReadFile(absolutePath, 'utf-8');
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Symlinks are not supported')) {
+        throw error;
+      }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new Error(`File not found: ${filePath}`);
       }

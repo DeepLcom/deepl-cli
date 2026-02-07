@@ -11,6 +11,7 @@ import {
   DocumentHandle,
   DocumentStatus,
 } from '../types/index.js';
+import { safeReadFileSync } from '../utils/safe-read-file.js';
 
 interface DocumentTranslationResult {
   success: boolean;
@@ -88,8 +89,8 @@ export class DocumentTranslationService {
       }
     }
 
-    // Read input file
-    const fileBuffer = fs.readFileSync(inputPath);
+    // Read input file (with symlink security check)
+    const fileBuffer = safeReadFileSync(inputPath);
     const filename = path.basename(inputPath);
 
     // Upload document

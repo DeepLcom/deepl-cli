@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import { GlossaryService } from '../../services/glossary.js';
 import { GlossaryInfo, GlossaryLanguagePair, Language } from '../../types/index.js';
 import { getTargetLang, getTotalEntryCount, isMultilingual } from '../../types/glossary.js';
+import { safeReadFileSync } from '../../utils/safe-read-file.js';
 
 export class GlossaryCommand {
   private glossaryService: GlossaryService;
@@ -28,7 +29,7 @@ export class GlossaryCommand {
       throw new Error(`File not found: ${filePath}`);
     }
 
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const content = safeReadFileSync(filePath, 'utf-8');
     return this.glossaryService.createGlossaryFromTSV(
       name,
       sourceLang,
@@ -176,7 +177,7 @@ export class GlossaryCommand {
     }
 
     const glossary = await this.show(nameOrId);
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const content = safeReadFileSync(filePath, 'utf-8');
     await this.glossaryService.replaceGlossaryDictionary(
       glossary.glossary_id,
       glossary.source_lang,

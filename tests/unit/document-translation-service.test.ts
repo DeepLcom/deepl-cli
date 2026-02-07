@@ -14,12 +14,18 @@ const mockExistsSync = jest.fn();
 const mockReadFileSync = jest.fn();
 const mockWriteFileSync = jest.fn();
 const mockMkdirSync = jest.fn();
+const mockLstatSync = jest.fn();
 
 jest.mock('fs', () => ({
   existsSync: (...args: unknown[]) => mockExistsSync(...args),
   readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
   writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
   mkdirSync: (...args: unknown[]) => mockMkdirSync(...args),
+  lstatSync: (...args: unknown[]) => mockLstatSync(...args),
+  promises: {
+    lstat: jest.fn(),
+    readFile: jest.fn(),
+  },
 }));
 
 const MockedDeepLClient = DeepLClient as jest.MockedClass<typeof DeepLClient>;
@@ -37,6 +43,7 @@ describe('DocumentTranslationService', () => {
     mockReadFileSync.mockReturnValue(Buffer.from('test'));
     mockWriteFileSync.mockImplementation(() => {});
     mockMkdirSync.mockImplementation(() => '');
+    mockLstatSync.mockReturnValue({ isSymbolicLink: () => false });
 
     mockClient = new MockedDeepLClient('test-key') as jest.Mocked<DeepLClient>;
     service = new DocumentTranslationService(mockClient);
@@ -410,6 +417,21 @@ describe('DocumentTranslationService', () => {
           enableDocumentMinification: true,
         })
       ).rejects.toThrow('Document minification is only supported for PPTX and DOCX files');
+
+      expect(mockClient.uploadDocument).not.toHaveBeenCalled();
+    });
+
+    it('should reject symlinks for security', async () => {
+      const inputPath = '/test/symlink-doc.pdf';
+      const outputPath = '/test/output.es.pdf';
+
+      mockLstatSync.mockReturnValue({ isSymbolicLink: () => true });
+
+      await expect(
+        service.translateDocument(inputPath, outputPath, {
+          targetLang: 'es',
+        })
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
 
       expect(mockClient.uploadDocument).not.toHaveBeenCalled();
     });

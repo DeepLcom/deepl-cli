@@ -6,7 +6,7 @@
 import { WriteCommand } from '../../src/cli/commands/write.js';
 import { WriteService } from '../../src/services/write.js';
 import { WriteImprovement } from '../../src/types/index.js';
-import { promises as fs } from 'fs';
+import { promises as fs, symlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -893,6 +893,49 @@ describe('WriteCommand', () => {
 
       // Should still work with partial results
       expect(result).toBe('Business improvement.');
+    });
+  });
+
+  describe('symlink security', () => {
+    let symlinkTarget: string;
+    let symlinkPath: string;
+
+    beforeEach(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      symlinkTarget = join(testDir, 'real-file.txt');
+      symlinkPath = join(testDir, 'symlink.txt');
+      writeFileSync(symlinkTarget, 'secret content', 'utf-8');
+      symlinkSync(symlinkTarget, symlinkPath);
+    });
+
+    it('should reject symlinks in improveFile()', async () => {
+      await expect(
+        writeCommand.improveFile(symlinkPath, { lang: 'en-US' })
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
+    });
+
+    it('should reject symlinks in improveFileWithDiff()', async () => {
+      await expect(
+        writeCommand.improveFileWithDiff(symlinkPath, { lang: 'en-US' })
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
+    });
+
+    it('should reject symlinks in checkFile()', async () => {
+      await expect(
+        writeCommand.checkFile(symlinkPath, { lang: 'en-US' })
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
+    });
+
+    it('should reject symlinks in autoFixFile()', async () => {
+      await expect(
+        writeCommand.autoFixFile(symlinkPath, { lang: 'en-US' })
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
+    });
+
+    it('should reject symlinks in improveFileInteractive()', async () => {
+      await expect(
+        writeCommand.improveFileInteractive(symlinkPath, { lang: 'en-US' })
+      ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
   });
 });
