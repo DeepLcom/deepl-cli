@@ -3,7 +3,7 @@
  * Tests for complete document translation workflow with polling
  */
 
-import { DocumentTranslationService } from '../../src/services/document-translation.js';
+import { DocumentTranslationService, MAX_DOCUMENT_FILE_SIZE } from '../../src/services/document-translation.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 
 // Mock the DeepL client
@@ -15,6 +15,7 @@ const mockReadFileSync = jest.fn();
 const mockWriteFileSync = jest.fn();
 const mockMkdirSync = jest.fn();
 const mockLstatSync = jest.fn();
+const mockStatSync = jest.fn();
 
 jest.mock('fs', () => ({
   existsSync: (...args: unknown[]) => mockExistsSync(...args),
@@ -22,6 +23,7 @@ jest.mock('fs', () => ({
   writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
   mkdirSync: (...args: unknown[]) => mockMkdirSync(...args),
   lstatSync: (...args: unknown[]) => mockLstatSync(...args),
+  statSync: (...args: unknown[]) => mockStatSync(...args),
   promises: {
     lstat: jest.fn(),
     readFile: jest.fn(),
@@ -44,6 +46,7 @@ describe('DocumentTranslationService', () => {
     mockWriteFileSync.mockImplementation(() => {});
     mockMkdirSync.mockImplementation(() => '');
     mockLstatSync.mockReturnValue({ isSymbolicLink: () => false });
+    mockStatSync.mockReturnValue({ size: 1024 }); // 1 KB default
 
     mockClient = new MockedDeepLClient('test-key') as jest.Mocked<DeepLClient>;
     service = new DocumentTranslationService(mockClient);
@@ -432,6 +435,109 @@ describe('DocumentTranslationService', () => {
           targetLang: 'es',
         })
       ).rejects.toThrow('Symlinks are not supported for security reasons');
+
+      expect(mockClient.uploadDocument).not.toHaveBeenCalled();
+    });
+
+    it('should reject files exceeding the maximum size limit', async () => {
+      const inputPath = '/test/huge-file.pdf';
+      const outputPath = '/test/huge-file.es.pdf';
+
+      mockStatSync.mockReturnValue({ size: MAX_DOCUMENT_FILE_SIZE + 1 });
+
+      await expect(
+        service.translateDocument(inputPath, outputPath, {
+          targetLang: 'es',
+        })
+      ).rejects.toThrow(/exceeds the maximum allowed size of 30 MB/);
+
+      expect(mockClient.uploadDocument).not.toHaveBeenCalled();
+    });
+
+    it('should reject files well above the size limit with correct size in error', async () => {
+      const inputPath = '/test/massive-file.pdf';
+      const outputPath = '/test/massive-file.es.pdf';
+
+      const fileSize = 100 * 1024 * 1024; // 100 MB
+      mockStatSync.mockReturnValue({ size: fileSize });
+
+      await expect(
+        service.translateDocument(inputPath, outputPath, {
+          targetLang: 'es',
+        })
+      ).rejects.toThrow('File size (100.0 MB) exceeds the maximum allowed size of 30 MB');
+
+      expect(mockClient.uploadDocument).not.toHaveBeenCalled();
+    });
+
+    it('should accept files exactly at the size limit', async () => {
+      const inputPath = '/test/exact-limit.pdf';
+      const outputPath = '/test/exact-limit.es.pdf';
+      const fileBuffer = Buffer.from('content');
+
+      mockStatSync.mockReturnValue({ size: MAX_DOCUMENT_FILE_SIZE });
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      mockClient.getDocumentStatus = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        status: 'done',
+        billedCharacters: 200,
+      });
+
+      mockClient.downloadDocument = jest.fn().mockResolvedValue(Buffer.from('translated'));
+
+      const result = await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'es',
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockClient.uploadDocument).toHaveBeenCalled();
+    });
+
+    it('should accept files under the size limit', async () => {
+      const inputPath = '/test/small-file.pdf';
+      const outputPath = '/test/small-file.es.pdf';
+      const fileBuffer = Buffer.from('content');
+
+      mockStatSync.mockReturnValue({ size: 1024 * 1024 }); // 1 MB
+      mockReadFileSync.mockReturnValue(fileBuffer);
+
+      mockClient.uploadDocument = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        documentKey: 'key-456',
+      });
+
+      mockClient.getDocumentStatus = jest.fn().mockResolvedValue({
+        documentId: 'doc-123',
+        status: 'done',
+      });
+
+      mockClient.downloadDocument = jest.fn().mockResolvedValue(Buffer.from('translated'));
+
+      const result = await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'es',
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockClient.uploadDocument).toHaveBeenCalled();
+    });
+
+    it('should include DeepL documentation link in size error message', async () => {
+      const inputPath = '/test/big-file.pdf';
+      const outputPath = '/test/big-file.es.pdf';
+
+      mockStatSync.mockReturnValue({ size: MAX_DOCUMENT_FILE_SIZE + 1 });
+
+      await expect(
+        service.translateDocument(inputPath, outputPath, {
+          targetLang: 'es',
+        })
+      ).rejects.toThrow('https://developers.deepl.com/docs/api-reference/document');
 
       expect(mockClient.uploadDocument).not.toHaveBeenCalled();
     });

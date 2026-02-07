@@ -33,6 +33,8 @@ interface TranslateDocumentOptions {
   abortSignal?: AbortSignal;
 }
 
+export const MAX_DOCUMENT_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
+
 export class DocumentTranslationService {
   private client: DeepLClient;
   private supportedExtensions = [
@@ -77,6 +79,17 @@ export class DocumentTranslationService {
     // Validate input file exists
     if (!fs.existsSync(inputPath)) {
       throw new Error(`Input file not found: ${inputPath}`);
+    }
+
+    // Validate file size before reading into memory
+    const fileStat = fs.statSync(inputPath);
+    if (fileStat.size > MAX_DOCUMENT_FILE_SIZE) {
+      const sizeMB = (fileStat.size / (1024 * 1024)).toFixed(1);
+      const limitMB = (MAX_DOCUMENT_FILE_SIZE / (1024 * 1024)).toFixed(0);
+      throw new Error(
+        `File size (${sizeMB} MB) exceeds the maximum allowed size of ${limitMB} MB. ` +
+        `Please check DeepL's document size limits: https://developers.deepl.com/docs/api-reference/document`
+      );
     }
 
     // Validate document minification is only used with PPTX/DOCX
