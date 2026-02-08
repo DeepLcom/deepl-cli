@@ -38,6 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Voice: Add WebSocket handshake timeout** - Added 30-second handshake timeout to WebSocket connections to prevent indefinite hangs when server is unreachable.
 - **Voice: Narrow catch scope in WebSocket message handler** - Separated JSON parsing from callback dispatch so only parse errors are caught; callback errors now propagate correctly.
 - **Voice: Add WebSocket send backpressure handling** - `sendAudioChunk` now returns a boolean indicating whether the send buffer is below the 1 MiB high-water mark, preventing unbounded buffer growth on slow networks.
+- **Voice API: Add missing target languages** - Added he (Hebrew), th (Thai), vi (Vietnamese), zh-HANS, zh-HANT to `VoiceTargetLanguage` type and CLI validation.
+- **Voice API: Add missing audio content types** - Added `audio/auto`, PCM at 8000/44100/48000 Hz, `audio/ogg`, `audio/webm`, `audio/x-matroska`, and codec-specific variants to `VoiceSourceMediaContentType`.
+- **Voice API: Fix formality values** - Changed voice formality choices from text-API values (`prefer_more`, `prefer_less`) to voice-specific values (`formal`, `informal`). Added `VoiceFormality` type.
+- **Voice API: Add source_language_mode parameter** - Added `source_language_mode` (`auto`|`fixed`) to session request and `--source-language-mode` CLI option.
+- **Voice API: Pass formality and glossary to session request** - `VoiceSessionRequest` now includes `formality` and `glossary_id` fields, and the service passes them through from options.
 
 ## [0.9.1] - 2026-02-07
 

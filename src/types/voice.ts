@@ -3,7 +3,6 @@
  * Types for DeepL Voice API real-time speech transcription and translation.
  */
 
-import { Formality } from './common.js';
 
 // Source languages supported by the Voice API (18 languages)
 export type VoiceSourceLanguage =
@@ -38,7 +37,7 @@ export type VoiceSourceLanguage =
   | 'uk'
   | 'zh';
 
-// Target languages supported by the Voice API (35+ languages)
+// Target languages supported by the Voice API
 export type VoiceTargetLanguage =
   | 'ar'
   | 'bg'
@@ -53,6 +52,7 @@ export type VoiceTargetLanguage =
   | 'et'
   | 'fi'
   | 'fr'
+  | 'he'
   | 'hu'
   | 'id'
   | 'it'
@@ -71,25 +71,51 @@ export type VoiceTargetLanguage =
   | 'sk'
   | 'sl'
   | 'sv'
+  | 'th'
   | 'tr'
   | 'uk'
-  | 'zh';
+  | 'vi'
+  | 'zh'
+  | 'zh-HANS'
+  | 'zh-HANT';
 
 // Audio content types supported by the Voice API
 export type VoiceSourceMediaContentType =
+  | 'audio/auto'
+  | 'audio/pcm;encoding=s16le;rate=8000'
   | 'audio/pcm;encoding=s16le;rate=16000'
+  | 'audio/pcm;encoding=s16le;rate=44100'
+  | 'audio/pcm;encoding=s16le;rate=48000'
   | 'audio/opus;container=ogg'
   | 'audio/opus;container=webm'
   | 'audio/opus;container=matroska'
+  | 'audio/ogg'
+  | 'audio/ogg;codecs=flac'
+  | 'audio/ogg;codecs=opus'
+  | 'audio/webm'
+  | 'audio/webm;codecs=opus'
+  | 'audio/x-matroska'
+  | 'audio/x-matroska;codecs=aac'
+  | 'audio/x-matroska;codecs=flac'
+  | 'audio/x-matroska;codecs=mp3'
+  | 'audio/x-matroska;codecs=opus'
   | 'audio/flac'
   | 'audio/mpeg';
+
+export type VoiceSourceLanguageMode = 'auto' | 'fixed';
+
+// Voice-specific formality values (differs from text translation API)
+export type VoiceFormality = 'default' | 'formal' | 'more' | 'informal' | 'less';
 
 // REST endpoint: POST /v3/voice/realtime
 
 export interface VoiceSessionRequest {
   source_language?: VoiceSourceLanguage;
+  source_language_mode?: VoiceSourceLanguageMode;
   target_languages: VoiceTargetLanguage[];
   source_media_content_type: VoiceSourceMediaContentType;
+  formality?: VoiceFormality;
+  glossary_id?: string;
 }
 
 export interface VoiceSessionResponse {
@@ -149,7 +175,8 @@ export interface VoiceServerMessage {
 export interface VoiceTranslateOptions {
   targetLangs: VoiceTargetLanguage[];
   sourceLang?: VoiceSourceLanguage;
-  formality?: Formality;
+  sourceLanguageMode?: VoiceSourceLanguageMode;
+  formality?: VoiceFormality;
   glossaryId?: string;
   contentType?: VoiceSourceMediaContentType;
   chunkSize?: number;

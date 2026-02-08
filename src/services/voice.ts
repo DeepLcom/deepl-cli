@@ -128,8 +128,11 @@ export class VoiceService {
   ): Promise<VoiceSessionResult> {
     const session = await this.client.createSession({
       source_language: options.sourceLang,
+      source_language_mode: options.sourceLanguageMode,
       target_languages: options.targetLangs,
       source_media_content_type: options.contentType!,
+      formality: options.formality,
+      glossary_id: options.glossaryId,
     });
 
     const reconnectEnabled = options.reconnect !== false;

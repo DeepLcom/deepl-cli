@@ -13,14 +13,15 @@ import type {
   VoiceStreamCallbacks,
   VoiceTargetLanguage,
   VoiceSourceLanguage,
+  VoiceSourceLanguageMode,
   VoiceSourceMediaContentType,
 } from '../../types/voice.js';
 import { ValidationError } from '../../utils/errors.js';
 
 const VALID_VOICE_TARGET_LANGS: ReadonlySet<string> = new Set<VoiceTargetLanguage>([
   'ar','bg','cs','da','de','el','en','en-GB','en-US','es','et','fi','fr',
-  'hu','id','it','ja','ko','lt','lv','nb','nl','pl','pt','pt-BR','pt-PT',
-  'ro','ru','sk','sl','sv','tr','uk','zh',
+  'he','hu','id','it','ja','ko','lt','lv','nb','nl','pl','pt','pt-BR','pt-PT',
+  'ro','ru','sk','sl','sv','th','tr','uk','vi','zh','zh-HANS','zh-HANT',
 ]);
 
 const VALID_VOICE_SOURCE_LANGS: ReadonlySet<string> = new Set<VoiceSourceLanguage>([
@@ -29,14 +30,21 @@ const VALID_VOICE_SOURCE_LANGS: ReadonlySet<string> = new Set<VoiceSourceLanguag
 ]);
 
 const VALID_VOICE_CONTENT_TYPES: ReadonlySet<string> = new Set<VoiceSourceMediaContentType>([
-  'audio/pcm;encoding=s16le;rate=16000','audio/opus;container=ogg',
-  'audio/opus;container=webm','audio/opus;container=matroska',
+  'audio/auto',
+  'audio/pcm;encoding=s16le;rate=8000','audio/pcm;encoding=s16le;rate=16000',
+  'audio/pcm;encoding=s16le;rate=44100','audio/pcm;encoding=s16le;rate=48000',
+  'audio/opus;container=ogg','audio/opus;container=webm','audio/opus;container=matroska',
+  'audio/ogg','audio/ogg;codecs=flac','audio/ogg;codecs=opus',
+  'audio/webm','audio/webm;codecs=opus',
+  'audio/x-matroska','audio/x-matroska;codecs=aac','audio/x-matroska;codecs=flac',
+  'audio/x-matroska;codecs=mp3','audio/x-matroska;codecs=opus',
   'audio/flac','audio/mpeg',
 ]);
 
 interface VoiceCommandOptions {
   to: string;
   from?: string;
+  sourceLanguageMode?: string;
   formality?: string;
   glossary?: string;
   contentType?: string;
@@ -118,6 +126,7 @@ export class VoiceCommand {
     return {
       targetLangs: targetLangs as VoiceTargetLanguage[],
       sourceLang: options.from as VoiceSourceLanguage | undefined,
+      sourceLanguageMode: options.sourceLanguageMode as VoiceSourceLanguageMode | undefined,
       formality: options.formality as VoiceTranslateOptions['formality'],
       glossaryId: options.glossary,
       contentType: options.contentType as VoiceSourceMediaContentType | undefined,

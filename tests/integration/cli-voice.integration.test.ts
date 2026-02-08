@@ -81,10 +81,10 @@ describe('Voice CLI Integration', () => {
     it('should show formality choices', () => {
       const output = runCLI('deepl voice --help');
 
+      expect(output).toContain('formal');
       expect(output).toContain('more');
+      expect(output).toContain('informal');
       expect(output).toContain('less');
-      expect(output).toContain('prefer_more');
-      expect(output).toContain('prefer_less');
     });
 
   });

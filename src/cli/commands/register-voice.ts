@@ -34,7 +34,8 @@ export function registerVoice(
     .argument('<file>', 'Audio file to translate (use "-" for stdin)')
     .requiredOption('-t, --to <languages>', 'Target language(s), comma-separated, max 5')
     .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
-    .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less']))
+    .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'formal', 'more', 'informal', 'less']))
+    .addOption(new Option('--source-language-mode <mode>', 'Source language detection mode').choices(['auto', 'fixed']))
     .option('--glossary <id>', 'Glossary ID to use for translation')
     .option('--content-type <type>', 'Audio content type (auto-detected from extension: ogg, opus, webm, mka, flac, mp3, pcm)')
     .option('--chunk-size <bytes>', 'Audio chunk size in bytes (default: 6400)', (v) => parsePositiveInt(v, 'chunk-size', 10_485_760))
@@ -56,6 +57,7 @@ Examples:
       to: string;
       from?: string;
       formality?: string;
+      sourceLanguageMode?: string;
       glossary?: string;
       contentType?: string;
       chunkSize?: number;
