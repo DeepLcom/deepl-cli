@@ -222,10 +222,11 @@ registerCompletion(program, deps);
 program.commandsGroup('Administration:');
 registerAdmin(program, deps);
 
-// Parse arguments
-program.parse(process.argv);
-
-// Show help if no arguments provided
+// Show help and exit 0 if no arguments provided
 if (!process.argv.slice(2).length) {
   program.outputHelp();
+  process.exit(0);
 }
+
+// Parse arguments
+program.parse(process.argv);
