@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-02-08
+
 ### Added
 - Cache support for Write API improvements with `--no-cache` bypass flag
 - **`deepl init` setup wizard** — Interactive first-time setup that guides through API key validation, default language selection, and configuration
@@ -26,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bare `deepl` with no args exits code 1** — Now exits 0 when showing help, matching CLI conventions
 - **FileTranslationService.translateFile() skips safeReadFile** — Now uses safeReadFile wrapper for symlink protection
 - **Config directory created without mode 0o700** — Directory now restricts access like the config file (0o600)
+- Resolved 12 eslint errors (missing curly braces, no-var-requires suppressions)
 
 ### Changed
 - **Lazy sub-client construction in DeepLClient** — Sub-clients now initialized on first access instead of eagerly, improving startup performance
@@ -48,8 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **API.md `write --check` exit code** prose said 1 but implementation uses 8
 - **Node.js version** corrected from >=18 to >=20 in CONTRIBUTING.md and DESIGN.md
 - **CLAUDE.md production dependencies** updated to match current package.json
-
-### Changed
 - **TODO.md overhauled** - Removed implemented features listed as TODO, updated version from 0.7.0 to 0.10.0
 - **API.md `glossary update` documented** - Added full subcommand documentation with synopsis, options, and examples
 
