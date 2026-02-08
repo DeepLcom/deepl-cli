@@ -115,6 +115,30 @@ describe('registerLanguages', () => {
       await program.parseAsync(['node', 'test', 'languages', '--source', '--target']);
       expect(mockLanguagesCommandInstance.formatAllLanguages).toHaveBeenCalledWith(sources, targets);
     });
+
+    it('should output JSON for source languages with --format json --source', async () => {
+      const sources = [{ language: 'en', name: 'English' }];
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
+      await program.parseAsync(['node', 'test', 'languages', '--source', '--format', 'json']);
+      expect(Logger.output).toHaveBeenCalledWith(JSON.stringify(sources, null, 2));
+    });
+
+    it('should output JSON for target languages with --format json --target', async () => {
+      const targets = [{ language: 'de', name: 'German' }];
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
+      await program.parseAsync(['node', 'test', 'languages', '--target', '--format', 'json']);
+      expect(Logger.output).toHaveBeenCalledWith(JSON.stringify(targets, null, 2));
+    });
+
+    it('should output JSON for all languages with --format json', async () => {
+      const sources = [{ language: 'en', name: 'English' }];
+      const targets = [{ language: 'de', name: 'German' }];
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
+      await program.parseAsync(['node', 'test', 'languages', '--format', 'json']);
+      const expected = JSON.stringify({ source: sources, target: targets }, null, 2);
+      expect(Logger.output).toHaveBeenCalledWith(expected);
+    });
   });
 
   describe('with API key from environment', () => {

@@ -14,17 +14,22 @@ export function registerUsage(
   program
     .command('usage')
     .description('Show API usage statistics')
+    .option('--format <format>', 'Output format: table, json (default: table)')
     .addHelpText('after', `
 Examples:
   $ deepl usage
+  $ deepl usage --format json
 `)
-    .action(async () => {
+    .action(async (options: { format?: string }) => {
       try {
         const usageCommand = await createUsageCommand(createDeepLClient);
 
         const usage = await usageCommand.getUsage();
-        const formatted = usageCommand.formatUsage(usage);
-        Logger.output(formatted);
+        if (options.format === 'json') {
+          Logger.output(JSON.stringify(usage, null, 2));
+        } else {
+          Logger.output(usageCommand.formatUsage(usage));
+        }
       } catch (error) {
         handleError(error);
       }

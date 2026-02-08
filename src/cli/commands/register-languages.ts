@@ -20,13 +20,15 @@ export function registerLanguages(
     .description('List supported source and target languages')
     .option('-s, --source', 'Show only source languages')
     .option('-t, --target', 'Show only target languages')
+    .option('--format <format>', 'Output format: table, json (default: table)')
     .addHelpText('after', `
 Examples:
   $ deepl languages
   $ deepl languages --source
   $ deepl languages --target
+  $ deepl languages --format json
 `)
-    .action(async (options: { source?: boolean; target?: boolean }) => {
+    .action(async (options: { source?: boolean; target?: boolean; format?: string }) => {
       try {
         const apiKey = getConfigService().getValue<string>('auth.apiKey');
         const envKey = process.env['DEEPL_API_KEY'];
@@ -43,23 +45,39 @@ Examples:
         const { LanguagesCommand } = await import('./languages.js');
         const languagesCommand = new LanguagesCommand(client);
 
-        let output: string;
-
-        if (options.source && !options.target) {
-          const sourceLanguages = await languagesCommand.getSourceLanguages();
-          output = languagesCommand.formatLanguages(sourceLanguages, 'source');
-        } else if (options.target && !options.source) {
-          const targetLanguages = await languagesCommand.getTargetLanguages();
-          output = languagesCommand.formatLanguages(targetLanguages, 'target');
+        if (options.format === 'json') {
+          if (options.source && !options.target) {
+            const sourceLanguages = await languagesCommand.getSourceLanguages();
+            Logger.output(JSON.stringify(sourceLanguages, null, 2));
+          } else if (options.target && !options.source) {
+            const targetLanguages = await languagesCommand.getTargetLanguages();
+            Logger.output(JSON.stringify(targetLanguages, null, 2));
+          } else {
+            const [sourceLanguages, targetLanguages] = await Promise.all([
+              languagesCommand.getSourceLanguages(),
+              languagesCommand.getTargetLanguages(),
+            ]);
+            Logger.output(JSON.stringify({ source: sourceLanguages, target: targetLanguages }, null, 2));
+          }
         } else {
-          const [sourceLanguages, targetLanguages] = await Promise.all([
-            languagesCommand.getSourceLanguages(),
-            languagesCommand.getTargetLanguages(),
-          ]);
-          output = languagesCommand.formatAllLanguages(sourceLanguages, targetLanguages);
-        }
+          let output: string;
 
-        Logger.output(output);
+          if (options.source && !options.target) {
+            const sourceLanguages = await languagesCommand.getSourceLanguages();
+            output = languagesCommand.formatLanguages(sourceLanguages, 'source');
+          } else if (options.target && !options.source) {
+            const targetLanguages = await languagesCommand.getTargetLanguages();
+            output = languagesCommand.formatLanguages(targetLanguages, 'target');
+          } else {
+            const [sourceLanguages, targetLanguages] = await Promise.all([
+              languagesCommand.getSourceLanguages(),
+              languagesCommand.getTargetLanguages(),
+            ]);
+            output = languagesCommand.formatAllLanguages(sourceLanguages, targetLanguages);
+          }
+
+          Logger.output(output);
+        }
       } catch (error) {
         handleError(error);
       }

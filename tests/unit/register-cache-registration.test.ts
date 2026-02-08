@@ -95,6 +95,14 @@ describe('registerCache', () => {
       await program.parseAsync(['node', 'test', 'cache', 'stats']);
       expect(handleError).toHaveBeenCalledWith(expect.objectContaining({ message: 'stats failed' }));
     });
+
+    it('should output JSON with --format json', async () => {
+      const stats = { entries: 10, totalSize: 5000, maxSize: 1048576, enabled: true };
+      mockCacheCommandInstance.stats.mockResolvedValue(stats);
+      await program.parseAsync(['node', 'test', 'cache', 'stats', '--format', 'json']);
+      expect(Logger.output).toHaveBeenCalledWith(JSON.stringify(stats, null, 2));
+      expect(mockCacheCommandInstance.formatStats).not.toHaveBeenCalled();
+    });
   });
 
   describe('cache clear', () => {

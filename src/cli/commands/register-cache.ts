@@ -28,13 +28,17 @@ Examples:
     .addCommand(
       new Command('stats')
         .description('Show cache statistics')
-        .action(async () => {
+        .option('--format <format>', 'Output format: table, json (default: table)')
+        .action(async (options: { format?: string }) => {
           try {
             const { CacheCommand } = await import('./cache.js');
             const cacheCommand = new CacheCommand(await getCacheService(), getConfigService());
             const stats = await cacheCommand.stats();
-            const formatted = cacheCommand.formatStats(stats);
-            Logger.output(formatted);
+            if (options.format === 'json') {
+              Logger.output(JSON.stringify(stats, null, 2));
+            } else {
+              Logger.output(cacheCommand.formatStats(stats));
+            }
           } catch (error) {
             handleError(error);
 
