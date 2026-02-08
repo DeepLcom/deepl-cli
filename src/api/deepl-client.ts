@@ -1,4 +1,4 @@
-import { DeepLClientOptions } from './http-client.js';
+import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { TranslationClient, TranslationResult, ProductUsage, UsageInfo, LanguageInfo } from './translation-client.js';
 import { GlossaryClient } from './glossary-client.js';
 import { DocumentClient } from './document-client.js';
@@ -26,20 +26,63 @@ import {
 export { TranslationResult, ProductUsage, UsageInfo, LanguageInfo };
 
 export class DeepLClient {
-  private translationClient: TranslationClient;
-  private glossaryClient: GlossaryClient;
-  private documentClient: DocumentClient;
-  private writeClient: WriteClient;
-  private styleRulesClient: StyleRulesClient;
-  private adminClient: AdminClient;
+  private readonly apiKey: string;
+  private readonly options: DeepLClientOptions;
+
+  private _translationClient?: TranslationClient;
+  private _glossaryClient?: GlossaryClient;
+  private _documentClient?: DocumentClient;
+  private _writeClient?: WriteClient;
+  private _styleRulesClient?: StyleRulesClient;
+  private _adminClient?: AdminClient;
 
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
-    this.translationClient = new TranslationClient(apiKey, options);
-    this.glossaryClient = new GlossaryClient(apiKey, options);
-    this.documentClient = new DocumentClient(apiKey, options);
-    this.writeClient = new WriteClient(apiKey, options);
-    this.styleRulesClient = new StyleRulesClient(apiKey, options);
-    this.adminClient = new AdminClient(apiKey, options);
+    // Validate eagerly via HttpClient (checks API key and proxy config)
+    new HttpClient(apiKey, options);
+    this.apiKey = apiKey;
+    this.options = options;
+  }
+
+  private get translationClient(): TranslationClient {
+    if (!this._translationClient) {
+      this._translationClient = new TranslationClient(this.apiKey, this.options);
+    }
+    return this._translationClient;
+  }
+
+  private get glossaryClient(): GlossaryClient {
+    if (!this._glossaryClient) {
+      this._glossaryClient = new GlossaryClient(this.apiKey, this.options);
+    }
+    return this._glossaryClient;
+  }
+
+  private get documentClient(): DocumentClient {
+    if (!this._documentClient) {
+      this._documentClient = new DocumentClient(this.apiKey, this.options);
+    }
+    return this._documentClient;
+  }
+
+  private get writeClient(): WriteClient {
+    if (!this._writeClient) {
+      this._writeClient = new WriteClient(this.apiKey, this.options);
+    }
+    return this._writeClient;
+  }
+
+  private get styleRulesClient(): StyleRulesClient {
+    if (!this._styleRulesClient) {
+      this._styleRulesClient = new StyleRulesClient(this.apiKey, this.options);
+    }
+    return this._styleRulesClient;
+  }
+
+  private get adminClient(): AdminClient {
+    if (!this._adminClient) {
+      this._adminClient = new AdminClient(this.apiKey, this.options);
+    }
+    return this._adminClient;
   }
 
   get lastTraceId(): string | undefined {
