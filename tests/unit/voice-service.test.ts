@@ -15,6 +15,7 @@ import * as path from 'path';
 import * as os from 'os';
 
 jest.mock('ws', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { EventEmitter: EE } = require('events');
   class MockWebSocket extends EE {
     static OPEN = 1;
