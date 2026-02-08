@@ -61,9 +61,10 @@ export class VoiceClient extends HttpClient {
 
     ws.on('error', (error: Error) => {
       callbacks.onError?.({
-        type: 'error',
-        code: 'websocket_error',
-        message: error.message,
+        request_type: 'unknown',
+        error_code: 0,
+        reason_code: 0,
+        error_message: error.message,
       });
     });
 
@@ -72,13 +73,13 @@ export class VoiceClient extends HttpClient {
 
   sendAudioChunk(ws: WebSocket, base64Data: string): void {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'source_media_chunk', data: base64Data }));
+      ws.send(JSON.stringify({ source_media_chunk: { data: base64Data } }));
     }
   }
 
   sendEndOfSource(ws: WebSocket): void {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'end_of_source_audio' }));
+      ws.send(JSON.stringify({ end_of_source_media: {} }));
     }
   }
 
@@ -101,25 +102,18 @@ export class VoiceClient extends HttpClient {
   }
 
   private dispatchMessage(message: VoiceServerMessage, callbacks: VoiceStreamCallbacks): void {
-    switch (message.type) {
-      case 'source_transcript_update':
-        callbacks.onSourceTranscript?.(message);
-        break;
-      case 'target_transcript_update':
-        callbacks.onTargetTranscript?.(message);
-        break;
-      case 'end_of_source_transcript':
-        callbacks.onEndOfSourceTranscript?.();
-        break;
-      case 'end_of_target_transcript':
-        callbacks.onEndOfTargetTranscript?.(message.lang);
-        break;
-      case 'end_of_stream':
-        callbacks.onEndOfStream?.();
-        break;
-      case 'error':
-        callbacks.onError?.(message);
-        break;
+    if (message.source_transcript_update) {
+      callbacks.onSourceTranscript?.(message.source_transcript_update);
+    } else if (message.target_transcript_update) {
+      callbacks.onTargetTranscript?.(message.target_transcript_update);
+    } else if (message.end_of_source_transcript !== undefined) {
+      callbacks.onEndOfSourceTranscript?.();
+    } else if (message.end_of_target_transcript) {
+      callbacks.onEndOfTargetTranscript?.(message.end_of_target_transcript.language);
+    } else if (message.end_of_stream !== undefined) {
+      callbacks.onEndOfStream?.();
+    } else if (message.error) {
+      callbacks.onError?.(message.error);
     }
   }
 

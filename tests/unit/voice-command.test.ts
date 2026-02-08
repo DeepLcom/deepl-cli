@@ -370,8 +370,8 @@ describe('VoiceCommand', () => {
     it('should render source transcript when onSourceTranscript is invoked', async () => {
       mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
         callbacks!.onSourceTranscript!({
-          type: 'source_transcript_update',
-          lang: 'en' as any,
+
+
           concluded: [{ text: 'Hello', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
@@ -389,8 +389,7 @@ describe('VoiceCommand', () => {
     it('should render target transcript when onTargetTranscript is invoked', async () => {
       mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
         callbacks!.onTargetTranscript!({
-          type: 'target_transcript_update',
-          lang: 'de' as any,
+          language: 'de' as any,
           concluded: [{ text: 'Hallo', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
@@ -408,14 +407,14 @@ describe('VoiceCommand', () => {
     it('should accumulate concluded text across multiple source updates', async () => {
       mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
         callbacks!.onSourceTranscript!({
-          type: 'source_transcript_update',
-          lang: 'en' as any,
+
+
           concluded: [{ text: 'Hello', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
         callbacks!.onSourceTranscript!({
-          type: 'source_transcript_update',
-          lang: 'en' as any,
+
+
           concluded: [{ text: 'world', start_time: 0.5, end_time: 1.0 }],
           tentative: [],
         });
@@ -433,8 +432,8 @@ describe('VoiceCommand', () => {
     it('should display tentative text in source transcript', async () => {
       mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
         callbacks!.onSourceTranscript!({
-          type: 'source_transcript_update',
-          lang: 'en' as any,
+
+
           concluded: [],
           tentative: [{ text: 'Hel', start_time: 0, end_time: 0.3 }],
         });
@@ -452,8 +451,7 @@ describe('VoiceCommand', () => {
     it('should display tentative text in target transcript', async () => {
       mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
         callbacks!.onTargetTranscript!({
-          type: 'target_transcript_update',
-          lang: 'de' as any,
+          language: 'de' as any,
           concluded: [],
           tentative: [{ text: 'Hal', start_time: 0, end_time: 0.3 }],
         });
@@ -471,8 +469,7 @@ describe('VoiceCommand', () => {
     it('should ignore target transcript for unknown language', async () => {
       mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
         callbacks!.onTargetTranscript!({
-          type: 'target_transcript_update',
-          lang: 'es' as any,
+          language: 'es' as any,
           concluded: [{ text: 'Hola', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
@@ -506,8 +503,8 @@ describe('VoiceCommand', () => {
     it('should use readline functions during render', async () => {
       mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
         callbacks!.onSourceTranscript!({
-          type: 'source_transcript_update',
-          lang: 'en' as any,
+
+
           concluded: [{ text: 'Hi', start_time: 0, end_time: 0.2 }],
           tentative: [],
         });
@@ -596,14 +593,13 @@ describe('VoiceCommand', () => {
     it('should render source and target when callbacks are invoked via stdin', async () => {
       mockService.translateStdin.mockImplementation(async (_opts, callbacks) => {
         callbacks!.onSourceTranscript!({
-          type: 'source_transcript_update',
-          lang: 'en' as any,
+
+
           concluded: [{ text: 'Test', start_time: 0, end_time: 0.3 }],
           tentative: [],
         });
         callbacks!.onTargetTranscript!({
-          type: 'target_transcript_update',
-          lang: 'de' as any,
+          language: 'de' as any,
           concluded: [{ text: 'Prüfung', start_time: 0, end_time: 0.3 }],
           tentative: [],
         });

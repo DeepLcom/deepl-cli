@@ -263,14 +263,11 @@ describe('VoiceService', () => {
           mockWs.emit('open');
           setTimeout(() => {
             callbacks.onSourceTranscript?.({
-              type: 'source_transcript_update',
-              lang: 'en',
-              concluded: [{ text: 'Hello world', start_time: 0, end_time: 1.5 }],
+              concluded: [{ text: 'Hello world', language: 'en', start_time: 0, end_time: 1.5 }],
               tentative: [],
             });
             callbacks.onTargetTranscript?.({
-              type: 'target_transcript_update',
-              lang: 'de',
+              language: 'de',
               concluded: [{ text: 'Hallo Welt', start_time: 0, end_time: 1.5 }],
               tentative: [],
             });
@@ -309,15 +306,11 @@ describe('VoiceService', () => {
           mockWs.emit('open');
           setTimeout(() => {
             callbacks.onSourceTranscript?.({
-              type: 'source_transcript_update',
-              lang: 'en',
-              concluded: [{ text: 'Hello', start_time: 0, end_time: 0.5 }],
-              tentative: [{ text: 'world', start_time: 0.5, end_time: 1 }],
+              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 0.5 }],
+              tentative: [{ text: 'world', language: 'en', start_time: 0.5, end_time: 1 }],
             });
             callbacks.onSourceTranscript?.({
-              type: 'source_transcript_update',
-              lang: 'en',
-              concluded: [{ text: 'world', start_time: 0.5, end_time: 1 }],
+              concluded: [{ text: 'world', language: 'en', start_time: 0.5, end_time: 1 }],
               tentative: [],
             });
             callbacks.onEndOfStream?.();
@@ -440,14 +433,12 @@ describe('VoiceService', () => {
           mockWs.emit('open');
           setTimeout(() => {
             callbacks.onTargetTranscript?.({
-              type: 'target_transcript_update',
-              lang: 'de',
+              language: 'de',
               concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
               tentative: [],
             });
             callbacks.onTargetTranscript?.({
-              type: 'target_transcript_update',
-              lang: 'fr',
+              language: 'fr',
               concluded: [{ text: 'Bonjour', start_time: 0, end_time: 1 }],
               tentative: [],
             });
@@ -484,9 +475,10 @@ describe('VoiceService', () => {
           mockWs.emit('open');
           setTimeout(() => {
             callbacks.onError?.({
-              type: 'error',
-              code: 'invalid_audio',
-              message: 'Invalid audio format',
+              request_type: 'unknown',
+              error_code: 400,
+              reason_code: 9040000,
+              error_message: 'Invalid audio format',
             });
           }, 10);
         }, 0);
@@ -530,13 +522,7 @@ describe('VoiceService', () => {
 
       expect(mockClient.createSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          target_langs: [
-            expect.objectContaining({
-              lang: 'de',
-              formality: 'more',
-              glossary_id: 'glossary-123',
-            }),
-          ],
+          target_languages: ['de'],
         }),
       );
     });

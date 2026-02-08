@@ -84,7 +84,7 @@ describe('VoiceClient', () => {
 
   describe('createSession()', () => {
     const mockRequest: VoiceSessionRequest = {
-      target_langs: [{ lang: 'de' }],
+      target_languages: ['de'],
       source_media_content_type: 'audio/mpeg',
     };
 
@@ -145,7 +145,7 @@ describe('VoiceClient', () => {
 
       const reqWithSource: VoiceSessionRequest = {
         ...mockRequest,
-        source_lang: 'en',
+        source_language: 'en',
       };
 
       await client.createSession(reqWithSource);
@@ -153,7 +153,7 @@ describe('VoiceClient', () => {
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            source_lang: 'en',
+            source_language: 'en',
           }),
         }),
       );
@@ -167,11 +167,7 @@ describe('VoiceClient', () => {
       });
 
       const multiTargetRequest: VoiceSessionRequest = {
-        target_langs: [
-          { lang: 'de' },
-          { lang: 'fr' },
-          { lang: 'es' },
-        ],
+        target_languages: ['de', 'fr', 'es'],
         source_media_content_type: 'audio/mpeg',
       };
 
@@ -180,11 +176,7 @@ describe('VoiceClient', () => {
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            target_langs: expect.arrayContaining([
-              expect.objectContaining({ lang: 'de' }),
-              expect.objectContaining({ lang: 'fr' }),
-              expect.objectContaining({ lang: 'es' }),
-            ]),
+            target_languages: ['de', 'fr', 'es'],
           }),
         }),
       );
@@ -309,17 +301,16 @@ describe('VoiceClient', () => {
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onSourceTranscript });
 
       const message = JSON.stringify({
-        type: 'source_transcript_update',
-        lang: 'en',
-        concluded: [{ text: 'Hello', start_time: 0, end_time: 1 }],
-        tentative: [],
+        source_transcript_update: {
+          concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+          tentative: [],
+        },
       });
 
       ws.emit('message', Buffer.from(message));
       expect(onSourceTranscript).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'source_transcript_update',
-          lang: 'en',
+          concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
         }),
       );
     });
@@ -329,17 +320,17 @@ describe('VoiceClient', () => {
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onTargetTranscript });
 
       const message = JSON.stringify({
-        type: 'target_transcript_update',
-        lang: 'de',
-        concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
-        tentative: [],
+        target_transcript_update: {
+          language: 'de',
+          concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
+          tentative: [],
+        },
       });
 
       ws.emit('message', Buffer.from(message));
       expect(onTargetTranscript).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'target_transcript_update',
-          lang: 'de',
+          language: 'de',
         }),
       );
     });
@@ -348,7 +339,7 @@ describe('VoiceClient', () => {
       const onEndOfStream = jest.fn();
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onEndOfStream });
 
-      ws.emit('message', Buffer.from(JSON.stringify({ type: 'end_of_stream' })));
+      ws.emit('message', Buffer.from(JSON.stringify({ end_of_stream: {} })));
       expect(onEndOfStream).toHaveBeenCalled();
     });
 
@@ -356,7 +347,7 @@ describe('VoiceClient', () => {
       const onEndOfSourceTranscript = jest.fn();
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onEndOfSourceTranscript });
 
-      ws.emit('message', Buffer.from(JSON.stringify({ type: 'end_of_source_transcript' })));
+      ws.emit('message', Buffer.from(JSON.stringify({ end_of_source_transcript: {} })));
       expect(onEndOfSourceTranscript).toHaveBeenCalled();
     });
 
@@ -364,7 +355,7 @@ describe('VoiceClient', () => {
       const onEndOfTargetTranscript = jest.fn();
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onEndOfTargetTranscript });
 
-      ws.emit('message', Buffer.from(JSON.stringify({ type: 'end_of_target_transcript', lang: 'de' })));
+      ws.emit('message', Buffer.from(JSON.stringify({ end_of_target_transcript: { language: 'de' } })));
       expect(onEndOfTargetTranscript).toHaveBeenCalledWith('de');
     });
 
@@ -373,14 +364,17 @@ describe('VoiceClient', () => {
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onError });
 
       ws.emit('message', Buffer.from(JSON.stringify({
-        type: 'error',
-        code: 'invalid_audio',
-        message: 'Invalid audio format',
+        error: {
+          request_type: 'unknown',
+          error_code: 400,
+          reason_code: 9040000,
+          error_message: 'Invalid audio format',
+        },
       })));
       expect(onError).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'error',
-          code: 'invalid_audio',
+          error_code: 400,
+          error_message: 'Invalid audio format',
         }),
       );
     });
@@ -392,9 +386,7 @@ describe('VoiceClient', () => {
       ws.emit('error', new Error('Connection failed'));
       expect(onError).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'error',
-          code: 'websocket_error',
-          message: 'Connection failed',
+          error_message: 'Connection failed',
         }),
       );
     });
@@ -413,7 +405,7 @@ describe('VoiceClient', () => {
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
       client.sendAudioChunk(ws, 'dGVzdA==');
       expect(ws.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'source_media_chunk', data: 'dGVzdA==' }),
+        JSON.stringify({ source_media_chunk: { data: 'dGVzdA==' } }),
       );
     });
 
@@ -426,11 +418,11 @@ describe('VoiceClient', () => {
   });
 
   describe('sendEndOfSource()', () => {
-    it('should send end_of_source_audio message', () => {
+    it('should send end_of_source_media message', () => {
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
       client.sendEndOfSource(ws);
       expect(ws.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'end_of_source_audio' }),
+        JSON.stringify({ end_of_source_media: {} }),
       );
     });
 

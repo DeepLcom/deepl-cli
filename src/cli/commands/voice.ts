@@ -182,7 +182,7 @@ export class VoiceCommand {
         render();
       },
       onTargetTranscript: (update) => {
-        const tgt = state[update.lang];
+        const tgt = state[update.language];
         if (!tgt) return;
         const concludedText = update.concluded.map((s) => s.text).join(' ');
         if (concludedText) {

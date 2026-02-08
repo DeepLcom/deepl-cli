@@ -15,7 +15,6 @@ import type {
   VoiceSessionResult,
   VoiceTranscript,
   VoiceStreamCallbacks,
-  VoiceSessionTarget,
   VoiceTranscriptSegment,
   VoiceSourceTranscriptUpdate,
   VoiceTargetTranscriptUpdate,
@@ -121,15 +120,9 @@ export class VoiceService {
     chunkInterval: number,
     callbacks?: VoiceStreamCallbacks,
   ): Promise<VoiceSessionResult> {
-    const targetLangs: VoiceSessionTarget[] = options.targetLangs.map((lang) => ({
-      lang,
-      ...(options.formality && { formality: options.formality }),
-      ...(options.glossaryId && { glossary_id: options.glossaryId }),
-    }));
-
     const session = await this.client.createSession({
-      source_lang: options.sourceLang,
-      target_langs: targetLangs,
+      source_language: options.sourceLang,
+      target_languages: options.targetLangs,
       source_media_content_type: options.contentType!,
     });
 
@@ -158,11 +151,14 @@ export class VoiceService {
       const internalCallbacks: VoiceStreamCallbacks = {
         onSourceTranscript: (update: VoiceSourceTranscriptUpdate) => {
           this.accumulateTranscript(sourceTranscript, update.concluded, textParts);
-          sourceTranscript.lang = update.lang;
+          const detectedLang = update.concluded[0]?.language ?? update.tentative[0]?.language;
+          if (detectedLang) {
+            sourceTranscript.lang = detectedLang;
+          }
           callbacks?.onSourceTranscript?.(update);
         },
         onTargetTranscript: (update: VoiceTargetTranscriptUpdate) => {
-          const target = targetTranscripts.get(update.lang);
+          const target = targetTranscripts.get(update.language);
           if (target) {
             this.accumulateTranscript(target, update.concluded, textParts);
           }
@@ -171,8 +167,8 @@ export class VoiceService {
         onEndOfSourceTranscript: () => {
           callbacks?.onEndOfSourceTranscript?.();
         },
-        onEndOfTargetTranscript: (lang: VoiceTargetLanguage) => {
-          callbacks?.onEndOfTargetTranscript?.(lang);
+        onEndOfTargetTranscript: (language: VoiceTargetLanguage) => {
+          callbacks?.onEndOfTargetTranscript?.(language);
         },
         onEndOfStream: () => {
           streamEnded = true;
@@ -193,7 +189,7 @@ export class VoiceService {
           callbacks?.onError?.(error);
           process.removeListener('SIGINT', sigintHandler);
           ws.close();
-          reject(new VoiceError(`Voice streaming error: ${error.message} (${error.code})`));
+          reject(new VoiceError(`Voice streaming error: ${error.error_message} (${error.error_code})`));
         },
       };
 
