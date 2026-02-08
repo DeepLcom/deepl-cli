@@ -77,6 +77,19 @@ describe('AdminCommand', () => {
       await command.createKey();
       expect(mockClient.createApiKey).toHaveBeenCalledWith(undefined);
     });
+
+    it('should preserve the secret key from the response', async () => {
+      mockClient.createApiKey.mockResolvedValue({
+        keyId: 'key-new',
+        key: 'dl-api-secret-12345',
+        label: 'New Key',
+        creationTime: '2024-06-01T00:00:00Z',
+        isDeactivated: false,
+      });
+
+      const result = await command.createKey('New Key');
+      expect(result.key).toBe('dl-api-secret-12345');
+    });
   });
 
   describe('deactivateKey', () => {
@@ -271,6 +284,31 @@ describe('AdminCommand', () => {
 
       const result = command.formatKeyInfo(key);
       expect(result).not.toContain('Limit:');
+    });
+
+    it('should display the secret key when present', () => {
+      const key: AdminApiKey = {
+        keyId: 'key-7',
+        key: 'dl-api-secret-67890',
+        label: 'New Key',
+        creationTime: '2024-06-01T00:00:00Z',
+        isDeactivated: false,
+      };
+
+      const result = command.formatKeyInfo(key);
+      expect(result).toContain('Secret:  dl-api-secret-67890');
+    });
+
+    it('should not display secret line when key is absent', () => {
+      const key: AdminApiKey = {
+        keyId: 'key-8',
+        label: 'Existing Key',
+        creationTime: '2024-01-01T00:00:00Z',
+        isDeactivated: false,
+      };
+
+      const result = command.formatKeyInfo(key);
+      expect(result).not.toContain('Secret:');
     });
   });
 

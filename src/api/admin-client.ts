@@ -31,6 +31,7 @@ export class AdminClient extends HttpClient {
 
       const response = await this.makeJsonRequest<{
         key_id: string;
+        key?: string;
         label: string;
         creation_time: string;
         is_deactivated: boolean;
@@ -142,17 +143,22 @@ export class AdminClient extends HttpClient {
 
   private normalizeApiKey(key: {
     key_id: string;
+    key?: string;
     label: string;
     creation_time: string;
     is_deactivated: boolean;
     usage_limits?: { characters?: number | null };
   }): AdminApiKey {
-    return {
+    const result: AdminApiKey = {
       keyId: key.key_id,
       label: key.label,
       creationTime: key.creation_time,
       isDeactivated: key.is_deactivated,
       usageLimits: key.usage_limits,
     };
+    if (key.key) {
+      result.key = key.key;
+    }
+    return result;
   }
 }

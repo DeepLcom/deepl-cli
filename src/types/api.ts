@@ -142,6 +142,7 @@ export interface StyleRulesListOptions {
 
 export interface AdminApiKey {
   keyId: string;
+  key?: string;
   label: string;
   creationTime: string;
   isDeactivated: boolean;
