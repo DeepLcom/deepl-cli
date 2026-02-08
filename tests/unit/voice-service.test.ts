@@ -1165,6 +1165,173 @@ describe('VoiceService', () => {
       expect(mockClient.sendAudioChunk).toHaveBeenCalledTimes(2);
     });
 
+    it('should handle large stream without data loss', async () => {
+      const EventEmitter = require('events');
+      const { PassThrough } = require('stream');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const mockStdin = new PassThrough();
+      jest.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any);
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-large-stream',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            const totalSize = 65536;
+            const pushSize = 256;
+            for (let i = 0; i < totalSize / pushSize; i++) {
+              const buf = Buffer.alloc(pushSize, i & 0xff);
+              mockStdin.write(buf);
+            }
+            mockStdin.end();
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 50);
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      const chunkSize = 6400;
+      const result = await service.translateStdin({
+        targetLangs: ['de'],
+        contentType: 'audio/mpeg',
+        chunkSize,
+        chunkInterval: 0,
+      });
+
+      expect(result.sessionId).toBe('session-large-stream');
+
+      // sendAudioChunk receives base64 strings; decode to verify byte counts
+      const calls = mockClient.sendAudioChunk.mock.calls;
+      let totalBytesSent = 0;
+      for (const call of calls) {
+        const b64 = call[1] as string;
+        const byteLen = Buffer.from(b64, 'base64').length;
+        totalBytesSent += byteLen;
+        expect(byteLen).toBeLessThanOrEqual(chunkSize);
+      }
+      expect(totalBytesSent).toBe(65536);
+      expect(calls.length).toBeGreaterThanOrEqual(Math.ceil(65536 / chunkSize));
+    });
+
+    it('should handle exact multiple of chunkSize without trailing empty yield', async () => {
+      const EventEmitter = require('events');
+      const { PassThrough } = require('stream');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const mockStdin = new PassThrough();
+      jest.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any);
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-exact-multiple',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            mockStdin.write(Buffer.alloc(12800));
+            mockStdin.end();
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 20);
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      const chunkSize = 6400;
+      const result = await service.translateStdin({
+        targetLangs: ['de'],
+        contentType: 'audio/mpeg',
+        chunkSize,
+        chunkInterval: 0,
+      });
+
+      expect(result.sessionId).toBe('session-exact-multiple');
+
+      // sendAudioChunk receives base64 strings; decode to verify byte counts
+      const calls = mockClient.sendAudioChunk.mock.calls;
+      let totalBytesSent = 0;
+      for (const call of calls) {
+        const b64 = call[1] as string;
+        const byteLen = Buffer.from(b64, 'base64').length;
+        expect(byteLen).toBeGreaterThan(0);
+        expect(byteLen).toBeLessThanOrEqual(chunkSize);
+        totalBytesSent += byteLen;
+      }
+      expect(totalBytesSent).toBe(12800);
+    });
+
+    it('should handle single-byte pushes correctly', async () => {
+      const EventEmitter = require('events');
+      const { PassThrough } = require('stream');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const mockStdin = new PassThrough();
+      jest.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any);
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-single-byte',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            const totalBytes = 25;
+            for (let i = 0; i < totalBytes; i++) {
+              mockStdin.write(Buffer.from([i]));
+            }
+            mockStdin.end();
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 20);
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      const chunkSize = 10;
+      const result = await service.translateStdin({
+        targetLangs: ['de'],
+        contentType: 'audio/mpeg',
+        chunkSize,
+        chunkInterval: 0,
+      });
+
+      expect(result.sessionId).toBe('session-single-byte');
+
+      // sendAudioChunk receives base64 strings; decode to verify byte counts
+      const calls = mockClient.sendAudioChunk.mock.calls;
+      let totalBytesSent = 0;
+      for (const call of calls) {
+        const b64 = call[1] as string;
+        const byteLen = Buffer.from(b64, 'base64').length;
+        expect(byteLen).toBeLessThanOrEqual(chunkSize);
+        totalBytesSent += byteLen;
+      }
+      expect(totalBytesSent).toBe(25);
+      expect(calls.length).toBeGreaterThanOrEqual(Math.ceil(25 / chunkSize));
+    });
+
     it('should yield remaining buffer from stdin when stream ends', async () => {
       const EventEmitter = require('events');
       const { PassThrough } = require('stream');

@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **113 new tests for voice feature** - 87 unit tests (VoiceClient, VoiceService, VoiceCommand, error types, formatters), 8 integration tests (CLI help, validation, auth), 20 e2e tests (full CLI workflows, exit codes, format validation).
 - **Voice usage in admin analytics** - Added `speechToTextMilliseconds` to `UsageBreakdown` type and `AdminClient`, mapping the API's `speech_to_text_milliseconds` field. The `deepl admin usage` command now displays voice usage duration in human-readable format (e.g., `1h 23m 45s`).
 
+### Fixed
+- **Quadratic memory allocation in `readStdinInChunks`** - Replaced `Buffer.concat([buffer, newData])` on every stdin data event with a chunks-array approach that only merges when enough data is available to yield. Reduces transient allocations from O(n²) to amortized O(n) for large audio streams piped via stdin.
+
 ### Changed
 - **Move SIGINT handling from `VoiceStreamSession` to CLI layer** - Process-level signal handling is now the CLI's responsibility. `VoiceStreamSession` exposes a `cancel()` method and `VoiceService` delegates to it. `VoiceCommand` registers/removes SIGINT handlers in `try/finally` blocks, fixing a handler leak on reconnection failure.
 - **Extract `VoiceStreamSession` class from `VoiceService.streamAudio()`** - Moved WebSocket session state, reconnection logic, chunk streaming, and transcript accumulation into a dedicated `VoiceStreamSession` class (`src/services/voice-stream-session.ts`). `VoiceService.streamAudio()` reduced from 155 lines to 3 lines. Added 20 unit tests for the new class.

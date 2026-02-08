@@ -157,19 +157,33 @@ export class VoiceService {
     const stdin = process.stdin;
     stdin.resume();
 
-    let buffer = Buffer.alloc(0);
+    const chunks: Buffer[] = [];
+    let totalLength = 0;
 
     for await (const data of stdin) {
-      buffer = Buffer.concat([buffer, Buffer.isBuffer(data) ? data : Buffer.from(data as string)]);
+      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data as string);
+      chunks.push(buf);
+      totalLength += buf.length;
 
-      while (buffer.length >= chunkSize) {
-        yield buffer.subarray(0, chunkSize);
-        buffer = buffer.subarray(chunkSize);
+      while (totalLength >= chunkSize) {
+        const merged = Buffer.concat(chunks);
+        chunks.length = 0;
+        let offset = 0;
+        while (offset + chunkSize <= merged.length) {
+          yield merged.subarray(offset, offset + chunkSize);
+          offset += chunkSize;
+        }
+        if (offset < merged.length) {
+          chunks.push(merged.subarray(offset));
+          totalLength = merged.length - offset;
+        } else {
+          totalLength = 0;
+        }
       }
     }
 
-    if (buffer.length > 0) {
-      yield buffer;
+    if (totalLength > 0) {
+      yield Buffer.concat(chunks);
     }
   }
 
