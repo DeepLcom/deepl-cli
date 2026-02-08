@@ -424,7 +424,8 @@ describe('Translate CLI Integration', () => {
       const output = runCLI('deepl translate --help');
       expect(output).toContain('--format <format>');
       expect(output).toContain('json');
-      expect(output).toContain('plain text');
+      expect(output).toContain('default: plain');
+      expect(output).toContain('text)');
     });
   });
 

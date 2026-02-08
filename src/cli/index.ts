@@ -195,21 +195,32 @@ const deps = {
   handleError,
 };
 
-// Register all command groups
-registerAuth(program, deps);
-registerUsage(program, deps);
-registerLanguages(program, deps);
+// Register all command groups, organized by help category
+program.commandsGroup('Core Commands:');
 registerTranslate(program, deps);
-registerWatch(program, deps);
 registerWrite(program, deps);
+registerVoice(program, deps);
+
+program.commandsGroup('Resources:');
+registerGlossary(program, deps);
+
+program.commandsGroup('Workflow:');
+registerWatch(program, deps);
+registerHooks(program, deps);
+
+program.commandsGroup('Configuration:');
+registerAuth(program, deps);
 registerConfig(program, deps);
 registerCache(program, deps);
-registerGlossary(program, deps);
-registerHooks(program, deps);
 registerStyleRules(program, deps);
-registerAdmin(program, deps);
+
+program.commandsGroup('Information:');
+registerUsage(program, deps);
+registerLanguages(program, deps);
 registerCompletion(program, deps);
-registerVoice(program, deps);
+
+program.commandsGroup('Administration:');
+registerAdmin(program, deps);
 
 // Parse arguments
 program.parse(process.argv);
