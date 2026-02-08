@@ -1,12 +1,13 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
-import { createAdminCommand, type CreateDeepLClient } from './service-factory.js';
+import { createAdminCommand, type CreateDeepLClient, type GetApiKeyAndOptions } from './service-factory.js';
 
 export function registerAdmin(
   program: Command,
   deps: {
     createDeepLClient: CreateDeepLClient;
+    getApiKeyAndOptions?: GetApiKeyAndOptions;
     handleError: (error: unknown) => never;
   },
 ): void {
@@ -111,19 +112,42 @@ Examples:
     )
     .addCommand(
       new Command('set-limit')
-        .description('Set character usage limit for an API key')
+        .description('Set usage limits for an API key')
         .argument('<key-id>', 'Key ID')
         .argument('<characters>', 'Character limit (number or "unlimited")')
-        .action(async (keyId: string, characters: string) => {
+        .option('--stt-limit <milliseconds>', 'Speech-to-text milliseconds limit (number or "unlimited")')
+        .action(async (keyId: string, characters: string, options: { sttLimit?: string }) => {
           try {
-            const admin = await createAdminCommand(createDeepLClient);
             const limit = characters === 'unlimited' ? null : parseInt(characters, 10);
             if (limit !== null && isNaN(limit)) {
               throw new Error('Characters must be a number or "unlimited"');
             }
-            await admin.setKeyLimit(keyId, limit);
+
+            let sttLimit: number | null | undefined;
+            if (options.sttLimit !== undefined) {
+              sttLimit = options.sttLimit === 'unlimited' ? null : parseInt(options.sttLimit, 10);
+              if (sttLimit !== null && isNaN(sttLimit)) {
+                throw new Error('STT limit must be a number or "unlimited"');
+              }
+            }
+
+            if (sttLimit !== undefined && deps.getApiKeyAndOptions) {
+              const { apiKey, options: clientOptions } = deps.getApiKeyAndOptions();
+              const { AdminClient } = await import('../../api/admin-client.js');
+              const adminClient = new AdminClient(apiKey, clientOptions);
+              await adminClient.setApiKeyLimit(keyId, limit, sttLimit);
+            } else {
+              const admin = await createAdminCommand(createDeepLClient);
+              await admin.setKeyLimit(keyId, limit);
+            }
+
             const limitStr = limit === null ? 'unlimited' : limit.toLocaleString();
-            Logger.success(chalk.green(`\u2713 Usage limit for ${keyId} set to ${limitStr} characters`));
+            const parts = [`${limitStr} characters`];
+            if (sttLimit !== undefined) {
+              const sttStr = sttLimit === null ? 'unlimited' : sttLimit.toLocaleString();
+              parts.push(`${sttStr} STT ms`);
+            }
+            Logger.success(chalk.green(`\u2713 Usage limit for ${keyId} set to ${parts.join(', ')}`));
           } catch (error) {
             handleError(error);
           }

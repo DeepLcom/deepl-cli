@@ -50,7 +50,8 @@ export class StyleRulesCommand {
         if (detailed.customInstructions.length > 0) {
           lines.push(`    Custom Instructions:`);
           for (const instruction of detailed.customInstructions) {
-            lines.push(`      - ${instruction}`);
+            const langSuffix = instruction.sourceLanguage ? ` [${instruction.sourceLanguage}]` : '';
+            lines.push(`      - ${instruction.label}: ${instruction.prompt}${langSuffix}`);
           }
         }
       }

@@ -108,6 +108,7 @@ export interface DocumentTranslationOptions {
   glossaryId?: string;
   outputFormat?: DocumentOutputFormat;
   enableDocumentMinification?: boolean;
+  enableBetaLanguages?: boolean;
 }
 
 // Glossary Types
@@ -128,9 +129,15 @@ export interface StyleRule {
   updatedTime: string;
 }
 
+export interface CustomInstruction {
+  label: string;
+  prompt: string;
+  sourceLanguage?: string;
+}
+
 export interface StyleRuleDetailed extends StyleRule {
   configuredRules: string[];
-  customInstructions: string[];
+  customInstructions: CustomInstruction[];
 }
 
 export interface StyleRulesListOptions {
@@ -149,6 +156,7 @@ export interface AdminApiKey {
   isDeactivated: boolean;
   usageLimits?: {
     characters?: number | null;
+    speechToTextMilliseconds?: number | null;
   };
 }
 

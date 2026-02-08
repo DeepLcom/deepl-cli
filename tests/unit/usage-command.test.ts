@@ -212,6 +212,77 @@ describe('UsageCommand', () => {
       expect(formatted).not.toContain('API Key Usage:');
     });
 
+    it('should display account unit usage when available', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        accountUnitCount: 50000,
+        accountUnitLimit: 200000,
+      });
+
+      expect(formatted).toContain('Account Unit Usage:');
+      expect(formatted).toContain('50,000');
+      expect(formatted).toContain('200,000 units');
+    });
+
+    it('should display API key unit usage when available', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        apiKeyUnitCount: 10000,
+        apiKeyUnitLimit: 0,
+      });
+
+      expect(formatted).toContain('API Key Unit Usage:');
+      expect(formatted).toContain('10,000');
+      expect(formatted).toContain('unlimited units');
+    });
+
+    it('should prefer unit counts over character counts for API key display', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        apiKeyCharacterCount: 1880000,
+        apiKeyCharacterLimit: 0,
+        apiKeyUnitCount: 10000,
+        apiKeyUnitLimit: 50000,
+      });
+
+      expect(formatted).toContain('API Key Unit Usage:');
+      expect(formatted).not.toContain('API Key Usage:');
+    });
+
+    it('should fall back to character counts when unit counts are absent', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        apiKeyCharacterCount: 1880000,
+        apiKeyCharacterLimit: 0,
+      });
+
+      expect(formatted).toContain('API Key Usage:');
+      expect(formatted).not.toContain('API Key Unit Usage:');
+    });
+
+    it('should display product unit counts when available', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        products: [
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+            unitCount: 5000,
+            apiKeyUnitCount: 4500,
+          },
+        ],
+      });
+
+      expect(formatted).toContain('Product Breakdown:');
+      expect(formatted).toContain('translate: 5,000 units (API key: 4,500 units)');
+    });
+
     it('should show unlimited for zero API key character limit', () => {
       const formatted = usageCommand.formatUsage({
         characterCount: 2150000,

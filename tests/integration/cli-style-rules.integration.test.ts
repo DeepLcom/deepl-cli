@@ -308,7 +308,10 @@ describe('Style Rules API Integration', () => {
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-01-02T00:00:00Z',
               configured_rules: ['no_passive_voice', 'short_sentences'],
-              custom_instructions: ['Use active voice', 'Keep sentences under 20 words'],
+              custom_instructions: [
+                { label: 'Voice', prompt: 'Use active voice' },
+                { label: 'Length', prompt: 'Keep sentences under 20 words' },
+              ],
             },
           ],
         });
@@ -318,7 +321,10 @@ describe('Style Rules API Integration', () => {
       expect(rules).toHaveLength(1);
       const rule = rules[0] as any;
       expect(rule.configuredRules).toEqual(['no_passive_voice', 'short_sentences']);
-      expect(rule.customInstructions).toEqual(['Use active voice', 'Keep sentences under 20 words']);
+      expect(rule.customInstructions).toEqual([
+        { label: 'Voice', prompt: 'Use active voice' },
+        { label: 'Length', prompt: 'Keep sentences under 20 words' },
+      ]);
       expect(scope.isDone()).toBe(true);
     });
 
@@ -336,7 +342,10 @@ describe('Style Rules API Integration', () => {
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-01-02T00:00:00Z',
               configured_rules: ['rule_a', 'rule_b'],
-              custom_instructions: ['Instruction one', 'Instruction two'],
+              custom_instructions: [
+                { label: 'Instruction one', prompt: 'Do this' },
+                { label: 'Instruction two', prompt: 'Do that' },
+              ],
             },
           ],
         });
@@ -411,7 +420,7 @@ describe('Style Rules API Integration', () => {
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-01-02T00:00:00Z',
               configured_rules: ['concise'],
-              custom_instructions: ['Be brief'],
+              custom_instructions: [{ label: 'Brevity', prompt: 'Be brief' }],
             },
           ],
         });
@@ -616,7 +625,7 @@ describe('Style Rules API Integration', () => {
               creation_time: '2024-03-01T00:00:00Z',
               updated_time: '2024-03-10T00:00:00Z',
               configured_rules: ['formal_tone', 'no_contractions'],
-              custom_instructions: ['Always use formal language'],
+              custom_instructions: [{ label: 'Formality', prompt: 'Always use formal language' }],
             },
           ],
         });
@@ -626,7 +635,7 @@ describe('Style Rules API Integration', () => {
 
       expect(rule.styleId).toBe('test-id-002');
       expect(rule.configuredRules).toEqual(['formal_tone', 'no_contractions']);
-      expect(rule.customInstructions).toEqual(['Always use formal language']);
+      expect(rule.customInstructions).toEqual([{ label: 'Formality', prompt: 'Always use formal language' }]);
     });
   });
 });

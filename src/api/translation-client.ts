@@ -16,6 +16,10 @@ interface DeepLUsageResponse {
   character_limit: number;
   api_key_character_count?: number;
   api_key_character_limit?: number;
+  api_key_unit_count?: number;
+  api_key_unit_limit?: number;
+  account_unit_count?: number;
+  account_unit_limit?: number;
   speech_to_text_milliseconds_count?: number;
   speech_to_text_milliseconds_limit?: number;
   start_time?: string;
@@ -24,6 +28,8 @@ interface DeepLUsageResponse {
     product_type: string;
     character_count: number;
     api_key_character_count: number;
+    unit_count?: number;
+    api_key_unit_count?: number;
     billing_unit?: string;
   }>;
 }
@@ -45,6 +51,8 @@ export interface ProductUsage {
   productType: string;
   characterCount: number;
   apiKeyCharacterCount: number;
+  unitCount?: number;
+  apiKeyUnitCount?: number;
   billingUnit?: string;
 }
 
@@ -53,6 +61,10 @@ export interface UsageInfo {
   characterLimit: number;
   apiKeyCharacterCount?: number;
   apiKeyCharacterLimit?: number;
+  apiKeyUnitCount?: number;
+  apiKeyUnitLimit?: number;
+  accountUnitCount?: number;
+  accountUnitLimit?: number;
   speechToTextMillisecondsCount?: number;
   speechToTextMillisecondsLimit?: number;
   startTime?: string;
@@ -174,11 +186,25 @@ export class TranslationClient extends HttpClient {
       if (response.speech_to_text_milliseconds_limit !== undefined) {
         usage.speechToTextMillisecondsLimit = response.speech_to_text_milliseconds_limit;
       }
+      if (response.api_key_unit_count !== undefined) {
+        usage.apiKeyUnitCount = response.api_key_unit_count;
+      }
+      if (response.api_key_unit_limit !== undefined) {
+        usage.apiKeyUnitLimit = response.api_key_unit_limit;
+      }
+      if (response.account_unit_count !== undefined) {
+        usage.accountUnitCount = response.account_unit_count;
+      }
+      if (response.account_unit_limit !== undefined) {
+        usage.accountUnitLimit = response.account_unit_limit;
+      }
       if (response.products) {
         usage.products = response.products.map(p => ({
           productType: p.product_type,
           characterCount: p.character_count,
           apiKeyCharacterCount: p.api_key_character_count,
+          ...(p.unit_count !== undefined && { unitCount: p.unit_count }),
+          ...(p.api_key_unit_count !== undefined && { apiKeyUnitCount: p.api_key_unit_count }),
           ...(p.billing_unit && { billingUnit: p.billing_unit }),
         }));
       }

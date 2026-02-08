@@ -81,7 +81,7 @@ describe('StyleRulesCommand', () => {
       expect(result).toContain('en');
     });
 
-    it('should format detailed style rules', () => {
+    it('should format detailed style rules with structured custom instructions', () => {
       const rules: StyleRuleDetailed[] = [
         {
           styleId: 'uuid-1',
@@ -91,14 +91,39 @@ describe('StyleRulesCommand', () => {
           creationTime: '2024-01-01T00:00:00Z',
           updatedTime: '2024-01-02T00:00:00Z',
           configuredRules: ['rule1', 'rule2'],
-          customInstructions: ['Keep it formal'],
+          customInstructions: [
+            { label: 'Formality', prompt: 'Keep it formal' },
+            { label: 'Tone', prompt: 'Use friendly tone', sourceLanguage: 'en' },
+          ],
         },
       ];
 
       const result = command.formatStyleRulesList(rules);
       expect(result).toContain('Detailed Style');
       expect(result).toContain('rule1, rule2');
-      expect(result).toContain('Keep it formal');
+      expect(result).toContain('Formality: Keep it formal');
+      expect(result).toContain('Tone: Use friendly tone [en]');
+    });
+
+    it('should format custom instructions without source language', () => {
+      const rules: StyleRuleDetailed[] = [
+        {
+          styleId: 'uuid-2',
+          name: 'Simple Style',
+          language: 'en',
+          version: 1,
+          creationTime: '2024-01-01T00:00:00Z',
+          updatedTime: '2024-01-02T00:00:00Z',
+          configuredRules: [],
+          customInstructions: [
+            { label: 'Brevity', prompt: 'Keep sentences short' },
+          ],
+        },
+      ];
+
+      const result = command.formatStyleRulesList(rules);
+      expect(result).toContain('Brevity: Keep sentences short');
+      expect(result).not.toContain('[');
     });
 
     it('should format multiple rules', () => {

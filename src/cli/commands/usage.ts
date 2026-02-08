@@ -57,7 +57,21 @@ export class UsageCommand {
       lines.push(`  ${start} to ${end}`);
     }
 
-    if (usage.apiKeyCharacterCount !== undefined) {
+    if (usage.accountUnitCount !== undefined) {
+      lines.push('');
+      lines.push(chalk.bold('Account Unit Usage:'));
+      const unitLimit = usage.accountUnitLimit ?? 0;
+      const unitLimitStr = unitLimit === 0 ? 'unlimited' : formatNumber(unitLimit);
+      lines.push(`  Used: ${formatNumber(usage.accountUnitCount)} / ${unitLimitStr} units`);
+    }
+
+    if (usage.apiKeyUnitCount !== undefined) {
+      lines.push('');
+      lines.push(chalk.bold('API Key Unit Usage:'));
+      const unitLimit = usage.apiKeyUnitLimit ?? 0;
+      const unitLimitStr = unitLimit === 0 ? 'unlimited' : formatNumber(unitLimit);
+      lines.push(`  Used: ${formatNumber(usage.apiKeyUnitCount)} / ${unitLimitStr} units`);
+    } else if (usage.apiKeyCharacterCount !== undefined) {
       lines.push('');
       lines.push(chalk.bold('API Key Usage:'));
       const limitStr = usage.apiKeyCharacterLimit === 0
@@ -93,6 +107,11 @@ export class UsageCommand {
       for (const product of usage.products) {
         if (product.billingUnit === 'milliseconds') {
           lines.push(`  ${product.productType}: ${this.formatMilliseconds(product.characterCount)} (API key: ${this.formatMilliseconds(product.apiKeyCharacterCount)})`);
+        } else if (product.unitCount !== undefined) {
+          const apiKeyPart = product.apiKeyUnitCount !== undefined
+            ? ` (API key: ${formatNumber(product.apiKeyUnitCount)} units)`
+            : ` (API key: ${formatNumber(product.apiKeyCharacterCount)} characters)`;
+          lines.push(`  ${product.productType}: ${formatNumber(product.unitCount)} units${apiKeyPart}`);
         } else {
           lines.push(`  ${product.productType}: ${formatNumber(product.characterCount)} characters (API key: ${formatNumber(product.apiKeyCharacterCount)})`);
         }

@@ -178,6 +178,58 @@ describe('DeepLClient - Document Translation', () => {
       );
     });
 
+    it('should include enable_beta_languages parameter when enabled', async () => {
+      const mockResponse = {
+        data: {
+          document_id: 'doc-id',
+          document_key: 'doc-key',
+        },
+      };
+
+      mockAxiosInstance.request.mockResolvedValue(mockResponse);
+
+      const fileBuffer = Buffer.from('test content');
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        filename: 'document.pdf',
+        enableBetaLanguages: true,
+      });
+
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: '/v2/document',
+        })
+      );
+
+      const callArgs = mockAxiosInstance.request.mock.calls[0][0];
+      expect(callArgs.data).toBeDefined();
+    });
+
+    it('should NOT include enable_beta_languages parameter when not specified', async () => {
+      const mockResponse = {
+        data: {
+          document_id: 'doc-id',
+          document_key: 'doc-key',
+        },
+      };
+
+      mockAxiosInstance.request.mockResolvedValue(mockResponse);
+
+      const fileBuffer = Buffer.from('test content');
+      await client.uploadDocument(fileBuffer, {
+        targetLang: 'es',
+        filename: 'document.docx',
+      });
+
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: '/v2/document',
+        })
+      );
+    });
+
     it('should throw error if filename is missing', async () => {
       const fileBuffer = Buffer.from('test content');
 

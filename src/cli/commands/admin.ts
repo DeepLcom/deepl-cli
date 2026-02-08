@@ -73,6 +73,12 @@ export class AdminCommand {
           : key.usageLimits.characters.toLocaleString();
         lines.push(`    Limit:   ${limit} characters`);
       }
+      if (key.usageLimits?.speechToTextMilliseconds !== undefined) {
+        const sttLimit = key.usageLimits.speechToTextMilliseconds === null
+          ? 'unlimited'
+          : this.formatMilliseconds(key.usageLimits.speechToTextMilliseconds);
+        lines.push(`    STT Limit: ${sttLimit}`);
+      }
       lines.push('');
     }
 
@@ -95,6 +101,12 @@ export class AdminCommand {
         ? 'unlimited'
         : key.usageLimits.characters.toLocaleString();
       lines.push(`  Limit:   ${limit} characters`);
+    }
+    if (key.usageLimits?.speechToTextMilliseconds !== undefined) {
+      const sttLimit = key.usageLimits.speechToTextMilliseconds === null
+        ? 'unlimited'
+        : this.formatMilliseconds(key.usageLimits.speechToTextMilliseconds);
+      lines.push(`  STT Limit: ${sttLimit}`);
     }
     return lines.join('\n');
   }

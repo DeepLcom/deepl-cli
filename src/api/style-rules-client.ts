@@ -33,7 +33,11 @@ export class StyleRulesClient extends HttpClient {
           creation_time: string;
           updated_time: string;
           configured_rules?: string[];
-          custom_instructions?: string[];
+          custom_instructions?: Array<{
+            label: string;
+            prompt: string;
+            source_language?: string;
+          }>;
         }>;
       }>('GET', '/v3/style_rules', params as unknown as Record<string, unknown>);
 
@@ -51,7 +55,11 @@ export class StyleRulesClient extends HttpClient {
           return {
             ...base,
             configuredRules: rule.configured_rules,
-            customInstructions: rule.custom_instructions,
+            customInstructions: rule.custom_instructions.map(ci => ({
+              label: ci.label,
+              prompt: ci.prompt,
+              ...(ci.source_language && { sourceLanguage: ci.source_language }),
+            })),
           } as StyleRuleDetailed;
         }
 
