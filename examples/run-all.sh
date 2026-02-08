@@ -70,6 +70,7 @@ EXAMPLES=(
   "21-custom-instructions.sh"
   "22-style-rules.sh"
   "23-admin.sh"
+  "24-voice.sh"
 )
 
 # Skip slow examples in fast mode
@@ -98,6 +99,7 @@ if [ "$FAST_MODE" = true ]; then
     "21-custom-instructions.sh"
     "22-style-rules.sh"
     "23-admin.sh"
+    "24-voice.sh"
   )
 fi
 
