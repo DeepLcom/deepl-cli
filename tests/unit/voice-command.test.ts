@@ -671,6 +671,96 @@ describe('VoiceCommand', () => {
     });
   });
 
+  describe('glossary with multiple targets warning', () => {
+    let stderrSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    });
+
+    afterEach(() => {
+      stderrSpy.mockRestore();
+    });
+
+    it('should warn on stderr when --glossary is used with multiple target languages', async () => {
+      mockService.translateFile.mockResolvedValue(multiTargetResult);
+
+      await command.translate('test.mp3', { to: 'de,fr', glossary: 'glossary-123' });
+
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Warning: --glossary applies a single glossary ID to all target languages'),
+      );
+    });
+
+    it('should mention the target languages in the warning', async () => {
+      mockService.translateFile.mockResolvedValue(multiTargetResult);
+
+      await command.translate('test.mp3', { to: 'de,fr', glossary: 'glossary-123' });
+
+      const warningCall = stderrSpy.mock.calls.find(
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Warning'),
+      );
+      expect(warningCall).toBeDefined();
+      expect(warningCall![0]).toContain('de, fr');
+    });
+
+    it('should suggest translating each target separately', async () => {
+      mockService.translateFile.mockResolvedValue(multiTargetResult);
+
+      await command.translate('test.mp3', { to: 'de,fr', glossary: 'glossary-123' });
+
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Consider translating each target language separately'),
+      );
+    });
+
+    it('should not warn when --glossary is used with a single target language', async () => {
+      mockService.translateFile.mockResolvedValue(mockResult);
+
+      await command.translate('test.mp3', { to: 'de', glossary: 'glossary-123' });
+
+      const warningCalls = stderrSpy.mock.calls.filter(
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Warning'),
+      );
+      expect(warningCalls).toHaveLength(0);
+    });
+
+    it('should not warn when no --glossary is provided with multiple targets', async () => {
+      mockService.translateFile.mockResolvedValue(multiTargetResult);
+
+      await command.translate('test.mp3', { to: 'de,fr' });
+
+      const warningCalls = stderrSpy.mock.calls.filter(
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Warning'),
+      );
+      expect(warningCalls).toHaveLength(0);
+    });
+
+    it('should warn for translateFromStdin too when glossary + multiple targets', async () => {
+      mockService.translateStdin.mockResolvedValue(multiTargetResult);
+
+      await command.translateFromStdin({ to: 'de,fr', glossary: 'glossary-123' });
+
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Warning: --glossary applies a single glossary ID to all target languages'),
+      );
+    });
+
+    it('should still pass glossaryId through to the service despite the warning', async () => {
+      mockService.translateFile.mockResolvedValue(multiTargetResult);
+
+      await command.translate('test.mp3', { to: 'de,fr', glossary: 'glossary-123' });
+
+      expect(mockService.translateFile).toHaveBeenCalledWith(
+        'test.mp3',
+        expect.objectContaining({
+          glossaryId: 'glossary-123',
+        }),
+        undefined,
+      );
+    });
+  });
+
   describe('language code validation', () => {
     it('should reject invalid target language code', async () => {
       await expect(command.translate('test.mp3', { to: 'zz' })).rejects.toThrow(
