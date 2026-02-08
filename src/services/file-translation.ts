@@ -8,6 +8,7 @@ import * as path from 'path';
 import { TranslationService } from './translation.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { ValidationError } from '../utils/errors.js';
+import { safeReadFile } from '../utils/safe-read-file.js';
 
 interface NodeErrno extends Error {
   code?: string;
@@ -52,10 +53,10 @@ export class FileTranslationService {
       );
     }
 
-    // Read file content (eliminates TOCTOU race by catching ENOENT directly)
+    // Read file content using safeReadFile (rejects symlinks for security)
     let content: string;
     try {
-      content = await fs.promises.readFile(inputPath, 'utf-8');
+      content = await safeReadFile(inputPath, 'utf-8');
     } catch (err: unknown) {
       const nodeErr = err as NodeErrno;
       if (nodeErr.code === 'ENOENT') {
@@ -99,10 +100,10 @@ export class FileTranslationService {
       );
     }
 
-    // Read file content (eliminates TOCTOU race by catching ENOENT directly)
+    // Read file content using safeReadFile (rejects symlinks for security)
     let content: string;
     try {
-      content = await fs.promises.readFile(inputPath, 'utf-8');
+      content = await safeReadFile(inputPath, 'utf-8');
     } catch (err: unknown) {
       const nodeErr = err as NodeErrno;
       if (nodeErr.code === 'ENOENT') {
