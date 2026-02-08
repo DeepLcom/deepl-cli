@@ -128,9 +128,15 @@ export interface StyleRule {
   updatedTime: string;
 }
 
+export interface CustomInstruction {
+  label: string;
+  prompt: string;
+  sourceLanguage?: string;
+}
+
 export interface StyleRuleDetailed extends StyleRule {
   configuredRules: string[];
-  customInstructions: string[];
+  customInstructions: CustomInstruction[];
 }
 
 export interface StyleRulesListOptions {
