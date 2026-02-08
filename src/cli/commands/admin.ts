@@ -85,6 +85,9 @@ export class AdminCommand {
     const status = key.isDeactivated ? 'deactivated' : 'active';
     lines.push(`Key: ${key.label || '(no label)'}`);
     lines.push(`  ID:      ${key.keyId}`);
+    if (key.key) {
+      lines.push(`  Secret:  ${key.key}`);
+    }
     lines.push(`  Status:  ${status}`);
     lines.push(`  Created: ${key.creationTime}`);
     if (key.usageLimits?.characters !== undefined) {
