@@ -38,7 +38,7 @@ export class GlossaryService {
     }
 
     // Convert entries to TSV format
-    const tsv = this.entriesToTSV(entries);
+    const tsv = GlossaryService.entriesToTSV(entries);
 
     // Create glossary via API
     return this.client.createGlossary(name, sourceLang, targetLangs, tsv);
@@ -121,7 +121,7 @@ export class GlossaryService {
     targetLang: Language
   ): Promise<Record<string, string>> {
     const tsv = await this.client.getGlossaryEntries(glossaryId, sourceLang, targetLang);
-    return this.tsvToEntries(tsv);
+    return GlossaryService.tsvToEntries(tsv);
   }
 
   /**
@@ -161,7 +161,7 @@ export class GlossaryService {
     entries[sourceText] = targetText;
 
     // Convert to TSV
-    const tsv = this.entriesToTSV(entries);
+    const tsv = GlossaryService.entriesToTSV(entries);
 
     // Update glossary using v3 PATCH endpoint
     await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
@@ -197,7 +197,7 @@ export class GlossaryService {
     entries[sourceText] = newTargetText;
 
     // Convert to TSV
-    const tsv = this.entriesToTSV(entries);
+    const tsv = GlossaryService.entriesToTSV(entries);
 
     // Update glossary using v3 PATCH endpoint
     await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
@@ -234,7 +234,7 @@ export class GlossaryService {
     delete entries[sourceText];
 
     // Convert to TSV
-    const tsv = this.entriesToTSV(entries);
+    const tsv = GlossaryService.entriesToTSV(entries);
 
     // Update glossary using v3 PATCH endpoint
     await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
@@ -288,7 +288,7 @@ export class GlossaryService {
       updates.dictionaries = options.dictionaries.map(dict => ({
         source_lang: dict.sourceLang.toUpperCase(),
         target_lang: dict.targetLang.toUpperCase(),
-        entries: this.entriesToTSV(dict.entries),
+        entries: GlossaryService.entriesToTSV(dict.entries),
         entries_format: 'tsv',
       }));
     }
@@ -316,12 +316,12 @@ export class GlossaryService {
     targetLang: Language,
     tsvContent: string
   ): Promise<void> {
-    const entries = this.tsvToEntries(tsvContent);
+    const entries = GlossaryService.tsvToEntries(tsvContent);
     if (Object.keys(entries).length === 0) {
       throw new Error('No valid entries found in TSV content');
     }
 
-    const tsv = this.entriesToTSV(entries);
+    const tsv = GlossaryService.entriesToTSV(entries);
     await this.client.replaceGlossaryDictionary(glossaryId, sourceLang, targetLang, tsv);
   }
 
@@ -364,7 +364,7 @@ export class GlossaryService {
   /**
    * Convert entries object to TSV format
    */
-  entriesToTSV(entries: Record<string, string>): string {
+  static entriesToTSV(entries: Record<string, string>): string {
     return Object.entries(entries)
       .map(([source, target]) => `${source}\t${target}`)
       .join('\n');
@@ -374,7 +374,7 @@ export class GlossaryService {
    * Convert TSV/CSV to entries object
    * Handles UTF-8 BOM, warns about extra columns, validates format
    */
-  tsvToEntries(tsv: string): Record<string, string> {
+  static tsvToEntries(tsv: string): Record<string, string> {
     const entries: Record<string, string> = {};
 
     // Remove UTF-8 BOM if present (0xFEFF)
@@ -402,7 +402,7 @@ export class GlossaryService {
         parts = trimmed.split('\t');
       } else if (trimmed.includes(',')) {
         // Use proper CSV parsing for comma-separated values (handles quoted fields)
-        parts = this.parseCsvLine(trimmed);
+        parts = GlossaryService.parseCsvLine(trimmed);
       } else {
         // Line has no separator - skip it
         Logger.warn(`Line ${lineNumber}: No tab or comma separator found, skipping`);
@@ -440,7 +440,7 @@ export class GlossaryService {
     return entries;
   }
 
-  private parseCsvLine(line: string): string[] {
+  private static parseCsvLine(line: string): string[] {
     const fields: string[] = [];
     let currentField = '';
     let inQuotes = false;

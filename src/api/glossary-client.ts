@@ -140,7 +140,7 @@ export class GlossaryClient extends HttpClient {
   ): Promise<void> {
     this.validateGlossaryId(glossaryId);
     try {
-      await this.makeRequest<void>(
+      await this.makeJsonRequest<void>(
         'PATCH',
         `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`,
         {
@@ -161,7 +161,7 @@ export class GlossaryClient extends HttpClient {
   ): Promise<void> {
     this.validateGlossaryId(glossaryId);
     try {
-      await this.makeRequest<void>(
+      await this.makeJsonRequest<void>(
         'PUT',
         `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`,
         {
