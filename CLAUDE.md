@@ -18,7 +18,7 @@ DeepL CLI is a next-generation command-line interface for the DeepL API that int
 ### Current Status
 
 - **Version**: 0.10.0 (voice, git-staged watch, grouped help, glossary update, beta languages)
-- **Tests**: 2578 tests passing (100% pass rate)
+- **Tests**: 2625 tests passing (100% pass rate)
   - Unit tests: ~70-75%
   - Integration tests: ~25-30%
   - E2E tests: Comprehensive CLI coverage
@@ -1056,6 +1056,45 @@ Updates examples/README.md with link to new example.
 - [ ] Added to examples/run-all.sh in the EXAMPLES array
 
 ---
+
+## Agent Teamwork Guidelines
+
+When spawning multiple agents to work in parallel, follow these rules to avoid merge conflicts and wasted effort.
+
+### Use git worktrees, not branches in a shared checkout
+
+Agents sharing a single working directory will step on each other — committing on the wrong branch, sweeping uncommitted changes from other agents into their commits, or causing stash conflicts. **Always use `git worktree add` to give each agent its own isolated directory.** This eliminates an entire class of merge problems.
+
+```bash
+# Create isolated worktrees for each agent
+git worktree add /tmp/fix-watch fix/watch-infinite-loop
+git worktree add /tmp/fix-write fix/write-bugs
+git worktree add /tmp/fix-glossary fix/glossary-bugs
+```
+
+Pass the worktree path as the working directory when spawning each agent.
+
+### Partition work by file boundaries
+
+Before spawning agents, map each task to the files it will touch. Ensure no two agents modify the same file. Good partition boundaries:
+
+- `src/services/watch.ts` + `tests/unit/services/watch.test.ts` (watch agent)
+- `src/cli/commands/register-write.ts` + `tests/unit/register-write.test.ts` (write agent)
+- `src/api/glossary-client.ts` + `src/services/glossary.ts` (glossary agent)
+- `.md` files only (docs agent)
+
+If two tasks touch the same file, assign them to the same agent.
+
+### Keep documentation changes separate from code changes
+
+Docs-only fixes (`.md` files) never conflict with code fixes (`.ts` files). A dedicated docs agent can safely run alongside any number of code agents.
+
+### Merge strategy
+
+1. Merge feature branches one at a time into main
+2. Run the full test suite after all merges (`npm test`)
+3. Fix any duplicates from overlapping merges (e.g., two branches adding the same function)
+4. Delete feature branches after merge
 
 *This file helps Claude Code maintain consistent, high-quality development practices specific to the DeepL CLI project.*
 - We track work in Beads instead of Markdown. Run \`bd quickstart\` to see how."

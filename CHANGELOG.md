@@ -10,6 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Cache support for Write API improvements with `--no-cache` bypass flag
 
+### Fixed
+- **Watch mode infinite translation loop** - Output files (e.g. `test.es.txt`) no longer re-trigger the watcher, preventing infinite `test.es.es.es.txt` chains that burned API quota
+- **Glossary entry operations 404** - `add-entry`, `update-entry`, `remove-entry`, and `replace-dictionary` now send JSON content-type for v3 API endpoints instead of form-urlencoded
+- **`write --output` flag ignored** - Text-input path now writes result to the specified output file instead of only printing to stdout
+- **`write --tone`/`--style` accept arbitrary values** - Invalid values now produce clear validation errors listing all valid options instead of confusing API errors
+- **`HttpClient.executeWithRetry()` throws raw errors** - 4xx errors are now classified through `handleError()` before being thrown to callers
+- **Fragile error classification in `classifyByMessage()`** - Tightened string patterns to use specific phrases instead of single words, preventing ambiguous multi-match scenarios
+- **`NO_COLOR` broken for `--format table` output** - Table output now respects the `NO_COLOR` environment variable per the no-color.org standard
+- **`register-glossary.ts` uses `null as any`** - `tsvToEntries()`, `entriesToTSV()`, and `parseCsvLine()` are now static methods, eliminating the unsafe `new GlossaryService(null as any)` hack
+- **API.md documented `--target` but code uses `--target-lang`** for glossary entries
+- **API.md documented `--recursive, -r` short flag** that was never implemented
+- **API.md `write --check` exit code** prose said 1 but implementation uses 8
+- **Node.js version** corrected from >=18 to >=20 in CONTRIBUTING.md and DESIGN.md
+- **CLAUDE.md production dependencies** updated to match current package.json
+
+### Changed
+- **TODO.md overhauled** - Removed implemented features listed as TODO, updated version from 0.7.0 to 0.10.0
+- **API.md `glossary update` documented** - Added full subcommand documentation with synopsis, options, and examples
+
 ## [0.10.0] - 2026-02-08
 
 ### Added
