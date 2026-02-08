@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Voice usage in admin analytics** - Added `speechToTextMilliseconds` to `UsageBreakdown` type and `AdminClient`, mapping the API's `speech_to_text_milliseconds` field. The `deepl admin usage` command now displays voice usage duration in human-readable format (e.g., `1h 23m 45s`).
 
 ### Changed
+- **Extract `VoiceStreamSession` class from `VoiceService.streamAudio()`** - Moved WebSocket session state, reconnection logic, SIGINT handling, chunk streaming, and transcript accumulation into a dedicated `VoiceStreamSession` class (`src/services/voice-stream-session.ts`). `VoiceService.streamAudio()` reduced from 155 lines to 3 lines. Added 20 unit tests for the new class.
 - **Comprehensive CLI help text audit** - Added usage examples to all commands missing them: `admin`, `cache`, `hooks`, `usage`, `languages`, `style-rules`. Expanded examples for `translate`, `write`, and `glossary` commands to cover more option combinations.
 - **`translate --non-splitting-tags` description corrected** - Fixed incorrect description from "non-translatable text" to "should not be used to split sentences" to match the DeepL API behavior.
 - **`translate --output-format` and `--tag-handling-version` now use `.choices()` validation** - Commander validates allowed values at parse time instead of deferring to API errors.

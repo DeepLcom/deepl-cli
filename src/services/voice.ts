@@ -6,25 +6,19 @@
 import { createReadStream } from 'fs';
 import { lstat } from 'fs/promises';
 import { extname, resolve } from 'path';
-import WebSocket from 'ws';
 import { VoiceClient } from '../api/voice-client.js';
-import { ValidationError, VoiceError } from '../utils/errors.js';
+import { ValidationError } from '../utils/errors.js';
+import { VoiceStreamSession } from './voice-stream-session.js';
 import type {
   VoiceSourceMediaContentType,
   VoiceTranslateOptions,
   VoiceSessionResult,
-  VoiceTranscript,
   VoiceStreamCallbacks,
-  VoiceTranscriptSegment,
-  VoiceSourceTranscriptUpdate,
-  VoiceTargetTranscriptUpdate,
-  VoiceTargetLanguage,
 } from '../types/voice.js';
 
 const MAX_TARGET_LANGS = 5;
 const DEFAULT_CHUNK_SIZE = 6400;
 const DEFAULT_CHUNK_INTERVAL = 200;
-const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 
 const EXTENSION_CONTENT_TYPE_MAP: Record<string, VoiceSourceMediaContentType> = {
   '.ogg': 'audio/opus;container=ogg',
@@ -135,157 +129,8 @@ export class VoiceService {
       glossary_id: options.glossaryId,
     });
 
-    const reconnectEnabled = options.reconnect !== false;
-    const maxReconnectAttempts = options.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
-
-    return new Promise<VoiceSessionResult>((resolve, reject) => {
-      const sourceTranscript: VoiceTranscript = { lang: options.sourceLang ?? 'auto', text: '', segments: [] };
-      const targetTranscripts = new Map<string, VoiceTranscript>();
-      const textParts = new Map<VoiceTranscript, string[]>();
-      textParts.set(sourceTranscript, []);
-
-      for (const lang of options.targetLangs) {
-        const transcript: VoiceTranscript = { lang, text: '', segments: [] };
-        targetTranscripts.set(lang, transcript);
-        textParts.set(transcript, []);
-      }
-
-      let streamEnded = false;
-      let reconnectAttempts = 0;
-      let currentToken = session.token;
-      let ws: WebSocket;
-      let sigintHandler: () => void;
-      let chunkStreamingResolve: (() => void) | null = null;
-
-      const internalCallbacks: VoiceStreamCallbacks = {
-        onSourceTranscript: (update: VoiceSourceTranscriptUpdate) => {
-          this.accumulateTranscript(sourceTranscript, update.concluded, textParts);
-          const detectedLang = update.concluded[0]?.language ?? update.tentative[0]?.language;
-          if (detectedLang) {
-            sourceTranscript.lang = detectedLang;
-          }
-          callbacks?.onSourceTranscript?.(update);
-        },
-        onTargetTranscript: (update: VoiceTargetTranscriptUpdate) => {
-          const target = targetTranscripts.get(update.language);
-          if (target) {
-            this.accumulateTranscript(target, update.concluded, textParts);
-          }
-          callbacks?.onTargetTranscript?.(update);
-        },
-        onEndOfSourceTranscript: () => {
-          callbacks?.onEndOfSourceTranscript?.();
-        },
-        onEndOfTargetTranscript: (language: VoiceTargetLanguage) => {
-          callbacks?.onEndOfTargetTranscript?.(language);
-        },
-        onEndOfStream: () => {
-          streamEnded = true;
-          callbacks?.onEndOfStream?.();
-          process.removeListener('SIGINT', sigintHandler);
-          ws.close();
-          for (const [transcript, parts] of textParts) {
-            transcript.text = parts.join(' ');
-          }
-          resolve({
-            sessionId: session.session_id,
-            source: sourceTranscript,
-            targets: Array.from(targetTranscripts.values()),
-          });
-        },
-        onError: (error) => {
-          streamEnded = true;
-          callbacks?.onError?.(error);
-          process.removeListener('SIGINT', sigintHandler);
-          ws.close();
-          reject(new VoiceError(`Voice streaming error: ${error.error_message} (${error.error_code})`));
-        },
-      };
-
-      const handleClose = () => {
-        process.removeListener('SIGINT', sigintHandler);
-
-        if (streamEnded) {
-          return;
-        }
-
-        if (reconnectEnabled && reconnectAttempts < maxReconnectAttempts) {
-          reconnectAttempts++;
-          callbacks?.onReconnecting?.(reconnectAttempts);
-
-          void (async () => {
-            try {
-              const reconnect = await this.client.reconnectSession(currentToken);
-              currentToken = reconnect.token;
-
-              ws = this.client.createWebSocket(reconnect.streaming_url, reconnect.token, internalCallbacks);
-
-              sigintHandler = () => { this.client.sendEndOfSource(ws); };
-              process.on('SIGINT', sigintHandler);
-
-              ws.on('close', handleClose);
-              ws.on('error', handleError);
-
-              ws.on('open', () => {
-                if (chunkStreamingResolve) {
-                  chunkStreamingResolve();
-                  chunkStreamingResolve = null;
-                }
-              });
-            } catch (error) {
-              reject(error instanceof Error ? error : new VoiceError(String(error)));
-            }
-          })();
-        } else if (!streamEnded) {
-          reject(new VoiceError('WebSocket closed unexpectedly'));
-        }
-      };
-
-      const handleError = (error: Error) => {
-        process.removeListener('SIGINT', sigintHandler);
-        reject(new VoiceError(`WebSocket connection failed: ${error.message}`));
-      };
-
-      ws = this.client.createWebSocket(session.streaming_url, session.token, internalCallbacks);
-
-      sigintHandler = () => { this.client.sendEndOfSource(ws); };
-      process.on('SIGINT', sigintHandler);
-
-      ws.on('open', () => {
-        void (async () => {
-          try {
-            for await (const chunk of this.paceChunks(chunks, chunkInterval)) {
-              while (ws.readyState !== WebSocket.OPEN) {
-                if (streamEnded) {
-                  return;
-                }
-                await new Promise<void>((r) => { chunkStreamingResolve = r; });
-              }
-              this.client.sendAudioChunk(ws, chunk.toString('base64'));
-            }
-            this.client.sendEndOfSource(ws);
-          } catch (error) {
-            ws.close();
-            reject(error instanceof Error ? error : new Error(String(error)));
-          }
-        })();
-      });
-
-      ws.on('close', handleClose);
-      ws.on('error', handleError);
-    });
-  }
-
-  private accumulateTranscript(
-    transcript: VoiceTranscript,
-    concluded: VoiceTranscriptSegment[],
-    textParts: Map<VoiceTranscript, string[]>,
-  ): void {
-    const parts = textParts.get(transcript)!;
-    for (const segment of concluded) {
-      transcript.segments.push(segment);
-      parts.push(segment.text);
-    }
+    const streamSession = new VoiceStreamSession(this.client, session, options, callbacks);
+    return streamSession.run(this.paceChunks(chunks, chunkInterval));
   }
 
   private async *readFileInChunks(filePath: string, chunkSize: number): AsyncGenerator<Buffer> {
