@@ -189,6 +189,17 @@ export class VoiceCommand {
       }
     };
 
+    let renderScheduled = false;
+    const scheduleRender = () => {
+      if (!renderScheduled) {
+        renderScheduled = true;
+        queueMicrotask(() => {
+          renderScheduled = false;
+          render();
+        });
+      }
+    };
+
     // Print initial blank lines
     for (let i = 0; i < lineCount; i++) {
       process.stdout.write('\n');
@@ -210,7 +221,7 @@ export class VoiceCommand {
         if (src.tentative) {
           src.tentative = ' ' + src.tentative;
         }
-        render();
+        scheduleRender();
       },
       onTargetTranscript: (update) => {
         const tgt = state[update.language];
@@ -223,7 +234,7 @@ export class VoiceCommand {
         if (tgt.tentative) {
           tgt.tentative = ' ' + tgt.tentative;
         }
-        render();
+        scheduleRender();
       },
     };
   }

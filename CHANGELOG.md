@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Voice usage in admin analytics** - Added `speechToTextMilliseconds` to `UsageBreakdown` type and `AdminClient`, mapping the API's `speech_to_text_milliseconds` field. The `deepl admin usage` command now displays voice usage duration in human-readable format (e.g., `1h 23m 45s`).
 
 ### Fixed
+- **TTY flickering during voice transcript updates** - Debounced `render()` calls in `VoiceCommand.createTTYCallbacks()` using `queueMicrotask`. With multiple target languages, a single utterance previously triggered up to N+1 synchronous renders (1 source + N targets). Renders are now coalesced into a single pass per microtask tick, eliminating visible flicker.
 - **Quadratic memory allocation in `readStdinInChunks`** - Replaced `Buffer.concat([buffer, newData])` on every stdin data event with a chunks-array approach that only merges when enough data is available to yield. Reduces transient allocations from O(n²) to amortized O(n) for large audio streams piped via stdin.
 
 ### Changed

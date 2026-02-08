@@ -597,6 +597,145 @@ describe('VoiceCommand', () => {
     });
   });
 
+  describe('TTY render debouncing', () => {
+    let writeSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+      writeSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      mockMoveCursor.mockReset();
+      mockClearLine.mockReset();
+      mockCursorTo.mockReset();
+    });
+
+    afterEach(() => {
+      writeSpy.mockRestore();
+    });
+
+    it('should coalesce multiple synchronous transcript updates into a single render', async () => {
+      const multiResult: VoiceSessionResult = {
+        sessionId: 'session-debounce',
+        source: { lang: 'en', text: 'Hello', segments: [{ text: 'Hello', start_time: 0, end_time: 0.5 }] },
+        targets: [
+          { lang: 'de', text: 'Hallo', segments: [{ text: 'Hallo', start_time: 0, end_time: 0.5 }] },
+          { lang: 'fr', text: 'Bonjour', segments: [{ text: 'Bonjour', start_time: 0, end_time: 0.5 }] },
+          { lang: 'es', text: 'Hola', segments: [{ text: 'Hola', start_time: 0, end_time: 0.5 }] },
+        ],
+      };
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
+        callbacks!.onSourceTranscript!({
+          concluded: [{ text: 'Hello', start_time: 0, end_time: 0.5 }],
+          tentative: [],
+        });
+        callbacks!.onTargetTranscript!({
+          language: 'de' as any,
+          concluded: [{ text: 'Hallo', start_time: 0, end_time: 0.5 }],
+          tentative: [],
+        });
+        callbacks!.onTargetTranscript!({
+          language: 'fr' as any,
+          concluded: [{ text: 'Bonjour', start_time: 0, end_time: 0.5 }],
+          tentative: [],
+        });
+        callbacks!.onTargetTranscript!({
+          language: 'es' as any,
+          concluded: [{ text: 'Hola', start_time: 0, end_time: 0.5 }],
+          tentative: [],
+        });
+        return Promise.resolve(multiResult);
+      });
+
+      await command.translate('test.mp3', { to: 'de,fr,es' });
+
+      // Count render passes: each render moves cursor up by -lineCount (4 lines for source+3 targets).
+      // Without debouncing: 4 callbacks = 4 renders = 4 upward moves of -4
+      // With debouncing: 1 coalesced render = 1 upward move of -4 (plus clearTTYDisplay's -4)
+      const renderUpMoves = mockMoveCursor.mock.calls.filter(
+        (call: unknown[]) => (call as number[])[2] === -4,
+      );
+      expect(renderUpMoves.length).toBeLessThanOrEqual(2);
+    });
+
+    it('should still render all accumulated state in the coalesced render', async () => {
+      const multiResult: VoiceSessionResult = {
+        sessionId: 'session-debounce-2',
+        source: { lang: 'en', text: 'Hi', segments: [{ text: 'Hi', start_time: 0, end_time: 0.3 }] },
+        targets: [
+          { lang: 'de', text: 'Hallo', segments: [{ text: 'Hallo', start_time: 0, end_time: 0.3 }] },
+          { lang: 'fr', text: 'Salut', segments: [{ text: 'Salut', start_time: 0, end_time: 0.3 }] },
+        ],
+      };
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
+        callbacks!.onSourceTranscript!({
+          concluded: [{ text: 'Hi', start_time: 0, end_time: 0.3 }],
+          tentative: [],
+        });
+        callbacks!.onTargetTranscript!({
+          language: 'de' as any,
+          concluded: [{ text: 'Hallo', start_time: 0, end_time: 0.3 }],
+          tentative: [],
+        });
+        callbacks!.onTargetTranscript!({
+          language: 'fr' as any,
+          concluded: [{ text: 'Salut', start_time: 0, end_time: 0.3 }],
+          tentative: [],
+        });
+        return Promise.resolve(multiResult);
+      });
+
+      await command.translate('test.mp3', { to: 'de,fr' });
+
+      const sourceWrites = writeSpy.mock.calls.filter(
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[source]') && call[0].includes('Hi'),
+      );
+      const deWrites = writeSpy.mock.calls.filter(
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[de]') && call[0].includes('Hallo'),
+      );
+      const frWrites = writeSpy.mock.calls.filter(
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[fr]') && call[0].includes('Salut'),
+      );
+      expect(sourceWrites.length).toBeGreaterThanOrEqual(1);
+      expect(deWrites.length).toBeGreaterThanOrEqual(1);
+      expect(frWrites.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should allow a new render after the debounced render fires', async () => {
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
+        return new Promise((resolve) => {
+          callbacks!.onSourceTranscript!({
+            concluded: [{ text: 'Hello', start_time: 0, end_time: 0.5 }],
+            tentative: [],
+          });
+          callbacks!.onTargetTranscript!({
+            language: 'de' as any,
+            concluded: [{ text: 'Hallo', start_time: 0, end_time: 0.5 }],
+            tentative: [],
+          });
+
+          // Let the first debounced render fire, then send more updates
+          queueMicrotask(() => {
+            queueMicrotask(() => {
+              callbacks!.onSourceTranscript!({
+                concluded: [{ text: 'world', start_time: 0.5, end_time: 1.0 }],
+                tentative: [],
+              });
+              queueMicrotask(() => {
+                resolve(mockResult);
+              });
+            });
+          });
+        });
+      });
+
+      await command.translate('test.mp3', { to: 'de' });
+
+      const accumulatedWrites = writeSpy.mock.calls.filter(
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Hello world'),
+      );
+      expect(accumulatedWrites.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   describe('TTY rendering (translateFromStdin)', () => {
     let writeSpy: jest.SpyInstance;
 
