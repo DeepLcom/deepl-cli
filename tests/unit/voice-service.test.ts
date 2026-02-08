@@ -335,6 +335,94 @@ describe('VoiceService', () => {
       expect(result.source.segments).toHaveLength(2);
     });
 
+    it('should accumulate many segments efficiently with correct spacing', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      const segmentCount = 1200;
+      const segments = Array.from({ length: segmentCount }, (_, i) => ({
+        text: `segment${i}`,
+        start_time: i * 0.5,
+        end_time: (i + 1) * 0.5,
+      }));
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-many-segments',
+      });
+      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            for (const seg of segments) {
+              callbacks.onSourceTranscript?.({
+                type: 'source_transcript_update',
+                lang: 'en',
+                concluded: [seg],
+                tentative: [],
+              });
+            }
+            callbacks.onEndOfStream?.();
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      const result = await service.translateFile(testFile, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      });
+
+      const expectedText = segments.map((s) => s.text).join(' ');
+      expect(result.source.text).toBe(expectedText);
+      expect(result.source.segments).toHaveLength(segmentCount);
+    });
+
+    it('should handle multiple concluded segments in a single update', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-batch-concluded',
+      });
+      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            callbacks.onSourceTranscript?.({
+              type: 'source_transcript_update',
+              lang: 'en',
+              concluded: [
+                { text: 'One', start_time: 0, end_time: 0.5 },
+                { text: 'Two', start_time: 0.5, end_time: 1 },
+                { text: 'Three', start_time: 1, end_time: 1.5 },
+              ],
+              tentative: [],
+            });
+            callbacks.onEndOfStream?.();
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      const result = await service.translateFile(testFile, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      });
+
+      expect(result.source.text).toBe('One Two Three');
+      expect(result.source.segments).toHaveLength(3);
+    });
+
     it('should handle multi-target languages', async () => {
       const EventEmitter = require('events');
       const mockWs = new EventEmitter();

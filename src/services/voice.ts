@@ -139,9 +139,13 @@ export class VoiceService {
     return new Promise<VoiceSessionResult>((resolve, reject) => {
       const sourceTranscript: VoiceTranscript = { lang: options.sourceLang ?? 'auto', text: '', segments: [] };
       const targetTranscripts = new Map<string, VoiceTranscript>();
+      const textParts = new Map<VoiceTranscript, string[]>();
+      textParts.set(sourceTranscript, []);
 
       for (const lang of options.targetLangs) {
-        targetTranscripts.set(lang, { lang, text: '', segments: [] });
+        const transcript: VoiceTranscript = { lang, text: '', segments: [] };
+        targetTranscripts.set(lang, transcript);
+        textParts.set(transcript, []);
       }
 
       let streamEnded = false;
@@ -153,14 +157,14 @@ export class VoiceService {
 
       const internalCallbacks: VoiceStreamCallbacks = {
         onSourceTranscript: (update: VoiceSourceTranscriptUpdate) => {
-          this.accumulateTranscript(sourceTranscript, update.concluded);
+          this.accumulateTranscript(sourceTranscript, update.concluded, textParts);
           sourceTranscript.lang = update.lang;
           callbacks?.onSourceTranscript?.(update);
         },
         onTargetTranscript: (update: VoiceTargetTranscriptUpdate) => {
           const target = targetTranscripts.get(update.lang);
           if (target) {
-            this.accumulateTranscript(target, update.concluded);
+            this.accumulateTranscript(target, update.concluded, textParts);
           }
           callbacks?.onTargetTranscript?.(update);
         },
@@ -175,6 +179,9 @@ export class VoiceService {
           callbacks?.onEndOfStream?.();
           process.removeListener('SIGINT', sigintHandler);
           ws.close();
+          for (const [transcript, parts] of textParts) {
+            transcript.text = parts.join(' ');
+          }
           resolve({
             sessionId: session.session_id,
             source: sourceTranscript,
@@ -264,10 +271,15 @@ export class VoiceService {
     });
   }
 
-  private accumulateTranscript(transcript: VoiceTranscript, concluded: VoiceTranscriptSegment[]): void {
+  private accumulateTranscript(
+    transcript: VoiceTranscript,
+    concluded: VoiceTranscriptSegment[],
+    textParts: Map<VoiceTranscript, string[]>,
+  ): void {
+    const parts = textParts.get(transcript)!;
     for (const segment of concluded) {
       transcript.segments.push(segment);
-      transcript.text += (transcript.text ? ' ' : '') + segment.text;
+      parts.push(segment.text);
     }
   }
 
