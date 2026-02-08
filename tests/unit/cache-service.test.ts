@@ -83,19 +83,21 @@ describe('CacheService', () => {
       expect(value).toBeNull();
     });
 
-    it('should handle expired entries', async () => {
+    it('should handle expired entries', () => {
+      jest.useFakeTimers();
       const shortTTL = 100; // 100ms
       const service = new CacheService({ dbPath: testCachePath, ttl: shortTTL });
 
       service.set('test-key', { text: 'Hello' });
 
-      // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Advance Date.now() past expiration
+      jest.advanceTimersByTime(150);
 
       const value = service.get('test-key');
       expect(value).toBeNull();
 
       service.close();
+      jest.useRealTimers();
     });
   });
 
@@ -318,7 +320,8 @@ describe('CacheService', () => {
   });
 
   describe('TTL (Time To Live)', () => {
-    it('should respect TTL setting', async () => {
+    it('should respect TTL setting', () => {
+      jest.useFakeTimers();
       const service = new CacheService({
         dbPath: testCachePath,
         ttl: 100, // 100ms
@@ -331,26 +334,29 @@ describe('CacheService', () => {
       expect(value).toBeDefined();
 
       // Should expire after TTL
-      await new Promise(resolve => setTimeout(resolve, 150));
+      jest.advanceTimersByTime(150);
       value = service.get('test');
       expect(value).toBeNull();
 
       service.close();
+      jest.useRealTimers();
     });
 
-    it('should not expire entries when TTL is disabled', async () => {
+    it('should not expire entries when TTL is disabled', () => {
+      jest.useFakeTimers();
       const service = new CacheService({
         dbPath: testCachePath,
         ttl: 0, // Disabled
       });
 
       service.set('test', { text: 'Hello' });
-      await new Promise(resolve => setTimeout(resolve, 100));
+      jest.advanceTimersByTime(100);
 
       const value = service.get('test');
       expect(value).toBeDefined();
 
       service.close();
+      jest.useRealTimers();
     });
   });
 
@@ -446,7 +452,8 @@ describe('CacheService', () => {
   });
 
   describe('database cleanup', () => {
-    it('should remove expired entries on cleanup', async () => {
+    it('should remove expired entries on cleanup', () => {
+      jest.useFakeTimers();
       const service = new CacheService({
         dbPath: testCachePath,
         ttl: 100,
@@ -455,7 +462,7 @@ describe('CacheService', () => {
       service.set('key1', { text: 'Value 1' });
       service.set('key2', { text: 'Value 2' });
 
-      await new Promise(resolve => setTimeout(resolve, 150));
+      jest.advanceTimersByTime(150);
 
       service.set('key3', { text: 'Value 3' });
 
@@ -466,6 +473,7 @@ describe('CacheService', () => {
       expect(stats.entries).toBe(1); // Only key3 should remain
 
       service.close();
+      jest.useRealTimers();
     });
 
     it('should skip cleanup when interval has not elapsed', () => {
