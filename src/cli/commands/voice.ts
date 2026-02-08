@@ -136,6 +136,15 @@ export class VoiceCommand {
       );
     }
 
+    if (options.glossary && targetLangs.length > 1) {
+      process.stderr.write(
+        `Warning: --glossary applies a single glossary ID to all target languages. ` +
+        `DeepL glossaries are language-pair-specific, so the glossary may not be compatible ` +
+        `with all targets (${targetLangs.join(', ')}). ` +
+        `Consider translating each target language separately with its own glossary.\n`,
+      );
+    }
+
     return {
       targetLangs: targetLangs as VoiceTargetLanguage[],
       sourceLang: options.from as VoiceSourceLanguage | undefined,
