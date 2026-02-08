@@ -69,6 +69,16 @@ Examples:
           throw new Error(`Invalid language code: ${options.lang}. Valid options: ${validLanguages.join(', ')}`);
         }
 
+        const validStyles = ['default', 'simple', 'business', 'academic', 'casual', 'prefer_simple', 'prefer_business', 'prefer_academic', 'prefer_casual'];
+        if (options.style && !validStyles.includes(options.style)) {
+          throw new Error(`Invalid writing style: ${options.style}. Valid options: ${validStyles.join(', ')}`);
+        }
+
+        const validTones = ['default', 'enthusiastic', 'friendly', 'confident', 'diplomatic', 'prefer_enthusiastic', 'prefer_friendly', 'prefer_confident', 'prefer_diplomatic'];
+        if (options.tone && !validTones.includes(options.tone)) {
+          throw new Error(`Invalid tone: ${options.tone}. Valid options: ${validTones.join(', ')}`);
+        }
+
         if (options.style && options.tone) {
           throw new Error('Cannot specify both --style and --tone. Use one or the other.');
         }
@@ -185,6 +195,10 @@ Examples:
         }
 
         const result = await writeCommand.improve(text, writeOptions);
+        if (options.output) {
+          await writeFile(options.output, result, 'utf-8');
+          Logger.success(chalk.green(`\u2713 Saved to ${options.output}`));
+        }
         Logger.output(result);
       } catch (error) {
         handleError(error);
