@@ -5,16 +5,13 @@ import chalk from 'chalk';
 import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/api.js';
 import { Logger } from '../../utils/logger.js';
 import { ExitCode } from '../../utils/exit-codes.js';
-import { createWriteCommand, type CreateDeepLClient } from './service-factory.js';
+import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
 export function registerWrite(
   program: Command,
-  deps: {
-    createDeepLClient: CreateDeepLClient;
-    handleError: (error: unknown) => never;
-  },
+  deps: Pick<ServiceDeps, 'createDeepLClient' | 'getConfigService' | 'getCacheService' | 'handleError'>,
 ): void {
-  const { createDeepLClient, handleError } = deps;
+  const { handleError } = deps;
 
   program
     .command('write')
@@ -34,6 +31,8 @@ export function registerWrite(
     .option('-c, --check', 'Check if text needs improvement (exit 0 if clean, exit 8 if changes needed)')
     .option('-f, --fix', 'Automatically fix file in place')
     .option('-b, --backup', 'Create backup file before fixing (use with --fix)')
+    .optionsGroup('Advanced:')
+    .option('--no-cache', 'Bypass cache for this request')
     .optionsGroup('Output:')
     .option('--format <format>', 'Output format: json (default: plain text)')
     .addHelpText('after', `
@@ -62,6 +61,7 @@ Examples:
       fix?: boolean;
       backup?: boolean;
       format?: string;
+      cache?: boolean;
     }) => {
       try {
         const validLanguages = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt', 'pt-BR', 'pt-PT'];
@@ -78,7 +78,7 @@ Examples:
           throw new Error(`Unsupported output format: ${options.format}. Valid options: ${validFormats.join(', ')}`);
         }
 
-        const writeCommand = await createWriteCommand(createDeepLClient);
+        const writeCommand = await createWriteCommand(deps);
 
         const writeOptions = {
           lang: options.lang as WriteLanguage | undefined,
@@ -89,6 +89,7 @@ Examples:
           inPlace: options.inPlace,
           createBackup: options.backup,
           format: options.format,
+          noCache: options.cache === false,
         };
 
         if (options.check) {

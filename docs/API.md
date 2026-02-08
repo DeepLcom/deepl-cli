@@ -606,6 +606,10 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 - `--backup, -b` - Create backup before fixing (use with `--fix`)
 - `--format FORMAT` - Output format: `json` for machine-readable output (default: plain text)
 
+**Advanced:**
+
+- `--no-cache` - Bypass cache for this request (always call API)
+
 #### Supported Languages
 
 - `de` - German
@@ -705,6 +709,13 @@ deepl write file.txt --lang en-US --diff
 # Get machine-readable JSON output
 deepl write "This are good." --lang en-US --format json
 # {"original":"This are good.","improved":"This is good.","changes":1,"language":"en-US"}
+```
+
+**Bypass cache:**
+
+```bash
+# Force a fresh API call, skipping cached results
+deepl write "Improve this text." --lang en-US --no-cache
 ```
 
 ---

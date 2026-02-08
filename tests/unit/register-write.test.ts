@@ -58,6 +58,8 @@ describe('registerWrite', () => {
   let program: Command;
   const handleError = jest.fn() as jest.Mock & ((error: unknown) => never);
   let createDeepLClient: jest.Mock;
+  let getConfigService: jest.Mock;
+  let getCacheService: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -68,7 +70,9 @@ describe('registerWrite', () => {
     program = new Command();
     program.exitOverride();
     createDeepLClient = jest.fn();
-    registerWrite(program, { createDeepLClient, handleError });
+    getConfigService = jest.fn();
+    getCacheService = jest.fn();
+    registerWrite(program, { createDeepLClient, getConfigService, getCacheService, handleError });
   });
 
   afterEach(() => {

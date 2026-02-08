@@ -83,9 +83,11 @@ echo
 echo "=== All cache examples completed! ==="
 echo
 echo "💡 Cache benefits:"
-echo "   - Instant results for repeated translations"
+echo "   - Instant results for repeated translations and write improvements"
 echo "   - Reduces API calls (saves quota)"
 echo "   - Works offline for cached translations"
 echo "   - Default: 1GB max size, 30-day TTL"
+echo "   - Shared SQLite DB for both translate and write commands"
+echo "   - Bypass with --no-cache on any translate or write command"
 echo
 echo "📍 Cache location: ~/.deepl-cli/cache.db"

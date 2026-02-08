@@ -22,6 +22,7 @@ interface WriteOptions {
   inPlace?: boolean;
   createBackup?: boolean;
   format?: string;
+  noCache?: boolean;
 }
 
 export class WriteCommand {
@@ -53,12 +54,14 @@ export class WriteCommand {
       writeOptions.tone = options.tone;
     }
 
+    const serviceOptions = { skipCache: options.noCache };
+
     if (options.showAlternatives) {
-      const improvements = await this.writeService.improve(text, writeOptions);
+      const improvements = await this.writeService.improve(text, writeOptions, serviceOptions);
       return this.formatAlternatives(improvements.map(i => i.text));
     }
 
-    const improvement = await this.writeService.getBestImprovement(text, writeOptions);
+    const improvement = await this.writeService.getBestImprovement(text, writeOptions, serviceOptions);
 
     // Format output based on format option
     if (options.format === 'json') {
@@ -316,6 +319,8 @@ export class WriteCommand {
    * Generates multiple alternatives by calling the API with different styles/tones
    */
   async improveInteractive(text: string, options: WriteOptions): Promise<string> {
+    const serviceOptions = { skipCache: options.noCache };
+
     // If user specified a style or tone, only use that
     if (options.style || options.tone) {
       const writeOptions: {
@@ -336,7 +341,7 @@ export class WriteCommand {
         writeOptions.tone = options.tone;
       }
 
-      const improvements = await this.writeService.improve(text, writeOptions);
+      const improvements = await this.writeService.improve(text, writeOptions, serviceOptions);
 
       const maxLen = this.getPreviewWidth();
       const choices = [
@@ -370,7 +375,7 @@ export class WriteCommand {
         const improvements = await this.writeService.improve(text, {
           ...(options.lang ? { targetLang: options.lang } : {}),
           writingStyle: style,
-        });
+        }, serviceOptions);
 
         if (improvements.length > 0 && improvements[0]) {
           allImprovements.push({
@@ -472,7 +477,7 @@ export class WriteCommand {
       writeOptions.tone = options.tone;
     }
 
-    const improvements = await this.writeService.improve(content, writeOptions);
+    const improvements = await this.writeService.improve(content, writeOptions, { skipCache: options.noCache });
     const alternatives = improvements.map(i => i.text);
 
     // Interactive selection

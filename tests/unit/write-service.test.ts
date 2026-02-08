@@ -5,18 +5,32 @@
 
 import { WriteService } from '../../src/services/write.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
+import { ConfigService } from '../../src/storage/config.js';
+import { CacheService } from '../../src/storage/cache.js';
 import { WriteImprovement } from '../../src/types/index.js';
 
 describe('WriteService', () => {
   let writeService: WriteService;
   let mockClient: jest.Mocked<DeepLClient>;
+  let mockConfigService: jest.Mocked<ConfigService>;
+  let mockCacheService: jest.Mocked<CacheService>;
 
   beforeEach(() => {
     mockClient = {
       improveText: jest.fn(),
     } as unknown as jest.Mocked<DeepLClient>;
 
-    writeService = new WriteService(mockClient);
+    mockConfigService = {
+      getValue: jest.fn().mockReturnValue(true),
+      get: jest.fn().mockReturnValue({ defaults: {} }),
+    } as unknown as jest.Mocked<ConfigService>;
+
+    mockCacheService = {
+      get: jest.fn().mockReturnValue(null),
+      set: jest.fn(),
+    } as unknown as jest.Mocked<CacheService>;
+
+    writeService = new WriteService(mockClient, mockConfigService, mockCacheService);
   });
 
   describe('initialization', () => {
@@ -26,8 +40,14 @@ describe('WriteService', () => {
 
     it('should throw error if client is not provided', () => {
       expect(() => {
-        new WriteService(null as unknown as DeepLClient);
-      }).toThrow();
+        new WriteService(null as unknown as DeepLClient, mockConfigService, mockCacheService);
+      }).toThrow('DeepL client is required');
+    });
+
+    it('should throw error if config service is not provided', () => {
+      expect(() => {
+        new WriteService(mockClient, null as unknown as ConfigService, mockCacheService);
+      }).toThrow('Config service is required');
     });
   });
 
@@ -412,6 +432,89 @@ describe('WriteService', () => {
       await expect(
         writeService.getBestImprovement('Test', { targetLang: 'en-US' })
       ).rejects.toThrow('No improvements available');
+    });
+  });
+
+  describe('caching', () => {
+    const mockImprovements: WriteImprovement[] = [
+      {
+        text: 'Improved text.',
+        targetLanguage: 'en-US',
+      },
+    ];
+
+    it('should cache results after API call', async () => {
+      mockClient.improveText.mockResolvedValue(mockImprovements);
+
+      await writeService.improve('Test', { targetLang: 'en-US' });
+
+      expect(mockCacheService.set).toHaveBeenCalledTimes(1);
+      expect(mockCacheService.set).toHaveBeenCalledWith(
+        expect.stringMatching(/^write:/),
+        mockImprovements
+      );
+    });
+
+    it('should return cached result on hit without calling API', async () => {
+      mockCacheService.get.mockReturnValue(mockImprovements);
+
+      const result = await writeService.improve('Test', { targetLang: 'en-US' });
+
+      expect(result).toEqual(mockImprovements);
+      expect(mockClient.improveText).not.toHaveBeenCalled();
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+    });
+
+    it('should skip cache when disabled via config', async () => {
+      mockConfigService.getValue.mockReturnValue(false);
+      mockClient.improveText.mockResolvedValue(mockImprovements);
+
+      await writeService.improve('Test', { targetLang: 'en-US' });
+
+      expect(mockCacheService.get).not.toHaveBeenCalled();
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+      expect(mockClient.improveText).toHaveBeenCalled();
+    });
+
+    it('should skip cache when skipCache is true', async () => {
+      mockClient.improveText.mockResolvedValue(mockImprovements);
+
+      await writeService.improve('Test', { targetLang: 'en-US' }, { skipCache: true });
+
+      expect(mockCacheService.get).not.toHaveBeenCalled();
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+      expect(mockClient.improveText).toHaveBeenCalled();
+    });
+
+    it('should produce different cache keys for different options', async () => {
+      mockClient.improveText.mockResolvedValue(mockImprovements);
+
+      await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'business' });
+      await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'casual' });
+
+      const key1 = mockCacheService.set.mock.calls[0]![0];
+      const key2 = mockCacheService.set.mock.calls[1]![0];
+      expect(key1).not.toBe(key2);
+    });
+
+    it('should produce same cache key for same options (deterministic)', async () => {
+      mockClient.improveText.mockResolvedValue(mockImprovements);
+
+      await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'business' });
+      await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'business' });
+
+      const key1 = mockCacheService.set.mock.calls[0]![0];
+      const key2 = mockCacheService.set.mock.calls[1]![0];
+      expect(key1).toBe(key2);
+    });
+
+    it('should benefit getBestImprovement from cache', async () => {
+      mockCacheService.get.mockReturnValue(mockImprovements);
+
+      const result = await writeService.getBestImprovement('Test', { targetLang: 'en-US' });
+
+      expect(result.text).toBe('Improved text.');
+      expect(mockClient.improveText).not.toHaveBeenCalled();
     });
   });
 

@@ -547,6 +547,9 @@ deepl write file.txt --lang en-US --diff
 
 # Show diff for plain text
 deepl write "This text could be better." --lang en-US --diff
+
+# Bypass cache for this request
+deepl write "Fresh improvement please." --lang en-US --no-cache
 ```
 
 **Supported Languages:**
@@ -1169,7 +1172,7 @@ source <(deepl completion bash)
 
 ### Cache Management
 
-The CLI uses a local SQLite database to cache translations and reduce API calls.
+The CLI uses a local SQLite database to cache translations and write improvements, reducing API calls.
 
 ```bash
 # View cache statistics

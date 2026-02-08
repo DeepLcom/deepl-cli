@@ -85,4 +85,8 @@ echo "14. Prefer business style (with fallback):"
 deepl write "We need to discuss this." --lang en-US --style prefer_business
 echo
 
+echo "15. Bypass cache (always call API):"
+deepl write "This is a sentence." --lang en-US --no-cache
+echo
+
 echo "=== All examples completed successfully! ==="

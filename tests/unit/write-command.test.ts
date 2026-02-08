@@ -91,7 +91,8 @@ describe('WriteCommand', () => {
         expect(result).toBe('This is a well-written sentence.');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'This is a sentence.',
-          { targetLang: 'en-US' }
+          { targetLang: 'en-US' },
+          { skipCache: undefined }
         );
       });
 
@@ -136,7 +137,8 @@ describe('WriteCommand', () => {
         expect(result).toBe('This is easy to read.');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'This is a sentence.',
-          { targetLang: 'en-US', writingStyle: 'simple' }
+          { targetLang: 'en-US', writingStyle: 'simple' },
+          { skipCache: undefined }
         );
       });
 
@@ -206,7 +208,8 @@ describe('WriteCommand', () => {
         expect(result).toContain('fantastic');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'This is good.',
-          { targetLang: 'en-US', tone: 'enthusiastic' }
+          { targetLang: 'en-US', tone: 'enthusiastic' },
+          { skipCache: undefined }
         );
       });
 
@@ -279,7 +282,8 @@ describe('WriteCommand', () => {
         expect(result).toContain('Third improvement.');
         expect(mockWriteService.improve).toHaveBeenCalledWith(
           'Test',
-          { targetLang: 'en-US' }
+          { targetLang: 'en-US' },
+          { skipCache: undefined }
         );
       });
 
@@ -402,7 +406,8 @@ describe('WriteCommand', () => {
         expect(result).toBe('This is improved content.');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'Original content',
-          { targetLang: 'en-US' }
+          { targetLang: 'en-US' },
+          { skipCache: undefined }
         );
       });
 

@@ -250,11 +250,15 @@ describe('service-factory', () => {
 
   it('createWriteCommand should create client, WriteService, and WriteCommand', async () => {
     const { createWriteCommand } = await import('../../src/cli/commands/service-factory');
-    const cmd = await createWriteCommand(createDeepLClient);
+    const cmd = await createWriteCommand({
+      createDeepLClient,
+      getConfigService: () => mockConfigService as any,
+      getCacheService: () => Promise.resolve(mockCacheService) as any,
+    });
 
     expect(createDeepLClient).toHaveBeenCalledWith();
     const { WriteService } = require('../../src/services/write');
-    expect(WriteService).toHaveBeenCalledWith(mockClient);
+    expect(WriteService).toHaveBeenCalledWith(mockClient, mockConfigService, mockCacheService);
     const { WriteCommand } = require('../../src/cli/commands/write');
     expect(WriteCommand).toHaveBeenCalledWith(mockWriteServiceObj);
     expect(cmd).toBe(mockWriteCmdObj);

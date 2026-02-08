@@ -460,12 +460,12 @@ deepl admin usage --start 2026-01-01 --end 2026-01-31 --format json
 #### Service Layer
 
 - **TranslationService**: Core translation logic with caching and preservation
-- **WriteService**: Grammar/style/tone improvement via Write API
+- **WriteService**: Grammar/style/tone improvement via Write API with caching
 - **GlossaryService**: Glossary CRUD and multilingual glossary operations (v3 API)
 - **DocumentTranslationService**: PDF, DOCX, PPTX, XLSX, HTML, JPEG, PNG translation
 - **FileTranslationService**: Text file translation with smart routing (text API vs document API)
 - **BatchTranslationService**: Parallel translation processing with concurrency control
-- **CacheService**: Translation caching with LRU eviction (SQLite, lazy instantiation)
+- **CacheService**: Translation and write caching with LRU eviction (SQLite, lazy instantiation)
 - **WatchService**: File watching and auto-translation with debouncing
 - **GitHooksService**: Git hook lifecycle management (4 hook types)
 - **VoiceService**: Real-time speech translation via Voice API WebSocket streaming
@@ -484,7 +484,7 @@ deepl admin usage --start 2026-01-01 --end 2026-01-31 --format json
 
 #### Storage Layer
 
-- **CacheService**: Local translation cache (`~/.deepl-cli/cache.db`, SQLite)
+- **CacheService**: Local translation and write cache (`~/.deepl-cli/cache.db`, SQLite)
 - **ConfigService**: User configuration (`~/.deepl-cli/config.json`, JSON with 0o600 permissions)
 
 ---
@@ -621,6 +621,7 @@ OPTIONS:
   --fix, -f                  Automatically fix file in place
   --backup, -b               Create backup file before fixing (use with --fix)
   --format FORMAT            Output format (json|table, default: plain text)
+  --no-cache                 Bypass cache for this request
 
 NOTES:
   - Cannot specify both --style and --tone in a single request
@@ -855,10 +856,10 @@ The TranslationService takes a `DeepLClient`, `ConfigService`, and `CacheService
 
 ```typescript
 export class WriteService {
-  constructor(client: DeepLClient) { ... }
+  constructor(client: DeepLClient, config: ConfigService, cache?: CacheService) { ... }
 
-  async improve(text: string, options: WriteOptions): Promise<WriteImprovement[]>
-  async getBestImprovement(text: string, options: WriteOptions): Promise<WriteImprovement>
+  async improve(text: string, options: WriteOptions, serviceOptions?: WriteServiceOptions): Promise<WriteImprovement[]>
+  async getBestImprovement(text: string, options: WriteOptions, serviceOptions?: WriteServiceOptions): Promise<WriteImprovement>
 }
 ```
 
@@ -870,6 +871,8 @@ export class WriteService {
 - Tones: enthusiastic, friendly, confident, diplomatic (+ prefer\_\* variants)
 - Cannot specify both style and tone in one request
 - Returns multiple improvement alternatives
+- SHA-256 keyed caching with `write:` prefix (shared SQLite DB with translations)
+- Cache bypass via `--no-cache` flag or `skipCache` service option
 
 ### 3. Watch Service
 
@@ -915,7 +918,7 @@ export class GitHooksService {
 
 **Actual implementation**: See `src/storage/cache.ts`
 
-SQLite-based translation cache with:
+SQLite-based cache for translations and write improvements with:
 
 - LRU eviction when cache exceeds max size (default 1 GB)
 - O(1) in-memory size tracking
@@ -1217,7 +1220,7 @@ jobs:
 
 ### Caching Strategy
 
-1. **Translation cache**: Cache text API translations locally (SQLite)
+1. **Translation and write cache**: Cache text API translations and write improvements locally (SQLite)
 2. **TTL**: 30-day default TTL for cached entries
 3. **Size limits**: Configurable max cache size with LRU eviction (O(1) size tracking)
 4. **Lazy instantiation**: SQLite database not opened until a cache-using command runs

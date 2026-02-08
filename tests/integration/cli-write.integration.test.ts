@@ -4,22 +4,37 @@
  */
 
 import nock from 'nock';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { WriteService } from '../../src/services/write.js';
+import { ConfigService } from '../../src/storage/config.js';
+import { CacheService } from '../../src/storage/cache.js';
 
 describe('Write Command Integration', () => {
   const API_KEY = 'test-api-key-123:fx';
   const FREE_API_URL = 'https://api-free.deepl.com';
   let client: DeepLClient;
   let writeService: WriteService;
+  let configService: ConfigService;
+  let cacheService: CacheService;
+  const testDir = path.join(os.tmpdir(), `.deepl-cli-write-int-${Date.now()}`);
 
   beforeEach(() => {
+    fs.mkdirSync(testDir, { recursive: true });
+    const configPath = path.join(testDir, 'config.json');
+    const cachePath = path.join(testDir, 'cache.db');
+    configService = new ConfigService(configPath);
+    cacheService = new CacheService({ dbPath: cachePath, maxSize: 1024 * 100 });
     client = new DeepLClient(API_KEY);
-    writeService = new WriteService(client);
+    writeService = new WriteService(client, configService, cacheService);
   });
 
   afterEach(() => {
     nock.cleanAll();
+    try { cacheService.close(); } catch { /* ignore */ }
+    fs.rmSync(testDir, { recursive: true, force: true });
   });
 
   describe('improve() - Basic Improvement', () => {
@@ -589,6 +604,58 @@ describe('Write Command Integration', () => {
       });
 
       expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('caching', () => {
+    it('should return cached result on second call without hitting API', async () => {
+      const scope = nock(FREE_API_URL)
+        .post('/v2/write/rephrase')
+        .once()
+        .reply(200, {
+          improvements: [{ text: 'Improved!', target_language: 'en-US' }],
+        });
+
+      const result1 = await writeService.improve('Test', { targetLang: 'en-US' });
+      const result2 = await writeService.improve('Test', { targetLang: 'en-US' });
+
+      expect(result1).toEqual(result2);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should bypass cache when skipCache is true', async () => {
+      nock(FREE_API_URL)
+        .post('/v2/write/rephrase')
+        .twice()
+        .reply(200, {
+          improvements: [{ text: 'Improved!', target_language: 'en-US' }],
+        });
+
+      await writeService.improve('Test', { targetLang: 'en-US' });
+      await writeService.improve('Test', { targetLang: 'en-US' }, { skipCache: true });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should cache different styles separately', async () => {
+      nock(FREE_API_URL)
+        .post('/v2/write/rephrase')
+        .reply(200, {
+          improvements: [{ text: 'Business text', target_language: 'en-US' }],
+        });
+
+      nock(FREE_API_URL)
+        .post('/v2/write/rephrase')
+        .reply(200, {
+          improvements: [{ text: 'Casual text', target_language: 'en-US' }],
+        });
+
+      const business = await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'business' });
+      const casual = await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'casual' });
+
+      expect(business[0]?.text).toBe('Business text');
+      expect(casual[0]?.text).toBe('Casual text');
+      expect(nock.isDone()).toBe(true);
     });
   });
 });

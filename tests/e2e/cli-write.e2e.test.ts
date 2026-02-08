@@ -124,6 +124,11 @@ describe('Write Command E2E', () => {
       expect(output).toContain('--backup');
       expect(output).toContain('-b');
     });
+
+    it('should accept --no-cache flag', () => {
+      const output = execSync('deepl write --help', { encoding: 'utf-8' });
+      expect(output).toContain('--no-cache');
+    });
   });
 
   describe('File Operations', () => {

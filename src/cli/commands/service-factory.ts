@@ -41,12 +41,13 @@ export async function createAdminCommand(
 }
 
 export async function createWriteCommand(
-  createDeepLClient: CreateDeepLClient,
+  deps: Pick<ServiceDeps, 'createDeepLClient' | 'getConfigService' | 'getCacheService'>,
 ): Promise<WriteCommand> {
-  const client = await createDeepLClient();
+  const client = await deps.createDeepLClient();
   const { WriteService } = await import('../../services/write.js');
   const { WriteCommand: WriteCmd } = await import('./write.js');
-  const writeService = new WriteService(client);
+  const configService = deps.getConfigService();
+  const writeService = new WriteService(client, configService, await deps.getCacheService());
   return new WriteCmd(writeService);
 }
 
