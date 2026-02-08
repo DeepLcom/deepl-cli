@@ -25,19 +25,17 @@ jest.mock('chalk', () => {
   };
 });
 
-// Mock inquirer
-jest.mock('inquirer', () => {
-  const promptFn = jest.fn();
+// Mock @inquirer/prompts
+jest.mock('@inquirer/prompts', () => {
+  const selectFn = jest.fn();
   return {
     __esModule: true,
-    default: {
-      prompt: promptFn,
-    },
+    select: selectFn,
   };
 });
 
-import inquirer from 'inquirer';
-const mockPrompt = inquirer.prompt as jest.MockedFunction<typeof inquirer.prompt>;
+import { select } from '@inquirer/prompts';
+const mockSelect = select as jest.MockedFunction<typeof select>;
 
 describe('WriteCommand', () => {
   let writeCommand: WriteCommand;
@@ -773,7 +771,7 @@ describe('WriteCommand', () => {
 
   describe('improveInteractive()', () => {
     beforeEach(() => {
-      mockPrompt.mockClear();
+      mockSelect.mockClear();
       // Mock console.log to avoid chalk issues in tests
       jest.spyOn(console, 'log').mockImplementation(() => {});
     });
@@ -790,7 +788,7 @@ describe('WriteCommand', () => {
         .mockResolvedValueOnce([{ text: 'Academic improvement.', targetLanguage: 'en-US' }])
         .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
 
-      mockPrompt.mockResolvedValue({ selection: 1 });
+      mockSelect.mockResolvedValue(1);
 
       const result = await writeCommand.improveInteractive('Original text.', {
         lang: 'en-US',
@@ -799,7 +797,7 @@ describe('WriteCommand', () => {
       // Should call API 4 times (once for each style)
       expect(mockWriteService.improve).toHaveBeenCalledTimes(4);
       expect(result).toBe('Business improvement.');
-      expect(mockPrompt).toHaveBeenCalled();
+      expect(mockSelect).toHaveBeenCalled();
     });
 
     it('should allow user to keep original text', async () => {
@@ -809,7 +807,7 @@ describe('WriteCommand', () => {
         .mockResolvedValueOnce([{ text: 'Academic.', targetLanguage: 'en-US' }])
         .mockResolvedValueOnce([{ text: 'Casual.', targetLanguage: 'en-US' }]);
 
-      mockPrompt.mockResolvedValue({ selection: -1 }); // -1 = keep original
+      mockSelect.mockResolvedValue(-1); // -1 = keep original
 
       const result = await writeCommand.improveInteractive('Original text.', {
         lang: 'en-US',
@@ -824,7 +822,7 @@ describe('WriteCommand', () => {
       ];
 
       mockWriteService.improve.mockResolvedValue(mockImprovements);
-      mockPrompt.mockResolvedValue({ selection: 0 });
+      mockSelect.mockResolvedValue(0);
 
       const result = await writeCommand.improveInteractive('Original text.', {
         lang: 'en-US',
@@ -844,7 +842,7 @@ describe('WriteCommand', () => {
         .mockResolvedValueOnce([{ text: 'Different improvement.', targetLanguage: 'en-US' }])
         .mockResolvedValueOnce([{ text: 'Same improvement.', targetLanguage: 'en-US' }]);
 
-      mockPrompt.mockResolvedValue({ selection: 0 });
+      mockSelect.mockResolvedValue(0);
 
       const result = await writeCommand.improveInteractive('Original.', {
         lang: 'en-US',
@@ -852,11 +850,11 @@ describe('WriteCommand', () => {
 
       // Should work and return a result
       expect(result).toBeTruthy();
-      expect(mockPrompt).toHaveBeenCalled();
+      expect(mockSelect).toHaveBeenCalled();
 
-      // Verify deduplication happened - inquirer.prompt gets an array of questions
-      const promptQuestions = mockPrompt.mock.calls[0]![0] as unknown as any[];
-      expect(promptQuestions[0].choices.length).toBe(3); // Keep original + 2 unique
+      // Verify deduplication happened - select() receives a config object with choices
+      const selectConfig = mockSelect.mock.calls[0]![0] as any;
+      expect(selectConfig.choices.length).toBe(3); // Keep original + 2 unique
     });
 
     it('should handle file input in interactive mode', async () => {
@@ -875,7 +873,7 @@ describe('WriteCommand', () => {
         .mockResolvedValueOnce([{ text: 'Casual.', targetLanguage: 'en-US' }]);
 
       // Selection 1 corresponds to Business (second in the list)
-      mockPrompt.mockResolvedValue({ selection: 1 });
+      mockSelect.mockResolvedValue(1);
 
       const result = await writeCommand.improveFileInteractive(testFile, {
         lang: 'en-US',
@@ -893,7 +891,7 @@ describe('WriteCommand', () => {
         .mockRejectedValueOnce(new Error('API error'))
         .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
 
-      mockPrompt.mockResolvedValue({ selection: 0 });
+      mockSelect.mockResolvedValue(0);
 
       const result = await writeCommand.improveInteractive('Original.', {
         lang: 'en-US',

@@ -9,7 +9,7 @@ import { promises as fs } from 'fs';
 import { resolve, dirname } from 'path';
 import * as Diff from 'diff';
 import chalk from 'chalk';
-import inquirer from 'inquirer';
+import { select } from '@inquirer/prompts';
 import { formatWriteJson } from '../../utils/formatters.js';
 import { safeReadFile } from '../../utils/safe-read-file.js';
 
@@ -338,27 +338,26 @@ export class WriteCommand {
 
       const improvements = await this.writeService.improve(text, writeOptions);
 
+      const maxLen = this.getPreviewWidth();
       const choices = [
         {
-          name: `${chalk.yellow('Keep original')} - "${this.truncate(text, 60)}"`,
+          name: `${chalk.yellow('Keep original')} - "${this.truncate(text, maxLen)}"`,
           value: -1,
+          description: text,
         },
         {
-          name: `${chalk.bold('Improved')} - "${this.truncate(improvements[0]!.text, 60)}"`,
+          name: `${chalk.bold('Improved')} - "${this.truncate(improvements[0]!.text, maxLen)}"`,
           value: 0,
+          description: improvements[0]!.text,
         },
       ];
 
-      const answer = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'selection',
-          message: 'Choose an improvement:',
-          choices,
-        },
-      ]);
+      const selection = await select({
+        message: 'Choose an improvement:',
+        choices,
+      });
 
-      return answer.selection === -1 ? text : improvements[0]!.text;
+      return selection === -1 ? text : improvements[0]!.text;
     }
 
     // Generate multiple alternatives by calling API with different styles
@@ -395,33 +394,32 @@ export class WriteCommand {
     );
 
     // Create choices with style labels
+    const maxLen = this.getPreviewWidth();
     const choices = [
       {
-        name: `${chalk.yellow('Keep original')} - "${this.truncate(text, 60)}"`,
+        name: `${chalk.yellow('Keep original')} - "${this.truncate(text, maxLen)}"`,
         value: -1,
+        description: text,
       },
       ...uniqueImprovements.map((improvement, index) => ({
-        name: `${chalk.bold(improvement.label)} - "${this.truncate(improvement.text, 60)}"`,
+        name: `${chalk.bold(improvement.label)} - "${this.truncate(improvement.text, maxLen)}"`,
         value: index,
+        description: improvement.text,
       })),
     ];
 
     // Prompt user to select
-    const answer = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'selection',
-        message: `Choose an improvement (${uniqueImprovements.length} alternatives):`,
-        choices,
-      },
-    ]);
+    const selection = await select({
+      message: `Choose an improvement (${uniqueImprovements.length} alternatives):`,
+      choices,
+    });
 
     // Return selected text
-    if (answer.selection === -1) {
+    if (selection === -1) {
       return text; // Keep original
     }
 
-    return uniqueImprovements[answer.selection]!.text;
+    return uniqueImprovements[selection]!.text;
   }
 
   /**
@@ -485,6 +483,13 @@ export class WriteCommand {
       alternatives,
       original: content,
     };
+  }
+
+  /**
+   * Calculate preview width based on terminal columns
+   */
+  private getPreviewWidth(): number {
+    return Math.max(40, (process.stdout.columns || 80) - 25);
   }
 
   /**

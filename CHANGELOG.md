@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **113 new tests for voice feature** - 87 unit tests (VoiceClient, VoiceService, VoiceCommand, error types, formatters), 8 integration tests (CLI help, validation, auth), 20 e2e tests (full CLI workflows, exit codes, format validation).
 - **Voice usage in admin analytics** - Added `speechToTextMilliseconds` to `UsageBreakdown` type and `AdminClient`, mapping the API's `speech_to_text_milliseconds` field. The `deepl admin usage` command now displays voice usage duration in human-readable format (e.g., `1h 23m 45s`).
 
+- **Improved interactive write preview** - `deepl write -i` now shows full suggestion text in a description area when a choice is highlighted, and uses terminal-width-aware truncation for list item names instead of a hardcoded 60-character limit. Switched from legacy `inquirer.prompt()` to `@inquirer/prompts` `select()` which supports the `description` field on choices.
+
 ### Fixed
 - **Commander.js dependency version requirement** - Updated peer dependency from `^12.1.0` to `^14.0.0` to match v14 API usage, fixing CI type-check failures.
 - **TTY flickering during voice transcript updates** - Debounced `render()` calls in `VoiceCommand.createTTYCallbacks()` using `queueMicrotask`. With multiple target languages, a single utterance previously triggered up to N+1 synchronous renders (1 source + N targets). Renders are now coalesced into a single pass per microtask tick, eliminating visible flicker.
