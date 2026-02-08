@@ -212,6 +212,57 @@ describe('VoiceService', () => {
       ).rejects.toThrow();
     });
 
+    it('should reject symlinks for security reasons', async () => {
+      const targetFile = path.join(tmpDir, 'real.mp3');
+      const symlinkFile = path.join(tmpDir, 'link.mp3');
+      await fs.writeFile(targetFile, Buffer.alloc(100));
+      await fs.symlink(targetFile, symlinkFile);
+
+      await expect(
+        service.translateFile(symlinkFile, {
+          targetLangs: ['de'],
+        }),
+      ).rejects.toThrow(ValidationError);
+      await expect(
+        service.translateFile(symlinkFile, {
+          targetLangs: ['de'],
+        }),
+      ).rejects.toThrow(/symlinks are not supported/i);
+    });
+
+    it('should normalize file path with resolve', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-resolve',
+      });
+      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            callbacks.onEndOfStream?.();
+          }, 10);
+        }, 0);
+        return mockWs;
+      });
+
+      // Use a relative-style path with '..' that resolve() would normalize
+      const unnormalizedPath = path.join(tmpDir, 'subdir', '..', 'test.mp3');
+
+      const result = await service.translateFile(unnormalizedPath, {
+        targetLangs: ['de'],
+        chunkInterval: 0,
+      });
+
+      expect(result.sessionId).toBe('session-resolve');
+    });
+
     it('should auto-detect content type from extension', async () => {
       const EventEmitter = require('events');
       const mockWs = new EventEmitter();
@@ -353,9 +404,7 @@ describe('VoiceService', () => {
           setTimeout(() => {
             for (const seg of segments) {
               callbacks.onSourceTranscript?.({
-                type: 'source_transcript_update',
-                lang: 'en',
-                concluded: [seg],
+                concluded: [{ ...seg, language: 'en' }],
                 tentative: [],
               });
             }
@@ -392,12 +441,10 @@ describe('VoiceService', () => {
           mockWs.emit('open');
           setTimeout(() => {
             callbacks.onSourceTranscript?.({
-              type: 'source_transcript_update',
-              lang: 'en',
               concluded: [
-                { text: 'One', start_time: 0, end_time: 0.5 },
-                { text: 'Two', start_time: 0.5, end_time: 1 },
-                { text: 'Three', start_time: 1, end_time: 1.5 },
+                { text: 'One', language: 'en', start_time: 0, end_time: 0.5 },
+                { text: 'Two', language: 'en', start_time: 0.5, end_time: 1 },
+                { text: 'Three', language: 'en', start_time: 1, end_time: 1.5 },
               ],
               tentative: [],
             });

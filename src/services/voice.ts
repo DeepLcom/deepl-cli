@@ -4,8 +4,8 @@
  */
 
 import { createReadStream } from 'fs';
-import { stat } from 'fs/promises';
-import { extname } from 'path';
+import { lstat } from 'fs/promises';
+import { extname, resolve } from 'path';
 import WebSocket from 'ws';
 import { VoiceClient } from '../api/voice-client.js';
 import { ValidationError, VoiceError } from '../utils/errors.js';
@@ -54,20 +54,26 @@ export class VoiceService {
   ): Promise<VoiceSessionResult> {
     this.validateOptions(options);
 
-    const contentType = options.contentType ?? this.detectContentType(filePath);
+    const resolvedPath = resolve(filePath);
+    const contentType = options.contentType ?? this.detectContentType(resolvedPath);
     if (!contentType) {
       throw new ValidationError(
-        `Cannot detect audio format for "${filePath}". Use --content-type to specify explicitly.`,
+        `Cannot detect audio format for "${resolvedPath}". Use --content-type to specify explicitly.`,
       );
     }
 
-    await stat(filePath); // Verify file exists
+    const fileStat = await lstat(resolvedPath);
+    if (fileStat.isSymbolicLink()) {
+      throw new ValidationError(
+        `Symlinks are not supported for security reasons: ${resolvedPath}`,
+      );
+    }
 
     const chunkSize = options.chunkSize ?? DEFAULT_CHUNK_SIZE;
     const chunkInterval = options.chunkInterval ?? DEFAULT_CHUNK_INTERVAL;
 
     return this.streamAudio(
-      this.readFileInChunks(filePath, chunkSize),
+      this.readFileInChunks(resolvedPath, chunkSize),
       { ...options, contentType },
       chunkInterval,
       callbacks,

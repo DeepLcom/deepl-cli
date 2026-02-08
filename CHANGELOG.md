@@ -27,9 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`voice --to` now uses `.requiredOption()`** - Commander validates the required option at parse time with a standard error message instead of a manual check in the action handler.
 - **`voice --content-type` description lists supported formats** - Now shows `ogg, opus, webm, mka, flac, mp3, pcm` instead of just "auto-detected from file extension".
 
+### Security
+- **Voice `translateFile` rejects symlinks** - `translateFile()` now uses `lstat()` instead of `stat()` and rejects symbolic links with a clear error, consistent with `safeReadFile` used elsewhere in the codebase. File paths are also normalized with `path.resolve()` to prevent path traversal.
+
 ### Fixed
 - **Voice reconnect display shows correct max attempts** - The TTY reconnection display (`[reconnecting N/M...]`) previously hardcoded `M=3` regardless of `--max-reconnect-attempts` value. Now uses the user-configured value.
 - **Voice WebSocket message types** - Fixed client-to-server message types to match the API specification: `audio_chunk` → `source_media_chunk`, `end_of_source_media` → `end_of_source_audio`.
+- **Voice API protocol alignment** - Updated WebSocket message format from type-discriminated unions to nested key objects matching the actual DeepL Voice API spec. Renamed session request fields (`source_lang` → `source_language`, `target_langs` → `target_languages`), simplified target language format, and updated error message fields (`error_code`, `error_message`, `reason_code`).
 
 ## [0.9.1] - 2026-02-07
 
