@@ -778,12 +778,20 @@ export class TranslateCommand {
    * Read from stdin
    */
   private async readStdin(): Promise<string> {
+    const MAX_STDIN_BYTES = 131072; // 128KB, matching DeepL API's text limit
+
     return new Promise((resolve, reject) => {
       let data = '';
+      let byteLength = 0;
 
       process.stdin.setEncoding('utf8');
 
       process.stdin.on('data', (chunk) => {
+        byteLength += Buffer.byteLength(String(chunk), 'utf8');
+        if (byteLength > MAX_STDIN_BYTES) {
+          reject(new Error('Input exceeds maximum size of 128KB'));
+          return;
+        }
         data += chunk;
       });
 

@@ -336,6 +336,64 @@ describe('TranslateCommand', () => {
         expect.any(Object)
       );
     });
+
+    it('should reject stdin input exceeding 128KB size limit', async () => {
+      const maxSize = 131072; // 128KB
+      // Create a chunk that exceeds the limit
+      const oversizedChunk = 'x'.repeat(maxSize + 1);
+
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          callback(oversizedChunk);
+        } else if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
+      });
+
+      await expect(
+        translateCommand.translateFromStdin({ to: 'es' })
+      ).rejects.toThrow('Input exceeds maximum size of 128KB');
+    });
+
+    it('should reject stdin input exceeding 128KB across multiple chunks', async () => {
+      const chunkSize = 70000; // two chunks of 70KB = 140KB > 128KB
+
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          callback('x'.repeat(chunkSize));
+          callback('x'.repeat(chunkSize));
+        } else if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
+      });
+
+      await expect(
+        translateCommand.translateFromStdin({ to: 'es' })
+      ).rejects.toThrow('Input exceeds maximum size of 128KB');
+    });
+
+    it('should accept stdin input at exactly 128KB', async () => {
+      const maxSize = 131072; // exactly 128KB
+      const exactData = 'x'.repeat(maxSize);
+
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'translated',
+      });
+
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          callback(exactData);
+        } else if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
+      });
+
+      const result = await translateCommand.translateFromStdin({ to: 'es' });
+      expect(result).toBe('translated');
+    });
   });
 
   describe('empty string input', () => {
