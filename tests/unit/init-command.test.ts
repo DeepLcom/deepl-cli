@@ -22,7 +22,7 @@ describe('InitCommand', () => {
   const baseUrl = 'https://api.deepl.com';
 
   beforeAll(() => {
-    if (!nock.isActive()) nock.activate();
+    if (!nock.isActive()) { nock.activate(); }
     nock.disableNetConnect();
   });
 
