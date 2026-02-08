@@ -34,9 +34,16 @@ Examples:
                 handleError(new Error('API key required: provide as argument or use --from-stdin'));
                 return;
               }
+              const MAX_STDIN_BYTES = 131072; // 128KB
               const chunks: Buffer[] = [];
+              let totalBytes = 0;
               for await (const chunk of process.stdin) {
-                chunks.push(chunk as Buffer);
+                const buf = chunk as Buffer;
+                totalBytes += buf.length;
+                if (totalBytes > MAX_STDIN_BYTES) {
+                  throw new Error('Input exceeds maximum size of 128KB');
+                }
+                chunks.push(buf);
               }
               key = Buffer.concat(chunks).toString('utf-8').trim();
             }

@@ -336,6 +336,78 @@ describe('TranslateCommand', () => {
         expect.any(Object)
       );
     });
+
+    it('should reject stdin input exceeding 128KB size limit', async () => {
+      const maxSize = 131072; // 128KB
+      // Create a chunk that exceeds the limit
+      const oversizedChunk = 'x'.repeat(maxSize + 1);
+
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          callback(oversizedChunk);
+        } else if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
+      });
+
+      await expect(
+        translateCommand.translateFromStdin({ to: 'es' })
+      ).rejects.toThrow('Input exceeds maximum size of 128KB');
+    });
+
+    it('should reject stdin input exceeding 128KB across multiple chunks', async () => {
+      const chunkSize = 70000; // two chunks of 70KB = 140KB > 128KB
+
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          callback('x'.repeat(chunkSize));
+          callback('x'.repeat(chunkSize));
+        } else if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
+      });
+
+      await expect(
+        translateCommand.translateFromStdin({ to: 'es' })
+      ).rejects.toThrow('Input exceeds maximum size of 128KB');
+    });
+
+    it('should accept stdin input at exactly 128KB', async () => {
+      const maxSize = 131072; // exactly 128KB
+      const exactData = 'x'.repeat(maxSize);
+
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'translated',
+      });
+
+      mockStdin.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          callback(exactData);
+        } else if (event === 'end') {
+          callback();
+        }
+        return mockStdin;
+      });
+
+      const result = await translateCommand.translateFromStdin({ to: 'es' });
+      expect(result).toBe('translated');
+    });
+  });
+
+  describe('empty string input', () => {
+    it('should throw error when text is an explicit empty string', async () => {
+      await expect(
+        translateCommand.translateText('', { to: 'es' })
+      ).rejects.toThrow('Text cannot be empty');
+    });
+
+    it('should throw error when text is whitespace only', async () => {
+      await expect(
+        translateCommand.translateText('   ', { to: 'es' })
+      ).rejects.toThrow('Text cannot be empty');
+    });
   });
 
   describe('output formatting', () => {
@@ -3516,6 +3588,87 @@ describe('TranslateCommand', () => {
       });
 
       expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('buildTranslationOptions()', () => {
+    it('should build base options with sourceLang and formality', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        from: 'en',
+        formality: 'more',
+      });
+      expect(result).toEqual({
+        targetLang: 'es',
+        sourceLang: 'en',
+        formality: 'more',
+      });
+    });
+
+    it('should omit undefined optional fields', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'de',
+      });
+      expect(result).toEqual({ targetLang: 'de' });
+      expect(result).not.toHaveProperty('sourceLang');
+      expect(result).not.toHaveProperty('formality');
+      expect(result).not.toHaveProperty('context');
+    });
+
+    it('should include context when provided', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'fr',
+        context: 'medical document',
+      });
+      expect(result.context).toBe('medical document');
+    });
+
+    it('should not include glossaryId (resolved separately)', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        glossary: 'my-glossary',
+      });
+      expect(result).not.toHaveProperty('glossaryId');
+    });
+
+    it('should include preserveFormatting when explicitly set', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        preserveFormatting: true,
+      });
+      expect(result.preserveFormatting).toBe(true);
+    });
+
+    it('should include showBilledCharacters when set', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        showBilledCharacters: true,
+      });
+      expect(result.showBilledCharacters).toBe(true);
+    });
+
+    it('should include splitSentences when provided', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        splitSentences: 'nonewlines',
+      });
+      expect(result.splitSentences).toBe('nonewlines');
+    });
+
+    it('should include tagHandling when provided', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        tagHandling: 'html',
+      });
+      expect(result.tagHandling).toBe('html');
+    });
+
+    it('should include modelType when provided', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        modelType: 'quality_optimized',
+      });
+      expect(result.modelType).toBe('quality_optimized');
     });
   });
 });
