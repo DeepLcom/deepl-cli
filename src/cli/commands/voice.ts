@@ -12,8 +12,27 @@ import type {
   VoiceSessionResult,
   VoiceStreamCallbacks,
   VoiceTargetLanguage,
+  VoiceSourceLanguage,
   VoiceSourceMediaContentType,
 } from '../../types/voice.js';
+import { ValidationError } from '../../utils/errors.js';
+
+const VALID_VOICE_TARGET_LANGS: ReadonlySet<string> = new Set<VoiceTargetLanguage>([
+  'ar','bg','cs','da','de','el','en','en-GB','en-US','es','et','fi','fr',
+  'hu','id','it','ja','ko','lt','lv','nb','nl','pl','pt','pt-BR','pt-PT',
+  'ro','ru','sk','sl','sv','tr','uk','zh',
+]);
+
+const VALID_VOICE_SOURCE_LANGS: ReadonlySet<string> = new Set<VoiceSourceLanguage>([
+  'ar','bg','cs','da','de','el','en','es','et','fi','fr','hu','id','it',
+  'ja','ko','lt','lv','nb','nl','pl','pt','ro','ru','sk','sl','sv','tr','uk','zh',
+]);
+
+const VALID_VOICE_CONTENT_TYPES: ReadonlySet<string> = new Set<VoiceSourceMediaContentType>([
+  'audio/pcm;encoding=s16le;rate=16000','audio/opus;container=ogg',
+  'audio/opus;container=webm','audio/opus;container=matroska',
+  'audio/flac','audio/mpeg',
+]);
 
 interface VoiceCommandOptions {
   to: string;
@@ -74,11 +93,31 @@ export class VoiceCommand {
   }
 
   private buildOptions(options: VoiceCommandOptions): VoiceTranslateOptions {
-    const targetLangs = options.to.split(',').map((l) => l.trim()) as VoiceTargetLanguage[];
+    const targetLangs = options.to.split(',').map((l) => l.trim());
+
+    for (const lang of targetLangs) {
+      if (!VALID_VOICE_TARGET_LANGS.has(lang)) {
+        throw new ValidationError(
+          `Invalid voice target language: "${lang}". Valid codes: ${Array.from(VALID_VOICE_TARGET_LANGS).sort().join(', ')}`,
+        );
+      }
+    }
+
+    if (options.from && !VALID_VOICE_SOURCE_LANGS.has(options.from)) {
+      throw new ValidationError(
+        `Invalid voice source language: "${options.from}". Valid codes: ${Array.from(VALID_VOICE_SOURCE_LANGS).sort().join(', ')}`,
+      );
+    }
+
+    if (options.contentType && !VALID_VOICE_CONTENT_TYPES.has(options.contentType)) {
+      throw new ValidationError(
+        `Invalid voice content type: "${options.contentType}". Valid types: ${Array.from(VALID_VOICE_CONTENT_TYPES).sort().join(', ')}`,
+      );
+    }
 
     return {
-      targetLangs,
-      sourceLang: options.from as VoiceTranslateOptions['sourceLang'],
+      targetLangs: targetLangs as VoiceTargetLanguage[],
+      sourceLang: options.from as VoiceSourceLanguage | undefined,
       formality: options.formality as VoiceTranslateOptions['formality'],
       glossaryId: options.glossary,
       contentType: options.contentType as VoiceSourceMediaContentType | undefined,
