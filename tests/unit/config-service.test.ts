@@ -3,6 +3,9 @@
  * Following TDD approach - these tests should fail initially
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { ConfigService } from '../../src/storage/config';
 
 describe('ConfigService', () => {
@@ -297,6 +300,45 @@ describe('ConfigService', () => {
       configService.set('defaults.targetLangs', ['es', 'fr']);
       const langs = configService.getValue('defaults.targetLangs');
       expect(Array.isArray(langs)).toBe(true);
+    });
+  });
+
+  describe('config directory permissions (Issue deepl-cli-99a)', () => {
+    it('should create config directory with mode 0o700', () => {
+      const uniqueDir = path.join(os.tmpdir(), `deepl-perm-test-${Date.now()}`);
+      const configPath = path.join(uniqueDir, 'config.json');
+
+      // Ensure directory does not exist
+      if (fs.existsSync(uniqueDir)) {
+        fs.rmSync(uniqueDir, { recursive: true });
+      }
+
+      const service = new ConfigService(configPath);
+      // Trigger a write to create the directory
+      service.set('auth.apiKey', 'test');
+
+      const stat = fs.statSync(uniqueDir);
+      // mode includes file type bits; mask to permission bits only
+      const dirMode = stat.mode & 0o777;
+      expect(dirMode).toBe(0o700);
+
+      // Cleanup
+      fs.rmSync(uniqueDir, { recursive: true, force: true });
+    });
+
+    it('should write config file with mode 0o600', () => {
+      const uniqueDir = path.join(os.tmpdir(), `deepl-perm-test-file-${Date.now()}`);
+      const configPath = path.join(uniqueDir, 'config.json');
+
+      const service = new ConfigService(configPath);
+      service.set('auth.apiKey', 'test');
+
+      const stat = fs.statSync(configPath);
+      const fileMode = stat.mode & 0o777;
+      expect(fileMode).toBe(0o600);
+
+      // Cleanup
+      fs.rmSync(uniqueDir, { recursive: true, force: true });
     });
   });
 

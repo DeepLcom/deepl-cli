@@ -187,6 +187,24 @@ describe('FileTranslationService', () => {
 
       expect(fs.existsSync(outputPath)).toBe(true);
     });
+
+    it('should reject symlinks for security reasons', async () => {
+      const realFile = path.join(testDir, 'real.txt');
+      const symlinkFile = path.join(testDir, 'link.txt');
+
+      fs.writeFileSync(realFile, 'Hello world');
+      fs.symlinkSync(realFile, symlinkFile);
+
+      const outputPath = path.join(testDir, 'output.txt');
+
+      await expect(
+        fileTranslationService.translateFile(symlinkFile, outputPath, {
+          targetLang: 'es',
+        })
+      ).rejects.toThrow();
+
+      expect(mockTranslationService.translate).not.toHaveBeenCalled();
+    });
   });
 
   describe('translateFileToMultiple()', () => {
@@ -243,6 +261,20 @@ describe('FileTranslationService', () => {
       await expect(
         fileTranslationService.translateFileToMultiple(inputPath, ['es'])
       ).rejects.toThrow('API error');
+    });
+
+    it('should reject symlinks for security reasons', async () => {
+      const realFile = path.join(testDir, 'real.txt');
+      const symlinkFile = path.join(testDir, 'link.txt');
+
+      fs.writeFileSync(realFile, 'Hello world');
+      fs.symlinkSync(realFile, symlinkFile);
+
+      await expect(
+        fileTranslationService.translateFileToMultiple(symlinkFile, ['es'])
+      ).rejects.toThrow();
+
+      expect(mockTranslationService.translateToMultiple).not.toHaveBeenCalled();
     });
   });
 
