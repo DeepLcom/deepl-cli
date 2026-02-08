@@ -13,7 +13,7 @@ export class AdminClient extends HttpClient {
         label: string;
         creation_time: string;
         is_deactivated: boolean;
-        usage_limits?: { characters?: number | null };
+        usage_limits?: { characters?: number | null; speech_to_text_milliseconds?: number | null };
       }>>('GET', '/v2/admin/developer-keys');
 
       return response.map((key) => this.normalizeApiKey(key));
@@ -35,7 +35,7 @@ export class AdminClient extends HttpClient {
         label: string;
         creation_time: string;
         is_deactivated: boolean;
-        usage_limits?: { characters?: number | null };
+        usage_limits?: { characters?: number | null; speech_to_text_milliseconds?: number | null };
       }>('POST', '/v2/admin/developer-keys', body);
 
       return this.normalizeApiKey(response);
@@ -64,11 +64,19 @@ export class AdminClient extends HttpClient {
     }
   }
 
-  async setApiKeyLimit(keyId: string, characters: number | null): Promise<void> {
+  async setApiKeyLimit(
+    keyId: string,
+    characters: number | null,
+    speechToTextMilliseconds?: number | null,
+  ): Promise<void> {
     try {
+      const body: Record<string, unknown> = { key_id: keyId, characters };
+      if (speechToTextMilliseconds !== undefined) {
+        body['speech_to_text_milliseconds'] = speechToTextMilliseconds;
+      }
       await this.makeJsonRequest<void>(
         'PUT', '/v2/admin/developer-keys/limits',
-        { key_id: keyId, characters } as unknown as Record<string, unknown>
+        body
       );
     } catch (error) {
       throw this.handleError(error);
@@ -147,15 +155,22 @@ export class AdminClient extends HttpClient {
     label: string;
     creation_time: string;
     is_deactivated: boolean;
-    usage_limits?: { characters?: number | null };
+    usage_limits?: { characters?: number | null; speech_to_text_milliseconds?: number | null };
   }): AdminApiKey {
     const result: AdminApiKey = {
       keyId: key.key_id,
       label: key.label,
       creationTime: key.creation_time,
       isDeactivated: key.is_deactivated,
-      usageLimits: key.usage_limits,
     };
+    if (key.usage_limits) {
+      result.usageLimits = {
+        characters: key.usage_limits.characters,
+        ...(key.usage_limits.speech_to_text_milliseconds !== undefined && {
+          speechToTextMilliseconds: key.usage_limits.speech_to_text_milliseconds,
+        }),
+      };
+    }
     if (key.key) {
       result.key = key.key;
     }

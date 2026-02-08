@@ -205,6 +205,36 @@ describe('AdminCommand', () => {
       const result = command.formatKeyList(keys);
       expect(result).not.toContain('Limit:');
     });
+
+    it('should show STT limit when present', () => {
+      const keys: AdminApiKey[] = [
+        {
+          keyId: 'key-1',
+          label: 'STT Key',
+          creationTime: '2024-01-01T00:00:00Z',
+          isDeactivated: false,
+          usageLimits: { characters: 1000000, speechToTextMilliseconds: 3600000 },
+        },
+      ];
+
+      const result = command.formatKeyList(keys);
+      expect(result).toContain('STT Limit: 1h 0m 0s');
+    });
+
+    it('should show unlimited STT limit', () => {
+      const keys: AdminApiKey[] = [
+        {
+          keyId: 'key-1',
+          label: 'Unlimited STT',
+          creationTime: '2024-01-01T00:00:00Z',
+          isDeactivated: false,
+          usageLimits: { characters: null, speechToTextMilliseconds: null },
+        },
+      ];
+
+      const result = command.formatKeyList(keys);
+      expect(result).toContain('STT Limit: unlimited');
+    });
   });
 
   describe('formatKeyInfo', () => {
@@ -309,6 +339,32 @@ describe('AdminCommand', () => {
 
       const result = command.formatKeyInfo(key);
       expect(result).not.toContain('Secret:');
+    });
+
+    it('should show STT limit in key info', () => {
+      const key: AdminApiKey = {
+        keyId: 'key-9',
+        label: 'Voice Key',
+        creationTime: '2024-01-01T00:00:00Z',
+        isDeactivated: false,
+        usageLimits: { characters: null, speechToTextMilliseconds: 7200000 },
+      };
+
+      const result = command.formatKeyInfo(key);
+      expect(result).toContain('STT Limit: 2h 0m 0s');
+    });
+
+    it('should not show STT limit when not present', () => {
+      const key: AdminApiKey = {
+        keyId: 'key-10',
+        label: 'No STT',
+        creationTime: '2024-01-01T00:00:00Z',
+        isDeactivated: false,
+        usageLimits: { characters: 500000 },
+      };
+
+      const result = command.formatKeyInfo(key);
+      expect(result).not.toContain('STT Limit');
     });
   });
 

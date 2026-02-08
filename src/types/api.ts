@@ -155,6 +155,7 @@ export interface AdminApiKey {
   isDeactivated: boolean;
   usageLimits?: {
     characters?: number | null;
+    speechToTextMilliseconds?: number | null;
   };
 }
 

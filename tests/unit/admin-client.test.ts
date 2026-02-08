@@ -65,6 +65,43 @@ describe('AdminClient', () => {
     });
   });
 
+  describe('setApiKeyLimit', () => {
+    it('should send characters-only limit when STT is not specified', async () => {
+      const scope = nock(baseUrl)
+        .put('/v2/admin/developer-keys/limits', { key_id: 'key-1', characters: 1000000 })
+        .reply(200);
+
+      await client.setApiKeyLimit('key-1', 1000000);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should send both characters and STT limits', async () => {
+      const scope = nock(baseUrl)
+        .put('/v2/admin/developer-keys/limits', {
+          key_id: 'key-1',
+          characters: 1000000,
+          speech_to_text_milliseconds: 3600000,
+        })
+        .reply(200);
+
+      await client.setApiKeyLimit('key-1', 1000000, 3600000);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should send null for unlimited STT', async () => {
+      const scope = nock(baseUrl)
+        .put('/v2/admin/developer-keys/limits', {
+          key_id: 'key-1',
+          characters: null,
+          speech_to_text_milliseconds: null,
+        })
+        .reply(200);
+
+      await client.setApiKeyLimit('key-1', null, null);
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
   describe('listApiKeys', () => {
     it('should not include key field for listed keys', async () => {
       nock(baseUrl)
@@ -83,6 +120,23 @@ describe('AdminClient', () => {
       const first = result[0]!;
       expect(first.key).toBeUndefined();
       expect(first.keyId).toBe('key-1');
+    });
+
+    it('should normalize speech_to_text_milliseconds from usage_limits', async () => {
+      nock(baseUrl)
+        .get('/v2/admin/developer-keys')
+        .reply(200, [
+          {
+            key_id: 'key-2',
+            label: 'Voice Key',
+            creation_time: '2024-01-01T00:00:00Z',
+            is_deactivated: false,
+            usage_limits: { characters: null, speech_to_text_milliseconds: 7200000 },
+          },
+        ]);
+
+      const result = await client.listApiKeys();
+      expect(result[0]!.usageLimits?.speechToTextMilliseconds).toBe(7200000);
     });
   });
 });
