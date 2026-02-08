@@ -31,6 +31,7 @@ import { registerStyleRules } from './commands/register-style-rules.js';
 import { registerAdmin } from './commands/register-admin.js';
 import { registerCompletion } from './commands/register-completion.js';
 import { registerVoice } from './commands/register-voice.js';
+import { registerInit } from './commands/register-init.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -209,6 +210,7 @@ registerWatch(program, deps);
 registerHooks(program, deps);
 
 program.commandsGroup('Configuration:');
+registerInit(program, deps);
 registerAuth(program, deps);
 registerConfig(program, deps);
 registerCache(program, deps);
