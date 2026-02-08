@@ -72,7 +72,7 @@ describe('StyleRulesClient Integration', () => {
               creation_time: '2024-01-15T10:00:00Z',
               updated_time: '2024-01-15T10:00:00Z',
               configured_rules: ['FORMAL_TONE', 'NO_SLANG'],
-              custom_instructions: ['Always use Oxford comma'],
+              custom_instructions: [{ label: 'Oxford comma', prompt: 'Always use Oxford comma' }],
             },
           ],
         });
@@ -82,7 +82,7 @@ describe('StyleRulesClient Integration', () => {
       expect(rules).toHaveLength(1);
       const rule = rules[0] as any;
       expect(rule.configuredRules).toEqual(['FORMAL_TONE', 'NO_SLANG']);
-      expect(rule.customInstructions).toEqual(['Always use Oxford comma']);
+      expect(rule.customInstructions).toEqual([{ label: 'Oxford comma', prompt: 'Always use Oxford comma' }]);
       expect(scope.isDone()).toBe(true);
     });
 
