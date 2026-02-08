@@ -9,8 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Cache support for Write API improvements with `--no-cache` bypass flag
+- **`deepl init` setup wizard** — Interactive first-time setup that guides through API key validation, default language selection, and configuration
+- **`--format json` for usage, cache stats, and languages commands** — Machine-readable output for CI/CD scripting and automation
+- **Did-you-mean suggestion for unknown commands** — Levenshtein distance matching suggests closest valid command on typos
+- **Admin API `speech_to_text_milliseconds` limit support** — `admin keys set-limit --stt-limit` can now set STT quota limits alongside character limits
+- **Voice command example script** — `examples/24-voice.sh` demonstrating all Voice API features
+- **Troubleshooting guide** — `docs/TROUBLESHOOTING.md` covering common issues with auth, quota, network, voice, and configuration
 
 ### Fixed
+- **[P1] VoiceClient bypasses validateApiUrl()** — API key could leak over HTTP if config hand-edited with http:// URL; now validates URL before passing to VoiceClient
+- **[P1] Stdin reading has no size limit** — Unbounded memory allocation from piped input; now enforces 128KB limit matching DeepL API text limit
+- **Empty string input hangs waiting for stdin** — Passing `''` as text now errors immediately instead of blocking
+- **Style Rules customInstructions type mismatch** — Fixed type from `string[]` to `Array<{label, prompt, sourceLanguage?}>` to match actual API response
+- **Usage API uses deprecated character_count fields** — Added support for new `unit_count` fields alongside deprecated character counts
+- **Missing enable_beta_languages on document upload** — Parameter now passed through for document translation
+- **Bare `deepl` with no args exits code 1** — Now exits 0 when showing help, matching CLI conventions
+- **FileTranslationService.translateFile() skips safeReadFile** — Now uses safeReadFile wrapper for symlink protection
+- **Config directory created without mode 0o700** — Directory now restricts access like the config file (0o600)
+
+### Changed
+- **Lazy sub-client construction in DeepLClient** — Sub-clients now initialized on first access instead of eagerly, improving startup performance
+- **Translation option building extracted to shared helper** — Deduplicated ~200 lines across 6 methods into `buildTranslationOptions()`
+- **Jest coverage thresholds tightened** — Thresholds raised from 10-14 points below actual to within 2-3 points
+- **Integration tests upgraded with nock** — 4 new nock-based integration test files for admin, style-rules, voice, and write clients
+- **Glossary test coverage improved** — Added tests for update and replace-dictionary handlers (was 26% branch coverage)
+- **Retry tests migrated to fake timers** — Cache TTL tests no longer use real delays
+- **E2E coverage expanded** — New E2E tests for completion, batch, style-rules; watch tests extended
 - **Watch mode infinite translation loop** - Output files (e.g. `test.es.txt`) no longer re-trigger the watcher, preventing infinite `test.es.es.es.txt` chains that burned API quota
 - **Glossary entry operations 404** - `add-entry`, `update-entry`, `remove-entry`, and `replace-dictionary` now send JSON content-type for v3 API endpoints instead of form-urlencoded
 - **`write --output` flag ignored** - Text-input path now writes result to the specified output file instead of only printing to stdout
