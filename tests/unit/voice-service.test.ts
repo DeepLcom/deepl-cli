@@ -50,6 +50,12 @@ describe('VoiceService', () => {
     });
   });
 
+  describe('cancel()', () => {
+    it('should be a no-op when no session is active', () => {
+      expect(() => service.cancel()).not.toThrow();
+    });
+  });
+
   describe('detectContentType()', () => {
     it('should detect .ogg as opus/ogg', () => {
       expect(service.detectContentType('audio.ogg')).toBe('audio/opus;container=ogg');

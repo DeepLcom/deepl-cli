@@ -174,7 +174,7 @@ describe('VoiceStreamSession', () => {
       expect(result.targets[0]!.text).toBe('Hallo');
     });
 
-    it('should register and clean up SIGINT handler', async () => {
+    it('should not register any SIGINT handlers', async () => {
       const EventEmitter = require('events');
       const mockWs = new EventEmitter();
       mockWs.readyState = 1;
@@ -187,8 +187,8 @@ describe('VoiceStreamSession', () => {
         setTimeout(() => {
           mockWs.emit('open');
           setTimeout(() => {
+            expect(process.listenerCount('SIGINT')).toBe(listenerCountBefore);
             callbacks.onEndOfStream?.();
-            mockWs.emit('close');
           }, 5);
         }, 0);
         return mockWs;
@@ -196,13 +196,11 @@ describe('VoiceStreamSession', () => {
 
       const streamSession = new VoiceStreamSession(mockClient, session, options);
       await streamSession.run(emptyChunks());
-
-      expect(process.listenerCount('SIGINT')).toBe(listenerCountBefore);
     });
   });
 
-  describe('SIGINT handling', () => {
-    it('should call sendEndOfSource when SIGINT is received', async () => {
+  describe('cancel()', () => {
+    it('should call sendEndOfSource on the active WebSocket', async () => {
       const EventEmitter = require('events');
       const mockWs = new EventEmitter();
       mockWs.readyState = 1;
@@ -213,7 +211,7 @@ describe('VoiceStreamSession', () => {
         setTimeout(() => {
           mockWs.emit('open');
           setTimeout(() => {
-            process.emit('SIGINT' as any);
+            streamSession.cancel();
             setTimeout(() => callbacks.onEndOfStream?.(), 5);
           }, 5);
         }, 0);
@@ -224,6 +222,29 @@ describe('VoiceStreamSession', () => {
       await streamSession.run(emptyChunks());
 
       expect(mockClient.sendEndOfSource).toHaveBeenCalledWith(mockWs);
+    });
+
+    it('should be a no-op after stream has ended', async () => {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => callbacks.onEndOfStream?.(), 5);
+        }, 0);
+        return mockWs;
+      });
+
+      const streamSession = new VoiceStreamSession(mockClient, session, options);
+      await streamSession.run(emptyChunks());
+
+      mockClient.sendEndOfSource.mockClear();
+      streamSession.cancel();
+      expect(mockClient.sendEndOfSource).not.toHaveBeenCalled();
     });
   });
 

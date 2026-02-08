@@ -33,12 +33,17 @@ const EXTENSION_CONTENT_TYPE_MAP: Record<string, VoiceSourceMediaContentType> = 
 
 export class VoiceService {
   private client: VoiceClient;
+  private activeSession: VoiceStreamSession | null = null;
 
   constructor(client: VoiceClient) {
     if (!client) {
       throw new Error('VoiceClient is required');
     }
     this.client = client;
+  }
+
+  cancel(): void {
+    this.activeSession?.cancel();
   }
 
   async translateFile(
@@ -130,7 +135,12 @@ export class VoiceService {
     });
 
     const streamSession = new VoiceStreamSession(this.client, session, options, callbacks);
-    return streamSession.run(this.paceChunks(chunks, chunkInterval));
+    this.activeSession = streamSession;
+    try {
+      return await streamSession.run(this.paceChunks(chunks, chunkInterval));
+    } finally {
+      this.activeSession = null;
+    }
   }
 
   private async *readFileInChunks(filePath: string, chunkSize: number): AsyncGenerator<Buffer> {

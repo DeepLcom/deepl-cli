@@ -78,6 +78,7 @@ describe('VoiceCommand', () => {
       translateStdin: jest.fn(),
       detectContentType: jest.fn(),
       validateOptions: jest.fn(),
+      cancel: jest.fn(),
     } as unknown as jest.Mocked<VoiceService>;
 
     command = new VoiceCommand(mockService);
@@ -296,6 +297,57 @@ describe('VoiceCommand', () => {
         }),
         undefined,
       );
+    });
+  });
+
+  describe('SIGINT handling', () => {
+    it('should register SIGINT handler during translate and clean up after', async () => {
+      const listenerCountBefore = process.listenerCount('SIGINT');
+      mockService.translateFile.mockResolvedValue(mockResult);
+
+      await command.translate('test.mp3', { to: 'de' });
+
+      expect(process.listenerCount('SIGINT')).toBe(listenerCountBefore);
+    });
+
+    it('should call cancel on service when SIGINT is received during translate', async () => {
+      mockService.translateFile.mockImplementation(() => {
+        process.emit('SIGINT' as any);
+        return Promise.resolve(mockResult);
+      });
+
+      await command.translate('test.mp3', { to: 'de' });
+
+      expect(mockService.cancel).toHaveBeenCalled();
+    });
+
+    it('should register SIGINT handler during translateFromStdin and clean up after', async () => {
+      const listenerCountBefore = process.listenerCount('SIGINT');
+      mockService.translateStdin.mockResolvedValue(mockResult);
+
+      await command.translateFromStdin({ to: 'de' });
+
+      expect(process.listenerCount('SIGINT')).toBe(listenerCountBefore);
+    });
+
+    it('should call cancel on service when SIGINT is received during translateFromStdin', async () => {
+      mockService.translateStdin.mockImplementation(() => {
+        process.emit('SIGINT' as any);
+        return Promise.resolve(mockResult);
+      });
+
+      await command.translateFromStdin({ to: 'de' });
+
+      expect(mockService.cancel).toHaveBeenCalled();
+    });
+
+    it('should clean up SIGINT handler even when translate throws', async () => {
+      const listenerCountBefore = process.listenerCount('SIGINT');
+      mockService.translateFile.mockRejectedValue(new Error('API error'));
+
+      await expect(command.translate('test.mp3', { to: 'de' })).rejects.toThrow('API error');
+
+      expect(process.listenerCount('SIGINT')).toBe(listenerCountBefore);
     });
   });
 

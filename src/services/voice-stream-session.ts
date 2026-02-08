@@ -1,7 +1,7 @@
 /**
  * VoiceStreamSession
  * Encapsulates WebSocket session state for real-time voice streaming:
- * reconnection, SIGINT handling, chunk streaming, and transcript accumulation.
+ * reconnection, cancellation, chunk streaming, and transcript accumulation.
  */
 
 import WebSocket from 'ws';
@@ -37,7 +37,6 @@ export class VoiceStreamSession {
 
   private streamEnded = false;
   private ws!: WebSocket;
-  private sigintHandler!: () => void;
   private chunkStreamingResolve: (() => void) | null = null;
 
   constructor(
@@ -64,6 +63,12 @@ export class VoiceStreamSession {
     }
   }
 
+  cancel(): void {
+    if (!this.streamEnded && this.ws) {
+      this.client.sendEndOfSource(this.ws);
+    }
+  }
+
   run(chunks: AsyncGenerator<Buffer>): Promise<VoiceSessionResult> {
     return new Promise<VoiceSessionResult>((resolve, reject) => {
       const internalCallbacks = this.createInternalCallbacks(resolve, reject);
@@ -73,9 +78,6 @@ export class VoiceStreamSession {
         this.session.token,
         internalCallbacks,
       );
-
-      this.sigintHandler = () => { this.client.sendEndOfSource(this.ws); };
-      process.on('SIGINT', this.sigintHandler);
 
       this.ws.on('open', () => {
         this.streamChunks(chunks, reject);
@@ -115,7 +117,6 @@ export class VoiceStreamSession {
       onEndOfStream: () => {
         this.streamEnded = true;
         this.callbacks?.onEndOfStream?.();
-        process.removeListener('SIGINT', this.sigintHandler);
         this.ws.close();
         this.finalizeTranscripts();
         resolve({
@@ -127,7 +128,6 @@ export class VoiceStreamSession {
       onError: (error) => {
         this.streamEnded = true;
         this.callbacks?.onError?.(error);
-        process.removeListener('SIGINT', this.sigintHandler);
         this.ws.close();
         reject(new VoiceError(`Voice streaming error: ${error.error_message} (${error.error_code})`));
       },
@@ -138,8 +138,6 @@ export class VoiceStreamSession {
     internalCallbacks: VoiceStreamCallbacks,
     reject: (reason: unknown) => void,
   ): void {
-    process.removeListener('SIGINT', this.sigintHandler);
-
     if (this.streamEnded) {
       return;
     }
@@ -168,9 +166,6 @@ export class VoiceStreamSession {
         internalCallbacks,
       );
 
-      this.sigintHandler = () => { this.client.sendEndOfSource(this.ws); };
-      process.on('SIGINT', this.sigintHandler);
-
       this.ws.on('close', () => { this.handleClose(internalCallbacks, reject); });
       this.ws.on('error', (error: Error) => { this.handleError(error, reject); });
 
@@ -186,7 +181,6 @@ export class VoiceStreamSession {
   }
 
   private handleError(error: Error, reject: (reason: unknown) => void): void {
-    process.removeListener('SIGINT', this.sigintHandler);
     reject(new VoiceError(`WebSocket connection failed: ${error.message}`));
   }
 

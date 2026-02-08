@@ -72,14 +72,20 @@ export class VoiceCommand {
       callbacks = this.createTTYCallbacks(translateOptions.targetLangs, translateOptions.maxReconnectAttempts);
     }
 
-    const result = await this.voiceService.translateFile(filePath, translateOptions, callbacks);
+    const sigintHandler = () => { this.voiceService.cancel(); };
+    process.on('SIGINT', sigintHandler);
 
-    if (isTTY) {
-      // Clear the live display lines
-      this.clearTTYDisplay(translateOptions.targetLangs.length);
+    try {
+      const result = await this.voiceService.translateFile(filePath, translateOptions, callbacks);
+
+      if (isTTY) {
+        this.clearTTYDisplay(translateOptions.targetLangs.length);
+      }
+
+      return this.formatResult(result, options.format);
+    } finally {
+      process.removeListener('SIGINT', sigintHandler);
     }
-
-    return this.formatResult(result, options.format);
   }
 
   async translateFromStdin(options: VoiceCommandOptions): Promise<string> {
@@ -91,13 +97,20 @@ export class VoiceCommand {
       callbacks = this.createTTYCallbacks(translateOptions.targetLangs, translateOptions.maxReconnectAttempts);
     }
 
-    const result = await this.voiceService.translateStdin(translateOptions, callbacks);
+    const sigintHandler = () => { this.voiceService.cancel(); };
+    process.on('SIGINT', sigintHandler);
 
-    if (isTTY) {
-      this.clearTTYDisplay(translateOptions.targetLangs.length);
+    try {
+      const result = await this.voiceService.translateStdin(translateOptions, callbacks);
+
+      if (isTTY) {
+        this.clearTTYDisplay(translateOptions.targetLangs.length);
+      }
+
+      return this.formatResult(result, options.format);
+    } finally {
+      process.removeListener('SIGINT', sigintHandler);
     }
-
-    return this.formatResult(result, options.format);
   }
 
   private buildOptions(options: VoiceCommandOptions): VoiceTranslateOptions {
