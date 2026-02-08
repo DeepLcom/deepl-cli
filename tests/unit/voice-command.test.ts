@@ -623,6 +623,78 @@ describe('VoiceCommand', () => {
     });
   });
 
+  describe('language code validation', () => {
+    it('should reject invalid target language code', async () => {
+      await expect(command.translate('test.mp3', { to: 'zz' })).rejects.toThrow(
+        /Invalid voice target language.*"zz"/,
+      );
+    });
+
+    it('should reject when one of multiple target languages is invalid', async () => {
+      await expect(command.translate('test.mp3', { to: 'de,xyz' })).rejects.toThrow(
+        /Invalid voice target language.*"xyz"/,
+      );
+    });
+
+    it('should list valid target languages in error message', async () => {
+      await expect(command.translate('test.mp3', { to: 'zz' })).rejects.toThrow(
+        /Valid codes:/,
+      );
+    });
+
+    it('should accept valid target language codes', async () => {
+      mockService.translateFile.mockResolvedValue(mockResult);
+      await expect(command.translate('test.mp3', { to: 'de' })).resolves.toBeDefined();
+    });
+
+    it('should accept regional target language variants', async () => {
+      mockService.translateFile.mockResolvedValue(mockResult);
+      await expect(command.translate('test.mp3', { to: 'en-GB' })).resolves.toBeDefined();
+      await expect(command.translate('test.mp3', { to: 'pt-BR' })).resolves.toBeDefined();
+    });
+
+    it('should reject invalid source language code', async () => {
+      await expect(
+        command.translate('test.mp3', { to: 'de', from: 'zz' }),
+      ).rejects.toThrow(/Invalid voice source language.*"zz"/);
+    });
+
+    it('should accept valid source language code', async () => {
+      mockService.translateFile.mockResolvedValue(mockResult);
+      await expect(
+        command.translate('test.mp3', { to: 'de', from: 'en' }),
+      ).resolves.toBeDefined();
+    });
+
+    it('should reject invalid content type', async () => {
+      await expect(
+        command.translate('test.mp3', { to: 'de', contentType: 'audio/wav' }),
+      ).rejects.toThrow(/Invalid voice content type.*"audio\/wav"/);
+    });
+
+    it('should accept valid content type', async () => {
+      mockService.translateFile.mockResolvedValue(mockResult);
+      await expect(
+        command.translate('test.mp3', { to: 'de', contentType: 'audio/mpeg' }),
+      ).resolves.toBeDefined();
+    });
+
+    it('should validate language codes for translateFromStdin too', async () => {
+      await expect(command.translateFromStdin({ to: 'invalid' })).rejects.toThrow(
+        /Invalid voice target language/,
+      );
+    });
+
+    it('should reject target language codes that are only valid as source', async () => {
+      // en-GB is target-only, but check that source-only codes don't leak
+      // All source codes are a subset of target codes in current data,
+      // but en-GB/en-US/pt-BR/pt-PT are target-only
+      await expect(
+        command.translate('test.mp3', { to: 'de', from: 'en-GB' }),
+      ).rejects.toThrow(/Invalid voice source language.*"en-GB"/);
+    });
+  });
+
   describe('formatResult edge cases', () => {
     it('should omit source line when source text is empty', async () => {
       const emptySourceResult: VoiceSessionResult = {
