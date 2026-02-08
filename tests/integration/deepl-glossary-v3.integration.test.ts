@@ -437,8 +437,116 @@ describe('DeepLClient v3 Glossary Integration', () => {
     });
   });
 
+  describe('updateGlossary() - v3 API', () => {
+    it('should make correct PATCH request with name only', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL)
+        .patch('/v3/glossaries/glossary-123', (body) => {
+          expect(body.name).toBe('New Glossary Name');
+          expect(body.dictionaries).toBeUndefined();
+          return true;
+        })
+        .reply(204);
+
+      await client.updateGlossary('glossary-123', { name: 'New Glossary Name' });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should make correct PATCH request with dictionaries only', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL)
+        .patch('/v3/glossaries/glossary-123', (body) => {
+          expect(body.name).toBeUndefined();
+          expect(body.dictionaries).toHaveLength(1);
+          expect(body.dictionaries[0].source_lang).toBe('EN');
+          expect(body.dictionaries[0].target_lang).toBe('ES');
+          expect(body.dictionaries[0].entries).toBe('Hello\tHola');
+          expect(body.dictionaries[0].entries_format).toBe('tsv');
+          return true;
+        })
+        .reply(204);
+
+      await client.updateGlossary('glossary-123', {
+        dictionaries: [{
+          source_lang: 'EN',
+          target_lang: 'ES',
+          entries: 'Hello\tHola',
+          entries_format: 'tsv',
+        }],
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should combine name and dictionaries in a single PATCH request', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL)
+        .patch('/v3/glossaries/glossary-123', (body) => {
+          expect(body.name).toBe('Updated Name');
+          expect(body.dictionaries).toHaveLength(1);
+          expect(body.dictionaries[0].source_lang).toBe('EN');
+          expect(body.dictionaries[0].target_lang).toBe('DE');
+          expect(body.dictionaries[0].entries).toBe('Hello\tHallo');
+          expect(body.dictionaries[0].entries_format).toBe('tsv');
+          return true;
+        })
+        .reply(204);
+
+      await client.updateGlossary('glossary-123', {
+        name: 'Updated Name',
+        dictionaries: [{
+          source_lang: 'EN',
+          target_lang: 'DE',
+          entries: 'Hello\tHallo',
+          entries_format: 'tsv',
+        }],
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should use JSON content type', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL, {
+        reqheaders: {
+          'content-type': 'application/json',
+        },
+      })
+        .patch('/v3/glossaries/glossary-123')
+        .reply(204);
+
+      await client.updateGlossary('glossary-123', { name: 'New Name' });
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should throw when neither name nor dictionaries provided', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      await expect(
+        client.updateGlossary('glossary-123', {})
+      ).rejects.toThrow('At least one of name or dictionaries must be provided');
+    });
+
+    it('should handle 404 glossary not found errors', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      nock(FREE_API_URL)
+        .patch('/v3/glossaries/nonexistent')
+        .reply(404, { message: 'Glossary not found' });
+
+      await expect(
+        client.updateGlossary('nonexistent', { name: 'New Name' })
+      ).rejects.toThrow();
+    });
+  });
+
   describe('renameGlossary() - v3 API', () => {
-    it('should make correct HTTP PATCH request', async () => {
+    it('should delegate to updateGlossary with name via PATCH', async () => {
       const client = new DeepLClient(API_KEY);
 
       const scope = nock(FREE_API_URL)
@@ -453,12 +561,12 @@ describe('DeepLClient v3 Glossary Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('should use form-encoded content type', async () => {
+    it('should use JSON content type', async () => {
       const client = new DeepLClient(API_KEY);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
-          'content-type': 'application/x-www-form-urlencoded',
+          'content-type': 'application/json',
         },
       })
         .patch('/v3/glossaries/glossary-123')

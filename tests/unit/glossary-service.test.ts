@@ -24,6 +24,7 @@ describe('GlossaryService', () => {
       deleteGlossary: jest.fn(),
       getGlossaryEntries: jest.fn(),
       updateGlossaryEntries: jest.fn(),
+      updateGlossary: jest.fn(),
       renameGlossary: jest.fn(),
       deleteGlossaryDictionary: jest.fn(),
       replaceGlossaryDictionary: jest.fn(),
@@ -546,8 +547,8 @@ describe('GlossaryService', () => {
     });
   });
 
-  describe('renameGlossary()', () => {
-    it('should rename a glossary', async () => {
+  describe('updateGlossary()', () => {
+    it('should update glossary name only', async () => {
       mockDeepLClient.getGlossary.mockResolvedValue({
         glossary_id: 'test-123',
         name: 'old-name',
@@ -561,12 +562,134 @@ describe('GlossaryService', () => {
         creation_time: '2024-01-01T00:00:00Z',
       });
 
-      mockDeepLClient.renameGlossary.mockResolvedValue(undefined);
+      mockDeepLClient.updateGlossary.mockResolvedValue(undefined);
+
+      await glossaryService.updateGlossary('test-123', { name: 'new-name' });
+
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('test-123');
+      expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', { name: 'new-name' });
+    });
+
+    it('should update dictionaries only', async () => {
+      mockDeepLClient.updateGlossary.mockResolvedValue(undefined);
+
+      await glossaryService.updateGlossary('test-123', {
+        dictionaries: [{
+          sourceLang: 'en',
+          targetLang: 'es',
+          entries: { Hello: 'Hola' },
+        }],
+      });
+
+      expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', {
+        dictionaries: [{
+          source_lang: 'EN',
+          target_lang: 'ES',
+          entries: 'Hello\tHola',
+          entries_format: 'tsv',
+        }],
+      });
+    });
+
+    it('should combine name and dictionaries in a single call', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'old-name',
+        source_lang: 'en',
+        target_langs: ['es'],
+        dictionaries: [{
+          source_lang: 'en',
+          target_lang: 'es',
+          entry_count: 3,
+        }],
+        creation_time: '2024-01-01T00:00:00Z',
+      });
+
+      mockDeepLClient.updateGlossary.mockResolvedValue(undefined);
+
+      await glossaryService.updateGlossary('test-123', {
+        name: 'new-name',
+        dictionaries: [{
+          sourceLang: 'en',
+          targetLang: 'es',
+          entries: { Hello: 'Hola', World: 'Mundo' },
+        }],
+      });
+
+      expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', {
+        name: 'new-name',
+        dictionaries: [{
+          source_lang: 'EN',
+          target_lang: 'ES',
+          entries: 'Hello\tHola\nWorld\tMundo',
+          entries_format: 'tsv',
+        }],
+      });
+    });
+
+    it('should throw when neither name nor dictionaries provided', async () => {
+      await expect(
+        glossaryService.updateGlossary('test-123', {})
+      ).rejects.toThrow('At least one of name or dictionaries must be provided');
+    });
+
+    it('should validate new name is not empty', async () => {
+      await expect(
+        glossaryService.updateGlossary('test-123', { name: '' })
+      ).rejects.toThrow('New glossary name cannot be empty');
+    });
+
+    it('should validate new name is different from current name', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'same-name',
+        source_lang: 'en',
+        target_langs: ['es'],
+        dictionaries: [{
+          source_lang: 'en',
+          target_lang: 'es',
+          entry_count: 3,
+        }],
+        creation_time: '2024-01-01T00:00:00Z',
+      });
+
+      await expect(
+        glossaryService.updateGlossary('test-123', { name: 'same-name' })
+      ).rejects.toThrow('New name must be different from current name');
+    });
+
+    it('should handle API errors', async () => {
+      mockDeepLClient.getGlossary.mockRejectedValue(
+        new Error('Glossary not found')
+      );
+
+      await expect(
+        glossaryService.updateGlossary('test-123', { name: 'new-name' })
+      ).rejects.toThrow('Glossary not found');
+    });
+  });
+
+  describe('renameGlossary()', () => {
+    it('should delegate to updateGlossary with name', async () => {
+      mockDeepLClient.getGlossary.mockResolvedValue({
+        glossary_id: 'test-123',
+        name: 'old-name',
+        source_lang: 'en',
+        target_langs: ['es'],
+        dictionaries: [{
+          source_lang: 'en',
+          target_lang: 'es',
+          entry_count: 3,
+        }],
+        creation_time: '2024-01-01T00:00:00Z',
+      });
+
+      mockDeepLClient.updateGlossary.mockResolvedValue(undefined);
 
       await glossaryService.renameGlossary('test-123', 'new-name');
 
       expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('test-123');
-      expect(mockDeepLClient.renameGlossary).toHaveBeenCalledWith('test-123', 'new-name');
+      expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', { name: 'new-name' });
     });
 
     it('should validate new name is not empty', async () => {

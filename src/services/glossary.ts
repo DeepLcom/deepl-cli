@@ -241,27 +241,69 @@ export class GlossaryService {
   }
 
   /**
+   * Update a glossary (v3 API - uses PATCH endpoint)
+   * Combines name and dictionary updates into a single API call
+   */
+  async updateGlossary(
+    glossaryId: string,
+    options: {
+      name?: string;
+      dictionaries?: Array<{
+        sourceLang: Language;
+        targetLang: Language;
+        entries: Record<string, string>;
+      }>;
+    }
+  ): Promise<void> {
+    if (options.name !== undefined && (!options.name || options.name.trim() === '')) {
+      throw new Error('New glossary name cannot be empty');
+    }
+
+    if (!options.name && !options.dictionaries) {
+      throw new Error('At least one of name or dictionaries must be provided');
+    }
+
+    if (options.name) {
+      const glossary = await this.client.getGlossary(glossaryId);
+      if (glossary.name === options.name) {
+        throw new Error('New name must be different from current name');
+      }
+    }
+
+    const updates: {
+      name?: string;
+      dictionaries?: Array<{
+        source_lang: string;
+        target_lang: string;
+        entries: string;
+        entries_format: string;
+      }>;
+    } = {};
+
+    if (options.name) {
+      updates.name = options.name;
+    }
+
+    if (options.dictionaries) {
+      updates.dictionaries = options.dictionaries.map(dict => ({
+        source_lang: dict.sourceLang.toUpperCase(),
+        target_lang: dict.targetLang.toUpperCase(),
+        entries: this.entriesToTSV(dict.entries),
+        entries_format: 'tsv',
+      }));
+    }
+
+    await this.client.updateGlossary(glossaryId, updates);
+  }
+
+  /**
    * Rename a glossary (v3 API - uses PATCH endpoint)
    */
   async renameGlossary(
     glossaryId: string,
     newName: string
   ): Promise<void> {
-    // Validate input
-    if (!newName || newName.trim() === '') {
-      throw new Error('New glossary name cannot be empty');
-    }
-
-    // Get glossary info to check current name
-    const glossary = await this.client.getGlossary(glossaryId);
-
-    // Check if new name is different from current name
-    if (glossary.name === newName) {
-      throw new Error('New name must be different from current name');
-    }
-
-    // Rename using v3 PATCH endpoint
-    await this.client.renameGlossary(glossaryId, newName);
+    return this.updateGlossary(glossaryId, { name: newName });
   }
 
   /**

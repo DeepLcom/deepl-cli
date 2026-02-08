@@ -272,6 +272,51 @@ describe('DeepLClient', () => {
       expect(nock.isDone()).toBe(true);
     });
 
+    it('should send enable_beta_languages parameter when enabled', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.enable_beta_languages === '1';
+        })
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+          ],
+        });
+
+      await client.translate('Hello', {
+        targetLang: 'es',
+        enableBetaLanguages: true,
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should not send enable_beta_languages when not requested', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.enable_beta_languages === undefined;
+        })
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+          ],
+        });
+
+      await client.translate('Hello', {
+        targetLang: 'es',
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
     it('should send outline_detection parameter when set to true', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
@@ -1688,6 +1733,33 @@ describe('DeepLClient', () => {
       expect(results[1]?.text).toBe('Adiós');
       // Note: In batch translation, billed_characters is for the entire batch,
       // not per translation. The API client returns it at the response level.
+    });
+
+    it('should send enable_beta_languages in batch translation', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.enable_beta_languages === '1';
+        })
+        .reply(200, {
+          translations: [
+            {
+              detected_source_language: 'EN',
+              text: 'Hola',
+            },
+            {
+              detected_source_language: 'EN',
+              text: 'Adiós',
+            },
+          ],
+        });
+
+      await client.translateBatch(['Hello', 'Goodbye'], {
+        targetLang: 'es',
+        enableBetaLanguages: true,
+      });
+
+      expect(nock.isDone()).toBe(true);
     });
   });
 

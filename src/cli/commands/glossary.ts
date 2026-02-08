@@ -154,6 +154,30 @@ export class GlossaryCommand {
   }
 
   /**
+   * Update a glossary (v3 API - PATCH endpoint for combined name+dictionary updates)
+   */
+  async update(
+    nameOrId: string,
+    options: {
+      name?: string;
+      dictionaries?: Array<{
+        targetLang: Language;
+        entries: Record<string, string>;
+      }>;
+    }
+  ): Promise<void> {
+    const glossary = await this.show(nameOrId);
+    await this.glossaryService.updateGlossary(glossary.glossary_id, {
+      name: options.name,
+      dictionaries: options.dictionaries?.map(dict => ({
+        sourceLang: glossary.source_lang,
+        targetLang: dict.targetLang,
+        entries: dict.entries,
+      })),
+    });
+  }
+
+  /**
    * Rename a glossary (v3 API - uses PATCH)
    */
   async rename(

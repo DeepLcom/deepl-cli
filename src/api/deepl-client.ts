@@ -121,6 +121,21 @@ export class DeepLClient {
     return this.glossaryClient.replaceGlossaryDictionary(glossaryId, sourceLang, targetLang, entries);
   }
 
+  async updateGlossary(
+    glossaryId: string,
+    updates: {
+      name?: string;
+      dictionaries?: Array<{
+        source_lang: string;
+        target_lang: string;
+        entries: string;
+        entries_format: string;
+      }>;
+    }
+  ): Promise<void> {
+    return this.glossaryClient.updateGlossary(glossaryId, updates);
+  }
+
   async renameGlossary(glossaryId: string, newName: string): Promise<void> {
     return this.glossaryClient.renameGlossary(glossaryId, newName);
   }

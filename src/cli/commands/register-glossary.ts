@@ -29,6 +29,7 @@ Examples:
   $ deepl glossary update-entry my-terms "Hello" "Hej" --target-lang de
   $ deepl glossary remove-entry my-terms "Hello" --target-lang de
   $ deepl glossary rename my-terms new-name
+  $ deepl glossary update my-terms --name new-name --target-lang de --file updated.tsv
   $ deepl glossary replace-dictionary my-terms de updated.tsv
   $ deepl glossary delete-dictionary my-terms de --yes
 `)
@@ -227,6 +228,63 @@ Examples:
           } catch (error) {
             handleError(error);
 
+          }
+        })
+    )
+    .addCommand(
+      new Command('update')
+        .description('Update glossary name and/or dictionary entries in a single request (v3)')
+        .argument('<name-or-id>', 'Glossary name or ID')
+        .option('--name <name>', 'New glossary name')
+        .option('--target-lang <lang>', 'Target language for dictionary update')
+        .option('--file <path>', 'TSV/CSV file with entries for dictionary update')
+        .action(async (nameOrId: string, options: { name?: string; targetLang?: string; file?: string }) => {
+          try {
+            if (!options.name && !options.file) {
+              throw new Error('At least one of --name or --file (with --target-lang) must be provided');
+            }
+
+            if (options.file && !options.targetLang) {
+              throw new Error('--target-lang is required when using --file');
+            }
+
+            const glossaryCommand = await createGlossaryCommand(createDeepLClient);
+
+            const updateOptions: {
+              name?: string;
+              dictionaries?: Array<{ targetLang: Language; entries: Record<string, string> }>;
+            } = {};
+
+            if (options.name) {
+              updateOptions.name = options.name;
+            }
+
+            if (options.file && options.targetLang) {
+              const fs = await import('fs');
+              if (!fs.existsSync(options.file)) {
+                throw new Error(`File not found: ${options.file}`);
+              }
+              const { safeReadFileSync } = await import('../../utils/safe-read-file.js');
+              const content = safeReadFileSync(options.file, 'utf-8');
+              const { GlossaryService } = await import('../../services/glossary.js');
+              const tempService = new GlossaryService(null as any);
+              const entries = tempService.tsvToEntries(content);
+              if (Object.keys(entries).length === 0) {
+                throw new Error('No valid entries found in file');
+              }
+              updateOptions.dictionaries = [{
+                targetLang: options.targetLang as Language,
+                entries,
+              }];
+            }
+
+            await glossaryCommand.update(nameOrId, updateOptions);
+            const parts: string[] = [];
+            if (options.name) parts.push('renamed');
+            if (options.file) parts.push('dictionary updated');
+            Logger.success(chalk.green(`\u2713 Glossary ${parts.join(' and ')} successfully`));
+          } catch (error) {
+            handleError(error);
           }
         })
     )

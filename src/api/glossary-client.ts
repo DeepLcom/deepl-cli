@@ -174,19 +174,35 @@ export class GlossaryClient extends HttpClient {
     }
   }
 
-  async renameGlossary(glossaryId: string, newName: string): Promise<void> {
+  async updateGlossary(
+    glossaryId: string,
+    updates: {
+      name?: string;
+      dictionaries?: Array<{
+        source_lang: string;
+        target_lang: string;
+        entries: string;
+        entries_format: string;
+      }>;
+    }
+  ): Promise<void> {
     this.validateGlossaryId(glossaryId);
+    if (!updates.name && !updates.dictionaries) {
+      throw new Error('At least one of name or dictionaries must be provided');
+    }
     try {
-      await this.makeRequest<void>(
+      await this.makeJsonRequest<void>(
         'PATCH',
         `/v3/glossaries/${glossaryId}`,
-        {
-          name: newName,
-        }
+        updates as unknown as Record<string, unknown>
       );
     } catch (error) {
       throw this.handleError(error);
     }
+  }
+
+  async renameGlossary(glossaryId: string, newName: string): Promise<void> {
+    return this.updateGlossary(glossaryId, { name: newName });
   }
 
   async deleteGlossaryDictionary(
