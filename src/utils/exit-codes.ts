@@ -108,6 +108,20 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.VoiceError;
   }
 
+  // Configuration errors - specific phrases (checked before InvalidInput
+  // because config error messages may contain words like "invalid")
+  if (
+    message.includes('config file') ||
+    message.includes('config directory') ||
+    message.includes('configuration file') ||
+    message.includes('configuration error') ||
+    message.includes('failed to load config') ||
+    message.includes('failed to save config') ||
+    message.includes('failed to read config')
+  ) {
+    return ExitCode.ConfigError;
+  }
+
   // Invalid input - specific phrases indicating user input problems
   if (
     message.includes('cannot be empty') ||
@@ -120,19 +134,6 @@ function classifyByMessage(rawMessage: string): ExitCode {
     message.includes('cannot specify both')
   ) {
     return ExitCode.InvalidInput;
-  }
-
-  // Configuration errors - specific phrases
-  if (
-    message.includes('config file') ||
-    message.includes('config directory') ||
-    message.includes('configuration file') ||
-    message.includes('configuration error') ||
-    message.includes('failed to load config') ||
-    message.includes('failed to save config') ||
-    message.includes('failed to read config')
-  ) {
-    return ExitCode.ConfigError;
   }
 
   // Default to general error

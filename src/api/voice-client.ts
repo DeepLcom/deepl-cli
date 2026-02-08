@@ -13,7 +13,7 @@ import type {
   VoiceServerMessage,
   VoiceStreamCallbacks,
 } from '../types/voice.js';
-import { VoiceError } from '../utils/errors.js';
+import { AuthError, VoiceError } from '../utils/errors.js';
 
 const PRO_API_URL = 'https://api.deepl.com';
 const WS_HIGH_WATER_MARK = 1024 * 1024; // 1 MiB
@@ -132,8 +132,6 @@ export class VoiceClient extends HttpClient {
   }
 
   private handleVoiceError(error: unknown): Error {
-    const baseError = this.handleError(error);
-
     if (this.isAxiosError(error)) {
       const status = error.response?.status;
       const responseData = error.response?.data as { message?: string } | undefined;
@@ -152,6 +150,23 @@ export class VoiceClient extends HttpClient {
       }
     }
 
-    return baseError;
+    // executeWithRetry classifies 403 as AuthError before it reaches here;
+    // reclassify as VoiceError with a more specific message.
+    if (error instanceof AuthError) {
+      return new VoiceError(
+        'Voice API access denied. Your plan may not include Voice API access.',
+        'The Voice API requires a DeepL Pro or Enterprise plan. Visit https://www.deepl.com/pro to upgrade.',
+      );
+    }
+
+    // For other already-classified errors (e.g. 400 → generic Error from handleError),
+    // wrap as VoiceError if the message indicates an API error.
+    if (error instanceof Error && error.message.startsWith('API error:')) {
+      return new VoiceError(
+        `Voice session creation failed: ${error.message.replace('API error: ', '')}`,
+      );
+    }
+
+    return this.handleError(error);
   }
 }
