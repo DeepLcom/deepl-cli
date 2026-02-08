@@ -222,6 +222,54 @@ registerCompletion(program, deps);
 program.commandsGroup('Administration:');
 registerAdmin(program, deps);
 
+// Did-you-mean suggestion for unknown commands
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[]);
+  for (let i = 0; i <= m; i++) dp[i]![0] = i;
+  for (let j = 0; j <= n; j++) dp[0]![j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i]![j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1]![j - 1]!
+        : 1 + Math.min(dp[i - 1]![j]!, dp[i]![j - 1]!, dp[i - 1]![j - 1]!);
+    }
+  }
+  return dp[m]![n]!;
+}
+
+program.on('command:*', (operands: string[]) => {
+  const unknown = operands[0];
+  if (!unknown) {
+    program.outputHelp();
+    process.exit(0);
+    return;
+  }
+
+  const commandNames = program.commands.map((cmd) => cmd.name());
+  let bestMatch = '';
+  let bestDistance = Infinity;
+  for (const name of commandNames) {
+    const d = levenshtein(unknown, name);
+    if (d < bestDistance) {
+      bestDistance = d;
+      bestMatch = name;
+    }
+  }
+
+  Logger.error(chalk.red(`Unknown command: ${unknown}`));
+
+  const maxDistance = Math.max(2, Math.floor(unknown.length / 2));
+  if (bestMatch && bestDistance <= maxDistance) {
+    Logger.error(chalk.yellow(`Did you mean: deepl ${bestMatch}?`));
+  }
+
+  Logger.error('');
+  Logger.error(`Run ${chalk.bold('deepl --help')} to see available commands.`);
+  process.exit(ExitCode.InvalidInput);
+});
+
 // Show help and exit 0 if no arguments provided
 if (!process.argv.slice(2).length) {
   program.outputHelp();
