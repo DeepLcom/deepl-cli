@@ -30,6 +30,10 @@ jest.mock('chalk', () => ({
   yellow: (t: string) => t,
 }));
 
+import * as realFs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
 const mockCreateGlossaryCommand = createGlossaryCommand as jest.MockedFunction<typeof createGlossaryCommand>;
 
 function makeProgram() {
@@ -55,6 +59,7 @@ function makeMockGlossaryCmd() {
     updateEntry: jest.fn(),
     removeEntry: jest.fn(),
     rename: jest.fn(),
+    update: jest.fn(),
     replaceDictionary: jest.fn(),
     deleteDictionary: jest.fn(),
     formatGlossaryInfo: jest.fn().mockReturnValue('glossary-info'),
@@ -436,6 +441,128 @@ describe('registerGlossary', () => {
       await expect(
         program.parseAsync(['node', 'test', 'glossary', 'rename', 'old-name', 'new-name'])
       ).rejects.toThrow('rename failed');
+      expect(handleError).toHaveBeenCalledWith(error);
+    });
+  });
+
+  describe('glossary update', () => {
+    let tmpDir: string;
+    let tsvFile: string;
+    let emptyFile: string;
+
+    beforeEach(() => {
+      tmpDir = realFs.mkdtempSync(path.join(os.tmpdir(), 'deepl-glossary-test-'));
+      tsvFile = path.join(tmpDir, 'entries.tsv');
+      emptyFile = path.join(tmpDir, 'empty.tsv');
+      realFs.writeFileSync(tsvFile, 'hello\thola\nworld\tmundo\n', 'utf-8');
+      realFs.writeFileSync(emptyFile, '\n', 'utf-8');
+    });
+
+    afterEach(() => {
+      realFs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should error when neither --name nor --file is provided', async () => {
+      const { program, handleError } = makeProgram();
+
+      await expect(
+        program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms'])
+      ).rejects.toThrow('At least one of --name or --file (with --target-lang) must be provided');
+      expect(handleError).toHaveBeenCalled();
+    });
+
+    it('should error when --file is provided without --target-lang', async () => {
+      const { program, handleError } = makeProgram();
+
+      await expect(
+        program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--file', tsvFile])
+      ).rejects.toThrow('--target-lang is required when using --file');
+      expect(handleError).toHaveBeenCalled();
+    });
+
+    it('should error when file does not exist', async () => {
+      const { program, handleError } = makeProgram();
+      const missing = path.join(tmpDir, 'missing.tsv');
+
+      await expect(
+        program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--file', missing, '--target-lang', 'de'])
+      ).rejects.toThrow(`File not found: ${missing}`);
+      expect(handleError).toHaveBeenCalled();
+    });
+
+    it('should error when file has no valid entries', async () => {
+      const mock = makeMockGlossaryCmd();
+      mockCreateGlossaryCommand.mockResolvedValue(mock as any);
+      const { program, handleError } = makeProgram();
+
+      await expect(
+        program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--file', emptyFile, '--target-lang', 'de'])
+      ).rejects.toThrow('No valid entries found in file');
+      expect(handleError).toHaveBeenCalled();
+    });
+
+    it('should update with --name only', async () => {
+      const mock = makeMockGlossaryCmd();
+      mock.update.mockResolvedValue(undefined);
+      mockCreateGlossaryCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--name', 'new-name']);
+
+      expect(mock.update).toHaveBeenCalledWith('my-terms', { name: 'new-name' });
+      expect(Logger.success).toHaveBeenCalled();
+      const successMsg = (Logger.success as jest.Mock).mock.calls[0][0];
+      expect(successMsg).toContain('renamed');
+    });
+
+    it('should update with --file and --target-lang only', async () => {
+      const mock = makeMockGlossaryCmd();
+      mock.update.mockResolvedValue(undefined);
+      mockCreateGlossaryCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--file', tsvFile, '--target-lang', 'de']);
+
+      expect(mock.update).toHaveBeenCalledWith('my-terms', expect.objectContaining({
+        dictionaries: [expect.objectContaining({
+          targetLang: 'de',
+        })],
+      }));
+      expect(Logger.success).toHaveBeenCalled();
+      const successMsg = (Logger.success as jest.Mock).mock.calls[0][0];
+      expect(successMsg).toContain('dictionary updated');
+    });
+
+    it('should update with both --name and --file/--target-lang', async () => {
+      const mock = makeMockGlossaryCmd();
+      mock.update.mockResolvedValue(undefined);
+      mockCreateGlossaryCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--name', 'new-name', '--file', tsvFile, '--target-lang', 'de']);
+
+      expect(mock.update).toHaveBeenCalledWith('my-terms', expect.objectContaining({
+        name: 'new-name',
+        dictionaries: [expect.objectContaining({
+          targetLang: 'de',
+        })],
+      }));
+      expect(Logger.success).toHaveBeenCalled();
+      const successMsg = (Logger.success as jest.Mock).mock.calls[0][0];
+      expect(successMsg).toContain('renamed');
+      expect(successMsg).toContain('dictionary updated');
+    });
+
+    it('should call handleError on update failure', async () => {
+      const error = new Error('update failed');
+      const mock = makeMockGlossaryCmd();
+      mock.update.mockRejectedValue(error);
+      mockCreateGlossaryCommand.mockResolvedValue(mock as any);
+      const { program, handleError } = makeProgram();
+
+      await expect(
+        program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--name', 'new'])
+      ).rejects.toThrow('update failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });
   });
