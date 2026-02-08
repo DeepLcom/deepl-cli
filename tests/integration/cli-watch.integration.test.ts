@@ -392,4 +392,121 @@ describe('Watch Service Integration', () => {
       expect(changeCount).toBe(3);
     });
   });
+
+  describe('--git-staged', () => {
+    const CLI_PATH = path.join(__dirname, '..', '..', 'dist', 'cli', 'index.js');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { execSync: execSyncChild } = require('child_process');
+
+    it('should accept --git-staged flag in help text', () => {
+      const helpOutput = execSyncChild(`node ${CLI_PATH} watch --help`, {
+        encoding: 'utf-8',
+      });
+      expect(helpOutput).toContain('--git-staged');
+      expect(helpOutput).toContain('snapshot at startup');
+      expect(helpOutput).not.toContain('not yet implemented');
+    });
+
+    it('should show git-staged error when used outside a git repo', () => {
+      const nonGitDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-non-git-'));
+      fs.writeFileSync(path.join(nonGitDir, 'test.txt'), 'Hello');
+
+      try {
+        execSyncChild(`node ${CLI_PATH} watch ${nonGitDir} --targets es --git-staged`, {
+          encoding: 'utf-8',
+          cwd: nonGitDir,
+          env: { ...process.env, DEEPL_API_KEY: 'test-key:fx' },
+        });
+        fail('Should have thrown');
+      } catch (error: any) {
+        expect(error.status).toBeGreaterThan(0);
+        const output = (error.stderr || error.stdout || '').toString();
+        expect(output).toContain('git repository');
+      } finally {
+        fs.rmSync(nonGitDir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('getStagedFiles()', () => {
+    const WATCH_MODULE_PATH = path.join(__dirname, '..', '..', 'dist', 'cli', 'commands', 'watch.js');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { execSync: execSyncChild } = require('child_process');
+    let gitDir: string;
+
+    beforeEach(() => {
+      gitDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-git-staged-test-'));
+      execSyncChild('git init', { cwd: gitDir, stdio: 'ignore' });
+      execSyncChild('git config user.email "test@test.com"', { cwd: gitDir, stdio: 'ignore' });
+      execSyncChild('git config user.name "Test"', { cwd: gitDir, stdio: 'ignore' });
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(gitDir)) {
+        fs.rmSync(gitDir, { recursive: true, force: true });
+      }
+    });
+
+    const runScript = (cwd: string, body: string): string => {
+      const scriptPath = path.join(cwd, '_test_staged.mjs');
+      const fileUrl = `file://${WATCH_MODULE_PATH}`;
+      const content = `
+import { WatchCommand } from '${fileUrl}';
+const cmd = new WatchCommand({ translate: () => {} }, { getGlossaryByName: () => {} });
+${body}
+`;
+      fs.writeFileSync(scriptPath, content);
+      try {
+        return execSyncChild(`node ${scriptPath}`, { encoding: 'utf-8', cwd });
+      } finally {
+        if (fs.existsSync(scriptPath)) {
+          fs.unlinkSync(scriptPath);
+        }
+      }
+    };
+
+    it('should return staged file paths as absolute paths', () => {
+      fs.writeFileSync(path.join(gitDir, 'file1.txt'), 'Hello');
+      fs.writeFileSync(path.join(gitDir, 'file2.txt'), 'World');
+      execSyncChild('git add file1.txt', { cwd: gitDir, stdio: 'ignore' });
+
+      const output = runScript(gitDir, `
+const result = await cmd.getStagedFiles();
+console.log(JSON.stringify({ size: result.size, files: [...result] }));
+`);
+
+      const parsed = JSON.parse(output.trim());
+      expect(parsed.size).toBe(1);
+      expect(parsed.files[0]).toBe(path.resolve(fs.realpathSync(gitDir), 'file1.txt'));
+    });
+
+    it('should return empty set when no files are staged', () => {
+      fs.writeFileSync(path.join(gitDir, 'file1.txt'), 'Hello');
+
+      const output = runScript(gitDir, `
+const result = await cmd.getStagedFiles();
+console.log(JSON.stringify({ size: result.size }));
+`);
+
+      const parsed = JSON.parse(output.trim());
+      expect(parsed.size).toBe(0);
+    });
+
+    it('should throw error when not in a git repository', () => {
+      const nonGitDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-non-git-'));
+
+      try {
+        runScript(nonGitDir, `
+await cmd.getStagedFiles();
+`);
+        fail('Should have thrown');
+      } catch (error: any) {
+        expect(error.status).toBeGreaterThan(0);
+        const output = error.stderr?.toString() || '';
+        expect(output).toContain('--git-staged requires a git repository');
+      } finally {
+        fs.rmSync(nonGitDir, { recursive: true, force: true });
+      }
+    });
+  });
 });

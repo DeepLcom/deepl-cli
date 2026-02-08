@@ -856,7 +856,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 **Git Integration:**
 
 - `--auto-commit` - Auto-commit translations to git after each change
-- `--git-staged` - Only watch git-staged files (not yet implemented)
+- `--git-staged` - Only watch git-staged files (snapshot taken once at startup)
 - `--dry-run` - Show what would be watched without starting the watcher
 
 #### Examples
@@ -893,6 +893,22 @@ deepl watch docs/ --targets es --debounce 1000
 # Automatically commit translations
 deepl watch docs/ --targets es --auto-commit
 ```
+
+**With git-staged filtering:**
+
+```bash
+# Only translate files currently staged in git
+deepl watch . --targets es --git-staged
+
+# Combine with dry-run to preview staged files
+deepl watch . --targets es,fr --git-staged --dry-run
+
+# Pre-commit workflow: stage files, then watch only those
+git add docs/guide.md docs/faq.md
+deepl watch docs/ --targets de,ja --git-staged --auto-commit
+```
+
+> **Note:** `--git-staged` takes a one-time snapshot of staged files at startup. Files staged after the watcher starts are not included. Requires a git repository — exits with an error otherwise.
 
 ---
 

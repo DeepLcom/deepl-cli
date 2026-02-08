@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`--git-staged` flag for `deepl watch`** - Restricts watch mode to only translate files that are currently git-staged. Takes a snapshot of staged files at startup via `git diff --cached --name-only --diff-filter=ACM` and filters file change events against that set. Useful in pre-commit workflows. Throws a clear error when used outside a git repository.
 - **`--enable-beta-languages` flag for translate command** - Forward-compatibility flag for new DeepL languages that are not yet in the local language registry.
 - **`glossary update` subcommand** - Combines name and dictionary updates in a single PATCH request, replacing the previous delete-and-recreate workflow for glossary modifications.
 - **Comma-separated target languages for `deepl glossary create`** - The `<target-lang>` argument now accepts comma-separated values (e.g., `deepl glossary create my-terms en de,fr,es terms.tsv`) to create multilingual glossaries in a single command.

@@ -4,6 +4,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import chalk from 'chalk';
 import { WatchService } from '../../services/watch.js';
 import { FileTranslationService } from '../../services/file-translation.js';
@@ -42,6 +43,27 @@ export class WatchCommand {
   }
 
   /**
+   * Get the set of git-staged file paths (absolute).
+   * SECURITY: Uses execFile instead of exec to prevent command injection
+   */
+  async getStagedFiles(): Promise<Set<string>> {
+    const { execFile } = await import('child_process');
+    const { promisify } = await import('util');
+    const execFileAsync = promisify(execFile);
+
+    // Verify we're in a git repo
+    try {
+      await execFileAsync('git', ['rev-parse', '--git-dir']);
+    } catch {
+      throw new Error('--git-staged requires a git repository');
+    }
+
+    const { stdout } = await execFileAsync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACM']);
+    const files = stdout.trim().split('\n').filter(f => f.length > 0);
+    return new Set(files.map(f => path.resolve(f)));
+  }
+
+  /**
    * Start watching a file or directory
    */
   async watch(pathToWatch: string, options: WatchOptions): Promise<void> {
@@ -55,6 +77,17 @@ export class WatchCommand {
 
     if (targetLangs.length === 0) {
       throw new Error('At least one target language is required. Use --targets es,fr,de');
+    }
+
+    // Get git-staged files if requested
+    let stagedFiles: Set<string> | undefined;
+    if (options.gitStaged) {
+      stagedFiles = await this.getStagedFiles();
+      if (stagedFiles.size === 0) {
+        Logger.warn(chalk.yellow('No git-staged files found. Nothing to watch.'));
+        return;
+      }
+      Logger.info(chalk.gray(`Git-staged files: ${stagedFiles.size}`));
     }
 
     // Resolve glossary ID if provided
@@ -87,8 +120,8 @@ export class WatchCommand {
 
     // Create watch service with optional debounce
     const watchServiceOptions = options.debounce
-      ? { debounceMs: options.debounce, pattern: options.pattern }
-      : { pattern: options.pattern };
+      ? { debounceMs: options.debounce, pattern: options.pattern, stagedFiles }
+      : { pattern: options.pattern, stagedFiles };
 
     this.watchService = new WatchService(this.fileTranslationService, watchServiceOptions);
 
@@ -137,6 +170,9 @@ export class WatchCommand {
     Logger.info(chalk.gray(`Output: ${outputDir}`));
     if (options.pattern) {
       Logger.info(chalk.gray(`Pattern: ${options.pattern}`));
+    }
+    if (stagedFiles) {
+      Logger.info(chalk.gray(`Git-staged: ${stagedFiles.size} file(s)`));
     }
     if (options.autoCommit) {
       Logger.warn(chalk.yellow('⚠️  Auto-commit enabled'));

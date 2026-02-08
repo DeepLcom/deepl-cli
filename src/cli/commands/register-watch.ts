@@ -27,7 +27,7 @@ export function registerWatch(
     .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
     .option('--debounce <ms>', 'Debounce delay in milliseconds (default: 300)', parseInt)
     .option('--dry-run', 'Show what would be watched without starting the watcher')
-    .option('--git-staged', 'Only watch git-staged files (not yet implemented)')
+    .option('--git-staged', 'Only watch git-staged files (snapshot at startup)')
     .optionsGroup('Git Integration:')
     .option('--auto-commit', 'Automatically commit translations to git')
     .addHelpText('after', `
@@ -77,6 +77,9 @@ Examples:
           if (options.from) {
             lines.push(chalk.yellow(`[dry-run] Source language: ${options.from}`));
           }
+          if (options.gitStaged) {
+            lines.push(chalk.yellow(`[dry-run] Git-staged: only watching staged files`));
+          }
           if (options.autoCommit) {
             lines.push(chalk.yellow(`[dry-run] Auto-commit: enabled`));
           }
@@ -86,10 +89,6 @@ Examples:
           lines.push(chalk.yellow('[dry-run] On file change, translations would be triggered for the above target languages.'));
           Logger.output(lines.join('\n'));
           return;
-        }
-
-        if (options.gitStaged) {
-          Logger.warn(chalk.yellow('Warning: --git-staged is not yet implemented'));
         }
 
         const watchCommand = await createWatchCommand(deps);

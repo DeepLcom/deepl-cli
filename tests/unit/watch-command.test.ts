@@ -597,6 +597,81 @@ describe('WatchCommand', () => {
     });
   });
 
+  describe('watch() with gitStaged', () => {
+    beforeEach(() => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+      (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
+      jest.spyOn(process, 'on').mockImplementation(() => process as any);
+    });
+
+    it('should call getStagedFiles and pass result to WatchService when gitStaged is true', async () => {
+      const stagedSet = new Set(['/abs/file1.txt']);
+      jest.spyOn(watchCommand, 'getStagedFiles').mockResolvedValue(stagedSet);
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      try {
+        await watchCommand.watch('/some/dir', {
+          targets: 'es',
+          gitStaged: true,
+        });
+      } catch {
+        // Expected
+      }
+
+      expect(watchCommand.getStagedFiles).toHaveBeenCalled();
+      expect(WatchService).toHaveBeenCalledWith(
+        mockFileTranslationService,
+        expect.objectContaining({
+          stagedFiles: stagedSet,
+        })
+      );
+    });
+
+    it('should return early when no staged files are found', async () => {
+      jest.spyOn(watchCommand, 'getStagedFiles').mockResolvedValue(new Set());
+
+      await watchCommand.watch('/some/dir', {
+        targets: 'es',
+        gitStaged: true,
+      });
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('No git-staged files found'));
+      expect(WatchService).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ stagedFiles: expect.anything() })
+      );
+    });
+
+    it('should propagate error when not in a git repo', async () => {
+      jest.spyOn(watchCommand, 'getStagedFiles').mockRejectedValue(
+        new Error('--git-staged requires a git repository')
+      );
+
+      await expect(
+        watchCommand.watch('/some/dir', {
+          targets: 'es',
+          gitStaged: true,
+        })
+      ).rejects.toThrow('--git-staged requires a git repository');
+    });
+
+    it('should not call getStagedFiles when gitStaged is not set', async () => {
+      jest.spyOn(watchCommand, 'getStagedFiles');
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      try {
+        await watchCommand.watch('/some/file.md', {
+          targets: 'es',
+        });
+      } catch {
+        // Expected
+      }
+
+      expect(watchCommand.getStagedFiles).not.toHaveBeenCalled();
+    });
+  });
+
   describe('stop()', () => {
     it('should stop watch service if it exists', async () => {
       // Manually set watchService for testing

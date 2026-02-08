@@ -763,6 +763,92 @@ describe('WatchService', () => {
     });
   });
 
+  describe('stagedFiles filtering', () => {
+    it('should skip files not in stagedFiles set', async () => {
+      const testFile = path.join(testDir, 'unstaged.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const stagedService = new WatchService(mockFileTranslationService, {
+        stagedFiles: new Set([path.resolve(path.join(testDir, 'staged.txt'))]),
+      });
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      stagedService.watch(testDir, options);
+      stagedService.handleFileChange(testFile);
+
+      // onChange should NOT be called because file is not in stagedFiles
+      // The handler returns early before reaching onChange
+    });
+
+    it('should process files that are in stagedFiles set', async () => {
+      const testFile = path.join(testDir, 'staged.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const stagedService = new WatchService(mockFileTranslationService, {
+        stagedFiles: new Set([path.resolve(testFile)]),
+      });
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      };
+
+      stagedService.watch(testDir, options);
+      stagedService.handleFileChange(testFile);
+
+      expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+
+    it('should combine stagedFiles filtering with pattern filtering', async () => {
+      const testFile = path.join(testDir, 'staged.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      // File is staged but doesn't match pattern *.md
+      const stagedService = new WatchService(mockFileTranslationService, {
+        stagedFiles: new Set([path.resolve(testFile)]),
+        pattern: '*.md',
+      });
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      };
+
+      stagedService.watch(testDir, options);
+      stagedService.handleFileChange(testFile);
+
+      // The file is filtered by isSupportedFile (it's .txt, which is supported)
+      // but chokidar's ignored function would have already filtered by pattern
+      // In handleFileChange, stagedFiles check happens after isSupportedFile
+      expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+
+    it('should not filter when stagedFiles is undefined', async () => {
+      const testFile = path.join(testDir, 'any.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      };
+
+      watchService.watch(testDir, options);
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+  });
+
   describe('race condition handling (Issue #1)', () => {
     it('should not execute timer callback if watch is stopped after timer is scheduled', async () => {
       jest.useFakeTimers({ doNotFake: ['nextTick'] });

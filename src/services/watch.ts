@@ -36,6 +36,7 @@ export interface WatchOptions {
 export interface WatchServiceOptions {
   debounceMs?: number;
   pattern?: string;
+  stagedFiles?: Set<string>;
 }
 
 export interface WatchStats {
@@ -144,6 +145,11 @@ export class WatchService {
 
     // Check if file is supported
     if (!this.fileTranslationService.isSupportedFile(filePath)) {
+      return;
+    }
+
+    // Check if file is in the git-staged set
+    if (this.options.stagedFiles && !this.options.stagedFiles.has(path.resolve(filePath))) {
       return;
     }
 

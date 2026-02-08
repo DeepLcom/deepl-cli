@@ -660,6 +660,9 @@ deepl watch src/ --targets es --debounce 1000
 # Preview what would be watched without starting the watcher
 deepl watch docs/ --targets es --dry-run
 
+# Only watch git-staged files (useful in pre-commit workflows)
+deepl watch . --targets es --git-staged
+
 # With formality and code preservation
 deepl watch docs/ --targets de --formality more --preserve-code
 ```
@@ -671,6 +674,7 @@ deepl watch docs/ --targets de --formality more --preserve-code
 - 🎯 Glob pattern filtering (e.g., `*.md`, `*.json`)
 - 🔀 Multiple target languages
 - 💾 Auto-commit to git (optional)
+- 📌 Git-staged filtering for pre-commit workflows
 - ⚡ Smart debouncing to avoid redundant translations
 
 **Example output:**
