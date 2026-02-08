@@ -849,6 +849,133 @@ describe('WatchService', () => {
     });
   });
 
+  describe('translated output file filtering', () => {
+    it('should ignore files that match translated output pattern (e.g. test.es.txt)', async () => {
+      const testFile = path.join(testDir, 'test.es.txt');
+      fs.writeFileSync(testFile, 'Hola');
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: testDir,
+        onChange,
+      };
+
+      watchService.watch(testDir, options);
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('should ignore chained translated files (e.g. test.es.es.txt)', async () => {
+      const testFile = path.join(testDir, 'test.es.es.txt');
+      fs.writeFileSync(testFile, 'Hola');
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: testDir,
+        onChange,
+      };
+
+      watchService.watch(testDir, options);
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('should ignore output files for any configured target language', async () => {
+      const testFileEs = path.join(testDir, 'readme.es.md');
+      const testFileFr = path.join(testDir, 'readme.fr.md');
+      const testFileDe = path.join(testDir, 'readme.de.md');
+      fs.writeFileSync(testFileEs, 'Hola');
+      fs.writeFileSync(testFileFr, 'Bonjour');
+      fs.writeFileSync(testFileDe, 'Hallo');
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['es' as const, 'fr' as const, 'de' as const],
+        outputDir: testDir,
+        onChange,
+      };
+
+      watchService.watch(testDir, options);
+      watchService.handleFileChange(testFileEs);
+      watchService.handleFileChange(testFileFr);
+      watchService.handleFileChange(testFileDe);
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('should ignore output files with regional variant codes (e.g. test.en-us.txt)', async () => {
+      const testFile = path.join(testDir, 'test.en-us.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['en-us' as const],
+        outputDir: testDir,
+        onChange,
+      };
+
+      watchService.watch(testDir, options);
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('should still translate normal source files', async () => {
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: testDir,
+        onChange,
+      };
+
+      watchService.watch(testDir, options);
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+
+    it('should not filter files where lang-like segment is not a target language', async () => {
+      const testFile = path.join(testDir, 'test.config.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: testDir,
+        onChange,
+      };
+
+      watchService.watch(testDir, options);
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+
+    it('should ignore output files case-insensitively for language codes', async () => {
+      const testFile = path.join(testDir, 'test.ES.txt');
+      fs.writeFileSync(testFile, 'Hola');
+
+      const onChange = jest.fn();
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: testDir,
+        onChange,
+      };
+
+      watchService.watch(testDir, options);
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
   describe('race condition handling (Issue #1)', () => {
     it('should not execute timer callback if watch is stopped after timer is scheduled', async () => {
       jest.useFakeTimers({ doNotFake: ['nextTick'] });
