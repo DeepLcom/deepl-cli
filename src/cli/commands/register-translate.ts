@@ -42,7 +42,7 @@ export function registerTranslate(
     .option('--no-cache', 'Bypass cache for this translation (useful for testing)')
     .option('--format <format>', 'Output format: json, table (default: plain text)')
     .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
-    .option('--dry-run', 'Show what would be translated without performing the operation (file/directory mode only)')
+    .option('--dry-run', 'Show what would be translated without performing the operation')
     .addHelpText('after', `
 Examples:
   $ deepl translate "Hello world" --to es
@@ -99,43 +99,46 @@ Examples:
           }
         }
 
-        if (options.dryRun && text) {
-          const isDir = fs.existsSync(text) && fs.statSync(text).isDirectory();
-          const isFile = !isDir && fs.existsSync(text) && fs.statSync(text).isFile();
+        if (options.dryRun) {
+          const targetLangs = options.to!.split(',').map(l => l.trim());
+          const lines: string[] = [
+            chalk.yellow('[dry-run] No translations will be performed.'),
+          ];
 
-          if (isDir || isFile) {
-            const targetLangs = options.to!.split(',').map(l => l.trim());
-            const lines: string[] = [
-              chalk.yellow('[dry-run] No translations will be performed.'),
-            ];
+          if (text) {
+            const isDir = fs.existsSync(text) && fs.statSync(text).isDirectory();
+            const isFile = !isDir && fs.existsSync(text) && fs.statSync(text).isFile();
 
             if (isDir) {
               lines.push(chalk.yellow(`[dry-run] Would translate directory: ${text}`));
-              lines.push(chalk.yellow(`[dry-run] Target language(s): ${targetLangs.join(', ')}`));
               lines.push(chalk.yellow(`[dry-run] Output directory: ${options.output ?? '<required>'}`));
               if (options.pattern) {
                 lines.push(chalk.yellow(`[dry-run] File pattern: ${options.pattern}`));
               }
               lines.push(chalk.yellow(`[dry-run] Recursive: ${options.recursive !== false}`));
-            } else {
+            } else if (isFile) {
               lines.push(chalk.yellow(`[dry-run] Would translate file: ${text}`));
-              lines.push(chalk.yellow(`[dry-run] Target language(s): ${targetLangs.join(', ')}`));
-              lines.push(chalk.yellow(`[dry-run] Output: ${options.output ?? '<required>'}`));
+              lines.push(chalk.yellow(`[dry-run] Output: ${options.output ?? '<stdout>'}`));
+            } else {
+              lines.push(chalk.yellow(`[dry-run] Would translate text: "${text.length > 80 ? text.substring(0, 80) + '...' : text}"`));
             }
-
-            if (options.from) {
-              lines.push(chalk.yellow(`[dry-run] Source language: ${options.from}`));
-            }
-            if (options.glossary) {
-              lines.push(chalk.yellow(`[dry-run] Glossary: ${options.glossary}`));
-            }
-            if (options.formality) {
-              lines.push(chalk.yellow(`[dry-run] Formality: ${options.formality}`));
-            }
-
-            Logger.output(lines.join('\n'));
-            return;
+          } else {
+            lines.push(chalk.yellow(`[dry-run] Would translate text from stdin`));
           }
+
+          lines.push(chalk.yellow(`[dry-run] Target language(s): ${targetLangs.join(', ')}`));
+          if (options.from) {
+            lines.push(chalk.yellow(`[dry-run] Source language: ${options.from}`));
+          }
+          if (options.glossary) {
+            lines.push(chalk.yellow(`[dry-run] Glossary: ${options.glossary}`));
+          }
+          if (options.formality) {
+            lines.push(chalk.yellow(`[dry-run] Formality: ${options.formality}`));
+          }
+
+          Logger.output(lines.join('\n'));
+          return;
         }
 
         const translateCommand = await createTranslateCommand(deps, options.apiUrl);

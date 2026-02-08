@@ -174,7 +174,7 @@ describe('--dry-run flag', () => {
       expect(outputCall).toContain('Source language: fr');
     });
 
-    it('should NOT activate dry-run for plain text translation', async () => {
+    it('should activate dry-run for plain text translation', async () => {
       const { registerTranslate } = await import('../../src/cli/commands/register-translate');
 
       const program = new Command();
@@ -200,7 +200,10 @@ describe('--dry-run flag', () => {
       const hasDryRun = outputCalls.some(
         (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[dry-run]')
       );
-      expect(hasDryRun).toBe(false);
+      expect(hasDryRun).toBe(true);
+      const outputStr = outputCalls.map((c: unknown[]) => c[0]).join('\n');
+      expect(outputStr).toContain('Would translate text');
+      expect(outputStr).toContain('Hello world');
     });
   });
 
