@@ -4,7 +4,7 @@
  */
 
 
-// Source languages supported by the Voice API (18 languages)
+// Source languages supported by the Voice API (30 languages)
 export type VoiceSourceLanguage =
   | 'ar'
   | 'bg'
@@ -37,7 +37,7 @@ export type VoiceSourceLanguage =
   | 'uk'
   | 'zh';
 
-// Target languages supported by the Voice API
+// Target languages supported by the Voice API (39 languages)
 export type VoiceTargetLanguage =
   | 'ar'
   | 'bg'
