@@ -120,6 +120,12 @@ describe('CLI Workflow E2E', () => {
       expect(output).toContain('entries');
       expect(output).toContain('delete');
     });
+
+    it('should document comma-separated target languages in glossary create help', () => {
+      const output = execSync('deepl glossary create --help', { encoding: 'utf-8' });
+
+      expect(output).toContain('comma-separated');
+    });
   });
 
   describe('Configuration Workflow', () => {

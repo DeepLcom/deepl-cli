@@ -84,6 +84,39 @@ describe('registerGlossary', () => {
       expect(Logger.output).toHaveBeenCalledWith('glossary-info');
     });
 
+    it('should split comma-separated target languages', async () => {
+      const mock = makeMockGlossaryCmd();
+      mock.create.mockResolvedValue({ id: '2', name: 'multi' });
+      mockCreateGlossaryCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await program.parseAsync(['node', 'test', 'glossary', 'create', 'my-terms', 'en', 'de,fr,es', 'terms.tsv']);
+
+      expect(mock.create).toHaveBeenCalledWith('my-terms', 'en', ['de', 'fr', 'es'], 'terms.tsv');
+    });
+
+    it('should trim whitespace from comma-separated target languages', async () => {
+      const mock = makeMockGlossaryCmd();
+      mock.create.mockResolvedValue({ id: '3', name: 'trimmed' });
+      mockCreateGlossaryCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await program.parseAsync(['node', 'test', 'glossary', 'create', 'my-terms', 'en', 'de, fr, es', 'terms.tsv']);
+
+      expect(mock.create).toHaveBeenCalledWith('my-terms', 'en', ['de', 'fr', 'es'], 'terms.tsv');
+    });
+
+    it('should handle single target language without comma', async () => {
+      const mock = makeMockGlossaryCmd();
+      mock.create.mockResolvedValue({ id: '1', name: 'single' });
+      mockCreateGlossaryCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await program.parseAsync(['node', 'test', 'glossary', 'create', 'my-terms', 'en', 'de', 'terms.tsv']);
+
+      expect(mock.create).toHaveBeenCalledWith('my-terms', 'en', ['de'], 'terms.tsv');
+    });
+
     it('should call handleError on failure', async () => {
       const error = new Error('create failed');
       mockCreateGlossaryCommand.mockRejectedValue(error);

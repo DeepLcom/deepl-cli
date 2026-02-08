@@ -19,6 +19,7 @@ export function registerGlossary(
     .addHelpText('after', `
 Examples:
   $ deepl glossary create my-terms en de terms.tsv
+  $ deepl glossary create my-terms en de,fr,es terms.tsv
   $ deepl glossary list
   $ deepl glossary show my-terms
   $ deepl glossary entries my-terms --target-lang de
@@ -36,13 +37,13 @@ Examples:
         .description('Create a glossary from TSV/CSV file')
         .argument('<name>', 'Glossary name')
         .argument('<source-lang>', 'Source language code')
-        .argument('<target-lang>', 'Target language code')
+        .argument('<target-lang>', 'Target language code (comma-separated for multiple, e.g. de,fr,es)')
         .argument('<file>', 'TSV/CSV file path')
         .action(async (name: string, sourceLang: string, targetLang: string, file: string) => {
           try {
             const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
-            const targetLangs = [targetLang as Language];
+            const targetLangs = targetLang.split(',').map(l => l.trim()) as Language[];
 
             const glossary = await glossaryCommand.create(name, sourceLang as Language, targetLangs, file);
             Logger.success(chalk.green('\u2713 Glossary created successfully'));

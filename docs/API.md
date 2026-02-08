@@ -961,8 +961,7 @@ Create a new glossary from a TSV or CSV file.
 
 - `name` - Glossary name
 - `source-lang` - Source language code (e.g., `en`, `de`, `fr`)
-- `target-lang` - Target language code (e.g., `es`, `fr`, `ja`)
-  - **Note:** v3 API internally supports multiple target languages, but the CLI currently accepts only one target language per creation. Multilingual glossary support in the `create` command is planned for a future release.
+- `target-lang` - Target language code, comma-separated for multiple (e.g., `es`, `de,fr,es`)
 - `file` - Path to TSV or CSV file with term pairs
 
 **File Format:**
@@ -990,6 +989,9 @@ deepl glossary create tech-terms en es glossary.tsv
 # Target languages: ES
 # Type: Single target
 # Total entries: 3
+
+# Create multilingual glossary with comma-separated target languages
+deepl glossary create tech-terms en de,fr,es glossary.tsv
 
 # Create glossary from CSV file
 deepl glossary create product-names en fr terms.csv

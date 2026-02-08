@@ -134,6 +134,19 @@ describe('Glossary CLI Integration', () => {
         expect(output).toMatch(/API key|auth/i);
       }
     });
+
+    it('should accept comma-separated target languages', () => {
+      const tsvFile = path.join(testDir, 'glossary-multi.tsv');
+      fs.writeFileSync(tsvFile, 'Hello\tHola\nWorld\tMundo\n', 'utf-8');
+
+      try {
+        runCLI(`deepl glossary create "MultiTest" en de,fr,es "${tsvFile}"`, { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).toMatch(/API key|auth/i);
+        expect(output).not.toMatch(/unsupported|invalid.*format/i);
+      }
+    });
   });
 
   describe('glossary list', () => {
