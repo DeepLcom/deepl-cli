@@ -3590,4 +3590,85 @@ describe('TranslateCommand', () => {
       expect(warnSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe('buildTranslationOptions()', () => {
+    it('should build base options with sourceLang and formality', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        from: 'en',
+        formality: 'more',
+      });
+      expect(result).toEqual({
+        targetLang: 'es',
+        sourceLang: 'en',
+        formality: 'more',
+      });
+    });
+
+    it('should omit undefined optional fields', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'de',
+      });
+      expect(result).toEqual({ targetLang: 'de' });
+      expect(result).not.toHaveProperty('sourceLang');
+      expect(result).not.toHaveProperty('formality');
+      expect(result).not.toHaveProperty('context');
+    });
+
+    it('should include context when provided', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'fr',
+        context: 'medical document',
+      });
+      expect(result.context).toBe('medical document');
+    });
+
+    it('should not include glossaryId (resolved separately)', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        glossary: 'my-glossary',
+      });
+      expect(result).not.toHaveProperty('glossaryId');
+    });
+
+    it('should include preserveFormatting when explicitly set', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        preserveFormatting: true,
+      });
+      expect(result.preserveFormatting).toBe(true);
+    });
+
+    it('should include showBilledCharacters when set', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        showBilledCharacters: true,
+      });
+      expect(result.showBilledCharacters).toBe(true);
+    });
+
+    it('should include splitSentences when provided', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        splitSentences: 'nonewlines',
+      });
+      expect(result.splitSentences).toBe('nonewlines');
+    });
+
+    it('should include tagHandling when provided', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        tagHandling: 'html',
+      });
+      expect(result.tagHandling).toBe('html');
+    });
+
+    it('should include modelType when provided', () => {
+      const result = (translateCommand as any).buildTranslationOptions({
+        to: 'es',
+        modelType: 'quality_optimized',
+      });
+      expect(result.modelType).toBe('quality_optimized');
+    });
+  });
 });

@@ -156,6 +156,35 @@ export class TranslateCommand {
     return this.glossaryService.resolveGlossaryId(nameOrId);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private buildTranslationOptions(options: TranslateOptions): any {
+    const result: {
+      targetLang: Language;
+      sourceLang?: Language;
+      formality?: Formality;
+      context?: string;
+      splitSentences?: string;
+      tagHandling?: string;
+      modelType?: string;
+      preserveFormatting?: boolean;
+      showBilledCharacters?: boolean;
+      glossaryId?: string;
+    } = {
+      targetLang: options.to as Language,
+    };
+
+    if (options.from) result.sourceLang = options.from as Language;
+    if (options.formality) result.formality = options.formality as Formality;
+    if (options.context) result.context = options.context;
+    if (options.splitSentences) result.splitSentences = options.splitSentences;
+    if (options.tagHandling) result.tagHandling = options.tagHandling;
+    if (options.modelType) result.modelType = options.modelType;
+    if (options.preserveFormatting !== undefined) result.preserveFormatting = options.preserveFormatting;
+    if (options.showBilledCharacters) result.showBilledCharacters = true;
+
+    return result;
+  }
+
   async translate(textOrPath: string, options: TranslateOptions): Promise<string> {
     let stats: fs.Stats | null = null;
     try {
@@ -261,21 +290,10 @@ export class TranslateCommand {
       // Now safe to cast as Language[]
       const validTargetLangs = targetLangs as Language[];
 
-      const translationOptions: {
-        sourceLang?: Language;
-        formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
-        outputDir?: string;
-      } = {
+      const translationOptions = {
+        ...this.buildTranslationOptions(options),
         outputDir: options.output,
       };
-
-      if (options.from) {
-        translationOptions.sourceLang = options.from as Language;
-      }
-
-      if (options.formality) {
-        translationOptions.formality = options.formality as Formality;
-      }
 
       const results = await this.fileTranslationService.translateFileToMultiple(
         filePath,
@@ -320,22 +338,7 @@ export class TranslateCommand {
 
     this.validateLanguageCodes([options.to]);
 
-    // Single language translation using file translation service
-    const translationOptions: {
-      targetLang: Language;
-      sourceLang?: Language;
-      formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
-    } = {
-      targetLang: options.to as Language,
-    };
-
-    if (options.from) {
-      translationOptions.sourceLang = options.from as Language;
-    }
-
-    if (options.formality) {
-      translationOptions.formality = options.formality as Formality;
-    }
+    const translationOptions = this.buildTranslationOptions(options);
 
     await this.fileTranslationService.translateFile(
       filePath,
@@ -373,56 +376,10 @@ export class TranslateCommand {
     this.validateLanguageCodes([options.to]);
     this.validateExtendedLanguageConstraints(options.to, options);
 
-    // Build translation options
-    const translationOptions: {
-      targetLang: Language;
-      sourceLang?: Language;
-      formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
-      context?: string;
-      splitSentences?: 'on' | 'off' | 'nonewlines';
-      tagHandling?: 'xml' | 'html';
-      modelType?: 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
-      preserveFormatting?: boolean;
-      glossaryId?: string;
-      showBilledCharacters?: boolean;
-    } = {
-      targetLang: options.to as Language,
-    };
-
-    if (options.from) {
-      translationOptions.sourceLang = options.from as Language;
-    }
-
-    if (options.formality) {
-      translationOptions.formality = options.formality as Formality;
-    }
-
-    if (options.context) {
-      translationOptions.context = options.context;
-    }
-
-    if (options.splitSentences) {
-      translationOptions.splitSentences = options.splitSentences as 'on' | 'off' | 'nonewlines';
-    }
-
-    if (options.tagHandling) {
-      translationOptions.tagHandling = options.tagHandling as 'xml' | 'html';
-    }
-
-    if (options.modelType) {
-      translationOptions.modelType = options.modelType as 'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
-    }
-
-    if (options.preserveFormatting !== undefined) {
-      translationOptions.preserveFormatting = options.preserveFormatting;
-    }
+    const translationOptions = this.buildTranslationOptions(options);
 
     if (options.glossary) {
       translationOptions.glossaryId = await this.resolveGlossaryId(options.glossary);
-    }
-
-    if (options.showBilledCharacters) {
-      translationOptions.showBilledCharacters = true;
     }
 
     if (options.customInstruction && options.customInstruction.length > 0) {
@@ -547,40 +504,19 @@ export class TranslateCommand {
     // Now safe to cast as Language[]
     const validTargetLangs = targetLangs as Language[];
 
-    const translationOptions: {
-      sourceLang?: Language;
-      formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
-      context?: string;
-      glossaryId?: string;
-      showBilledCharacters?: boolean;
-    } = {};
-
-    if (options.from) {
-      translationOptions.sourceLang = options.from as Language;
-    }
-
-    if (options.formality) {
-      translationOptions.formality = options.formality as Formality;
-    }
-
-    if (options.context) {
-      translationOptions.context = options.context;
-    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { targetLang: _, ...translationOptions } = this.buildTranslationOptions(options);
 
     if (options.glossary) {
       translationOptions.glossaryId = await this.resolveGlossaryId(options.glossary);
     }
 
-    if (options.showBilledCharacters) {
-      translationOptions.showBilledCharacters = true;
-    }
-
     if (options.customInstruction && options.customInstruction.length > 0) {
-      (translationOptions as { customInstructions?: string[] }).customInstructions = options.customInstruction;
+      translationOptions.customInstructions = options.customInstruction;
     }
 
     if (options.styleId) {
-      (translationOptions as { styleId?: string }).styleId = options.styleId;
+      translationOptions.styleId = options.styleId;
     }
 
     const results = await this.translationService.translateToMultiple(
@@ -617,23 +553,7 @@ export class TranslateCommand {
 
     this.validateLanguageCodes([options.to]);
 
-    // Build translation options
-    const targetLang = options.to as Language;
-    const translationOptions: {
-      targetLang: Language;
-      sourceLang?: Language;
-      formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
-    } = {
-      targetLang,
-    };
-
-    if (options.from) {
-      translationOptions.sourceLang = options.from as Language;
-    }
-
-    if (options.formality) {
-      translationOptions.formality = options.formality as Formality;
-    }
+    const translationOptions = this.buildTranslationOptions(options);
 
     // Create spinner (conditional based on quiet mode)
     const spinner = Logger.shouldShowSpinner() ? ora('Scanning files...').start() : null;
@@ -706,36 +626,10 @@ export class TranslateCommand {
     // Read file content
     const content = fs.readFileSync(filePath, 'utf-8');
 
-    // Build translation options
-    const translationOptions: {
-      targetLang: Language;
-      sourceLang?: Language;
-      formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
-      context?: string;
-      glossaryId?: string;
-      preserveFormatting?: boolean;
-    } = {
-      targetLang: options.to as Language,
-    };
-
-    if (options.from) {
-      translationOptions.sourceLang = options.from as Language;
-    }
-
-    if (options.formality) {
-      translationOptions.formality = options.formality as Formality;
-    }
-
-    if (options.context) {
-      translationOptions.context = options.context;
-    }
+    const translationOptions = this.buildTranslationOptions(options);
 
     if (options.glossary) {
       translationOptions.glossaryId = await this.resolveGlossaryId(options.glossary);
-    }
-
-    if (options.preserveFormatting !== undefined) {
-      translationOptions.preserveFormatting = options.preserveFormatting;
     }
 
     // Translate using text API (cached)
@@ -813,28 +707,10 @@ export class TranslateCommand {
 
     const outputPath = options.output!;
 
-    // Build translation options
-    const translationOptions: {
-      targetLang: Language;
-      sourceLang?: Language;
-      formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
-      glossaryId?: string;
-      outputFormat?: 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
-      enableDocumentMinification?: boolean;
-    } = {
-      targetLang: options.to as Language,
-    };
-
-    if (options.from) {
-      translationOptions.sourceLang = options.from as Language;
-    }
-
-    if (options.formality) {
-      translationOptions.formality = options.formality as Formality;
-    }
+    const translationOptions = this.buildTranslationOptions(options);
 
     if (options.outputFormat) {
-      translationOptions.outputFormat = options.outputFormat as 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
+      translationOptions.outputFormat = options.outputFormat;
     }
 
     if (options.enableMinification) {
