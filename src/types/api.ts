@@ -108,6 +108,7 @@ export interface DocumentTranslationOptions {
   glossaryId?: string;
   outputFormat?: DocumentOutputFormat;
   enableDocumentMinification?: boolean;
+  enableBetaLanguages?: boolean;
 }
 
 // Glossary Types
