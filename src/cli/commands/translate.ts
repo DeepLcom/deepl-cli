@@ -83,6 +83,40 @@ export class TranslateCommand {
     this.config = config;
   }
 
+  private warnIgnoredOptions(mode: string, options: TranslateOptions, supportedKeys: Set<string>): void {
+    const optionLabels: Record<string, string> = {
+      splitSentences: '--split-sentences',
+      tagHandling: '--tag-handling',
+      modelType: '--model-type',
+      preserveFormatting: '--preserve-formatting',
+      context: '--context',
+      glossary: '--glossary',
+      customInstruction: '--custom-instruction',
+      styleId: '--style-id',
+      outlineDetection: '--outline-detection',
+      splittingTags: '--splitting-tags',
+      nonSplittingTags: '--non-splitting-tags',
+      ignoreTags: '--ignore-tags',
+      tagHandlingVersion: '--tag-handling-version',
+      showBilledCharacters: '--show-billed-characters',
+      preserveCode: '--preserve-code',
+      enableMinification: '--enable-minification',
+    };
+
+    const ignored: string[] = [];
+    for (const [key, flag] of Object.entries(optionLabels)) {
+      if (supportedKeys.has(key)) continue;
+      const val = options[key as keyof TranslateOptions];
+      if (val !== undefined && val !== false && !(Array.isArray(val) && val.length === 0)) {
+        ignored.push(flag);
+      }
+    }
+
+    if (ignored.length > 0) {
+      Logger.warn(`Warning: ${mode} mode does not support ${ignored.join(', ')}; these options will be ignored.`);
+    }
+  }
+
   private validateLanguageCodes(langCodes: string[]): void {
     for (const lang of langCodes) {
       if (!VALID_LANGUAGES.has(lang)) {
@@ -491,6 +525,9 @@ export class TranslateCommand {
    * Translate to multiple target languages
    */
   private async translateToMultiple(text: string, options: TranslateOptions): Promise<string> {
+    const supported = new Set(['from', 'formality', 'context', 'glossary', 'showBilledCharacters', 'customInstruction', 'styleId']);
+    this.warnIgnoredOptions('multi-target', options, supported);
+
     const targetLangs = options.to.split(',').map(lang => lang.trim());
     this.validateLanguageCodes(targetLangs);
     this.validateExtendedLanguageConstraints(options.to, options);
@@ -562,6 +599,9 @@ export class TranslateCommand {
     if (!options.output) {
       throw new Error('Output directory is required for batch translation. Use --output <dir>');
     }
+
+    const supported = new Set(['from', 'formality']);
+    this.warnIgnoredOptions('directory', options, supported);
 
     this.validateLanguageCodes([options.to]);
 
@@ -746,6 +786,9 @@ export class TranslateCommand {
   }
 
   private async translateDocument(filePath: string, options: TranslateOptions): Promise<string> {
+    const supported = new Set(['from', 'formality', 'outputFormat', 'enableMinification']);
+    this.warnIgnoredOptions('document', options, supported);
+
     this.validateLanguageCodes([options.to]);
 
     const outputPath = options.output!;
