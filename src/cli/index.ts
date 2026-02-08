@@ -31,6 +31,7 @@ import { registerStyleRules } from './commands/register-style-rules.js';
 import { registerAdmin } from './commands/register-admin.js';
 import { registerCompletion } from './commands/register-completion.js';
 import { registerVoice } from './commands/register-voice.js';
+import { registerInit } from './commands/register-init.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -209,6 +210,7 @@ registerWatch(program, deps);
 registerHooks(program, deps);
 
 program.commandsGroup('Configuration:');
+registerInit(program, deps);
 registerAuth(program, deps);
 registerConfig(program, deps);
 registerCache(program, deps);
@@ -222,10 +224,59 @@ registerCompletion(program, deps);
 program.commandsGroup('Administration:');
 registerAdmin(program, deps);
 
-// Parse arguments
-program.parse(process.argv);
+// Did-you-mean suggestion for unknown commands
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[]);
+  for (let i = 0; i <= m; i++) dp[i]![0] = i;
+  for (let j = 0; j <= n; j++) dp[0]![j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i]![j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1]![j - 1]!
+        : 1 + Math.min(dp[i - 1]![j]!, dp[i]![j - 1]!, dp[i - 1]![j - 1]!);
+    }
+  }
+  return dp[m]![n]!;
+}
 
-// Show help if no arguments provided
+program.on('command:*', (operands: string[]) => {
+  const unknown = operands[0];
+  if (!unknown) {
+    program.outputHelp();
+    process.exit(0);
+    return;
+  }
+
+  const commandNames = program.commands.map((cmd) => cmd.name());
+  let bestMatch = '';
+  let bestDistance = Infinity;
+  for (const name of commandNames) {
+    const d = levenshtein(unknown, name);
+    if (d < bestDistance) {
+      bestDistance = d;
+      bestMatch = name;
+    }
+  }
+
+  Logger.error(chalk.red(`Unknown command: ${unknown}`));
+
+  const maxDistance = Math.max(2, Math.floor(unknown.length / 2));
+  if (bestMatch && bestDistance <= maxDistance) {
+    Logger.error(chalk.yellow(`Did you mean: deepl ${bestMatch}?`));
+  }
+
+  Logger.error('');
+  Logger.error(`Run ${chalk.bold('deepl --help')} to see available commands.`);
+  process.exit(ExitCode.InvalidInput);
+});
+
+// Show help and exit 0 if no arguments provided
 if (!process.argv.slice(2).length) {
   program.outputHelp();
+  process.exit(0);
 }
+
+// Parse arguments
+program.parse(process.argv);
