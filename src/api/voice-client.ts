@@ -16,6 +16,7 @@ import type {
 import { VoiceError } from '../utils/errors.js';
 
 const PRO_API_URL = 'https://api.deepl.com';
+const WS_HIGH_WATER_MARK = 1024 * 1024; // 1 MiB
 
 export class VoiceClient extends HttpClient {
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
@@ -24,10 +25,15 @@ export class VoiceClient extends HttpClient {
 
   async createSession(request: VoiceSessionRequest): Promise<VoiceSessionResponse> {
     try {
+      const body: Record<string, unknown> = {
+        target_languages: request.target_languages,
+        source_media_content_type: request.source_media_content_type,
+      };
+      if (request.source_language !== undefined) body['source_language'] = request.source_language;
       return await this.makeJsonRequest<VoiceSessionResponse>(
         'POST',
         '/v3/voice/realtime',
-        request as unknown as Record<string, unknown>,
+        body,
       );
     } catch (error) {
       throw this.handleVoiceError(error);
@@ -47,16 +53,17 @@ export class VoiceClient extends HttpClient {
   createWebSocket(streamingUrl: string, token: string, callbacks: VoiceStreamCallbacks): WebSocket {
     this.validateStreamingUrl(streamingUrl);
     const url = `${streamingUrl}?token=${encodeURIComponent(token)}`;
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(url, { handshakeTimeout: 30_000 });
 
     ws.on('message', (data: WebSocket.Data) => {
+      const text = typeof data === 'string' ? data : Buffer.from(data as ArrayBuffer).toString('utf-8');
+      let message: VoiceServerMessage;
       try {
-        const text = typeof data === 'string' ? data : Buffer.from(data as ArrayBuffer).toString('utf-8');
-        const message = JSON.parse(text) as VoiceServerMessage;
-        this.dispatchMessage(message, callbacks);
+        message = JSON.parse(text) as VoiceServerMessage;
       } catch {
-        // Ignore unparseable messages
+        return; // Ignore unparseable messages
       }
+      this.dispatchMessage(message, callbacks);
     });
 
     ws.on('error', (error: Error) => {
@@ -71,10 +78,10 @@ export class VoiceClient extends HttpClient {
     return ws;
   }
 
-  sendAudioChunk(ws: WebSocket, base64Data: string): void {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ source_media_chunk: { data: base64Data } }));
-    }
+  sendAudioChunk(ws: WebSocket, base64Data: string): boolean {
+    if (ws.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify({ source_media_chunk: { data: base64Data } }));
+    return ws.bufferedAmount < WS_HIGH_WATER_MARK;
   }
 
   sendEndOfSource(ws: WebSocket): void {

@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Voice reconnect display shows correct max attempts** - The TTY reconnection display (`[reconnecting N/M...]`) previously hardcoded `M=3` regardless of `--max-reconnect-attempts` value. Now uses the user-configured value.
 - **Voice WebSocket message types** - Fixed client-to-server message types to match the API specification: `audio_chunk` → `source_media_chunk`, `end_of_source_media` → `end_of_source_audio`.
 - **Voice API protocol alignment** - Updated WebSocket message format from type-discriminated unions to nested key objects matching the actual DeepL Voice API spec. Renamed session request fields (`source_lang` → `source_language`, `target_langs` → `target_languages`), simplified target language format, and updated error message fields (`error_code`, `error_message`, `reason_code`).
+- **Voice: Replace unsafe double cast in VoiceClient.createSession** - Replaced `request as unknown as Record<string, unknown>` with explicit field-by-field construction to preserve TypeScript type safety.
+- **Voice: Add WebSocket handshake timeout** - Added 30-second handshake timeout to WebSocket connections to prevent indefinite hangs when server is unreachable.
+- **Voice: Narrow catch scope in WebSocket message handler** - Separated JSON parsing from callback dispatch so only parse errors are caught; callback errors now propagate correctly.
+- **Voice: Add WebSocket send backpressure handling** - `sendAudioChunk` now returns a boolean indicating whether the send buffer is below the 1 MiB high-water mark, preventing unbounded buffer growth on slow networks.
 
 ## [0.9.1] - 2026-02-07
 

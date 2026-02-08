@@ -23,9 +23,10 @@ jest.mock('ws', () => {
     static OPEN = 1;
     static CLOSED = 3;
     _readyState = 1;
+    bufferedAmount = 0;
     send = jest.fn();
     close = jest.fn();
-    constructor() {
+    constructor(_url: string, _options?: Record<string, unknown>) {
       super();
     }
     get readyState() {
@@ -398,22 +399,49 @@ describe('VoiceClient', () => {
       ws.emit('message', Buffer.from('not json'));
       expect(onError).not.toHaveBeenCalled();
     });
+
+    it('should propagate callback errors instead of swallowing them', () => {
+      const onSourceTranscript = jest.fn().mockImplementation(() => {
+        throw new Error('callback error');
+      });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onSourceTranscript });
+
+      const message = JSON.stringify({
+        source_transcript_update: {
+          concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+          tentative: [],
+        },
+      });
+
+      expect(() => ws.emit('message', Buffer.from(message))).toThrow('callback error');
+    });
   });
 
   describe('sendAudioChunk()', () => {
-    it('should send base64 audio chunk', () => {
+    it('should send base64 audio chunk and return true when buffer is low', () => {
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
-      client.sendAudioChunk(ws, 'dGVzdA==');
+      Object.defineProperty(ws, 'bufferedAmount', { value: 0, writable: true });
+      const result = client.sendAudioChunk(ws, 'dGVzdA==');
       expect(ws.send).toHaveBeenCalledWith(
         JSON.stringify({ source_media_chunk: { data: 'dGVzdA==' } }),
       );
+      expect(result).toBe(true);
     });
 
-    it('should not send if WebSocket is not open', () => {
+    it('should return false when WebSocket is not open', () => {
       const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
       (ws as any).readyState = 3; // CLOSED
-      client.sendAudioChunk(ws, 'dGVzdA==');
+      const result = client.sendAudioChunk(ws, 'dGVzdA==');
       expect(ws.send).not.toHaveBeenCalled();
+      expect(result).toBe(false);
+    });
+
+    it('should return false when bufferedAmount exceeds high-water mark', () => {
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
+      Object.defineProperty(ws, 'bufferedAmount', { value: 2 * 1024 * 1024, writable: true });
+      const result = client.sendAudioChunk(ws, 'dGVzdA==');
+      expect(ws.send).toHaveBeenCalled();
+      expect(result).toBe(false);
     });
   });
 
