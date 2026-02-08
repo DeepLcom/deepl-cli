@@ -11,19 +11,26 @@ Complete reference for all DeepL CLI commands, options, and configuration.
 
 - [Global Options](#global-options)
 - [Commands](#commands)
-  - [translate](#translate)
-  - [write](#write)
-  - [voice](#voice)
-  - [watch](#watch)
-  - [hooks](#hooks)
-  - [glossary](#glossary)
-  - [cache](#cache)
-  - [config](#config)
-  - [usage](#usage)
-  - [languages](#languages)
-  - [auth](#auth)
-  - [style-rules](#style-rules)
-  - [admin](#admin)
+  - Core Commands
+    - [translate](#translate)
+    - [write](#write)
+    - [voice](#voice)
+  - Resources
+    - [glossary](#glossary)
+  - Workflow
+    - [watch](#watch)
+    - [hooks](#hooks)
+  - Configuration
+    - [auth](#auth)
+    - [config](#config)
+    - [cache](#cache)
+    - [style-rules](#style-rules)
+  - Information
+    - [usage](#usage)
+    - [languages](#languages)
+    - [completion](#completion)
+  - Administration
+    - [admin](#admin)
 - [Configuration](#configuration)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
@@ -130,6 +137,19 @@ deepl --config /path/to/test-config.json usage
 
 ## Commands
 
+Commands are organized into six groups, matching the `deepl --help` output:
+
+| Group | Commands | Description |
+|-------|----------|-------------|
+| **Core Commands** | `translate`, `write`, `voice` | Translation, writing enhancement, and speech translation |
+| **Resources** | `glossary` | Manage translation glossaries |
+| **Workflow** | `watch`, `hooks` | File watching and git hook automation |
+| **Configuration** | `auth`, `config`, `cache`, `style-rules` | Authentication, settings, caching, and style rules |
+| **Information** | `usage`, `languages`, `completion` | API usage, supported languages, and shell completions |
+| **Administration** | `admin` | Organization key management and usage analytics |
+
+---
+
 ### translate
 
 Translate text, files, or directories.
@@ -187,6 +207,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
 - `--custom-instruction INSTRUCTION` - Custom instruction for translation (repeatable, max 10, max 300 chars each). Forces `quality_optimized` model. Cannot be used with `latency_optimized`.
 - `--style-id UUID` - Style rule ID for translation (Pro API only). Forces `quality_optimized` model. Cannot be used with `latency_optimized`. Use `deepl style-rules list` to see available IDs.
+- `--enable-beta-languages` - Include beta languages that are not yet stable (forward-compatibility with new DeepL languages)
 - `--no-cache` - Bypass cache for this translation (useful for testing/forcing fresh translation)
 
 **API Options:**
@@ -1461,9 +1482,14 @@ deepl usage
 # API Key Usage:
 #   Used: 1,880,000 / unlimited
 #
+# Speech-to-Text Usage:
+#   Used: 12m 34s / 1h 0m 0s (20.9%)
+#   Remaining: 47m 26s
+#
 # Product Breakdown:
 #   translate: 900,000 characters (API key: 880,000)
 #   write: 1,250,000 characters (API key: 1,000,000)
+#   speech_to_text: 12m 34s (API key: 12m 34s)
 ```
 
 **Output Fields:**
@@ -1477,7 +1503,8 @@ deepl usage
 
 - **Billing Period**: Start and end dates of the current billing cycle
 - **API Key Usage**: Characters used by this specific API key (vs. the whole account)
-- **Product Breakdown**: Per-product character counts (translate, write) with API key-level breakdown
+- **Speech-to-Text Usage**: Duration used and remaining for speech-to-text quota (displayed as hours/minutes/seconds)
+- **Product Breakdown**: Per-product character counts (translate, write) and durations (speech_to_text) with API key-level breakdown
 
 **Notes:**
 
@@ -1561,6 +1588,40 @@ deepl languages
 - Source and target language lists differ: 7 regional variants (en-gb, en-us, es-419, pt-br, pt-pt, zh-hans, zh-hant) are target-only
 - Extended languages (82 codes) only support `quality_optimized` model type and do not support formality or glossary features
 - Without an API key, the command shows all languages from the local registry with a warning
+
+---
+
+### completion
+
+Generate shell completion scripts for bash, zsh, or fish.
+
+#### Synopsis
+
+```bash
+deepl completion <shell>
+```
+
+#### Arguments
+
+- `shell` - Shell type: `bash`, `zsh`, `fish`
+
+#### Examples
+
+```bash
+# Generate and install bash completions
+deepl completion bash > /etc/bash_completion.d/deepl
+
+# Generate and install zsh completions
+deepl completion zsh > "${fpath[1]}/_deepl"
+
+# Generate and install fish completions
+deepl completion fish > ~/.config/fish/completions/deepl.fish
+
+# Or source directly in your current session:
+source <(deepl completion bash)
+eval "$(deepl completion zsh)"
+deepl completion fish | source
+```
 
 ---
 
