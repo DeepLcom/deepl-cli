@@ -148,6 +148,27 @@ describe('registerWrite', () => {
         expect.objectContaining({ message: expect.stringContaining('Cannot specify both') }),
       );
     });
+
+    it('should reject unsupported format', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'table']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Unsupported output format: table') }),
+      );
+    });
+
+    it('should reject unknown format values', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'xml']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Unsupported output format: xml') }),
+      );
+    });
+
+    it('should accept json format', async () => {
+      mockWriteCommand.improve.mockResolvedValue('{"result": "ok"}');
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'json']);
+      expect(handleError).not.toHaveBeenCalled();
+      expect(mockWriteCommand.improve).toHaveBeenCalled();
+    });
   });
 
   describe('file input (existsSync returns true)', () => {
