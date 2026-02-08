@@ -53,6 +53,10 @@ export class VoiceClient extends HttpClient {
     }
   }
 
+  // Security: The token is passed as a URL query parameter because the DeepL
+  // Voice API requires it (WebSocket headers are not supported by the browser
+  // WebSocket API the server protocol targets). Tokens in URLs may appear in
+  // proxy/CDN access logs. The CLI must never log the full WebSocket URL.
   createWebSocket(streamingUrl: string, token: string, callbacks: VoiceStreamCallbacks): WebSocket {
     this.validateStreamingUrl(streamingUrl);
     const url = `${streamingUrl}?token=${encodeURIComponent(token)}`;
