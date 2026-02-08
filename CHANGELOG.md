@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`--enable-beta-languages` flag for translate command** - Forward-compatibility flag for new DeepL languages that are not yet in the local language registry.
+- **`glossary update` subcommand** - Combines name and dictionary updates in a single PATCH request, replacing the previous delete-and-recreate workflow for glossary modifications.
 - **Comma-separated target languages for `deepl glossary create`** - The `<target-lang>` argument now accepts comma-separated values (e.g., `deepl glossary create my-terms en de,fr,es terms.tsv`) to create multilingual glossaries in a single command.
 - **Pro speech-to-text usage quota in `deepl usage`** - The usage command now displays `speech_to_text_milliseconds_count` and `speech_to_text_milliseconds_limit` fields from the `/v2/usage` API response, with human-readable duration formatting (e.g., `1h 23m 45s`). Products with `billing_unit: 'milliseconds'` are also displayed as durations in the product breakdown.
 - **WebSocket reconnection for `deepl voice`** - Automatic reconnection on unexpected WebSocket drops during voice streaming. Uses the `GET /v3/voice/realtime?token=<token>` endpoint to obtain a new streaming URL and token, then re-establishes the connection and resumes audio streaming. Enabled by default with up to 3 reconnect attempts. Configurable via `--no-reconnect` (disable) and `--max-reconnect-attempts <n>` (override limit). TTY mode displays `[reconnecting N/3...]` feedback during reconnection attempts.
@@ -20,10 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Voice usage in admin analytics** - Added `speechToTextMilliseconds` to `UsageBreakdown` type and `AdminClient`, mapping the API's `speech_to_text_milliseconds` field. The `deepl admin usage` command now displays voice usage duration in human-readable format (e.g., `1h 23m 45s`).
 
 ### Fixed
+- **Commander.js dependency version requirement** - Updated peer dependency from `^12.1.0` to `^14.0.0` to match v14 API usage, fixing CI type-check failures.
 - **TTY flickering during voice transcript updates** - Debounced `render()` calls in `VoiceCommand.createTTYCallbacks()` using `queueMicrotask`. With multiple target languages, a single utterance previously triggered up to N+1 synchronous renders (1 source + N targets). Renders are now coalesced into a single pass per microtask tick, eliminating visible flicker.
 - **Quadratic memory allocation in `readStdinInChunks`** - Replaced `Buffer.concat([buffer, newData])` on every stdin data event with a chunks-array approach that only merges when enough data is available to yield. Reduces transient allocations from O(n²) to amortized O(n) for large audio streams piped via stdin.
 
 ### Changed
+- **Updated API.md with grouped commands overview, speech-to-text quota examples, and completion command documentation** - Comprehensive documentation refresh reflecting Commander.js v14 grouped help output, Pro speech-to-text usage display, and shell completion setup instructions.
 - **Extract WebSocket mock helpers in voice-service tests** - Replaced ~21 repeated `EventEmitter + readyState + send/close` blocks with `createMockWebSocket()` and `setupSessionMock()` helpers, reducing test boilerplate by ~240 lines
 - **Replace `require()` with static imports in voice tests** - Replaced inline `require('events')` and `require('stream')` calls in test bodies with top-level `import { EventEmitter } from 'events'` and `import { PassThrough } from 'stream'`. Removed file-level `eslint-disable @typescript-eslint/no-var-requires` comments (targeted line-level disables remain for `jest.mock` factory callbacks which cannot use ES imports)
 - **3 new voice tests** - Added reconnection chunk resume test (verifies `chunkStreamingResolve` mechanism resumes streaming on new WebSocket), empty stdin test (zero bytes yields no audio chunks), and multi-push accumulation test (verifies buffering before yielding complete chunks)

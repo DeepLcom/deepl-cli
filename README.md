@@ -26,16 +26,16 @@
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
 - [Global Options](#-global-options)
+  - [Verbose Mode](#verbose-mode)
   - [Quiet Mode](#quiet-mode)
   - [Custom Configuration Files](#custom-configuration-files)
 - [Usage](#-usage)
-  - [Translation](#translation)
-  - [Writing Enhancement](#writing-enhancement)
-  - [Voice Translation](#voice-translation)
-  - [Watch Mode](#watch-mode)
-  - [Configuration](#configuration)
-  - [Glossaries](#glossaries)
-  - [Cache Management](#cache-management)
+  - **Core Commands:** [Translation](#translation) | [Writing Enhancement](#writing-enhancement) | [Voice Translation](#voice-translation)
+  - **Resources:** [Glossaries](#glossaries) | [Style Rules](#style-rules)
+  - **Workflow:** [Watch Mode](#watch-mode) | [Git Hooks](#git-hooks)
+  - **Configuration:** [Authentication](#authentication) | [Configure Defaults](#configure-defaults) | [Cache Management](#cache-management)
+  - **Information:** [Usage Statistics](#api-usage-statistics) | [Languages](#supported-languages) | [Shell Completion](#shell-completion)
+  - **Administration:** [Admin API](#admin-api)
 - [Development](#-development)
 - [Architecture](#-architecture)
 - [Contributing](#-contributing)
@@ -67,7 +67,7 @@ npm link
 
 # Verify installation
 deepl --version
-# Output: 0.9.0
+# Output: 0.9.1
 ```
 
 ## 🚀 Quick Start
@@ -100,6 +100,14 @@ deepl translate "Hello, world!" --to es
 ## 🔧 Global Options
 
 DeepL CLI supports global flags that work with all commands:
+
+### Verbose Mode
+
+The `--verbose` (or `-v`) flag shows extra information such as detected source language, timing, and cache status. Useful for debugging and understanding translation behavior.
+
+```bash
+$ deepl --verbose translate "Hello" --to es
+```
 
 ### Quiet Mode
 
@@ -424,6 +432,15 @@ deepl translate "Cost analysis" --to es,fr,de --format table --show-billed-chara
 # │ DE       │ Kostenanalyse                                              │ 14         │
 # └──────────┴────────────────────────────────────────────────────────────┴────────────┘
 
+# Preview what would be translated without making API calls (file/directory mode)
+deepl translate ./docs --to es --dry-run
+
+# Include beta languages that are not yet stable
+deepl translate "Hello" --to my --enable-beta-languages
+
+# Specify tag handling version (v2 improves structure handling, requires --tag-handling)
+deepl translate page.html --to es --tag-handling html --tag-handling-version v2
+
 # Advanced XML/HTML tag handling (requires --tag-handling xml)
 # Control automatic XML structure detection
 deepl translate "<doc><p>Hello</p></doc>" --to es --tag-handling xml --outline-detection false
@@ -600,6 +617,15 @@ deepl voice speech.ogg --to de --format json
 
 # Disable live streaming (plain text at end)
 deepl voice speech.ogg --to de --no-stream
+
+# Set source language detection mode (auto or fixed)
+deepl voice speech.ogg --to de --from en --source-language-mode fixed
+
+# Customize chunking behavior
+deepl voice large-recording.ogg --to de --chunk-size 12800 --chunk-interval 100
+
+# Adjust reconnection attempts (default: 3)
+deepl voice speech.ogg --to de --max-reconnect-attempts 5
 ```
 
 **Supported audio formats:** OGG (Opus), WebM (Opus), FLAC, MP3, PCM (16kHz s16le), Matroska (Opus)
@@ -630,6 +656,9 @@ deepl watch docs/ --targets es --auto-commit
 
 # Custom debounce delay (default: 300ms)
 deepl watch src/ --targets es --debounce 1000
+
+# Preview what would be watched without starting the watcher
+deepl watch docs/ --targets es --dry-run
 
 # With formality and code preservation
 deepl watch docs/ --targets de --formality more --preserve-code
@@ -839,6 +868,9 @@ deepl config set cache.enabled false
 # Reset to defaults
 deepl config reset
 # ✓ Configuration reset to defaults
+
+# Reset without confirmation prompt
+deepl config reset --yes
 ```
 
 #### Proxy Configuration
@@ -960,6 +992,9 @@ deepl glossary entries multilingual-terms --target es
 deepl glossary delete tech-terms
 # ✓ Glossary deleted: tech-terms
 
+# Preview what would be deleted without performing the operation
+deepl glossary delete tech-terms --dry-run
+
 # List supported glossary language pairs
 deepl glossary languages
 # de → en
@@ -1038,6 +1073,9 @@ deepl style-rules list --detailed
 # JSON output
 deepl style-rules list --format json
 
+# Paginate results
+deepl style-rules list --page 2 --page-size 10
+
 # Apply a style rule to a translation
 deepl translate "Hello" --to de --style-id "abc-123-def-456"
 ```
@@ -1107,6 +1145,24 @@ deepl admin usage --start 2024-01-01 --end 2024-12-31 --format json
 
 **Note:** Admin API endpoints require an admin-level API key, not a regular developer key. Key deactivation is permanent and cannot be undone.
 
+### Shell Completion
+
+Generate shell completion scripts for tab-completion of commands, options, and arguments:
+
+```bash
+# Bash
+deepl completion bash > /etc/bash_completion.d/deepl
+
+# Zsh
+deepl completion zsh > "${fpath[1]}/_deepl"
+
+# Fish
+deepl completion fish > ~/.config/fish/completions/deepl.fish
+
+# Or source directly in your current session
+source <(deepl completion bash)
+```
+
 ### Cache Management
 
 The CLI uses a local SQLite database to cache translations and reduce API calls.
@@ -1121,6 +1177,9 @@ deepl cache stats
 # Clear all cached translations
 deepl cache clear
 # ✓ Cache cleared (removed 42 entries)
+
+# Preview what would be cleared without performing the operation
+deepl cache clear --dry-run
 
 # Enable caching
 deepl cache enable
