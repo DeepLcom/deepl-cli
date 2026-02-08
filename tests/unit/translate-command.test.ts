@@ -338,6 +338,20 @@ describe('TranslateCommand', () => {
     });
   });
 
+  describe('empty string input', () => {
+    it('should throw error when text is an explicit empty string', async () => {
+      await expect(
+        translateCommand.translateText('', { to: 'es' })
+      ).rejects.toThrow('Text cannot be empty');
+    });
+
+    it('should throw error when text is whitespace only', async () => {
+      await expect(
+        translateCommand.translateText('   ', { to: 'es' })
+      ).rejects.toThrow('Text cannot be empty');
+    });
+  });
+
   describe('output formatting', () => {
     it('should output plain text by default', async () => {
       (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({

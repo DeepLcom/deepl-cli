@@ -351,6 +351,13 @@ export class TranslateCommand {
    * Translate text
    */
   async translateText(text: string, options: TranslateOptions): Promise<string> {
+    if (!text || text.trim() === '') {
+      throw new ValidationError(
+        'Text cannot be empty',
+        'Provide text to translate: deepl translate "Hello" --to es'
+      );
+    }
+
     // Check if API key is set
     const apiKey = this.config.getValue('auth.apiKey') as string | undefined;
     const envKey = process.env['DEEPL_API_KEY'];

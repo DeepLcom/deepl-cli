@@ -153,7 +153,7 @@ Examples:
 
         let result: string;
 
-        if (text) {
+        if (text !== undefined) {
           result = await translateCommand.translate(text, options as { to: string } & typeof options);
         } else {
           result = await translateCommand.translateFromStdin(options as { to: string } & typeof options);
