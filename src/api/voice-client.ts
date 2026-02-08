@@ -29,10 +29,10 @@ export class VoiceClient extends HttpClient {
         target_languages: request.target_languages,
         source_media_content_type: request.source_media_content_type,
       };
-      if (request.source_language !== undefined) body['source_language'] = request.source_language;
-      if (request.source_language_mode !== undefined) body['source_language_mode'] = request.source_language_mode;
-      if (request.formality !== undefined) body['formality'] = request.formality;
-      if (request.glossary_id !== undefined) body['glossary_id'] = request.glossary_id;
+      if (request.source_language !== undefined) { body['source_language'] = request.source_language; }
+      if (request.source_language_mode !== undefined) { body['source_language_mode'] = request.source_language_mode; }
+      if (request.formality !== undefined) { body['formality'] = request.formality; }
+      if (request.glossary_id !== undefined) { body['glossary_id'] = request.glossary_id; }
       return await this.makeJsonRequest<VoiceSessionResponse>(
         'POST',
         '/v3/voice/realtime',
@@ -82,7 +82,7 @@ export class VoiceClient extends HttpClient {
   }
 
   sendAudioChunk(ws: WebSocket, base64Data: string): boolean {
-    if (ws.readyState !== WebSocket.OPEN) return false;
+    if (ws.readyState !== WebSocket.OPEN) { return false; }
     ws.send(JSON.stringify({ source_media_chunk: { data: base64Data } }));
     return ws.bufferedAmount < WS_HIGH_WATER_MARK;
   }

@@ -420,44 +420,44 @@ describe('VoiceCommand', () => {
     });
 
     it('should render source transcript when onSourceTranscript is invoked', async () => {
-      mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onSourceTranscript!({
 
 
           concluded: [{ text: 'Hello', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
-        return mockResult;
+        return Promise.resolve(mockResult);
       });
 
       await command.translate('test.mp3', { to: 'de' });
 
       const sourceWrites = writeSpy.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('[source]') && (call[0] as string).includes('Hello')
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[source]') && call[0].includes('Hello')
       );
       expect(sourceWrites.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should render target transcript when onTargetTranscript is invoked', async () => {
-      mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onTargetTranscript!({
           language: 'de' as any,
           concluded: [{ text: 'Hallo', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
-        return mockResult;
+        return Promise.resolve(mockResult);
       });
 
       await command.translate('test.mp3', { to: 'de' });
 
       const targetWrites = writeSpy.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('[de]') && (call[0] as string).includes('Hallo')
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[de]') && call[0].includes('Hallo')
       );
       expect(targetWrites.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should accumulate concluded text across multiple source updates', async () => {
-      mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onSourceTranscript!({
 
 
@@ -470,97 +470,97 @@ describe('VoiceCommand', () => {
           concluded: [{ text: 'world', start_time: 0.5, end_time: 1.0 }],
           tentative: [],
         });
-        return mockResult;
+        return Promise.resolve(mockResult);
       });
 
       await command.translate('test.mp3', { to: 'de' });
 
       const accumulatedWrites = writeSpy.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('Hello world')
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Hello world')
       );
       expect(accumulatedWrites.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should display tentative text in source transcript', async () => {
-      mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onSourceTranscript!({
 
 
           concluded: [],
           tentative: [{ text: 'Hel', start_time: 0, end_time: 0.3 }],
         });
-        return mockResult;
+        return Promise.resolve(mockResult);
       });
 
       await command.translate('test.mp3', { to: 'de' });
 
       const tentativeWrites = writeSpy.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('Hel')
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Hel')
       );
       expect(tentativeWrites.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should display tentative text in target transcript', async () => {
-      mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onTargetTranscript!({
           language: 'de' as any,
           concluded: [],
           tentative: [{ text: 'Hal', start_time: 0, end_time: 0.3 }],
         });
-        return mockResult;
+        return Promise.resolve(mockResult);
       });
 
       await command.translate('test.mp3', { to: 'de' });
 
       const tentativeWrites = writeSpy.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('[de]') && (call[0] as string).includes('Hal')
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[de]') && call[0].includes('Hal')
       );
       expect(tentativeWrites.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should ignore target transcript for unknown language', async () => {
-      mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onTargetTranscript!({
           language: 'es' as any,
           concluded: [{ text: 'Hola', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
-        return mockResult;
+        return Promise.resolve(mockResult);
       });
 
       await command.translate('test.mp3', { to: 'de' });
 
       const esWrites = writeSpy.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('Hola')
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Hola')
       );
       expect(esWrites).toHaveLength(0);
     });
 
     it('should include onReconnecting callback in TTY mode', async () => {
-      mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         expect(callbacks).toHaveProperty('onReconnecting');
         expect(typeof callbacks!.onReconnecting).toBe('function');
         callbacks!.onReconnecting!(1);
-        return mockResult;
+        return Promise.resolve(mockResult);
       });
 
       await command.translate('test.mp3', { to: 'de' });
 
       const reconnectWrites = writeSpy.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('reconnecting'),
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('reconnecting'),
       );
       expect(reconnectWrites.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should use readline functions during render', async () => {
-      mockService.translateFile.mockImplementation(async (_file, _opts, callbacks) => {
+      mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onSourceTranscript!({
 
 
           concluded: [{ text: 'Hi', start_time: 0, end_time: 0.2 }],
           tentative: [],
         });
-        return mockResult;
+        return Promise.resolve(mockResult);
       });
 
       await command.translate('test.mp3', { to: 'de' });
@@ -643,7 +643,7 @@ describe('VoiceCommand', () => {
     });
 
     it('should render source and target when callbacks are invoked via stdin', async () => {
-      mockService.translateStdin.mockImplementation(async (_opts, callbacks) => {
+      mockService.translateStdin.mockImplementation((_opts, callbacks) => {
         callbacks!.onSourceTranscript!({
 
 
@@ -655,16 +655,16 @@ describe('VoiceCommand', () => {
           concluded: [{ text: 'Prüfung', start_time: 0, end_time: 0.3 }],
           tentative: [],
         });
-        return mockResult;
+        return Promise.resolve(mockResult);
       });
 
       await command.translateFromStdin({ to: 'de' });
 
       const sourceWrites = writeSpy.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('[source]') && (call[0] as string).includes('Test')
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[source]') && call[0].includes('Test')
       );
       const targetWrites = writeSpy.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('[de]') && (call[0] as string).includes('Prüfung')
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[de]') && call[0].includes('Prüfung')
       );
       expect(sourceWrites.length).toBeGreaterThanOrEqual(1);
       expect(targetWrites.length).toBeGreaterThanOrEqual(1);

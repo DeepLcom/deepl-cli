@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-unnecessary-type-assertion */
 /**
  * Tests for VoiceService
  * Covers content type detection, validation, chunking, and transcript accumulation.
