@@ -574,6 +574,58 @@ describe('DeepLClient', () => {
 
       await expect(client.getUsage()).rejects.toThrow();
     });
+
+    it('should parse speech-to-text milliseconds fields', async () => {
+      nock(baseUrl)
+        .get('/v2/usage')
+        .reply(200, {
+          character_count: 12345,
+          character_limit: 500000,
+          speech_to_text_milliseconds_count: 120000,
+          speech_to_text_milliseconds_limit: 36000000,
+        });
+
+      const usage = await client.getUsage();
+
+      expect(usage.characterCount).toBe(12345);
+      expect(usage.speechToTextMillisecondsCount).toBe(120000);
+      expect(usage.speechToTextMillisecondsLimit).toBe(36000000);
+    });
+
+    it('should parse products with billing_unit', async () => {
+      nock(baseUrl)
+        .get('/v2/usage')
+        .reply(200, {
+          character_count: 12345,
+          character_limit: 500000,
+          products: [
+            { product_type: 'translate', character_count: 10000, api_key_character_count: 10000 },
+            { product_type: 'speech_to_text', character_count: 120000, api_key_character_count: 120000, billing_unit: 'milliseconds' },
+          ],
+        });
+
+      const usage = await client.getUsage();
+
+      expect(usage.products).toHaveLength(2);
+      const products = usage.products!;
+      expect(products[0]!.billingUnit).toBeUndefined();
+      expect(products[1]!.productType).toBe('speech_to_text');
+      expect(products[1]!.billingUnit).toBe('milliseconds');
+    });
+
+    it('should omit speech-to-text fields when not present in response', async () => {
+      nock(baseUrl)
+        .get('/v2/usage')
+        .reply(200, {
+          character_count: 12345,
+          character_limit: 500000,
+        });
+
+      const usage = await client.getUsage();
+
+      expect(usage.speechToTextMillisecondsCount).toBeUndefined();
+      expect(usage.speechToTextMillisecondsLimit).toBeUndefined();
+    });
   });
 
   describe('getSupportedLanguages()', () => {

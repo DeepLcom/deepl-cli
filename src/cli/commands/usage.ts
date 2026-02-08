@@ -66,14 +66,55 @@ export class UsageCommand {
       lines.push(`  Used: ${formatNumber(usage.apiKeyCharacterCount)} / ${limitStr}`);
     }
 
+    if (usage.speechToTextMillisecondsCount !== undefined) {
+      const sttCount = usage.speechToTextMillisecondsCount;
+      const sttLimit = usage.speechToTextMillisecondsLimit ?? 0;
+      const sttPercentage = sttLimit > 0
+        ? ((sttCount / sttLimit) * 100).toFixed(1)
+        : '0.0';
+      const sttRemaining = sttLimit - sttCount;
+      const isHighStt = sttLimit > 0 && (sttCount / sttLimit) > 0.8;
+
+      lines.push('');
+      lines.push(chalk.bold('Speech-to-Text Usage:'));
+      const sttColor = isHighStt ? chalk.yellow : chalk.green;
+      lines.push(`  Used: ${sttColor(this.formatMilliseconds(sttCount))} / ${this.formatMilliseconds(sttLimit)} (${sttColor(sttPercentage + '%')})`);
+      lines.push(`  Remaining: ${this.formatMilliseconds(sttRemaining)}`);
+
+      if (isHighStt) {
+        lines.push('');
+        lines.push(chalk.yellow('Warning: You are approaching your speech-to-text limit'));
+      }
+    }
+
     if (usage.products && usage.products.length > 0) {
       lines.push('');
       lines.push(chalk.bold('Product Breakdown:'));
       for (const product of usage.products) {
-        lines.push(`  ${product.productType}: ${formatNumber(product.characterCount)} characters (API key: ${formatNumber(product.apiKeyCharacterCount)})`);
+        if (product.billingUnit === 'milliseconds') {
+          lines.push(`  ${product.productType}: ${this.formatMilliseconds(product.characterCount)} (API key: ${this.formatMilliseconds(product.apiKeyCharacterCount)})`);
+        } else {
+          lines.push(`  ${product.productType}: ${formatNumber(product.characterCount)} characters (API key: ${formatNumber(product.apiKeyCharacterCount)})`);
+        }
       }
     }
 
     return lines.join('\n');
+  }
+
+  private formatMilliseconds(ms: number): string {
+    if (ms === 0) {
+      return '0ms';
+    }
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    }
+    return `${seconds}s ${ms % 1000}ms`;
   }
 }

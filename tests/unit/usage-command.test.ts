@@ -234,5 +234,91 @@ describe('UsageCommand', () => {
 
       expect(formatted).toContain('880,000');
     });
+
+    it('should display speech-to-text usage when available', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        speechToTextMillisecondsCount: 3661000,
+        speechToTextMillisecondsLimit: 36000000,
+      });
+
+      expect(formatted).toContain('Speech-to-Text Usage:');
+      expect(formatted).toContain('1h 1m 1s');
+      expect(formatted).toContain('10h 0m 0s');
+      expect(formatted).toContain('10.2%');
+    });
+
+    it('should show warning for high speech-to-text usage', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 100,
+        characterLimit: 500000,
+        speechToTextMillisecondsCount: 30000000,
+        speechToTextMillisecondsLimit: 36000000,
+      });
+
+      expect(formatted).toContain('Speech-to-Text Usage:');
+      expect(formatted).toContain('83.3%');
+      expect(formatted).toContain('Warning: You are approaching your speech-to-text limit');
+    });
+
+    it('should format zero speech-to-text usage', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 100,
+        characterLimit: 500000,
+        speechToTextMillisecondsCount: 0,
+        speechToTextMillisecondsLimit: 36000000,
+      });
+
+      expect(formatted).toContain('Speech-to-Text Usage:');
+      expect(formatted).toContain('0ms');
+    });
+
+    it('should omit speech-to-text section when not available', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 123456,
+        characterLimit: 500000,
+      });
+
+      expect(formatted).not.toContain('Speech-to-Text Usage:');
+    });
+
+    it('should format product with milliseconds billing unit', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        products: [
+          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
+          { productType: 'speech_to_text', characterCount: 3661000, apiKeyCharacterCount: 3661000, billingUnit: 'milliseconds' },
+        ],
+      });
+
+      expect(formatted).toContain('Product Breakdown:');
+      expect(formatted).toContain('translate: 900,000 characters');
+      expect(formatted).toContain('speech_to_text: 1h 1m 1s');
+    });
+
+    it('should display full Pro response with speech-to-text', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 2150000,
+        characterLimit: 20000000,
+        apiKeyCharacterCount: 1880000,
+        apiKeyCharacterLimit: 0,
+        speechToTextMillisecondsCount: 120000,
+        speechToTextMillisecondsLimit: 36000000,
+        startTime: '2025-04-24T14:58:02Z',
+        endTime: '2025-05-24T14:58:02Z',
+        products: [
+          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
+          { productType: 'speech_to_text', characterCount: 120000, apiKeyCharacterCount: 120000, billingUnit: 'milliseconds' },
+        ],
+      });
+
+      expect(formatted).toContain('Character Usage:');
+      expect(formatted).toContain('Speech-to-Text Usage:');
+      expect(formatted).toContain('Billing Period:');
+      expect(formatted).toContain('API Key Usage:');
+      expect(formatted).toContain('Product Breakdown:');
+    });
   });
 });
