@@ -80,7 +80,7 @@ describe('Voice CLI E2E', () => {
       expect.assertions(1);
       try {
         runCLI('deepl voice --to de');
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
       }
@@ -93,7 +93,7 @@ describe('Voice CLI E2E', () => {
       expect.assertions(1);
       try {
         runCLI(`deepl voice ${testFile}`);
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
       }
@@ -115,7 +115,7 @@ describe('Voice CLI E2E', () => {
       expect.assertions(1);
       try {
         execSync(`deepl voice ${testFile} --to de`, { encoding: 'utf-8', env: cleanEnv });
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
       }
@@ -216,7 +216,7 @@ describe('Voice CLI E2E', () => {
       expect.assertions(1);
       try {
         runCLI(`deepl voice ${testFile} --to de --format xml`);
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/text|json|choices|allowed/i);
@@ -232,7 +232,7 @@ describe('Voice CLI E2E', () => {
       expect.assertions(1);
       try {
         runCLI(`deepl voice ${testFile} --to de --formality extreme`);
-        fail('Should have thrown');
+        throw new Error('Should have thrown');
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/choices|allowed|more|less/i);
