@@ -99,6 +99,10 @@ export async function createVoiceCommand(
   getApiKeyAndOptions: GetApiKeyAndOptions,
 ): Promise<VoiceCommand> {
   const { apiKey, options } = getApiKeyAndOptions();
+  if (options.baseUrl) {
+    const { validateApiUrl } = await import('../../utils/validate-url.js');
+    validateApiUrl(options.baseUrl);
+  }
   const { VoiceClient } = await import('../../api/voice-client.js');
   const { VoiceService } = await import('../../services/voice.js');
   const { VoiceCommand: VoiceCmd } = await import('./voice.js');
