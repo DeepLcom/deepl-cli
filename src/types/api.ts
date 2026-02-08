@@ -28,6 +28,7 @@ export interface TranslationOptions {
   customInstructions?: string[];
   styleId?: string;
   tagHandlingVersion?: 'v1' | 'v2';
+  enableBetaLanguages?: boolean;
 }
 
 export type WriteLanguage =

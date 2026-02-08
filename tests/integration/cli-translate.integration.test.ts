@@ -703,6 +703,33 @@ describe('Translate CLI Integration', () => {
     });
   });
 
+  describe('--enable-beta-languages flag', () => {
+    it('should show --enable-beta-languages in help text', () => {
+      const result = runCLI('deepl translate --help');
+      expect(result).toContain('--enable-beta-languages');
+    });
+
+    it('should accept --enable-beta-languages flag', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --enable-beta-languages', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept --enable-beta-languages with other options', () => {
+      try {
+        runCLI('deepl translate "Hello" --to es --enable-beta-languages --formality more', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr || error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+  });
+
   describe('style-rules command', () => {
     it('should show style-rules in main help', () => {
       const result = runCLI('deepl --help');

@@ -282,6 +282,10 @@ export class TranslationClient extends HttpClient {
       params['tag_handling_version'] = options.tagHandlingVersion;
     }
 
+    if (options.enableBetaLanguages) {
+      params['enable_beta_languages'] = '1';
+    }
+
     return params;
   }
 }

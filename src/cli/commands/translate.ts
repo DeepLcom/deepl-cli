@@ -53,6 +53,7 @@ interface TranslateOptions {
   glossary?: string;
   customInstruction?: string[];
   styleId?: string;
+  enableBetaLanguages?: boolean;
   tagHandlingVersion?: string;
   cache?: boolean;  // Commander.js converts --no-cache to cache: false
   format?: string;
@@ -480,6 +481,10 @@ export class TranslateCommand {
         throw new Error('--tag-handling-version must be "v1" or "v2"');
       }
       (translationOptions as {tagHandlingVersion?: 'v1' | 'v2'}).tagHandlingVersion = options.tagHandlingVersion as 'v1' | 'v2';
+    }
+
+    if (options.enableBetaLanguages) {
+      (translationOptions as {enableBetaLanguages?: boolean}).enableBetaLanguages = true;
     }
 
     // Translate

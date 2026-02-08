@@ -38,6 +38,7 @@ export function registerTranslate(
     .option('--glossary <name-or-id>', 'Use glossary by name or ID')
     .option('--custom-instruction <instruction>', 'Custom instruction for translation (repeatable, max 10, max 300 chars each)', (val: string, prev: string[]) => prev.concat([val]), [] as string[])
     .option('--style-id <uuid>', 'Style rule ID for translation (Pro API only, forces quality_optimized model)')
+    .option('--enable-beta-languages', 'Include beta languages that are not yet stable (forward-compatibility)')
     .option('--no-cache', 'Bypass cache for this translation (useful for testing)')
     .option('--format <format>', 'Output format: json, table (default: plain text)')
     .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
@@ -79,6 +80,7 @@ Examples:
       glossary?: string;
       customInstruction?: string[];
       styleId?: string;
+      enableBetaLanguages?: boolean;
       noCache?: boolean;
       format?: string;
       apiUrl?: string;

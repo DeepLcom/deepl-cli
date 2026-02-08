@@ -222,6 +222,19 @@ describe('TranslationService', () => {
         tagHandling: 'xml',
       });
     });
+
+    it('should pass enableBetaLanguages to DeepL client', async () => {
+      mockDeepLClient.translate.mockResolvedValue({ text: 'Hola' });
+
+      await translationService.translate('Hello', {
+        targetLang: 'es',
+        enableBetaLanguages: true,
+      });
+
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith('Hello', expect.objectContaining({
+        enableBetaLanguages: true,
+      }));
+    });
   });
 
   describe('translateBatch()', () => {
