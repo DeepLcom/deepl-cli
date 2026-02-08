@@ -14,7 +14,7 @@ export function registerTranslate(
     .command('translate')
     .description('Translate text, files, or directories using DeepL API')
     .argument('[text]', 'Text, file path, or directory to translate (or read from stdin)')
-    .option('-t, --to <language>', 'Target language(s), comma-separated for multiple (falls back to config defaults.targetLangs)')
+    .option('-t, --to <language>', 'Target language(s), comma-separated for multiple (uses config default if omitted)')
     .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
     .option('-o, --output <path>', 'Output file path or directory (required for file/directory translation)')
     .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less']))

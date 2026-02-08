@@ -24,7 +24,7 @@ export function registerWatch(
     .option('--debounce <ms>', 'Debounce delay in milliseconds (default: 300)', parseInt)
     .option('--glossary <name-or-id>', 'Use glossary by name or ID')
     .option('--auto-commit', 'Automatically commit translations to git')
-    .option('--git-staged', 'Only watch git-staged files (coming soon)')
+    .option('--git-staged', 'Only watch git-staged files (not yet implemented)')
     .option('--dry-run', 'Show what would be watched without starting the watcher')
     .addHelpText('after', `
 Examples:

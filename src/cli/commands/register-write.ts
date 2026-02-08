@@ -20,7 +20,7 @@ export function registerWrite(
     .command('write')
     .description('Improve text using DeepL Write API (grammar, style, tone)')
     .argument('<text>', 'Text to improve (or file path when used with file operations)')
-    .option('-l, --lang <language>', 'Target language (de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT). Omit to auto-detect.')
+    .option('-l, --lang <language>', 'Target language: de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT (auto-detect if omitted)')
     .option('-s, --style <style>', 'Writing style: default, simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
     .option('-t, --tone <tone>', 'Tone: default, enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
     .option('-a, --alternatives', 'Show all alternative improvements')

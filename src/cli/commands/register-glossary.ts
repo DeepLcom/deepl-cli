@@ -233,7 +233,7 @@ Examples:
     )
     .addCommand(
       new Command('update')
-        .description('Update glossary name and/or dictionary entries in a single request (v3)')
+        .description('Update glossary name and/or dictionary entries in a single request')
         .argument('<name-or-id>', 'Glossary name or ID')
         .option('--name <name>', 'New glossary name')
         .option('--target-lang <lang>', 'Target language for dictionary update')
@@ -290,7 +290,7 @@ Examples:
     )
     .addCommand(
       new Command('replace-dictionary')
-        .description('Replace all entries in a glossary dictionary from a TSV/CSV file (v3)')
+        .description('Replace all entries in a glossary dictionary from a TSV/CSV file')
         .argument('<name-or-id>', 'Glossary name or ID')
         .argument('<target-lang>', 'Target language of dictionary to replace')
         .argument('<file>', 'TSV/CSV file with replacement entries')
@@ -307,7 +307,7 @@ Examples:
     )
     .addCommand(
       new Command('delete-dictionary')
-        .description('Delete a dictionary from a multilingual glossary (v3)')
+        .description('Delete a dictionary from a multilingual glossary')
         .argument('<name-or-id>', 'Glossary name or ID')
         .argument('<target-lang>', 'Target language of dictionary to delete')
         .option('-y, --yes', 'Skip confirmation prompt')
