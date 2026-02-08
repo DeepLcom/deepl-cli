@@ -104,11 +104,11 @@ Examples:
 
           if (needsImprovement) {
             Logger.warn(chalk.yellow(`\u26a0 Text needs improvement (${changes} potential changes)`));
-            process.exit(ExitCode.CheckFailed);
+            process.exitCode = ExitCode.CheckFailed;
           } else {
             Logger.success(chalk.green('\u2713 Text looks good'));
-            process.exit(ExitCode.Success);
           }
+          return;
         }
 
         if (options.fix) {
