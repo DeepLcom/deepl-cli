@@ -193,28 +193,6 @@ export class WatchService {
     this.debounceTimers.set(filePath, timer);
   }
 
-  private isTranslatedOutputFile(filePath: string): boolean {
-    if (!this.watchOptions) {
-      return false;
-    }
-
-    const basename = path.basename(filePath);
-    const parts = basename.split('.');
-    if (parts.length < 3) {
-      return false;
-    }
-
-    const targetLangs = this.watchOptions.targetLangs;
-    for (let i = 1; i < parts.length - 1; i++) {
-      const segment = parts[i]!.toLowerCase();
-      if (targetLangs.some(lang => lang.toLowerCase() === segment)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
   /**
    * Check if a file looks like a translated output file.
    * Detects patterns like name.{langCode}.ext where langCode matches a configured target language.
