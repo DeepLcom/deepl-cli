@@ -45,6 +45,7 @@ export class VoiceClient extends HttpClient {
   }
 
   createWebSocket(streamingUrl: string, token: string, callbacks: VoiceStreamCallbacks): WebSocket {
+    this.validateStreamingUrl(streamingUrl);
     const url = `${streamingUrl}?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
 
@@ -78,6 +79,24 @@ export class VoiceClient extends HttpClient {
   sendEndOfSource(ws: WebSocket): void {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'end_of_source_audio' }));
+    }
+  }
+
+  private validateStreamingUrl(streamingUrl: string): void {
+    let parsed: URL;
+    try {
+      parsed = new URL(streamingUrl);
+    } catch {
+      throw new VoiceError('Invalid streaming URL: unable to parse URL');
+    }
+
+    if (parsed.protocol !== 'wss:') {
+      throw new VoiceError('Invalid streaming URL: scheme must be wss://');
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname !== 'deepl.com' && !hostname.endsWith('.deepl.com')) {
+      throw new VoiceError('Invalid streaming URL: hostname must be under deepl.com');
     }
   }
 
