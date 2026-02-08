@@ -54,29 +54,14 @@ jest.mock('../../src/cli/commands/service-factory', () => ({
 import { registerWrite } from '../../src/cli/commands/register-write';
 import { Logger } from '../../src/utils/logger';
 
-class ProcessExitError extends Error {
-  code: number;
-  constructor(code: number) {
-    super(`process.exit(${code})`);
-    this.code = code;
-  }
-}
-
 describe('registerWrite', () => {
   let program: Command;
   const handleError = jest.fn() as jest.Mock & ((error: unknown) => never);
   let createDeepLClient: jest.Mock;
-  const originalExit = process.exit;
-  const mockProcessExit = jest.fn(((code?: number) => {
-    throw new ProcessExitError(code ?? 0);
-  }) as never);
 
   beforeEach(() => {
     jest.clearAllMocks();
-    process.exit = mockProcessExit as unknown as typeof process.exit;
-    mockProcessExit.mockImplementation(((code?: number) => {
-      throw new ProcessExitError(code ?? 0);
-    }) as never);
+    process.exitCode = undefined;
     mockExistsSync.mockReturnValue(false);
     mockWriteFile.mockResolvedValue(undefined);
     mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
@@ -87,7 +72,7 @@ describe('registerWrite', () => {
   });
 
   afterEach(() => {
-    process.exit = originalExit;
+    process.exitCode = undefined;
   });
 
   it('should register write command', () => {
@@ -148,6 +133,27 @@ describe('registerWrite', () => {
         expect.objectContaining({ message: expect.stringContaining('Cannot specify both') }),
       );
     });
+
+    it('should reject unsupported format', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'table']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Unsupported output format: table') }),
+      );
+    });
+
+    it('should reject unknown format values', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'xml']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Unsupported output format: xml') }),
+      );
+    });
+
+    it('should accept json format', async () => {
+      mockWriteCommand.improve.mockResolvedValue('{"result": "ok"}');
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'json']);
+      expect(handleError).not.toHaveBeenCalled();
+      expect(mockWriteCommand.improve).toHaveBeenCalled();
+    });
   });
 
   describe('file input (existsSync returns true)', () => {
@@ -161,19 +167,19 @@ describe('registerWrite', () => {
   });
 
   describe('--check mode', () => {
-    it('should exit 8 when text needs improvement', async () => {
+    it('should set exitCode 8 when text needs improvement', async () => {
       mockWriteCommand.checkText.mockResolvedValue({ needsImprovement: true, changes: 3 });
       await program.parseAsync(['node', 'test', 'write', 'bad text', '--check']);
       expect(mockWriteCommand.checkText).toHaveBeenCalledWith('bad text', expect.any(Object));
       expect(Logger.warn).toHaveBeenCalled();
-      expect(mockProcessExit).toHaveBeenCalledWith(8);
+      expect(process.exitCode).toBe(8);
     });
 
-    it('should exit 0 when text is clean', async () => {
+    it('should not set exitCode when text is clean', async () => {
       mockWriteCommand.checkText.mockResolvedValue({ needsImprovement: false, changes: 0 });
       await program.parseAsync(['node', 'test', 'write', 'good text', '--check']);
       expect(Logger.success).toHaveBeenCalled();
-      expect(mockProcessExit).toHaveBeenCalledWith(0);
+      expect(process.exitCode).toBeUndefined();
     });
 
     it('should check file when path exists', async () => {
@@ -182,7 +188,15 @@ describe('registerWrite', () => {
       await program.parseAsync(['node', 'test', 'write', 'file.txt', '--check']);
       expect(mockWriteCommand.checkFile).toHaveBeenCalledWith('file.txt', expect.any(Object));
       expect(Logger.info).toHaveBeenCalled();
-      expect(mockProcessExit).toHaveBeenCalledWith(8);
+      expect(process.exitCode).toBe(8);
+    });
+
+    it('should return normally without calling process.exit()', async () => {
+      const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+      mockWriteCommand.checkText.mockResolvedValue({ needsImprovement: true, changes: 1 });
+      await program.parseAsync(['node', 'test', 'write', 'text', '--check']);
+      expect(exitSpy).not.toHaveBeenCalled();
+      exitSpy.mockRestore();
     });
   });
 

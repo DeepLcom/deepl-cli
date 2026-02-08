@@ -31,7 +31,7 @@ export function registerWrite(
     .option('-c, --check', 'Check if text needs improvement (exit 0 if clean, exit 8 if changes needed)')
     .option('-f, --fix', 'Automatically fix file in place')
     .option('-b, --backup', 'Create backup file before fixing (use with --fix)')
-    .option('--format <format>', 'Output format: json, table (default: plain text)')
+    .option('--format <format>', 'Output format: json (default: plain text)')
     .addHelpText('after', `
 Examples:
   $ deepl write "Their going to the store" --lang en-US
@@ -69,6 +69,11 @@ Examples:
           throw new Error('Cannot specify both --style and --tone. Use one or the other.');
         }
 
+        const validFormats = ['json'];
+        if (options.format && !validFormats.includes(options.format)) {
+          throw new Error(`Unsupported output format: ${options.format}. Valid options: ${validFormats.join(', ')}`);
+        }
+
         const writeCommand = await createWriteCommand(createDeepLClient);
 
         const writeOptions = {
@@ -99,11 +104,11 @@ Examples:
 
           if (needsImprovement) {
             Logger.warn(chalk.yellow(`\u26a0 Text needs improvement (${changes} potential changes)`));
-            process.exit(ExitCode.CheckFailed);
+            process.exitCode = ExitCode.CheckFailed;
           } else {
             Logger.success(chalk.green('\u2713 Text looks good'));
-            process.exit(ExitCode.Success);
           }
+          return;
         }
 
         if (options.fix) {
