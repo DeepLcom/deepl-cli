@@ -1,6 +1,6 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 import { Logger } from '../../utils/logger.js';
-import { createVoiceCommand, type ServiceDeps } from './service-factory.js';
+import { createVoiceCommand, type GetApiKeyAndOptions } from './service-factory.js';
 
 function parsePositiveInt(value: string, name: string, max: number): number {
   const n = parseInt(value, 10);
@@ -24,7 +24,10 @@ function parseNonNegativeInt(value: string, name: string, max: number): number {
 
 export function registerVoice(
   program: Command,
-  deps: ServiceDeps,
+  deps: {
+    getApiKeyAndOptions: GetApiKeyAndOptions;
+    handleError: (error: unknown) => never;
+  },
 ): void {
   const { handleError } = deps;
 
