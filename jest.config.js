@@ -20,10 +20,10 @@ export default {
   coverageReporters: ['text', 'lcov', 'html', 'cobertura'],
   coverageThreshold: {
     global: {
-      branches: 77,  // Current: 77.23%
-      functions: 86,  // Current: 86%
-      lines: 80,      // Current: 80.71%
-      statements: 81, // Current: 81%
+      branches: 86,
+      functions: 94,
+      lines: 93,
+      statements: 93,
     },
   },
 
