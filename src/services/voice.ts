@@ -73,7 +73,8 @@ export class VoiceService {
 
     return this.streamAudio(
       this.readFileInChunks(resolvedPath, chunkSize),
-      { ...options, contentType },
+      contentType,
+      options,
       chunkInterval,
       callbacks,
     );
@@ -96,6 +97,7 @@ export class VoiceService {
 
     return this.streamAudio(
       this.readStdinInChunks(chunkSize),
+      options.contentType,
       options,
       chunkInterval,
       callbacks,
@@ -121,6 +123,7 @@ export class VoiceService {
 
   private async streamAudio(
     chunks: AsyncGenerator<Buffer>,
+    contentType: VoiceSourceMediaContentType,
     options: VoiceTranslateOptions,
     chunkInterval: number,
     callbacks?: VoiceStreamCallbacks,
@@ -129,7 +132,7 @@ export class VoiceService {
       source_language: options.sourceLang,
       source_language_mode: options.sourceLanguageMode,
       target_languages: options.targetLangs,
-      source_media_content_type: options.contentType!,
+      source_media_content_type: contentType,
       formality: options.formality,
       glossary_id: options.glossaryId,
     });
