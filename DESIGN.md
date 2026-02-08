@@ -157,6 +157,9 @@ deepl glossary update-entry tech-terms "API" "REST-API"
 deepl glossary remove-entry tech-terms "obsolete"
 deepl glossary rename tech-terms "technical-terms"
 
+# Update name and/or dictionary in a single request
+deepl glossary update my-terms --name "Updated Terms" --target-lang de --file updated.tsv
+
 # Replace all entries in a dictionary from file
 deepl glossary replace-dictionary multilingual-terms es entries.tsv
 
@@ -523,6 +526,7 @@ deepl
 |   +-- update-entry NAME-OR-ID SRC TGT    # Update entry
 |   +-- remove-entry NAME-OR-ID SRC        # Remove entry
 |   +-- rename NAME-OR-ID NEW_NAME         # Rename glossary
+|   +-- update NAME-OR-ID [opts]           # Update name and/or dictionary in one request
 |   +-- replace-dictionary NAME-OR-ID LANG FILE  # Replace dictionary entries from file
 |   +-- delete-dictionary NAME-OR-ID LANG  # Delete language pair
 +-- watch PATH --targets LANGS              # Watch and auto-translate
@@ -708,7 +712,7 @@ FEATURES:
 ```json
 {
   "runtime": {
-    "node": ">=18.0.0",
+    "node": ">=20.0.0",
     "typescript": "^5.3.0"
   },
   "cli": {

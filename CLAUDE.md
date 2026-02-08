@@ -804,15 +804,19 @@ npm link
 
 ### Production Dependencies
 
-- `deepl-node` - Official DeepL API SDK
-- `commander` - CLI framework
-- `inquirer` - Interactive prompts
-- `chalk` - Terminal colors
-- `ora` - Spinners
+- `axios` - HTTP client for DeepL API
 - `better-sqlite3` - SQLite for caching
-- `conf` - Configuration management
+- `chalk` - Terminal colors
 - `chokidar` - File watching
-- `ink` - TUI framework (React for terminal)
+- `cli-table3` - Table output formatting
+- `commander` - CLI framework
+- `fast-glob` - File pattern matching
+- `form-data` - Multipart form data for file uploads
+- `inquirer` - Interactive prompts
+- `minimatch` - Glob pattern matching
+- `ora` - Spinners
+- `p-limit` - Concurrency control
+- `ws` - WebSocket client for Voice API
 
 ### Development Dependencies
 

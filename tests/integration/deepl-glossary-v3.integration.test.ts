@@ -397,12 +397,12 @@ describe('DeepLClient v3 Glossary Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('should use form-encoded content type', async () => {
+    it('should use JSON content type', async () => {
       const client = new DeepLClient(API_KEY);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
-          'content-type': 'application/x-www-form-urlencoded',
+          'content-type': 'application/json',
         },
       })
         .patch('/v3/glossaries/glossary-123/dictionaries/EN-ES')

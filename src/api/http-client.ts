@@ -237,7 +237,7 @@ export class HttpClient {
         if (this.isAxiosError(error)) {
           const status = error.response?.status;
           if (status && status >= 400 && status < 500) {
-            throw error;
+            throw this.handleError(error);
           }
         }
 

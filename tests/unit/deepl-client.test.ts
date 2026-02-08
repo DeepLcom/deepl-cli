@@ -528,6 +528,21 @@ describe('DeepLClient', () => {
       ).rejects.toThrow('Authentication failed');
     });
 
+    it('should throw classified AuthError for 403, not raw AxiosError', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(403, {
+          message: 'Forbidden',
+        });
+
+      try {
+        await client.translate('Hello', { targetLang: 'es' });
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect((error as Error).name).toBe('AuthError');
+      }
+    });
+
     it('should handle 456 quota exceeded error', async () => {
       nock(baseUrl)
         .post('/v2/translate')
@@ -540,6 +555,21 @@ describe('DeepLClient', () => {
       ).rejects.toThrow('Quota exceeded');
     });
 
+    it('should throw classified QuotaError for 456, not raw AxiosError', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(456, {
+          message: 'Quota exceeded',
+        });
+
+      try {
+        await client.translate('Hello', { targetLang: 'es' });
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect((error as Error).name).toBe('QuotaError');
+      }
+    });
+
     it('should handle 429 rate limit error', async () => {
       nock(baseUrl)
         .post('/v2/translate')
@@ -550,6 +580,21 @@ describe('DeepLClient', () => {
       await expect(
         client.translate('Hello', { targetLang: 'es' })
       ).rejects.toThrow('Rate limit exceeded');
+    });
+
+    it('should throw classified RateLimitError for 429, not raw AxiosError', async () => {
+      nock(baseUrl)
+        .post('/v2/translate')
+        .reply(429, {
+          message: 'Too many requests',
+        });
+
+      try {
+        await client.translate('Hello', { targetLang: 'es' });
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect((error as Error).name).toBe('RateLimitError');
+      }
     });
 
     it('should handle 503 service unavailable', async () => {

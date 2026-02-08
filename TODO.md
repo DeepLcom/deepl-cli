@@ -2,28 +2,9 @@
 
 This file tracks pending tasks and future work for the DeepL CLI project.
 
-## 🚀 Deferred Enhancements
+## Deferred Enhancements
 
 These features were identified but deferred for future implementation:
-
-### Debugging & Visibility Features
-
-- [ ] **--dry-run flag** - Preview commands without making API calls
-  - Shows validation results
-  - Displays request that would be sent (curl format)
-  - Checks cache status
-  - Works across all commands (translate, write, glossary)
-  - Saves API quota during testing
-
-- [ ] **--verbose flag** - Detailed request/response logging
-  - Shows HTTP request details (method, URL, headers, body)
-  - Shows HTTP response details (status, headers, body preview)
-  - Formats output with color coding
-  - Masks sensitive data (API keys)
-  - Useful for debugging and learning the API
-
-**Estimated effort**: 3-4 hours implementation + 2 hours testing
-**Priority**: Medium (nice-to-have for debugging)
 
 ### Configuration Enhancements
 
@@ -45,7 +26,7 @@ These features were identified but deferred for future implementation:
 
   - Allows per-project configuration without modifying global config
   - Version-controllable settings for team collaboration
-  - Hierarchical config: project → user → defaults
+  - Hierarchical config: project > user > defaults
   - Supports watch patterns, default languages, glossary mappings
 
 **Estimated effort**: 4-6 hours implementation + 2 hours testing
@@ -58,7 +39,7 @@ These features were identified but deferred for future implementation:
   - Creates configuration file with sensible defaults
   - Validates API key before saving
   - Provides helpful next steps after setup
-  - Example: `deepl init` → walks through setup wizard
+  - Example: `deepl init` -> walks through setup wizard
 
 **Estimated effort**: 2-3 hours implementation + 1 hour testing
 **Priority**: Medium (improves first-time user experience for v1.0.0)
@@ -81,46 +62,37 @@ These features were identified but deferred for future implementation:
 
 ---
 
-## 🏗️ Production-Grade Polish (Before Public Release)
+## Production-Grade Polish (Before Public Release)
 
-### 🚀 GitHub Publication Preparation
+### GitHub Publication Preparation
 
 **Status**: Not yet published to GitHub
 **Target**: Before v1.0.0 or when ready for public release
 
 #### Pre-Publication Cleanup
 
-- [ ] **Scan for secrets in commit history** 🔴 CRITICAL
+- [ ] **Scan for secrets in commit history** (CRITICAL)
 - [ ] **Remove internal development artifacts**
 - [ ] **Clean up or rename CLAUDE.md** (consider renaming to `DEVELOPMENT.md`)
 - [ ] **Update repository URLs everywhere** (package.json, README, etc.)
 
 ### Critical (Do Before Push to Remote)
 
-#### 1. CONTRIBUTING.md
-
-- [ ] Create CONTRIBUTING.md
-- [ ] Document development setup
-- [ ] Document code style guidelines
-- [ ] Document testing requirements
-- [ ] Document PR process
-- [ ] Document issue reporting guidelines
-
-#### 2. GitHub Actions CI/CD
+#### 1. GitHub Actions CI/CD
 
 - [ ] Create `.github/workflows/ci.yml`
 - [ ] Create `.github/workflows/release.yml`
 - [ ] Create `.github/dependabot.yml`
 - [ ] Add CI badges to README
 
-#### 3. Security Policy
+#### 2. Security Policy
 
 - [ ] Create `SECURITY.md`
 - [ ] Create `.github/ISSUE_TEMPLATE/bug_report.md`
 - [ ] Create `.github/ISSUE_TEMPLATE/feature_request.md`
 - [ ] Create `.github/PULL_REQUEST_TEMPLATE.md`
 
-#### 4. Code of Conduct
+#### 3. Code of Conduct
 
 - [ ] Create `CODE_OF_CONDUCT.md`
 - [ ] Use Contributor Covenant standard
@@ -128,34 +100,33 @@ These features were identified but deferred for future implementation:
 
 ### Important
 
-#### 5. package.json Metadata
+#### 4. package.json Metadata
 
-- [ ] Add `author` field
 - [ ] Update `repository.url` with actual GitHub URL
-- [ ] Add `bugs.url` field
-- [ ] Add `homepage` field
+- [ ] Update `bugs.url` field
+- [ ] Update `homepage` field
 - [ ] Verify `keywords` are comprehensive
 
-#### 6. npm Publishing Preparation
+#### 5. npm Publishing Preparation
 
 - [ ] Create `.npmignore` or use `files` field
 - [ ] Test `npm pack` to verify package contents
 - [ ] Test installation from tarball
 - [ ] Add npm badges to README
 
-#### 7. Documentation
+#### 6. Documentation
 
 - [ ] Create `docs/QUICKSTART.md`
 - [ ] Create `docs/TROUBLESHOOTING.md`
 
-#### 8. Additional Git Configuration Files
+#### 7. Additional Git Configuration Files
 
 - [ ] Create `.editorconfig`
 - [ ] Create `.nvmrc` or `.node-version`
 
 ### Nice to Have
 
-#### 9. Advanced CI Features
+#### 8. Advanced CI Features
 
 - [ ] Add Codecov or Coveralls integration
 - [ ] Add automated dependency update PRs
@@ -164,13 +135,13 @@ These features were identified but deferred for future implementation:
 - [ ] Add Snyk for security scanning
 - [ ] Add CodeQL for code scanning
 
-#### 10. Community Files
+#### 9. Community Files
 
 - [ ] Create `SUPPORT.md`
 - [ ] Create `CODEOWNERS` file
 - [ ] Enable GitHub Discussions
 
-#### 11. Quality Badges for README
+#### 10. Quality Badges for README
 
 - [ ] npm version badge
 - [ ] npm downloads badge
@@ -180,7 +151,7 @@ These features were identified but deferred for future implementation:
 - [ ] Code quality badge
 - [ ] Security badge
 
-#### 12. Release Automation
+#### 11. Release Automation
 
 - [ ] Set up semantic-release
 - [ ] Configure release branches
@@ -189,13 +160,11 @@ These features were identified but deferred for future implementation:
 
 ---
 
-## 🔮 Future Enhancements (Post-v1.0)
+## Future Enhancements (Post-v1.0)
 
 ### Performance
 
 - [ ] Add response streaming for large texts
-- [ ] Implement connection pooling
-- [ ] Add request batching
 - [ ] Optimize cache queries with indexes
 
 ### Features
@@ -206,7 +175,6 @@ These features were identified but deferred for future implementation:
 - [ ] Add custom terminology support beyond glossaries
 - [ ] Add translation suggestions (alternative translations)
 - [ ] Add language detection command
-- [ ] Add usage statistics and reporting
 
 ### Integration
 
@@ -218,14 +186,13 @@ These features were identified but deferred for future implementation:
 
 ### Developer Experience
 
-- [ ] Add shell completion (bash, zsh, fish)
 - [ ] Add interactive config wizard
 - [ ] Add update checker
 - [ ] Add plugin system for extensions
 
 ---
 
-## 🎨 Phase 3: TUI & Collaboration (Deferred)
+## Phase 3: TUI & Collaboration (Deferred)
 
 **Status**: Deferred - Priority uncertain
 **Original Timeline**: 7 weeks
@@ -296,10 +263,10 @@ These features were identified but deferred for future implementation:
 - [ ] Update CHANGELOG with TUI features
 - [ ] Create TUI tutorial
 - [ ] Update DESIGN.md with TUI architecture
-- [ ] Tag v0.6.0 release (or whatever version TUI ships in)
+- [ ] Tag release
 - [ ] Create release notes
 
-**Deliverable**: v0.6.0+ release with complete TUI
+**Deliverable**: Release with complete TUI
 
 ### Translation Memory (Phase 3.6+)
 
@@ -321,23 +288,26 @@ These features were identified but deferred for future implementation:
 
 ---
 
-## 📝 Notes
+## Notes
 
 ### Version Planning
 
-- **v0.1.0** - Phase 1 MVP ✅
-- **v0.2.0** - Phase 2 features ✅
-- **v0.3.0** - Write Enhancements + Document Translation ✅
-- **v0.4.0** - Feature Parity (batch optimization, glossary management) ✅
-- **v0.5.0** - v3 Glossary API (multilingual glossaries) ✅
-- **v0.5.1** - Semantic exit codes, performance improvements ✅
-- **v0.6.0** - CI/CD automation, git hooks, table output, cost transparency ✅
-- **v0.7.0** - Text-based file caching (smart routing for small text files) ✅ (CURRENT)
-- **v0.7.x-v0.9.x** - Deferred enhancements (binary distribution, --dry-run, --verbose, etc.)
+- **v0.1.0** - Phase 1 MVP
+- **v0.2.0** - Phase 2 features (write, watch, hooks, batch, context)
+- **v0.3.0** - Write enhancements + document translation
+- **v0.4.0** - Feature parity (batch optimization, glossary management, proxy, retry)
+- **v0.5.0** - v3 Glossary API (multilingual glossaries)
+- **v0.5.1** - Semantic exit codes, performance improvements
+- **v0.6.0** - CI/CD automation, git hooks, table output, cost transparency
+- **v0.7.0** - Text-based file caching (smart routing for small text files)
+- **v0.8.0** - Custom instructions, style rules, admin API, expanded languages, security hardening
+- **v0.9.0** - Language registry, glossary replace-dictionary, lazy cache, input validation
+- **v0.9.1** - Command registration tests, code quality improvements, shell completion, --dry-run, --verbose, CONTRIBUTING.md
+- **v0.10.0** - Voice API, glossary update, git-staged watch, grouped help, beta languages (CURRENT)
 - **v1.0.0** - Stable API, production-ready, all polish items complete (TUI deferred)
 
 ---
 
-**Last Updated**: 2025-10-14
+**Last Updated**: 2026-02-08
 **Maintained By**: Development team
 **Review Frequency**: Every release or major milestone

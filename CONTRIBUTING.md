@@ -4,7 +4,7 @@ Thank you for your interest in contributing to DeepL CLI. This guide covers ever
 
 ## Prerequisites
 
-- **Node.js** >= 18.0.0
+- **Node.js** >= 20.0.0
 - **npm** >= 9.0.0
 - A [DeepL API key](https://www.deepl.com/pro-api) (free tier works for development)
 

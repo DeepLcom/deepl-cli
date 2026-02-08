@@ -143,6 +143,11 @@ export class WatchService {
       return;
     }
 
+    // Check if file is a translated output file to prevent infinite loops
+    if (this.isTranslatedOutputFile(filePath)) {
+      return;
+    }
+
     // Check if file is supported
     if (!this.fileTranslationService.isSupportedFile(filePath)) {
       return;
@@ -186,6 +191,34 @@ export class WatchService {
     }, this.options.debounceMs);
 
     this.debounceTimers.set(filePath, timer);
+  }
+
+  /**
+   * Check if a file looks like a translated output file.
+   * Detects patterns like name.{langCode}.ext where langCode matches a configured target language.
+   */
+  private isTranslatedOutputFile(filePath: string): boolean {
+    if (!this.watchOptions) {
+      return false;
+    }
+
+    const basename = path.basename(filePath);
+    const parts = basename.split('.');
+    // Need at least 3 parts: name, langCode, extension
+    if (parts.length < 3) {
+      return false;
+    }
+
+    const targetLangs = this.watchOptions.targetLangs;
+    // Check any segment between the first and last could be a target language code
+    for (let i = 1; i < parts.length - 1; i++) {
+      const segment = parts[i]!.toLowerCase();
+      if (targetLangs.some(lang => lang.toLowerCase() === segment)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

@@ -138,6 +138,42 @@ describe('registerWrite', () => {
       );
     });
 
+    it('should reject invalid style value', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--style', 'fancy']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Invalid writing style: fancy') }),
+      );
+    });
+
+    it('should accept all valid style values', async () => {
+      const validStyles = ['default', 'simple', 'business', 'academic', 'casual', 'prefer_simple', 'prefer_business', 'prefer_academic', 'prefer_casual'];
+      for (const style of validStyles) {
+        jest.clearAllMocks();
+        mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
+        mockWriteCommand.improve.mockResolvedValue('ok');
+        await program.parseAsync(['node', 'test', 'write', 'Hello', '--style', style]);
+        expect(handleError).not.toHaveBeenCalled();
+      }
+    });
+
+    it('should reject invalid tone value', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--tone', 'angry']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Invalid tone: angry') }),
+      );
+    });
+
+    it('should accept all valid tone values', async () => {
+      const validTones = ['default', 'enthusiastic', 'friendly', 'confident', 'diplomatic', 'prefer_enthusiastic', 'prefer_friendly', 'prefer_confident', 'prefer_diplomatic'];
+      for (const tone of validTones) {
+        jest.clearAllMocks();
+        mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
+        mockWriteCommand.improve.mockResolvedValue('ok');
+        await program.parseAsync(['node', 'test', 'write', 'Hello', '--tone', tone]);
+        expect(handleError).not.toHaveBeenCalled();
+      }
+    });
+
     it('should reject unsupported format', async () => {
       await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'table']);
       expect(handleError).toHaveBeenCalledWith(
@@ -292,6 +328,23 @@ describe('registerWrite', () => {
       mockWriteCommand.improveFileInteractive.mockResolvedValue({ selected: 'improved' });
       await program.parseAsync(['node', 'test', 'write', 'file.txt', '-i', '--in-place']);
       expect(mockWriteFile).toHaveBeenCalledWith('file.txt', 'improved', 'utf-8');
+    });
+  });
+
+  describe('--output with text input', () => {
+    it('should write result to output file when --output is specified with text input', async () => {
+      mockWriteCommand.improve.mockResolvedValue('Improved text');
+      await program.parseAsync(['node', 'test', 'write', 'Hello world', '-o', '/tmp/out.txt']);
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith('Hello world', expect.any(Object));
+      expect(mockWriteFile).toHaveBeenCalledWith('/tmp/out.txt', 'Improved text', 'utf-8');
+      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('Saved to /tmp/out.txt'));
+    });
+
+    it('should still output to stdout when --output is not specified with text input', async () => {
+      mockWriteCommand.improve.mockResolvedValue('Improved text');
+      await program.parseAsync(['node', 'test', 'write', 'Hello world']);
+      expect(mockWriteFile).not.toHaveBeenCalled();
+      expect(Logger.output).toHaveBeenCalledWith('Improved text');
     });
   });
 

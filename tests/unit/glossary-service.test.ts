@@ -335,13 +335,13 @@ describe('GlossaryService', () => {
         Hello: 'Hola',
       };
 
-      const tsv = glossaryService.entriesToTSV(entries);
+      const tsv = GlossaryService.entriesToTSV(entries);
 
       expect(tsv).toBe('API\tAPI\nREST\tREST\nHello\tHola');
     });
 
     it('should handle empty entries', () => {
-      const tsv = glossaryService.entriesToTSV({});
+      const tsv = GlossaryService.entriesToTSV({});
       expect(tsv).toBe('');
     });
   });
@@ -350,7 +350,7 @@ describe('GlossaryService', () => {
     it('should convert TSV to entries object', () => {
       const tsv = 'API\tAPI\nREST\tREST\nHello\tHola';
 
-      const entries = glossaryService.tsvToEntries(tsv);
+      const entries = GlossaryService.tsvToEntries(tsv);
 
       expect(entries).toEqual({
         API: 'API',
@@ -362,7 +362,7 @@ describe('GlossaryService', () => {
     it('should handle CSV format', () => {
       const csv = 'API,API\nREST,REST\nHello,Hola';
 
-      const entries = glossaryService.tsvToEntries(csv);
+      const entries = GlossaryService.tsvToEntries(csv);
 
       expect(entries).toEqual({
         API: 'API',
@@ -374,7 +374,7 @@ describe('GlossaryService', () => {
     it('should skip invalid lines', () => {
       const tsv = 'API\tAPI\nINVALID\nREST\tREST';
 
-      const entries = glossaryService.tsvToEntries(tsv);
+      const entries = GlossaryService.tsvToEntries(tsv);
 
       expect(entries).toEqual({
         API: 'API',
@@ -387,7 +387,7 @@ describe('GlossaryService', () => {
       // CSV standard: commas inside quotes should not split fields
       const csv = '"hello, world",hola mundo\n"goodbye, friend",adiós amigo';
 
-      const entries = glossaryService.tsvToEntries(csv);
+      const entries = GlossaryService.tsvToEntries(csv);
 
       expect(entries).toEqual({
         'hello, world': 'hola mundo',
@@ -399,7 +399,7 @@ describe('GlossaryService', () => {
       // CSV standard: quotes inside quotes are escaped by doubling them
       const csv = '"say ""hello""","di ""hola"""';
 
-      const entries = glossaryService.tsvToEntries(csv);
+      const entries = GlossaryService.tsvToEntries(csv);
 
       expect(entries).toEqual({
         'say "hello"': 'di "hola"',
@@ -409,7 +409,7 @@ describe('GlossaryService', () => {
     it('should handle CSV with mixed quoted and unquoted fields (Issue #5)', () => {
       const csv = 'API,API\n"hello, world",hola\nREST,REST';
 
-      const entries = glossaryService.tsvToEntries(csv);
+      const entries = GlossaryService.tsvToEntries(csv);
 
       expect(entries).toEqual({
         API: 'API',
@@ -422,7 +422,7 @@ describe('GlossaryService', () => {
       // Whitespace outside quotes is typically preserved in CSV
       const csv = ' "hello, world" , hola mundo ';
 
-      const entries = glossaryService.tsvToEntries(csv);
+      const entries = GlossaryService.tsvToEntries(csv);
 
       // After trimming quotes and whitespace
       expect(entries).toEqual({

@@ -267,8 +267,7 @@ Examples:
               const { safeReadFileSync } = await import('../../utils/safe-read-file.js');
               const content = safeReadFileSync(options.file, 'utf-8');
               const { GlossaryService } = await import('../../services/glossary.js');
-              const tempService = new GlossaryService(null as any);
-              const entries = tempService.tsvToEntries(content);
+              const entries = GlossaryService.tsvToEntries(content);
               if (Object.keys(entries).length === 0) {
                 throw new Error('No valid entries found in file');
               }

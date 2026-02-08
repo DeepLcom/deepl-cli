@@ -265,6 +265,52 @@ describe('formatters', () => {
     });
   });
 
+  describe('formatMultiTranslationTable() with NO_COLOR', () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it('should not contain ANSI escape codes when NO_COLOR is set', () => {
+      process.env = { ...originalEnv, NO_COLOR: '1' };
+      const results = [
+        {
+          targetLang: 'es' as Language,
+          text: 'Hola',
+          billedCharacters: 5,
+        },
+      ];
+
+      const output = formatMultiTranslationTable(results);
+
+      // eslint-disable-next-line no-control-regex
+      const ansiRegex = /\x1b\[[0-9;]*m/;
+      expect(ansiRegex.test(output)).toBe(false);
+    });
+
+    it('should still contain table structure when NO_COLOR is set', () => {
+      process.env = { ...originalEnv, NO_COLOR: '' };
+      const results = [
+        {
+          targetLang: 'es' as Language,
+          text: 'Hola',
+          billedCharacters: 5,
+        },
+      ];
+
+      const output = formatMultiTranslationTable(results);
+
+      expect(output).toContain('Language');
+      expect(output).toContain('Translation');
+      expect(output).toContain('ES');
+      expect(output).toContain('Hola');
+      // eslint-disable-next-line no-control-regex
+      const ansiRegex = /\x1b\[[0-9;]*m/;
+      expect(ansiRegex.test(output)).toBe(false);
+    });
+  });
+
   describe('formatWriteJson()', () => {
     it('should format write result as JSON', () => {
       const output = formatWriteJson(

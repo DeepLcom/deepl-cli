@@ -219,7 +219,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 
 **Batch Options (for directories):**
 
-- `--recursive, -r` - Process subdirectories recursively (default: true)
+- `--recursive` - Process subdirectories recursively (default: true)
 - `--pattern GLOB` - File pattern (e.g., `*.md`, `**/*.txt`)
 - `--concurrency N` - Number of parallel translations (default: 5)
 
@@ -599,7 +599,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 - `--alternatives, -a` - Show all improvement alternatives
 - `--interactive, -i` - Interactive mode: choose from multiple alternatives
 - `--diff, -d` - Show diff between original and improved text
-- `--check, -c` - Check if text needs improvement without modifying (exits with 0 if no changes, 1 if improvements suggested)
+- `--check, -c` - Check if text needs improvement without modifying (exits with 0 if no changes, 8 if improvements suggested)
 - `--fix, -f` - Auto-fix files in place
 - `--output, -o FILE` - Write output to file
 - `--in-place` - Edit file in place
@@ -692,7 +692,7 @@ deepl write "Text to improve." --lang en-US --interactive
 **Check mode:**
 
 ```bash
-# Check if file needs improvement (exit code 1 if changes needed)
+# Check if file needs improvement (exit code 8 if changes needed)
 deepl write document.md --lang en-US --check
 ```
 
@@ -1125,7 +1125,7 @@ deepl glossary delete abc-123-def-456
 deepl glossary delete tech-terms --dry-run
 ```
 
-##### `entries <name-or-id> [--target <lang>]`
+##### `entries <name-or-id> [--target-lang <lang>]`
 
 Get glossary entries in TSV format (suitable for backup or editing).
 
@@ -1135,17 +1135,17 @@ Get glossary entries in TSV format (suitable for backup or editing).
 
 **Options:**
 
-- `--target <lang>` - Target language (required for multilingual glossaries, optional for single-target)
+- `--target-lang <lang>` - Target language (required for multilingual glossaries, optional for single-target)
 
 **Behavior:**
 
-- For **single-target glossaries**: `--target` flag is optional (automatically uses the single target language)
-- For **multilingual glossaries**: `--target` flag is required to specify which language pair to retrieve
+- For **single-target glossaries**: `--target-lang` flag is optional (automatically uses the single target language)
+- For **multilingual glossaries**: `--target-lang` flag is required to specify which language pair to retrieve
 
 **Example:**
 
 ```bash
-# Single-target glossary (no --target needed)
+# Single-target glossary (no --target-lang needed)
 deepl glossary entries tech-terms > backup.tsv
 
 # View entries
@@ -1154,13 +1154,13 @@ deepl glossary entries tech-terms
 # REST → REST
 # authentication → Authentifizierung
 
-# Multilingual glossary (--target required)
-deepl glossary entries multilingual-terms --target es
+# Multilingual glossary (--target-lang required)
+deepl glossary entries multilingual-terms --target-lang es
 # API → API
 # cache → caché
 # ...
 
-deepl glossary entries multilingual-terms --target fr
+deepl glossary entries multilingual-terms --target-lang fr
 # API → API
 # cache → cache
 # ...
@@ -1313,6 +1313,41 @@ deepl glossary rename abc-123-def-456 "Product Names 2024"
 ```
 
 **Note:** v3 API uses PATCH for efficient rename. The glossary ID remains unchanged and all entries are preserved.
+
+##### `update <name-or-id> [--name <name>] [--target-lang <lang>] [--file <path>]`
+
+Update a glossary's name and/or dictionary entries in a single request.
+
+**Arguments:**
+
+- `name-or-id` - Glossary name or ID
+
+**Options:**
+
+- `--name <name>` - New glossary name
+- `--target-lang <lang>` - Target language for dictionary update (required when using `--file`)
+- `--file <path>` - TSV/CSV file with entries for dictionary update
+
+**Behavior:**
+
+- At least one of `--name` or `--file` (with `--target-lang`) must be provided
+- When both `--name` and `--file` are given, the rename and dictionary update happen in a single PATCH request
+- `--target-lang` is required when `--file` is specified
+- Uses v3 PATCH endpoint for efficient updates
+- Glossary ID remains unchanged
+
+**Examples:**
+
+```bash
+# Rename only
+deepl glossary update my-terms --name "Updated Terms"
+
+# Update dictionary entries only
+deepl glossary update my-terms --target-lang de --file updated.tsv
+
+# Rename and update dictionary in one request
+deepl glossary update my-terms --name new-name --target-lang de --file updated.tsv
+```
 
 ##### `replace-dictionary <name-or-id> <target-lang> <file>`
 
@@ -2019,7 +2054,7 @@ The CLI uses semantic exit codes to enable intelligent error handling in scripts
 
 **Special Cases:**
 
-- `deepl write --check`: Exits with 0 if no changes needed, 1 if improvements suggested
+- `deepl write --check`: Exits with 0 if no changes needed, 8 (CheckFailed) if improvements suggested
 
 **Exit Code Classification:**
 

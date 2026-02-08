@@ -990,7 +990,7 @@ deepl glossary entries tech-terms
 # authentication → Authentifizierung
 
 # Show entries for multilingual glossary (--target flag required)
-deepl glossary entries multilingual-terms --target es
+deepl glossary entries multilingual-terms --target-lang es
 # API → API
 # cache → caché
 # ...
@@ -1032,6 +1032,9 @@ deepl glossary remove-entry tech-terms "REST"
 # Rename a glossary
 deepl glossary rename tech-terms "Technical Terms v2"
 # ✓ Glossary renamed successfully
+
+# Update glossary name and/or dictionary entries in a single request
+deepl glossary update my-terms --name "Updated Terms" --target-lang de --file updated.tsv
 
 # Replace all entries in a glossary dictionary from a new file (v3 API only)
 # Unlike individual entry updates (which merge), this replaces the entire dictionary

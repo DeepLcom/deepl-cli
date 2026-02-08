@@ -54,7 +54,7 @@ export function getExitCodeFromError(error: Error): ExitCode {
 function classifyByMessage(rawMessage: string): ExitCode {
   const message = rawMessage.toLowerCase();
 
-  // Authentication errors
+  // Authentication errors - specific multi-word phrases
   if (
     message.includes('authentication failed') ||
     message.includes('invalid api key') ||
@@ -64,65 +64,75 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.AuthError;
   }
 
-  // Rate limiting
+  // Rate limiting - specific phrases
   if (
     message.includes('rate limit exceeded') ||
     message.includes('too many requests') ||
-    message.includes('429')
+    /\b429\b/.test(message)
   ) {
     return ExitCode.RateLimitError;
   }
 
-  // Quota exceeded
+  // Quota exceeded - specific phrases
   if (
     message.includes('quota exceeded') ||
     message.includes('character limit reached') ||
-    message.includes('456')
+    /\b456\b/.test(message)
   ) {
     return ExitCode.QuotaError;
   }
 
-  // Network errors
+  // Network errors - specific error codes and multi-word phrases
   if (
-    message.includes('timeout') ||
     message.includes('econnrefused') ||
     message.includes('enotfound') ||
-    message.includes('network') ||
-    message.includes('connection') ||
+    message.includes('econnreset') ||
+    message.includes('etimedout') ||
+    message.includes('socket hang up') ||
+    message.includes('network error') ||
+    message.includes('network timeout') ||
+    message.includes('connection refused') ||
+    message.includes('connection reset') ||
+    message.includes('connection timed out') ||
     message.includes('service temporarily unavailable') ||
-    message.includes('503')
+    /\b503\b/.test(message)
   ) {
     return ExitCode.NetworkError;
   }
 
-  // Invalid input
+  // Voice API errors - specific phrases
+  if (
+    message.includes('voice api') ||
+    message.includes('voice session')
+  ) {
+    return ExitCode.VoiceError;
+  }
+
+  // Invalid input - specific phrases indicating user input problems
   if (
     message.includes('cannot be empty') ||
     message.includes('not found') ||
     message.includes('unsupported') ||
     message.includes('not supported') ||
     message.includes('invalid') ||
-    message.includes('required') ||
+    message.includes('is required') ||
     message.includes('expected') ||
     message.includes('cannot specify both')
   ) {
     return ExitCode.InvalidInput;
   }
 
-  // Configuration errors
+  // Configuration errors - specific phrases
   if (
-    message.includes('config') ||
-    message.includes('configuration')
+    message.includes('config file') ||
+    message.includes('config directory') ||
+    message.includes('configuration file') ||
+    message.includes('configuration error') ||
+    message.includes('failed to load config') ||
+    message.includes('failed to save config') ||
+    message.includes('failed to read config')
   ) {
     return ExitCode.ConfigError;
-  }
-
-  // Voice API errors
-  if (
-    message.includes('voice api') ||
-    message.includes('voice session')
-  ) {
-    return ExitCode.VoiceError;
   }
 
   // Default to general error
