@@ -17,6 +17,7 @@ import type {
   VoiceSourceTranscriptUpdate,
   VoiceTargetTranscriptUpdate,
   VoiceTargetLanguage,
+  VoiceSourceLanguage,
 } from '../types/voice.js';
 
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
@@ -97,7 +98,7 @@ export class VoiceStreamSession {
         this.accumulateTranscript(this.sourceTranscript, update.concluded);
         const detectedLang = update.concluded[0]?.language ?? update.tentative[0]?.language;
         if (detectedLang) {
-          this.sourceTranscript.lang = detectedLang;
+          this.sourceTranscript.lang = detectedLang as VoiceSourceLanguage;
         }
         this.callbacks?.onSourceTranscript?.(update);
       },

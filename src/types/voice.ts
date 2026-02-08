@@ -186,7 +186,7 @@ export interface VoiceTranslateOptions {
 }
 
 export interface VoiceTranscript {
-  lang: string;
+  lang: VoiceSourceLanguage | VoiceTargetLanguage | 'auto';
   text: string;
   segments: VoiceTranscriptSegment[];
 }
