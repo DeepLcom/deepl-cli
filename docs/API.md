@@ -21,6 +21,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
     - [watch](#watch)
     - [hooks](#hooks)
   - Configuration
+    - [init](#init)
     - [auth](#auth)
     - [config](#config)
     - [cache](#cache)
@@ -134,6 +135,15 @@ deepl --config /path/to/test-config.json usage
 
 **Precedence:** `--config` overrides `DEEPL_CONFIG_DIR`. If neither is specified, uses default location.
 
+**Command Suggestions:**
+
+Mistype a command? The CLI suggests the closest match:
+
+```bash
+$ deepl transalte "Hello" --to es
+Error: Unknown command 'transalte'. Did you mean 'translate'?
+```
+
 ---
 
 ## Commands
@@ -145,7 +155,7 @@ Commands are organized into six groups, matching the `deepl --help` output:
 | **Core Commands** | `translate`, `write`, `voice` | Translation, writing enhancement, and speech translation |
 | **Resources** | `glossary` | Manage translation glossaries |
 | **Workflow** | `watch`, `hooks` | File watching and git hook automation |
-| **Configuration** | `auth`, `config`, `cache`, `style-rules` | Authentication, settings, caching, and style rules |
+| **Configuration** | `init`, `auth`, `config`, `cache`, `style-rules` | Setup wizard, authentication, settings, caching, and style rules |
 | **Information** | `usage`, `languages`, `completion` | API usage, supported languages, and shell completions |
 | **Administration** | `admin` | Organization key management and usage analytics |
 
@@ -1698,6 +1708,37 @@ deepl completion fish > ~/.config/fish/completions/deepl.fish
 source <(deepl completion bash)
 eval "$(deepl completion zsh)"
 deepl completion fish | source
+```
+
+---
+
+### init
+
+Interactive setup wizard for first-time users.
+
+#### Synopsis
+
+```bash
+deepl init
+```
+
+#### Description
+
+Guides through API key setup, default target language selection, and basic configuration. Validates the API key against the DeepL API before saving.
+
+#### Examples
+
+```bash
+# Run the interactive setup wizard
+deepl init
+
+# Output:
+# Welcome to DeepL CLI! Let's get you set up.
+# Enter your DeepL API key: ****
+# ✓ API key validated (DeepL API Free)
+# Select default target language: es
+# ✓ Configuration saved
+# You're ready! Try: deepl translate "Hello" --to es
 ```
 
 ---

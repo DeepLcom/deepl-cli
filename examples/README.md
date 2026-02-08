@@ -27,6 +27,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Custom Instructions](./21-custom-instructions.sh) - Guide translations with custom instructions for domain, style, and terminology
 - [Style Rules](./22-style-rules.sh) - Listing and using pre-configured style rules for consistent translations
 - [Admin API](./23-admin.sh) - Managing API keys and viewing organization usage analytics
+- [Voice Translation](./24-voice.sh) - Real-time speech translation via the Voice API
 
 ## Prerequisites
 

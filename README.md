@@ -33,7 +33,7 @@
   - **Core Commands:** [Translation](#translation) | [Writing Enhancement](#writing-enhancement) | [Voice Translation](#voice-translation)
   - **Resources:** [Glossaries](#glossaries) | [Style Rules](#style-rules)
   - **Workflow:** [Watch Mode](#watch-mode) | [Git Hooks](#git-hooks)
-  - **Configuration:** [Authentication](#authentication) | [Configure Defaults](#configure-defaults) | [Cache Management](#cache-management)
+  - **Configuration:** [Setup Wizard](#setup-wizard) | [Authentication](#authentication) | [Configure Defaults](#configure-defaults) | [Cache Management](#cache-management)
   - **Information:** [Usage Statistics](#api-usage-statistics) | [Languages](#supported-languages) | [Shell Completion](#shell-completion)
   - **Administration:** [Admin API](#admin-api)
 - [Development](#-development)
@@ -76,7 +76,15 @@ deepl --version
 
 Sign up for a [DeepL API account](https://www.deepl.com/pro-api) and get your authentication key.
 
-### 2. Set Your API Key
+### 2. Set Up Your Environment
+
+Use the interactive setup wizard:
+
+```bash
+deepl init
+```
+
+Or set your API key directly:
 
 ```bash
 deepl auth set-key YOUR_API_KEY
@@ -157,6 +165,15 @@ deepl --quiet translate docs/ --to es,fr,de --output i18n/
 ```
 
 See [docs/API.md#global-options](./docs/API.md#global-options) for complete documentation.
+
+### Command Suggestions
+
+Mistype a command? The CLI suggests the closest match:
+
+```bash
+$ deepl transalte "Hello" --to es
+# Error: Unknown command 'transalte'. Did you mean 'translate'?
+```
 
 ### Custom Configuration Files
 
@@ -750,6 +767,18 @@ Git Hooks Status:
 See [examples/14-git-hooks.sh](./examples/14-git-hooks.sh) for a complete git hooks example demonstrating installation, usage, and management.
 
 ### Configuration
+
+#### Setup Wizard
+
+First-time users can use the interactive setup wizard:
+
+```bash
+deepl init
+# Walks through:
+# - API key setup and validation
+# - Default target language selection
+# - Basic configuration
+```
 
 #### Authentication
 

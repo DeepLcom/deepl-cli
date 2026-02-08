@@ -34,15 +34,10 @@ These features were identified but deferred for future implementation:
 
 ### User Experience Enhancements
 
-- [ ] **`deepl init` command** - Interactive setup wizard for first-time users
-  - Interactive prompts for API key, default languages, cache settings
-  - Creates configuration file with sensible defaults
+- [x] **`deepl init` command** - Interactive setup wizard for first-time users ✅ *Implemented*
+  - Interactive prompts for API key, default languages
   - Validates API key before saving
   - Provides helpful next steps after setup
-  - Example: `deepl init` -> walks through setup wizard
-
-**Estimated effort**: 2-3 hours implementation + 1 hour testing
-**Priority**: Medium (improves first-time user experience for v1.0.0)
 
 ### Binary Distribution
 
@@ -117,7 +112,7 @@ These features were identified but deferred for future implementation:
 #### 6. Documentation
 
 - [ ] Create `docs/QUICKSTART.md`
-- [ ] Create `docs/TROUBLESHOOTING.md`
+- [x] Create `docs/TROUBLESHOOTING.md` ✅ *Implemented*
 
 #### 7. Additional Git Configuration Files
 

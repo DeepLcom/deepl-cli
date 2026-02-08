@@ -10,7 +10,7 @@
 
 **Version**: v0.10.0 (February 2026)
 **Phase**: 2 (Advanced Features) - **COMPLETE**
-**Test Suite**: 2578 tests, 100% pass rate
+**Test Suite**: 2757 tests, 100% pass rate
 **Code Coverage**: ~91% overall (excellent integration/e2e coverage)
 **Production Readiness**: High - CLI is stable and feature-complete for v1.0.0
 
@@ -935,7 +935,7 @@ SQLite-based cache for translations and write improvements with:
 
 **Actual implementation**: See `src/api/`
 
-The API client uses a **facade pattern**. `DeepLClient` provides a unified interface, delegating to 6 domain-specific clients:
+The API client uses a **facade pattern**. `DeepLClient` provides a unified interface, delegating to 6 domain-specific clients that are **lazily instantiated** on first access (most commands only need 1 client):
 
 - `TranslationClient` - text translation, usage, languages
 - `GlossaryClient` - glossary CRUD (v3 multilingual API)
