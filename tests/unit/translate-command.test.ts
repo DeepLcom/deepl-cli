@@ -3340,4 +3340,182 @@ describe('TranslateCommand', () => {
       expect(result).toContain('Translated /doc.txt');
     });
   });
+
+  describe('ignored option warnings', () => {
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    describe('multi-target mode', () => {
+      beforeEach(() => {
+        (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValue([
+          { targetLang: 'es', text: 'Hola' },
+          { targetLang: 'fr', text: 'Bonjour' },
+        ]);
+      });
+
+      it('should warn when unsupported options are passed to multi-target mode', async () => {
+        await translateCommand.translateText('Hello', {
+          to: 'es,fr',
+          splitSentences: 'on',
+          tagHandling: 'xml',
+          modelType: 'quality_optimized',
+          preserveFormatting: true,
+        });
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/multi-target mode does not support.*--split-sentences/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--tag-handling/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--model-type/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--preserve-formatting/)
+        );
+      });
+
+      it('should not warn when only supported options are used in multi-target mode', async () => {
+        await translateCommand.translateText('Hello', {
+          to: 'es,fr',
+          from: 'en',
+          formality: 'more',
+          context: 'greeting',
+        });
+
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+
+      it('should warn about XML tag params in multi-target mode', async () => {
+        await translateCommand.translateText('Hello', {
+          to: 'es,fr',
+          outlineDetection: 'true',
+          splittingTags: 'p,div',
+          nonSplittingTags: 'span',
+          ignoreTags: 'code',
+        });
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--outline-detection/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--splitting-tags/)
+        );
+      });
+    });
+
+    describe('directory mode', () => {
+      it('should warn when unsupported options are passed to directory mode', async () => {
+        await expect(
+          (translateCommand as any).translateDirectory('/path/to/dir', {
+            to: 'es',
+            output: '/output',
+            splitSentences: 'on',
+            glossary: 'my-glossary',
+            customInstruction: ['Be formal'],
+            modelType: 'quality_optimized',
+            context: 'technical docs',
+          })
+        ).rejects.toThrow(); // will fail due to batch service mock, but warning comes first
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/directory mode does not support/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--split-sentences/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--glossary/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--custom-instruction/)
+        );
+      });
+
+      it('should not warn when only supported options are used in directory mode', async () => {
+        await expect(
+          (translateCommand as any).translateDirectory('/path/to/dir', {
+            to: 'es',
+            output: '/output',
+            from: 'en',
+            formality: 'more',
+          })
+        ).rejects.toThrow(); // batch service mock will cause this to fail
+
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('document mode', () => {
+      beforeEach(() => {
+        jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+        (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValue({
+          success: true,
+          outputPath: '/output.pdf',
+        });
+      });
+
+      it('should warn when unsupported options are passed to document mode', async () => {
+        await (translateCommand as any).translateDocument('/doc.pdf', {
+          to: 'es',
+          output: '/output.pdf',
+          splitSentences: 'on',
+          tagHandling: 'xml',
+          modelType: 'quality_optimized',
+          customInstruction: ['Be formal'],
+          glossary: 'my-glossary',
+          preserveCode: true,
+        });
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/document mode does not support/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--split-sentences/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--glossary/)
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/--preserve-code/)
+        );
+      });
+
+      it('should not warn when only supported options are used in document mode', async () => {
+        await (translateCommand as any).translateDocument('/doc.pdf', {
+          to: 'es',
+          output: '/output.pdf',
+          from: 'en',
+          formality: 'more',
+          outputFormat: 'docx',
+          enableMinification: true,
+        });
+
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should not warn for undefined or false boolean options', async () => {
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValue([
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'fr', text: 'Bonjour' },
+      ]);
+
+      await translateCommand.translateText('Hello', {
+        to: 'es,fr',
+        preserveFormatting: undefined,
+        preserveCode: false,
+      });
+
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
 });
