@@ -2,19 +2,19 @@
 
 **Version:** 2.4
 **Date:** February 2026
-**Status:** Phase 2 Complete - v0.9.0 Released
+**Status:** Phase 2 Complete - v0.10.0 Released
 
 ---
 
 ## Current Implementation Status
 
-**Version**: v0.9.0 (February 2026)
+**Version**: v0.10.0 (February 2026)
 **Phase**: 2 (Advanced Features) - **COMPLETE**
-**Test Suite**: 1669 tests, 100% pass rate
+**Test Suite**: 2578 tests, 100% pass rate
 **Code Coverage**: ~91% overall (excellent integration/e2e coverage)
 **Production Readiness**: High - CLI is stable and feature-complete for v1.0.0
 
-### What's Implemented (v0.1.0 - v0.9.0)
+### What's Implemented (v0.1.0 - v0.10.0)
 
 - **Core Translation** - Text, file, directory, and document translation with 121 languages
 - **DeepL Write API** - Grammar and style enhancement with 10 language codes (de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT)
@@ -1255,7 +1255,7 @@ jobs:
 - [x] Basic glossary support (create, list, show, delete, use)
 - [x] Cache CLI commands (stats, clear, enable, disable)
 
-### Phase 2: Advanced Features - 100% Complete (v0.2.0 - v0.9.0)
+### Phase 2: Advanced Features - 100% Complete (v0.2.0 - v0.10.0)
 
 **v0.2.0 (October 2025)**:
 

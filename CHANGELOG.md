@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-02-08
+
 ### Added
 - **`--git-staged` flag for `deepl watch`** - Restricts watch mode to only translate files that are currently git-staged. Takes a snapshot of staged files at startup via `git diff --cached --name-only --diff-filter=ACM` and filters file change events against that set. Useful in pre-commit workflows. Throws a clear error when used outside a git repository.
 - **`--enable-beta-languages` flag for translate command** - Forward-compatibility flag for new DeepL languages that are not yet in the local language registry.
