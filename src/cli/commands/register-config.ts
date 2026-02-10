@@ -26,12 +26,17 @@ Examples:
       new Command('get')
         .description('Get configuration value')
         .argument('[key]', 'Config key (dot notation) or empty for all')
-        .action(async (key?: string) => {
+        .option('--format <format>', 'Output format: text, json (default: json)')
+        .action(async (key?: string, options?: { format?: string }) => {
           try {
             const { ConfigCommand: ConfigCmd } = await import('./config.js');
             const configCommand = new ConfigCmd(getConfigService());
             const value = await configCommand.get(key);
-            Logger.output(JSON.stringify(value ?? null, null, 2));
+            if (options?.format === 'text') {
+              Logger.output(configCommand.formatValue(key, value));
+            } else {
+              Logger.output(JSON.stringify(value ?? null, null, 2));
+            }
           } catch (error) {
             handleError(error);
 
@@ -58,12 +63,17 @@ Examples:
     .addCommand(
       new Command('list')
         .description('List all configuration values')
-        .action(async () => {
+        .option('--format <format>', 'Output format: text, json (default: json)')
+        .action(async (options: { format?: string }) => {
           try {
             const { ConfigCommand: ConfigCmd } = await import('./config.js');
             const configCommand = new ConfigCmd(getConfigService());
             const config = await configCommand.list();
-            Logger.output(JSON.stringify(config, null, 2));
+            if (options.format === 'text') {
+              Logger.output(configCommand.formatConfig(config));
+            } else {
+              Logger.output(JSON.stringify(config, null, 2));
+            }
           } catch (error) {
             handleError(error);
 

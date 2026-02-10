@@ -68,6 +68,38 @@ export class ConfigCommand {
   }
 
   /**
+   * Format a single config value for human-readable text output
+   */
+  formatValue(key: string | undefined, value: unknown): string {
+    if (key) {
+      const displayValue = value === undefined ? '(not set)' : String(value);
+      return `${key} = ${displayValue}`;
+    }
+    return this.formatConfig(value as Record<string, unknown>);
+  }
+
+  /**
+   * Format full config as human-readable text output
+   */
+  formatConfig(config: Record<string, unknown>): string {
+    const lines: string[] = [];
+    this.flattenConfig(config, '', lines);
+    return lines.join('\n');
+  }
+
+  private flattenConfig(obj: Record<string, unknown>, prefix: string, lines: string[]): void {
+    for (const [key, value] of Object.entries(obj)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        this.flattenConfig(value as Record<string, unknown>, fullKey, lines);
+      } else {
+        const display = value === undefined ? '(not set)' : JSON.stringify(value);
+        lines.push(`${fullKey} = ${display}`);
+      }
+    }
+  }
+
+  /**
    * Parse value based on key
    */
   private parseValue(key: string, value: string): unknown {

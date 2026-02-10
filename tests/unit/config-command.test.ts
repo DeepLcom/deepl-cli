@@ -250,6 +250,57 @@ describe('ConfigCommand', () => {
     });
   });
 
+  describe('formatValue()', () => {
+    it('should format a single config value with key', () => {
+      const result = configCommand.formatValue('cache.enabled', true);
+      expect(result).toBe('cache.enabled = true');
+    });
+
+    it('should show (not set) for undefined value', () => {
+      const result = configCommand.formatValue('defaults.sourceLang', undefined);
+      expect(result).toBe('defaults.sourceLang = (not set)');
+    });
+
+    it('should format string value', () => {
+      const result = configCommand.formatValue('defaults.formality', 'default');
+      expect(result).toBe('defaults.formality = default');
+    });
+
+    it('should delegate to formatConfig when key is undefined', () => {
+      const config = { auth: { apiKey: 'test' }, cache: { enabled: true } };
+      const result = configCommand.formatValue(undefined, config);
+      expect(result).toContain('auth.apiKey');
+      expect(result).toContain('cache.enabled');
+    });
+  });
+
+  describe('formatConfig()', () => {
+    it('should flatten nested config to key=value pairs', () => {
+      const config = {
+        auth: { apiKey: 'test-key' },
+        cache: { enabled: true, maxSize: 1024 },
+        defaults: { targetLangs: ['es', 'fr'] },
+      };
+      const result = configCommand.formatConfig(config);
+
+      expect(result).toContain('auth.apiKey = "test-key"');
+      expect(result).toContain('cache.enabled = true');
+      expect(result).toContain('cache.maxSize = 1024');
+      expect(result).toContain('defaults.targetLangs = ["es","fr"]');
+    });
+
+    it('should handle empty config', () => {
+      const result = configCommand.formatConfig({});
+      expect(result).toBe('');
+    });
+
+    it('should handle deeply nested config', () => {
+      const config = { a: { b: { c: 'deep' } } };
+      const result = configCommand.formatConfig(config);
+      expect(result).toContain('a.b.c = "deep"');
+    });
+  });
+
   describe('reset()', () => {
     it('should reset config to defaults', async () => {
       await configCommand.reset();
