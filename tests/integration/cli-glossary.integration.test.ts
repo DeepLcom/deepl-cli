@@ -168,9 +168,21 @@ describe('Glossary CLI Integration', () => {
         expect(output).not.toMatch(/required|missing.*argument/i);
       }
     });
+
+    it('should accept --format json option', () => {
+      const helpOutput = runCLI('deepl glossary list --help');
+      expect(helpOutput).toContain('--format');
+      expect(helpOutput).toContain('json');
+    });
   });
 
   describe('glossary show', () => {
+    it('should accept --format json option', () => {
+      const helpOutput = runCLI('deepl glossary show --help');
+      expect(helpOutput).toContain('--format');
+      expect(helpOutput).toContain('json');
+    });
+
     it('should require name-or-id argument', () => {
       const helpOutput = runCLI('deepl glossary --help');
 
@@ -201,6 +213,12 @@ describe('Glossary CLI Integration', () => {
   });
 
   describe('glossary entries', () => {
+    it('should accept --format json option', () => {
+      const helpOutput = runCLI('deepl glossary entries --help');
+      expect(helpOutput).toContain('--format');
+      expect(helpOutput).toContain('json');
+    });
+
     it('should require name-or-id argument', () => {
       const helpOutput = runCLI('deepl glossary --help');
 

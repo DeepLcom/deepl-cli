@@ -58,12 +58,17 @@ Examples:
     .addCommand(
       new Command('list')
         .description('List all glossaries')
-        .action(async () => {
+        .option('--format <format>', 'Output format: text, json (default: text)')
+        .action(async (options: { format?: string }) => {
           try {
             const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const glossaries = await glossaryCommand.list();
-            Logger.output(glossaryCommand.formatGlossaryList(glossaries));
+            if (options.format === 'json') {
+              Logger.output(JSON.stringify(glossaries, null, 2));
+            } else {
+              Logger.output(glossaryCommand.formatGlossaryList(glossaries));
+            }
           } catch (error) {
             handleError(error);
 
@@ -74,12 +79,17 @@ Examples:
       new Command('show')
         .description('Show glossary details')
         .argument('<name-or-id>', 'Glossary name or ID')
-        .action(async (nameOrId: string) => {
+        .option('--format <format>', 'Output format: text, json (default: text)')
+        .action(async (nameOrId: string, options: { format?: string }) => {
           try {
             const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const glossary = await glossaryCommand.show(nameOrId);
-            Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
+            if (options.format === 'json') {
+              Logger.output(JSON.stringify(glossary, null, 2));
+            } else {
+              Logger.output(glossaryCommand.formatGlossaryInfo(glossary));
+            }
           } catch (error) {
             handleError(error);
 
@@ -91,13 +101,18 @@ Examples:
         .description('Show glossary entries')
         .argument('<name-or-id>', 'Glossary name or ID')
         .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
-        .action(async (nameOrId: string, options: { targetLang?: string }) => {
+        .option('--format <format>', 'Output format: text, json (default: text)')
+        .action(async (nameOrId: string, options: { targetLang?: string; format?: string }) => {
           try {
             const glossaryCommand = await createGlossaryCommand(createDeepLClient);
 
             const targetLang = options.targetLang as Language | undefined;
             const entries = await glossaryCommand.entries(nameOrId, targetLang);
-            Logger.output(glossaryCommand.formatEntries(entries));
+            if (options.format === 'json') {
+              Logger.output(JSON.stringify(entries, null, 2));
+            } else {
+              Logger.output(glossaryCommand.formatEntries(entries));
+            }
           } catch (error) {
             handleError(error);
 

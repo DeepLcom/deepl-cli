@@ -673,4 +673,63 @@ describe('GlossaryCommand', () => {
       expect(result).toBe('en → de');
     });
   });
+
+  describe('--format json output', () => {
+    it('should produce valid JSON for glossary list', async () => {
+      const glossaries = await glossaryCommand.list();
+      const json = JSON.stringify(glossaries, null, 2);
+      const parsed = JSON.parse(json);
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed[0]).toHaveProperty('glossary_id');
+      expect(parsed[0]).toHaveProperty('name');
+      expect(parsed[0]).toHaveProperty('source_lang');
+      expect(parsed[0]).toHaveProperty('target_langs');
+    });
+
+    it('should produce valid JSON for glossary show', async () => {
+      const glossary = await glossaryCommand.show('123-456-789');
+      const json = JSON.stringify(glossary, null, 2);
+      const parsed = JSON.parse(json);
+      expect(parsed.glossary_id).toBe('123-456-789');
+      expect(parsed.name).toBe('Tech Terms');
+      expect(parsed.source_lang).toBe('en');
+      expect(parsed.target_langs).toEqual(['es']);
+    });
+
+    it('should produce valid JSON for glossary entries', async () => {
+      const entries = await glossaryCommand.entries('123-456-789');
+      const json = JSON.stringify(entries, null, 2);
+      const parsed = JSON.parse(json);
+      expect(parsed).toEqual({ hello: 'hola', world: 'mundo' });
+    });
+
+    it('should produce valid JSON for empty glossary list', async () => {
+      (mockGlossaryService.listGlossaries as jest.Mock).mockResolvedValueOnce([]);
+      const glossaries = await glossaryCommand.list();
+      const json = JSON.stringify(glossaries, null, 2);
+      const parsed = JSON.parse(json);
+      expect(parsed).toEqual([]);
+    });
+
+    it('should produce valid JSON for multilingual glossary', async () => {
+      const multiGlossary: GlossaryInfo = {
+        glossary_id: 'multi-123',
+        name: 'Multi Terms',
+        source_lang: 'en',
+        target_langs: ['es', 'fr'],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'es', entry_count: 5 },
+          { source_lang: 'en', target_lang: 'fr', entry_count: 3 },
+        ],
+        creation_time: '2024-01-15T10:30:00Z',
+      };
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multiGlossary);
+
+      const glossary = await glossaryCommand.show('multi-123');
+      const json = JSON.stringify(glossary, null, 2);
+      const parsed = JSON.parse(json);
+      expect(parsed.target_langs).toEqual(['es', 'fr']);
+      expect(parsed.dictionaries).toHaveLength(2);
+    });
+  });
 });
