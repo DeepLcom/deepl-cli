@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Respect `FORCE_COLOR` and `TERM=dumb` environment variables for color output control (per clig.dev compliance)
+
 ## [0.11.0] - 2026-02-08
 
 ### Added

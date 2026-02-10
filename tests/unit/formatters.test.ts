@@ -7,6 +7,7 @@ import {
   formatMultiTranslationJson,
   formatMultiTranslationTable,
   formatWriteJson,
+  isColorEnabled,
 } from '../../src/utils/formatters';
 import { TranslationResult } from '../../src/api/deepl-client';
 import { Language } from '../../src/types';
@@ -265,7 +266,7 @@ describe('formatters', () => {
     });
   });
 
-  describe('formatMultiTranslationTable() with NO_COLOR', () => {
+  describe('formatMultiTranslationTable() color environment handling', () => {
     const originalEnv = process.env;
 
     afterEach(() => {
@@ -308,6 +309,120 @@ describe('formatters', () => {
       // eslint-disable-next-line no-control-regex
       const ansiRegex = /\x1b\[[0-9;]*m/;
       expect(ansiRegex.test(output)).toBe(false);
+    });
+
+    it('should not contain ANSI escape codes when TERM=dumb', () => {
+      process.env = { ...originalEnv, TERM: 'dumb' };
+      delete process.env['NO_COLOR'];
+      delete process.env['FORCE_COLOR'];
+      const results = [
+        {
+          targetLang: 'es' as Language,
+          text: 'Hola',
+          billedCharacters: 5,
+        },
+      ];
+
+      const output = formatMultiTranslationTable(results);
+
+      // eslint-disable-next-line no-control-regex
+      const ansiRegex = /\x1b\[[0-9;]*m/;
+      expect(ansiRegex.test(output)).toBe(false);
+    });
+  });
+
+  describe('isColorEnabled()', () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it('should return true by default when no color env vars are set', () => {
+      process.env = { ...originalEnv };
+      delete process.env['NO_COLOR'];
+      delete process.env['FORCE_COLOR'];
+      delete process.env['TERM'];
+
+      expect(isColorEnabled()).toBe(true);
+    });
+
+    it('should return false when NO_COLOR is set', () => {
+      process.env = { ...originalEnv, NO_COLOR: '1' };
+      delete process.env['FORCE_COLOR'];
+
+      expect(isColorEnabled()).toBe(false);
+    });
+
+    it('should return false when NO_COLOR is empty string (presence check)', () => {
+      process.env = { ...originalEnv, NO_COLOR: '' };
+      delete process.env['FORCE_COLOR'];
+
+      expect(isColorEnabled()).toBe(false);
+    });
+
+    it('should return true when FORCE_COLOR=1', () => {
+      process.env = { ...originalEnv, FORCE_COLOR: '1' };
+      delete process.env['NO_COLOR'];
+
+      expect(isColorEnabled()).toBe(true);
+    });
+
+    it('should return true when FORCE_COLOR=true', () => {
+      process.env = { ...originalEnv, FORCE_COLOR: 'true' };
+      delete process.env['NO_COLOR'];
+
+      expect(isColorEnabled()).toBe(true);
+    });
+
+    it('should return false when FORCE_COLOR=0', () => {
+      process.env = { ...originalEnv, FORCE_COLOR: '0' };
+      delete process.env['NO_COLOR'];
+
+      expect(isColorEnabled()).toBe(false);
+    });
+
+    it('should return false when FORCE_COLOR=false', () => {
+      process.env = { ...originalEnv, FORCE_COLOR: 'false' };
+      delete process.env['NO_COLOR'];
+
+      expect(isColorEnabled()).toBe(false);
+    });
+
+    it('should return false when TERM=dumb', () => {
+      process.env = { ...originalEnv, TERM: 'dumb' };
+      delete process.env['NO_COLOR'];
+      delete process.env['FORCE_COLOR'];
+
+      expect(isColorEnabled()).toBe(false);
+    });
+
+    it('should return true when TERM is not dumb', () => {
+      process.env = { ...originalEnv, TERM: 'xterm-256color' };
+      delete process.env['NO_COLOR'];
+      delete process.env['FORCE_COLOR'];
+
+      expect(isColorEnabled()).toBe(true);
+    });
+
+    it('should prioritize NO_COLOR over FORCE_COLOR', () => {
+      process.env = { ...originalEnv, NO_COLOR: '1', FORCE_COLOR: '1' };
+
+      expect(isColorEnabled()).toBe(false);
+    });
+
+    it('should prioritize FORCE_COLOR over TERM=dumb', () => {
+      process.env = { ...originalEnv, FORCE_COLOR: '1', TERM: 'dumb' };
+      delete process.env['NO_COLOR'];
+
+      expect(isColorEnabled()).toBe(true);
+    });
+
+    it('should prioritize NO_COLOR over TERM=dumb', () => {
+      process.env = { ...originalEnv, NO_COLOR: '', TERM: 'dumb' };
+      delete process.env['FORCE_COLOR'];
+
+      expect(isColorEnabled()).toBe(false);
     });
   });
 
