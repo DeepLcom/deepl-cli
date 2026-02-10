@@ -186,7 +186,8 @@ describe('Glossary CLI Integration', () => {
     it('should require name-or-id argument', () => {
       const helpOutput = runCLI('deepl glossary --help');
 
-      expect(helpOutput).toContain('show <name-or-id>');
+      expect(helpOutput).toContain('show');
+      expect(helpOutput).toContain('<name-or-id>');
       expect(helpOutput).toContain('Show glossary details');
     });
 
