@@ -361,6 +361,24 @@ describe('VoiceCommand', () => {
       expect(mockService.translateStdin).toHaveBeenCalled();
     });
 
+    it('should delegate to service without any stdin size limit', async () => {
+      mockService.translateStdin.mockResolvedValue(mockResult);
+
+      await command.translateFromStdin({ to: 'de', contentType: 'audio/mpeg' });
+
+      // Voice stdin delegates directly to VoiceService.translateStdin without
+      // any byte-counting or size guard — unlike TranslateCommand.readStdin()
+      // which enforces a 128KB (MAX_STDIN_BYTES) limit for text translation.
+      // This test documents that the voice path has no such restriction.
+      expect(mockService.translateStdin).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetLangs: ['de'],
+          contentType: 'audio/mpeg',
+        }),
+        undefined,
+      );
+    });
+
     it('should format as JSON when requested', async () => {
       mockService.translateStdin.mockResolvedValue(mockResult);
 

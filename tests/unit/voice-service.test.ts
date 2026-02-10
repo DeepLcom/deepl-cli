@@ -1242,6 +1242,57 @@ describe('VoiceService', () => {
       expect(mockClient.sendEndOfSource).toHaveBeenCalled();
     });
 
+    it('should handle stdin input larger than 128KB without any size limit', async () => {
+      const mockWs = createMockWebSocket();
+      const mockStdin = new PassThrough();
+      jest.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any);
+
+      mockClient.createSession.mockResolvedValue({
+        streaming_url: 'wss://test',
+        token: 'token',
+        session_id: 'session-large-stdin',
+      });
+      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
+        setTimeout(() => {
+          mockWs.emit('open');
+          setTimeout(() => {
+            // Write 256KB of data — double the translate command's 128KB limit
+            const totalSize = 256 * 1024;
+            const pushSize = 4096;
+            for (let i = 0; i < totalSize / pushSize; i++) {
+              mockStdin.write(Buffer.alloc(pushSize, i & 0xff));
+            }
+            mockStdin.end();
+            setTimeout(() => {
+              callbacks.onEndOfStream?.();
+            }, 100);
+          }, 10);
+        }, 0);
+        return mockWs as any;
+      });
+
+      const chunkSize = 6400;
+      const result = await service.translateStdin({
+        targetLangs: ['de'],
+        contentType: 'audio/mpeg',
+        chunkSize,
+        chunkInterval: 0,
+      });
+
+      expect(result.sessionId).toBe('session-large-stdin');
+
+      const calls = mockClient.sendAudioChunk.mock.calls;
+      let totalBytesSent = 0;
+      for (const call of calls) {
+        const b64 = call[1] as string;
+        const byteLen = Buffer.from(b64, 'base64').length;
+        totalBytesSent += byteLen;
+        expect(byteLen).toBeLessThanOrEqual(chunkSize);
+      }
+      // All 256KB must arrive — no truncation, no rejection
+      expect(totalBytesSent).toBe(256 * 1024);
+    });
+
     it('should accumulate multi-push data before yielding complete chunks', async () => {
       const mockWs = createMockWebSocket();
       const mockStdin = new PassThrough();

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Add tests verifying voice stdin is not subject to the translate command's 128KB (MAX_STDIN_BYTES) size limit. The voice `readStdinInChunks` path streams audio data without any size cap, which is correct for audio files that regularly exceed 128KB.
+
 ## [0.11.0] - 2026-02-08
 
 ### Added
