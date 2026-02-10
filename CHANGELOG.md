@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add JSON/YAML-aware file translation — `deepl translate en.json --to es --output es.json` extracts only string values, translates them via batch API, and reassembles preserving keys, nesting, non-string values, indentation, and YAML comments
+- Add `yaml` (v2.x) dependency for YAML round-trip parsing with comment preservation
 - Add `deepl detect` command for language detection (calls translate API and returns detected source language)
 - Respect `Retry-After` header on 429 responses, falling back to exponential backoff when absent
 - Add `--format json` support to glossary (list, show, entries), hooks (list), and config (list, get) commands for CI/CD scripting

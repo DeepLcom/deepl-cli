@@ -71,6 +71,7 @@ EXAMPLES=(
   "22-style-rules.sh"
   "23-admin.sh"
   "24-voice.sh"
+  "25-structured-file-translation.sh"
 )
 
 # Skip slow examples in fast mode
@@ -100,6 +101,7 @@ if [ "$FAST_MODE" = true ]; then
     "22-style-rules.sh"
     "23-admin.sh"
     "24-voice.sh"
+    "25-structured-file-translation.sh"
   )
 fi
 

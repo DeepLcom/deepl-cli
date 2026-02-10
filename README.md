@@ -239,11 +239,27 @@ cat input.txt | deepl translate --to ja
 
 **Text Files:** `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff`
 
+**Structured Files (i18n):** `.json`, `.yaml`, `.yml`
+
+Structured files are parsed to extract only string values. Keys, nesting, non-string values (numbers, booleans, null), indentation, and YAML comments are all preserved. Ideal for translating i18n locale files.
+
+```bash
+# Translate a JSON locale file
+deepl translate en.json --to es --output es.json
+
+# Translate a YAML locale file (comments preserved)
+deepl translate en.yaml --to de --output de.yaml
+
+# Multiple targets
+deepl translate locales/en.json --to es,fr,de --output locales/
+```
+
 **Smart Caching for Text Files:**
 
 Small text-based files (under 100 KB) automatically use the cached text translation API for faster performance and reduced API calls. Larger files automatically fall back to the document translation API (not cached).
 
 - **Cached formats:** `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` (files under 100 KB only)
+- **Structured formats:** `.json`, `.yaml`, `.yml` — parsed and translated via batch text API (no size limit)
 - **Large file fallback:** Files ≥100 KB use document API (not cached, always makes API calls)
 - **Binary formats:** `.pdf`, `.docx`, `.pptx`, `.xlsx` always use document API (not cached)
 - **Performance:** Only small text files (<100 KB) benefit from instant cached translations

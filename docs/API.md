@@ -292,6 +292,21 @@ deepl translate subtitles.srt --to ja --output subtitles.ja.srt
 deepl translate strings.xlf --to de --output strings.de.xlf
 ```
 
+**Structured file formats (i18n):**
+
+The following structured formats are parsed to extract only string values, translated via the batch text API, then reassembled preserving keys, nesting, non-string values, indentation, and YAML comments:
+
+- `.json` - JSON files (i18n locale files, config files)
+- `.yaml`, `.yml` - YAML files (Rails i18n, config files)
+
+```bash
+# Translate JSON locale file
+deepl translate en.json --to es --output es.json
+
+# Translate YAML locale file (comments preserved)
+deepl translate en.yaml --to de --output de.yaml
+```
+
 **Cached text-based formats:**
 
 The following formats use the cached text API when files are under 100 KiB:
@@ -359,9 +374,12 @@ deepl translate report.docx --to fr --output report.fr.docx --enable-minificatio
 - `.srt` - Subtitle files - **Smart routing** (cached text API <100 KiB, document API ≥100 KiB)
 - `.xlf`, `.xliff` - XLIFF localization files - **Smart routing** (cached text API <100 KiB, document API ≥100 KiB)
 - `.md` - Markdown files - **Cached text API** (all sizes)
+- `.json` - JSON files - **Structured file API** (string extraction + batch translation)
+- `.yaml`, `.yml` - YAML files - **Structured file API** (string extraction + batch translation, comments preserved)
 
 **Document Translation Notes:**
 
+- **Structured files**: `.json`, `.yaml`, `.yml` are parsed to extract string values, translated via batch text API, and reassembled preserving structure
 - **Smart routing**: Text-based files (`.txt`, `.md`, `.html`, `.srt`, `.xlf`, `.xliff`) under 100 KiB automatically use the cached text API for better performance
 - **Binary formats** (PDF, DOCX, PPTX, XLSX) and **image formats** (JPEG, PNG) always use the document API regardless of size
 - Documents are translated on DeepL servers using async processing

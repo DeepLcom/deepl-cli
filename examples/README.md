@@ -28,6 +28,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Style Rules](./22-style-rules.sh) - Listing and using pre-configured style rules for consistent translations
 - [Admin API](./23-admin.sh) - Managing API keys and viewing organization usage analytics
 - [Voice Translation](./24-voice.sh) - Real-time speech translation via the Voice API
+- [Structured File Translation](./25-structured-file-translation.sh) - Translating JSON/YAML i18n locale files while preserving structure
 
 ## Prerequisites
 
