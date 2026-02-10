@@ -298,7 +298,8 @@ These features were identified but deferred for future implementation:
 - **v0.8.0** - Custom instructions, style rules, admin API, expanded languages, security hardening
 - **v0.9.0** - Language registry, glossary replace-dictionary, lazy cache, input validation
 - **v0.9.1** - Command registration tests, code quality improvements, shell completion, --dry-run, --verbose, CONTRIBUTING.md
-- **v0.10.0** - Voice API, glossary update, git-staged watch, grouped help, beta languages (CURRENT)
+- **v0.10.0** - Voice API, glossary update, git-staged watch, grouped help, beta languages
+- **v0.11.0** - Bug fixes, security hardening, documentation, init wizard, JSON output (CURRENT)
 - **v1.0.0** - Stable API, production-ready, all polish items complete (TUI deferred)
 
 ---
