@@ -12,6 +12,7 @@ import chalk from 'chalk';
 import { select } from '@inquirer/prompts';
 import { formatWriteJson } from '../../utils/formatters.js';
 import { safeReadFile } from '../../utils/safe-read-file.js';
+import { Logger } from '../../utils/logger.js';
 
 interface WriteOptions {
   lang?: WriteLanguage;
@@ -384,7 +385,7 @@ export class WriteCommand {
           });
         }
       } catch (error) {
-        // Skip this style if it fails (silently continue)
+        Logger.verbose(`Write style ${style} failed:`, error instanceof Error ? error.message : String(error));
       }
     }
 
