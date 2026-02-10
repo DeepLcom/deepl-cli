@@ -919,9 +919,10 @@ describe('VoiceService', () => {
           process.nextTick(() => {
             mockWs2.emit('open');
           });
-          // After some chunks are sent on ws2, end the stream
+          // End the stream only after all remaining chunks arrive on ws2
+          const totalExpected = Math.ceil(5000 / 500);
           const checkAndEnd = () => {
-            if (chunksSentOnWs2.length > 0) {
+            if (chunksSentOnWs1.length + chunksSentOnWs2.length >= totalExpected) {
               process.nextTick(() => callbacks.onEndOfStream?.());
             } else {
               setImmediate(checkAndEnd);
