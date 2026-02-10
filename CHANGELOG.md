@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Replace wasteful HttpClient construction with static validation in DeepLClient — constructor now calls `HttpClient.validateConfig()` instead of creating and discarding a full HttpClient instance
 - Add nock-based HTTP validation to translate CLI integration tests (24 tests validating request structure through TranslationService -> DeepLClient -> HTTP)
+- Add unicode and multibyte text test cases for CJK, Arabic, emoji, and combining characters
 - Add tests verifying voice stdin is not subject to the translate command's 128KB (MAX_STDIN_BYTES) size limit. The voice `readStdinInChunks` path streams audio data without any size cap, which is correct for audio files that regularly exceed 128KB.
 - Extract duplicated file-reading pattern in WriteCommand to shared `readFileContent()` helper, removing ~50 lines of duplication across 5 methods
 
