@@ -13,16 +13,22 @@ import type { VoiceSessionResult } from '../types/voice.js';
  * Priority order: NO_COLOR > FORCE_COLOR > TERM=dumb > auto-detect (default on)
  */
 export function isColorEnabled(): boolean {
-  if ('NO_COLOR' in process.env) return false;
+  if ('NO_COLOR' in process.env) {
+    return false;
+  }
 
   const forceColor = process.env['FORCE_COLOR'];
   if (forceColor !== undefined && forceColor !== '') {
     const lower = forceColor.toLowerCase();
-    if (lower === '0' || lower === 'false') return false;
+    if (lower === '0' || lower === 'false') {
+      return false;
+    }
     return true;
   }
 
-  if (process.env['TERM'] === 'dumb') return false;
+  if (process.env['TERM'] === 'dumb') {
+    return false;
+  }
 
   return true;
 }
