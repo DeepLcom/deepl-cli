@@ -603,6 +603,7 @@ separation of concerns and testability.
 - Commit when a feature is complete and tested
 - Don't commit broken code or failing tests
 - Don't wait too long between commits
+- **Always run `npm run lint` and `npm run type-check` before every commit** — do not commit code with lint errors or type errors
 
 ## Pull Request Guidelines
 
@@ -742,6 +743,9 @@ npm run lint
 
 # Type check
 npm run type-check
+
+# Audit for vulnerabilities
+npm audit --audit-level=moderate
 
 # Build
 npm run build
