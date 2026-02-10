@@ -8,6 +8,25 @@ import { TranslationResult } from '../api/deepl-client.js';
 import { Language } from '../types/index.js';
 import type { VoiceSessionResult } from '../types/voice.js';
 
+/**
+ * Determine whether color output should be enabled.
+ * Priority order: NO_COLOR > FORCE_COLOR > TERM=dumb > auto-detect (default on)
+ */
+export function isColorEnabled(): boolean {
+  if ('NO_COLOR' in process.env) return false;
+
+  const forceColor = process.env['FORCE_COLOR'];
+  if (forceColor !== undefined && forceColor !== '') {
+    const lower = forceColor.toLowerCase();
+    if (lower === '0' || lower === 'false') return false;
+    return true;
+  }
+
+  if (process.env['TERM'] === 'dumb') return false;
+
+  return true;
+}
+
 export interface TranslateJsonOutput {
   text: string;
   targetLang: Language;
@@ -110,13 +129,13 @@ export function formatMultiTranslationTable(
 ): string {
   // Check if any result has billedCharacters - if so, show the Characters column
   const showCharacters = results.some(r => r.billedCharacters !== undefined);
-  const noColor = 'NO_COLOR' in process.env;
+  const colorDisabled = !isColorEnabled();
 
   const table = new Table({
     head: showCharacters ? ['Language', 'Translation', 'Characters'] : ['Language', 'Translation'],
     colWidths: showCharacters ? [10, 60, 12] : [10, 70],
     wordWrap: true,
-    ...(noColor && { style: { head: [], border: [] } }),
+    ...(colorDisabled && { style: { head: [], border: [] } }),
   });
 
   results.forEach((result) => {
