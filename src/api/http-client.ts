@@ -51,6 +51,41 @@ export class HttpClient {
   protected maxRetries: number;
   protected _lastTraceId?: string;
 
+  static validateConfig(apiKey: string, options: DeepLClientOptions = {}): void {
+    if (!apiKey || apiKey.trim() === '') {
+      throw new Error('API key is required');
+    }
+
+    let proxyConfig = options.proxy;
+
+    if (!proxyConfig) {
+      const httpProxy = process.env['HTTP_PROXY'] ?? process.env['http_proxy'];
+      const httpsProxy = process.env['HTTPS_PROXY'] ?? process.env['https_proxy'];
+      const proxyUrl = httpsProxy ?? httpProxy;
+
+      if (proxyUrl) {
+        try {
+          const url = new URL(proxyUrl);
+          proxyConfig = {
+            protocol: url.protocol.replace(':', '') as 'http' | 'https',
+            host: url.hostname,
+            port: parseInt(url.port || (url.protocol === 'https:' ? '443' : '80'), 10),
+          };
+
+          if (url.username && url.password) {
+            proxyConfig.auth = {
+              username: url.username,
+              password: url.password,
+            };
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          throw new Error(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
+        }
+      }
+    }
+  }
+
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
     if (!apiKey || apiKey.trim() === '') {
       throw new Error('API key is required');

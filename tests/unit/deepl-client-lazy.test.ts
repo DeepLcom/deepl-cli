@@ -35,7 +35,7 @@ describe('DeepLClient lazy sub-client construction', () => {
     const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
-    // At this point, only the validation HttpClient was constructed.
+    // At this point, only static validation ran (no HttpClient instance created).
     // The actual sub-clients should not exist yet.
     // We test this by verifying the private fields are undefined.
     expect((client as any)._translationClient).toBeUndefined();
