@@ -53,7 +53,8 @@
     "minimatch": "^9.0.5",
     "ora": "^8.1.1",
     "p-limit": "^6.1.0",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",

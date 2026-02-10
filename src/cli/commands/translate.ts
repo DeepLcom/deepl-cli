@@ -23,7 +23,8 @@ const VALID_LANGUAGES: ReadonlySet<string> = getAllLanguageCodes();
 const EXTENDED_ONLY_LANGUAGES: ReadonlySet<string> = getExtendedLanguageCodes();
 
 // Constants for text-based file caching
-const TEXT_BASED_EXTENSIONS = ['.txt', '.md', '.html', '.htm', '.srt', '.xlf', '.xliff'];
+const TEXT_BASED_EXTENSIONS = ['.txt', '.md', '.html', '.htm', '.srt', '.xlf', '.xliff', '.json', '.yaml', '.yml'];
+const STRUCTURED_EXTENSIONS = ['.json', '.yaml', '.yml'];
 const SAFE_TEXT_SIZE_LIMIT = 100 * 1024; // 100 KiB (safe threshold, API limit is 128 KiB)
 
 // Custom instruction limits
@@ -621,8 +622,31 @@ export class TranslateCommand {
     }
   }
 
+  private isStructuredFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return STRUCTURED_EXTENSIONS.includes(ext);
+  }
+
   private async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
     this.validateLanguageCodes([options.to]);
+
+    // Structured files (JSON/YAML) need key-extraction, not raw text translation
+    if (this.isStructuredFile(filePath)) {
+      const translationOptions = this.buildTranslationOptions(options);
+
+      if (options.glossary) {
+        translationOptions.glossaryId = await this.resolveGlossaryId(options.glossary);
+      }
+
+      await this.fileTranslationService.translateFile(
+        filePath,
+        options.output!,
+        translationOptions,
+        { preserveCode: options.preserveCode }
+      );
+
+      return `Translated ${filePath} -> ${options.output}`;
+    }
 
     // Read file content (safe: rejects symlinks to prevent TOCTOU attacks)
     const content = safeReadFileSync(filePath, 'utf-8');

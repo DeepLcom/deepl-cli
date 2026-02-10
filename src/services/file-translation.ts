@@ -9,6 +9,7 @@ import { TranslationService } from './translation.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { ValidationError } from '../utils/errors.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
+import type { StructuredFileTranslationService } from './structured-file-translation.js';
 
 interface NodeErrno extends Error {
   code?: string;
@@ -30,10 +31,24 @@ interface FileMultiTargetResult {
 
 export class FileTranslationService {
   private translationService: TranslationService;
-  private supportedExtensions = ['.txt', '.md'];
+  private supportedExtensions = ['.txt', '.md', '.json', '.yaml', '.yml'];
+  private structuredService?: StructuredFileTranslationService;
 
   constructor(translationService: TranslationService) {
     this.translationService = translationService;
+  }
+
+  private async getStructuredService(): Promise<StructuredFileTranslationService> {
+    if (!this.structuredService) {
+      const { StructuredFileTranslationService: Cls } = await import('./structured-file-translation.js');
+      this.structuredService = new Cls(this.translationService);
+    }
+    return this.structuredService;
+  }
+
+  private isStructuredExt(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return ['.json', '.yaml', '.yml'].includes(ext);
   }
 
   /**
@@ -51,6 +66,12 @@ export class FileTranslationService {
         `Unsupported file type: ${path.extname(inputPath)}`,
         'Run: deepl languages --type document  to see supported document formats'
       );
+    }
+
+    // Delegate structured files (JSON/YAML) to StructuredFileTranslationService
+    if (this.isStructuredExt(inputPath)) {
+      const svc = await this.getStructuredService();
+      return svc.translateFile(inputPath, outputPath, options, fileOptions);
     }
 
     // Read file content using safeReadFile (rejects symlinks for security)
@@ -98,6 +119,12 @@ export class FileTranslationService {
         `Unsupported file type: ${path.extname(inputPath)}`,
         'Run: deepl languages --type document  to see supported document formats'
       );
+    }
+
+    // Delegate structured files (JSON/YAML) to StructuredFileTranslationService
+    if (this.isStructuredExt(inputPath)) {
+      const svc = await this.getStructuredService();
+      return svc.translateFileToMultiple(inputPath, targetLangs, options);
     }
 
     // Read file content using safeReadFile (rejects symlinks for security)
