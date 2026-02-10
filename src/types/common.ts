@@ -28,4 +28,4 @@ export type Formality =
   | 'prefer_more'
   | 'prefer_less';
 
-export type OutputFormat = 'text' | 'json' | 'yaml' | 'table';
+export type OutputFormat = 'text' | 'json' | 'table';

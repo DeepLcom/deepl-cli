@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix version string references in documentation (0.10.0 → 0.11.0)
 - Respect `FORCE_COLOR` and `TERM=dumb` environment variables for color output control (per clig.dev compliance)
 
+### Removed
+- Remove unimplemented 'yaml' variant from OutputFormat type
+
 ### Security
 - Fix info disclosure: error logs no longer expose full error objects or internal paths
 - Fix symlink TOCTOU race condition in file translation — `translateTextFile` now uses `safeReadFileSync` instead of bare `fs.readFileSync`

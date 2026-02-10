@@ -20,7 +20,6 @@ const VALID_FORMALITY: readonly Formality[] = [
 const VALID_OUTPUT_FORMATS: readonly OutputFormat[] = [
   'text',
   'json',
-  'yaml',
   'table',
 ] as const;
 
