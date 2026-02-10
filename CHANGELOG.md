@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `--format json` support to glossary (list, show, entries), hooks (list), and config (list, get) commands for CI/CD scripting
+- Add shared `formatOutput()` / `formatJson()` helpers in `src/utils/output-helper.ts`
+- Add `listData()` method to HooksCommand for structured JSON output
+- Add `formatValue()` and `formatConfig()` methods to ConfigCommand for human-readable text output
+
 ### Changed
 - Add tests verifying voice stdin is not subject to the translate command's 128KB (MAX_STDIN_BYTES) size limit. The voice `readStdinInChunks` path streams audio data without any size cap, which is correct for audio files that regularly exceed 128KB.
 

@@ -983,10 +983,18 @@ deepl hooks uninstall post-commit
 
 List all hooks and their installation status.
 
+**Options:**
+
+- `--format <format>` - Output format: `text`, `json` (default: `text`)
+
 **Examples:**
 
 ```bash
 deepl hooks list
+
+# JSON output for CI/CD scripting
+deepl hooks list --format json
+# { "pre-commit": true, "pre-push": false, "commit-msg": false, "post-commit": false }
 ```
 
 ##### `path <hook-type>`
@@ -1063,7 +1071,11 @@ deepl glossary create product-names en fr terms.csv
 
 List all glossaries with their IDs, language pairs, and entry counts.
 
-**Output Format:**
+**Options:**
+
+- `--format <format>` - Output format: `text`, `json` (default: `text`)
+
+**Output Format (text):**
 
 - Single-target glossaries: `📖 name (source→target) - N entries`
 - Multilingual glossaries: `📚 name (source→N targets) - N entries`
@@ -1074,11 +1086,19 @@ List all glossaries with their IDs, language pairs, and entry counts.
 deepl glossary list
 # 📖 tech-terms (en→de) - 3 entries
 # 📚 multilingual-terms (en→3 targets) - 15 entries
+
+# JSON output for CI/CD scripting
+deepl glossary list --format json
+# [{ "glossary_id": "abc123...", "name": "tech-terms", ... }]
 ```
 
 ##### `show <name-or-id>`
 
 Show glossary details including name, ID, languages, creation date, and entry count.
+
+**Options:**
+
+- `--format <format>` - Output format: `text`, `json` (default: `text`)
 
 **Output includes:**
 
@@ -1146,6 +1166,7 @@ Get glossary entries in TSV format (suitable for backup or editing).
 **Options:**
 
 - `--target-lang <lang>` - Target language (required for multilingual glossaries, optional for single-target)
+- `--format <format>` - Output format: `text`, `json` (default: `text`)
 
 **Behavior:**
 
@@ -1443,6 +1464,10 @@ deepl cache <SUBCOMMAND>
 
 Show cache statistics (status, entries count, size, percentage used).
 
+**Options:**
+
+- `--format <format>` - Output format: `table`, `json` (default: `table`)
+
 ##### `clear`
 
 Clear all cache entries (displays: "✓ Cache cleared successfully").
@@ -1493,6 +1518,23 @@ deepl config <SUBCOMMAND>
 
 List all configuration values (same as `get` without arguments).
 
+**Options:**
+
+- `--format <format>` - Output format: `text`, `json` (default: `json`)
+
+**Examples:**
+
+```bash
+# JSON output (default)
+deepl config list
+
+# Human-readable key=value pairs
+deepl config list --format text
+# auth.apiKey = "xxxx...xxxx"
+# cache.enabled = true
+# cache.maxSize = 1073741824
+```
+
 ##### `get [key]`
 
 Get a specific configuration value, or all values if key is omitted.
@@ -1501,15 +1543,22 @@ Get a specific configuration value, or all values if key is omitted.
 
 - `key` (optional) - Configuration key in dot notation (e.g., `cache.maxSize`, `auth.apiKey`)
 
+**Options:**
+
+- `--format <format>` - Output format: `text`, `json` (default: `json`)
+
 **Examples:**
 
 ```bash
-# Get all configuration
+# Get all configuration (JSON)
 deepl config get
 
 # Get specific value
 deepl config get cache.maxSize
-deepl config get auth.apiKey
+
+# Human-readable output
+deepl config get cache.maxSize --format text
+# cache.maxSize = 1073741824
 ```
 
 ##### `set <key> <value>`
