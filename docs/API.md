@@ -29,6 +29,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
   - Information
     - [usage](#usage)
     - [languages](#languages)
+    - [detect](#detect)
     - [completion](#completion)
   - Administration
     - [admin](#admin)
@@ -1724,6 +1725,58 @@ deepl languages
 - Source and target language lists differ: 7 regional variants (en-gb, en-us, es-419, pt-br, pt-pt, zh-hans, zh-hant) are target-only
 - Extended languages (82 codes) only support `quality_optimized` model type and do not support formality or glossary features
 - Without an API key, the command shows all languages from the local registry with a warning
+
+---
+
+### detect
+
+Detect the language of text using DeepL API.
+
+#### Synopsis
+
+```bash
+deepl detect [OPTIONS] [text]
+```
+
+#### Description
+
+Detect the language of the given text. Under the hood, this command calls the DeepL translate API with a dummy target language and returns only the `detected_source_language` field from the response.
+
+Text can be provided as a positional argument or piped via stdin.
+
+#### Options
+
+- `--format <format>` - Output format: `text`, `json` (default: `text`)
+
+#### Examples
+
+```bash
+# Detect language of French text
+deepl detect "Bonjour le monde"
+# Detected language: French (fr)
+
+# Detect language with JSON output
+deepl detect "Hallo Welt" --format json
+# {
+#   "detected_language": "de",
+#   "language_name": "German"
+# }
+
+# Pipe text via stdin
+echo "Ciao mondo" | deepl detect
+# Detected language: Italian (it)
+
+# Use in a script
+LANG=$(deepl detect "Hola" --format json | jq -r '.detected_language')
+echo "$LANG"  # es
+```
+
+**Notes:**
+
+- Requires an API key (the detection uses a translate API call)
+- Each detection call consumes character quota (the text is translated to produce the detection)
+- Very short text (single characters or words) may produce unreliable detection results
+- Supports all 121 languages recognized by the DeepL API (core, regional, and extended)
 
 ---
 

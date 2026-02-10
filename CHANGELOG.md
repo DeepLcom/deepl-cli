@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add `deepl detect` command for language detection (calls translate API and returns detected source language)
 - Respect `Retry-After` header on 429 responses, falling back to exponential backoff when absent
 - Add `--format json` support to glossary (list, show, entries), hooks (list), and config (list, get) commands for CI/CD scripting
 - Add shared `formatOutput()` / `formatJson()` helpers in `src/utils/output-helper.ts`
