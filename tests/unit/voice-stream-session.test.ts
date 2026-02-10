@@ -32,6 +32,7 @@ describe('VoiceStreamSession', () => {
   let options: VoiceTranslateOptions;
 
   beforeEach(() => {
+    jest.useFakeTimers({ doNotFake: ['nextTick'] });
     jest.clearAllMocks();
     mockClient = {
       createSession: jest.fn(),
@@ -53,6 +54,10 @@ describe('VoiceStreamSession', () => {
     };
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   describe('constructor', () => {
     it('should initialize transcript state for source and targets', () => {
       const streamSession = new VoiceStreamSession(mockClient, session, {
@@ -61,7 +66,7 @@ describe('VoiceStreamSession', () => {
       expect(streamSession).toBeInstanceOf(VoiceStreamSession);
     });
 
-    it('should use "auto" as default source language', () => {
+    it('should use "auto" as default source language', async () => {
       const EventEmitter = require('events');
       const mockWs = new EventEmitter();
       mockWs.readyState = 1;
@@ -69,21 +74,19 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => callbacks.onEndOfStream?.(), 5);
-        }, 0);
+          process.nextTick(() => callbacks.onEndOfStream?.());
+        });
         return mockWs;
       });
 
       const streamSession = new VoiceStreamSession(mockClient, session, options);
-
-      return streamSession.run(emptyChunks()).then((result) => {
-        expect(result.source.lang).toBe('auto');
-      });
+      const result = await streamSession.run(emptyChunks());
+      expect(result.source.lang).toBe('auto');
     });
 
-    it('should use provided source language', () => {
+    it('should use provided source language', async () => {
       const EventEmitter = require('events');
       const mockWs = new EventEmitter();
       mockWs.readyState = 1;
@@ -91,10 +94,10 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => callbacks.onEndOfStream?.(), 5);
-        }, 0);
+          process.nextTick(() => callbacks.onEndOfStream?.());
+        });
         return mockWs;
       });
 
@@ -103,9 +106,8 @@ describe('VoiceStreamSession', () => {
         sourceLang: 'en',
       });
 
-      return streamSession.run(emptyChunks()).then((result) => {
-        expect(result.source.lang).toBe('en');
-      });
+      const result = await streamSession.run(emptyChunks());
+      expect(result.source.lang).toBe('en');
     });
   });
 
@@ -117,11 +119,17 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+      mockClient.sendEndOfSource.mockImplementation(() => {
+        process.nextTick(() => {
+          const callbacks = mockClient.createWebSocket.mock.calls[0]![2] as any;
+          callbacks.onEndOfStream?.();
+        });
+      });
+
+      mockClient.createWebSocket.mockImplementation((_url, _token, _callbacks) => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => callbacks.onEndOfStream?.(), 10);
-        }, 0);
+        });
         return mockWs;
       });
 
@@ -146,9 +154,9 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             callbacks.onSourceTranscript?.({
               concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
               tentative: [],
@@ -159,8 +167,8 @@ describe('VoiceStreamSession', () => {
               tentative: [],
             });
             callbacks.onEndOfStream?.();
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -184,13 +192,13 @@ describe('VoiceStreamSession', () => {
       const listenerCountBefore = process.listenerCount('SIGINT');
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             expect(process.listenerCount('SIGINT')).toBe(listenerCountBefore);
             callbacks.onEndOfStream?.();
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -208,13 +216,13 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             streamSession.cancel();
-            setTimeout(() => callbacks.onEndOfStream?.(), 5);
-          }, 5);
-        }, 0);
+            process.nextTick(() => callbacks.onEndOfStream?.());
+          });
+        });
         return mockWs;
       });
 
@@ -232,10 +240,10 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => callbacks.onEndOfStream?.(), 5);
-        }, 0);
+          process.nextTick(() => callbacks.onEndOfStream?.());
+        });
         return mockWs;
       });
 
@@ -257,9 +265,9 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation(() => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('error', new Error('Connection refused'));
-        }, 5);
+        });
         return mockWs;
       });
 
@@ -279,17 +287,17 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             callbacks.onError?.({
               request_type: 'unknown',
               error_code: 400,
               reason_code: 9040000,
               error_message: 'Invalid audio format',
             });
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -305,7 +313,7 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation(() => {
-        setTimeout(() => mockWs.emit('open'), 0);
+        process.nextTick(() => mockWs.emit('open'));
         return mockWs;
       });
 
@@ -339,19 +347,19 @@ describe('VoiceStreamSession', () => {
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
         wsCallCount++;
         if (wsCallCount === 1) {
-          setTimeout(() => {
+          process.nextTick(() => {
             mockWs1.emit('open');
-            setTimeout(() => {
+            process.nextTick(() => {
               mockWs1.readyState = 3;
               mockWs1.emit('close');
-            }, 5);
-          }, 0);
+            });
+          });
           return mockWs1;
         } else {
-          setTimeout(() => {
+          process.nextTick(() => {
             mockWs2.emit('open');
-            setTimeout(() => callbacks.onEndOfStream?.(), 5);
-          }, 0);
+            process.nextTick(() => callbacks.onEndOfStream?.());
+          });
           return mockWs2;
         }
       });
@@ -384,13 +392,13 @@ describe('VoiceStreamSession', () => {
         mockWs.send = jest.fn();
         mockWs.close = jest.fn();
 
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             mockWs.readyState = 3;
             mockWs.emit('close');
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -416,13 +424,13 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation(() => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             mockWs.readyState = 3;
             mockWs.emit('close');
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -447,13 +455,13 @@ describe('VoiceStreamSession', () => {
       );
 
       mockClient.createWebSocket.mockImplementation(() => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             mockWs.readyState = 3;
             mockWs.emit('close');
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -471,9 +479,9 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             callbacks.onSourceTranscript?.({
               concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 0.5 }],
               tentative: [],
@@ -483,8 +491,8 @@ describe('VoiceStreamSession', () => {
               tentative: [],
             });
             callbacks.onEndOfStream?.();
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -503,9 +511,9 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             callbacks.onTargetTranscript?.({
               language: 'de',
               concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
@@ -517,8 +525,8 @@ describe('VoiceStreamSession', () => {
               tentative: [],
             });
             callbacks.onEndOfStream?.();
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -540,16 +548,16 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             callbacks.onSourceTranscript?.({
               concluded: [{ text: 'Bonjour', language: 'fr', start_time: 0, end_time: 1 }],
               tentative: [],
             });
             callbacks.onEndOfStream?.();
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -577,9 +585,9 @@ describe('VoiceStreamSession', () => {
       };
 
       mockClient.createWebSocket.mockImplementation((_url, _token, internalCbs) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             internalCbs.onSourceTranscript?.({
               concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
               tentative: [],
@@ -592,8 +600,8 @@ describe('VoiceStreamSession', () => {
             internalCbs.onEndOfSourceTranscript?.();
             internalCbs.onEndOfTargetTranscript?.('de');
             internalCbs.onEndOfStream?.();
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
@@ -617,17 +625,17 @@ describe('VoiceStreamSession', () => {
       const onError = jest.fn();
 
       mockClient.createWebSocket.mockImplementation((_url, _token, internalCbs) => {
-        setTimeout(() => {
+        process.nextTick(() => {
           mockWs.emit('open');
-          setTimeout(() => {
+          process.nextTick(() => {
             internalCbs.onError?.({
               request_type: 'unknown',
               error_code: 400,
               reason_code: 0,
               error_message: 'Bad request',
             });
-          }, 5);
-        }, 0);
+          });
+        });
         return mockWs;
       });
 
