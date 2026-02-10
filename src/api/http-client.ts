@@ -45,6 +45,7 @@ const MAX_FREE_SOCKETS = 10;
 const KEEP_ALIVE_MSECS = 1000;
 const RETRY_INITIAL_DELAY_MS = 1000;
 const RETRY_MAX_DELAY_MS = 10000;
+const RETRY_AFTER_MAX_SECONDS = 60;
 
 export class HttpClient {
   protected client: AxiosInstance;
@@ -271,6 +272,12 @@ export class HttpClient {
 
         if (this.isAxiosError(error)) {
           const status = error.response?.status;
+          if (status === 429 && attempt < this.maxRetries) {
+            const retryAfterDelay = this.parseRetryAfter(error.response?.headers?.['retry-after']);
+            const delay = retryAfterDelay ?? Math.min(RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
+            await this.sleep(delay);
+            continue;
+          }
           if (status && status >= 400 && status < 500) {
             throw this.handleError(error);
           }
@@ -336,6 +343,28 @@ export class HttpClient {
 
   protected isAxiosError(error: unknown): error is AxiosError {
     return axios.isAxiosError(error);
+  }
+
+  protected parseRetryAfter(headerValue: string | undefined): number | undefined {
+    if (headerValue === undefined || headerValue === null) {
+      return undefined;
+    }
+
+    const seconds = Number(headerValue);
+    if (!isNaN(seconds) && isFinite(seconds)) {
+      const clamped = Math.max(0, Math.min(seconds, RETRY_AFTER_MAX_SECONDS));
+      return clamped * 1000;
+    }
+
+    const date = new Date(headerValue);
+    if (!isNaN(date.getTime())) {
+      const delayMs = date.getTime() - Date.now();
+      const delaySec = Math.max(0, delayMs / 1000);
+      const clamped = Math.min(delaySec, RETRY_AFTER_MAX_SECONDS);
+      return clamped * 1000;
+    }
+
+    return undefined;
   }
 
   protected sleep(ms: number): Promise<void> {
