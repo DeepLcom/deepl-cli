@@ -15,8 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Add tests verifying voice stdin is not subject to the translate command's 128KB (MAX_STDIN_BYTES) size limit. The voice `readStdinInChunks` path streams audio data without any size cap, which is correct for audio files that regularly exceed 128KB.
+- Extract duplicated file-reading pattern in WriteCommand to shared `readFileContent()` helper, removing ~50 lines of duplication across 5 methods
 
 ### Fixed
+- Log verbose diagnostics when write styles fail in interactive mode — previously errors were silently swallowed, now visible with `--verbose`
 - Fix version string references in documentation (0.10.0 → 0.11.0)
 - Respect `FORCE_COLOR` and `TERM=dumb` environment variables for color output control (per clig.dev compliance)
 
