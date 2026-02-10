@@ -11,7 +11,7 @@ describe('Structured File Translation E2E', () => {
   const testConfig = createTestConfigDir('structured-e2e-config');
   const testFiles = createTestDir('structured-e2e');
   const testDir = testFiles.path;
-  const { runCLI } = makeRunCLI(testConfig.path);
+  const { runCLI } = makeRunCLI(testConfig.path, { apiKey: 'fake-key-for-e2e' });
 
   afterAll(() => {
     testFiles.cleanup();
