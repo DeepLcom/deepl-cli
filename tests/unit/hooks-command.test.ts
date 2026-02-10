@@ -253,4 +253,50 @@ describe('HooksCommand', () => {
       expect(() => command.showPath('pre-commit' as any)).toThrow('Invalid hook type');
     });
   });
+
+  describe('listData()', () => {
+    it('should return raw status object when hooks are installed', () => {
+      mockGitHooksService.list.mockReturnValue({
+        'pre-commit': true,
+        'pre-push': false,
+      });
+      const command = new HooksCommand('/path/to/.git');
+
+      const data = command.listData();
+
+      expect(data).toEqual({
+        'pre-commit': true,
+        'pre-push': false,
+      });
+    });
+
+    it('should return empty object when not in git repository', () => {
+      const mockFindGitRoot = jest.fn().mockReturnValue(null);
+      (GitHooksService.findGitRoot as jest.Mock) = mockFindGitRoot;
+
+      const command = new HooksCommand();
+      const data = command.listData();
+
+      expect(data).toEqual({});
+    });
+
+    it('should produce valid parseable JSON', () => {
+      mockGitHooksService.list.mockReturnValue({
+        'pre-commit': true,
+        'pre-push': true,
+        'commit-msg': false,
+        'post-commit': false,
+      });
+      const command = new HooksCommand('/path/to/.git');
+
+      const data = command.listData();
+      const json = JSON.stringify(data, null, 2);
+      const parsed = JSON.parse(json);
+
+      expect(parsed['pre-commit']).toBe(true);
+      expect(parsed['pre-push']).toBe(true);
+      expect(parsed['commit-msg']).toBe(false);
+      expect(parsed['post-commit']).toBe(false);
+    });
+  });
 });

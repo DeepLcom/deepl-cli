@@ -56,12 +56,18 @@ Examples:
     .addCommand(
       new Command('list')
         .description('List all hooks and their status')
-        .action(async () => {
+        .option('--format <format>', 'Output format: text, json (default: text)')
+        .action(async (options: { format?: string }) => {
           try {
             const { HooksCommand } = await import('./hooks.js');
             const hooksCommand = new HooksCommand();
-            const result = hooksCommand.list();
-            Logger.output(result);
+            if (options.format === 'json') {
+              const status = hooksCommand.listData();
+              Logger.output(JSON.stringify(status, null, 2));
+            } else {
+              const result = hooksCommand.list();
+              Logger.output(result);
+            }
           } catch (error) {
             handleError(error);
 

@@ -47,6 +47,16 @@ export class HooksCommand {
   }
 
   /**
+   * Return raw hook status data (for JSON output)
+   */
+  listData(): Record<string, boolean> {
+    if (!this.gitHooksService) {
+      return {};
+    }
+    return this.gitHooksService.list();
+  }
+
+  /**
    * List all hooks and their status
    */
   list(): string {
