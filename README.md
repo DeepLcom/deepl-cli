@@ -34,7 +34,7 @@
   - **Resources:** [Glossaries](#glossaries) | [Style Rules](#style-rules)
   - **Workflow:** [Watch Mode](#watch-mode) | [Git Hooks](#git-hooks)
   - **Configuration:** [Setup Wizard](#setup-wizard) | [Authentication](#authentication) | [Configure Defaults](#configure-defaults) | [Cache Management](#cache-management)
-  - **Information:** [Usage Statistics](#api-usage-statistics) | [Languages](#supported-languages) | [Shell Completion](#shell-completion)
+  - **Information:** [Usage Statistics](#api-usage-statistics) | [Language Detection](#language-detection) | [Languages](#supported-languages) | [Shell Completion](#shell-completion)
   - **Administration:** [Admin API](#admin-api)
 - [Development](#-development)
 - [Architecture](#-architecture)
@@ -825,6 +825,23 @@ See [examples/10-usage-monitoring.sh](./examples/10-usage-monitoring.sh) for a c
 For detailed cost tracking per translation, use the `--show-billed-characters` flag with the translate command (see Advanced Translation Options above). This displays the actual billed character count for each translation, helping with budget planning and cost analysis.
 
 See [examples/18-cost-transparency.sh](./examples/18-cost-transparency.sh) for comprehensive cost tracking examples.
+
+#### Language Detection
+
+Detect the language of text using the DeepL API:
+
+```bash
+# Detect language of text
+deepl detect "Bonjour le monde"
+# Detected language: fr (French)
+
+# Pipe text for detection
+echo "こんにちは" | deepl detect
+
+# JSON output for scripting
+deepl detect "Hola mundo" --format json
+# { "detected_language": "ES", "language_name": "Spanish" }
+```
 
 #### Supported Languages
 

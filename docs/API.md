@@ -2204,7 +2204,7 @@ The CLI uses semantic exit codes to enable intelligent error handling in scripts
 The CLI automatically classifies errors based on error messages and HTTP status codes:
 
 - **Authentication (2)**: "authentication failed", "invalid api key", "api key not set"
-- **Rate Limit (3)**: "rate limit exceeded", "too many requests", HTTP 429
+- **Rate Limit (3)**: "rate limit exceeded", "too many requests", HTTP 429. The CLI respects the `Retry-After` header when present, falling back to exponential backoff when absent
 - **Quota (4)**: "quota exceeded", "character limit reached", HTTP 456
 - **Network (5)**: "timeout", "econnrefused", "enotfound", "connection", HTTP 503
 - **Invalid Input (6)**: "cannot be empty", "not found", "unsupported", "invalid", "required"

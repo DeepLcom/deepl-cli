@@ -542,7 +542,7 @@ describe('VoiceService', () => {
       // (indicating chunk streaming completed), ensuring SIGINT fires mid-stream
       let endStreamCb: (() => void) | null = null;
       mockClient.sendEndOfSource.mockImplementation(() => {
-        if (endStreamCb) process.nextTick(endStreamCb);
+        if (endStreamCb) { process.nextTick(endStreamCb); }
       });
 
       mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {

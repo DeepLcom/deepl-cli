@@ -273,7 +273,7 @@ export class HttpClient {
         if (this.isAxiosError(error)) {
           const status = error.response?.status;
           if (status === 429 && attempt < this.maxRetries) {
-            const retryAfterDelay = this.parseRetryAfter(error.response?.headers?.['retry-after']);
+            const retryAfterDelay = this.parseRetryAfter(error.response?.headers?.['retry-after'] as string | undefined);
             const delay = retryAfterDelay ?? Math.min(RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
             await this.sleep(delay);
             continue;
