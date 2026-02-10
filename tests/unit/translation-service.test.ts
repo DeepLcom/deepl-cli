@@ -10,6 +10,7 @@ import { DeepLClient, TranslationResult } from '../../src/api/deepl-client';
 import { ConfigService } from '../../src/storage/config';
 import { CacheService } from '../../src/storage/cache';
 import { Language } from '../../src/types';
+import { createMockDeepLClient, createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
 
 // Mock dependencies
 jest.mock('../../src/api/deepl-client');
@@ -26,15 +27,9 @@ describe('TranslationService', () => {
     // Reset mocks
     jest.clearAllMocks();
 
-    // Create mock instances
-    mockDeepLClient = {
-      translate: jest.fn(),
-      translateBatch: jest.fn(),
-      getUsage: jest.fn(),
-      getSupportedLanguages: jest.fn(),
-    } as unknown as jest.Mocked<DeepLClient>;
+    mockDeepLClient = createMockDeepLClient();
 
-    mockConfigService = {
+    mockConfigService = createMockConfigService({
       get: jest.fn().mockReturnValue({
         defaults: {
           sourceLang: undefined,
@@ -49,22 +44,10 @@ describe('TranslationService', () => {
         },
         api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
       }),
-      getValue: jest.fn().mockReturnValue(true), // cache.enabled default
-      set: jest.fn(),
-      has: jest.fn(),
-      delete: jest.fn(),
-      clear: jest.fn(),
-    } as unknown as jest.Mocked<ConfigService>;
+      getValue: jest.fn().mockReturnValue(true),
+    });
 
-    mockCacheService = {
-      get: jest.fn().mockReturnValue(null), // No cache hit by default
-      set: jest.fn(),
-      clear: jest.fn(),
-      stats: jest.fn(),
-      enable: jest.fn(),
-      disable: jest.fn(),
-      close: jest.fn(),
-    } as unknown as jest.Mocked<CacheService>;
+    mockCacheService = createMockCacheService();
 
     translationService = new TranslationService(mockDeepLClient, mockConfigService, mockCacheService);
   });

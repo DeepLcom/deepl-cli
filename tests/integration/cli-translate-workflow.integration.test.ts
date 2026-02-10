@@ -12,7 +12,7 @@ import { DeepLClient, LanguageInfo } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
 import { CacheService } from '../../src/storage/cache.js';
 import { Language } from '../../src/types/index.js';
-import { TEST_API_KEY } from '../helpers';
+import { TEST_API_KEY, createMockConfigService, createMockCacheService } from '../helpers';
 
 describe('Translation Workflow Integration', () => {
   const API_KEY = TEST_API_KEY;
@@ -29,25 +29,22 @@ describe('Translation Workflow Integration', () => {
 
     // Set up services
     client = new DeepLClient(API_KEY);
-    mockConfig = {
-      get: () => ({
+    mockConfig = createMockConfigService({
+      get: jest.fn(() => ({
         auth: {},
         api: { baseUrl: '', usePro: false },
         defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
         cache: { enabled: true },
         output: { format: 'text', color: true },
         proxy: {},
-      }),
-      getValue: (key: string) => {
+      })),
+      getValue: jest.fn((key: string) => {
         if (key === 'cache.enabled') {return true;}
         return undefined;
-      },
-    } as unknown as ConfigService;
+      }),
+    });
 
-    mockCache = {
-      get: jest.fn(() => null),
-      set: jest.fn(),
-    } as unknown as CacheService;
+    mockCache = createMockCacheService();
 
     translationService = new TranslationService(client, mockConfig, mockCache);
     fileTranslationService = new FileTranslationService(translationService);
@@ -87,8 +84,8 @@ describe('Translation Workflow Integration', () => {
     });
 
     it('should use config defaults for translation options', async () => {
-      mockConfig = {
-        get: () => ({
+      mockConfig = createMockConfigService({
+        get: jest.fn(() => ({
           auth: {},
           api: { baseUrl: '', usePro: false },
           defaults: {
@@ -100,9 +97,9 @@ describe('Translation Workflow Integration', () => {
           cache: { enabled: true },
           output: { format: 'text', color: true },
           proxy: {},
-        }),
-        getValue: () => true,
-      } as unknown as ConfigService;
+        })),
+        getValue: jest.fn(() => true),
+      });
 
       translationService = new TranslationService(client, mockConfig, mockCache);
 

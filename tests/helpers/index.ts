@@ -21,3 +21,17 @@ export {
   DEEPL_PRO_API_URL,
   TEST_API_KEY,
 } from './nock-setup';
+
+export {
+  createMockDeepLClient,
+  createMockConfigService,
+  createMockCacheService,
+  createMockTranslationService,
+  createMockGlossaryService,
+  createMockDocumentTranslationService,
+  createMockFileTranslationService,
+  createMockWatchService,
+  createMockWriteService,
+  createMockVoiceClient,
+  createMockVoiceService,
+} from './mock-factories';

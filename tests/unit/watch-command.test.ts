@@ -8,6 +8,12 @@ import { WatchService } from '../../src/services/watch';
 import { FileTranslationService } from '../../src/services/file-translation';
 import { TranslationService } from '../../src/services/translation';
 import { GlossaryService } from '../../src/services/glossary';
+import {
+  createMockTranslationService,
+  createMockGlossaryService,
+  createMockFileTranslationService,
+  createMockWatchService,
+} from '../helpers/mock-factories';
 
 // Mock chalk
 jest.mock('chalk', () => ({
@@ -64,34 +70,22 @@ describe('WatchCommand', () => {
     mockLogger.error.mockClear();
     mockLogger.output.mockClear();
 
-    // Mock TranslationService
-    mockTranslationService = {
-      translate: jest.fn(),
-    } as any;
+    mockTranslationService = createMockTranslationService();
 
-    // Mock GlossaryService
-    mockGlossaryService = {
-      getGlossaryByName: jest.fn(),
-    } as any;
+    mockGlossaryService = createMockGlossaryService();
 
-    // Mock FileTranslationService
-    mockFileTranslationService = {
-      translateFile: jest.fn(),
-    } as any;
+    mockFileTranslationService = createMockFileTranslationService();
 
     (FileTranslationService as jest.MockedClass<typeof FileTranslationService>).mockImplementation(
       () => mockFileTranslationService
     );
 
-    // Mock WatchService
-    mockWatchService = {
-      watch: jest.fn().mockReturnValue(undefined),
-      stop: jest.fn().mockResolvedValue(undefined),
+    mockWatchService = createMockWatchService({
       getStats: jest.fn().mockReturnValue({
         translationsCount: 0,
         errorsCount: 0,
       }),
-    } as any;
+    });
 
     (WatchService as jest.MockedClass<typeof WatchService>).mockImplementation(
       () => mockWatchService

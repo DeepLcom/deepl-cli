@@ -12,6 +12,12 @@ import { GlossaryService } from '../../src/services/glossary';
 import { ConfigService } from '../../src/storage/config';
 import { Logger } from '../../src/utils/logger';
 import { safeReadFileSync } from '../../src/utils/safe-read-file';
+import {
+  createMockTranslationService,
+  createMockDocumentTranslationService,
+  createMockGlossaryService,
+  createMockConfigService,
+} from '../helpers/mock-factories';
 
 // Mock ESM dependencies
 jest.mock('ora', () => {
@@ -46,43 +52,18 @@ describe('TranslateCommand', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockTranslationService = {
-      translate: jest.fn().mockResolvedValue({ text: '', detectedSourceLang: undefined }),
-      translateBatch: jest.fn().mockResolvedValue([]),
-      translateToMultiple: jest.fn().mockResolvedValue([]),
-      getUsage: jest.fn().mockResolvedValue({ character: { count: 0, limit: 0 } }),
-      getSupportedLanguages: jest.fn().mockResolvedValue([]),
-    } as unknown as jest.Mocked<TranslationService>;
+    mockTranslationService = createMockTranslationService();
 
-    mockDocumentTranslationService = {
-      translateDocument: jest.fn().mockResolvedValue({ success: true, outputPath: '/output.pdf' }),
-      isDocumentSupported: jest.fn().mockReturnValue(false),
-      getSupportedFileTypes: jest.fn().mockReturnValue(['.pdf', '.docx', '.pptx']),
-    } as unknown as jest.Mocked<DocumentTranslationService>;
+    mockDocumentTranslationService = createMockDocumentTranslationService();
 
-    mockGlossaryService = {
-      getGlossaryByName: jest.fn().mockResolvedValue(null),
-      resolveGlossaryId: jest.fn().mockRejectedValue(new Error('Glossary not found')),
-      listGlossaries: jest.fn().mockResolvedValue([]),
-      getGlossary: jest.fn().mockResolvedValue(null),
-      createGlossary: jest.fn().mockResolvedValue(null),
-      deleteGlossary: jest.fn().mockResolvedValue(undefined),
-      getGlossaryEntries: jest.fn().mockResolvedValue({}),
-    } as unknown as jest.Mocked<GlossaryService>;
+    mockGlossaryService = createMockGlossaryService();
 
-    mockConfigService = {
-      get: jest.fn().mockReturnValue({}),
+    mockConfigService = createMockConfigService({
       getValue: jest.fn((key: string) => {
-        // Mock API key as set by default
         if (key === 'auth.apiKey') {return 'mock-api-key';}
         return undefined;
       }),
-      set: jest.fn().mockResolvedValue(undefined),
-      has: jest.fn().mockReturnValue(false),
-      delete: jest.fn().mockResolvedValue(undefined),
-      clear: jest.fn().mockResolvedValue(undefined),
-      getDefaults: jest.fn().mockReturnValue({}),
-    } as unknown as jest.Mocked<ConfigService>;
+    });
 
     translateCommand = new TranslateCommand(
       mockTranslationService,

@@ -13,6 +13,7 @@ import type {
   VoiceTranslateOptions,
   VoiceStreamCallbacks,
 } from '../../src/types/voice.js';
+import { createMockVoiceClient } from '../helpers/mock-factories';
 
 jest.mock('ws', () => {
   const EventEmitter = require('events');
@@ -34,13 +35,7 @@ describe('VoiceStreamSession', () => {
   beforeEach(() => {
     jest.useFakeTimers({ doNotFake: ['nextTick'] });
     jest.clearAllMocks();
-    mockClient = {
-      createSession: jest.fn(),
-      createWebSocket: jest.fn(),
-      sendAudioChunk: jest.fn(),
-      sendEndOfSource: jest.fn(),
-      reconnectSession: jest.fn(),
-    } as unknown as jest.Mocked<VoiceClient>;
+    mockClient = createMockVoiceClient();
 
     session = {
       streaming_url: 'wss://test.deepl.com/stream',

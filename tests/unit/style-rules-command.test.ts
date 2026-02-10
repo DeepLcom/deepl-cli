@@ -5,6 +5,7 @@
 import { StyleRulesCommand } from '../../src/cli/commands/style-rules';
 import { DeepLClient } from '../../src/api/deepl-client';
 import { StyleRule, StyleRuleDetailed } from '../../src/types/api';
+import { createMockDeepLClient } from '../helpers/mock-factories';
 
 jest.mock('../../src/api/deepl-client');
 
@@ -15,9 +16,7 @@ describe('StyleRulesCommand', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockClient = {
-      getStyleRules: jest.fn().mockResolvedValue([]),
-    } as unknown as jest.Mocked<DeepLClient>;
+    mockClient = createMockDeepLClient();
 
     command = new StyleRulesCommand(mockClient);
   });

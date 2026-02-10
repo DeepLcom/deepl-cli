@@ -9,6 +9,7 @@ import * as os from 'os';
 import * as chokidar from 'chokidar';
 import { WatchService } from '../../../src/services/watch';
 import { FileTranslationService } from '../../../src/services/file-translation';
+import { createMockFileTranslationService } from '../../helpers/mock-factories';
 
 // Mock chokidar
 jest.mock('chokidar');
@@ -40,16 +41,13 @@ describe('WatchService', () => {
     testDir = path.join(os.tmpdir(), `deepl-watch-test-${Date.now()}`);
     fs.mkdirSync(testDir, { recursive: true });
 
-    // Create mock FileTranslationService
-    mockFileTranslationService = {
-      translateFile: jest.fn(),
-      translateFileToMultiple: jest.fn(),
+    mockFileTranslationService = createMockFileTranslationService({
       getSupportedFileTypes: jest.fn().mockReturnValue(['.txt', '.md']),
       isSupportedFile: jest.fn((filePath: string) => {
         const ext = path.extname(filePath).toLowerCase();
         return ['.txt', '.md'].includes(ext);
       }),
-    } as unknown as jest.Mocked<FileTranslationService>;
+    });
 
     watchService = new WatchService(mockFileTranslationService);
   });

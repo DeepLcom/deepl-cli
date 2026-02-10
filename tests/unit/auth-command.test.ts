@@ -8,6 +8,7 @@
 import { AuthCommand } from '../../src/cli/commands/auth';
 import { ConfigService } from '../../src/storage/config';
 import { DeepLClient } from '../../src/api/deepl-client';
+import { createMockConfigService } from '../helpers/mock-factories';
 
 // Mock dependencies
 jest.mock('../../src/storage/config');
@@ -20,15 +21,7 @@ describe('AuthCommand', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockConfigService = {
-      get: jest.fn().mockReturnValue({}),
-      getValue: jest.fn().mockReturnValue(undefined),
-      set: jest.fn().mockResolvedValue(undefined),
-      has: jest.fn().mockReturnValue(false),
-      delete: jest.fn().mockResolvedValue(undefined),
-      clear: jest.fn().mockResolvedValue(undefined),
-      getDefaults: jest.fn().mockReturnValue({}),
-    } as unknown as jest.Mocked<ConfigService>;
+    mockConfigService = createMockConfigService();
 
     authCommand = new AuthCommand(mockConfigService);
   });

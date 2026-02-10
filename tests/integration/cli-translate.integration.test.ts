@@ -1005,22 +1005,21 @@ describe('Translate CLI Integration - nock HTTP validation', () => {
   beforeEach(() => {
     client = new DeepLClient(API_KEY);
 
-    mockConfig = {
-      get: () => ({
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const factories = require('../helpers/mock-factories') as typeof import('../helpers/mock-factories');
+    mockConfig = factories.createMockConfigService({
+      get: jest.fn(() => ({
         auth: {},
         api: { baseUrl: '', usePro: false },
         defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
         cache: { enabled: false },
         output: { format: 'text', color: false },
         proxy: {},
-      }),
-      getValue: () => undefined,
-    } as unknown as import('../../src/storage/config.js').ConfigService;
+      })),
+      getValue: jest.fn(() => undefined),
+    });
 
-    mockCache = {
-      get: jest.fn(() => null),
-      set: jest.fn(),
-    } as unknown as import('../../src/storage/cache.js').CacheService;
+    mockCache = factories.createMockCacheService();
 
     translationService = new TranslationService(client, mockConfig, mockCache);
   });

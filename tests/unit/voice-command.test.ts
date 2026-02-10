@@ -29,6 +29,7 @@ jest.mock('readline', () => ({
 import { VoiceCommand } from '../../src/cli/commands/voice.js';
 import { VoiceService } from '../../src/services/voice.js';
 import type { VoiceSessionResult } from '../../src/types/voice.js';
+import { createMockVoiceService } from '../helpers/mock-factories';
 
 describe('VoiceCommand', () => {
   let command: VoiceCommand;
@@ -73,13 +74,7 @@ describe('VoiceCommand', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockService = {
-      translateFile: jest.fn(),
-      translateStdin: jest.fn(),
-      detectContentType: jest.fn(),
-      validateOptions: jest.fn(),
-      cancel: jest.fn(),
-    } as unknown as jest.Mocked<VoiceService>;
+    mockService = createMockVoiceService();
 
     command = new VoiceCommand(mockService);
 

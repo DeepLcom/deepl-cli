@@ -10,6 +10,7 @@ import { GlossaryService } from '../../src/services/glossary';
 import { GlossaryInfo } from '../../src/types/glossary.js';
 import { GlossaryLanguagePair, Language } from '../../src/types/index.js';
 import * as fs from 'fs';
+import { createMockGlossaryService } from '../helpers/mock-factories';
 
 // Mock dependencies
 jest.mock('../../src/services/glossary');
@@ -43,7 +44,7 @@ describe('GlossaryCommand', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockGlossaryService = {
+    mockGlossaryService = createMockGlossaryService({
       createGlossary: jest.fn().mockResolvedValue(mockGlossary),
       createGlossaryFromTSV: jest.fn().mockResolvedValue(mockGlossary),
       listGlossaries: jest.fn().mockResolvedValue([mockGlossary]),
@@ -56,9 +57,7 @@ describe('GlossaryCommand', () => {
       updateEntry: jest.fn().mockResolvedValue(mockGlossary),
       removeEntry: jest.fn().mockResolvedValue(mockGlossary),
       renameGlossary: jest.fn().mockResolvedValue(mockGlossary),
-      entriesToTSV: jest.fn().mockReturnValue('hello\thola\nworld\tmundo'),
-      tsvToEntries: jest.fn().mockReturnValue({ hello: 'hola', world: 'mundo' }),
-    } as unknown as jest.Mocked<GlossaryService>;
+    });
 
     glossaryCommand = new GlossaryCommand(mockGlossaryService);
   });

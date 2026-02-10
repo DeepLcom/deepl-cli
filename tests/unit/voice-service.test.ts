@@ -13,6 +13,7 @@ import type { VoiceTranslateOptions } from '../../src/types/voice.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+import { createMockVoiceClient } from '../helpers/mock-factories';
 
 jest.mock('ws', () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -66,12 +67,7 @@ describe('VoiceService', () => {
   beforeEach(() => {
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
     jest.clearAllMocks();
-    mockClient = {
-      createSession: jest.fn(),
-      createWebSocket: jest.fn(),
-      sendAudioChunk: jest.fn(),
-      sendEndOfSource: jest.fn(),
-    } as unknown as jest.Mocked<VoiceClient>;
+    mockClient = createMockVoiceClient();
 
     service = new VoiceService(mockClient);
   });

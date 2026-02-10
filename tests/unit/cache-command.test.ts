@@ -6,6 +6,7 @@
 import { CacheCommand } from '../../src/cli/commands/cache';
 import { CacheService } from '../../src/storage/cache';
 import { ConfigService } from '../../src/storage/config';
+import { createMockCacheService, createMockConfigService } from '../helpers/mock-factories';
 
 // Mock CacheService
 jest.mock('../../src/storage/cache');
@@ -20,27 +21,9 @@ describe('CacheCommand', () => {
     // Reset mocks
     jest.clearAllMocks();
 
-    // Create mock CacheService
-    mockCacheService = {
-      get: jest.fn(),
-      set: jest.fn(),
-      clear: jest.fn(),
-      stats: jest.fn(),
-      enable: jest.fn(),
-      disable: jest.fn(),
-      setMaxSize: jest.fn(),
-      forceCleanup: jest.fn(),
-      close: jest.fn(),
-    } as unknown as jest.Mocked<CacheService>;
+    mockCacheService = createMockCacheService();
 
-    // Create mock ConfigService
-    mockConfigService = {
-      get: jest.fn(),
-      set: jest.fn(),
-      has: jest.fn(),
-      delete: jest.fn(),
-      clear: jest.fn(),
-    } as unknown as jest.Mocked<ConfigService>;
+    mockConfigService = createMockConfigService();
 
     cacheCommand = new CacheCommand(mockCacheService, mockConfigService);
   });

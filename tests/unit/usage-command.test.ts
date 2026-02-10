@@ -7,6 +7,7 @@
 
 import { UsageCommand } from '../../src/cli/commands/usage';
 import { DeepLClient } from '../../src/api/deepl-client';
+import { createMockDeepLClient } from '../helpers/mock-factories';
 
 // Mock dependencies
 jest.mock('../../src/api/deepl-client');
@@ -34,12 +35,12 @@ describe('UsageCommand', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockDeepLClient = {
+    mockDeepLClient = createMockDeepLClient({
       getUsage: jest.fn().mockResolvedValue({
         characterCount: 123456,
         characterLimit: 500000,
       }),
-    } as unknown as jest.Mocked<DeepLClient>;
+    });
 
     usageCommand = new UsageCommand(mockDeepLClient);
   });

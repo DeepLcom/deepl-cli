@@ -8,6 +8,7 @@ import { DeepLClient } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
 import { CacheService } from '../../src/storage/cache.js';
 import { WriteImprovement } from '../../src/types/index.js';
+import { createMockDeepLClient, createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
 
 describe('WriteService', () => {
   let writeService: WriteService;
@@ -16,19 +17,14 @@ describe('WriteService', () => {
   let mockCacheService: jest.Mocked<CacheService>;
 
   beforeEach(() => {
-    mockClient = {
-      improveText: jest.fn(),
-    } as unknown as jest.Mocked<DeepLClient>;
+    mockClient = createMockDeepLClient();
 
-    mockConfigService = {
+    mockConfigService = createMockConfigService({
       getValue: jest.fn().mockReturnValue(true),
       get: jest.fn().mockReturnValue({ defaults: {} }),
-    } as unknown as jest.Mocked<ConfigService>;
+    });
 
-    mockCacheService = {
-      get: jest.fn().mockReturnValue(null),
-      set: jest.fn(),
-    } as unknown as jest.Mocked<CacheService>;
+    mockCacheService = createMockCacheService();
 
     writeService = new WriteService(mockClient, mockConfigService, mockCacheService);
   });
