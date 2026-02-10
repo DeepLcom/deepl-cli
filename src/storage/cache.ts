@@ -141,7 +141,8 @@ export class CacheService {
       return JSON.parse(row.value) as unknown;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.warn(`⚠ Cache corruption detected for key "${key}": ${errorMessage}. Removing entry.`);
+      const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;
+      console.warn(`⚠ Cache corruption detected for key "${truncatedKey}": ${errorMessage}. Removing entry.`);
       this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
       return null;
     }

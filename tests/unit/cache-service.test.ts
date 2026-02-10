@@ -413,6 +413,55 @@ describe('CacheService', () => {
       expect(stats.entries).toBe(10);
     });
 
+    it('should truncate cache key in corruption warning to first 8 characters', () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      // Use a long SHA-256-like key (64 hex characters)
+      const longKey = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2';
+
+      const db = (cacheService as any).db;
+      const timestamp = Date.now();
+      db.prepare(`
+        INSERT INTO cache (key, value, timestamp, size)
+        VALUES (?, ?, ?, ?)
+      `).run(longKey, 'not-valid-json{{{', timestamp, 18);
+
+      const value = cacheService.get(longKey);
+      expect(value).toBeNull();
+
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      const warningMsg = consoleWarnSpy.mock.calls[0]![0] as string;
+      // Should show truncated key (first 8 chars + "...")
+      expect(warningMsg).toContain('a1b2c3d4...');
+      // Should NOT contain the full key
+      expect(warningMsg).not.toContain(longKey);
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should not truncate short cache keys in corruption warning', () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const shortKey = 'abcd1234';
+
+      const db = (cacheService as any).db;
+      const timestamp = Date.now();
+      db.prepare(`
+        INSERT INTO cache (key, value, timestamp, size)
+        VALUES (?, ?, ?, ?)
+      `).run(shortKey, 'bad-json!!!', timestamp, 11);
+
+      cacheService.get(shortKey);
+
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      const warningMsg = consoleWarnSpy.mock.calls[0]![0] as string;
+      // Short key (8 chars or fewer) should appear as-is without truncation
+      expect(warningMsg).toContain(shortKey);
+      expect(warningMsg).not.toContain('...');
+
+      consoleWarnSpy.mockRestore();
+    });
+
     it('should log warning when cache corruption is detected (Issue #11)', () => {
       // Mock console.warn to verify logging
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
@@ -441,7 +490,7 @@ describe('CacheService', () => {
       const firstCall = consoleWarnSpy.mock.calls[0];
       expect(firstCall).toBeDefined();
       expect(firstCall![0]).toContain('corruption');
-      expect(firstCall![0]).toContain('corrupted-key');
+      expect(firstCall![0]).toContain('corrupte...');
 
       // Entry should be deleted from cache
       const stats = cacheService.stats();

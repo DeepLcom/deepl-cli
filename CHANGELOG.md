@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Fix info disclosure: error logs no longer expose full error objects or internal paths
+
 ## [0.11.0] - 2026-02-08
 
 ### Added

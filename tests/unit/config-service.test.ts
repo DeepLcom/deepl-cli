@@ -342,6 +342,38 @@ describe('ConfigService', () => {
     });
   });
 
+  describe('error logging sanitization', () => {
+    it('should log only error message, not full Error object with stack trace, when config loading fails', () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      // Write invalid JSON to a config file so loading fails during JSON.parse
+      const badConfigPath = path.join(os.tmpdir(), `deepl-bad-config-${Date.now()}`, 'config.json');
+      const badConfigDir = path.dirname(badConfigPath);
+      fs.mkdirSync(badConfigDir, { recursive: true });
+      fs.writeFileSync(badConfigPath, '{ invalid json !!!');
+
+      // Creating a ConfigService with a corrupt config file triggers load() which should log
+      const service = new ConfigService(badConfigPath);
+
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      const [message, errorArg] = consoleErrorSpy.mock.calls[0]!;
+      expect(message).toBe('Failed to load config, using defaults:');
+      // errorArg should be a string (error.message), not an Error object
+      expect(typeof errorArg).toBe('string');
+      // Should not contain stack trace frames (e.g. "    at Object.<anonymous> (/path/to/file.ts:123:45)")
+      expect(errorArg).not.toMatch(/\n\s+at\s/);
+      // Should not be a full Error object or its string representation
+      expect(errorArg).not.toBeInstanceOf(Error);
+
+      // Service should still work with defaults
+      const config = service.get();
+      expect(config.cache.enabled).toBe(true);
+
+      consoleErrorSpy.mockRestore();
+      fs.rmSync(badConfigDir, { recursive: true, force: true });
+    });
+  });
+
   describe('path security validation (Issue #12)', () => {
     it('should reject paths with directory traversal (..)', () => {
       expect(() => {
