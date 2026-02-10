@@ -37,8 +37,7 @@ export class DeepLClient {
   private _adminClient?: AdminClient;
 
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
-    // Validate eagerly via HttpClient (checks API key and proxy config)
-    new HttpClient(apiKey, options);
+    HttpClient.validateConfig(apiKey, options);
     this.apiKey = apiKey;
     this.options = options;
   }
