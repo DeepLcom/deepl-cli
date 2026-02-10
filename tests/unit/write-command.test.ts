@@ -25,6 +25,21 @@ jest.mock('chalk', () => {
   };
 });
 
+// Mock Logger
+jest.mock('../../src/utils/logger', () => ({
+  Logger: {
+    verbose: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    success: jest.fn(),
+    output: jest.fn(),
+  },
+}));
+
+import { Logger } from '../../src/utils/logger';
+const mockLogger = Logger as jest.Mocked<typeof Logger>;
+
 // Mock @inquirer/prompts
 jest.mock('@inquirer/prompts', () => {
   const selectFn = jest.fn();
@@ -904,6 +919,50 @@ describe('WriteCommand', () => {
 
       // Should still work with partial results
       expect(result).toBe('Business improvement.');
+    });
+
+    it('should log verbose diagnostics when a write style fails', async () => {
+      mockWriteService.improve
+        .mockRejectedValueOnce(new Error('Rate limit exceeded'))
+        .mockResolvedValueOnce([{ text: 'Business improvement.', targetLanguage: 'en-US' }])
+        .mockRejectedValueOnce(new Error('Server error'))
+        .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
+
+      mockSelect.mockResolvedValue(0);
+
+      await writeCommand.improveInteractive('Original.', {
+        lang: 'en-US',
+      });
+
+      expect(mockLogger.verbose).toHaveBeenCalledWith(
+        'Write style simple failed:',
+        'Rate limit exceeded'
+      );
+      expect(mockLogger.verbose).toHaveBeenCalledWith(
+        'Write style academic failed:',
+        'Server error'
+      );
+      expect(mockLogger.verbose).toHaveBeenCalledTimes(2);
+    });
+
+    it('should log verbose diagnostics with stringified non-Error objects', async () => {
+      mockWriteService.improve
+        .mockRejectedValueOnce('string error')
+        .mockResolvedValueOnce([{ text: 'Business improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Academic improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
+
+      mockSelect.mockResolvedValue(0);
+
+      await writeCommand.improveInteractive('Original.', {
+        lang: 'en-US',
+      });
+
+      expect(mockLogger.verbose).toHaveBeenCalledWith(
+        'Write style simple failed:',
+        'string error'
+      );
+      expect(mockLogger.verbose).toHaveBeenCalledTimes(1);
     });
   });
 
