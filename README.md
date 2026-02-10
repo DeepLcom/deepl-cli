@@ -1322,7 +1322,6 @@ deepl-cli/
 │   └── e2e/              # End-to-end tests
 ├── docs/                 # Documentation
 ├── examples/             # Usage examples
-├── DESIGN.md             # Architecture & design document
 ├── CLAUDE.md             # Development guidelines
 └── README.md             # This file
 ```
@@ -1363,8 +1362,6 @@ Storage (SQLite Cache, Config, Translation Memory)
 - **Watch Service** - File watching with debouncing
 - **Glossary Service** - Glossary management and application
 
-See [DESIGN.md](./DESIGN.md) for detailed architecture documentation.
-
 ## 🧪 Testing
 
 ```bash
@@ -1395,7 +1392,6 @@ npm run examples:fast
 ## 📚 Documentation
 
 - **[API.md](./docs/API.md)** - Complete API reference with all commands, flags, and options
-- **[DESIGN.md](./DESIGN.md)** - Comprehensive design and architecture
 - **[CLAUDE.md](./CLAUDE.md)** - Development guidelines and TDD workflow
 - **[DeepL API Docs](https://www.deepl.com/docs-api)** - Official API documentation
 - **[CLI Guidelines](https://clig.dev/)** - Command-line best practices

@@ -203,6 +203,5 @@ When filing a bug report, include:
 ## Further Reading
 
 - [CLAUDE.md](./CLAUDE.md) -- Detailed development guidelines, TDD workflow, and testing strategy
-- [DESIGN.md](./DESIGN.md) -- Architecture and technical design decisions
 - [docs/API.md](./docs/API.md) -- Complete CLI command reference
 - [DeepL API Docs](https://www.deepl.com/docs-api) -- Official API documentation
