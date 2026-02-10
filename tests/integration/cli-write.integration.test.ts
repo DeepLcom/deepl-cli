@@ -439,6 +439,7 @@ describe('Write Command Integration', () => {
     it('should handle 429 rate limit errors', async () => {
       nock(FREE_API_URL)
         .post('/v2/write/rephrase')
+        .times(4)
         .reply(429, { message: 'Too many requests' });
 
       await expect(

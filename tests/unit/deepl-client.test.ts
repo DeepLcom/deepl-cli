@@ -573,6 +573,7 @@ describe('DeepLClient', () => {
     it('should handle 429 rate limit error', async () => {
       nock(baseUrl)
         .post('/v2/translate')
+        .times(4)
         .reply(429, {
           message: 'Too many requests',
         });
@@ -585,6 +586,7 @@ describe('DeepLClient', () => {
     it('should throw classified RateLimitError for 429, not raw AxiosError', async () => {
       nock(baseUrl)
         .post('/v2/translate')
+        .times(4)
         .reply(429, {
           message: 'Too many requests',
         });
@@ -1425,6 +1427,7 @@ describe('DeepLClient', () => {
       it('should handle 429 rate limit error', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase')
+          .times(4)
           .reply(429, { message: 'Too many requests' });
 
         await expect(

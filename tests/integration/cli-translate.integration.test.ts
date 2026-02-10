@@ -1259,6 +1259,7 @@ describe('Translate CLI Integration - nock HTTP validation', () => {
   it('should handle 429 rate limit errors', async () => {
     nock(FREE_API_URL)
       .post('/v2/translate')
+      .times(4)
       .reply(429, { message: 'Too many requests' });
 
     await expect(

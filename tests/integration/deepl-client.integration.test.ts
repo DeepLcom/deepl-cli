@@ -256,6 +256,7 @@ describe('DeepLClient Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/translate')
+        .times(4)
         .reply(429, { message: 'Too many requests' });
 
       await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
