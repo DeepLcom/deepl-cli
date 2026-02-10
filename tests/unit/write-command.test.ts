@@ -9,6 +9,7 @@ import { WriteImprovement } from '../../src/types/index.js';
 import { promises as fs, symlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { createMockWriteService } from '../helpers/mock-factories';
 
 // Mock chalk to avoid ESM issues in tests
 jest.mock('chalk', () => {
@@ -58,10 +59,7 @@ describe('WriteCommand', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    mockWriteService = {
-      improve: jest.fn(),
-      getBestImprovement: jest.fn(),
-    } as unknown as jest.Mocked<WriteService>;
+    mockWriteService = createMockWriteService();
 
     writeCommand = new WriteCommand(mockWriteService);
 

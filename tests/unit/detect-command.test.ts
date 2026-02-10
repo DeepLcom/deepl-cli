@@ -7,6 +7,7 @@
 
 import { DetectCommand } from '../../src/cli/commands/detect';
 import { DeepLClient } from '../../src/api/deepl-client';
+import { createMockDeepLClient } from '../helpers/mock-factories';
 
 jest.mock('../../src/api/deepl-client');
 
@@ -33,12 +34,12 @@ describe('DetectCommand', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockDeepLClient = {
+    mockDeepLClient = createMockDeepLClient({
       translate: jest.fn().mockResolvedValue({
         text: 'Hello world',
         detectedSourceLang: 'fr',
       }),
-    } as unknown as jest.Mocked<DeepLClient>;
+    });
 
     detectCommand = new DetectCommand(mockDeepLClient);
   });

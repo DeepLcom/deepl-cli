@@ -5,6 +5,7 @@
 
 import { GlossaryService } from '../../src/services/glossary';
 import { DeepLClient } from '../../src/api/deepl-client';
+import { createMockDeepLClient } from '../helpers/mock-factories';
 
 // Mock DeepLClient
 jest.mock('../../src/api/deepl-client');
@@ -14,21 +15,7 @@ describe('GlossaryService', () => {
   let mockDeepLClient: jest.Mocked<DeepLClient>;
 
   beforeEach(() => {
-    mockDeepLClient = {
-      translate: jest.fn(),
-      getUsage: jest.fn(),
-      getSupportedLanguages: jest.fn(),
-      createGlossary: jest.fn(),
-      listGlossaries: jest.fn(),
-      getGlossary: jest.fn(),
-      deleteGlossary: jest.fn(),
-      getGlossaryEntries: jest.fn(),
-      updateGlossaryEntries: jest.fn(),
-      updateGlossary: jest.fn(),
-      renameGlossary: jest.fn(),
-      deleteGlossaryDictionary: jest.fn(),
-      replaceGlossaryDictionary: jest.fn(),
-    } as unknown as jest.Mocked<DeepLClient>;
+    mockDeepLClient = createMockDeepLClient();
 
     glossaryService = new GlossaryService(mockDeepLClient);
   });

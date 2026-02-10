@@ -25,6 +25,7 @@ import { FileTranslationService } from '../../src/services/file-translation.js';
 import { TranslationService } from '../../src/services/translation.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
+import { createMockConfigService } from '../helpers/mock-factories';
 
 describe('Batch Translation Service Integration', () => {
   const API_KEY = 'test-api-key-123:fx';
@@ -41,17 +42,17 @@ describe('Batch Translation Service Integration', () => {
 
     // Set up services
     client = new DeepLClient(API_KEY);
-    mockConfig = {
-      get: () => ({
+    mockConfig = createMockConfigService({
+      get: jest.fn(() => ({
         auth: {},
         api: { baseUrl: '', usePro: false },
         defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
         cache: { enabled: true },
         output: { format: 'text', color: true },
         proxy: {},
-      }),
-      getValue: () => true,
-    } as unknown as ConfigService;
+      })),
+      getValue: jest.fn(() => true),
+    });
 
     translationService = new TranslationService(client, mockConfig);
     fileTranslationService = new FileTranslationService(translationService);

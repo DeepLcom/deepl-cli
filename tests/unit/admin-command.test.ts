@@ -5,6 +5,7 @@
 import { AdminCommand } from '../../src/cli/commands/admin';
 import { DeepLClient } from '../../src/api/deepl-client';
 import { AdminApiKey, AdminUsageReport } from '../../src/types/api';
+import { createMockDeepLClient } from '../helpers/mock-factories';
 
 jest.mock('../../src/api/deepl-client');
 
@@ -28,7 +29,7 @@ describe('AdminCommand', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockClient = {
+    mockClient = createMockDeepLClient({
       listApiKeys: jest.fn().mockResolvedValue([]),
       createApiKey: jest.fn().mockResolvedValue({
         keyId: 'key-1',
@@ -40,7 +41,7 @@ describe('AdminCommand', () => {
       renameApiKey: jest.fn().mockResolvedValue(undefined),
       setApiKeyLimit: jest.fn().mockResolvedValue(undefined),
       getAdminUsage: jest.fn().mockResolvedValue(emptyReport),
-    } as unknown as jest.Mocked<DeepLClient>;
+    });
 
     command = new AdminCommand(mockClient);
   });

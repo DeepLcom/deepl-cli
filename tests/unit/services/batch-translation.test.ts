@@ -10,6 +10,7 @@ import { BatchTranslationService } from '../../../src/services/batch-translation
 import { FileTranslationService } from '../../../src/services/file-translation';
 import pLimit from 'p-limit';
 import fg from 'fast-glob';
+import { createMockFileTranslationService } from '../../helpers/mock-factories';
 
 // Mock ESM modules
 jest.mock('p-limit');
@@ -36,16 +37,13 @@ describe('BatchTranslationService', () => {
       return (fn: () => Promise<any>) => fn();
     });
 
-    // Create mock FileTranslationService
-    mockFileTranslationService = {
-      translateFile: jest.fn(),
-      translateFileToMultiple: jest.fn(),
+    mockFileTranslationService = createMockFileTranslationService({
       getSupportedFileTypes: jest.fn().mockReturnValue(['.txt', '.md']),
       isSupportedFile: jest.fn((filePath: string) => {
         const ext = path.extname(filePath).toLowerCase();
         return ['.txt', '.md'].includes(ext);
       }),
-    } as unknown as jest.Mocked<FileTranslationService>;
+    });
 
     batchTranslationService = new BatchTranslationService(
       mockFileTranslationService

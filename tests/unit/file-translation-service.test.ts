@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { FileTranslationService } from '../../src/services/file-translation';
 import { TranslationService } from '../../src/services/translation';
+import { createMockTranslationService } from '../helpers/mock-factories';
 
 // Mock TranslationService
 jest.mock('../../src/services/translation');
@@ -22,14 +23,7 @@ describe('FileTranslationService', () => {
     testDir = path.join(os.tmpdir(), `deepl-test-${Date.now()}`);
     fs.mkdirSync(testDir, { recursive: true });
 
-    // Create mock TranslationService
-    mockTranslationService = {
-      translate: jest.fn(),
-      translateBatch: jest.fn(),
-      translateToMultiple: jest.fn(),
-      getUsage: jest.fn(),
-      getSupportedLanguages: jest.fn(),
-    } as unknown as jest.Mocked<TranslationService>;
+    mockTranslationService = createMockTranslationService();
 
     fileTranslationService = new FileTranslationService(mockTranslationService);
   });

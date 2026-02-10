@@ -1,5 +1,6 @@
 import { LanguagesCommand } from '../../src/cli/commands/languages';
 import { DeepLClient, LanguageInfo } from '../../src/api/deepl-client';
+import { createMockDeepLClient } from '../helpers/mock-factories';
 
 // Mock chalk to avoid ESM issues in tests
 jest.mock('chalk', () => {
@@ -21,26 +22,24 @@ describe('LanguagesCommand', () => {
   let languagesCommand: LanguagesCommand;
 
   const mockSourceLanguages: LanguageInfo[] = [
-    { language: 'en' as any, name: 'English' },
-    { language: 'de' as any, name: 'German' },
-    { language: 'fr' as any, name: 'French' },
-    { language: 'es' as any, name: 'Spanish' },
+    { language: 'en', name: 'English' },
+    { language: 'de', name: 'German' },
+    { language: 'fr', name: 'French' },
+    { language: 'es', name: 'Spanish' },
   ];
 
   const mockTargetLanguages: LanguageInfo[] = [
-    { language: 'en-us' as any, name: 'English (American)' },
-    { language: 'en-gb' as any, name: 'English (British)' },
-    { language: 'de' as any, name: 'German' },
-    { language: 'fr' as any, name: 'French' },
-    { language: 'es' as any, name: 'Spanish' },
-    { language: 'ja' as any, name: 'Japanese' },
+    { language: 'en-us', name: 'English (American)' },
+    { language: 'en-gb', name: 'English (British)' },
+    { language: 'de', name: 'German' },
+    { language: 'fr', name: 'French' },
+    { language: 'es', name: 'Spanish' },
+    { language: 'ja', name: 'Japanese' },
   ];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockDeepLClient = {
-      getSupportedLanguages: jest.fn(),
-    } as unknown as jest.Mocked<DeepLClient>;
+    mockDeepLClient = createMockDeepLClient();
     languagesCommand = new LanguagesCommand(mockDeepLClient);
   });
 
@@ -130,7 +129,7 @@ describe('LanguagesCommand', () => {
 
     it('should show API names when available (API takes precedence)', () => {
       const apiLangs: LanguageInfo[] = [
-        { language: 'en' as any, name: 'English (API Name)' },
+        { language: 'en', name: 'English (API Name)' },
       ];
       const formatted = languagesCommand.formatLanguages(apiLangs, 'source');
 
@@ -184,7 +183,7 @@ describe('LanguagesCommand', () => {
   describe('mergeWithRegistry()', () => {
     it('should use API names when available', () => {
       const apiLangs: LanguageInfo[] = [
-        { language: 'de' as any, name: 'Deutsch' },
+        { language: 'de', name: 'Deutsch' },
       ];
       const merged = languagesCommand.mergeWithRegistry(apiLangs, 'source');
       const de = merged.find(e => e.code === 'de');
@@ -282,8 +281,8 @@ describe('LanguagesCommand', () => {
   describe('supports_formality display', () => {
     it('should show [F] marker for target languages that support formality', () => {
       const targetLangsWithFormality: LanguageInfo[] = [
-        { language: 'de' as any, name: 'German', supportsFormality: true },
-        { language: 'en-us' as any, name: 'English (American)', supportsFormality: false },
+        { language: 'de', name: 'German', supportsFormality: true },
+        { language: 'en-us', name: 'English (American)', supportsFormality: false },
       ];
       const formatted = languagesCommand.formatLanguages(targetLangsWithFormality, 'target');
 
@@ -293,7 +292,7 @@ describe('LanguagesCommand', () => {
 
     it('should not show [F] for languages that do not support formality', () => {
       const targetLangsWithFormality: LanguageInfo[] = [
-        { language: 'en-us' as any, name: 'English (American)', supportsFormality: false },
+        { language: 'en-us', name: 'English (American)', supportsFormality: false },
       ];
       const formatted = languagesCommand.formatLanguages(targetLangsWithFormality, 'target');
       const enUsLine = formatted.split('\n').find(l => l.includes('English (American)'));
@@ -303,7 +302,7 @@ describe('LanguagesCommand', () => {
 
     it('should show legend when formality info is available', () => {
       const targetLangsWithFormality: LanguageInfo[] = [
-        { language: 'de' as any, name: 'German', supportsFormality: true },
+        { language: 'de', name: 'German', supportsFormality: true },
       ];
       const formatted = languagesCommand.formatLanguages(targetLangsWithFormality, 'target');
 
@@ -312,7 +311,7 @@ describe('LanguagesCommand', () => {
 
     it('should not show formality markers for source languages', () => {
       const sourceLangs: LanguageInfo[] = [
-        { language: 'de' as any, name: 'German', supportsFormality: true },
+        { language: 'de', name: 'German', supportsFormality: true },
       ];
       const formatted = languagesCommand.formatLanguages(sourceLangs, 'source');
 
@@ -321,9 +320,9 @@ describe('LanguagesCommand', () => {
 
     it('should propagate supportsFormality through mergeWithRegistry', () => {
       const apiLangs: LanguageInfo[] = [
-        { language: 'de' as any, name: 'German', supportsFormality: true },
-        { language: 'fr' as any, name: 'French', supportsFormality: true },
-        { language: 'en-us' as any, name: 'English (American)', supportsFormality: false },
+        { language: 'de', name: 'German', supportsFormality: true },
+        { language: 'fr', name: 'French', supportsFormality: true },
+        { language: 'en-us', name: 'English (American)', supportsFormality: false },
       ];
       const merged = languagesCommand.mergeWithRegistry(apiLangs, 'target');
 
@@ -335,7 +334,7 @@ describe('LanguagesCommand', () => {
 
     it('should not have formality info for registry-only languages', () => {
       const apiLangs: LanguageInfo[] = [
-        { language: 'de' as any, name: 'German', supportsFormality: true },
+        { language: 'de', name: 'German', supportsFormality: true },
       ];
       const merged = languagesCommand.mergeWithRegistry(apiLangs, 'target');
 

@@ -7,6 +7,7 @@
 
 import { ConfigCommand } from '../../src/cli/commands/config';
 import { ConfigService } from '../../src/storage/config';
+import { createMockConfigService } from '../helpers/mock-factories';
 
 // Mock dependencies
 jest.mock('../../src/storage/config');
@@ -18,15 +19,7 @@ describe('ConfigCommand', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockConfigService = {
-      get: jest.fn().mockReturnValue({}),
-      getValue: jest.fn().mockReturnValue(undefined),
-      set: jest.fn().mockResolvedValue(undefined),
-      has: jest.fn().mockReturnValue(false),
-      delete: jest.fn().mockResolvedValue(undefined),
-      clear: jest.fn().mockResolvedValue(undefined),
-      getDefaults: jest.fn().mockReturnValue({}),
-    } as unknown as jest.Mocked<ConfigService>;
+    mockConfigService = createMockConfigService();
 
     configCommand = new ConfigCommand(mockConfigService);
   });
