@@ -3713,4 +3713,198 @@ describe('TranslateCommand', () => {
       expect(result.modelType).toBe('quality_optimized');
     });
   });
+
+  describe('unicode and multibyte text handling', () => {
+    it('should translate CJK Chinese text', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hello world',
+        detectedSourceLang: 'zh',
+      });
+
+      const result = await translateCommand.translateText('你好世界', {
+        to: 'en',
+      });
+
+      expect(result).toBe('Hello world');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '你好世界',
+        { targetLang: 'en' },
+        { preserveCode: undefined, skipCache: true }
+      );
+    });
+
+    it('should translate CJK Japanese text', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hello',
+        detectedSourceLang: 'ja',
+      });
+
+      const result = await translateCommand.translateText('こんにちは', {
+        to: 'en',
+      });
+
+      expect(result).toBe('Hello');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'こんにちは',
+        { targetLang: 'en' },
+        { preserveCode: undefined, skipCache: true }
+      );
+    });
+
+    it('should translate CJK Korean text', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hello',
+        detectedSourceLang: 'ko',
+      });
+
+      const result = await translateCommand.translateText('안녕하세요', {
+        to: 'en',
+      });
+
+      expect(result).toBe('Hello');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        '안녕하세요',
+        { targetLang: 'en' },
+        { preserveCode: undefined, skipCache: true }
+      );
+    });
+
+    it('should translate Arabic/RTL text', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hello world',
+        detectedSourceLang: 'ar',
+      });
+
+      const result = await translateCommand.translateText('مرحبا بالعالم', {
+        to: 'en',
+      });
+
+      expect(result).toBe('Hello world');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'مرحبا بالعالم',
+        { targetLang: 'en' },
+        { preserveCode: undefined, skipCache: true }
+      );
+    });
+
+    it('should handle text with emoji', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola 🌍🎉',
+      });
+
+      const result = await translateCommand.translateText('Hello 🌍🎉', {
+        to: 'es',
+      });
+
+      expect(result).toBe('Hola 🌍🎉');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Hello 🌍🎉',
+        { targetLang: 'es' },
+        { preserveCode: undefined, skipCache: true }
+      );
+    });
+
+    it('should handle multi-codepoint emoji (family ZWJ sequence)', async () => {
+      const familyEmoji = '👨‍👩‍👧‍👦';
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: `${familyEmoji} familia`,
+      });
+
+      const result = await translateCommand.translateText(`${familyEmoji} family`, {
+        to: 'es',
+      });
+
+      expect(result).toBe(`${familyEmoji} familia`);
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        `${familyEmoji} family`,
+        { targetLang: 'es' },
+        { preserveCode: undefined, skipCache: true }
+      );
+    });
+
+    it('should handle combining characters (precomposed vs decomposed)', async () => {
+      const precomposed = 'caf\u00e9'; // café with precomposed é
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: precomposed,
+      });
+
+      const result = await translateCommand.translateText(precomposed, {
+        to: 'es',
+      });
+
+      expect(result).toBe(precomposed);
+    });
+
+    it('should handle decomposed combining characters', async () => {
+      const decomposed = 'cafe\u0301'; // café with combining acute accent
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: decomposed,
+      });
+
+      const result = await translateCommand.translateText(decomposed, {
+        to: 'es',
+      });
+
+      expect(result).toBe(decomposed);
+    });
+
+    it('should handle mixed scripts in a single string', async () => {
+      const mixedText = 'Hello 你好 مرحبا 🌍';
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Translated mixed text',
+      });
+
+      const result = await translateCommand.translateText(mixedText, {
+        to: 'es',
+      });
+
+      expect(result).toBe('Translated mixed text');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        mixedText,
+        { targetLang: 'es' },
+        { preserveCode: undefined, skipCache: true }
+      );
+    });
+
+    it('should handle surrogate pair characters (astral plane)', async () => {
+      const astralChar = '\uD835\uDC00'; // U+1D400 Mathematical Bold Capital A (𝐀)
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: astralChar,
+      });
+
+      const result = await translateCommand.translateText(astralChar, {
+        to: 'es',
+      });
+
+      expect(result).toBe(astralChar);
+    });
+
+    it('should handle zero-width joiners in text', async () => {
+      const textWithZWJ = 'test\u200Dword';
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: textWithZWJ,
+      });
+
+      const result = await translateCommand.translateText(textWithZWJ, {
+        to: 'es',
+      });
+
+      expect(result).toBe(textWithZWJ);
+      expect(result).toContain('\u200D');
+    });
+
+    it('should translate CJK text to multiple targets', async () => {
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
+        { targetLang: 'en', text: 'Hello world' },
+        { targetLang: 'fr', text: 'Bonjour le monde' },
+      ]);
+
+      const result = await translateCommand.translateText('你好世界', {
+        to: 'en,fr',
+      });
+
+      expect(result).toContain('Hello world');
+      expect(result).toContain('Bonjour le monde');
+    });
+  });
 });

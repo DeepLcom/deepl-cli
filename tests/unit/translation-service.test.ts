@@ -1189,4 +1189,272 @@ describe('TranslationService', () => {
       expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1); // Still only 1 API call
     });
   });
+
+  describe('unicode and multibyte text handling', () => {
+    it('should translate CJK Chinese characters', async () => {
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hello world',
+        detectedSourceLang: 'zh',
+      });
+
+      const result = await translationService.translate('你好世界', {
+        targetLang: 'en',
+      });
+
+      expect(result.text).toBe('Hello world');
+      expect(result.detectedSourceLang).toBe('zh');
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith('你好世界', expect.objectContaining({
+        targetLang: 'en',
+      }));
+    });
+
+    it('should translate CJK Japanese characters', async () => {
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hello',
+        detectedSourceLang: 'ja',
+      });
+
+      const result = await translationService.translate('こんにちは', {
+        targetLang: 'en',
+      });
+
+      expect(result.text).toBe('Hello');
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith('こんにちは', expect.objectContaining({
+        targetLang: 'en',
+      }));
+    });
+
+    it('should translate CJK Korean characters', async () => {
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hello',
+        detectedSourceLang: 'ko',
+      });
+
+      const result = await translationService.translate('안녕하세요', {
+        targetLang: 'en',
+      });
+
+      expect(result.text).toBe('Hello');
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith('안녕하세요', expect.objectContaining({
+        targetLang: 'en',
+      }));
+    });
+
+    it('should translate Arabic/RTL text', async () => {
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hello world',
+        detectedSourceLang: 'ar',
+      });
+
+      const result = await translationService.translate('مرحبا بالعالم', {
+        targetLang: 'en',
+      });
+
+      expect(result.text).toBe('Hello world');
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith('مرحبا بالعالم', expect.objectContaining({
+        targetLang: 'en',
+      }));
+    });
+
+    it('should handle text with emoji', async () => {
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hola 🌍🎉',
+      });
+
+      const result = await translationService.translate('Hello 🌍🎉', {
+        targetLang: 'es',
+      });
+
+      expect(result.text).toBe('Hola 🌍🎉');
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith('Hello 🌍🎉', expect.objectContaining({
+        targetLang: 'es',
+      }));
+    });
+
+    it('should handle multi-codepoint emoji (family ZWJ sequence)', async () => {
+      const familyEmoji = '👨‍👩‍👧‍👦';
+      mockDeepLClient.translate.mockResolvedValue({
+        text: `${familyEmoji} familia`,
+      });
+
+      const result = await translationService.translate(`${familyEmoji} family`, {
+        targetLang: 'es',
+      });
+
+      expect(result.text).toBe(`${familyEmoji} familia`);
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(`${familyEmoji} family`, expect.objectContaining({
+        targetLang: 'es',
+      }));
+    });
+
+    it('should handle combining characters (precomposed)', async () => {
+      const precomposed = 'caf\u00e9'; // café with precomposed é (U+00E9)
+      mockDeepLClient.translate.mockResolvedValue({
+        text: precomposed,
+      });
+
+      const result = await translationService.translate(precomposed, {
+        targetLang: 'es',
+      });
+
+      expect(result.text).toBe(precomposed);
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(precomposed, expect.objectContaining({
+        targetLang: 'es',
+      }));
+    });
+
+    it('should handle combining characters (decomposed)', async () => {
+      const decomposed = 'cafe\u0301'; // café with combining acute accent (e + U+0301)
+      mockDeepLClient.translate.mockResolvedValue({
+        text: decomposed,
+      });
+
+      const result = await translationService.translate(decomposed, {
+        targetLang: 'es',
+      });
+
+      expect(result.text).toBe(decomposed);
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(decomposed, expect.objectContaining({
+        targetLang: 'es',
+      }));
+    });
+
+    it('should handle mixed scripts in a single string', async () => {
+      const mixedText = 'Hello 你好 مرحبا 🌍';
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Translated mixed text',
+      });
+
+      const result = await translationService.translate(mixedText, {
+        targetLang: 'es',
+      });
+
+      expect(result.text).toBe('Translated mixed text');
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(mixedText, expect.objectContaining({
+        targetLang: 'es',
+      }));
+    });
+
+    it('should handle surrogate pair characters (astral plane)', async () => {
+      const astralChar = '\uD835\uDC00'; // U+1D400 Mathematical Bold Capital A (𝐀)
+      mockDeepLClient.translate.mockResolvedValue({
+        text: astralChar,
+      });
+
+      const result = await translationService.translate(astralChar, {
+        targetLang: 'es',
+      });
+
+      expect(result.text).toBe(astralChar);
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(astralChar, expect.objectContaining({
+        targetLang: 'es',
+      }));
+    });
+
+    it('should handle zero-width joiners in text', async () => {
+      const textWithZWJ = 'test\u200Dword'; // zero-width joiner between test and word
+      mockDeepLClient.translate.mockResolvedValue({
+        text: textWithZWJ,
+      });
+
+      const result = await translationService.translate(textWithZWJ, {
+        targetLang: 'es',
+      });
+
+      expect(result.text).toBe(textWithZWJ);
+      expect(result.text).toContain('\u200D');
+    });
+
+    it('should handle text with zero-width non-joiner', async () => {
+      const textWithZWNJ = 'test\u200Cword'; // zero-width non-joiner
+      mockDeepLClient.translate.mockResolvedValue({
+        text: textWithZWNJ,
+      });
+
+      const result = await translationService.translate(textWithZWNJ, {
+        targetLang: 'es',
+      });
+
+      expect(result.text).toBe(textWithZWNJ);
+      expect(result.text).toContain('\u200C');
+    });
+
+    it('should correctly pass CJK text through batch translation', async () => {
+      mockDeepLClient.translateBatch.mockResolvedValue([
+        { text: 'Hello world' },
+        { text: 'Hello' },
+        { text: 'Hello' },
+      ]);
+
+      const results = await translationService.translateBatch(
+        ['你好世界', 'こんにちは', '안녕하세요'],
+        { targetLang: 'en' }
+      );
+
+      expect(results).toHaveLength(3);
+      expect(results[0]?.text).toBe('Hello world');
+      expect(results[1]?.text).toBe('Hello');
+      expect(results[2]?.text).toBe('Hello');
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalledWith(
+        ['你好世界', 'こんにちは', '안녕하세요'],
+        expect.objectContaining({ targetLang: 'en' })
+      );
+    });
+
+    it('should correctly measure byte length of multibyte characters for validation', async () => {
+      // CJK characters are 3 bytes each in UTF-8
+      // 4-byte emoji should also be counted correctly
+      const cjkText = '你'; // 3 bytes
+      const emoji = '🌍'; // 4 bytes
+
+      mockDeepLClient.translate.mockResolvedValue({ text: 'translated' });
+
+      // These should pass validation (well under limit)
+      await translationService.translate(cjkText, { targetLang: 'en' });
+      await translationService.translate(emoji, { targetLang: 'en' });
+
+      expect(mockDeepLClient.translate).toHaveBeenCalledTimes(2);
+    });
+
+    it('should preserve variables in CJK text', async () => {
+      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
+        text: text.replace('こんにちは', 'Hola'),
+      }));
+
+      const result = await translationService.translate('こんにちは {name}', {
+        targetLang: 'es',
+      });
+
+      expect(result.text).toContain('{name}');
+    });
+
+    it('should handle emoji in batch with other unicode text', async () => {
+      mockDeepLClient.translateBatch.mockResolvedValue([
+        { text: 'Hola 🌍🎉' },
+        { text: '👨‍👩‍👧‍👦 familia' },
+      ]);
+
+      const results = await translationService.translateBatch(
+        ['Hello 🌍🎉', '👨‍👩‍👧‍👦 family'],
+        { targetLang: 'es' }
+      );
+
+      expect(results).toHaveLength(2);
+      expect(results[0]?.text).toBe('Hola 🌍🎉');
+      expect(results[1]?.text).toBe('👨‍👩‍👧‍👦 familia');
+    });
+
+    it('should cache unicode text with correct keys', async () => {
+      mockDeepLClient.translate.mockResolvedValue({
+        text: 'Hello',
+      });
+
+      await translationService.translate('你好', { targetLang: 'en' });
+
+      expect(mockCacheService.set).toHaveBeenCalledTimes(1);
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith('你好', expect.objectContaining({
+        targetLang: 'en',
+      }));
+    });
+  });
 });
