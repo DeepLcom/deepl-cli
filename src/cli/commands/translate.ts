@@ -16,6 +16,7 @@ import { Language, Formality } from '../../types/index.js';
 import { formatTranslationJson, formatMultiTranslationJson, formatMultiTranslationTable } from '../../utils/formatters.js';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
+import { safeReadFileSync } from '../../utils/safe-read-file.js';
 import { getAllLanguageCodes, getExtendedLanguageCodes } from '../../data/language-registry.js';
 
 const VALID_LANGUAGES: ReadonlySet<string> = getAllLanguageCodes();
@@ -623,8 +624,8 @@ export class TranslateCommand {
   private async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
     this.validateLanguageCodes([options.to]);
 
-    // Read file content
-    const content = fs.readFileSync(filePath, 'utf-8');
+    // Read file content (safe: rejects symlinks to prevent TOCTOU attacks)
+    const content = safeReadFileSync(filePath, 'utf-8');
 
     const translationOptions = this.buildTranslationOptions(options);
 

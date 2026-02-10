@@ -11,6 +11,7 @@ import { DocumentTranslationService } from '../../src/services/document-translat
 import { GlossaryService } from '../../src/services/glossary';
 import { ConfigService } from '../../src/storage/config';
 import { Logger } from '../../src/utils/logger';
+import { safeReadFileSync } from '../../src/utils/safe-read-file';
 
 // Mock ESM dependencies
 jest.mock('ora', () => {
@@ -33,6 +34,7 @@ jest.mock('../../src/services/batch-translation');
 jest.mock('../../src/services/document-translation');
 jest.mock('../../src/services/glossary');
 jest.mock('../../src/storage/config');
+jest.mock('../../src/utils/safe-read-file');
 
 describe('TranslateCommand', () => {
   let mockTranslationService: jest.Mocked<TranslationService>;
@@ -1044,6 +1046,7 @@ describe('TranslateCommand', () => {
       jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
       jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      (safeReadFileSync as jest.Mock).mockReturnValue('Hello world');
 
       (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
       (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
@@ -1069,6 +1072,7 @@ describe('TranslateCommand', () => {
       jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
       jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      (safeReadFileSync as jest.Mock).mockReturnValue('Hello world');
 
       (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
       (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
@@ -1094,6 +1098,7 @@ describe('TranslateCommand', () => {
       jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
       jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      (safeReadFileSync as jest.Mock).mockReturnValue('Hello world');
 
       (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
       (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
@@ -1538,7 +1543,7 @@ describe('TranslateCommand', () => {
         size: 5 * 1024, // 5 KiB
         isDirectory: () => false
       } as any);
-      jest.spyOn(mockFs, 'readFileSync').mockReturnValue(unicodeContent);
+      (safeReadFileSync as jest.Mock).mockReturnValue(unicodeContent);
 
       (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
       (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
@@ -1550,8 +1555,8 @@ describe('TranslateCommand', () => {
         output: '/out.txt',
       });
 
-      // Should read with UTF-8 encoding
-      expect(mockFs.readFileSync).toHaveBeenCalledWith('/path/to/unicode.txt', 'utf-8');
+      // Should read with UTF-8 encoding via safeReadFileSync
+      expect(safeReadFileSync).toHaveBeenCalledWith('/path/to/unicode.txt', 'utf-8');
     });
   });
 
@@ -3185,6 +3190,7 @@ describe('TranslateCommand', () => {
         isDirectory: () => false,
       } as any);
       jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+      (safeReadFileSync as jest.Mock).mockReturnValue('Hello');
     });
 
     afterEach(() => {
@@ -3289,6 +3295,42 @@ describe('TranslateCommand', () => {
         expect.objectContaining({ targetLang: 'es', sourceLang: 'en', formality: 'more' }),
         expect.any(Object)
       );
+    });
+
+    it('should use safeReadFileSync instead of bare fs.readFileSync', async () => {
+      (safeReadFileSync as jest.Mock).mockReturnValue('Safe content');
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Contenido seguro',
+        detectedSourceLang: undefined,
+      });
+
+      await (translateCommand as any).translateTextFile('/doc.txt', {
+        to: 'es',
+        output: '/out.txt',
+      });
+
+      expect(safeReadFileSync).toHaveBeenCalledWith('/doc.txt', 'utf-8');
+      expect(mockTranslationService.translate).toHaveBeenCalledWith(
+        'Safe content',
+        expect.any(Object),
+        expect.any(Object)
+      );
+    });
+
+    it('should reject symlinks when reading translation files', async () => {
+      (safeReadFileSync as jest.Mock).mockImplementation(() => {
+        throw new Error('Symlinks are not supported for security reasons: /doc.txt');
+      });
+
+      await expect(
+        (translateCommand as any).translateTextFile('/doc.txt', {
+          to: 'es',
+          output: '/out.txt',
+        })
+      ).rejects.toThrow('Symlinks are not supported for security reasons: /doc.txt');
+
+      expect(safeReadFileSync).toHaveBeenCalledWith('/doc.txt', 'utf-8');
+      expect(mockTranslationService.translate).not.toHaveBeenCalled();
     });
   });
 

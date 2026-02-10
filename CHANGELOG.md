@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Fix info disclosure: error logs no longer expose full error objects or internal paths
+- Fix symlink TOCTOU race condition in file translation — `translateTextFile` now uses `safeReadFileSync` instead of bare `fs.readFileSync`
 
 ## [0.11.0] - 2026-02-08
 
