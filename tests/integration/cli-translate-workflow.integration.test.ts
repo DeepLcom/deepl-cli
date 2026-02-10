@@ -12,9 +12,10 @@ import { DeepLClient, LanguageInfo } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
 import { CacheService } from '../../src/storage/cache.js';
 import { Language } from '../../src/types/index.js';
+import { TEST_API_KEY } from '../helpers';
 
 describe('Translation Workflow Integration', () => {
-  const API_KEY = 'test-api-key-123:fx';
+  const API_KEY = TEST_API_KEY;
   let translationService: TranslationService;
   let fileTranslationService: FileTranslationService;
   let client: DeepLClient;

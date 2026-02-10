@@ -5,10 +5,11 @@
 
 import nock from 'nock';
 import { AdminClient } from '../../src/api/admin-client.js';
+import { DEEPL_FREE_API_URL } from '../helpers';
 
 describe('AdminClient Integration', () => {
   const API_KEY = 'test-admin-key:fx';
-  const API_URL = 'https://api-free.deepl.com';
+  const API_URL = DEEPL_FREE_API_URL;
 
   afterEach(() => {
     nock.cleanAll();

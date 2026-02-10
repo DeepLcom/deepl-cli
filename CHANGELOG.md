@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `formatValue()` and `formatConfig()` methods to ConfigCommand for human-readable text output
 
 ### Changed
+- Extract shared test helpers (`tests/helpers/run-cli.ts`, `tests/helpers/nock-setup.ts`) from duplicated boilerplate across ~30 integration and E2E test files — `makeRunCLI`, `makeNodeRunCLI`, `createTestConfigDir`, `createTestDir`, and common nock constants (`DEEPL_FREE_API_URL`, `TEST_API_KEY`)
 - Replace wasteful HttpClient construction with static validation in DeepLClient — constructor now calls `HttpClient.validateConfig()` instead of creating and discarding a full HttpClient instance
 - Add nock-based HTTP validation to translate CLI integration tests (24 tests validating request structure through TranslationService -> DeepLClient -> HTTP)
 - Add unicode and multibyte text test cases for CJK, Arabic, emoji, and combining characters

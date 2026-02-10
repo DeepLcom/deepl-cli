@@ -3,42 +3,19 @@
  * Tests the glossary command CLI behavior, subcommands, and validation
  */
 
-import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, createTestDir, makeRunCLI } from '../helpers';
 
 describe('Glossary CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-glossary-${Date.now()}`);
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-glossary-files-${Date.now()}`);
-
-  // Helper to run CLI commands with isolated config directory
-  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      ...options,
-    });
-  };
-
-  beforeAll(() => {
-    // Create test directories
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('glossary');
+  const testFiles = createTestDir('glossary-files');
+  const { runCLI } = makeRunCLI(testConfig.path);
+  const testDir = testFiles.path;
 
   afterAll(() => {
-    // Clean up test directories
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
+    testFiles.cleanup();
   });
 
   describe('deepl glossary --help', () => {
@@ -279,11 +256,8 @@ describe('Glossary CLI Integration', () => {
     });
 
     it('should abort without --yes in non-TTY mode', () => {
-      const output = execSync('deepl glossary delete "My Glossary" 2>&1', {
-        encoding: 'utf-8',
-        env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-        shell: '/bin/sh',
-      });
+      const { runCLIAll } = makeRunCLI(testConfig.path);
+      const output = runCLIAll('deepl glossary delete "My Glossary"');
       expect(output).toContain('Aborted');
     });
 

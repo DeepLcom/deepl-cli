@@ -3,35 +3,14 @@
  * Tests the languages command CLI behavior and output formatting
  */
 
-import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, makeRunCLI } from '../helpers';
 
 describe('Languages CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-languages-${Date.now()}`);
-
-  // Helper to run CLI commands with isolated config directory
-  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      ...options,
-    });
-  };
-
-  beforeAll(() => {
-    // Create test directory
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('languages');
+  const { runCLI } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    // Clean up test directory
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
 
   describe('deepl languages --help', () => {
@@ -48,39 +27,20 @@ describe('Languages CLI Integration', () => {
 
   describe('deepl languages without API key (graceful degradation)', () => {
     it('should show registry-only output with warning when no API key', () => {
-      // Ensure no API key is set
       try {
-        runCLI('deepl auth clear', { stdio: 'pipe' });
+        runCLI('deepl auth clear');
       } catch {
         // Ignore if already cleared
       }
 
-      // Remove DEEPL_API_KEY from env for this test
-      const output = execSync('deepl languages', {
-        encoding: 'utf-8',
-        env: {
-          ...process.env,
-          DEEPL_CONFIG_DIR: testConfigDir,
-          DEEPL_API_KEY: '',
-        },
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      const output = runCLI('deepl languages', { apiKey: '' });
 
-      // Should show languages from registry even without API key
       expect(output).toContain('Source Languages:');
       expect(output).toContain('Target Languages:');
     });
 
     it('should show extended languages without API key', () => {
-      const output = execSync('deepl languages --source', {
-        encoding: 'utf-8',
-        env: {
-          ...process.env,
-          DEEPL_CONFIG_DIR: testConfigDir,
-          DEEPL_API_KEY: '',
-        },
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      const output = runCLI('deepl languages --source', { apiKey: '' });
 
       expect(output).toContain('Source Languages:');
       expect(output).toContain('Extended Languages');

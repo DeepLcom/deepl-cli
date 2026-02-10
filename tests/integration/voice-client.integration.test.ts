@@ -6,10 +6,11 @@
 
 import nock from 'nock';
 import { VoiceClient } from '../../src/api/voice-client.js';
+import { DEEPL_PRO_API_URL } from '../helpers';
 
 describe('VoiceClient Integration', () => {
   const API_KEY = 'test-voice-key:fx';
-  const PRO_URL = 'https://api.deepl.com';
+  const PRO_URL = DEEPL_PRO_API_URL;
 
   afterEach(() => {
     nock.cleanAll();

@@ -5,10 +5,11 @@
 
 import nock from 'nock';
 import { WriteClient } from '../../src/api/write-client.js';
+import { DEEPL_FREE_API_URL } from '../helpers';
 
 describe('WriteClient Integration', () => {
   const API_KEY = 'test-write-key:fx';
-  const API_URL = 'https://api-free.deepl.com';
+  const API_URL = DEEPL_FREE_API_URL;
 
   afterEach(() => {
     nock.cleanAll();

@@ -4,25 +4,17 @@
  */
 
 import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, makeRunCLI } from '../helpers';
 
 describe('Detect CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-detect-${Date.now()}`);
-
-  const runCLI = (command: string, options: { env?: Record<string, string | undefined> } = {}): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir, ...options.env },
-    });
-  };
+  const testConfig = createTestConfigDir('detect');
+  const { runCLI } = makeRunCLI(testConfig.path);
 
   const runCLIExpectFail = (command: string, options: { env?: Record<string, string | undefined> } = {}): string => {
     try {
       execSync(command, {
         encoding: 'utf-8',
-        env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir, ...options.env },
+        env: { ...process.env, DEEPL_CONFIG_DIR: testConfig.path, ...options.env },
         stdio: ['pipe', 'pipe', 'pipe'],
       });
       throw new Error('Expected command to fail');
@@ -31,16 +23,8 @@ describe('Detect CLI Integration', () => {
     }
   };
 
-  beforeAll(() => {
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
-
   afterAll(() => {
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
 
   describe('deepl detect --help', () => {

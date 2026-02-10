@@ -3,35 +3,14 @@
  * Tests the usage command CLI behavior and output formatting
  */
 
-import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, makeRunCLI } from '../helpers';
 
 describe('Usage CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-usage-${Date.now()}`);
-
-  // Helper to run CLI commands with isolated config directory
-  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      ...options,
-    });
-  };
-
-  beforeAll(() => {
-    // Create test directory
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('usage');
+  const { runCLI } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    // Clean up test directory
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
 
   describe('deepl usage --help', () => {

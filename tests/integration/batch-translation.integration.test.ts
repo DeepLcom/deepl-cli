@@ -25,9 +25,10 @@ import { FileTranslationService } from '../../src/services/file-translation.js';
 import { TranslationService } from '../../src/services/translation.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
+import { TEST_API_KEY } from '../helpers';
 
 describe('Batch Translation Service Integration', () => {
-  const API_KEY = 'test-api-key-123:fx';
+  const API_KEY = TEST_API_KEY;
   let batchService: BatchTranslationService;
   let fileTranslationService: FileTranslationService;
   let translationService: TranslationService;

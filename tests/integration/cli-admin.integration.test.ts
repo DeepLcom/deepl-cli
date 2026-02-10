@@ -3,32 +3,14 @@
  * Tests the admin command CLI behavior, argument validation, and error handling
  */
 
-import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, makeRunCLI } from '../helpers';
 
 describe('Admin CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-admin-${Date.now()}`);
-
-  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      ...options,
-    });
-  };
-
-  beforeAll(() => {
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('admin');
+  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
 
   describe('deepl admin --help', () => {
@@ -93,13 +75,7 @@ describe('Admin CLI Integration', () => {
 
       expect.assertions(1);
       try {
-        const env = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir } as NodeJS.ProcessEnv;
-        delete env['DEEPL_API_KEY'];
-        execSync('deepl admin keys list', {
-          encoding: 'utf-8',
-          env,
-          stdio: 'pipe',
-        });
+        runCLI('deepl admin keys list', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
@@ -141,11 +117,7 @@ describe('Admin CLI Integration', () => {
     });
 
     it('should abort without --yes in non-TTY mode', () => {
-      const output = execSync('deepl admin keys deactivate test-key-id 2>&1', {
-        encoding: 'utf-8',
-        env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-        shell: '/bin/sh',
-      });
+      const output = runCLIAll('deepl admin keys deactivate test-key-id');
       expect(output).toContain('Aborted');
     });
 

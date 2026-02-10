@@ -6,49 +6,18 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, createTestDir, makeRunCLI } from '../helpers';
 
 describe('CLI Workflow E2E', () => {
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-e2e-${Date.now()}`);
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-e2e-config-${Date.now()}`);
-
-  // Helper to run CLI commands with isolated config directory (captures stdout only)
-  const runCLI = (command: string): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-    });
-  };
-
-  // Helper that captures both stdout and stderr (for success messages via Logger.success)
-  const runCLIAll = (command: string): string => {
-    return execSync(`${command} 2>&1`, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      shell: '/bin/sh',
-    });
-  };
-
-  beforeAll(() => {
-    // Create test directory
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
-    // Create test config directory
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const testFiles = createTestDir('e2e');
+  const testConfig = createTestConfigDir('e2e-config');
+  const testDir = testFiles.path;
+  const testConfigDir = testConfig.path;
+  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    // Clean up test directory
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-    // Clean up test config directory
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testFiles.cleanup();
+    testConfig.cleanup();
   });
 
   describe('Help and Version Commands', () => {

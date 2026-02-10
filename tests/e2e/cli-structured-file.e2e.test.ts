@@ -3,34 +3,19 @@
  * Tests complete user workflows without requiring real API key
  */
 
-import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, createTestDir, makeRunCLI } from '../helpers';
 
 describe('Structured File Translation E2E', () => {
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-structured-e2e-${Date.now()}`);
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-structured-e2e-config-${Date.now()}`);
-
-  const runCLI = (command: string): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-    });
-  };
-
-  beforeAll(() => {
-    fs.mkdirSync(testDir, { recursive: true });
-    fs.mkdirSync(testConfigDir, { recursive: true });
-  });
+  const testConfig = createTestConfigDir('structured-e2e-config');
+  const testFiles = createTestDir('structured-e2e');
+  const testDir = testFiles.path;
+  const { runCLI } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testFiles.cleanup();
+    testConfig.cleanup();
   });
 
   describe('JSON file support', () => {

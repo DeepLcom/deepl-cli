@@ -4,21 +4,27 @@
  * do not trigger SQLite database creation.
  */
 
-import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { makeRunCLI } from '../helpers';
 
 describe('Lazy CacheService Instantiation', () => {
   let testHomeDir: string;
   let testConfigDir: string;
   let expectedCachePath: string;
+  let runCLI: (command: string, extraEnv?: Record<string, string | undefined>) => string;
 
   beforeEach(() => {
     testHomeDir = path.join(os.tmpdir(), `.deepl-cli-lazy-cache-home-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     testConfigDir = path.join(testHomeDir, '.deepl-cli');
     expectedCachePath = path.join(testConfigDir, 'cache.db');
     fs.mkdirSync(testHomeDir, { recursive: true });
+
+    const helpers = makeRunCLI(testConfigDir);
+    runCLI = (command: string, extraEnv: Record<string, string | undefined> = {}) => {
+      return helpers.runCLI(command, { env: { HOME: testHomeDir, ...extraEnv } });
+    };
   });
 
   afterEach(() => {
@@ -26,11 +32,6 @@ describe('Lazy CacheService Instantiation', () => {
       fs.rmSync(testHomeDir, { recursive: true, force: true });
     }
   });
-
-  const runCLI = (command: string, extraEnv: Record<string, string | undefined> = {}): string => {
-    const env = { ...process.env, HOME: testHomeDir, DEEPL_CONFIG_DIR: testConfigDir, ...extraEnv };
-    return execSync(command, { encoding: 'utf-8', env });
-  };
 
   describe('commands that should NOT create cache.db', () => {
     it('should not create cache.db when running --help', () => {

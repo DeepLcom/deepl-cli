@@ -6,44 +6,25 @@
  * Full API integration is tested separately in integration tests.
  */
 
-import { execSync, spawnSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
+import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
 describe('Languages Command E2E', () => {
   const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
-  let testConfigDir: string;
-
-  beforeAll(() => {
-    // Create isolated test config directory
-    testConfigDir = path.join(os.tmpdir(), `.deepl-cli-e2e-languages-${Date.now()}`);
-    fs.mkdirSync(testConfigDir, { recursive: true });
-  });
+  const testConfig = createTestConfigDir('e2e-languages');
+  const { runCLI, runCLIExpectError } = makeNodeRunCLI(testConfig.path);
 
   afterAll(() => {
-    // Cleanup
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
-
-  const runCLI = (command: string): string => {
-    return execSync(`node ${CLI_PATH} ${command}`, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-      },
-    });
-  };
 
   const runCLIWithEnv = (command: string, env: Record<string, string> = {}): { status: number; stdout: string; stderr: string } => {
     const result = spawnSync('node', [CLI_PATH, ...command.split(' ')], {
       encoding: 'utf-8',
       env: {
         ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
+        DEEPL_CONFIG_DIR: testConfig.path,
         ...env,
       },
     });
@@ -52,25 +33,6 @@ describe('Languages Command E2E', () => {
       stdout: result.stdout || '',
       stderr: result.stderr || '',
     };
-  };
-
-  const runCLIExpectError = (command: string, apiKey?: string): { status: number; output: string } => {
-    try {
-      const output = execSync(`node ${CLI_PATH} ${command}`, {
-        encoding: 'utf-8',
-        env: {
-          ...process.env,
-          DEEPL_CONFIG_DIR: testConfigDir,
-          ...(apiKey !== undefined && { DEEPL_API_KEY: apiKey }),
-        },
-      });
-      return { status: 0, output };
-    } catch (error: any) {
-      return {
-        status: error.status || 1,
-        output: error.stderr?.toString() || error.stdout?.toString() || '',
-      };
-    }
   };
 
   describe('languages --help', () => {
@@ -143,7 +105,7 @@ describe('Languages Command E2E', () => {
 
   describe('languages error handling', () => {
     it('should reject invalid flags', () => {
-      const result = runCLIExpectError('languages --invalid-flag', 'test-key');
+      const result = runCLIExpectError('languages --invalid-flag', { apiKey: 'test-key' });
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toMatch(/unknown option|error/i);

@@ -6,32 +6,16 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, makeRunCLI } from '../helpers';
 
 describe('Config CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-config-${Date.now()}`);
+  const testConfig = createTestConfigDir('test-config');
+  const testConfigDir = testConfig.path;
   const configPath = path.join(testConfigDir, 'config.json');
-
-  // Helper to run CLI commands with test config directory
-  const runCLI = (command: string): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-    });
-  };
-
-  beforeAll(() => {
-    // Create test directory
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const { runCLI } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    // Clean up test directory
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
 
   beforeEach(() => {

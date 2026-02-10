@@ -5,13 +5,14 @@
  * a real API key.
  */
 
-import { execSync, spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, createTestDir, makeNodeRunCLI } from '../helpers';
 
 describe('CLI Success Paths E2E', () => {
-  const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
+  const testConfig = createTestConfigDir('e2e-success');
+  const testFiles = createTestDir('e2e-success-files');
   let testConfigDir: string;
   let testDir: string;
   let mockServerProcess: ChildProcess;
@@ -72,49 +73,18 @@ describe('CLI Success Paths E2E', () => {
     fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
   }
 
-  const runCLI = (command: string): string => {
-    return execSync(`node ${CLI_PATH} ${command}`, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-        NO_COLOR: '1',
-      },
-      timeout: 15000,
-    });
-  };
-
-  const runCLIAll = (command: string): string => {
-    return execSync(`node ${CLI_PATH} ${command} 2>&1`, {
-      encoding: 'utf-8',
-      shell: '/bin/sh',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-        NO_COLOR: '1',
-      },
-      timeout: 15000,
-    });
-  };
-
-  const runCLIPipe = (stdin: string, command: string): string => {
-    return execSync(`printf '%s' "${stdin}" | node ${CLI_PATH} ${command}`, {
-      encoding: 'utf-8',
-      shell: '/bin/bash',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-        NO_COLOR: '1',
-      },
-      timeout: 15000,
-    });
-  };
+  let runCLI: (command: string) => string;
+  let runCLIAll: (command: string) => string;
+  let runCLIPipe: (stdin: string, command: string) => string;
 
   beforeAll(async () => {
-    testConfigDir = path.join(os.tmpdir(), `.deepl-cli-e2e-success-${Date.now()}`);
-    testDir = path.join(os.tmpdir(), `.deepl-cli-e2e-success-files-${Date.now()}`);
-    fs.mkdirSync(testConfigDir, { recursive: true });
-    fs.mkdirSync(testDir, { recursive: true });
+    testConfigDir = testConfig.path;
+    testDir = testFiles.path;
+
+    const helpers = makeNodeRunCLI(testConfigDir, { noColor: true, timeout: 15000 });
+    runCLI = (command: string) => helpers.runCLI(command);
+    runCLIAll = (command: string) => helpers.runCLIAll(command);
+    runCLIPipe = (stdin: string, command: string) => helpers.runCLIPipe(stdin, command);
 
     mockPort = await startMockServer();
     baseUrl = `http://127.0.0.1:${mockPort}`;
@@ -126,12 +96,8 @@ describe('CLI Success Paths E2E', () => {
     if (mockServerProcess) {
       mockServerProcess.kill('SIGTERM');
     }
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
+    testFiles.cleanup();
   });
 
   describe('translate command success paths', () => {

@@ -6,21 +6,14 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestDir } from '../helpers';
 
 describe('Write Command E2E', () => {
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-write-e2e-${Date.now()}`);
-
-  beforeAll(() => {
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
-  });
+  const testFiles = createTestDir('write-e2e');
+  const testDir = testFiles.path;
 
   afterAll(() => {
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    testFiles.cleanup();
   });
 
   describe('Help Command', () => {

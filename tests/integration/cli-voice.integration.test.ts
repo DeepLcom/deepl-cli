@@ -3,39 +3,19 @@
  * Tests the voice command CLI behavior, argument validation, and error handling.
  */
 
-import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, createTestDir, makeRunCLI } from '../helpers';
 
 describe('Voice CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-voice-${Date.now()}`);
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-voice-files-${Date.now()}`);
-
-  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      ...options,
-    });
-  };
-
-  beforeAll(() => {
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('voice');
+  const testFiles = createTestDir('voice-files');
+  const testDir = testFiles.path;
+  const { runCLI } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
+    testFiles.cleanup();
   });
 
   describe('deepl voice --help', () => {
@@ -119,26 +99,15 @@ describe('Voice CLI Integration', () => {
       const testFile = path.join(testDir, 'test-noauth.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
-      delete cleanEnv['DEEPL_API_KEY'];
-
       try {
-        execSync('deepl auth clear', {
-          encoding: 'utf-8',
-          env: cleanEnv,
-          stdio: 'pipe',
-        });
+        runCLI('deepl auth clear', { excludeApiKey: true });
       } catch {
         // Ignore
       }
 
       expect.assertions(1);
       try {
-        execSync(`deepl voice ${testFile} --to de`, {
-          encoding: 'utf-8',
-          env: cleanEnv,
-          stdio: 'pipe',
-        });
+        runCLI(`deepl voice ${testFile} --to de`, { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);

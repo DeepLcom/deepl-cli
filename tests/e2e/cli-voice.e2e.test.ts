@@ -6,43 +6,17 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, createTestDir, makeRunCLI } from '../helpers';
 
 describe('Voice CLI E2E', () => {
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-voice-e2e-${Date.now()}`);
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-voice-e2e-config-${Date.now()}`);
-
-  const runCLI = (command: string): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-    });
-  };
-
-  const runCLIAll = (command: string): string => {
-    return execSync(`${command} 2>&1`, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      shell: '/bin/sh',
-    });
-  };
-
-  beforeAll(() => {
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const testFiles = createTestDir('voice-e2e');
+  const testConfig = createTestConfigDir('voice-e2e-config');
+  const testDir = testFiles.path;
+  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testFiles.cleanup();
+    testConfig.cleanup();
   });
 
   describe('Help text', () => {
@@ -103,7 +77,7 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'exit-code-nokey.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
+      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
       delete cleanEnv['DEEPL_API_KEY'];
 
       try {
@@ -127,7 +101,7 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'error-msg-test.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
+      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
       delete cleanEnv['DEEPL_API_KEY'];
 
       try {
@@ -172,7 +146,7 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'format-text.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
+      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
       delete cleanEnv['DEEPL_API_KEY'];
 
       expect.assertions(1);
@@ -193,7 +167,7 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'format-json.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfigDir };
+      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
       delete cleanEnv['DEEPL_API_KEY'];
 
       expect.assertions(1);

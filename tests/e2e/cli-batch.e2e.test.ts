@@ -3,40 +3,22 @@
  * Tests `deepl translate <dir>` argument validation and help text
  */
 
-import { execSync } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
 describe('Batch Translation E2E', () => {
-  const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
-  let testConfigDir: string;
-
-  beforeAll(() => {
-    testConfigDir = path.join(os.tmpdir(), `.deepl-cli-e2e-batch-${Date.now()}`);
-    fs.mkdirSync(testConfigDir, { recursive: true });
-  });
+  const testConfig = createTestConfigDir('e2e-batch');
+  const { runCLI, runCLIAll } = makeNodeRunCLI(testConfig.path);
 
   afterAll(() => {
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
-
-  const runCLIAll = (args: string): string => {
-    return execSync(`node ${CLI_PATH} ${args} 2>&1`, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      shell: '/bin/sh',
-    });
-  };
 
   describe('translate --help', () => {
     it('should show directory/batch-related options', () => {
-      const output = execSync(`node ${CLI_PATH} translate --help`, {
-        encoding: 'utf-8',
-        env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      });
+      const output = runCLI('translate --help');
       expect(output).toContain('--output');
       expect(output).toContain('--pattern');
     });
@@ -49,10 +31,7 @@ describe('Batch Translation E2E', () => {
 
       try {
         // Set a fake API key so we get past auth check
-        execSync(`node ${CLI_PATH} auth set-key fake-key:fx`, {
-          encoding: 'utf-8',
-          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-        });
+        runCLI('auth set-key fake-key:fx');
         const output = runCLIAll(`translate ${tmpDir} --to es`);
         // Should either fail with "Output directory is required" or attempt the request
         expect(output).toMatch(/output|error|failed/i);

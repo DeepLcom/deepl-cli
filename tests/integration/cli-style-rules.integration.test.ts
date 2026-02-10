@@ -3,35 +3,17 @@
  * Tests CLI argument parsing, HTTP request structure with nock, and error handling
  */
 
-import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { StyleRulesCommand } from '../../src/cli/commands/style-rules.js';
+import { createTestConfigDir, makeRunCLI, DEEPL_FREE_API_URL } from '../helpers';
 
 describe('Style Rules CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-style-rules-${Date.now()}`);
-
-  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      ...options,
-    });
-  };
-
-  beforeAll(() => {
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('style-rules');
+  const { runCLI } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
 
   describe('deepl style-rules --help', () => {
@@ -168,7 +150,7 @@ describe('Style Rules CLI Integration', () => {
 
 describe('Style Rules API Integration', () => {
   const API_KEY = 'test-api-key-123:fx';
-  const FREE_API_URL = 'https://api-free.deepl.com';
+  const FREE_API_URL = DEEPL_FREE_API_URL;
   let client: DeepLClient;
   let styleRulesCommand: StyleRulesCommand;
 

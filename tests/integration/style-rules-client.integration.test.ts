@@ -5,10 +5,11 @@
 
 import nock from 'nock';
 import { StyleRulesClient } from '../../src/api/style-rules-client.js';
+import { DEEPL_FREE_API_URL } from '../helpers';
 
 describe('StyleRulesClient Integration', () => {
   const API_KEY = 'test-api-key:fx';
-  const API_URL = 'https://api-free.deepl.com';
+  const API_URL = DEEPL_FREE_API_URL;
 
   afterEach(() => {
     nock.cleanAll();

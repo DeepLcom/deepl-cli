@@ -6,40 +6,19 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import nock from 'nock';
+import { createTestConfigDir, createTestDir, makeRunCLI, DEEPL_FREE_API_URL } from '../helpers';
 
 describe('Translate CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-translate-${Date.now()}`);
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-translate-files-${Date.now()}`);
-
-  // Helper to run CLI commands with isolated config directory
-  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      ...options,
-    });
-  };
-
-  beforeAll(() => {
-    // Create test directories
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('test-translate');
+  const testFiles = createTestDir('translate-files');
+  const testConfigDir = testConfig.path;
+  const testDir = testFiles.path;
+  const { runCLI } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    // Clean up test directories
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
+    testFiles.cleanup();
   });
 
   describe('deepl translate --help', () => {
@@ -1006,7 +985,7 @@ describe('Translate CLI Integration', () => {
  * Path validated: TranslationService -> DeepLClient -> TranslationClient -> HTTP (nock)
  */
 describe('Translate CLI Integration - nock HTTP validation', () => {
-  const FREE_API_URL = 'https://api-free.deepl.com';
+  const FREE_API_URL = DEEPL_FREE_API_URL;
   const API_KEY = 'test-nock-key:fx';
 
   let client: import('../../src/api/deepl-client.js').DeepLClient;

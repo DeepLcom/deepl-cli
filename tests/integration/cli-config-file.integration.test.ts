@@ -3,10 +3,10 @@
  * Tests using custom configuration files
  */
 
-import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { makeRunCLI } from '../helpers';
 
 describe('CLI --config flag integration', () => {
   const testDir = path.join(os.tmpdir(), `.deepl-cli-config-test-${Date.now()}`);
@@ -14,28 +14,14 @@ describe('CLI --config flag integration', () => {
   const defaultConfigDir = path.join(testDir, '.deepl-cli-default');
   const defaultConfigPath = path.join(defaultConfigDir, 'config.json');
 
+  const helpers = makeRunCLI(defaultConfigDir);
+
   const runCLI = (command: string, env: Record<string, string> = {}) => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: defaultConfigDir,
-        ...env
-      },
-    });
+    return helpers.runCLI(command, { env });
   };
 
-  // Helper that captures both stdout and stderr (for messages via Logger.info/success)
   const runCLIAll = (command: string, env: Record<string, string> = {}) => {
-    return execSync(`${command} 2>&1`, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: defaultConfigDir,
-        ...env
-      },
-      shell: '/bin/sh',
-    });
+    return helpers.runCLIAll(command, { env });
   };
 
   beforeEach(() => {

@@ -1,38 +1,11 @@
-import { execSync } from 'child_process';
-import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
+import { createTestConfigDir, makeRunCLI } from '../helpers';
 
 describe('Completion CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-completion-${Date.now()}`);
-
-  const runCLI = (command: string): string => {
-    const { DEEPL_API_KEY: _, ...envWithoutKey } = process.env;
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...envWithoutKey, DEEPL_CONFIG_DIR: testConfigDir },
-    });
-  };
-
-  const runCLIAll = (command: string): string => {
-    const { DEEPL_API_KEY: _, ...envWithoutKey } = process.env;
-    return execSync(`${command} 2>&1`, {
-      encoding: 'utf-8',
-      env: { ...envWithoutKey, DEEPL_CONFIG_DIR: testConfigDir },
-      shell: '/bin/sh',
-    });
-  };
-
-  beforeAll(() => {
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('completion');
+  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path, { excludeApiKey: true });
 
   afterAll(() => {
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
 
   describe('deepl completion bash', () => {

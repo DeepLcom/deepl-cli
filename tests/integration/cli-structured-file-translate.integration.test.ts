@@ -3,38 +3,25 @@
  * Tests both CLI argument validation (via subprocess) and service-level integration (in-process)
  */
 
-import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import nock from 'nock';
 import { TranslationService } from '../../src/services/translation';
 import { FileTranslationService } from '../../src/services/file-translation';
 import { DeepLClient } from '../../src/api/deepl-client';
 import { ConfigService } from '../../src/storage/config';
 import { CacheService } from '../../src/storage/cache';
+import { createTestConfigDir, createTestDir, makeRunCLI, DEEPL_FREE_API_URL } from '../helpers';
 
 describe('Structured File Translation CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-structured-${Date.now()}`);
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-structured-files-${Date.now()}`);
-
-  const runCLI = (command: string): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-        DEEPL_API_KEY: 'test-api-key-123',
-      },
-    });
-  };
+  const testConfig = createTestConfigDir('test-structured');
+  const testFiles = createTestDir('structured-files');
+  const testDir = testFiles.path;
+  const { runCLI } = makeRunCLI(testConfig.path, { apiKey: 'test-api-key-123' });
 
   beforeAll(() => {
-    fs.mkdirSync(testConfigDir, { recursive: true });
-    fs.mkdirSync(testDir, { recursive: true });
-
     fs.writeFileSync(
-      path.join(testConfigDir, 'config.json'),
+      path.join(testConfig.path, 'config.json'),
       JSON.stringify({
         auth: { apiKey: 'test-api-key-123' },
         api: { baseUrl: 'https://api-free.deepl.com/v2', usePro: false },
@@ -46,12 +33,8 @@ describe('Structured File Translation CLI Integration', () => {
 
   afterAll(() => {
     nock.cleanAll();
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
+    testFiles.cleanup();
   });
 
   afterEach(() => {
@@ -148,7 +131,7 @@ describe('Structured File Translation CLI Integration', () => {
 
   describe('service-level integration (in-process with nock)', () => {
     const API_KEY = 'test-api-key-123:fx';
-    const FREE_API_URL = 'https://api-free.deepl.com';
+    const FREE_API_URL = DEEPL_FREE_API_URL;
     let fileTranslationService: FileTranslationService;
     let cacheService: CacheService;
 

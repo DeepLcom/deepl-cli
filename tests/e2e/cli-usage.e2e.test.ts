@@ -6,56 +6,15 @@
  * Full API integration is tested separately in integration tests.
  */
 
-import { execSync } from 'child_process';
-import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
+import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
 describe('Usage Command E2E', () => {
-  const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
-  let testConfigDir: string;
-
-  beforeAll(() => {
-    // Create isolated test config directory
-    testConfigDir = path.join(os.tmpdir(), `.deepl-cli-e2e-usage-${Date.now()}`);
-    fs.mkdirSync(testConfigDir, { recursive: true });
-  });
+  const testConfig = createTestConfigDir('e2e-usage');
+  const { runCLI, runCLIExpectError } = makeNodeRunCLI(testConfig.path);
 
   afterAll(() => {
-    // Cleanup
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
-
-  const runCLI = (command: string): string => {
-    return execSync(`node ${CLI_PATH} ${command}`, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-      },
-    });
-  };
-
-  const runCLIExpectError = (command: string, apiKey?: string): { status: number; output: string } => {
-    try {
-      const output = execSync(`node ${CLI_PATH} ${command}`, {
-        encoding: 'utf-8',
-        env: {
-          ...process.env,
-          DEEPL_CONFIG_DIR: testConfigDir,
-          ...(apiKey !== undefined && { DEEPL_API_KEY: apiKey }),
-        },
-      });
-      return { status: 0, output };
-    } catch (error: any) {
-      return {
-        status: error.status || 1,
-        output: error.stderr?.toString() || error.stdout?.toString() || '',
-      };
-    }
-  };
 
   describe('usage --help', () => {
     it('should display help text', () => {
@@ -81,14 +40,14 @@ describe('Usage Command E2E', () => {
 
   describe('usage error handling', () => {
     it('should require API key', () => {
-      const result = runCLIExpectError('usage', ''); // Empty API key
+      const result = runCLIExpectError('usage', { apiKey: '' });
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toMatch(/api key/i);
     });
 
     it('should show error for invalid API key format', () => {
-      const result = runCLIExpectError('usage', 'invalid-key');
+      const result = runCLIExpectError('usage', { apiKey: 'invalid-key' });
 
       expect(result.status).toBeGreaterThan(0);
       // Should fail during API call or validation
@@ -96,14 +55,14 @@ describe('Usage Command E2E', () => {
     });
 
     it('should reject invalid flags', () => {
-      const result = runCLIExpectError('usage --invalid-flag', 'test-key');
+      const result = runCLIExpectError('usage --invalid-flag', { apiKey: 'test-key' });
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toMatch(/unknown option|error/i);
     });
 
     it('should not accept unexpected arguments', () => {
-      const result = runCLIExpectError('usage extra-arg', 'test-key');
+      const result = runCLIExpectError('usage extra-arg', { apiKey: 'test-key' });
 
       // Should either ignore extra args or fail
       expect(result.status).toBeGreaterThan(0);
@@ -120,14 +79,14 @@ describe('Usage Command E2E', () => {
 
     it('should support --quiet flag', () => {
       // Test that --quiet flag is accepted (even if command fails due to missing API key)
-      const result = runCLIExpectError('usage --quiet', '');
+      const result = runCLIExpectError('usage --quiet', { apiKey: '' });
 
       // Should fail due to API key, not due to invalid flag
       expect(result.output).not.toMatch(/unknown option.*quiet/i);
     });
 
     it('should handle authentication errors gracefully', () => {
-      const result = runCLIExpectError('usage', 'invalid-api-key-format');
+      const result = runCLIExpectError('usage', { apiKey: 'invalid-api-key-format' });
 
       expect(result.status).toBeGreaterThan(0);
       // Should show meaningful error message
@@ -137,7 +96,7 @@ describe('Usage Command E2E', () => {
 
   describe('usage command behavior', () => {
     it('should exit with error when API key is missing', () => {
-      const result = runCLIExpectError('usage', '');
+      const result = runCLIExpectError('usage', { apiKey: '' });
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toMatch(/api key/i);
@@ -145,7 +104,7 @@ describe('Usage Command E2E', () => {
 
     it('should accept valid API key format', () => {
       // Test with valid format but fake key (will fail at API call)
-      const result = runCLIExpectError('usage', 'test-key-123:fx');
+      const result = runCLIExpectError('usage', { apiKey: 'test-key-123:fx' });
 
       expect(result.status).toBeGreaterThan(0);
       // Should fail at API call, not at validation

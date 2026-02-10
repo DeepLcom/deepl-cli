@@ -3,46 +3,18 @@
  * Tests `deepl watch` help text, argument validation, and --dry-run behavior
  */
 
-import { execSync } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
 describe('Watch Command E2E', () => {
-  const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
-  let testConfigDir: string;
-
-  beforeAll(() => {
-    testConfigDir = path.join(os.tmpdir(), `.deepl-cli-e2e-watch-${Date.now()}`);
-    fs.mkdirSync(testConfigDir, { recursive: true });
-  });
+  const testConfig = createTestConfigDir('e2e-watch');
+  const { runCLI, runCLIAll } = makeNodeRunCLI(testConfig.path);
 
   afterAll(() => {
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
-
-  const runCLI = (command: string): string => {
-    return execSync(`node ${CLI_PATH} ${command}`, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-      },
-    });
-  };
-
-  const runCLIAll = (command: string): string => {
-    return execSync(`node ${CLI_PATH} ${command} 2>&1`, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-      },
-      shell: '/bin/sh',
-    });
-  };
 
   describe('watch --help', () => {
     it('should show --git-staged option without "not yet implemented"', () => {

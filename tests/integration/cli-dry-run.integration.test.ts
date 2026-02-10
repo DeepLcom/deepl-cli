@@ -3,38 +3,18 @@
  * Tests that --dry-run prevents actual operations and shows descriptive messages
  */
 
-import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, createTestDir, makeRunCLI } from '../helpers';
 
 describe('--dry-run CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-dryrun-${Date.now()}`);
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-dryrun-files-${Date.now()}`);
-
-  const runCLI = (command: string): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-    });
-  };
-
-  beforeAll(() => {
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('dryrun');
+  const testFiles = createTestDir('dryrun-files');
+  const { runCLI } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
+    testFiles.cleanup();
   });
 
   describe('deepl translate --dry-run', () => {
@@ -44,11 +24,11 @@ describe('--dry-run CLI Integration', () => {
     });
 
     it('should show dry-run output for file translation', () => {
-      const testFile = path.join(testDir, 'dryrun-translate.txt');
+      const testFile = path.join(testFiles.path, 'dryrun-translate.txt');
       fs.writeFileSync(testFile, 'Hello world');
 
       const output = runCLI(
-        `deepl translate "${testFile}" --to es --output "${testDir}/out.txt" --dry-run`
+        `deepl translate "${testFile}" --to es --output "${testFiles.path}/out.txt" --dry-run`
       );
 
       expect(output).toContain('[dry-run]');
@@ -58,14 +38,14 @@ describe('--dry-run CLI Integration', () => {
     });
 
     it('should show dry-run output for directory translation', () => {
-      const dirPath = path.join(testDir, 'dryrun-dir');
+      const dirPath = path.join(testFiles.path, 'dryrun-dir');
       if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
       }
       fs.writeFileSync(path.join(dirPath, 'a.txt'), 'hello');
 
       const output = runCLI(
-        `deepl translate "${dirPath}" --to de,fr --output "${testDir}/out-dir" --dry-run`
+        `deepl translate "${dirPath}" --to de,fr --output "${testFiles.path}/out-dir" --dry-run`
       );
 
       expect(output).toContain('[dry-run]');
@@ -75,12 +55,12 @@ describe('--dry-run CLI Integration', () => {
     });
 
     it('should not make API calls during dry-run (no API key error)', () => {
-      const testFile = path.join(testDir, 'dryrun-noapi.txt');
+      const testFile = path.join(testFiles.path, 'dryrun-noapi.txt');
       fs.writeFileSync(testFile, 'Test content');
 
       // Even without API key, dry-run should succeed for file mode
       const output = runCLI(
-        `deepl translate "${testFile}" --to ja --output "${testDir}/out-ja.txt" --dry-run`
+        `deepl translate "${testFile}" --to ja --output "${testFiles.path}/out-ja.txt" --dry-run`
       );
 
       expect(output).toContain('[dry-run]');
@@ -88,22 +68,22 @@ describe('--dry-run CLI Integration', () => {
     });
 
     it('should include source language in dry-run output', () => {
-      const testFile = path.join(testDir, 'dryrun-from.txt');
+      const testFile = path.join(testFiles.path, 'dryrun-from.txt');
       fs.writeFileSync(testFile, 'Bonjour');
 
       const output = runCLI(
-        `deepl translate "${testFile}" --to en --from fr --output "${testDir}/out-en.txt" --dry-run`
+        `deepl translate "${testFile}" --to en --from fr --output "${testFiles.path}/out-en.txt" --dry-run`
       );
 
       expect(output).toContain('Source language: fr');
     });
 
     it('should include formality in dry-run output', () => {
-      const testFile = path.join(testDir, 'dryrun-formal.txt');
+      const testFile = path.join(testFiles.path, 'dryrun-formal.txt');
       fs.writeFileSync(testFile, 'Hello');
 
       const output = runCLI(
-        `deepl translate "${testFile}" --to de --output "${testDir}/out-formal.txt" --formality more --dry-run`
+        `deepl translate "${testFile}" --to de --output "${testFiles.path}/out-formal.txt" --formality more --dry-run`
       );
 
       expect(output).toContain('Formality: more');
@@ -173,7 +153,7 @@ describe('--dry-run CLI Integration', () => {
     });
 
     it('should show dry-run output for directory watch', () => {
-      const watchDir = path.join(testDir, 'dryrun-watch');
+      const watchDir = path.join(testFiles.path, 'dryrun-watch');
       if (!fs.existsSync(watchDir)) {
         fs.mkdirSync(watchDir, { recursive: true });
       }
@@ -190,7 +170,7 @@ describe('--dry-run CLI Integration', () => {
     });
 
     it('should show pattern in dry-run output', () => {
-      const watchDir = path.join(testDir, 'dryrun-watch-pattern');
+      const watchDir = path.join(testFiles.path, 'dryrun-watch-pattern');
       if (!fs.existsSync(watchDir)) {
         fs.mkdirSync(watchDir, { recursive: true });
       }
@@ -203,7 +183,7 @@ describe('--dry-run CLI Integration', () => {
     });
 
     it('should exit immediately (not block like normal watch)', () => {
-      const watchDir = path.join(testDir, 'dryrun-watch-exit');
+      const watchDir = path.join(testFiles.path, 'dryrun-watch-exit');
       if (!fs.existsSync(watchDir)) {
         fs.mkdirSync(watchDir, { recursive: true });
       }
@@ -218,7 +198,7 @@ describe('--dry-run CLI Integration', () => {
     });
 
     it('should not require API key for dry-run', () => {
-      const watchDir = path.join(testDir, 'dryrun-watch-noapi');
+      const watchDir = path.join(testFiles.path, 'dryrun-watch-noapi');
       if (!fs.existsSync(watchDir)) {
         fs.mkdirSync(watchDir, { recursive: true });
       }

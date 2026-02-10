@@ -5,76 +5,31 @@
  * These tests validate complete user journeys combining multiple CLI features.
  */
 
-import { execSync } from 'child_process';
 import * as path from 'path';
-import * as os from 'os';
 import * as fs from 'fs';
+import { createTestConfigDir, createTestDir, makeNodeRunCLI } from '../helpers';
 
 describe('CLI Integration Scenarios E2E', () => {
-  const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
-  let testConfigDir: string;
-  let testDir: string;
-
-  beforeAll(() => {
-    // Create isolated test config and file directories
-    testConfigDir = path.join(os.tmpdir(), `.deepl-cli-e2e-scenarios-${Date.now()}`);
-    fs.mkdirSync(testConfigDir, { recursive: true });
-
-    testDir = path.join(os.tmpdir(), `deepl-scenarios-test-${Date.now()}`);
-    fs.mkdirSync(testDir, { recursive: true });
-  });
+  const testConfig = createTestConfigDir('e2e-scenarios');
+  const testFiles = createTestDir('scenarios-test');
+  const testDir = testFiles.path;
+  const helpers = makeNodeRunCLI(testConfig.path);
 
   afterAll(() => {
-    // Cleanup
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
+    testFiles.cleanup();
   });
 
   const runCLI = (command: string, apiKey?: string): string => {
-    return execSync(`node ${CLI_PATH} ${command}`, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-        ...(apiKey !== undefined && { DEEPL_API_KEY: apiKey }),
-      },
-    });
+    return helpers.runCLI(command, apiKey !== undefined ? { apiKey } : {});
   };
 
-  // Helper that captures both stdout and stderr (for success messages via Logger.success)
   const runCLIAll = (command: string, apiKey?: string): string => {
-    return execSync(`node ${CLI_PATH} ${command} 2>&1`, {
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        DEEPL_CONFIG_DIR: testConfigDir,
-        ...(apiKey !== undefined && { DEEPL_API_KEY: apiKey }),
-      },
-      shell: '/bin/sh',
-    });
+    return helpers.runCLIAll(command, apiKey !== undefined ? { apiKey } : {});
   };
 
-  const runCLIExpectError = (command: string, apiKey?: string): { status: number; output: string } => {
-    try {
-      const output = execSync(`node ${CLI_PATH} ${command}`, {
-        encoding: 'utf-8',
-        env: {
-          ...process.env,
-          DEEPL_CONFIG_DIR: testConfigDir,
-          ...(apiKey !== undefined && { DEEPL_API_KEY: apiKey }),
-        },
-      });
-      return { status: 0, output };
-    } catch (error: any) {
-      return {
-        status: error.status || 1,
-        output: error.stderr?.toString() || error.stdout?.toString() || '',
-      };
-    }
+  const runCLIExpectError = (command: string, apiKey?: string) => {
+    return helpers.runCLIExpectError(command, apiKey !== undefined ? { apiKey } : {});
   };
 
   describe('configuration workflows', () => {

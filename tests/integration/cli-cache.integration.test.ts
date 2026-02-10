@@ -3,43 +3,14 @@
  * Tests cache management with real database operations
  */
 
-import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, makeRunCLI } from '../helpers';
 
 describe('Cache CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-cache-${Date.now()}`);
-
-  // Helper to run CLI commands with isolated config directory (captures stdout only)
-  const runCLI = (command: string): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-    });
-  };
-
-  // Helper that captures both stdout and stderr (for success messages via Logger.success)
-  const runCLIAll = (command: string): string => {
-    return execSync(`${command} 2>&1`, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      shell: '/bin/sh',
-    });
-  };
-
-  beforeAll(() => {
-    // Create test directory
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('cache');
+  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path);
 
   afterAll(() => {
-    // Clean up test directory
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
 
   describe('deepl cache stats', () => {

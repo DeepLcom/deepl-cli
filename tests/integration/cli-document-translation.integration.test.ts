@@ -8,11 +8,11 @@ import nock from 'nock';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { execSync } from 'child_process';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { DocumentTranslationService } from '../../src/services/document-translation.js';
+import { DEEPL_FREE_API_URL, createTestConfigDir, createTestDir, makeRunCLI } from '../helpers';
 
-const FREE_API_URL = 'https://api-free.deepl.com';
+const FREE_API_URL = DEEPL_FREE_API_URL;
 const API_KEY = 'test-api-key-integration:fx';
 
 describe('Document Translation Integration', () => {
@@ -751,29 +751,14 @@ describe('Document Translation Integration', () => {
 });
 
 describe('Document Translation CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-doc-cli-${Date.now()}`);
-  const testDir = path.join(os.tmpdir(), `.deepl-doc-cli-files-${Date.now()}`);
-
-  const runCLI = (command: string, options: Record<string, unknown> = {}): string => {
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-      ...options,
-    });
-  };
-
-  beforeAll(() => {
-    fs.mkdirSync(testConfigDir, { recursive: true });
-    fs.mkdirSync(testDir, { recursive: true });
-  });
+  const cliTestConfig = createTestConfigDir('doc-cli');
+  const cliTestFiles = createTestDir('doc-cli-files');
+  const testDir = cliTestFiles.path;
+  const { runCLI } = makeRunCLI(cliTestConfig.path);
 
   afterAll(() => {
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
+    cliTestConfig.cleanup();
+    cliTestFiles.cleanup();
   });
 
   describe('CLI argument validation for document translation', () => {

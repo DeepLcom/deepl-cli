@@ -6,14 +6,14 @@
 
 import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client.js';
+import { DEEPL_FREE_API_URL, DEEPL_PRO_API_URL, TEST_API_KEY } from '../helpers';
 
 describe('DeepLClient Integration', () => {
-  const API_KEY = 'test-api-key-123:fx';
-  const FREE_API_URL = 'https://api-free.deepl.com';
-  const PRO_API_URL = 'https://api.deepl.com';
+  const API_KEY = TEST_API_KEY;
+  const FREE_API_URL = DEEPL_FREE_API_URL;
+  const PRO_API_URL = DEEPL_PRO_API_URL;
 
   afterEach(() => {
-    // Clean up nock mocks after each test
     nock.cleanAll();
   });
 

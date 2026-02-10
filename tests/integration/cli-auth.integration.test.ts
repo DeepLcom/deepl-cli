@@ -3,47 +3,17 @@
  * Tests the full auth command flow with real config persistence
  */
 
-import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { createTestConfigDir, makeRunCLI } from '../helpers';
 
 describe('Auth CLI Integration', () => {
-  const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-${Date.now()}`);
-  const configPath = path.join(testConfigDir, 'config.json');
-
-  // Helper to run CLI commands with isolated config directory (captures stdout only)
-  const runCLI = (command: string, options: { stdio?: any } = {}): string => {
-    const { DEEPL_API_KEY: _, ...envWithoutKey } = process.env;
-    return execSync(command, {
-      encoding: 'utf-8',
-      env: { ...envWithoutKey, DEEPL_CONFIG_DIR: testConfigDir },
-      ...options,
-    });
-  };
-
-  // Helper that captures both stdout and stderr (for success messages via Logger.success)
-  const runCLIAll = (command: string): string => {
-    const { DEEPL_API_KEY: _, ...envWithoutKey } = process.env;
-    return execSync(`${command} 2>&1`, {
-      encoding: 'utf-8',
-      env: { ...envWithoutKey, DEEPL_CONFIG_DIR: testConfigDir },
-      shell: '/bin/sh',
-    });
-  };
-
-  beforeAll(() => {
-    // Create test directory
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
-  });
+  const testConfig = createTestConfigDir('auth');
+  const configPath = path.join(testConfig.path, 'config.json');
+  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path, { excludeApiKey: true });
 
   afterAll(() => {
-    // Clean up test directory
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmSync(testConfigDir, { recursive: true, force: true });
-    }
+    testConfig.cleanup();
   });
 
   beforeEach(() => {
@@ -63,7 +33,7 @@ describe('Auth CLI Integration', () => {
     it('should reject empty API key', () => {
       expect.assertions(1);
       try {
-        runCLI('deepl auth set-key ""', { stdio: 'pipe' });
+        runCLI('deepl auth set-key ""');
       } catch (error: any) {
         expect(error.stderr || error.stdout).toContain('API key cannot be empty');
       }
@@ -72,7 +42,7 @@ describe('Auth CLI Integration', () => {
     it('should reject invalid API key via API validation', () => {
       expect.assertions(1);
       try {
-        runCLI('deepl auth set-key invalid-key-123', { stdio: 'pipe' });
+        runCLI('deepl auth set-key invalid-key-123');
       } catch (error: any) {
         // Now expects API validation error (not format error)
         expect(error.stderr || error.stdout).toContain('Authentication failed');
@@ -84,8 +54,8 @@ describe('Auth CLI Integration', () => {
     it('should show "No API key set" when no key configured', () => {
       // Clear any existing key first
       try {
-        runCLI('deepl auth clear', { stdio: 'pipe' });
-      } catch (e) {
+        runCLI('deepl auth clear');
+      } catch (_e) {
         // Ignore if already cleared
       }
 

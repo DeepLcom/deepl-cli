@@ -11,10 +11,11 @@ import { DeepLClient } from '../../src/api/deepl-client.js';
 import { WriteService } from '../../src/services/write.js';
 import { ConfigService } from '../../src/storage/config.js';
 import { CacheService } from '../../src/storage/cache.js';
+import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers';
 
 describe('Write Command Integration', () => {
-  const API_KEY = 'test-api-key-123:fx';
-  const FREE_API_URL = 'https://api-free.deepl.com';
+  const API_KEY = TEST_API_KEY;
+  const FREE_API_URL = DEEPL_FREE_API_URL;
   let client: DeepLClient;
   let writeService: WriteService;
   let configService: ConfigService;
