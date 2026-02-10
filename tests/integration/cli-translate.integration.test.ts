@@ -7,6 +7,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import nock from 'nock';
 
 describe('Translate CLI Integration', () => {
   const testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-translate-${Date.now()}`);
@@ -990,5 +991,460 @@ describe('Translate CLI Integration', () => {
       expect(helpOutput).toMatch(/--model-type.*choices/is);
       expect(helpOutput).toMatch(/--split-sentences.*choices/is);
     });
+  });
+});
+
+/**
+ * Nock-based HTTP validation tests for the translate command integration path.
+ *
+ * These tests exercise the full path from TranslationService through DeepLClient
+ * to HTTP (intercepted by nock), validating the request structure that the CLI
+ * translate command produces. The TranslateCommand class itself cannot be imported
+ * directly in Jest due to ESM-only dependencies (ora), so we test at the service
+ * layer which is the next integration point below the command handler.
+ *
+ * Path validated: TranslationService -> DeepLClient -> TranslationClient -> HTTP (nock)
+ */
+describe('Translate CLI Integration - nock HTTP validation', () => {
+  const FREE_API_URL = 'https://api-free.deepl.com';
+  const API_KEY = 'test-nock-key:fx';
+
+  let client: import('../../src/api/deepl-client.js').DeepLClient;
+  let mockConfig: import('../../src/storage/config.js').ConfigService;
+  let mockCache: import('../../src/storage/cache.js').CacheService;
+  let translationService: import('../../src/services/translation.js').TranslationService;
+
+  // Dynamically imported constructors
+  let DeepLClient: typeof import('../../src/api/deepl-client.js').DeepLClient;
+  let TranslationService: typeof import('../../src/services/translation.js').TranslationService;
+
+  beforeAll(async () => {
+    ({ DeepLClient } = await import('../../src/api/deepl-client.js'));
+    ({ TranslationService } = await import('../../src/services/translation.js'));
+  });
+
+  beforeEach(() => {
+    client = new DeepLClient(API_KEY);
+
+    mockConfig = {
+      get: () => ({
+        auth: {},
+        api: { baseUrl: '', usePro: false },
+        defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+        cache: { enabled: false },
+        output: { format: 'text', color: false },
+        proxy: {},
+      }),
+      getValue: () => undefined,
+    } as unknown as import('../../src/storage/config.js').ConfigService;
+
+    mockCache = {
+      get: jest.fn(() => null),
+      set: jest.fn(),
+    } as unknown as import('../../src/storage/cache.js').CacheService;
+
+    translationService = new TranslationService(client, mockConfig, mockCache);
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it('should POST to /v2/translate with correct text and target_lang', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.text).toBe('Hello');
+        expect(body.target_lang).toBe('ES');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    const result = await translationService.translate('Hello', { targetLang: 'es' as any });
+
+    expect(result.text).toBe('Hola');
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include source_lang when --from is specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.source_lang).toBe('EN');
+        expect(body.target_lang).toBe('ES');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', { targetLang: 'es' as any, sourceLang: 'en' as any });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include formality when --formality is specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.formality).toBe('more');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', { targetLang: 'es' as any, formality: 'more' });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include preserve_formatting when --preserve-formatting is specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.preserve_formatting).toBe('1');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', { targetLang: 'es' as any, preserveFormatting: true });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include context when --context is specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.context).toBe('greeting');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', { targetLang: 'es' as any, context: 'greeting' });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include split_sentences when --split-sentences is specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.split_sentences).toBe('nonewlines');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', { targetLang: 'es' as any, splitSentences: 'nonewlines' });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include tag_handling when --tag-handling is specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.tag_handling).toBe('html');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: '<p>Hola</p>', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('<p>Hello</p>', { targetLang: 'es' as any, tagHandling: 'html' });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include model_type when --model-type is specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.model_type).toBe('quality_optimized');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', { targetLang: 'es' as any, modelType: 'quality_optimized' });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include show_billed_characters when --show-billed-characters is specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.show_billed_characters).toBe('1');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN', billed_characters: 5 }],
+      });
+
+    const result = await translationService.translate('Hello', {
+      targetLang: 'es' as any,
+      showBilledCharacters: true,
+    });
+
+    expect(result.text).toBe('Hola');
+    expect(result.billedCharacters).toBe(5);
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should return valid JSON-serializable result with correct fields', async () => {
+    nock(FREE_API_URL)
+      .post('/v2/translate')
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    const result = await translationService.translate('Hello', { targetLang: 'es' as any });
+
+    const json = JSON.parse(JSON.stringify(result));
+    expect(json.text).toBe('Hola');
+    expect(json.detectedSourceLang).toBe('en');
+  });
+
+  it('should correctly return translated text from API response', async () => {
+    nock(FREE_API_URL)
+      .post('/v2/translate')
+      .reply(200, {
+        translations: [{ text: 'Bonjour le monde', detected_source_language: 'EN' }],
+      });
+
+    const result = await translationService.translate('Hello world', { targetLang: 'fr' as any });
+
+    expect(result.text).toBe('Bonjour le monde');
+  });
+
+  it('should send multiple parameters together in a single request', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.text).toBe('Hello world');
+        expect(body.target_lang).toBe('DE');
+        expect(body.source_lang).toBe('EN');
+        expect(body.formality).toBe('less');
+        expect(body.context).toBe('casual conversation');
+        expect(body.model_type).toBe('quality_optimized');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hallo Welt', detected_source_language: 'EN' }],
+      });
+
+    const result = await translationService.translate('Hello world', {
+      targetLang: 'de' as any,
+      sourceLang: 'en' as any,
+      formality: 'less',
+      context: 'casual conversation',
+      modelType: 'quality_optimized',
+    });
+
+    expect(result.text).toBe('Hallo Welt');
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should handle 403 authentication errors gracefully', async () => {
+    nock(FREE_API_URL)
+      .post('/v2/translate')
+      .reply(403, { message: 'Authorization failed' });
+
+    await expect(
+      translationService.translate('Hello', { targetLang: 'es' as any })
+    ).rejects.toThrow(/Authentication failed/);
+  });
+
+  it('should handle 429 rate limit errors', async () => {
+    nock(FREE_API_URL)
+      .post('/v2/translate')
+      .reply(429, { message: 'Too many requests' });
+
+    await expect(
+      translationService.translate('Hello', { targetLang: 'es' as any })
+    ).rejects.toThrow(/Rate limit exceeded/);
+  });
+
+  it('should use Authorization header with DeepL-Auth-Key', async () => {
+    const scope = nock(FREE_API_URL, {
+      reqheaders: {
+        'authorization': `DeepL-Auth-Key ${API_KEY}`,
+      },
+    })
+      .post('/v2/translate')
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', { targetLang: 'es' as any });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should use form-encoded content type', async () => {
+    const scope = nock(FREE_API_URL, {
+      reqheaders: {
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+    })
+      .post('/v2/translate')
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', { targetLang: 'es' as any });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include custom_instructions when specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.custom_instructions).toEqual(['Use informal tone', 'Keep it short']);
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', {
+      targetLang: 'es' as any,
+      customInstructions: ['Use informal tone', 'Keep it short'],
+    });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include style_id when specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.style_id).toBe('abc-123-def');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', {
+      targetLang: 'es' as any,
+      styleId: 'abc-123-def',
+    });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include enable_beta_languages when specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.enable_beta_languages).toBe('1');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', {
+      targetLang: 'es' as any,
+      enableBetaLanguages: true,
+    });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include XML tag handling parameters when specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.tag_handling).toBe('xml');
+        expect(body.outline_detection).toBe('0');
+        expect(body.splitting_tags).toBe('br,hr');
+        expect(body.non_splitting_tags).toBe('code,pre');
+        expect(body.ignore_tags).toBe('script,style');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: '<p>Hola</p>', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('<p>Hello</p>', {
+      targetLang: 'es' as any,
+      tagHandling: 'xml',
+      outlineDetection: false,
+      splittingTags: ['br', 'hr'],
+      nonSplittingTags: ['code', 'pre'],
+      ignoreTags: ['script', 'style'],
+    });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should include tag_handling_version when specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.tag_handling).toBe('html');
+        expect(body.tag_handling_version).toBe('v2');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: '<p>Hola</p>', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('<p>Hello</p>', {
+      targetLang: 'es' as any,
+      tagHandling: 'html',
+      tagHandlingVersion: 'v2',
+    });
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('should parse model_type_used from response', async () => {
+    nock(FREE_API_URL)
+      .post('/v2/translate')
+      .reply(200, {
+        translations: [{
+          text: 'Hola',
+          detected_source_language: 'EN',
+          model_type_used: 'quality_optimized',
+        }],
+      });
+
+    const result = await translationService.translate('Hello', { targetLang: 'es' as any });
+
+    expect(result.text).toBe('Hola');
+    expect(result.modelTypeUsed).toBe('quality_optimized');
+  });
+
+  it('should parse detected_source_language from response', async () => {
+    nock(FREE_API_URL)
+      .post('/v2/translate')
+      .reply(200, {
+        translations: [{
+          text: 'Hola',
+          detected_source_language: 'EN',
+        }],
+      });
+
+    const result = await translationService.translate('Hello', { targetLang: 'es' as any });
+
+    expect(result.detectedSourceLang).toBe('en');
+  });
+
+  it('should include glossary_id when specified', async () => {
+    const scope = nock(FREE_API_URL)
+      .post('/v2/translate', (body) => {
+        expect(body.glossary_id).toBe('gl-abc-123');
+        return true;
+      })
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
+
+    await translationService.translate('Hello', {
+      targetLang: 'es' as any,
+      glossaryId: 'gl-abc-123',
+    });
+
+    expect(scope.isDone()).toBe(true);
   });
 });
