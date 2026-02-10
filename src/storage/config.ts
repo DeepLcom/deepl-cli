@@ -218,7 +218,7 @@ export class ConfigService {
       }
     } catch (error) {
       // If load fails, use defaults
-      console.error('Failed to load config, using defaults:', error);
+      console.error('Failed to load config, using defaults:', error instanceof Error ? error.message : String(error));
     }
 
     return ConfigService.getDefaults();
