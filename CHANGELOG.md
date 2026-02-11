@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Remove unimplemented 'yaml' variant from OutputFormat type
+- Extract i18n-translate Claude Code skill to standalone repo ([deepl-i18n-skill](https://git.deepl.dev/hack-projects/deepl-i18n-skill)) — removes 151 skill tests and all skill source files from this repo
 
 ### Security
 - Fix info disclosure: error logs no longer expose full error objects or internal paths

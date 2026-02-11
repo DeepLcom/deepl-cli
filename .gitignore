@@ -65,4 +65,3 @@ Thumbs.db
 
 # Build files
 lib/
-!.claude/skills/**/lib/
