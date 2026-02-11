@@ -110,7 +110,8 @@ async function main() {
 }
 
 /* istanbul ignore next -- CLI entry point */
-if (require.main === module) {
+const isDirectRun = process.argv[1]?.endsWith('diff-locale-keys.ts') || process.argv[1]?.endsWith('diff-locale-keys.js');
+if (isDirectRun) {
   main().catch(err => {
     console.error(err.message);
     process.exit(2);

@@ -227,7 +227,7 @@ async function main(): Promise<void> {
   }
 }
 
-const isDirectRun = require.main === module || process.argv[1]?.endsWith('validate-locale.ts');
+const isDirectRun = process.argv[1]?.endsWith('validate-locale.ts') || process.argv[1]?.endsWith('validate-locale.js');
 if (isDirectRun) {
   main();
 }
