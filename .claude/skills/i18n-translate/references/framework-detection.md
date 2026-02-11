@@ -11,20 +11,27 @@
 | Angular | `package.json` | `@angular/localize`, `@ngx-translate/core` | `angular.json` (i18n section) | `src/assets/i18n/`, `src/locale/` | JSON, XLIFF | `{{name}}`, `{$INTERPOLATION}` |
 | Rails | `Gemfile` | `i18n`, `rails-i18n` | `config/application.rb` (i18n config) | `config/locales/` | YAML | `%{name}`, `%<name>s` |
 | Flutter | `pubspec.yaml` | `flutter_localizations`, `intl` | `l10n.yaml` | `lib/l10n/` | ARB (JSON) | `{name}`, ICU plurals |
+| Android | `build.gradle` / glob | `**/res/values/strings.xml` | — | `app/src/main/res/values/` | XML | `%s`, `%d`, `%1$s` |
+| iOS | `*.xcodeproj` / glob | `**/*.lproj/Localizable.strings` | — | `*.lproj/` | `.strings` | `%@`, `%d`, `%1$@` |
 | Generic | — | — | — | `locales/`, `i18n/`, `translations/` | JSON | `{name}`, `${name}` |
 
 ## Detection Priority
 
 Check in this order (first match wins):
 
-1. `package.json` → `react-intl` / `@formatjs/intl`
-2. `package.json` → `i18next` / `react-i18next` / `next-i18next`
-3. `package.json` → `next-intl`
-4. `package.json` → `vue-i18n` / `@intlify/vue-i18n`
-5. `package.json` → `@angular/localize` / `@ngx-translate/core`
-6. `Gemfile` → `i18n` / `rails-i18n`
-7. `pubspec.yaml` → `flutter_localizations` / `intl`
-8. Fall back to generic
+1. `.deepl-i18n.json` config file (explicit override)
+2. `package.json` → `react-intl` / `@formatjs/intl`
+3. `package.json` → `i18next` / `react-i18next` / `next-i18next`
+4. `package.json` → `next-intl`
+5. `package.json` → `vue-i18n` / `@intlify/vue-i18n`
+6. `package.json` → `@angular/localize` / `@ngx-translate/core`
+7. `Gemfile` → `i18n` / `rails-i18n`
+8. `pubspec.yaml` → `flutter_localizations` / `intl`
+9. `**/res/values/strings.xml` → Android
+10. `**/*.lproj/Localizable.strings` → iOS
+11. Fall back to generic
+
+First match wins. The config file override always takes precedence over auto-detection.
 
 ## Config File Hints
 
