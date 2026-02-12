@@ -23,7 +23,6 @@ describe('InitCommand', () => {
 
   beforeAll(() => {
     if (!nock.isActive()) { nock.activate(); }
-    nock.disableNetConnect();
   });
 
   beforeEach(() => {

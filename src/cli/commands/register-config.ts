@@ -53,7 +53,11 @@ Examples:
             const { ConfigCommand: ConfigCmd } = await import('./config.js');
             const configCommand = new ConfigCmd(getConfigService());
             await configCommand.set(key, value);
-            Logger.success(chalk.green(`\u2713 Set ${key} = ${value}`));
+            let displayValue: string = value;
+            if (key === 'auth.apiKey' && value.length > 8) {
+              displayValue = value.substring(0, 4) + '...' + value.substring(value.length - 4);
+            }
+            Logger.success(chalk.green(`\u2713 Set ${key} = ${displayValue}`));
           } catch (error) {
             handleError(error);
 

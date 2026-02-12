@@ -103,6 +103,14 @@ describe('registerConfig', () => {
       expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('Set api.usePro = true'));
     });
 
+    it('should mask API key in success message', async () => {
+      mockConfigCommandInstance.set.mockResolvedValue(undefined);
+      await program.parseAsync(['node', 'test', 'config', 'set', 'auth.apiKey', 'super-secret-key-123']);
+      expect(mockConfigCommandInstance.set).toHaveBeenCalledWith('auth.apiKey', 'super-secret-key-123');
+      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('supe...-123'));
+      expect(Logger.success).not.toHaveBeenCalledWith(expect.stringContaining('super-secret-key-123'));
+    });
+
     it('should call handleError on failure', async () => {
       mockConfigCommandInstance.set.mockRejectedValue(new Error('set failed'));
       await program.parseAsync(['node', 'test', 'config', 'set', 'key', 'val']);
