@@ -186,6 +186,42 @@ describe('DeepLClient', () => {
       expect(nock.isDone()).toBe(true);
     });
 
+    it('should map split_sentences "on" to API value "1"', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.split_sentences === '1';
+        })
+        .reply(200, {
+          translations: [{ text: 'Hallo' }],
+        });
+
+      await client.translate('Hello', {
+        targetLang: 'de',
+        splitSentences: 'on',
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('should map split_sentences "off" to API value "0"', async () => {
+      nock(baseUrl)
+        .post('/v2/translate', (body) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          return body.split_sentences === '0';
+        })
+        .reply(200, {
+          translations: [{ text: 'Hallo' }],
+        });
+
+      await client.translate('Hello', {
+        targetLang: 'de',
+        splitSentences: 'off',
+      });
+
+      expect(nock.isDone()).toBe(true);
+    });
+
     it('should handle tag_handling parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {

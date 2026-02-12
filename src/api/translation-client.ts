@@ -265,7 +265,8 @@ export class TranslationClient extends HttpClient {
     }
 
     if (options.splitSentences) {
-      params['split_sentences'] = options.splitSentences;
+      const splitMap: Record<string, string> = { on: '1', off: '0' };
+      params['split_sentences'] = splitMap[options.splitSentences] ?? options.splitSentences;
     }
 
     if (options.tagHandling) {
