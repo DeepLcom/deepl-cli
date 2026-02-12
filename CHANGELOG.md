@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Fix info disclosure: error logs no longer expose full error objects or internal paths
+- Mask API key in `config set` success message and `config get` (no-argument) output — previously echoed the full plaintext key
+- Add global `nock.disableNetConnect()` in Jest setup to prevent accidental real API calls during tests
 - Fix symlink TOCTOU race condition in file translation — `translateTextFile` now uses `safeReadFileSync` instead of bare `fs.readFileSync`
 
 ## [0.11.0] - 2026-02-08

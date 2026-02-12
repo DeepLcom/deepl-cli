@@ -62,6 +62,24 @@ describe('ConfigCommand', () => {
       expect(config).toHaveProperty('auth');
       expect(config).toHaveProperty('defaults');
     });
+
+    it('should mask API key when returning entire config', async () => {
+      (mockConfigService.get as jest.Mock).mockReturnValueOnce({
+        auth: { apiKey: 'super-secret-key-123' },
+        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
+        defaults: { sourceLang: undefined, targetLangs: [], formality: 'default', preserveFormatting: true },
+        cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
+        output: { format: 'text', color: true, verbose: false },
+        watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
+        team: {},
+      });
+
+      const config = await configCommand.get() as Record<string, unknown>;
+
+      expect(JSON.stringify(config)).not.toContain('super-secret-key-123');
+      const auth = config['auth'] as Record<string, unknown>;
+      expect(auth['apiKey']).toBe('supe...-123');
+    });
   });
 
   describe('set()', () => {

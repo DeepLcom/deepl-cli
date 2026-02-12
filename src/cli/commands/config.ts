@@ -38,7 +38,7 @@ export class ConfigCommand {
       }
       return value;
     }
-    return this.config.get();
+    return this.maskSensitiveValues(this.config.get() as unknown as Record<string, unknown>);
   }
 
   /**
