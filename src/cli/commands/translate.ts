@@ -392,6 +392,13 @@ export class TranslateCommand {
     this.validateLanguageCodes([options.to]);
     this.validateExtendedLanguageConstraints(options.to, options);
 
+    if (options.glossary && !options.from) {
+      throw new ValidationError(
+        'Source language (--from) is required when using a glossary',
+        'Example: deepl translate --from en --to es --glossary my-glossary "Hello"'
+      );
+    }
+
     const translationOptions = this.buildTranslationOptions(options);
 
     if (options.glossary) {
@@ -516,6 +523,13 @@ export class TranslateCommand {
     const targetLangs = options.to.split(',').map(lang => lang.trim());
     this.validateLanguageCodes(targetLangs);
     this.validateExtendedLanguageConstraints(options.to, options);
+
+    if (options.glossary && !options.from) {
+      throw new ValidationError(
+        'Source language (--from) is required when using a glossary',
+        'Example: deepl translate --from en --to es --glossary my-glossary "Hello"'
+      );
+    }
 
     // Now safe to cast as Language[]
     const validTargetLangs = targetLangs as Language[];
@@ -643,6 +657,13 @@ export class TranslateCommand {
 
   private async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
     this.validateLanguageCodes([options.to]);
+
+    if (options.glossary && !options.from) {
+      throw new ValidationError(
+        'Source language (--from) is required when using a glossary',
+        'Example: deepl translate --from en --to es --glossary my-glossary file.txt'
+      );
+    }
 
     // Structured files (JSON/YAML) need key-extraction, not raw text translation
     if (this.isStructuredFile(filePath)) {

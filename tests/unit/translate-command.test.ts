@@ -1181,6 +1181,7 @@ describe('TranslateCommand', () => {
 
       const result = await translateCommand.translateText('Hello world', {
         to: 'de',
+        from: 'en',
         glossary: 'my-glossary',
       });
 
@@ -1188,7 +1189,7 @@ describe('TranslateCommand', () => {
       expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello world',
-        { targetLang: 'de', glossaryId: 'glossary-123' },
+        { targetLang: 'de', sourceLang: 'en', glossaryId: 'glossary-123' },
         { preserveCode: undefined, skipCache: true }
       );
     });
@@ -1203,6 +1204,7 @@ describe('TranslateCommand', () => {
 
       const result = await translateCommand.translateText('Hello world', {
         to: 'fr',
+        from: 'en',
         glossary: '01234567-89ab-cdef-0123-456789abcdef',
       });
 
@@ -1210,9 +1212,27 @@ describe('TranslateCommand', () => {
       expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('01234567-89ab-cdef-0123-456789abcdef');
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello world',
-        { targetLang: 'fr', glossaryId: '01234567-89ab-cdef-0123-456789abcdef' },
+        { targetLang: 'fr', sourceLang: 'en', glossaryId: '01234567-89ab-cdef-0123-456789abcdef' },
         { preserveCode: undefined, skipCache: true }
       );
+    });
+
+    it('should require --from when using --glossary', async () => {
+      await expect(
+        translateCommand.translateText('Hello world', {
+          to: 'de',
+          glossary: 'my-glossary',
+        })
+      ).rejects.toThrow('Source language (--from) is required when using a glossary');
+    });
+
+    it('should require --from when using --glossary with multi-target', async () => {
+      await expect(
+        translateCommand.translateText('Hello world', {
+          to: 'de,fr',
+          glossary: 'my-glossary',
+        })
+      ).rejects.toThrow('Source language (--from) is required when using a glossary');
     });
 
     it('should throw error when glossary not found by name', async () => {
@@ -1223,6 +1243,7 @@ describe('TranslateCommand', () => {
       await expect(
         translateCommand.translateText('Hello world', {
           to: 'de',
+          from: 'en',
           glossary: 'non-existent',
         })
       ).rejects.toThrow('Glossary "non-existent" not found');
@@ -1240,6 +1261,7 @@ describe('TranslateCommand', () => {
 
       const result = await translateCommand.translateText('Hello', {
         to: 'de,fr',
+        from: 'en',
         glossary: 'tech-terms',
       });
 
@@ -1248,7 +1270,7 @@ describe('TranslateCommand', () => {
       expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
         'Hello',
         ['de', 'fr'],
-        { glossaryId: 'glossary-789', skipCache: true }
+        { sourceLang: 'en', glossaryId: 'glossary-789', skipCache: true }
       );
     });
 
@@ -1262,6 +1284,7 @@ describe('TranslateCommand', () => {
 
       const result = await translateCommand.translateText('Dear Sir or Madam', {
         to: 'de',
+        from: 'en',
         glossary: 'business-glossary',
         formality: 'more',
         context: 'Business letter opening',
@@ -1273,6 +1296,7 @@ describe('TranslateCommand', () => {
         'Dear Sir or Madam',
         {
           targetLang: 'de',
+          sourceLang: 'en',
           glossaryId: 'glossary-abc',
           formality: 'more',
           context: 'Business letter opening',
@@ -3218,6 +3242,7 @@ describe('TranslateCommand', () => {
 
       await (translateCommand as any).translateTextFile('/doc.txt', {
         to: 'es',
+        from: 'en',
         output: '/out.txt',
         glossary: 'my-glossary',
       });
