@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extract duplicated file-reading pattern in WriteCommand to shared `readFileContent()` helper, removing ~50 lines of duplication across 5 methods
 
 ### Fixed
+- Fix case-sensitive language code validation — mixed-case codes like `pt-BR` and `DE` are now normalized to lowercase before validation, matching the registry format
 - Fix flaky voice-service reconnection test — `checkAndEnd` mock fired `onEndOfStream` after first chunk on ws2 instead of waiting for all chunks, causing non-deterministic failures in CI
 - Log verbose diagnostics when write styles fail in interactive mode — previously errors were silently swallowed, now visible with `--verbose`
 - Fix version string references in documentation (0.10.0 → 0.11.0)
