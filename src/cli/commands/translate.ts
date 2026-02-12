@@ -188,6 +188,13 @@ export class TranslateCommand {
   }
 
   async translate(textOrPath: string, options: TranslateOptions): Promise<string> {
+    if (options.to) {
+      options.to = options.to.toLowerCase();
+    }
+    if (options.from) {
+      options.from = options.from.toLowerCase();
+    }
+
     let stats: fs.Stats | null = null;
     try {
       const lstat = fs.lstatSync(textOrPath);
@@ -356,6 +363,13 @@ export class TranslateCommand {
    * Translate text
    */
   async translateText(text: string, options: TranslateOptions): Promise<string> {
+    if (options.to) {
+      options.to = options.to.toLowerCase();
+    }
+    if (options.from) {
+      options.from = options.from.toLowerCase();
+    }
+
     if (!text || text.trim() === '') {
       throw new ValidationError(
         'Text cannot be empty',

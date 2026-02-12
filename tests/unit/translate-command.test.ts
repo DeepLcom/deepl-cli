@@ -1750,6 +1750,37 @@ describe('TranslateCommand', () => {
       );
     });
 
+    it('should accept mixed-case language codes by normalizing to lowercase', async () => {
+      (mockTranslationService.translateToMultiple as jest.Mock).mockResolvedValueOnce([
+        { targetLang: 'de', text: 'Hallo' },
+        { targetLang: 'pt-br', text: 'Olá' },
+      ]);
+
+      const result = await translateCommand.translateText('Hello', {
+        to: 'DE,pt-BR',
+      });
+
+      expect(result).toContain('Hallo');
+      expect(result).toContain('Olá');
+      expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
+        'Hello',
+        ['de', 'pt-br'],
+        expect.any(Object)
+      );
+    });
+
+    it('should accept uppercase single language code by normalizing to lowercase', async () => {
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hallo Welt',
+      });
+
+      const result = await translateCommand.translateText('Hello world', {
+        to: 'DE',
+      });
+
+      expect(result).toContain('Hallo Welt');
+    });
+
     it('should reject empty language codes after trimming', async () => {
       await expect(
         translateCommand.translateText('Hello', {
