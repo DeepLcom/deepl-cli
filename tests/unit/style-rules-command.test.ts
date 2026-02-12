@@ -3,41 +3,38 @@
  */
 
 import { StyleRulesCommand } from '../../src/cli/commands/style-rules';
-import { DeepLClient } from '../../src/api/deepl-client';
 import { StyleRule, StyleRuleDetailed } from '../../src/types/api';
-import { createMockDeepLClient } from '../helpers/mock-factories';
-
-jest.mock('../../src/api/deepl-client');
+import { createMockStyleRulesService } from '../helpers/mock-factories';
 
 describe('StyleRulesCommand', () => {
-  let mockClient: jest.Mocked<DeepLClient>;
+  let mockService: ReturnType<typeof createMockStyleRulesService>;
   let command: StyleRulesCommand;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockClient = createMockDeepLClient();
+    mockService = createMockStyleRulesService();
 
-    command = new StyleRulesCommand(mockClient);
+    command = new StyleRulesCommand(mockService);
   });
 
   describe('list', () => {
     it('should call getStyleRules with default options', async () => {
       await command.list();
-      expect(mockClient.getStyleRules).toHaveBeenCalledWith({});
+      expect(mockService.getStyleRules).toHaveBeenCalledWith({});
     });
 
     it('should pass detailed option', async () => {
       await command.list({ detailed: true });
-      expect(mockClient.getStyleRules).toHaveBeenCalledWith({ detailed: true });
+      expect(mockService.getStyleRules).toHaveBeenCalledWith({ detailed: true });
     });
 
     it('should pass pagination options', async () => {
       await command.list({ page: 2, pageSize: 10 });
-      expect(mockClient.getStyleRules).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
+      expect(mockService.getStyleRules).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
     });
 
-    it('should return rules from client', async () => {
+    it('should return rules from service', async () => {
       const mockRules: StyleRule[] = [
         {
           styleId: 'uuid-1',
@@ -48,7 +45,7 @@ describe('StyleRulesCommand', () => {
           updatedTime: '2024-01-02T00:00:00Z',
         },
       ];
-      mockClient.getStyleRules.mockResolvedValue(mockRules);
+      mockService.getStyleRules.mockResolvedValue(mockRules);
 
       const rules = await command.list();
       expect(rules).toEqual(mockRules);

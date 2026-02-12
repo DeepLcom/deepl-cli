@@ -6,10 +6,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { DetectCommand } from '../../src/cli/commands/detect';
-import { DeepLClient } from '../../src/api/deepl-client';
-import { createMockDeepLClient } from '../helpers/mock-factories';
-
-jest.mock('../../src/api/deepl-client');
+import { createMockDetectService } from '../helpers/mock-factories';
 
 jest.mock('chalk', () => {
   const mockChalk = {
@@ -28,27 +25,27 @@ jest.mock('chalk', () => {
 });
 
 describe('DetectCommand', () => {
-  let mockDeepLClient: jest.Mocked<DeepLClient>;
+  let mockService: ReturnType<typeof createMockDetectService>;
   let detectCommand: DetectCommand;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockDeepLClient = createMockDeepLClient({
-      translate: jest.fn().mockResolvedValue({
-        text: 'Hello world',
-        detectedSourceLang: 'fr',
+    mockService = createMockDetectService({
+      detect: jest.fn().mockResolvedValue({
+        detectedLanguage: 'fr',
+        languageName: 'French',
       }),
     });
 
-    detectCommand = new DetectCommand(mockDeepLClient);
+    detectCommand = new DetectCommand(mockService);
   });
 
   describe('detect()', () => {
     it('should detect language of French text', async () => {
-      mockDeepLClient.translate = jest.fn().mockResolvedValue({
-        text: 'Hello world',
-        detectedSourceLang: 'fr',
+      mockService.detect = jest.fn().mockResolvedValue({
+        detectedLanguage: 'fr',
+        languageName: 'French',
       });
 
       const result = await detectCommand.detect('Bonjour le monde');
@@ -58,9 +55,9 @@ describe('DetectCommand', () => {
     });
 
     it('should detect language of German text', async () => {
-      mockDeepLClient.translate = jest.fn().mockResolvedValue({
-        text: 'Hello world',
-        detectedSourceLang: 'de',
+      mockService.detect = jest.fn().mockResolvedValue({
+        detectedLanguage: 'de',
+        languageName: 'German',
       });
 
       const result = await detectCommand.detect('Hallo Welt');
@@ -70,9 +67,9 @@ describe('DetectCommand', () => {
     });
 
     it('should detect language of Japanese text', async () => {
-      mockDeepLClient.translate = jest.fn().mockResolvedValue({
-        text: 'Hello world',
-        detectedSourceLang: 'ja',
+      mockService.detect = jest.fn().mockResolvedValue({
+        detectedLanguage: 'ja',
+        languageName: 'Japanese',
       });
 
       const result = await detectCommand.detect('こんにちは世界');
@@ -81,31 +78,36 @@ describe('DetectCommand', () => {
       expect(result.languageName).toBe('Japanese');
     });
 
-    it('should call translate API with target_lang EN', async () => {
+    it('should delegate to service', async () => {
       await detectCommand.detect('Bonjour');
 
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith('Bonjour', {
-        targetLang: 'en',
-      });
+      expect(mockService.detect).toHaveBeenCalledWith('Bonjour');
     });
 
     it('should throw error for empty text', async () => {
+      mockService.detect = jest.fn().mockRejectedValue(
+        new Error('Text cannot be empty. Provide text to detect language.')
+      );
+
       await expect(detectCommand.detect('')).rejects.toThrow(
         'Text cannot be empty'
       );
     });
 
     it('should throw error for whitespace-only text', async () => {
+      mockService.detect = jest.fn().mockRejectedValue(
+        new Error('Text cannot be empty. Provide text to detect language.')
+      );
+
       await expect(detectCommand.detect('   ')).rejects.toThrow(
         'Text cannot be empty'
       );
     });
 
     it('should throw error when API returns no detected language', async () => {
-      mockDeepLClient.translate = jest.fn().mockResolvedValue({
-        text: 'test',
-        detectedSourceLang: undefined,
-      });
+      mockService.detect = jest.fn().mockRejectedValue(
+        new Error('Could not detect source language. The text may be too short or ambiguous.')
+      );
 
       await expect(detectCommand.detect('x')).rejects.toThrow(
         'Could not detect source language'
@@ -113,7 +115,7 @@ describe('DetectCommand', () => {
     });
 
     it('should handle API errors', async () => {
-      mockDeepLClient.translate = jest.fn().mockRejectedValue(
+      mockService.detect = jest.fn().mockRejectedValue(
         new Error('API error')
       );
 
@@ -121,7 +123,7 @@ describe('DetectCommand', () => {
     });
 
     it('should handle authentication errors', async () => {
-      mockDeepLClient.translate = jest.fn().mockRejectedValue(
+      mockService.detect = jest.fn().mockRejectedValue(
         new Error('Authentication failed: Invalid API key')
       );
 
@@ -131,7 +133,7 @@ describe('DetectCommand', () => {
     });
 
     it('should handle quota exceeded errors', async () => {
-      mockDeepLClient.translate = jest.fn().mockRejectedValue(
+      mockService.detect = jest.fn().mockRejectedValue(
         new Error('Quota exceeded')
       );
 
@@ -141,9 +143,9 @@ describe('DetectCommand', () => {
     });
 
     it('should return language code as name when not in registry', async () => {
-      mockDeepLClient.translate = jest.fn().mockResolvedValue({
-        text: 'test',
-        detectedSourceLang: 'xx' as any,
+      mockService.detect = jest.fn().mockResolvedValue({
+        detectedLanguage: 'xx',
+        languageName: 'XX',
       });
 
       const result = await detectCommand.detect('Some text');
@@ -153,9 +155,9 @@ describe('DetectCommand', () => {
     });
 
     it('should detect extended languages', async () => {
-      mockDeepLClient.translate = jest.fn().mockResolvedValue({
-        text: 'Hello',
-        detectedSourceLang: 'hi',
+      mockService.detect = jest.fn().mockResolvedValue({
+        detectedLanguage: 'hi',
+        languageName: 'Hindi',
       });
 
       const result = await detectCommand.detect('नमस्ते दुनिया');

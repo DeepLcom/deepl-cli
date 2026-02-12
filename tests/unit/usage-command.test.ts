@@ -6,11 +6,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { UsageCommand } from '../../src/cli/commands/usage';
-import { DeepLClient } from '../../src/api/deepl-client';
-import { createMockDeepLClient } from '../helpers/mock-factories';
-
-// Mock dependencies
-jest.mock('../../src/api/deepl-client');
+import { createMockUsageService } from '../helpers/mock-factories';
 
 // Mock chalk to avoid ESM issues in tests
 jest.mock('chalk', () => {
@@ -29,27 +25,27 @@ jest.mock('chalk', () => {
 });
 
 describe('UsageCommand', () => {
-  let mockDeepLClient: jest.Mocked<DeepLClient>;
+  let mockService: ReturnType<typeof createMockUsageService>;
   let usageCommand: UsageCommand;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockDeepLClient = createMockDeepLClient({
+    mockService = createMockUsageService({
       getUsage: jest.fn().mockResolvedValue({
         characterCount: 123456,
         characterLimit: 500000,
       }),
     });
 
-    usageCommand = new UsageCommand(mockDeepLClient);
+    usageCommand = new UsageCommand(mockService);
   });
 
   describe('getUsage()', () => {
     it('should retrieve usage statistics from DeepL API', async () => {
       const usage = await usageCommand.getUsage();
 
-      expect(mockDeepLClient.getUsage).toHaveBeenCalled();
+      expect(mockService.getUsage).toHaveBeenCalled();
       expect(usage).toEqual({
         characterCount: 123456,
         characterLimit: 500000,
@@ -64,7 +60,7 @@ describe('UsageCommand', () => {
     });
 
     it('should handle zero limit gracefully', async () => {
-      mockDeepLClient.getUsage = jest.fn().mockResolvedValue({
+      mockService.getUsage = jest.fn().mockResolvedValue({
         characterCount: 0,
         characterLimit: 0,
       });
@@ -76,13 +72,13 @@ describe('UsageCommand', () => {
     });
 
     it('should handle API errors', async () => {
-      mockDeepLClient.getUsage = jest.fn().mockRejectedValue(new Error('API error'));
+      mockService.getUsage = jest.fn().mockRejectedValue(new Error('API error'));
 
       await expect(usageCommand.getUsage()).rejects.toThrow('API error');
     });
 
     it('should handle authentication errors', async () => {
-      mockDeepLClient.getUsage = jest.fn().mockRejectedValue(
+      mockService.getUsage = jest.fn().mockRejectedValue(
         new Error('Authentication failed: Invalid API key')
       );
 
@@ -90,7 +86,7 @@ describe('UsageCommand', () => {
     });
 
     it('should handle quota exceeded errors', async () => {
-      mockDeepLClient.getUsage = jest.fn().mockRejectedValue(
+      mockService.getUsage = jest.fn().mockRejectedValue(
         new Error('Quota exceeded: Character limit reached')
       );
 
@@ -118,7 +114,6 @@ describe('UsageCommand', () => {
       });
 
       expect(formatted).toContain('90.0%');
-      // Should contain warning indicator
     });
 
     it('should format remaining characters', () => {

@@ -3,7 +3,7 @@
  * Handles listing and displaying DeepL style rules
  */
 
-import { DeepLClient } from '../../api/deepl-client.js';
+import type { StyleRulesService } from '../../services/style-rules.js';
 import { StyleRule, StyleRuleDetailed, StyleRulesListOptions } from '../../types/index.js';
 
 /**
@@ -11,10 +11,10 @@ import { StyleRule, StyleRuleDetailed, StyleRulesListOptions } from '../../types
  * Style rules can be applied to translations via their style ID.
  */
 export class StyleRulesCommand {
-  private client: DeepLClient;
+  private service: StyleRulesService;
 
-  constructor(client: DeepLClient) {
-    this.client = client;
+  constructor(service: StyleRulesService) {
+    this.service = service;
   }
 
   /**
@@ -22,7 +22,7 @@ export class StyleRulesCommand {
    * Returns detailed rules (with configuredRules/customInstructions) when requested.
    */
   async list(options: StyleRulesListOptions = {}): Promise<(StyleRule | StyleRuleDetailed)[]> {
-    return this.client.getStyleRules(options);
+    return this.service.getStyleRules(options);
   }
 
   /** Format style rules for human-readable terminal output. */

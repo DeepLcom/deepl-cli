@@ -131,15 +131,8 @@ Examples:
               }
             }
 
-            if (sttLimit !== undefined && deps.getApiKeyAndOptions) {
-              const { apiKey, options: clientOptions } = deps.getApiKeyAndOptions();
-              const { AdminClient } = await import('../../api/admin-client.js');
-              const adminClient = new AdminClient(apiKey, clientOptions);
-              await adminClient.setApiKeyLimit(keyId, limit, sttLimit);
-            } else {
-              const admin = await createAdminCommand(createDeepLClient);
-              await admin.setKeyLimit(keyId, limit);
-            }
+            const admin = await createAdminCommand(createDeepLClient, deps.getApiKeyAndOptions);
+            await admin.setKeyLimit(keyId, limit, sttLimit);
 
             const limitStr = limit === null ? 'unlimited' : limit.toLocaleString();
             const parts = [`${limitStr} characters`];

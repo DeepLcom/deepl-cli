@@ -10,6 +10,8 @@ import type { UsageCommand } from './usage.js';
 import type { TranslateCommand } from './translate.js';
 import type { WatchCommand } from './watch.js';
 import type { VoiceCommand } from './voice.js';
+import type { DetectCommand } from './detect.js';
+import type { LanguagesCommand } from './languages.js';
 
 export type CreateDeepLClient = (overrideBaseUrl?: string) => Promise<DeepLClient>;
 export type GetApiKeyAndOptions = () => { apiKey: string; options: DeepLClientOptions };
@@ -34,10 +36,13 @@ export async function createGlossaryCommand(
 
 export async function createAdminCommand(
   createDeepLClient: CreateDeepLClient,
+  getApiKeyAndOptions?: GetApiKeyAndOptions,
 ): Promise<AdminCommand> {
   const client = await createDeepLClient();
+  const { AdminService } = await import('../../services/admin.js');
   const { AdminCommand: AdminCmd } = await import('./admin.js');
-  return new AdminCmd(client);
+  const adminService = new AdminService(client, getApiKeyAndOptions);
+  return new AdminCmd(adminService);
 }
 
 export async function createWriteCommand(
@@ -55,16 +60,20 @@ export async function createStyleRulesCommand(
   createDeepLClient: CreateDeepLClient,
 ): Promise<StyleRulesCommand> {
   const client = await createDeepLClient();
+  const { StyleRulesService } = await import('../../services/style-rules.js');
   const { StyleRulesCommand: StyleRulesCmd } = await import('./style-rules.js');
-  return new StyleRulesCmd(client);
+  const styleRulesService = new StyleRulesService(client);
+  return new StyleRulesCmd(styleRulesService);
 }
 
 export async function createUsageCommand(
   createDeepLClient: CreateDeepLClient,
 ): Promise<UsageCommand> {
   const client = await createDeepLClient();
+  const { UsageService } = await import('../../services/usage.js');
   const { UsageCommand: UsageCmd } = await import('./usage.js');
-  return new UsageCmd(client);
+  const usageService = new UsageService(client);
+  return new UsageCmd(usageService);
 }
 
 export async function createTranslateCommand(
@@ -93,6 +102,25 @@ export async function createWatchCommand(
   const translationService = new TranslationService(client, deps.getConfigService(), await deps.getCacheService());
   const glossaryService = new GlossaryService(client);
   return new WatchCmd(translationService, glossaryService);
+}
+
+export async function createDetectCommand(
+  createDeepLClient: CreateDeepLClient,
+): Promise<DetectCommand> {
+  const client = await createDeepLClient();
+  const { DetectService } = await import('../../services/detect.js');
+  const { DetectCommand: DetectCmd } = await import('./detect.js');
+  const detectService = new DetectService(client);
+  return new DetectCmd(detectService);
+}
+
+export async function createLanguagesCommand(
+  client: DeepLClient | null,
+): Promise<LanguagesCommand> {
+  const { LanguagesService } = await import('../../services/languages.js');
+  const { LanguagesCommand: LanguagesCmd } = await import('./languages.js');
+  const languagesService = new LanguagesService(client);
+  return new LanguagesCmd(languagesService);
 }
 
 export async function createVoiceCommand(

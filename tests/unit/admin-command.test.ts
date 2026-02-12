@@ -3,11 +3,8 @@
  */
 
 import { AdminCommand } from '../../src/cli/commands/admin';
-import { DeepLClient } from '../../src/api/deepl-client';
 import { AdminApiKey, AdminUsageReport } from '../../src/types/api';
-import { createMockDeepLClient } from '../helpers/mock-factories';
-
-jest.mock('../../src/api/deepl-client');
+import { createMockAdminService } from '../helpers/mock-factories';
 
 const emptyReport: AdminUsageReport = {
   totalUsage: {
@@ -23,13 +20,13 @@ const emptyReport: AdminUsageReport = {
 };
 
 describe('AdminCommand', () => {
-  let mockClient: jest.Mocked<DeepLClient>;
+  let mockService: ReturnType<typeof createMockAdminService>;
   let command: AdminCommand;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockClient = createMockDeepLClient({
+    mockService = createMockAdminService({
       listApiKeys: jest.fn().mockResolvedValue([]),
       createApiKey: jest.fn().mockResolvedValue({
         keyId: 'key-1',
@@ -43,16 +40,16 @@ describe('AdminCommand', () => {
       getAdminUsage: jest.fn().mockResolvedValue(emptyReport),
     });
 
-    command = new AdminCommand(mockClient);
+    command = new AdminCommand(mockService);
   });
 
   describe('listKeys', () => {
-    it('should call listApiKeys on client', async () => {
+    it('should call listApiKeys on service', async () => {
       await command.listKeys();
-      expect(mockClient.listApiKeys).toHaveBeenCalled();
+      expect(mockService.listApiKeys).toHaveBeenCalled();
     });
 
-    it('should return keys from client', async () => {
+    it('should return keys from service', async () => {
       const keys: AdminApiKey[] = [
         {
           keyId: 'key-1',
@@ -61,7 +58,7 @@ describe('AdminCommand', () => {
           isDeactivated: false,
         },
       ];
-      mockClient.listApiKeys.mockResolvedValue(keys);
+      mockService.listApiKeys.mockResolvedValue(keys);
 
       const result = await command.listKeys();
       expect(result).toEqual(keys);
@@ -71,16 +68,16 @@ describe('AdminCommand', () => {
   describe('createKey', () => {
     it('should call createApiKey with label', async () => {
       await command.createKey('My Key');
-      expect(mockClient.createApiKey).toHaveBeenCalledWith('My Key');
+      expect(mockService.createApiKey).toHaveBeenCalledWith('My Key');
     });
 
     it('should call createApiKey without label', async () => {
       await command.createKey();
-      expect(mockClient.createApiKey).toHaveBeenCalledWith(undefined);
+      expect(mockService.createApiKey).toHaveBeenCalledWith(undefined);
     });
 
     it('should preserve the secret key from the response', async () => {
-      mockClient.createApiKey.mockResolvedValue({
+      mockService.createApiKey.mockResolvedValue({
         keyId: 'key-new',
         key: 'dl-api-secret-12345',
         label: 'New Key',
@@ -96,26 +93,31 @@ describe('AdminCommand', () => {
   describe('deactivateKey', () => {
     it('should call deactivateApiKey', async () => {
       await command.deactivateKey('key-1');
-      expect(mockClient.deactivateApiKey).toHaveBeenCalledWith('key-1');
+      expect(mockService.deactivateApiKey).toHaveBeenCalledWith('key-1');
     });
   });
 
   describe('renameKey', () => {
     it('should call renameApiKey', async () => {
       await command.renameKey('key-1', 'New Label');
-      expect(mockClient.renameApiKey).toHaveBeenCalledWith('key-1', 'New Label');
+      expect(mockService.renameApiKey).toHaveBeenCalledWith('key-1', 'New Label');
     });
   });
 
   describe('setKeyLimit', () => {
     it('should call setApiKeyLimit with number', async () => {
       await command.setKeyLimit('key-1', 1000000);
-      expect(mockClient.setApiKeyLimit).toHaveBeenCalledWith('key-1', 1000000);
+      expect(mockService.setApiKeyLimit).toHaveBeenCalledWith('key-1', 1000000, undefined);
     });
 
     it('should call setApiKeyLimit with null for unlimited', async () => {
       await command.setKeyLimit('key-1', null);
-      expect(mockClient.setApiKeyLimit).toHaveBeenCalledWith('key-1', null);
+      expect(mockService.setApiKeyLimit).toHaveBeenCalledWith('key-1', null, undefined);
+    });
+
+    it('should pass sttLimit to service', async () => {
+      await command.setKeyLimit('key-1', 500000, 3600000);
+      expect(mockService.setApiKeyLimit).toHaveBeenCalledWith('key-1', 500000, 3600000);
     });
   });
 
@@ -126,7 +128,7 @@ describe('AdminCommand', () => {
         endDate: '2024-01-31',
         groupBy: 'key',
       });
-      expect(mockClient.getAdminUsage).toHaveBeenCalledWith({
+      expect(mockService.getAdminUsage).toHaveBeenCalledWith({
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         groupBy: 'key',
@@ -581,33 +583,33 @@ describe('AdminCommand', () => {
   });
 
   describe('error propagation', () => {
-    it('should propagate listKeys errors from client', async () => {
-      mockClient.listApiKeys.mockRejectedValue(new Error('Forbidden'));
+    it('should propagate listKeys errors from service', async () => {
+      mockService.listApiKeys.mockRejectedValue(new Error('Forbidden'));
       await expect(command.listKeys()).rejects.toThrow('Forbidden');
     });
 
-    it('should propagate createKey errors from client', async () => {
-      mockClient.createApiKey.mockRejectedValue(new Error('Rate limited'));
+    it('should propagate createKey errors from service', async () => {
+      mockService.createApiKey.mockRejectedValue(new Error('Rate limited'));
       await expect(command.createKey('label')).rejects.toThrow('Rate limited');
     });
 
-    it('should propagate deactivateKey errors from client', async () => {
-      mockClient.deactivateApiKey.mockRejectedValue(new Error('Not found'));
+    it('should propagate deactivateKey errors from service', async () => {
+      mockService.deactivateApiKey.mockRejectedValue(new Error('Not found'));
       await expect(command.deactivateKey('key-x')).rejects.toThrow('Not found');
     });
 
-    it('should propagate renameKey errors from client', async () => {
-      mockClient.renameApiKey.mockRejectedValue(new Error('Unauthorized'));
+    it('should propagate renameKey errors from service', async () => {
+      mockService.renameApiKey.mockRejectedValue(new Error('Unauthorized'));
       await expect(command.renameKey('key-x', 'name')).rejects.toThrow('Unauthorized');
     });
 
-    it('should propagate setKeyLimit errors from client', async () => {
-      mockClient.setApiKeyLimit.mockRejectedValue(new Error('Bad request'));
+    it('should propagate setKeyLimit errors from service', async () => {
+      mockService.setApiKeyLimit.mockRejectedValue(new Error('Bad request'));
       await expect(command.setKeyLimit('key-x', 100)).rejects.toThrow('Bad request');
     });
 
-    it('should propagate getUsage errors from client', async () => {
-      mockClient.getAdminUsage.mockRejectedValue(new Error('Server error'));
+    it('should propagate getUsage errors from service', async () => {
+      mockService.getAdminUsage.mockRejectedValue(new Error('Server error'));
       await expect(command.getUsage({
         startDate: '2024-01-01',
         endDate: '2024-01-31',
@@ -621,7 +623,7 @@ describe('AdminCommand', () => {
         startDate: '2024-06-01',
         endDate: '2024-06-30',
       });
-      expect(mockClient.getAdminUsage).toHaveBeenCalledWith({
+      expect(mockService.getAdminUsage).toHaveBeenCalledWith({
         startDate: '2024-06-01',
         endDate: '2024-06-30',
       });
@@ -633,7 +635,7 @@ describe('AdminCommand', () => {
         endDate: '2024-01-31',
         groupBy: 'key_and_day',
       });
-      expect(mockClient.getAdminUsage).toHaveBeenCalledWith({
+      expect(mockService.getAdminUsage).toHaveBeenCalledWith({
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         groupBy: 'key_and_day',

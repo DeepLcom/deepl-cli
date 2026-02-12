@@ -4,20 +4,21 @@
  */
 
 import chalk from 'chalk';
-import { DeepLClient, UsageInfo } from '../../api/deepl-client.js';
+import type { UsageService } from '../../services/usage.js';
+import { UsageInfo } from '../../api/deepl-client.js';
 
 export class UsageCommand {
-  private client: DeepLClient;
+  private service: UsageService;
 
-  constructor(client: DeepLClient) {
-    this.client = client;
+  constructor(service: UsageService) {
+    this.service = service;
   }
 
   /**
    * Get usage statistics from DeepL API
    */
   async getUsage(): Promise<UsageInfo> {
-    return await this.client.getUsage();
+    return await this.service.getUsage();
   }
 
   /**

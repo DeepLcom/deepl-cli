@@ -1,6 +1,6 @@
 import { LanguagesCommand } from '../../src/cli/commands/languages';
-import { DeepLClient, LanguageInfo } from '../../src/api/deepl-client';
-import { createMockDeepLClient } from '../helpers/mock-factories';
+import { LanguageInfo } from '../../src/api/deepl-client';
+import { createMockLanguagesService } from '../helpers/mock-factories';
 
 // Mock chalk to avoid ESM issues in tests
 jest.mock('chalk', () => {
@@ -18,7 +18,7 @@ jest.mock('chalk', () => {
 });
 
 describe('LanguagesCommand', () => {
-  let mockDeepLClient: jest.Mocked<DeepLClient>;
+  let mockService: ReturnType<typeof createMockLanguagesService>;
   let languagesCommand: LanguagesCommand;
 
   const mockSourceLanguages: LanguageInfo[] = [
@@ -39,22 +39,22 @@ describe('LanguagesCommand', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockDeepLClient = createMockDeepLClient();
-    languagesCommand = new LanguagesCommand(mockDeepLClient);
+    mockService = createMockLanguagesService();
+    languagesCommand = new LanguagesCommand(mockService);
   });
 
   describe('getSourceLanguages()', () => {
-    it('should retrieve source languages from DeepL API', async () => {
-      mockDeepLClient.getSupportedLanguages.mockResolvedValue(mockSourceLanguages);
+    it('should retrieve source languages from service', async () => {
+      mockService.getSupportedLanguages.mockResolvedValue(mockSourceLanguages);
 
       const languages = await languagesCommand.getSourceLanguages();
 
-      expect(mockDeepLClient.getSupportedLanguages).toHaveBeenCalledWith('source');
+      expect(mockService.getSupportedLanguages).toHaveBeenCalledWith('source');
       expect(languages).toEqual(mockSourceLanguages);
     });
 
     it('should handle API errors gracefully', async () => {
-      mockDeepLClient.getSupportedLanguages.mockRejectedValue(
+      mockService.getSupportedLanguages.mockRejectedValue(
         new Error('API connection failed')
       );
 
@@ -63,25 +63,29 @@ describe('LanguagesCommand', () => {
       );
     });
 
-    it('should return empty array when client is null', async () => {
-      const noClientCommand = new LanguagesCommand(null);
+    it('should return empty array when service has no client', async () => {
+      const noClientService = createMockLanguagesService({
+        getSupportedLanguages: jest.fn().mockResolvedValue([]),
+        hasClient: jest.fn().mockReturnValue(false),
+      });
+      const noClientCommand = new LanguagesCommand(noClientService);
       const languages = await noClientCommand.getSourceLanguages();
       expect(languages).toEqual([]);
     });
   });
 
   describe('getTargetLanguages()', () => {
-    it('should retrieve target languages from DeepL API', async () => {
-      mockDeepLClient.getSupportedLanguages.mockResolvedValue(mockTargetLanguages);
+    it('should retrieve target languages from service', async () => {
+      mockService.getSupportedLanguages.mockResolvedValue(mockTargetLanguages);
 
       const languages = await languagesCommand.getTargetLanguages();
 
-      expect(mockDeepLClient.getSupportedLanguages).toHaveBeenCalledWith('target');
+      expect(mockService.getSupportedLanguages).toHaveBeenCalledWith('target');
       expect(languages).toEqual(mockTargetLanguages);
     });
 
     it('should handle API errors gracefully', async () => {
-      mockDeepLClient.getSupportedLanguages.mockRejectedValue(
+      mockService.getSupportedLanguages.mockRejectedValue(
         new Error('API connection failed')
       );
 
@@ -90,8 +94,12 @@ describe('LanguagesCommand', () => {
       );
     });
 
-    it('should return empty array when client is null', async () => {
-      const noClientCommand = new LanguagesCommand(null);
+    it('should return empty array when service has no client', async () => {
+      const noClientService = createMockLanguagesService({
+        getSupportedLanguages: jest.fn().mockResolvedValue([]),
+        hasClient: jest.fn().mockReturnValue(false),
+      });
+      const noClientCommand = new LanguagesCommand(noClientService);
       const languages = await noClientCommand.getTargetLanguages();
       expect(languages).toEqual([]);
     });
@@ -160,8 +168,11 @@ describe('LanguagesCommand', () => {
   });
 
   describe('formatLanguages() with null client (registry-only mode)', () => {
-    it('should show registry languages when client is null and API returns empty', () => {
-      const noClientCommand = new LanguagesCommand(null);
+    it('should show registry languages when service has no client and API returns empty', () => {
+      const noClientService = createMockLanguagesService({
+        hasClient: jest.fn().mockReturnValue(false),
+      });
+      const noClientCommand = new LanguagesCommand(noClientService);
       const formatted = noClientCommand.formatLanguages([], 'source');
 
       expect(formatted).toContain('Source Languages:');
@@ -170,8 +181,11 @@ describe('LanguagesCommand', () => {
       expect(formatted).toContain('Extended Languages');
     });
 
-    it('should show target languages from registry when client is null', () => {
-      const noClientCommand = new LanguagesCommand(null);
+    it('should show target languages from registry when service has no client', () => {
+      const noClientService = createMockLanguagesService({
+        hasClient: jest.fn().mockReturnValue(false),
+      });
+      const noClientCommand = new LanguagesCommand(noClientService);
       const formatted = noClientCommand.formatLanguages([], 'target');
 
       expect(formatted).toContain('Target Languages:');

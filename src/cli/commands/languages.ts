@@ -1,5 +1,6 @@
 import chalk from 'chalk';
-import { DeepLClient, LanguageInfo } from '../../api/deepl-client.js';
+import type { LanguagesService } from '../../services/languages.js';
+import { LanguageInfo } from '../../api/deepl-client.js';
 import {
   getSourceLanguages as getRegistrySourceLanguages,
   getTargetLanguages as getRegistryTargetLanguages,
@@ -13,20 +14,18 @@ export interface LanguageDisplayEntry {
 }
 
 export class LanguagesCommand {
-  private client: DeepLClient | null;
+  private service: LanguagesService;
 
-  constructor(client: DeepLClient | null) {
-    this.client = client;
+  constructor(service: LanguagesService) {
+    this.service = service;
   }
 
   async getSourceLanguages(): Promise<LanguageInfo[]> {
-    if (!this.client) return [];
-    return await this.client.getSupportedLanguages('source');
+    return this.service.getSupportedLanguages('source');
   }
 
   async getTargetLanguages(): Promise<LanguageInfo[]> {
-    if (!this.client) return [];
-    return await this.client.getSupportedLanguages('target');
+    return this.service.getSupportedLanguages('target');
   }
 
   /**
@@ -72,7 +71,7 @@ export class LanguagesCommand {
   }
 
   formatLanguages(languages: LanguageInfo[], type: 'source' | 'target'): string {
-    if (languages.length === 0 && !this.client) {
+    if (languages.length === 0 && !this.service.hasClient()) {
       const displayEntries = this.getRegistryLanguages(type);
       return this.formatDisplayEntries(displayEntries, type);
     }

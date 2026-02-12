@@ -204,14 +204,14 @@ describe('registerAdmin', () => {
     it('should set a numeric character limit', async () => {
       await program.parseAsync(['node', 'test', 'admin', 'keys', 'set-limit', 'key-7', '500000']);
 
-      expect(mockAdmin.setKeyLimit).toHaveBeenCalledWith('key-7', 500000);
+      expect(mockAdmin.setKeyLimit).toHaveBeenCalledWith('key-7', 500000, undefined);
       expect(mockLogger.success).toHaveBeenCalled();
     });
 
     it('should set unlimited limit', async () => {
       await program.parseAsync(['node', 'test', 'admin', 'keys', 'set-limit', 'key-7', 'unlimited']);
 
-      expect(mockAdmin.setKeyLimit).toHaveBeenCalledWith('key-7', null);
+      expect(mockAdmin.setKeyLimit).toHaveBeenCalledWith('key-7', null, undefined);
       expect(mockLogger.success).toHaveBeenCalled();
     });
 

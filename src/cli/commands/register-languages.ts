@@ -1,9 +1,8 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
 import type { ConfigService } from '../../storage/config.js';
-import type { DeepLClient } from '../../api/deepl-client.js';
 import { Logger } from '../../utils/logger.js';
-import type { CreateDeepLClient } from './service-factory.js';
+import { createLanguagesCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerLanguages(
   program: Command,
@@ -34,7 +33,7 @@ Examples:
         const envKey = process.env['DEEPL_API_KEY'];
         const hasApiKey = !!(apiKey ?? envKey);
 
-        let client: DeepLClient | null = null;
+        let client = null;
         if (hasApiKey) {
           client = await createDeepLClient();
         } else {
@@ -42,8 +41,7 @@ Examples:
           Logger.warn(chalk.yellow('Run: deepl auth set-key <your-api-key> for API-verified names.\n'));
         }
 
-        const { LanguagesCommand } = await import('./languages.js');
-        const languagesCommand = new LanguagesCommand(client);
+        const languagesCommand = await createLanguagesCommand(client);
 
         if (options.format === 'json') {
           if (options.source && !options.target) {

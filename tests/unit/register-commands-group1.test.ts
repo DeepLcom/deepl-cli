@@ -48,6 +48,9 @@ const mockStyleRulesFormatJson = jest.fn();
 const mockCompletionGenerate = jest.fn();
 
 const mockGlossaryServiceObj = { name: 'glossary-svc' };
+const mockAdminServiceObj = { name: 'admin-svc' };
+const mockUsageServiceObj = { name: 'usage-svc' };
+const mockStyleRulesServiceObj = { name: 'style-rules-svc' };
 const mockWriteServiceObj = { name: 'write-svc' };
 const mockTranslationServiceObj = { name: 'translation-svc' };
 const mockDocTranslationServiceObj = { name: 'doc-translation-svc' };
@@ -96,6 +99,15 @@ jest.mock('../../src/services/voice', () => ({
 }));
 jest.mock('../../src/cli/commands/voice', () => ({
   VoiceCommand: jest.fn(),
+}));
+jest.mock('../../src/services/admin', () => ({
+  AdminService: jest.fn(),
+}));
+jest.mock('../../src/services/usage', () => ({
+  UsageService: jest.fn(),
+}));
+jest.mock('../../src/services/style-rules', () => ({
+  StyleRulesService: jest.fn(),
 }));
 jest.mock('../../src/cli/commands/style-rules', () => ({
   StyleRulesCommand: jest.fn(),
@@ -151,6 +163,15 @@ function resetAllMockImplementations() {
 
   const { DocumentTranslationService } = require('../../src/services/document-translation');
   DocumentTranslationService.mockImplementation(() => mockDocTranslationServiceObj);
+
+  const { AdminService } = require('../../src/services/admin');
+  AdminService.mockImplementation(() => mockAdminServiceObj);
+
+  const { UsageService } = require('../../src/services/usage');
+  UsageService.mockImplementation(() => mockUsageServiceObj);
+
+  const { StyleRulesService } = require('../../src/services/style-rules');
+  StyleRulesService.mockImplementation(() => mockStyleRulesServiceObj);
 
   // Command constructors
   const { GlossaryCommand } = require('../../src/cli/commands/glossary');
@@ -238,13 +259,15 @@ describe('service-factory', () => {
     expect(cmd).toBe(mockGlossaryCmdObj);
   });
 
-  it('createAdminCommand should create client and AdminCommand', async () => {
+  it('createAdminCommand should create client, AdminService, and AdminCommand', async () => {
     const { createAdminCommand } = await import('../../src/cli/commands/service-factory');
     const cmd = await createAdminCommand(createDeepLClient);
 
     expect(createDeepLClient).toHaveBeenCalledWith();
+    const { AdminService } = require('../../src/services/admin');
+    expect(AdminService).toHaveBeenCalledWith(mockClient, undefined);
     const { AdminCommand } = require('../../src/cli/commands/admin');
-    expect(AdminCommand).toHaveBeenCalledWith(mockClient);
+    expect(AdminCommand).toHaveBeenCalledWith(mockAdminServiceObj);
     expect(cmd).toBe(mockAdminCmdObj);
   });
 
@@ -264,23 +287,27 @@ describe('service-factory', () => {
     expect(cmd).toBe(mockWriteCmdObj);
   });
 
-  it('createStyleRulesCommand should create client and StyleRulesCommand', async () => {
+  it('createStyleRulesCommand should create client, StyleRulesService, and StyleRulesCommand', async () => {
     const { createStyleRulesCommand } = await import('../../src/cli/commands/service-factory');
     const cmd = await createStyleRulesCommand(createDeepLClient);
 
     expect(createDeepLClient).toHaveBeenCalledWith();
+    const { StyleRulesService } = require('../../src/services/style-rules');
+    expect(StyleRulesService).toHaveBeenCalledWith(mockClient);
     const { StyleRulesCommand } = require('../../src/cli/commands/style-rules');
-    expect(StyleRulesCommand).toHaveBeenCalledWith(mockClient);
+    expect(StyleRulesCommand).toHaveBeenCalledWith(mockStyleRulesServiceObj);
     expect(cmd).toBeDefined();
   });
 
-  it('createUsageCommand should create client and UsageCommand', async () => {
+  it('createUsageCommand should create client, UsageService, and UsageCommand', async () => {
     const { createUsageCommand } = await import('../../src/cli/commands/service-factory');
     const cmd = await createUsageCommand(createDeepLClient);
 
     expect(createDeepLClient).toHaveBeenCalledWith();
+    const { UsageService } = require('../../src/services/usage');
+    expect(UsageService).toHaveBeenCalledWith(mockClient);
     const { UsageCommand } = require('../../src/cli/commands/usage');
-    expect(UsageCommand).toHaveBeenCalledWith(mockClient);
+    expect(UsageCommand).toHaveBeenCalledWith(mockUsageServiceObj);
     expect(cmd).toBeDefined();
   });
 

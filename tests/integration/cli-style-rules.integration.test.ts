@@ -5,6 +5,7 @@
 
 import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client.js';
+import { StyleRulesService } from '../../src/services/style-rules.js';
 import { StyleRulesCommand } from '../../src/cli/commands/style-rules.js';
 import { createTestConfigDir, makeRunCLI, DEEPL_FREE_API_URL } from '../helpers';
 
@@ -156,7 +157,7 @@ describe('Style Rules API Integration', () => {
 
   beforeEach(() => {
     client = new DeepLClient(API_KEY);
-    styleRulesCommand = new StyleRulesCommand(client);
+    styleRulesCommand = new StyleRulesCommand(new StyleRulesService(client));
   });
 
   afterEach(() => {
@@ -494,7 +495,7 @@ describe('Style Rules API Integration', () => {
 
     it('should use Pro API URL when configured', async () => {
       const proClient = new DeepLClient(API_KEY, { usePro: true });
-      const proCommand = new StyleRulesCommand(proClient);
+      const proCommand = new StyleRulesCommand(new StyleRulesService(proClient));
 
       const scope = nock('https://api.deepl.com')
         .get('/v3/style_rules')
@@ -512,7 +513,7 @@ describe('Style Rules API Integration', () => {
 
     beforeEach(() => {
       noRetryClient = new DeepLClient(API_KEY, { maxRetries: 0 });
-      noRetryCommand = new StyleRulesCommand(noRetryClient);
+      noRetryCommand = new StyleRulesCommand(new StyleRulesService(noRetryClient));
     });
 
     it('should handle 403 authentication error', async () => {

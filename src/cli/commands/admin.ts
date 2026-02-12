@@ -3,7 +3,7 @@
  * Handles admin API operations: key management and usage analytics
  */
 
-import { DeepLClient } from '../../api/deepl-client.js';
+import type { AdminService } from '../../services/admin.js';
 import { AdminApiKey, AdminUsageOptions, AdminUsageReport, UsageBreakdown } from '../../types/index.js';
 
 /**
@@ -11,38 +11,39 @@ import { AdminApiKey, AdminUsageOptions, AdminUsageReport, UsageBreakdown } from
  * Requires an admin API key with elevated permissions.
  */
 export class AdminCommand {
-  private client: DeepLClient;
+  private service: AdminService;
 
-  constructor(client: DeepLClient) {
-    this.client = client;
+  constructor(service: AdminService) {
+    this.service = service;
   }
 
   /** List all API keys in the team account. */
   async listKeys(): Promise<AdminApiKey[]> {
-    return this.client.listApiKeys();
+    return this.service.listApiKeys();
   }
 
   /** Create a new API key with an optional human-readable label. */
   async createKey(label?: string): Promise<AdminApiKey> {
-    return this.client.createApiKey(label);
+    return this.service.createApiKey(label);
   }
 
   /** Permanently deactivate an API key. This cannot be undone. */
   async deactivateKey(keyId: string): Promise<void> {
-    return this.client.deactivateApiKey(keyId);
+    return this.service.deactivateApiKey(keyId);
   }
 
   /** Rename an existing API key. */
   async renameKey(keyId: string, label: string): Promise<void> {
-    return this.client.renameApiKey(keyId, label);
+    return this.service.renameApiKey(keyId, label);
   }
 
   /**
    * Set the character usage limit for an API key.
    * @param characters - Maximum characters allowed, or null for unlimited.
+   * @param sttLimit - Optional speech-to-text milliseconds limit.
    */
-  async setKeyLimit(keyId: string, characters: number | null): Promise<void> {
-    return this.client.setApiKeyLimit(keyId, characters);
+  async setKeyLimit(keyId: string, characters: number | null, sttLimit?: number | null): Promise<void> {
+    return this.service.setApiKeyLimit(keyId, characters, sttLimit);
   }
 
   /**
@@ -50,7 +51,7 @@ export class AdminCommand {
    * Uses the /v2/admin/analytics endpoint with per-product breakdowns.
    */
   async getUsage(options: AdminUsageOptions): Promise<AdminUsageReport> {
-    return this.client.getAdminUsage(options);
+    return this.service.getAdminUsage(options);
   }
 
   /** Format a list of API keys for human-readable terminal output. */

@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { Logger } from '../../utils/logger.js';
-import type { CreateDeepLClient } from './service-factory.js';
+import { createDetectCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerDetect(
   program: Command,
@@ -24,9 +24,7 @@ Examples:
 `)
     .action(async (text: string | undefined, options: { format?: string }) => {
       try {
-        const client = await createDeepLClient();
-        const { DetectCommand } = await import('./detect.js');
-        const detectCommand = new DetectCommand(client);
+        const detectCommand = await createDetectCommand(createDeepLClient);
 
         let inputText: string;
 
