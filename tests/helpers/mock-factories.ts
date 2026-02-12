@@ -19,6 +19,11 @@ import type { FileTranslationService } from '../../src/services/file-translation
 import type { WatchService } from '../../src/services/watch';
 import type { WriteService } from '../../src/services/write';
 import type { VoiceService } from '../../src/services/voice';
+import type { AdminService } from '../../src/services/admin';
+import type { UsageService } from '../../src/services/usage';
+import type { StyleRulesService } from '../../src/services/style-rules';
+import type { DetectService } from '../../src/services/detect';
+import type { LanguagesService } from '../../src/services/languages';
 import type { ConfigService } from '../../src/storage/config';
 import type { CacheService } from '../../src/storage/cache';
 
@@ -268,4 +273,85 @@ export function createMockVoiceService(
   overrides: Partial<MockShape<VoiceService>> = {},
 ): jest.Mocked<VoiceService> {
   return { ...voiceServiceDefaults(), ...overrides } as unknown as jest.Mocked<VoiceService>;
+}
+
+// ---------------------------------------------------------------------------
+// AdminService
+// ---------------------------------------------------------------------------
+function adminServiceDefaults(): MockShape<AdminService> {
+  return {
+    listApiKeys: jest.fn().mockResolvedValue([]),
+    createApiKey: jest.fn().mockResolvedValue({ keyId: '', label: '', creationTime: '', isDeactivated: false }),
+    deactivateApiKey: jest.fn().mockResolvedValue(undefined),
+    renameApiKey: jest.fn().mockResolvedValue(undefined),
+    setApiKeyLimit: jest.fn().mockResolvedValue(undefined),
+    getAdminUsage: jest.fn().mockResolvedValue({ totalUsage: {}, startDate: '', endDate: '', entries: [] }),
+  };
+}
+
+export function createMockAdminService(
+  overrides: Partial<MockShape<AdminService>> = {},
+): jest.Mocked<AdminService> {
+  return { ...adminServiceDefaults(), ...overrides } as unknown as jest.Mocked<AdminService>;
+}
+
+// ---------------------------------------------------------------------------
+// UsageService
+// ---------------------------------------------------------------------------
+function usageServiceDefaults(): MockShape<UsageService> {
+  return {
+    getUsage: jest.fn().mockResolvedValue({ characterCount: 0, characterLimit: 0 }),
+  };
+}
+
+export function createMockUsageService(
+  overrides: Partial<MockShape<UsageService>> = {},
+): jest.Mocked<UsageService> {
+  return { ...usageServiceDefaults(), ...overrides } as unknown as jest.Mocked<UsageService>;
+}
+
+// ---------------------------------------------------------------------------
+// StyleRulesService
+// ---------------------------------------------------------------------------
+function styleRulesServiceDefaults(): MockShape<StyleRulesService> {
+  return {
+    getStyleRules: jest.fn().mockResolvedValue([]),
+  };
+}
+
+export function createMockStyleRulesService(
+  overrides: Partial<MockShape<StyleRulesService>> = {},
+): jest.Mocked<StyleRulesService> {
+  return { ...styleRulesServiceDefaults(), ...overrides } as unknown as jest.Mocked<StyleRulesService>;
+}
+
+// ---------------------------------------------------------------------------
+// DetectService
+// ---------------------------------------------------------------------------
+function detectServiceDefaults(): MockShape<DetectService> {
+  return {
+    detect: jest.fn().mockResolvedValue({ detectedLanguage: 'en', languageName: 'English' }),
+  };
+}
+
+export function createMockDetectService(
+  overrides: Partial<MockShape<DetectService>> = {},
+): jest.Mocked<DetectService> {
+  return { ...detectServiceDefaults(), ...overrides } as unknown as jest.Mocked<DetectService>;
+}
+
+// ---------------------------------------------------------------------------
+// LanguagesService
+// ---------------------------------------------------------------------------
+function languagesServiceDefaults(): MockShape<LanguagesService> & { hasClient: jest.Mock } {
+  return {
+    getSupportedLanguages: jest.fn().mockResolvedValue([]),
+    hasClient: jest.fn().mockReturnValue(true),
+  };
+}
+
+export function createMockLanguagesService(
+  overrides: Partial<ReturnType<typeof languagesServiceDefaults>> = {},
+): jest.Mocked<LanguagesService> {
+  return { ...languagesServiceDefaults(), ...overrides } as unknown as jest.Mocked<LanguagesService>;
 }
