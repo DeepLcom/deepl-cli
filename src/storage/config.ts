@@ -5,8 +5,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import { DeepLConfig, Formality, OutputFormat } from '../types';
+import { resolvePaths } from '../utils/paths.js';
 import { isValidLanguage } from '../data/language-registry.js';
 
 const VALID_FORMALITY: readonly Formality[] = [
@@ -42,7 +42,7 @@ export class ConfigService {
 
   constructor(configPath?: string) {
     this.configPath =
-      configPath ?? path.join(os.homedir(), '.deepl-cli', 'config.json');
+      configPath ?? resolvePaths().configFile;
     this.config = this.load();
   }
 

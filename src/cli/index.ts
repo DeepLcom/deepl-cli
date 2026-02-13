@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join, resolve, isAbsolute, extname } from 'path';
 import { ConfigService } from '../storage/config.js';
 import type { CacheService } from '../storage/cache.js';
+import { resolvePaths } from '../utils/paths.js';
 import type { DeepLClient } from '../api/deepl-client.js';
 import { Logger } from '../utils/logger.js';
 import { DeepLCLIError } from '../utils/errors.js';
@@ -44,19 +45,16 @@ const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as { vers
 const { version } = packageJson;
 
 // Initialize services
-// Support custom config directory for testing via DEEPL_CONFIG_DIR env var
-const defaultConfigPath = process.env['DEEPL_CONFIG_DIR']
-  ? join(process.env['DEEPL_CONFIG_DIR'], 'config.json')
-  : undefined;
+const paths = resolvePaths();
 
 // Create config service - can be overridden by --config flag
-let configService = new ConfigService(defaultConfigPath);
+let configService = new ConfigService(paths.configFile);
 let cacheService: CacheService | null = null;
 
 async function getCacheService(): Promise<CacheService> {
   if (!cacheService) {
     const { CacheService: CacheSvc } = await import('../storage/cache.js');
-    cacheService = CacheSvc.getInstance();
+    cacheService = CacheSvc.getInstance({ dbPath: paths.cacheFile });
   }
   return cacheService;
 }

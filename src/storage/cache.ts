@@ -6,7 +6,7 @@
 import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { resolvePaths } from '../utils/paths.js';
 
 export interface CacheServiceOptions {
   dbPath?: string;
@@ -49,7 +49,7 @@ export class CacheService {
    * signal handlers. The constructor is public only for test isolation.
    */
   constructor(options: CacheServiceOptions = {}) {
-    const dbPath = options.dbPath ?? path.join(os.homedir(), '.deepl-cli', 'cache.db');
+    const dbPath = options.dbPath ?? resolvePaths().cacheFile;
     this.maxSize = options.maxSize ?? DEFAULT_MAX_SIZE;
     this.ttl = options.ttl ?? DEFAULT_TTL;
 
