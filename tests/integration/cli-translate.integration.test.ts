@@ -42,16 +42,9 @@ describe('Translate CLI Integration', () => {
 
   describe('deepl translate without API key', () => {
     it('should require API key to be configured', () => {
-      // Ensure no API key is set
-      try {
-        runCLI('deepl auth clear', { stdio: 'pipe' });
-      } catch {
-        // Ignore if already cleared
-      }
-
       expect.assertions(1);
       try {
-        runCLI('deepl translate "Hello" --to es', { stdio: 'pipe' });
+        runCLI('deepl translate "Hello" --to es', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         // Should indicate API key is required

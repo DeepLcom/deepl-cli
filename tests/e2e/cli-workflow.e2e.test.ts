@@ -1258,16 +1258,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should accept --show-billed-characters flag without unknown option error', () => {
-      // Clear API key first
-      try {
-        runCLI('deepl auth clear');
-      } catch {
-        // Ignore if already cleared
-      }
-
       expect.assertions(2);
       try {
-        runCLI('deepl translate "Hello" --to es --show-billed-characters');
+        runCLI('deepl translate "Hello" --to es --show-billed-characters', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         // Should fail on auth, not on unknown option
@@ -1277,16 +1270,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should support --show-billed-characters with other flags', () => {
-      // Clear API key first
-      try {
-        runCLI('deepl auth clear');
-      } catch {
-        // Ignore if already cleared
-      }
-
       expect.assertions(3);
       try {
-        runCLI('deepl translate "Hello" --to es --from en --formality more --show-billed-characters');
+        runCLI('deepl translate "Hello" --to es --from en --formality more --show-billed-characters', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         // Should fail on auth, not on flag combination
@@ -1297,16 +1283,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should support --show-billed-characters with JSON output format', () => {
-      // Clear API key first
-      try {
-        runCLI('deepl auth clear');
-      } catch {
-        // Ignore if already cleared
-      }
-
       expect.assertions(2);
       try {
-        runCLI('deepl translate "Test" --to es --show-billed-characters --format json');
+        runCLI('deepl translate "Test" --to es --show-billed-characters --format json', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout || error.message;
         // Should fail on auth, not on flag parsing
@@ -1316,16 +1295,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should exit with non-zero when using --show-billed-characters without API key', () => {
-      // Clear API key first
-      try {
-        runCLI('deepl auth clear');
-      } catch {
-        // Ignore if already cleared
-      }
-
       expect.assertions(1);
       try {
-        runCLI('deepl translate "Hello" --to es --show-billed-characters');
+        runCLI('deepl translate "Hello" --to es --show-billed-characters', { excludeApiKey: true });
       } catch (error: any) {
         // Non-zero exit code
         expect(error.status).toBeGreaterThan(0);
@@ -1337,7 +1309,7 @@ describe('CLI Workflow E2E', () => {
     it('should accept --custom-instruction flag without error', () => {
       expect.assertions(2);
       try {
-        runCLI('deepl translate "Hello" --to es --custom-instruction "Use informal tone"');
+        runCLI('deepl translate "Hello" --to es --custom-instruction "Use informal tone"', { excludeApiKey: true });
       } catch (error: any) {
         // Should fail on API key, not flag parsing
         const output = error.stderr || error.stdout;
@@ -1349,7 +1321,7 @@ describe('CLI Workflow E2E', () => {
     it('should accept multiple --custom-instruction flags', () => {
       expect.assertions(1);
       try {
-        runCLI('deepl translate "Hello" --to es --custom-instruction "Be concise" --custom-instruction "Preserve acronyms"');
+        runCLI('deepl translate "Hello" --to es --custom-instruction "Be concise" --custom-instruction "Preserve acronyms"', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1359,7 +1331,7 @@ describe('CLI Workflow E2E', () => {
     it('should combine --custom-instruction with other flags', () => {
       expect.assertions(2);
       try {
-        runCLI('deepl translate "Hello" --to es --custom-instruction "Use formal tone" --formality more --model-type quality_optimized');
+        runCLI('deepl translate "Hello" --to es --custom-instruction "Use formal tone" --formality more --model-type quality_optimized', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1372,7 +1344,7 @@ describe('CLI Workflow E2E', () => {
     it('should accept --style-id flag without error', () => {
       expect.assertions(2);
       try {
-        runCLI('deepl translate "Hello" --to es --style-id "abc-123-def-456"');
+        runCLI('deepl translate "Hello" --to es --style-id "abc-123-def-456"', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1383,7 +1355,7 @@ describe('CLI Workflow E2E', () => {
     it('should combine --style-id with other flags', () => {
       expect.assertions(2);
       try {
-        runCLI('deepl translate "Hello" --to es --style-id "abc-123" --formality more');
+        runCLI('deepl translate "Hello" --to es --style-id "abc-123" --formality more', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|auth/i);
