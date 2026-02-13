@@ -2835,7 +2835,7 @@ describe('TranslateCommand', () => {
 
       expect(BatchTranslationService).toHaveBeenCalledWith(
         expect.anything(),
-        { concurrency: 10 }
+        expect.objectContaining({ concurrency: 10 })
       );
       expect(mockInstance.translateDirectory).toHaveBeenCalled();
     });

@@ -8,9 +8,10 @@ import * as path from 'path';
 import * as os from 'os';
 import { BatchTranslationService } from '../../../src/services/batch-translation';
 import { FileTranslationService } from '../../../src/services/file-translation';
+import { TranslationService, MAX_TEXT_BYTES } from '../../../src/services/translation';
 import pLimit from 'p-limit';
 import fg from 'fast-glob';
-import { createMockFileTranslationService } from '../../helpers/mock-factories';
+import { createMockFileTranslationService, createMockTranslationService } from '../../helpers/mock-factories';
 
 // Mock ESM modules
 jest.mock('p-limit');
@@ -397,6 +398,318 @@ describe('BatchTranslationService', () => {
       expect(stats.successful).toBe(1);
       expect(stats.failed).toBe(1);
       expect(stats.skipped).toBe(1);
+    });
+  });
+
+  describe('plain text batching', () => {
+    let mockTranslationService: jest.Mocked<TranslationService>;
+    let batchServiceWithTranslation: BatchTranslationService;
+
+    beforeEach(() => {
+      mockTranslationService = createMockTranslationService();
+      batchServiceWithTranslation = new BatchTranslationService(
+        mockFileTranslationService,
+        { concurrency: 5, translationService: mockTranslationService }
+      );
+    });
+
+    it('should batch multiple .txt files into one translateBatch() call', async () => {
+      const files = [
+        path.join(testDir, 'a.txt'),
+        path.join(testDir, 'b.txt'),
+        path.join(testDir, 'c.txt'),
+      ];
+      files.forEach((f, i) => fs.writeFileSync(f, `Text ${i + 1}`));
+
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: 'Texto 1' },
+        { text: 'Texto 2' },
+        { text: 'Texto 3' },
+      ]);
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(3);
+      expect(result.failed).toHaveLength(0);
+      expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(1);
+      expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
+
+      // Verify output files were written
+      for (const entry of result.successful) {
+        expect(fs.existsSync(entry.outputPath)).toBe(true);
+      }
+    });
+
+    it('should batch .md files alongside .txt files', async () => {
+      const files = [
+        path.join(testDir, 'readme.md'),
+        path.join(testDir, 'notes.txt'),
+      ];
+      fs.writeFileSync(files[0]!, '# Hello');
+      fs.writeFileSync(files[1]!, 'World');
+
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: '# Hola' },
+        { text: 'Mundo' },
+      ]);
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(2);
+      expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should split batches at TRANSLATE_BATCH_SIZE (50) texts', async () => {
+      const files: string[] = [];
+      for (let i = 0; i < 52; i++) {
+        const f = path.join(testDir, `file${i}.txt`);
+        fs.writeFileSync(f, `Text ${i}`);
+        files.push(f);
+      }
+
+      mockTranslationService.translateBatch.mockImplementation(async (texts) =>
+        texts.map(t => ({ text: `translated: ${t}` }))
+      );
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(52);
+      expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(2);
+
+      // First batch should have 50, second should have 2
+      const firstCallTexts = mockTranslationService.translateBatch.mock.calls[0]![0];
+      const secondCallTexts = mockTranslationService.translateBatch.mock.calls[1]![0];
+      expect(firstCallTexts).toHaveLength(50);
+      expect(secondCallTexts).toHaveLength(2);
+    });
+
+    it('should split batches when cumulative bytes exceed MAX_TEXT_BYTES', async () => {
+      // Create two files that together exceed MAX_TEXT_BYTES
+      const halfSize = Math.floor(MAX_TEXT_BYTES / 2) + 100;
+      const file1 = path.join(testDir, 'big1.txt');
+      const file2 = path.join(testDir, 'big2.txt');
+      fs.writeFileSync(file1, 'a'.repeat(halfSize));
+      fs.writeFileSync(file2, 'b'.repeat(halfSize));
+
+      mockTranslationService.translateBatch.mockImplementation(async (texts) =>
+        texts.map(() => ({ text: 'translated' }))
+      );
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        [file1, file2],
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(2);
+      // Each file goes into its own batch because they exceed MAX_TEXT_BYTES together
+      expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should apply and restore code/variable preservation', async () => {
+      const file = path.join(testDir, 'code.txt');
+      fs.writeFileSync(file, 'Use `console.log()` with {name}');
+
+      mockTranslationService.translateBatch.mockImplementation(async (texts) => {
+        // Verify placeholders were applied before reaching translateBatch
+        expect(texts[0]).toContain('__CODE_');
+        expect(texts[0]).toContain('__VAR_');
+        expect(texts[0]).not.toContain('`console.log()`');
+        expect(texts[0]).not.toContain('{name}');
+        return texts.map(t => ({ text: t.replace('Use', 'Usa') }));
+      });
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        [file],
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(1);
+      const outputContent = fs.readFileSync(result.successful[0]!.outputPath, 'utf-8');
+      // Restored placeholders
+      expect(outputContent).toContain('`console.log()`');
+      expect(outputContent).toContain('{name}');
+    });
+
+    it('should handle per-file read errors gracefully', async () => {
+      const goodFile = path.join(testDir, 'good.txt');
+      const badFile = path.join(testDir, 'sub', 'missing.txt'); // non-existent
+      fs.writeFileSync(goodFile, 'Hello');
+
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: 'Hola' },
+      ]);
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        [goodFile, badFile],
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(1);
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0]!.file).toBe(badFile);
+    });
+
+    it('should handle empty files by marking them as failed', async () => {
+      const emptyFile = path.join(testDir, 'empty.txt');
+      fs.writeFileSync(emptyFile, '');
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        [emptyFile],
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(0);
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0]!.error).toContain('empty');
+    });
+
+    it('should handle batch API failure by marking all files in batch as failed', async () => {
+      const files = [
+        path.join(testDir, 'x.txt'),
+        path.join(testDir, 'y.txt'),
+      ];
+      files.forEach(f => fs.writeFileSync(f, 'content'));
+
+      mockTranslationService.translateBatch.mockRejectedValue(new Error('API 503'));
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(0);
+      expect(result.failed).toHaveLength(2);
+      expect(result.failed[0]!.error).toContain('API 503');
+      expect(result.failed[1]!.error).toContain('API 503');
+    });
+
+    it('should report progress per file after batch completes', async () => {
+      const files = [
+        path.join(testDir, 'p1.txt'),
+        path.join(testDir, 'p2.txt'),
+      ];
+      files.forEach(f => fs.writeFileSync(f, 'hello'));
+
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: 'hola' },
+        { text: 'hola' },
+      ]);
+
+      const progressCalls: Array<{ completed: number; total: number }> = [];
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'es' },
+        {
+          outputDir: testDir,
+          onProgress: (p) => progressCalls.push({ completed: p.completed, total: p.total }),
+        }
+      );
+
+      expect(result.successful).toHaveLength(2);
+      // Progress should be reported per file, not per batch
+      expect(progressCalls).toHaveLength(2);
+      expect(progressCalls[progressCalls.length - 1]!.completed).toBe(2);
+    });
+
+    it('should fall back to per-file path when translationService not provided', async () => {
+      // batchTranslationService (from outer beforeEach) has no translationService
+      const file = path.join(testDir, 'fallback.txt');
+      fs.writeFileSync(file, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const result = await batchTranslationService.translateFiles(
+        [file],
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(1);
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('should route structured files (.json) through per-file path', async () => {
+      mockFileTranslationService.isSupportedFile.mockImplementation((filePath: string) => {
+        const ext = path.extname(filePath).toLowerCase();
+        return ['.txt', '.md', '.json', '.yaml', '.yml'].includes(ext);
+      });
+
+      const txtFile = path.join(testDir, 'plain.txt');
+      const jsonFile = path.join(testDir, 'data.json');
+      fs.writeFileSync(txtFile, 'Hello');
+      fs.writeFileSync(jsonFile, '{"key": "value"}');
+
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: 'Hola' },
+      ]);
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        [txtFile, jsonFile],
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(2);
+      // .txt batched via translateBatch, .json via translateFile
+      expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(1);
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('should defend against result count mismatch', async () => {
+      const files = [
+        path.join(testDir, 'm1.txt'),
+        path.join(testDir, 'm2.txt'),
+      ];
+      files.forEach(f => fs.writeFileSync(f, 'content'));
+
+      // Return wrong number of results
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: 'only one' },
+      ]);
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(0);
+      expect(result.failed).toHaveLength(2);
+      expect(result.failed[0]!.error).toContain('mismatch');
+    });
+
+    it('should reject files exceeding MAX_TEXT_BYTES', async () => {
+      const bigFile = path.join(testDir, 'huge.txt');
+      fs.writeFileSync(bigFile, 'x'.repeat(MAX_TEXT_BYTES + 1));
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        [bigFile],
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(result.successful).toHaveLength(0);
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0]!.error).toContain('too large');
+      expect(mockTranslationService.translateBatch).not.toHaveBeenCalled();
     });
   });
 });

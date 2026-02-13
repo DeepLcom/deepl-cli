@@ -20,12 +20,13 @@ jest.mock('p-limit', () => ({
     return (fn: () => Promise<any>) => fn();
   },
 }));
+import nock from 'nock';
 import { BatchTranslationService } from '../../src/services/batch-translation.js';
 import { FileTranslationService } from '../../src/services/file-translation.js';
 import { TranslationService } from '../../src/services/translation.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
-import { TEST_API_KEY, createMockConfigService } from '../helpers';
+import { TEST_API_KEY, createMockConfigService, DEEPL_FREE_API_URL } from '../helpers';
 
 describe('Batch Translation Service Integration', () => {
   const API_KEY = TEST_API_KEY;
@@ -410,6 +411,94 @@ describe('Batch Translation Service Integration', () => {
       expect(stats.successful).toBe(0);
       expect(stats.failed).toBe(0);
       expect(stats.skipped).toBe(0);
+    });
+  });
+
+  describe('plain text batching via nock', () => {
+    let batchServiceWithTranslation: BatchTranslationService;
+
+    beforeEach(() => {
+      batchServiceWithTranslation = new BatchTranslationService(
+        fileTranslationService,
+        { concurrency: 5, translationService }
+      );
+    });
+
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it('should send fewer HTTP calls for a directory of .txt files', async () => {
+      // Create 5 .txt files
+      for (let i = 0; i < 5; i++) {
+        fs.writeFileSync(path.join(tmpDir, `file${i}.txt`), `Text number ${i}`);
+      }
+
+      // Expect a single batch POST (all 5 texts in one request)
+      const scope = nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          // Verify all 5 texts are in a single request
+          const texts = body['text'] as string[];
+          return Array.isArray(texts) && texts.length === 5;
+        })
+        .reply(200, {
+          translations: Array(5).fill(null).map((_, i) => ({
+            text: `Texto número ${i}`,
+            detected_source_language: 'EN',
+          })),
+        });
+
+      const result = await batchServiceWithTranslation.translateDirectory(
+        tmpDir,
+        { targetLang: 'es' },
+        { outputDir: tmpDir }
+      );
+
+      expect(result.successful).toHaveLength(5);
+      expect(result.failed).toHaveLength(0);
+      // Verify only 1 HTTP call was made (not 5)
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle mixed .txt and .json directory correctly', async () => {
+      // Create mixed files
+      fs.writeFileSync(path.join(tmpDir, 'readme.txt'), 'Hello world');
+      fs.writeFileSync(path.join(tmpDir, 'data.json'), '{"greeting": "Hello"}');
+      fs.writeFileSync(path.join(tmpDir, 'notes.md'), '# Notes');
+
+      // .txt and .md go through batch (1 API call for 2 texts)
+      const batchScope = nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          const texts = body['text'] as string[];
+          return Array.isArray(texts) && texts.length === 2;
+        })
+        .reply(200, {
+          translations: [
+            { text: 'Hola mundo', detected_source_language: 'EN' },
+            { text: '# Notas', detected_source_language: 'EN' },
+          ],
+        });
+
+      // .json goes through per-file path (StructuredFileTranslationService
+      // will extract strings and batch them, resulting in its own API call)
+      const jsonScope = nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            { text: 'Hola', detected_source_language: 'EN' },
+          ],
+        });
+
+      const result = await batchServiceWithTranslation.translateDirectory(
+        tmpDir,
+        { targetLang: 'es' },
+        { outputDir: tmpDir }
+      );
+
+      expect(result.successful).toHaveLength(3);
+      expect(result.failed).toHaveLength(0);
+      expect(batchScope.isDone()).toBe(true);
+      expect(jsonScope.isDone()).toBe(true);
     });
   });
 });

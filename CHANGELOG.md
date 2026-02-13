@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `formatValue()` and `formatConfig()` methods to ConfigCommand for human-readable text output
 
 ### Changed
+- Batch API calls for plain text files — `BatchTranslationService.translateFiles()` now groups `.txt` and `.md` files into `TranslationService.translateBatch()` calls (≤50 texts, ≤128KB per batch), reducing HTTP round-trips from N to ceil(N/50) for directories of small text files; structured files (.json, .yaml, .yml) continue through the existing per-file path
 - Route admin, usage, style-rules, detect, and languages commands through service layer — adds `AdminService`, `UsageService`, `StyleRulesService`, `DetectService`, `LanguagesService` wrappers following the established `GlossaryService` pattern, eliminating direct `DeepLClient` imports from command files
 - Extract shared test helpers (`tests/helpers/run-cli.ts`, `tests/helpers/nock-setup.ts`) from duplicated boilerplate across ~42 integration and E2E test files — `makeRunCLI`, `makeNodeRunCLI`, `createTestConfigDir`, `createTestDir`, and common nock constants (`DEEPL_FREE_API_URL`, `TEST_API_KEY`)
 - Replace `as unknown` / `as any` mock casts across 25 test files with 11 type-safe factory functions in `tests/helpers/mock-factories.ts` — TypeScript now catches interface drift in mocks

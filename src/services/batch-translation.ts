@@ -8,7 +8,10 @@ import * as path from 'path';
 import pLimit from 'p-limit';
 import fg from 'fast-glob';
 import { FileTranslationService } from './file-translation.js';
+import { TranslationService, MAX_TEXT_BYTES, TRANSLATE_BATCH_SIZE } from './translation.js';
 import { TranslationOptions } from '../types/index.js';
+import { safeReadFile } from '../utils/safe-read-file.js';
+import { Logger } from '../utils/logger.js';
 
 interface BatchOptions {
   outputDir: string;
@@ -40,16 +43,19 @@ interface BatchStatistics {
 
 const DEFAULT_CONCURRENCY = 5;
 const MAX_CONCURRENCY = 100;
+const PLAIN_TEXT_EXTENSIONS = new Set(['.txt', '.md']);
 
 export class BatchTranslationService {
   private fileTranslationService: FileTranslationService;
+  private translationService: TranslationService | null;
   private concurrency: number;
 
   constructor(
     fileTranslationService: FileTranslationService,
-    options: { concurrency?: number } = {}
+    options: { concurrency?: number; translationService?: TranslationService } = {}
   ) {
     this.fileTranslationService = fileTranslationService;
+    this.translationService = options.translationService ?? null;
 
     // Validate concurrency parameter
     const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
@@ -63,8 +69,15 @@ export class BatchTranslationService {
     this.concurrency = concurrency;
   }
 
+  private isPlainTextFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return PLAIN_TEXT_EXTENSIONS.has(ext);
+  }
+
   /**
-   * Translate multiple files in parallel
+   * Translate multiple files in parallel.
+   * Plain text files (.txt, .md) are batched into fewer API calls via translateBatch().
+   * Structured files (.json, .yaml, .yml) continue through the per-file path.
    */
   async translateFiles(
     files: string[],
@@ -81,71 +94,214 @@ export class BatchTranslationService {
       return result;
     }
 
-    const limit = pLimit(this.concurrency);
-    let completed = 0;
+    // Partition files into plain text (batchable) vs others (per-file)
+    const plainTextFiles: string[] = [];
+    const perFileFiles: string[] = [];
 
-    const tasks = files.map(file =>
-      limit(async () => {
-        try {
-          // Check if file type is supported
-          if (!this.fileTranslationService.isSupportedFile(file)) {
-            result.skipped.push({
+    for (const file of files) {
+      if (!this.fileTranslationService.isSupportedFile(file)) {
+        result.skipped.push({ file, reason: 'Unsupported file type' });
+      } else if (this.translationService && this.isPlainTextFile(file)) {
+        plainTextFiles.push(file);
+      } else {
+        perFileFiles.push(file);
+      }
+    }
+
+    const totalFiles = files.length;
+    let completed = result.skipped.length;
+
+    // Report progress for skipped files
+    for (const entry of result.skipped) {
+      batchOptions.onProgress?.({ completed, total: totalFiles, current: entry.file });
+    }
+
+    // Batch-translate plain text files
+    if (plainTextFiles.length > 0) {
+      const batchResult = await this.translatePlainTextFilesBatched(
+        plainTextFiles,
+        translationOptions,
+        batchOptions,
+        totalFiles,
+        completed,
+        batchOptions.onProgress,
+      );
+      result.successful.push(...batchResult.successful);
+      result.failed.push(...batchResult.failed);
+      completed += batchResult.successful.length + batchResult.failed.length;
+    }
+
+    // Per-file translation for structured/other files
+    if (perFileFiles.length > 0) {
+      const limit = pLimit(this.concurrency);
+
+      const tasks = perFileFiles.map(file =>
+        limit(async () => {
+          try {
+            const outputPath = this.generateOutputPath(
               file,
-              reason: 'Unsupported file type',
+              translationOptions.targetLang,
+              batchOptions
+            );
+
+            await this.fileTranslationService.translateFile(
+              file,
+              outputPath,
+              translationOptions,
+              { preserveCode: true }
+            );
+
+            result.successful.push({ file, outputPath });
+            completed++;
+            batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
+          } catch (error) {
+            result.failed.push({
+              file,
+              error: error instanceof Error ? error.message : String(error),
             });
             completed++;
-            batchOptions.onProgress?.({
-              completed,
-              total: files.length,
-              current: file,
-            });
-            return;
+            batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
           }
+        })
+      );
 
-          // Generate output path
-          const outputPath = this.generateOutputPath(
-            file,
-            translationOptions.targetLang,
-            batchOptions
+      await Promise.all(tasks);
+    }
+
+    return result;
+  }
+
+  /**
+   * Batch-translate plain text files using TranslationService.translateBatch().
+   * Reads files, applies code/variable preservation, groups into API batches,
+   * then restores placeholders and writes output files.
+   */
+  private async translatePlainTextFilesBatched(
+    files: string[],
+    translationOptions: TranslationOptions,
+    batchOptions: Partial<BatchOptions>,
+    totalFiles: number,
+    startCompleted: number,
+    onProgress?: (progress: ProgressInfo) => void,
+  ): Promise<{ successful: Array<{ file: string; outputPath: string }>; failed: Array<{ file: string; error: string }> }> {
+    const successful: Array<{ file: string; outputPath: string }> = [];
+    const failed: Array<{ file: string; error: string }> = [];
+
+    // Read all files and apply preservation
+    interface FileEntry {
+      file: string;
+      outputPath: string;
+      processedText: string;
+      preservationMap: Map<string, string>;
+    }
+    const entries: FileEntry[] = [];
+
+    for (const file of files) {
+      try {
+        const content = await safeReadFile(file, 'utf-8');
+        if (!content || content.trim() === '') {
+          failed.push({ file, error: 'File is empty' });
+          continue;
+        }
+
+        const byteSize = Buffer.byteLength(content, 'utf8');
+        if (byteSize > MAX_TEXT_BYTES) {
+          failed.push({ file, error: `File too large: ${byteSize} bytes exceeds ${MAX_TEXT_BYTES} byte limit` });
+          continue;
+        }
+
+        const preservationMap = new Map<string, string>();
+        let processedText = TranslationService.preserveCodeBlocks(content, preservationMap);
+        processedText = TranslationService.preserveVariables(processedText, preservationMap);
+
+        const outputPath = this.generateOutputPath(
+          file,
+          translationOptions.targetLang,
+          batchOptions,
+        );
+
+        entries.push({ file, outputPath, processedText, preservationMap });
+      } catch (error) {
+        failed.push({ file, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+
+    // Group entries into batches respecting size and count limits
+    const batches: FileEntry[][] = [];
+    let currentBatch: FileEntry[] = [];
+    let currentBytes = 0;
+
+    for (const entry of entries) {
+      const entryBytes = Buffer.byteLength(entry.processedText, 'utf8');
+
+      if (currentBatch.length > 0 &&
+          (currentBatch.length >= TRANSLATE_BATCH_SIZE || currentBytes + entryBytes > MAX_TEXT_BYTES)) {
+        batches.push(currentBatch);
+        currentBatch = [];
+        currentBytes = 0;
+      }
+
+      currentBatch.push(entry);
+      currentBytes += entryBytes;
+    }
+    if (currentBatch.length > 0) {
+      batches.push(currentBatch);
+    }
+
+    // Translate each batch
+    let completed = startCompleted;
+    for (const batch of batches) {
+      const texts = batch.map(e => e.processedText);
+
+      try {
+        const results = await this.translationService!.translateBatch(texts, translationOptions);
+
+        if (results.length !== batch.length) {
+          // Result count mismatch — mark entire batch as failed
+          for (const entry of batch) {
+            failed.push({ file: entry.file, error: 'Batch result count mismatch' });
+            completed++;
+            onProgress?.({ completed, total: totalFiles, current: entry.file });
+          }
+          continue;
+        }
+
+        for (let i = 0; i < batch.length; i++) {
+          const entry = batch[i]!;
+          const translatedText = TranslationService.restorePlaceholders(
+            results[i]!.text,
+            entry.preservationMap,
           );
 
-          // Translate file
-          await this.fileTranslationService.translateFile(
-            file,
-            outputPath,
-            translationOptions,
-            { preserveCode: true }
-          );
+          try {
+            const outputDir = path.dirname(entry.outputPath);
+            await fs.promises.mkdir(outputDir, { recursive: true });
+            await fs.promises.writeFile(entry.outputPath, translatedText, 'utf-8');
 
-          result.successful.push({ file, outputPath });
+            successful.push({ file: entry.file, outputPath: entry.outputPath });
+          } catch (error) {
+            failed.push({
+              file: entry.file,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
           completed++;
-
-          // Call progress callback once after completion
-          batchOptions.onProgress?.({
-            completed,
-            total: files.length,
-            current: file,
-          });
-        } catch (error) {
-          result.failed.push({
-            file,
+          onProgress?.({ completed, total: totalFiles, current: entry.file });
+        }
+      } catch (error) {
+        Logger.error(`Batch translation failed: ${error instanceof Error ? error.message : String(error)}`);
+        for (const entry of batch) {
+          failed.push({
+            file: entry.file,
             error: error instanceof Error ? error.message : String(error),
           });
           completed++;
-
-          // Call progress callback once after error
-          batchOptions.onProgress?.({
-            completed,
-            total: files.length,
-            current: file,
-          });
+          onProgress?.({ completed, total: totalFiles, current: entry.file });
         }
-      })
-    );
+      }
+    }
 
-    await Promise.all(tasks);
-
-    return result;
+    return { successful, failed };
   }
 
   /**

@@ -80,7 +80,7 @@ export class TranslateCommand {
     this.documentTranslationService = documentTranslationService;
     this.batchTranslationService = new BatchTranslationService(
       this.fileTranslationService,
-      { concurrency: 5 }
+      { concurrency: 5, translationService: this.translationService }
     );
     this.glossaryService = glossaryService;
     this.config = config;
@@ -605,7 +605,7 @@ export class TranslateCommand {
       if (options.concurrency) {
         this.batchTranslationService = new BatchTranslationService(
           this.fileTranslationService,
-          { concurrency: options.concurrency }
+          { concurrency: options.concurrency, translationService: this.translationService }
         );
       }
 
