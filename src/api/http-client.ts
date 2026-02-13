@@ -101,7 +101,6 @@ export class HttpClient {
       timeout: options.timeout ?? DEFAULT_TIMEOUT,
       headers: {
         'Authorization': `DeepL-Auth-Key ${apiKey}`,
-        'Connection': 'keep-alive',
       },
       httpAgent: new http.Agent({
         keepAlive: true,
