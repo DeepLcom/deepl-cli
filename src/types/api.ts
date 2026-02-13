@@ -77,6 +77,19 @@ export interface WriteImprovement {
   detectedSourceLanguage?: string;
 }
 
+export function isWriteImprovementArray(data: unknown): data is WriteImprovement[] {
+  if (!Array.isArray(data)) {
+    return false;
+  }
+  return data.every(item => {
+    if (item === null || typeof item !== 'object') {
+      return false;
+    }
+    const record = item as Record<string, unknown>;
+    return typeof record['text'] === 'string';
+  });
+}
+
 export interface WriteResult {
   improvements: WriteImprovement[];
 }

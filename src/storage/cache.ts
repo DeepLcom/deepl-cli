@@ -115,7 +115,9 @@ export class CacheService {
   /**
    * Get value from cache
    */
-  get(key: string): unknown {
+  get(key: string): unknown;
+  get<T>(key: string, guard: (data: unknown) => data is T): T | null;
+  get<T>(key: string, guard?: (data: unknown) => data is T): T | null {
     if (!this.enabled) {
       return null;
     }
@@ -138,7 +140,16 @@ export class CacheService {
     }
 
     try {
-      return JSON.parse(row.value) as unknown;
+      const parsed = JSON.parse(row.value) as unknown;
+
+      if (guard && !guard(parsed)) {
+        const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;
+        console.warn(`⚠ Cache type mismatch for key "${truncatedKey}". Removing entry.`);
+        this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
+        return null;
+      }
+
+      return parsed as T;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;

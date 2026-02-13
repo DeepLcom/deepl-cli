@@ -4,7 +4,7 @@
  */
 
 import * as crypto from 'crypto';
-import { DeepLClient, TranslationResult, UsageInfo, LanguageInfo } from '../api/deepl-client.js';
+import { DeepLClient, TranslationResult, isTranslationResult, UsageInfo, LanguageInfo } from '../api/deepl-client.js';
 import { ConfigService } from '../storage/config.js';
 import { CacheService } from '../storage/cache.js';
 import { TranslationOptions, Language } from '../types/index.js';
@@ -107,7 +107,7 @@ export class TranslationService {
     const cacheKey = this.generateCacheKey(processedText, translationOptions);
 
     if (shouldUseCache) {
-      const cachedResult = this.cache.get(cacheKey) as TranslationResult | null;
+      const cachedResult = this.cache.get(cacheKey, isTranslationResult);
       if (cachedResult) {
         Logger.verbose('[verbose] Cache hit');
         // Restore preserved content from cached result
@@ -212,7 +212,7 @@ export class TranslationService {
       const cacheKey = this.generateCacheKey(text, translationOptions);
 
       if (cacheEnabled) {
-        const cachedResult = this.cache.get(cacheKey) as TranslationResult | null;
+        const cachedResult = this.cache.get(cacheKey, isTranslationResult);
         if (cachedResult) {
           results[i] = cachedResult;
           continue;

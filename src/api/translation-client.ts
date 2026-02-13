@@ -47,6 +47,14 @@ export interface TranslationResult {
   modelTypeUsed?: string;
 }
 
+export function isTranslationResult(data: unknown): data is TranslationResult {
+  if (data === null || typeof data !== 'object') {
+    return false;
+  }
+  const record = data as Record<string, unknown>;
+  return typeof record['text'] === 'string';
+}
+
 export interface ProductUsage {
   productType: string;
   characterCount: number;

@@ -7,7 +7,7 @@ import * as crypto from 'crypto';
 import { DeepLClient } from '../api/deepl-client.js';
 import { ConfigService } from '../storage/config.js';
 import { CacheService } from '../storage/cache.js';
-import { WriteOptions, WriteImprovement } from '../types/index.js';
+import { WriteOptions, WriteImprovement, isWriteImprovementArray } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 
 export interface WriteServiceOptions {
@@ -61,7 +61,7 @@ export class WriteService {
     const cacheKey = this.generateCacheKey(text, options);
 
     if (shouldUseCache) {
-      const cachedResult = this.cache.get(cacheKey) as WriteImprovement[] | null;
+      const cachedResult = this.cache.get(cacheKey, isWriteImprovementArray);
       if (cachedResult) {
         Logger.verbose('[verbose] Cache hit');
         return cachedResult;

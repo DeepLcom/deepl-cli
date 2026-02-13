@@ -101,6 +101,50 @@ describe('CacheService', () => {
     });
   });
 
+  describe('get() with type guard', () => {
+    const isMyType = (data: unknown): data is { text: string } => {
+      if (data === null || typeof data !== 'object') {
+        return false;
+      }
+      const record = data as Record<string, unknown>;
+      return typeof record['text'] === 'string';
+    };
+
+    it('should return typed value when guard passes', () => {
+      cacheService.set('test-key', { text: 'Hello' });
+      const value = cacheService.get('test-key', isMyType);
+      expect(value).toEqual({ text: 'Hello' });
+    });
+
+    it('should return null and delete entry when guard fails', () => {
+      cacheService.set('test-key', { number: 42 });
+      const value = cacheService.get('test-key', isMyType);
+      expect(value).toBeNull();
+
+      // Entry should be deleted
+      const raw = cacheService.get('test-key');
+      expect(raw).toBeNull();
+    });
+
+    it('should log warning when guard fails', () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      cacheService.set('test-key', { number: 42 });
+      cacheService.get('test-key', isMyType);
+
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy.mock.calls[0]![0]).toContain('type mismatch');
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should work without guard (backward compatible)', () => {
+      cacheService.set('test-key', { text: 'Hello' });
+      const value = cacheService.get('test-key');
+      expect(value).toEqual({ text: 'Hello' });
+    });
+  });
+
   describe('set()', () => {
     it('should store value in cache', () => {
       cacheService.set('test-key', { text: 'Hello' });

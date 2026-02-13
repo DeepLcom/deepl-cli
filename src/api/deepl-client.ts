@@ -1,5 +1,5 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { TranslationClient, TranslationResult, ProductUsage, UsageInfo, LanguageInfo } from './translation-client.js';
+import { TranslationClient, TranslationResult, isTranslationResult, ProductUsage, UsageInfo, LanguageInfo } from './translation-client.js';
 import { GlossaryClient } from './glossary-client.js';
 import { DocumentClient } from './document-client.js';
 import { WriteClient } from './write-client.js';
@@ -23,7 +23,7 @@ import {
   AdminUsageReport,
 } from '../types';
 
-export { TranslationResult, ProductUsage, UsageInfo, LanguageInfo };
+export { TranslationResult, isTranslationResult, ProductUsage, UsageInfo, LanguageInfo };
 
 export class DeepLClient {
   private readonly apiKey: string;
