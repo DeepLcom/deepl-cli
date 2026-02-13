@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `formatValue()` and `formatConfig()` methods to ConfigCommand for human-readable text output
 
 ### Changed
+- Upgrade nock from v13 to v14 — removed redundant `Connection: keep-alive` header from HTTP client (transport-level keep-alive via agents is sufficient)
+- Upgrade Jest from v29 to v30 (ts-jest v29.4.6 supports Jest 30 via peer deps)
+- Migrate to ESLint 9 flat config — replaced `.eslintrc.cjs` with `eslint.config.mjs`, upgraded to unified `typescript-eslint` v8 package, `eslint-config-prettier` v10, `eslint-plugin-jest` v28
 - Batch API calls for plain text files — `BatchTranslationService.translateFiles()` now groups `.txt` and `.md` files into `TranslationService.translateBatch()` calls (≤50 texts, ≤128KB per batch), reducing HTTP round-trips from N to ceil(N/50) for directories of small text files; structured files (.json, .yaml, .yml) continue through the existing per-file path
 - Route admin, usage, style-rules, detect, and languages commands through service layer — adds `AdminService`, `UsageService`, `StyleRulesService`, `DetectService`, `LanguagesService` wrappers following the established `GlossaryService` pattern, eliminating direct `DeepLClient` imports from command files
 - Extract shared test helpers (`tests/helpers/run-cli.ts`, `tests/helpers/nock-setup.ts`) from duplicated boilerplate across ~42 integration and E2E test files — `makeRunCLI`, `makeNodeRunCLI`, `createTestConfigDir`, `createTestDir`, and common nock constants (`DEEPL_FREE_API_URL`, `TEST_API_KEY`)
