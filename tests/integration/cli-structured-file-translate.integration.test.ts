@@ -365,11 +365,11 @@ describe('Structured File Translation CLI Integration', () => {
       fs.writeFileSync(inputPath, JSON.stringify({ greeting: 'Hello' }, null, 2));
 
       nock(FREE_API_URL)
-        .post('/v2/translate')
+        .post('/v2/translate', (body: any) => body.target_lang === 'ES')
         .reply(200, {
           translations: [{ text: 'Hola', detected_source_language: 'EN' }],
         })
-        .post('/v2/translate')
+        .post('/v2/translate', (body: any) => body.target_lang === 'FR')
         .reply(200, {
           translations: [{ text: 'Bonjour', detected_source_language: 'EN' }],
         });

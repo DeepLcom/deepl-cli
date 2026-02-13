@@ -517,9 +517,11 @@ describe('StructuredFileTranslationService', () => {
 
       fs.writeFileSync(inputPath, JSON.stringify({ greeting: 'Hello' }, null, 2));
 
-      mockTranslationService.translateBatch
-        .mockResolvedValueOnce([{ text: 'Hola', detectedSourceLang: 'en' }])
-        .mockResolvedValueOnce([{ text: 'Bonjour', detectedSourceLang: 'en' }]);
+      mockTranslationService.translateBatch.mockImplementation(async (_texts, opts) => {
+        if (opts.targetLang === 'es') return [{ text: 'Hola', detectedSourceLang: 'en' }];
+        if (opts.targetLang === 'fr') return [{ text: 'Bonjour', detectedSourceLang: 'en' }];
+        return [];
+      });
 
       const results = await service.translateFileToMultiple(
         inputPath,
@@ -536,9 +538,11 @@ describe('StructuredFileTranslationService', () => {
 
       fs.writeFileSync(inputPath, JSON.stringify({ greeting: 'Hello' }, null, 2));
 
-      mockTranslationService.translateBatch
-        .mockResolvedValueOnce([{ text: 'Hola', detectedSourceLang: 'en' }])
-        .mockResolvedValueOnce([{ text: 'Bonjour', detectedSourceLang: 'en' }]);
+      mockTranslationService.translateBatch.mockImplementation(async (_texts, opts) => {
+        if (opts.targetLang === 'es') return [{ text: 'Hola', detectedSourceLang: 'en' }];
+        if (opts.targetLang === 'fr') return [{ text: 'Bonjour', detectedSourceLang: 'en' }];
+        return [];
+      });
 
       const results = await service.translateFileToMultiple(
         inputPath,
@@ -551,6 +555,28 @@ describe('StructuredFileTranslationService', () => {
 
       const esContent = JSON.parse(fs.readFileSync(results[0]!.outputPath!, 'utf-8'));
       expect(esContent.greeting).toBe('Hola');
+    });
+
+    it('should run translations concurrently', async () => {
+      const inputPath = path.join(testDir, 'en.json');
+      fs.writeFileSync(inputPath, JSON.stringify({ greeting: 'Hello' }, null, 2));
+
+      let inflight = 0;
+      let maxInflight = 0;
+
+      mockTranslationService.translateBatch.mockImplementation(async (_texts, opts) => {
+        inflight++;
+        maxInflight = Math.max(maxInflight, inflight);
+        await new Promise(r => setTimeout(r, 10));
+        inflight--;
+        if (opts.targetLang === 'es') return [{ text: 'Hola', detectedSourceLang: 'en' }];
+        if (opts.targetLang === 'fr') return [{ text: 'Bonjour', detectedSourceLang: 'en' }];
+        return [];
+      });
+
+      await service.translateFileToMultiple(inputPath, ['es', 'fr']);
+
+      expect(maxInflight).toBe(2);
     });
   });
 

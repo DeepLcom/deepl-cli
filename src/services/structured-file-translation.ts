@@ -10,6 +10,7 @@ import * as YAML from 'yaml';
 import { TranslationService, MAX_TEXT_BYTES } from './translation.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
+import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
 
 interface FileTranslationOptions {
   preserveCode?: boolean;
@@ -97,48 +98,58 @@ export class StructuredFileTranslationService {
     }
 
     const ext = path.extname(inputPath).toLowerCase();
-    const results: FileMultiTargetResult[] = [];
 
-    for (const targetLang of targetLangs) {
-      const parsed = this.parseFile(content, ext);
-      const strings = this.extractStrings(parsed.data);
+    // Parse once to extract strings (read-only, shared across all languages)
+    const referenceParsed = this.parseFile(content, ext);
+    const strings = this.extractStrings(referenceParsed.data);
+    const stringValues = strings.map(s => s.value);
 
-      if (strings.length > 0) {
-        const translations = await this.translateStringsInBatches(
-          strings.map(s => s.value),
-          { ...options, targetLang }
-        );
-
-        if (parsed.format === 'yaml' && parsed.yamlDoc) {
-          this.reassembleYaml(parsed.yamlDoc, strings, translations);
-        } else {
-          this.reassemble(parsed.data, strings, translations);
-        }
-      }
-
-      const serialized = this.serialize(parsed);
-
-      const result: FileMultiTargetResult = {
-        targetLang,
-        text: serialized,
-      };
-
-      if (options.outputDir) {
-        const inputFilename = path.basename(inputPath);
-        const inputExt = path.extname(inputFilename);
-        const basename = path.basename(inputFilename, inputExt);
-        const outputFilename = `${basename}.${targetLang}${inputExt}`;
-        const outputFilePath = path.join(options.outputDir, outputFilename);
-
-        await fs.promises.mkdir(options.outputDir, { recursive: true });
-        await fs.promises.writeFile(outputFilePath, serialized, 'utf-8');
-        result.outputPath = outputFilePath;
-      }
-
-      results.push(result);
+    // Create output directory once before fan-out to avoid races
+    if (options.outputDir) {
+      await fs.promises.mkdir(options.outputDir, { recursive: true });
     }
 
-    return results;
+    return mapWithConcurrency(
+      targetLangs,
+      async (targetLang) => {
+        // Each language gets a fresh mutable copy for reassembly
+        const parsed = this.parseFile(content, ext);
+
+        if (strings.length > 0) {
+          const translations = await this.translateStringsInBatches(
+            stringValues,
+            { ...options, targetLang }
+          );
+
+          if (parsed.format === 'yaml' && parsed.yamlDoc) {
+            this.reassembleYaml(parsed.yamlDoc, strings, translations);
+          } else {
+            this.reassemble(parsed.data, strings, translations);
+          }
+        }
+
+        const serialized = this.serialize(parsed);
+
+        const result: FileMultiTargetResult = {
+          targetLang,
+          text: serialized,
+        };
+
+        if (options.outputDir) {
+          const inputFilename = path.basename(inputPath);
+          const inputExt = path.extname(inputFilename);
+          const basename = path.basename(inputFilename, inputExt);
+          const outputFilename = `${basename}.${targetLang}${inputExt}`;
+          const outputFilePath = path.join(options.outputDir, outputFilename);
+
+          await fs.promises.writeFile(outputFilePath, serialized, 'utf-8');
+          result.outputPath = outputFilePath;
+        }
+
+        return result;
+      },
+      MULTI_TARGET_CONCURRENCY
+    );
   }
 
   private async readFile(filePath: string): Promise<string> {

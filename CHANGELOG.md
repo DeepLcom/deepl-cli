@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `formatValue()` and `formatConfig()` methods to ConfigCommand for human-readable text output
 
 ### Changed
+- Parallelize multi-target structured file translation — `translateFileToMultiple()` now parses the file once, extracts strings once, then translates to all target languages concurrently (up to 5 at a time) instead of sequentially
+- Extract `mapWithConcurrency()` utility to `src/utils/concurrency.ts` — shared by both `TranslationService.translateToMultiple()` and `StructuredFileTranslationService.translateFileToMultiple()`
 - Upgrade nock from v13 to v14 — removed redundant `Connection: keep-alive` header from HTTP client (transport-level keep-alive via agents is sufficient)
 - Upgrade Jest from v29 to v30 (ts-jest v29.4.6 supports Jest 30 via peer deps)
 - Migrate to ESLint 9 flat config — replaced `.eslintrc.cjs` with `eslint.config.mjs`, upgraded to unified `typescript-eslint` v8 package, `eslint-config-prettier` v10, `eslint-plugin-jest` v28

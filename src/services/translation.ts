@@ -9,6 +9,9 @@ import { ConfigService } from '../storage/config.js';
 import { CacheService } from '../storage/cache.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
+import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
+
+export { MULTI_TARGET_CONCURRENCY };
 
 interface TranslateServiceOptions {
   preserveCode?: boolean;
@@ -29,7 +32,6 @@ interface ExtendedUsageInfo extends UsageInfo {
 }
 
 export const MAX_TEXT_BYTES = 131072; // 128KB - DeepL API limit per request
-export const MULTI_TARGET_CONCURRENCY = 5;
 export const TRANSLATE_BATCH_SIZE = 50; // DeepL API max texts per request
 
 export class TranslationService {
@@ -467,23 +469,4 @@ export class TranslationService {
 
     return `translation:${hash}`;
   }
-}
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  fn: (item: T) => Promise<R>,
-  concurrency: number
-): Promise<R[]> {
-  const results: R[] = [];
-  let index = 0;
-  async function worker() {
-    while (index < items.length) {
-      const i = index++;
-      results[i] = await fn(items[i] as T);
-    }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
-  );
-  return results;
 }
