@@ -87,11 +87,11 @@ export class TranslationService {
     const preservationMap: Map<string, string> = new Map();
 
     if (serviceOptions.preserveCode) {
-      processedText = this.preserveCodeBlocks(text, preservationMap);
+      processedText = TranslationService.preserveCodeBlocks(text, preservationMap);
     }
 
     // Always preserve variables
-    processedText = this.preserveVariables(processedText, preservationMap);
+    processedText = TranslationService.preserveVariables(processedText, preservationMap);
 
     // Check cache (only if cache is enabled AND skipCache is not set)
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
@@ -110,14 +110,9 @@ export class TranslationService {
       const cachedResult = this.cache.get(cacheKey, isTranslationResult);
       if (cachedResult) {
         Logger.verbose('[verbose] Cache hit');
-        // Restore preserved content from cached result
-        let finalText = cachedResult.text;
-        for (const [placeholder, original] of preservationMap.entries()) {
-          finalText = finalText.replace(placeholder, original);
-        }
         return {
           ...cachedResult,
-          text: finalText,
+          text: TranslationService.restorePlaceholders(cachedResult.text, preservationMap),
         };
       }
       Logger.verbose('[verbose] Cache miss');
@@ -134,15 +129,9 @@ export class TranslationService {
       this.cache.set(cacheKey, result);
     }
 
-    // Restore preserved content
-    let finalText = result.text;
-    for (const [placeholder, original] of preservationMap.entries()) {
-      finalText = finalText.replace(placeholder, original);
-    }
-
     return {
       ...result,
-      text: finalText,
+      text: TranslationService.restorePlaceholders(result.text, preservationMap),
     };
   }
 
@@ -383,9 +372,20 @@ export class TranslationService {
   }
 
   /**
+   * Restore placeholders in translated text back to their original values
+   */
+  static restorePlaceholders(text: string, preservationMap: Map<string, string>): string {
+    let restored = text;
+    for (const [placeholder, original] of preservationMap.entries()) {
+      restored = restored.replace(placeholder, original);
+    }
+    return restored;
+  }
+
+  /**
    * Preserve code blocks by replacing with placeholders
    */
-  private preserveCodeBlocks(text: string, preservationMap: Map<string, string>): string {
+  static preserveCodeBlocks(text: string, preservationMap: Map<string, string>): string {
     let processed = text;
     let counter = 0;
 
@@ -410,7 +410,7 @@ export class TranslationService {
    * Preserve variables by replacing with placeholders
    * Uses simple counter for efficient placeholder generation (10-20x faster than crypto)
    */
-  private preserveVariables(text: string, preservationMap: Map<string, string>): string {
+  static preserveVariables(text: string, preservationMap: Map<string, string>): string {
     let processed = text;
     let counter = 0;  // Simple counter suffices - no need for crypto-secure random
 
