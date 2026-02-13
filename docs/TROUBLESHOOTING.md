@@ -71,11 +71,7 @@ Common issues and solutions when using the DeepL CLI.
 
 2. For batch/directory translation, the CLI uses concurrency control internally. Avoid running multiple CLI instances simultaneously on the same API key.
 
-3. Configure retry behavior:
-   ```bash
-   deepl config set retry.maxRetries 5
-   deepl config set retry.timeout 60000
-   ```
+3. The CLI automatically retries with exponential backoff (1s, 2s, 4s, up to 10s, max 3 retries). If errors persist, wait and try again.
 
 ---
 
@@ -94,9 +90,11 @@ Common issues and solutions when using the DeepL CLI.
    curl -s https://api-free.deepl.com/v2/languages -H "Authorization: DeepL-Auth-Key YOUR_KEY"
    ```
 
-3. If behind a corporate proxy, configure the proxy:
+3. If behind a corporate proxy, configure it via environment variables:
    ```bash
-   deepl config set proxy.url http://proxy.example.com:8080
+   export HTTPS_PROXY=https://proxy.example.com:8443
+   # or
+   export HTTP_PROXY=http://proxy.example.com:8080
    ```
 
 4. The CLI retries on transient network errors automatically with exponential backoff.
@@ -140,13 +138,17 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 
 ### "Configuration error: invalid config file"
 
-**Cause:** The config file at `~/.deepl-cli/config.json` is corrupted or has invalid JSON.
+**Cause:** The config file is corrupted or has invalid JSON.
+
+The config file location depends on your setup (see [Configuration Paths](../README.md#configuration-paths)):
+- XDG default: `~/.config/deepl-cli/config.json`
+- Legacy: `~/.deepl-cli/config.json`
 
 **Solutions:**
 
 1. View current config:
    ```bash
-   deepl config show
+   deepl config list
    ```
 
 2. Reset a specific setting:
@@ -156,7 +158,7 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 
 3. If the config file is corrupted, remove it and reconfigure:
    ```bash
-   rm ~/.deepl-cli/config.json
+   rm ~/.config/deepl-cli/config.json   # or ~/.deepl-cli/config.json
    deepl auth set-key YOUR_API_KEY
    ```
 
@@ -221,7 +223,7 @@ If the SQLite cache becomes corrupted:
 deepl cache disable
 
 # Remove the cache file and re-enable
-rm ~/.deepl-cli/cache.db
+rm ~/.cache/deepl-cli/cache.db   # or ~/.deepl-cli/cache.db for legacy installations
 deepl cache enable
 ```
 
@@ -297,7 +299,11 @@ esac
 | Variable | Purpose |
 |----------|---------|
 | `DEEPL_API_KEY` | API key (overrides stored config) |
-| `DEEPL_CONFIG_DIR` | Custom config directory (default: `~/.deepl-cli`) |
+| `DEEPL_CONFIG_DIR` | Override config and cache directory |
+| `XDG_CONFIG_HOME` | Override XDG config base (default: `~/.config`) |
+| `XDG_CACHE_HOME` | Override XDG cache base (default: `~/.cache`) |
+| `HTTP_PROXY` | HTTP proxy URL |
+| `HTTPS_PROXY` | HTTPS proxy URL (takes precedence over `HTTP_PROXY`) |
 | `NO_COLOR` | Disable colored output when set to any value |
 
 ---

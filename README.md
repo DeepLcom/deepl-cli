@@ -1404,8 +1404,11 @@ npm run examples:fast
 
 ## 📚 Documentation
 
-- **[API.md](./docs/API.md)** - Complete API reference with all commands, flags, and options
-- **[CLAUDE.md](./CLAUDE.md)** - Development guidelines and TDD workflow
+- **[API Reference](./docs/API.md)** - Complete API reference with all commands, flags, and options
+- **[Troubleshooting](./docs/TROUBLESHOOTING.md)** - Common issues, solutions, and exit codes reference
+- **[Examples](./examples/README.md)** - Practical usage examples for every feature
+- **[Changelog](./CHANGELOG.md)** - Release history and version notes
+- **[Development Guidelines](./CLAUDE.md)** - TDD workflow and contribution standards
 - **[DeepL API Docs](https://www.deepl.com/docs-api)** - Official API documentation
 - **[CLI Guidelines](https://clig.dev/)** - Command-line best practices
 
