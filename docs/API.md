@@ -49,6 +49,7 @@ Options that work with all commands:
 --quiet, -q         Suppress all non-essential output (errors and results only)
 --verbose, -v       Show extra information (source language, timing, cache status)
 --config, -c FILE   Use alternate configuration file
+--no-input          Disable all interactive prompts (abort instead of prompting)
 ```
 
 **Examples:**
@@ -90,6 +91,26 @@ deepl cache enable
 - ✅ **Always shown**: Errors, warnings about critical issues, essential output (translation results, JSON data, command output)
 - ❌ **Suppressed**: Informational messages, success confirmations, progress spinners, status updates
 - 🎯 **Use cases**: CI/CD pipelines, scripting, parsing output, quiet automation
+
+**Non-Interactive Mode (`--no-input`):**
+
+```bash
+# Abort instead of prompting for confirmation
+deepl --no-input cache clear
+# Output: Aborted.
+
+# Combine with --yes to skip prompts and proceed
+deepl --no-input cache clear --yes
+
+# Interactive-only commands error with exit code 6
+deepl --no-input init
+deepl --no-input write "text" --interactive
+```
+
+- Commands that require confirmation (e.g., `cache clear`) abort with "Aborted." instead of prompting
+- `--yes` takes precedence over `--no-input` — the combination proceeds without prompting
+- Interactive-only commands (`init`, `write --interactive`) exit with code 6 (InvalidInput)
+- Use cases: CI/CD pipelines, scripts, automation where a forgotten prompt would hang
 
 **Example comparison:**
 

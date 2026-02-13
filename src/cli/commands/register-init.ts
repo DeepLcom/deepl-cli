@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import type { ConfigService } from '../../storage/config.js';
+import { isNoInput } from '../../utils/confirm.js';
 
 export function registerInit(
   program: Command,
@@ -19,6 +20,9 @@ Examples:
 `)
     .action(async () => {
       try {
+        if (isNoInput()) {
+          throw new Error('init is not supported in non-interactive mode. Use deepl auth set-key <your-api-key> to configure authentication.');
+        }
         const { InitCommand } = await import('./init.js');
         const initCommand = new InitCommand(getConfigService());
         await initCommand.run();

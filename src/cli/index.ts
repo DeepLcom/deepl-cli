@@ -18,6 +18,7 @@ import { Logger } from '../utils/logger.js';
 import { DeepLCLIError } from '../utils/errors.js';
 import { ExitCode, getExitCodeFromError } from '../utils/exit-codes.js';
 import { isSymlink } from '../utils/safe-read-file.js';
+import { setNoInput } from '../utils/confirm.js';
 import { registerAuth } from './commands/register-auth.js';
 import { registerUsage } from './commands/register-usage.js';
 import { registerLanguages } from './commands/register-languages.js';
@@ -113,6 +114,7 @@ program
   .option('-q, --quiet', 'Suppress all non-essential output (errors and results only)')
   .option('-v, --verbose', 'Show extra information (source language, timing, cache status)')
   .option('-c, --config <file>', 'Use alternate configuration file')
+  .option('--no-input', 'Disable all interactive prompts (abort instead of prompting)')
   .hook('preAction', (thisCommand) => {
     const options = thisCommand.opts();
 
@@ -161,6 +163,11 @@ program
     const colorEnabled = configService.getValue<boolean>('output.color');
     if (colorEnabled === false) {
       chalk.level = 0;
+    }
+
+    // Set non-interactive mode
+    if (options['input'] === false) {
+      setNoInput(true);
     }
   });
 

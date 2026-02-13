@@ -2,7 +2,7 @@
  * Tests for confirm utility
  */
 
-import { confirm } from '../../src/utils/confirm';
+import { confirm, setNoInput, isNoInput } from '../../src/utils/confirm';
 
 describe('confirm()', () => {
   let originalIsTTY: boolean | undefined;
@@ -22,6 +22,7 @@ describe('confirm()', () => {
   });
 
   afterEach(() => {
+    setNoInput(false);
     Object.defineProperty(process.stdin, 'isTTY', {
       value: originalIsTTY,
       writable: true,
@@ -190,6 +191,56 @@ describe('confirm()', () => {
 
       expect(result).toBe(false);
       expect(mockCreateInterface).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('noInput mode', () => {
+    beforeEach(() => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    it('should return false without prompting when noInput is enabled', async () => {
+      setNoInput(true);
+
+      const result = await confirm({ _createInterface: mockCreateInterface });
+
+      expect(result).toBe(false);
+      expect(mockCreateInterface).not.toHaveBeenCalled();
+    });
+
+    it('should prompt normally after noInput is disabled', async () => {
+      setNoInput(true);
+      setNoInput(false);
+
+      mockRl.question.mockImplementation((_prompt: string, cb: (answer: string) => void) => {
+        cb('y');
+      });
+
+      const result = await confirm({ _createInterface: mockCreateInterface });
+
+      expect(result).toBe(true);
+      expect(mockCreateInterface).toHaveBeenCalled();
+    });
+  });
+
+  describe('setNoInput / isNoInput', () => {
+    it('should default to false', () => {
+      expect(isNoInput()).toBe(false);
+    });
+
+    it('should return true after setNoInput(true)', () => {
+      setNoInput(true);
+      expect(isNoInput()).toBe(true);
+    });
+
+    it('should return false after setNoInput(false)', () => {
+      setNoInput(true);
+      setNoInput(false);
+      expect(isNoInput()).toBe(false);
     });
   });
 });

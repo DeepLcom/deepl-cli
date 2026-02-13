@@ -1,5 +1,15 @@
 import * as readline from 'readline';
 
+let noInput = false;
+
+export function setNoInput(enabled: boolean): void {
+  noInput = enabled;
+}
+
+export function isNoInput(): boolean {
+  return noInput;
+}
+
 export interface ConfirmOptions {
   message?: string;
   /** Injected for testing; defaults to readline.createInterface */
@@ -10,7 +20,7 @@ export async function confirm(options: ConfirmOptions = {}): Promise<boolean> {
   const message = options.message ?? 'Are you sure?';
   const prompt = `${message} [y/N] `;
 
-  if (!process.stdin.isTTY) {
+  if (noInput || !process.stdin.isTTY) {
     return false;
   }
 

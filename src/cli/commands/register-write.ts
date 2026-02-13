@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/api.js';
 import { Logger } from '../../utils/logger.js';
 import { ExitCode } from '../../utils/exit-codes.js';
+import { isNoInput } from '../../utils/confirm.js';
 import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
 export function registerWrite(
@@ -166,6 +167,9 @@ Examples:
         }
 
         if (options.interactive) {
+          if (isNoInput()) {
+            throw new Error('--interactive is not supported in non-interactive mode. Remove --no-input or omit --interactive.');
+          }
           let result: string;
 
           if (existsSync(text)) {
