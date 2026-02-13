@@ -26,7 +26,7 @@ import { FileTranslationService } from '../../src/services/file-translation.js';
 import { TranslationService } from '../../src/services/translation.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
-import { TEST_API_KEY, createMockConfigService, DEEPL_FREE_API_URL } from '../helpers';
+import { TEST_API_KEY, createMockConfigService, createMockCacheService, DEEPL_FREE_API_URL } from '../helpers';
 
 describe('Batch Translation Service Integration', () => {
   const API_KEY = TEST_API_KEY;
@@ -418,9 +418,11 @@ describe('Batch Translation Service Integration', () => {
     let batchServiceWithTranslation: BatchTranslationService;
 
     beforeEach(() => {
+      const mockCache = createMockCacheService();
+      const isolatedTranslationService = new TranslationService(client, mockConfig, mockCache);
       batchServiceWithTranslation = new BatchTranslationService(
-        fileTranslationService,
-        { concurrency: 5, translationService }
+        new FileTranslationService(isolatedTranslationService),
+        { concurrency: 5, translationService: isolatedTranslationService }
       );
     });
 
