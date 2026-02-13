@@ -25,13 +25,13 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should still validate API key eagerly', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     expect(() => new DeepLClient('')).toThrow('API key is required');
   });
 
   it('should construct sub-clients lazily on first method call', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
@@ -62,7 +62,7 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should reuse sub-client on subsequent calls', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
@@ -82,7 +82,7 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should construct GlossaryClient lazily on glossary method call', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
@@ -96,7 +96,7 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should construct WriteClient lazily on improveText call', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
@@ -112,7 +112,7 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should construct AdminClient lazily on listApiKeys call', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
@@ -126,7 +126,7 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should construct StyleRulesClient lazily on getStyleRules call', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 

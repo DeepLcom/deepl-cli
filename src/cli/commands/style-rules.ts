@@ -43,7 +43,7 @@ export class StyleRulesCommand {
       lines.push(`    Updated:  ${rule.updatedTime}`);
 
       if ('configuredRules' in rule) {
-        const detailed = rule as StyleRuleDetailed;
+        const detailed = rule;
         if (detailed.configuredRules.length > 0) {
           lines.push(`    Rules:    ${detailed.configuredRules.join(', ')}`);
         }

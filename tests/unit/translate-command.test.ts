@@ -3,7 +3,7 @@
  * Following TDD approach
  */
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 import { TranslateCommand } from '../../src/cli/commands/translate';
 import { TranslationService } from '../../src/services/translation';

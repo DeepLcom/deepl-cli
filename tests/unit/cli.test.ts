@@ -85,7 +85,7 @@ describe('CLI Entry Point', () => {
 
   describe('output.color config', () => {
     let testConfigDir: string;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     let chalk: { level: number };
 
     beforeEach(() => {

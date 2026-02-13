@@ -3,7 +3,7 @@
  * Following TDD approach
  */
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 import { UsageCommand } from '../../src/cli/commands/usage';
 import { createMockUsageService } from '../helpers/mock-factories';

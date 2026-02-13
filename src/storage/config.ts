@@ -63,7 +63,7 @@ export class ConfigService {
     const keys = key.split('.');
     this.validatePath(keys, value);
 
-    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     let current: any = this.config;
     for (let i = 0; i < keys.length - 1; i++) {
       const k = keys[i];
@@ -81,7 +81,7 @@ export class ConfigService {
     if (lastKey) {
       current[lastKey] = value;
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    /* eslint-enable @typescript-eslint/no-explicit-any */
     this.save();
   }
 
@@ -90,7 +90,7 @@ export class ConfigService {
    */
   getValue<T = unknown>(key: string, defaultValue?: T): T | undefined {
     const keys = key.split('.');
-    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     let current: any = this.config;
 
     for (const k of keys) {
@@ -100,7 +100,7 @@ export class ConfigService {
         return defaultValue;
       }
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     return current as T;
   }
@@ -110,7 +110,7 @@ export class ConfigService {
    */
   has(key: string): boolean {
     const keys = key.split('.');
-    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     let current: any = this.config;
 
     for (const k of keys) {
@@ -120,7 +120,7 @@ export class ConfigService {
         return false;
       }
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     return current !== undefined;
   }
@@ -130,7 +130,7 @@ export class ConfigService {
    */
   delete(key: string): void {
     const keys = key.split('.');
-    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     let current: any = this.config;
 
     for (let i = 0; i < keys.length - 1; i++) {
@@ -146,7 +146,7 @@ export class ConfigService {
       delete current[lastKey];
       this.save();
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 
   /**
@@ -289,7 +289,7 @@ export class ConfigService {
 
     // Validate specific paths
     if (path === 'defaults.sourceLang' && value !== undefined) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+       
       this.validateLanguage(value as string);
     }
 
@@ -298,7 +298,7 @@ export class ConfigService {
         throw new Error('Target languages must be an array');
       }
       for (const lang of value) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+         
         this.validateLanguage(lang);
       }
     }

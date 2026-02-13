@@ -998,7 +998,7 @@ describe('Translate CLI Integration - nock HTTP validation', () => {
   beforeEach(() => {
     client = new DeepLClient(API_KEY);
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const factories = require('../helpers/mock-factories') as typeof import('../helpers/mock-factories');
     mockConfig = factories.createMockConfigService({
       get: jest.fn(() => ({

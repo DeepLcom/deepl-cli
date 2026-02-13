@@ -3,7 +3,7 @@
  * Following TDD approach
  */
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 import { AuthCommand } from '../../src/cli/commands/auth';
 import { ConfigService } from '../../src/storage/config';
