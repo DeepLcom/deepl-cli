@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
+ 
 /**
  * Tests for VoiceStreamSession
  * Covers WebSocket lifecycle, reconnection, SIGINT handling, chunk streaming,
@@ -650,12 +650,12 @@ async function* emptyChunks(): AsyncGenerator<Buffer> {
   // yields nothing
 }
 
-// eslint-disable-next-line @typescript-eslint/require-await
+ 
 async function* singleChunk(data: Buffer): AsyncGenerator<Buffer> {
   yield data;
 }
 
-// eslint-disable-next-line @typescript-eslint/require-await, require-yield
+// eslint-disable-next-line require-yield
 async function* throwingChunks(): AsyncGenerator<Buffer> {
   throw new Error('chunk error');
 }

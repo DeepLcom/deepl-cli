@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
+ 
 import { Command } from 'commander';
 import { registerHooks } from '../../src/cli/commands/register-hooks';
 import { Logger } from '../../src/utils/logger';

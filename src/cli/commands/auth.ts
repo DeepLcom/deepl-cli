@@ -27,8 +27,8 @@ export class AuthCommand {
     // This supports production keys (:fx suffix), free keys, and test keys
     try {
       // Use configured API endpoint for validation
-      const baseUrl = this.config.getValue('api.baseUrl') as string | undefined;
-      const usePro = this.config.getValue('api.usePro') as boolean | undefined;
+      const baseUrl = this.config.getValue<string>('api.baseUrl');
+      const usePro = this.config.getValue<boolean>('api.usePro');
 
       const client = new DeepLClient(apiKey, { baseUrl, usePro });
       await client.getUsage(); // Test API key validity
@@ -54,7 +54,7 @@ export class AuthCommand {
     const envKey = process.env['DEEPL_API_KEY'];
 
     // Check config
-    const configKey = this.config.getValue('auth.apiKey') as string | undefined;
+    const configKey = this.config.getValue<string>('auth.apiKey');
 
     // Prefer config over environment
     return configKey ?? envKey;

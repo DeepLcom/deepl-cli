@@ -766,6 +766,7 @@ describe('WatchService', () => {
       const testFile = path.join(testDir, 'unstaged.txt');
       fs.writeFileSync(testFile, 'Hello');
 
+      const onChange = jest.fn();
       const stagedService = new WatchService(mockFileTranslationService, {
         stagedFiles: new Set([path.resolve(path.join(testDir, 'staged.txt'))]),
       });
@@ -773,13 +774,13 @@ describe('WatchService', () => {
       const options = {
         targetLangs: ['es' as const],
         outputDir: path.join(testDir, 'output'),
+        onChange,
       };
 
       stagedService.watch(testDir, options);
       stagedService.handleFileChange(testFile);
 
-      // onChange should NOT be called because file is not in stagedFiles
-      // The handler returns early before reaching onChange
+      expect(onChange).not.toHaveBeenCalled();
     });
 
     it('should process files that are in stagedFiles set', async () => {

@@ -3,7 +3,7 @@
  * Following TDD approach
  */
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 import { GlossaryCommand } from '../../src/cli/commands/glossary';
 import { GlossaryService } from '../../src/services/glossary';

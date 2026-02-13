@@ -176,7 +176,7 @@ Examples:
             const interactiveResult = await writeCommand.improveFileInteractive(text, writeOptions);
             result = interactiveResult.selected;
 
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+             
             if (options.output || options.inPlace) {
               const outputPath = options.inPlace ? text : options.output!;
               await writeFile(outputPath, result, 'utf-8');

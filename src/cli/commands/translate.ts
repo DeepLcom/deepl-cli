@@ -220,7 +220,7 @@ export class TranslateCommand {
   }
 
   private isFilePath(input: string, cachedStats?: fs.Stats | null): boolean {
-    if (cachedStats && cachedStats.isFile()) {
+    if (cachedStats?.isFile()) {
       return true;
     }
 
@@ -378,7 +378,7 @@ export class TranslateCommand {
     }
 
     // Check if API key is set
-    const apiKey = this.config.getValue('auth.apiKey') as string | undefined;
+    const apiKey = this.config.getValue<string>('auth.apiKey');
     const envKey = process.env['DEEPL_API_KEY'];
     if (!apiKey && !envKey) {
       throw new Error('API key not set. Run: deepl auth set-key <your-api-key>');
@@ -467,7 +467,7 @@ export class TranslateCommand {
       if (options.tagHandlingVersion !== 'v1' && options.tagHandlingVersion !== 'v2') {
         throw new Error('--tag-handling-version must be "v1" or "v2"');
       }
-      (translationOptions as {tagHandlingVersion?: 'v1' | 'v2'}).tagHandlingVersion = options.tagHandlingVersion as 'v1' | 'v2';
+      (translationOptions as {tagHandlingVersion?: 'v1' | 'v2'}).tagHandlingVersion = options.tagHandlingVersion;
     }
 
     if (options.enableBetaLanguages) {
@@ -534,7 +534,7 @@ export class TranslateCommand {
     // Now safe to cast as Language[]
     const validTargetLangs = targetLangs as Language[];
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { targetLang: _, ...translationOptions } = this.buildTranslationOptions(options);
 
     if (options.glossary) {

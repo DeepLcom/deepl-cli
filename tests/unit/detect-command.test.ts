@@ -3,7 +3,7 @@
  * Following TDD approach
  */
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 import { DetectCommand } from '../../src/cli/commands/detect';
 import { createMockDetectService } from '../helpers/mock-factories';

@@ -16,7 +16,7 @@ import * as os from 'os';
 import { createMockVoiceClient } from '../helpers/mock-factories';
 
 jest.mock('ws', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const { EventEmitter: EE } = require('events');
   class MockWebSocket extends EE {
     static OPEN = 1;

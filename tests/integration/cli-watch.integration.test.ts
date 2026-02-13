@@ -396,7 +396,7 @@ describe('Watch Service Integration', () => {
 
   describe('--git-staged', () => {
     const CLI_PATH = path.join(__dirname, '..', '..', 'dist', 'cli', 'index.js');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { execSync: execSyncChild } = require('child_process');
 
     it('should accept --git-staged flag in help text', () => {
@@ -431,7 +431,7 @@ describe('Watch Service Integration', () => {
 
   describe('getStagedFiles()', () => {
     const WATCH_MODULE_PATH = path.join(__dirname, '..', '..', 'dist', 'cli', 'commands', 'watch.js');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { execSync: execSyncChild } = require('child_process');
     let gitDir: string;
 

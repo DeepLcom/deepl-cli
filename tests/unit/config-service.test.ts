@@ -60,7 +60,7 @@ describe('ConfigService', () => {
 
       // This would be a TypeScript error: Cannot assign to 'targetLangs' because it is a read-only property
       // But in JavaScript runtime, the object is still mutable
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (config1 as any).defaults.targetLangs.push('es');
 
       const config2 = configService.get();
@@ -68,7 +68,7 @@ describe('ConfigService', () => {
       expect(config2.defaults.targetLangs).toEqual(['es']);
 
       // Clean up for other tests
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (config2 as any).defaults.targetLangs.pop();
     });
   });
@@ -252,7 +252,7 @@ describe('ConfigService', () => {
 
     it('should validate boolean values', () => {
       expect(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         configService.set('cache.enabled', 'yes' as any);
       }).toThrow('Expected boolean');
     });

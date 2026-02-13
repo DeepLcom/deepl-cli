@@ -3,7 +3,7 @@
  * Following TDD approach - these tests should fail initially
  */
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 import { TranslationService, MAX_TEXT_BYTES, MULTI_TARGET_CONCURRENCY } from '../../src/services/translation';
 import { DeepLClient, TranslationResult } from '../../src/api/deepl-client';
@@ -165,7 +165,7 @@ describe('TranslationService', () => {
 
     it('should throw error when no target language specified', async () => {
       await expect(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+         
         translationService.translate('Hello', {} as any)
       ).rejects.toThrow('Target language is required');
     });

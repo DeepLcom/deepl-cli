@@ -76,7 +76,7 @@ describe('DeepLClient', () => {
     it('should include source language when specified', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.source_lang === 'EN';
         })
         .reply(200, {
@@ -99,7 +99,7 @@ describe('DeepLClient', () => {
     it('should handle formality parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.formality === 'more';
         })
         .reply(200, {
@@ -117,7 +117,7 @@ describe('DeepLClient', () => {
     it('should handle glossary parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.glossary_id === 'glossary-123';
         })
         .reply(200, {
@@ -135,7 +135,7 @@ describe('DeepLClient', () => {
     it('should handle preserve_formatting option', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.preserve_formatting === '1';
         })
         .reply(200, {
@@ -153,7 +153,7 @@ describe('DeepLClient', () => {
     it('should handle context parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.context === 'API documentation';
         })
         .reply(200, {
@@ -171,7 +171,7 @@ describe('DeepLClient', () => {
     it('should handle split_sentences parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.split_sentences === 'nonewlines';
         })
         .reply(200, {
@@ -189,7 +189,7 @@ describe('DeepLClient', () => {
     it('should map split_sentences "on" to API value "1"', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.split_sentences === '1';
         })
         .reply(200, {
@@ -207,7 +207,7 @@ describe('DeepLClient', () => {
     it('should map split_sentences "off" to API value "0"', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.split_sentences === '0';
         })
         .reply(200, {
@@ -225,7 +225,7 @@ describe('DeepLClient', () => {
     it('should handle tag_handling parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.tag_handling === 'xml';
         })
         .reply(200, {
@@ -243,7 +243,7 @@ describe('DeepLClient', () => {
     it('should send show_billed_characters parameter when enabled', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.show_billed_characters === '1';
         })
         .reply(200, {
@@ -289,7 +289,7 @@ describe('DeepLClient', () => {
     it('should not send show_billed_characters when not requested', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.show_billed_characters === undefined;
         })
         .reply(200, {
@@ -311,7 +311,7 @@ describe('DeepLClient', () => {
     it('should send enable_beta_languages parameter when enabled', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.enable_beta_languages === '1';
         })
         .reply(200, {
@@ -334,7 +334,7 @@ describe('DeepLClient', () => {
     it('should not send enable_beta_languages when not requested', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.enable_beta_languages === undefined;
         })
         .reply(200, {
@@ -356,7 +356,7 @@ describe('DeepLClient', () => {
     it('should send outline_detection parameter when set to true', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.outline_detection === '1';
         })
         .reply(200, {
@@ -375,7 +375,7 @@ describe('DeepLClient', () => {
     it('should send outline_detection parameter when set to false', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.outline_detection === '0';
         })
         .reply(200, {
@@ -394,7 +394,7 @@ describe('DeepLClient', () => {
     it('should send splitting_tags parameter as comma-separated string', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.splitting_tags === 'br,hr,div';
         })
         .reply(200, {
@@ -413,7 +413,7 @@ describe('DeepLClient', () => {
     it('should send non_splitting_tags parameter as comma-separated string', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.non_splitting_tags === 'code,pre,kbd';
         })
         .reply(200, {
@@ -432,7 +432,7 @@ describe('DeepLClient', () => {
     it('should send ignore_tags parameter as comma-separated string', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.ignore_tags === 'script,style,noscript';
         })
         .reply(200, {
@@ -451,13 +451,13 @@ describe('DeepLClient', () => {
     it('should send all XML tag handling parameters together', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.outline_detection === '0' &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.splitting_tags === 'br,hr' &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.non_splitting_tags === 'code,pre' &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.ignore_tags === 'script,style';
         })
         .reply(200, {
@@ -479,13 +479,13 @@ describe('DeepLClient', () => {
     it('should send custom_instructions parameter as array', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return Array.isArray(body.custom_instructions) &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.custom_instructions.length === 2 &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.custom_instructions[0] === 'Use informal tone' &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.custom_instructions[1] === 'Preserve brand names';
         })
         .reply(200, {
@@ -503,7 +503,7 @@ describe('DeepLClient', () => {
     it('should not send custom_instructions when not specified', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.custom_instructions === undefined;
         })
         .reply(200, {
@@ -520,11 +520,11 @@ describe('DeepLClient', () => {
     it('should send custom_instructions in batch translation', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return Array.isArray(body.custom_instructions) &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.custom_instructions[0] === 'Keep it short' &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.custom_instructions[1] === 'Preserve names';
         })
         .reply(200, {
@@ -544,7 +544,7 @@ describe('DeepLClient', () => {
 
     it('should throw error for invalid target language', async () => {
       await expect(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+         
         client.translate('Hello', { targetLang: 'invalid' as any })
       ).rejects.toThrow();
     });
@@ -1144,7 +1144,7 @@ describe('DeepLClient', () => {
       it('should apply simple writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.writing_style === 'simple';
           })
           .reply(200, {
@@ -1168,7 +1168,7 @@ describe('DeepLClient', () => {
       it('should apply business writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.writing_style === 'business';
           })
           .reply(200, {
@@ -1192,7 +1192,7 @@ describe('DeepLClient', () => {
       it('should apply academic writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.writing_style === 'academic';
           })
           .reply(200, {
@@ -1216,7 +1216,7 @@ describe('DeepLClient', () => {
       it('should apply casual writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.writing_style === 'casual';
           })
           .reply(200, {
@@ -1242,7 +1242,7 @@ describe('DeepLClient', () => {
       it('should apply enthusiastic tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.tone === 'enthusiastic';
           })
           .reply(200, {
@@ -1266,7 +1266,7 @@ describe('DeepLClient', () => {
       it('should apply friendly tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.tone === 'friendly';
           })
           .reply(200, {
@@ -1290,7 +1290,7 @@ describe('DeepLClient', () => {
       it('should apply confident tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.tone === 'confident';
           })
           .reply(200, {
@@ -1314,7 +1314,7 @@ describe('DeepLClient', () => {
       it('should apply diplomatic tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.tone === 'diplomatic';
           })
           .reply(200, {
@@ -1340,7 +1340,7 @@ describe('DeepLClient', () => {
       it('should work with only target language', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return !body.writing_style && !body.tone;
           })
           .reply(200, {
@@ -1559,7 +1559,7 @@ describe('DeepLClient', () => {
       it('should apply prefer_simple writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.writing_style === 'prefer_simple';
           })
           .reply(200, {
@@ -1583,7 +1583,7 @@ describe('DeepLClient', () => {
       it('should apply prefer_enthusiastic tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             return body.tone === 'prefer_enthusiastic';
           })
           .reply(200, {
@@ -1611,7 +1611,7 @@ describe('DeepLClient', () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
           // Verify multiple text parameters are sent
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return Array.isArray(body.text) && body.text.length === 3;
         })
         .reply(200, {
@@ -1671,11 +1671,11 @@ describe('DeepLClient', () => {
     it('should include all translation options in batch request', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.source_lang === 'EN' &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.formality === 'more' &&
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             body.glossary_id === 'test-glossary';
         })
         .reply(200, {
@@ -1765,7 +1765,7 @@ describe('DeepLClient', () => {
     it('should send show_billed_characters in batch translation', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.show_billed_characters === '1';
         })
         .reply(200, {
@@ -1822,7 +1822,7 @@ describe('DeepLClient', () => {
     it('should send enable_beta_languages in batch translation', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+           
           return body.enable_beta_languages === '1';
         })
         .reply(200, {
