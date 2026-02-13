@@ -198,7 +198,20 @@ $ deepl -c /path/to/test-config.json usage
 - **Environment separation**: Separate configs for dev/staging/production
 - **Testing**: Use test configurations without affecting default settings
 
-**Precedence**: `--config` overrides `DEEPL_CONFIG_DIR` environment variable. If neither is specified, uses default location (`~/.deepl-cli/config.json`).
+**Precedence**: `--config` > `DEEPL_CONFIG_DIR` > legacy `~/.deepl-cli/` > XDG directories (see below).
+
+### Configuration Paths
+
+The CLI follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/):
+
+| Priority | Condition | Config path | Cache path |
+|----------|-----------|-------------|------------|
+| 1 | `DEEPL_CONFIG_DIR` set | `$DEEPL_CONFIG_DIR/config.json` | `$DEEPL_CONFIG_DIR/cache.db` |
+| 2 | `~/.deepl-cli/` exists | `~/.deepl-cli/config.json` | `~/.deepl-cli/cache.db` |
+| 3 | XDG env vars set | `$XDG_CONFIG_HOME/deepl-cli/config.json` | `$XDG_CACHE_HOME/deepl-cli/cache.db` |
+| 4 | Default | `~/.config/deepl-cli/config.json` | `~/.cache/deepl-cli/cache.db` |
+
+Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 
 See [docs/API.md#global-options](./docs/API.md#global-options) for more details.
 
@@ -907,7 +920,7 @@ See [examples/11-languages.sh](./examples/11-languages.sh) for a complete exampl
 
 #### Configure Defaults
 
-Configuration is stored in `~/.deepl-cli/config.json`
+Configuration is stored in `~/.config/deepl-cli/config.json` (or `~/.deepl-cli/config.json` for legacy installations; see [Configuration Paths](#configuration-paths))
 
 ```bash
 # View all configuration
@@ -1262,7 +1275,7 @@ deepl cache disable
 # ✓ Cache disabled
 ```
 
-Cache location: `~/.deepl-cli/cache.db`
+Cache location: `~/.cache/deepl-cli/cache.db` (or `~/.deepl-cli/cache.db` for legacy installations)
 
 ## 💻 Development
 
@@ -1398,8 +1411,8 @@ npm run examples:fast
 
 ## 🔒 Security & Privacy
 
-- **Secure key storage** - API keys stored in `~/.deepl-cli/config.json` (gitignored)
-- **Local caching** - All cached data stored locally in SQLite (`~/.deepl-cli/cache.db`), never shared
+- **Secure key storage** - API keys stored in config file (gitignored), follows [XDG Base Directory Spec](#configuration-paths)
+- **Local caching** - All cached data stored locally in SQLite, never shared
 - **No telemetry** - Zero usage tracking or data collection
 - **Environment variable support** - Use `DEEPL_API_KEY` environment variable for CI/CD
 - **GDPR compliant** - Follows DeepL's GDPR compliance guidelines

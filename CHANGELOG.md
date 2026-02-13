@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add XDG Base Directory Specification support — config and cache now use `~/.config/deepl-cli/` and `~/.cache/deepl-cli/` by default; legacy `~/.deepl-cli/` is preferred when it exists; `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` environment variables are respected
 - Add type-safe `CacheService.get<T>(key, guard)` overload — accepts a type guard for runtime validation of cached data; mismatches are logged, evicted, and return null
 - Add `isTranslationResult` and `isWriteImprovementArray` type guards for cache retrieval validation
 - Add JSON/YAML-aware file translation — `deepl translate en.json --to es --output es.json` extracts only string values, translates them via batch API, and reassembles preserving keys, nesting, non-string values, indentation, and YAML comments

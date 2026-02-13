@@ -2299,10 +2299,26 @@ deepl translate "Hello" --to es
 
 ### `DEEPL_CONFIG_DIR`
 
-Override default config directory.
+Override config and cache directory. Takes highest priority over all other path resolution.
 
 ```bash
 export DEEPL_CONFIG_DIR="/custom/path"
+```
+
+### `XDG_CONFIG_HOME`
+
+Override XDG config base directory (default: `~/.config`). Config is stored at `$XDG_CONFIG_HOME/deepl-cli/config.json`. Only used when `DEEPL_CONFIG_DIR` is unset and legacy `~/.deepl-cli/` does not exist.
+
+```bash
+export XDG_CONFIG_HOME="$HOME/.config"
+```
+
+### `XDG_CACHE_HOME`
+
+Override XDG cache base directory (default: `~/.cache`). Cache is stored at `$XDG_CACHE_HOME/deepl-cli/cache.db`. Only used when `DEEPL_CONFIG_DIR` is unset and legacy `~/.deepl-cli/` does not exist.
+
+```bash
+export XDG_CACHE_HOME="$HOME/.cache"
 ```
 
 ### `NO_COLOR`

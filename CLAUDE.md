@@ -25,16 +25,18 @@ Storage (SQLite Cache, Config Management)
 
 ### Configuration
 
-- **Config**: `~/.deepl-cli/config.json` (all platforms)
-- **Cache**: `~/.deepl-cli/cache.db` (SQLite)
+- **Config**: XDG default `~/.config/deepl-cli/config.json`, legacy `~/.deepl-cli/config.json`
+- **Cache**: XDG default `~/.cache/deepl-cli/cache.db`, legacy `~/.deepl-cli/cache.db`
+- **Path priority**: `DEEPL_CONFIG_DIR` > legacy `~/.deepl-cli/` > XDG env vars > XDG defaults
 - **Environment Variables**:
   - `DEEPL_API_KEY` - API authentication
-  - `DEEPL_CONFIG_DIR` - Override config directory (used for test isolation)
+  - `DEEPL_CONFIG_DIR` - Override config and cache directory (used for test isolation)
+  - `XDG_CONFIG_HOME` - Override XDG config base (default: `~/.config`)
+  - `XDG_CACHE_HOME` - Override XDG cache base (default: `~/.cache`)
   - `NO_COLOR` - Disable colored output
 
 ### Key Project Files
 
-- **TODO.md** - Project roadmap and task list (read when resuming work)
 - **CHANGELOG.md** - Release history and version notes
 - **docs/API.md** - Complete CLI command reference
 
