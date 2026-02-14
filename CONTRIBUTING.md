@@ -2,6 +2,14 @@
 
 Thank you for your interest in contributing to DeepL CLI. This guide covers everything you need to get started.
 
+## Code of Conduct
+
+This project has a [Code of Conduct](CODE_OF_CONDUCT.md) to which all
+contributors must adhere when participating in the project. Instances of
+abusive, harassing, or otherwise unacceptable behavior may be reported by
+contacting [open-source@deepl.com](mailto:open-source@deepl.com) and/or a
+project maintainer.
+
 ## Prerequisites
 
 - **Node.js** >= 20.0.0
@@ -153,6 +161,13 @@ Group tests in the same commit as the code they validate.
 
 ## Pull Request Process
 
+Before beginning work, please create an [issue][issues] describing the changes
+you plan to contribute, to avoid wasting or duplicating effort. We will then
+let you know whether we would accept the changes.
+
+Contributions must be licensed under the same license as the project:
+[MIT License](LICENSE).
+
 1. **Create a branch** from `main` for your change.
 2. **Write tests first**, then implement the feature (TDD).
 3. **Run the full check suite** before pushing:
@@ -205,3 +220,5 @@ When filing a bug report, include:
 - [CLAUDE.md](./CLAUDE.md) -- Detailed development guidelines, TDD workflow, and testing strategy
 - [docs/API.md](./docs/API.md) -- Complete CLI command reference
 - [DeepL API Docs](https://www.deepl.com/docs-api) -- Official API documentation
+
+[issues]: https://github.com/kwey/deepl-cli/issues
