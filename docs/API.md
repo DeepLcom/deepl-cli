@@ -227,14 +227,14 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 **Translation Options:**
 
 - `--formality LEVEL` - Formality: `default`, `less`, `more`, `prefer_less`, `prefer_more`
-- `--model-type TYPE` - Model type: `quality_optimized` (default), `prefer_quality_optimized`, `latency_optimized`
+- `--model-type TYPE` - Model type: `quality_optimized`, `prefer_quality_optimized`, `latency_optimized` (no CLI default; the API server selects the model when omitted)
 - `--preserve-code` - Preserve code blocks (markdown, etc.)
 - `--preserve-formatting` - Preserve line breaks and whitespace formatting
 - `--split-sentences LEVEL` - Sentence splitting: `on` (default), `off`, `nonewlines`
 - `--tag-handling MODE` - XML tag handling: `xml`, `html`
 - `--outline-detection BOOL` - Control automatic XML structure detection: `true` (default), `false` (requires `--tag-handling xml`)
 - `--splitting-tags TAGS` - Comma-separated XML tags that split sentences (requires `--tag-handling xml`)
-- `--non-splitting-tags TAGS` - Comma-separated XML tags for non-translatable text (requires `--tag-handling xml`)
+- `--non-splitting-tags TAGS` - Comma-separated XML tags that should not be used to split sentences (requires `--tag-handling xml`)
 - `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
 - `--tag-handling-version VERSION` - Tag handling version: `v1`, `v2`. v2 improves XML/HTML structure handling (requires `--tag-handling`)
 - `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
@@ -242,7 +242,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--style-id UUID` - Style rule ID for translation (Pro API only). Forces `quality_optimized` model. Cannot be used with `latency_optimized`. Use `deepl style-rules list` to see available IDs.
 - `--enable-beta-languages` - Include beta languages that are not yet stable (forward-compatibility with new DeepL languages)
 - `--no-cache` - Bypass cache for this translation (useful for testing/forcing fresh translation)
-- `--dry-run` - Show what would be translated without performing the operation (file/directory mode only)
+- `--dry-run` - Show what would be translated without performing the operation
 
 **API Options:**
 
@@ -2252,9 +2252,9 @@ The CLI automatically classifies errors based on error messages and HTTP status 
 - **Authentication (2)**: "authentication failed", "invalid api key", "api key not set"
 - **Rate Limit (3)**: "rate limit exceeded", "too many requests", HTTP 429. The CLI respects the `Retry-After` header when present, falling back to exponential backoff when absent
 - **Quota (4)**: "quota exceeded", "character limit reached", HTTP 456
-- **Network (5)**: "timeout", "econnrefused", "enotfound", "connection", HTTP 503
-- **Invalid Input (6)**: "cannot be empty", "not found", "unsupported", "invalid", "required"
-- **Configuration (7)**: "config", "configuration"
+- **Network (5)**: "econnrefused", "enotfound", "econnreset", "etimedout", "socket hang up", "network error", "network timeout", "connection refused", "connection reset", "connection timed out", "service temporarily unavailable", HTTP 503
+- **Invalid Input (6)**: "cannot be empty", "not found", "unsupported", "not supported", "invalid", "is required", "expected", "cannot specify both"
+- **Configuration (7)**: "config file", "config directory", "configuration file", "configuration error", "failed to load config", "failed to save config", "failed to read config"
 
 **Trace IDs for Debugging:**
 
