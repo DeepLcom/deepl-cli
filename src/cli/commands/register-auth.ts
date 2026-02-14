@@ -18,9 +18,14 @@ export function registerAuth(
     .description('Manage DeepL API authentication')
     .addHelpText('after', `
 Examples:
+  $ echo "YOUR_API_KEY" | deepl auth set-key --from-stdin
+  $ deepl auth set-key --from-stdin < ~/.deepl-api-key
   $ deepl auth set-key YOUR_API_KEY
   $ deepl auth show
   $ deepl auth clear
+
+Note: Prefer --from-stdin over passing the key as an argument.
+Command arguments are visible to other users via process listings.
 `)
     .addCommand(
       new Command('set-key')

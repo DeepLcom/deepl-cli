@@ -1916,16 +1916,18 @@ Set your DeepL API key and validate it with the DeepL API.
 **Examples:**
 
 ```bash
-# Provide key as argument
-deepl auth set-key YOUR-API-KEY-HERE
-# ✓ API key saved and validated successfully
-
-# Pipe key from stdin
+# Pipe key from stdin (recommended - avoids exposing key in process listings)
 echo "YOUR-API-KEY" | deepl auth set-key --from-stdin
 
 # Read from file
 deepl auth set-key --from-stdin < ~/.deepl-api-key
+
+# Provide key as argument
+deepl auth set-key YOUR-API-KEY-HERE
+# ✓ API key saved and validated successfully
 ```
+
+**Security Note:** Prefer `--from-stdin` over passing the key as a command argument. Command arguments are visible to other users via process listings (`ps aux`).
 
 ##### `show`
 
