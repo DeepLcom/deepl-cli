@@ -9,6 +9,7 @@ import { DeepLConfig, Formality, OutputFormat } from '../types';
 import { resolvePaths } from '../utils/paths.js';
 import { isValidLanguage } from '../data/language-registry.js';
 import { ConfigError } from '../utils/errors.js';
+import { Logger } from '../utils/logger.js';
 
 const VALID_FORMALITY: readonly Formality[] = [
   'default',
@@ -218,7 +219,7 @@ export class ConfigService {
       }
     } catch (error) {
       // If load fails, use defaults
-      console.error('Failed to load config, using defaults:', error instanceof Error ? error.message : String(error));
+      Logger.warn('Failed to load config, using defaults:', error instanceof Error ? error.message : String(error));
     }
 
     return ConfigService.getDefaults();
@@ -363,16 +364,12 @@ export class ConfigService {
   }
 
   private validateKeyString(key: string): void {
-    if (key.includes('../') || key.includes('..\\') || key.startsWith('..')) {
+    if (key.includes('..')) {
       throw new ConfigError('Invalid path: contains directory traversal');
     }
 
     if (key.startsWith('.')) {
       throw new ConfigError('Invalid path: segment starts with dot');
-    }
-
-    if (key.includes('..')) {
-      throw new ConfigError('Invalid path: contains directory traversal');
     }
   }
 }

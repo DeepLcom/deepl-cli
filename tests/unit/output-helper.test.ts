@@ -62,8 +62,8 @@ describe('output-helper', () => {
       expect(result).toBe(text);
     });
 
-    it('should default to text for unrecognised format values', () => {
-      const result = formatOutput(data, text, 'csv');
+    it('should default to text for table format', () => {
+      const result = formatOutput(data, text, 'table');
       expect(result).toBe(text);
     });
 

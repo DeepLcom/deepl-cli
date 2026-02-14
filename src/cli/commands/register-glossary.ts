@@ -3,14 +3,11 @@ import chalk from 'chalk';
 import type { Language } from '../../types/common.js';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
-import { createGlossaryCommand, type CreateDeepLClient } from './service-factory.js';
+import { createGlossaryCommand, type ServiceDeps } from './service-factory.js';
 
 export function registerGlossary(
   program: Command,
-  deps: {
-    createDeepLClient: CreateDeepLClient;
-    handleError: (error: unknown) => never;
-  },
+  deps: Pick<ServiceDeps, 'createDeepLClient' | 'handleError'>,
 ): void {
   const { createDeepLClient, handleError } = deps;
 

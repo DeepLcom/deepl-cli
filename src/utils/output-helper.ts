@@ -4,6 +4,8 @@
  * Centralises the JSON-vs-text branching used across all commands.
  */
 
+import type { OutputFormat } from '../types/common.js';
+
 /**
  * Serialize data as pretty-printed JSON.
  */
@@ -18,7 +20,7 @@ export function formatJson(data: unknown): string {
  * @param text  - The human-readable string to return when format is 'text' (default).
  * @param format - 'json' | 'text' (defaults to 'text').
  */
-export function formatOutput(data: unknown, text: string, format?: string): string {
+export function formatOutput(data: unknown, text: string, format?: OutputFormat): string {
   if (format === 'json') {
     return formatJson(data);
   }
