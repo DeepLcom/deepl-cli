@@ -31,7 +31,7 @@ describe('Error suggestions', () => {
   describe('AuthError', () => {
     it('should have a default suggestion about setting the API key', () => {
       const error = new AuthError('Authentication failed');
-      expect(error.suggestion).toBe('Run: deepl auth set-key <your-api-key>');
+      expect(error.suggestion).toBe('Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>');
     });
 
     it('should allow overriding the default suggestion', () => {

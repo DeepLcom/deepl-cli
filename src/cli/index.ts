@@ -87,7 +87,7 @@ async function createDeepLClient(overrideBaseUrl?: string): Promise<DeepLClient>
 
   if (!key) {
     Logger.error(chalk.red('Error: API key not set'));
-    Logger.warn(chalk.yellow('Run: deepl auth set-key <your-api-key>'));
+    Logger.warn(chalk.yellow('Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>'));
     process.exit(ExitCode.AuthError);
   }
 
@@ -182,7 +182,7 @@ function getApiKeyAndOptions(): { apiKey: string; options: import('../api/http-c
 
   if (!key) {
     Logger.error(chalk.red('Error: API key not set'));
-    Logger.warn(chalk.yellow('Run: deepl auth set-key <your-api-key>'));
+    Logger.warn(chalk.yellow('Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>'));
     process.exit(ExitCode.AuthError);
   }
 

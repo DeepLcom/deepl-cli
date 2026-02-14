@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extract duplicated file-reading pattern in WriteCommand to shared `readFileContent()` helper, removing ~50 lines of duplication across 5 methods
 
 ### Fixed
+- Improve first-run error messages — missing API key errors now suggest `deepl init` (setup wizard) alongside `deepl auth set-key`
 - Fix API.md labeling `translate --to` as "Required" — now notes `defaults.targetLangs` config fallback
 - Restrict `--output-format` choices to `docx` only (PDF→DOCX is the only supported conversion) — previously accepted 10 formats that would fail at the API
 - Fix misleading help example `report.docx --to de --output-format pdf` → `report.pdf --to de --output-format docx`

@@ -21,7 +21,7 @@ export abstract class DeepLCLIError extends Error {
 export class AuthError extends DeepLCLIError {
   readonly exitCode = 2;
   constructor(message: string, suggestion?: string) {
-    super(message, suggestion ?? 'Run: deepl auth set-key <your-api-key>');
+    super(message, suggestion ?? 'Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>');
   }
 }
 
