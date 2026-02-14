@@ -374,6 +374,28 @@ describe('ConfigService', () => {
     });
   });
 
+  describe('atomic saves', () => {
+    it('should not leave a .tmp file after successful save', () => {
+      configService.set('auth.apiKey', 'test-key');
+      expect(fs.existsSync(mockConfigPath + '.tmp')).toBe(false);
+      expect(fs.existsSync(mockConfigPath)).toBe(true);
+    });
+
+    it('should write valid JSON after save', () => {
+      configService.set('auth.apiKey', 'test-key');
+      const data = fs.readFileSync(mockConfigPath, 'utf-8');
+      expect(() => JSON.parse(data)).not.toThrow();
+      expect(JSON.parse(data).auth.apiKey).toBe('test-key');
+    });
+
+    it('should preserve file permissions on save', () => {
+      configService.set('auth.apiKey', 'test-key');
+      const stats = fs.statSync(mockConfigPath);
+      // 0o600 = owner read/write only (0100600 in octal includes file type bits)
+      expect(stats.mode & 0o777).toBe(0o600);
+    });
+  });
+
   describe('path security validation (Issue #12)', () => {
     it('should reject paths with directory traversal (..)', () => {
       expect(() => {
