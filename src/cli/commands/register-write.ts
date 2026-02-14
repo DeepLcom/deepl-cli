@@ -1,4 +1,4 @@
-import type { Command } from 'commander';
+import { type Command, Option } from 'commander';
 import { existsSync } from 'fs';
 import { writeFile } from 'fs/promises';
 import chalk from 'chalk';
@@ -19,9 +19,10 @@ export function registerWrite(
     .description('Improve text using DeepL Write API (grammar, style, tone)')
     .argument('<text>', 'Text to improve (or file path when used with file operations)')
     .optionsGroup('Core Options:')
-    .option('-l, --lang <language>', 'Target language: de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT (auto-detect if omitted)')
+    .option('-t, --to <language>', 'Target language: de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT (auto-detect if omitted)')
+    .addOption(new Option('-l, --lang <language>').hideHelp())
     .option('-s, --style <style>', 'Writing style: default, simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
-    .option('-t, --tone <tone>', 'Tone: default, enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
+    .option('-T, --tone <tone>', 'Tone: default, enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
     .optionsGroup('Output Modes:')
     .option('-a, --alternatives', 'Show all alternative improvements')
     .option('-o, --output <file>', 'Write improved text to file')
@@ -38,11 +39,11 @@ export function registerWrite(
     .option('--format <format>', 'Output format: json (default: plain text)')
     .addHelpText('after', `
 Examples:
-  $ deepl write "Their going to the store" --lang en-US
+  $ deepl write "Their going to the store" --to en-US
   $ deepl write report.txt --check
   $ deepl write essay.md --fix --backup
-  $ deepl write "Make this formal" --style business --lang en
-  $ deepl write "Great news!" --tone diplomatic --lang en
+  $ deepl write "Make this formal" --style business --to en
+  $ deepl write "Great news!" --tone diplomatic --to en
   $ deepl write document.txt --diff
   $ deepl write article.md --interactive
   $ deepl write "Hello world" --alternatives
@@ -50,6 +51,7 @@ Examples:
   $ deepl write "Text here" --format json
 `)
     .action(async (text: string, options: {
+      to?: string;
       lang?: string;
       style?: string;
       tone?: string;
@@ -65,9 +67,11 @@ Examples:
       cache?: boolean;
     }) => {
       try {
+        if (!options.to && options.lang) options.to = options.lang;
+
         const validLanguages = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt', 'pt-BR', 'pt-PT'];
-        if (options.lang && !validLanguages.includes(options.lang)) {
-          throw new Error(`Invalid language code: ${options.lang}. Valid options: ${validLanguages.join(', ')}`);
+        if (options.to && !validLanguages.includes(options.to)) {
+          throw new Error(`Invalid language code: ${options.to}. Valid options: ${validLanguages.join(', ')}`);
         }
 
         const validStyles = ['default', 'simple', 'business', 'academic', 'casual', 'prefer_simple', 'prefer_business', 'prefer_academic', 'prefer_casual'];
@@ -96,7 +100,7 @@ Examples:
         const writeCommand = await createWriteCommand(deps);
 
         const writeOptions = {
-          lang: options.lang as WriteLanguage | undefined,
+          lang: options.to as WriteLanguage | undefined,
           style: options.style as WritingStyle | undefined,
           tone: options.tone as WriteTone | undefined,
           showAlternatives: options.alternatives,

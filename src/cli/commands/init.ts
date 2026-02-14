@@ -60,7 +60,7 @@ export class InitCommand {
     Logger.output('\n---');
     Logger.output('You\'re all set! Here are some commands to get started:\n');
     Logger.output('  deepl translate "Hello world" --to es    Translate text');
-    Logger.output('  deepl write "Check this text" --lang en  Improve writing');
+    Logger.output('  deepl write "Check this text" --to en    Improve writing');
     Logger.output('  deepl glossary list                      List glossaries');
     Logger.output('  deepl usage                              Check API usage');
     Logger.output('  deepl --help                             See all commands');

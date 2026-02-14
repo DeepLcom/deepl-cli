@@ -93,7 +93,16 @@ describe('registerWrite', () => {
       expect(Logger.output).toHaveBeenCalledWith('Improved text');
     });
 
-    it('should pass lang option', async () => {
+    it('should pass lang option via --to', async () => {
+      mockWriteCommand.improve.mockResolvedValue('Hallo');
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'de']);
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ lang: 'de' }),
+      );
+    });
+
+    it('should accept --lang as a hidden alias for --to', async () => {
       mockWriteCommand.improve.mockResolvedValue('Hallo');
       await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'de']);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
@@ -119,11 +128,29 @@ describe('registerWrite', () => {
         expect.objectContaining({ tone: 'friendly' }),
       );
     });
+
+    it('should map -t short flag to --to (not --tone)', async () => {
+      mockWriteCommand.improve.mockResolvedValue('ok');
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '-t', 'en-US']);
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ lang: 'en-US' }),
+      );
+    });
+
+    it('should map -T short flag to --tone', async () => {
+      mockWriteCommand.improve.mockResolvedValue('ok');
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '-T', 'friendly']);
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ tone: 'friendly' }),
+      );
+    });
   });
 
   describe('validation', () => {
     it('should reject invalid language code', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'xx']);
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'xx']);
       expect(handleError).toHaveBeenCalledWith(
         expect.objectContaining({ message: expect.stringContaining('Invalid language code') }),
       );
