@@ -161,7 +161,7 @@ describe('--dry-run CLI Integration', () => {
       }
 
       const output = runCLI(
-        `deepl watch "${watchDir}" --targets es,fr --dry-run`
+        `deepl watch "${watchDir}" --to es,fr --dry-run`
       );
 
       expect(output).toContain('[dry-run]');
@@ -178,7 +178,7 @@ describe('--dry-run CLI Integration', () => {
       }
 
       const output = runCLI(
-        `deepl watch "${watchDir}" --targets de --pattern "*.md" --dry-run`
+        `deepl watch "${watchDir}" --to de --pattern "*.md" --dry-run`
       );
 
       expect(output).toContain('*.md');
@@ -192,7 +192,7 @@ describe('--dry-run CLI Integration', () => {
 
       // This should complete quickly, not hang indefinitely
       const startTime = Date.now();
-      runCLI(`deepl watch "${watchDir}" --targets es --dry-run`);
+      runCLI(`deepl watch "${watchDir}" --to es --dry-run`);
       const elapsed = Date.now() - startTime;
 
       // Should complete in under 5 seconds (normal watch would hang forever)
@@ -206,7 +206,7 @@ describe('--dry-run CLI Integration', () => {
       }
 
       const output = runCLI(
-        `deepl watch "${watchDir}" --targets ja --dry-run`
+        `deepl watch "${watchDir}" --to ja --dry-run`
       );
 
       expect(output).toContain('[dry-run]');

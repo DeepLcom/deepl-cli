@@ -26,7 +26,7 @@ describe('Watch Command E2E', () => {
 
     it('should show all core options', () => {
       const output = runCLI('watch --help');
-      expect(output).toContain('--targets');
+      expect(output).toContain('--to');
       expect(output).toContain('--from');
       expect(output).toContain('--output');
     });
@@ -49,7 +49,7 @@ describe('Watch Command E2E', () => {
     it('should show usage examples', () => {
       const output = runCLI('watch --help');
       expect(output).toContain('deepl watch');
-      expect(output).toContain('--targets');
+      expect(output).toContain('--to');
     });
   });
 
@@ -59,7 +59,7 @@ describe('Watch Command E2E', () => {
       fs.writeFileSync(path.join(tmpDir, 'test.txt'), 'Hello');
 
       try {
-        const output = runCLI(`watch ${tmpDir} --targets es --dry-run --git-staged`);
+        const output = runCLI(`watch ${tmpDir} --to es --dry-run --git-staged`);
         expect(output).toContain('[dry-run]');
         expect(output).toContain('Git-staged');
       } finally {
@@ -74,8 +74,21 @@ describe('Watch Command E2E', () => {
       fs.writeFileSync(path.join(tmpDir, 'readme.md'), 'Hello world');
 
       try {
-        const output = runCLI(`watch ${tmpDir} --targets de --dry-run`);
+        const output = runCLI(`watch ${tmpDir} --to de --dry-run`);
         expect(output).toContain('[dry-run]');
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should accept --targets as a hidden alias for --to', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-e2e-'));
+      fs.writeFileSync(path.join(tmpDir, 'readme.md'), 'Hello world');
+
+      try {
+        const output = runCLI(`watch ${tmpDir} --targets es --dry-run`);
+        expect(output).toContain('[dry-run]');
+        expect(output).toContain('es');
       } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }

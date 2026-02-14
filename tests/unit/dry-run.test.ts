@@ -291,7 +291,7 @@ describe('--dry-run flag', () => {
 
       await program.parseAsync([
         'node', 'deepl', 'watch', watchDir,
-        '--targets', 'es,fr',
+        '--to', 'es,fr',
         '--dry-run',
       ]);
 
@@ -326,7 +326,7 @@ describe('--dry-run flag', () => {
 
       await program.parseAsync([
         'node', 'deepl', 'watch', watchDir,
-        '--targets', 'de',
+        '--to', 'de',
         '--pattern', '*.json',
         '--auto-commit',
         '--dry-run',
@@ -355,7 +355,7 @@ describe('--dry-run flag', () => {
 
       await program.parseAsync([
         'node', 'deepl', 'watch', watchFile,
-        '--targets', 'ja',
+        '--to', 'ja',
         '--output', '/tmp/translations',
         '--dry-run',
       ]);

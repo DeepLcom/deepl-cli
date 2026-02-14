@@ -15,7 +15,8 @@ export function registerWatch(
     .description('Watch files/directories for changes and auto-translate')
     .argument('<path>', 'File or directory path to watch')
     .optionsGroup('Core Options:')
-    .requiredOption('-t, --targets <languages>', 'Target language(s), comma-separated')
+    .option('-t, --to <languages>', 'Target language(s), comma-separated (required)')
+    .addOption(new Option('--targets <languages>').hideHelp())
     .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
     .option('-o, --output <path>', 'Output directory (default: <path>/translations or same dir for files)')
     .optionsGroup('Translation Quality:')
@@ -32,12 +33,13 @@ export function registerWatch(
     .option('--auto-commit', 'Automatically commit translations to git')
     .addHelpText('after', `
 Examples:
-  $ deepl watch ./docs --targets es,fr
-  $ deepl watch ./src/i18n --targets de --pattern "*.json" --auto-commit
-  $ deepl watch README.md --targets ja --debounce 500
+  $ deepl watch ./docs --to es,fr
+  $ deepl watch ./src/i18n --to de --pattern "*.json" --auto-commit
+  $ deepl watch README.md --to ja --debounce 500
 `)
     .action(async (watchPath: string, options: {
-      targets: string;
+      to?: string;
+      targets?: string;
       from?: string;
       output?: string;
       formality?: string;
@@ -51,8 +53,13 @@ Examples:
       dryRun?: boolean;
     }) => {
       try {
+        if (!options.to && options.targets) options.to = options.targets;
+        if (!options.to) {
+          throw new Error('required option --to <languages> not specified');
+        }
+
         if (options.dryRun) {
-          const targetLangs = options.targets.split(',').map(l => l.trim()).filter(l => l.length > 0);
+          const targetLangs = options.to.split(',').map(l => l.trim()).filter(l => l.length > 0);
           const isDirectory = fs.existsSync(watchPath) && fs.statSync(watchPath).isDirectory();
           let outputDir: string;
           if (options.output) {
@@ -93,7 +100,7 @@ Examples:
 
         const watchCommand = await createWatchCommand(deps);
 
-        await watchCommand.watch(watchPath, options);
+        await watchCommand.watch(watchPath, { ...options, to: options.to });
       } catch (error) {
         handleError(error);
       }

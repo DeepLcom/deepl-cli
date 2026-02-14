@@ -124,7 +124,7 @@ describe('WatchCommand', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const watchPromise = watchCommand.watch('/non/existent/path', {
-        targets: 'es,fr',
+        to: 'es,fr',
       });
 
       await expect(watchPromise).rejects.toThrow('Path not found');
@@ -139,7 +139,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es, fr, de',
+          to: 'es, fr, de',
         });
       } catch (error: any) {
         expect(error.message).toBe('Test complete');
@@ -160,7 +160,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
           output: '/custom/output',
         });
       } catch {
@@ -182,7 +182,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/dir', {
-          targets: 'es',
+          to: 'es',
         });
       } catch {
         // Expected
@@ -200,7 +200,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/dir/file.md', {
-          targets: 'es',
+          to: 'es',
         });
       } catch {
         // Expected
@@ -221,7 +221,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
           debounce: 500,
         });
       } catch {
@@ -243,7 +243,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/dir', {
-          targets: 'es',
+          to: 'es',
           pattern: '*.md',
         });
       } catch {
@@ -265,7 +265,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es,fr',
+          to: 'es,fr',
           from: 'en',
           formality: 'more',
           preserveCode: true,
@@ -292,7 +292,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
         });
       } catch {
         // Expected
@@ -316,7 +316,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es,fr',
+          to: 'es,fr',
         });
       } catch {
         // Expected
@@ -341,7 +341,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
         });
       } catch {
         // Expected
@@ -366,7 +366,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
         });
       } catch {
         // Expected
@@ -385,7 +385,7 @@ describe('WatchCommand', () => {
 
       await expect(
         watchCommand.watch('/some/file.md', {
-          targets: '',
+          to: '',
         })
       ).rejects.toThrow('At least one target language is required');
     });
@@ -400,7 +400,7 @@ describe('WatchCommand', () => {
       // Start watch - it will reach the infinite Promise and hang there
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       watchCommand.watch('/some/file.md', {
-        targets: 'es,fr',
+        to: 'es,fr',
         pattern: '*.md',
         autoCommit: true,
       });
@@ -424,7 +424,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('file.md', {
-          targets: 'es',
+          to: 'es',
         });
       } catch {
         // Expected
@@ -473,7 +473,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es,fr',
+          to: 'es,fr',
           autoCommit: true,
         });
       } catch {
@@ -497,7 +497,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
           autoCommit: true,
         });
       } catch {
@@ -521,7 +521,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
           autoCommit: true,
         });
       } catch {
@@ -546,7 +546,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
           autoCommit: true,
         });
       } catch {
@@ -570,7 +570,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
           autoCommit: true,
         });
       } catch {
@@ -606,7 +606,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/dir', {
-          targets: 'es',
+          to: 'es',
           gitStaged: true,
         });
       } catch {
@@ -626,7 +626,7 @@ describe('WatchCommand', () => {
       jest.spyOn(watchCommand, 'getStagedFiles').mockResolvedValue(new Set());
 
       await watchCommand.watch('/some/dir', {
-        targets: 'es',
+        to: 'es',
         gitStaged: true,
       });
 
@@ -644,7 +644,7 @@ describe('WatchCommand', () => {
 
       await expect(
         watchCommand.watch('/some/dir', {
-          targets: 'es',
+          to: 'es',
           gitStaged: true,
         })
       ).rejects.toThrow('--git-staged requires a git repository');
@@ -656,7 +656,7 @@ describe('WatchCommand', () => {
 
       try {
         await watchCommand.watch('/some/file.md', {
-          targets: 'es',
+          to: 'es',
         });
       } catch {
         // Expected

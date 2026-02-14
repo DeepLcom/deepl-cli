@@ -15,7 +15,7 @@ import { FileTranslationResult, WatchTranslationResult } from '../../services/wa
 import { Logger } from '../../utils/logger.js';
 
 interface WatchOptions {
-  targets: string;
+  to: string;
   from?: string;
   formality?: string;
   glossary?: string;
@@ -73,10 +73,10 @@ export class WatchCommand {
     }
 
     // Parse target languages
-    const targetLangs = options.targets.split(',').map(lang => lang.trim()).filter(lang => lang.length > 0) as Language[];
+    const targetLangs = options.to.split(',').map(lang => lang.trim()).filter(lang => lang.length > 0) as Language[];
 
     if (targetLangs.length === 0) {
-      throw new Error('At least one target language is required. Use --targets es,fr,de');
+      throw new Error('At least one target language is required. Use --to es,fr,de');
     }
 
     // Get git-staged files if requested

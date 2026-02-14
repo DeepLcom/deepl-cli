@@ -413,7 +413,7 @@ describe('Watch Service Integration', () => {
       fs.writeFileSync(path.join(nonGitDir, 'test.txt'), 'Hello');
 
       try {
-        execSyncChild(`node ${CLI_PATH} watch ${nonGitDir} --targets es --git-staged`, {
+        execSyncChild(`node ${CLI_PATH} watch ${nonGitDir} --to es --git-staged`, {
           encoding: 'utf-8',
           cwd: nonGitDir,
           env: { ...process.env, DEEPL_API_KEY: 'test-key:fx' },
