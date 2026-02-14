@@ -222,7 +222,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text)
 - `--output-format FORMAT` - Convert PDF to DOCX during translation (only supported conversion)
 - `--enable-minification` - Enable document minification for PPTX/DOCX files (reduces file size)
-- `--format FORMAT` - Output format: `json` for machine-readable output, `table` for structured table view (default: plain text)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
 
 **Translation Options:**
 
@@ -654,7 +654,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 - `--output, -o FILE` - Write output to file
 - `--in-place` - Edit file in place
 - `--backup, -b` - Create backup before fixing (use with `--fix`)
-- `--format FORMAT` - Output format: `json` for machine-readable output (default: plain text)
+- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
 
 **Advanced:**
 
@@ -1506,7 +1506,7 @@ Show cache statistics (status, entries count, size, percentage used).
 
 **Options:**
 
-- `--format <format>` - Output format: `table`, `json` (default: `table`)
+- `--format <format>` - Output format: `text`, `json`, `table` (default: `table`)
 
 ##### `clear`
 
@@ -1637,6 +1637,10 @@ deepl usage
 
 Display your DeepL API character usage and remaining quota. Helps you monitor consumption and avoid exceeding your account limits.
 
+#### Options
+
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `table`)
+
 #### Examples
 
 ```bash
@@ -1711,6 +1715,7 @@ You can filter to show only source languages, only target languages, or both (de
 
 - `--source, -s` - Show only source languages
 - `--target, -t` - Show only target languages
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `table`)
 
 #### Examples
 
@@ -1972,7 +1977,7 @@ List all available style rules.
 - `--detailed` - Show detailed information including configured rules and custom instructions
 - `--page NUMBER` - Page number for pagination
 - `--page-size NUMBER` - Number of results per page (1-25)
-- `--format FORMAT` - Output format: `json` (default: plain text)
+- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
 
 **Examples:**
 
@@ -2015,7 +2020,7 @@ List all API keys in the organization.
 
 **Options:**
 
-- `--format FORMAT` - Output format: `json` (default: plain text)
+- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
 
 **Examples:**
 
@@ -2034,7 +2039,7 @@ Create a new API key.
 **Options:**
 
 - `--label LABEL` - Label for the new key
-- `--format FORMAT` - Output format: `json` (default: plain text)
+- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
 
 **Examples:**
 
@@ -2106,7 +2111,7 @@ View organization usage analytics with per-product character breakdowns.
 - `--start DATE` - Start date in YYYY-MM-DD format (required)
 - `--end DATE` - End date in YYYY-MM-DD format (required)
 - `--group-by GROUPING` - Group results: `key`, `key_and_day`
-- `--format FORMAT` - Output format: `json` (default: plain text)
+- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
 
 **Output includes:**
 
