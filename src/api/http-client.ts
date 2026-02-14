@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as http from 'http';
 import * as https from 'https';
 import { Language } from '../types';
-import { AuthError, RateLimitError, QuotaError, NetworkError } from '../utils/errors.js';
+import { AuthError, RateLimitError, QuotaError, NetworkError, ConfigError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 
 export interface ProxyConfig {
@@ -54,7 +54,7 @@ export class HttpClient {
 
   static validateConfig(apiKey: string, options: DeepLClientOptions = {}): void {
     if (!apiKey || apiKey.trim() === '') {
-      throw new Error('API key is required');
+      throw new AuthError('API key is required');
     }
 
     let proxyConfig = options.proxy;
@@ -81,7 +81,7 @@ export class HttpClient {
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          throw new Error(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
+          throw new ConfigError(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
         }
       }
     }
@@ -89,7 +89,7 @@ export class HttpClient {
 
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
     if (!apiKey || apiKey.trim() === '') {
-      throw new Error('API key is required');
+      throw new AuthError('API key is required');
     }
 
     const baseURL = options.baseUrl ?? (options.usePro ? PRO_API_URL : FREE_API_URL);
@@ -142,7 +142,7 @@ export class HttpClient {
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          throw new Error(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
+          throw new ConfigError(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
         }
       }
     }
@@ -324,7 +324,7 @@ export class HttpClient {
       return error;
     }
 
-    return new Error('Unknown error occurred');
+    return new NetworkError('Unknown error occurred');
   }
 
   private isNetworkLevelError(error: Error): boolean {

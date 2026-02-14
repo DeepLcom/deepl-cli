@@ -1,5 +1,6 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { TranslationOptions, Language } from '../types';
+import { NetworkError } from '../utils/errors.js';
 
 interface DeepLTranslateResponse {
   translations: Array<{
@@ -105,12 +106,12 @@ export class TranslationClient extends HttpClient {
       );
 
       if (!response.translations || response.translations.length === 0) {
-        throw new Error(`No translation returned from DeepL API. Request: translate text (${text.length} chars) to ${options.targetLang}`);
+        throw new NetworkError(`No translation returned from DeepL API. Request: translate text (${text.length} chars) to ${options.targetLang}`);
       }
 
       const translation = response.translations[0];
       if (!translation) {
-        throw new Error(`Empty translation in API response. Request: translate text (${text.length} chars) to ${options.targetLang}`);
+        throw new NetworkError(`Empty translation in API response. Request: translate text (${text.length} chars) to ${options.targetLang}`);
       }
 
       return {
@@ -144,11 +145,11 @@ export class TranslationClient extends HttpClient {
       );
 
       if (!response.translations) {
-        throw new Error(`No translations returned from DeepL API. Request: batch translate ${texts.length} texts to ${options.targetLang}`);
+        throw new NetworkError(`No translations returned from DeepL API. Request: batch translate ${texts.length} texts to ${options.targetLang}`);
       }
 
       if (response.translations.length !== texts.length) {
-        throw new Error(`Translation count mismatch: sent ${texts.length} texts but received ${response.translations.length} translations. Target language: ${options.targetLang}`);
+        throw new NetworkError(`Translation count mismatch: sent ${texts.length} texts but received ${response.translations.length} translations. Target language: ${options.targetLang}`);
       }
 
       return response.translations.map((translation) => ({

@@ -1,5 +1,6 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { WriteOptions, WriteImprovement } from '../types';
+import { NetworkError } from '../utils/errors.js';
 
 interface DeepLWriteResponse {
   improvements: Array<{
@@ -42,7 +43,7 @@ export class WriteClient extends HttpClient {
       );
 
       if (!response.improvements || response.improvements.length === 0) {
-        throw new Error('No improvements returned');
+        throw new NetworkError('No improvements returned');
       }
 
       return response.improvements.map(improvement => ({

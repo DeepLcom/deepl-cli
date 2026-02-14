@@ -1,5 +1,6 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { DocumentTranslationOptions, DocumentHandle, DocumentStatus } from '../types';
+import { ValidationError } from '../utils/errors.js';
 
 interface DeepLDocumentUploadResponse {
   document_id: string;
@@ -24,11 +25,11 @@ export class DocumentClient extends HttpClient {
     options: DocumentTranslationOptions
   ): Promise<DocumentHandle> {
     if (!file || file.length === 0) {
-      throw new Error('Document file cannot be empty');
+      throw new ValidationError('Document file cannot be empty');
     }
 
     if (!options.filename) {
-      throw new Error('filename is required when uploading document as Buffer');
+      throw new ValidationError('filename is required when uploading document as Buffer');
     }
 
     const { default: FormData } = await import('form-data');

@@ -1,6 +1,7 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { Language, GlossaryInfo, GlossaryLanguagePair } from '../types';
 import { normalizeGlossaryInfo, GlossaryApiResponse } from '../types/glossary.js';
+import { ValidationError } from '../utils/errors.js';
 
 interface DeepLGlossaryLanguagePairsResponse {
   supported_languages: Array<{
@@ -37,7 +38,7 @@ export class GlossaryClient extends HttpClient {
     entries: string
   ): Promise<GlossaryInfo> {
     if (targetLangs.length === 0) {
-      throw new Error('At least one target language is required');
+      throw new ValidationError('At least one target language is required');
     }
 
     try {
@@ -188,7 +189,7 @@ export class GlossaryClient extends HttpClient {
   ): Promise<void> {
     this.validateGlossaryId(glossaryId);
     if (!updates.name && !updates.dictionaries) {
-      throw new Error('At least one of name or dictionaries must be provided');
+      throw new ValidationError('At least one of name or dictionaries must be provided');
     }
     try {
       await this.makeJsonRequest<void>(
@@ -223,7 +224,7 @@ export class GlossaryClient extends HttpClient {
 
   private validateGlossaryId(glossaryId: string): void {
     if (!/^[a-zA-Z0-9-]+$/.test(glossaryId)) {
-      throw new Error('Invalid glossary ID format');
+      throw new ValidationError('Invalid glossary ID format');
     }
   }
 }
