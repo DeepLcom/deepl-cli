@@ -298,4 +298,55 @@ describe('FileTranslationService', () => {
       expect(fileTranslationService.isSupportedFile('README.MD')).toBe(true);
     });
   });
+
+  describe('translateFile() with --output -', () => {
+    let stdoutWriteSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    });
+
+    afterEach(() => {
+      stdoutWriteSpy.mockRestore();
+    });
+
+    it('should write to stdout when outputPath is -', async () => {
+      const inputPath = path.join(testDir, 'input.txt');
+      fs.writeFileSync(inputPath, 'Hello world');
+
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola mundo',
+        detectedSourceLang: 'en',
+      });
+
+      await fileTranslationService.translateFile(inputPath, '-', {
+        targetLang: 'es',
+      });
+
+      expect(stdoutWriteSpy).toHaveBeenCalledWith('Hola mundo');
+    });
+
+    it('should not create output directory when outputPath is -', async () => {
+      const inputPath = path.join(testDir, 'input.txt');
+      fs.writeFileSync(inputPath, 'Hello');
+
+      const mkdirSpy = jest.spyOn(fs.promises, 'mkdir');
+      const writeFileSpy = jest.spyOn(fs.promises, 'writeFile');
+
+      mockTranslationService.translate.mockResolvedValue({
+        text: 'Hola',
+        detectedSourceLang: 'en',
+      });
+
+      await fileTranslationService.translateFile(inputPath, '-', {
+        targetLang: 'es',
+      });
+
+      expect(mkdirSpy).not.toHaveBeenCalled();
+      expect(writeFileSpy).not.toHaveBeenCalled();
+
+      mkdirSpy.mockRestore();
+      writeFileSpy.mockRestore();
+    });
+  });
 });

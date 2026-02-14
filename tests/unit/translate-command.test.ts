@@ -3944,4 +3944,85 @@ describe('TranslateCommand', () => {
       expect(result).toContain('Bonjour le monde');
     });
   });
+
+  describe('--output - (stdout mode)', () => {
+    let mockFs: any;
+    let stdoutWriteSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      mockFs = jest.requireActual('fs');
+      jest.spyOn(mockFs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(mockFs, 'readFileSync');
+      jest.spyOn(mockFs, 'writeFileSync').mockImplementation(() => undefined);
+      jest.spyOn(mockFs, 'mkdirSync').mockImplementation(() => undefined);
+
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+      stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should write translated text to stdout when output is -', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 1024,
+        isDirectory: () => false
+      } as any);
+      (safeReadFileSync as jest.Mock).mockReturnValue('Hello world');
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+      (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
+        text: 'Hola mundo',
+      });
+
+      const result = await (translateCommand as any).translateFile('/input.txt', {
+        to: 'es',
+        output: '-',
+      });
+
+      expect(stdoutWriteSpy).toHaveBeenCalledWith('Hola mundo');
+      expect(result).toBe('');
+      expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should reject --output - with multiple target languages', async () => {
+      await expect(
+        (translateCommand as any).translateFile('/input.txt', {
+          to: 'es,fr,de',
+          output: '-',
+        })
+      ).rejects.toThrow('Cannot use --output - with multiple target languages');
+    });
+
+    it('should reject --output - for document translation', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 200 * 1024,
+        isDirectory: () => false
+      } as any);
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
+
+      await expect(
+        (translateCommand as any).translateDocument('/input.pdf', {
+          to: 'es',
+          output: '-',
+        })
+      ).rejects.toThrow('Cannot stream binary document translation to stdout');
+    });
+
+    it('should reject --output - for structured file (JSON/YAML) translation', async () => {
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 1024,
+        isDirectory: () => false
+      } as any);
+      (safeReadFileSync as jest.Mock).mockReturnValue('{"key": "value"}');
+      (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(false);
+
+      await expect(
+        (translateCommand as any).translateFile('/input.json', {
+          to: 'es',
+          output: '-',
+        })
+      ).rejects.toThrow('Cannot stream structured file');
+    });
+  });
 });

@@ -292,6 +292,12 @@ export class TranslateCommand {
       throw new ValidationError('Output file path is required for file translation. Use --output <path>');
     }
 
+    const stdoutMode = options.output === '-';
+
+    if (options.to.includes(',') && stdoutMode) {
+      throw new ValidationError('Cannot use --output - with multiple target languages. Use a directory path instead.');
+    }
+
     if (options.to.includes(',')) {
       const targetLangs = options.to.split(',').map(lang => lang.trim());
       this.validateLanguageCodes(targetLangs);
@@ -667,6 +673,10 @@ export class TranslateCommand {
 
     // Structured files (JSON/YAML) need key-extraction, not raw text translation
     if (this.isStructuredFile(filePath)) {
+      if (options.output === '-') {
+        throw new ValidationError('Cannot stream structured file (JSON/YAML) translation to stdout. Use --output <file> instead.');
+      }
+
       const translationOptions = this.buildTranslationOptions(options);
 
       if (options.glossary) {
@@ -701,6 +711,12 @@ export class TranslateCommand {
         skipCache: !options.cache
       }
     );
+
+    // --output - : write to stdout
+    if (options.output === '-') {
+      process.stdout.write(result.text);
+      return '';
+    }
 
     // Ensure output directory exists
     const outputDir = path.dirname(options.output!);
@@ -760,6 +776,12 @@ export class TranslateCommand {
   }
 
   private async translateDocument(filePath: string, options: TranslateOptions): Promise<string> {
+    if (options.output === '-') {
+      throw new ValidationError(
+        'Cannot stream binary document translation to stdout. Use --output <file> instead.'
+      );
+    }
+
     const supported = new Set(['from', 'formality', 'outputFormat', 'enableMinification']);
     this.warnIgnoredOptions('document', options, supported);
 

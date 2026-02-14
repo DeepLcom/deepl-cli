@@ -98,6 +98,12 @@ export class FileTranslationService {
       fileOptions
     );
 
+    // --output - : write to stdout
+    if (outputPath === '-') {
+      process.stdout.write(result.text);
+      return;
+    }
+
     // Create output directory if needed
     const outputDir = path.dirname(outputPath);
     await fs.promises.mkdir(outputDir, { recursive: true });

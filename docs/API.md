@@ -219,7 +219,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 
 **Output Options:**
 
-- `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text)
+- `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text). Use `-` for stdout (text-based files only)
 - `--output-format FORMAT` - Convert PDF to DOCX during translation (only supported conversion)
 - `--enable-minification` - Enable document minification for PPTX/DOCX files (reduces file size)
 - `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
@@ -292,6 +292,21 @@ deepl translate README.md --to es,fr,de --output translations/
 # With code preservation
 deepl translate tutorial.md --to es --output tutorial.es.md --preserve-code
 ```
+
+**Output to stdout:**
+
+```bash
+# Pipe translated file content to stdout
+deepl translate README.md --to es --output -
+
+# Combine with shell tools
+deepl translate README.md --to es --output - | wc -l
+
+# Redirect to a file
+deepl translate README.md --to es --output - > translated.md
+```
+
+**Note:** `--output -` only works with text-based files (`.txt`, `.md`, `.html`, `.srt`, `.xlf`). Binary documents (PDF, DOCX, etc.), structured files (JSON, YAML), and multi-target translations do not support stdout output.
 
 **Smart caching for text-based files:**
 
