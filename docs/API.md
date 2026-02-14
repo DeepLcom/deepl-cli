@@ -208,9 +208,9 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 
 #### Options
 
-**Required:**
+**Target Language:**
 
-- `--to, -t LANGS` - Target language(s), comma-separated (e.g., `es`, `es,fr,de`)
+- `--to, -t LANGS` - Target language(s), comma-separated (e.g., `es`, `es,fr,de`). Required unless `defaults.targetLangs` is configured.
 
 **Source Options:**
 
@@ -624,7 +624,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 **Language:**
 
-- `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT`. Optional — omit to auto-detect the language and rephrase in the original language.
+- `--to, -t LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT`. Optional — omit to auto-detect the language and rephrase in the original language. (Alias: `--lang`, `-l`)
 
 **Style Options (mutually exclusive with tone):**
 
@@ -685,7 +685,7 @@ deepl write "Me and him went to store."
 **With explicit language:**
 
 ```bash
-deepl write "Me and him went to store." --lang en-US
+deepl write "Me and him went to store." --to en-US
 # → "He and I went to the store."
 ```
 
@@ -693,11 +693,11 @@ deepl write "Me and him went to store." --lang en-US
 
 ```bash
 # Business style
-deepl write "We want to tell you about our product." --lang en-US --style business
+deepl write "We want to tell you about our product." --to en-US --style business
 # → "We are pleased to inform you about our product."
 
 # Casual style
-deepl write "The analysis demonstrates significant findings." --lang en-US --style casual
+deepl write "The analysis demonstrates significant findings." --to en-US --style casual
 # → "The analysis shows some pretty big findings."
 ```
 
@@ -705,59 +705,59 @@ deepl write "The analysis demonstrates significant findings." --lang en-US --sty
 
 ```bash
 # Confident tone
-deepl write "I think this might work." --lang en-US --tone confident
+deepl write "I think this might work." --to en-US --tone confident
 # → "This will work."
 
 # Diplomatic tone
-deepl write "Your approach is wrong." --lang en-US --tone diplomatic
+deepl write "Your approach is wrong." --to en-US --tone diplomatic
 # → "Perhaps we could consider an alternative approach."
 ```
 
 **Show alternatives:**
 
 ```bash
-deepl write "This is good." --lang en-US --alternatives
+deepl write "This is good." --to en-US --alternatives
 ```
 
 **File operations:**
 
 ```bash
 # Improve file and save to new location
-deepl write document.txt --lang en-US --output improved.txt
+deepl write document.txt --to en-US --output improved.txt
 
 # Edit file in place
-deepl write document.txt --lang en-US --in-place
+deepl write document.txt --to en-US --in-place
 
 # Auto-fix with backup
-deepl write document.txt --lang en-US --fix --backup
+deepl write document.txt --to en-US --fix --backup
 ```
 
 **Interactive mode:**
 
 ```bash
 # Choose from multiple alternatives interactively
-deepl write "Text to improve." --lang en-US --interactive
+deepl write "Text to improve." --to en-US --interactive
 ```
 
 **Check mode:**
 
 ```bash
 # Check if file needs improvement (exit code 8 if changes needed)
-deepl write document.md --lang en-US --check
+deepl write document.md --to en-US --check
 ```
 
 **Diff view:**
 
 ```bash
 # Show differences between original and improved
-deepl write file.txt --lang en-US --diff
+deepl write file.txt --to en-US --diff
 ```
 
 **JSON output:**
 
 ```bash
 # Get machine-readable JSON output
-deepl write "This are good." --lang en-US --format json
+deepl write "This are good." --to en-US --format json
 # {"original":"This are good.","improved":"This is good.","changes":1,"language":"en-US"}
 ```
 
@@ -765,7 +765,7 @@ deepl write "This are good." --lang en-US --format json
 
 ```bash
 # Force a fresh API call, skipping cached results
-deepl write "Improve this text." --lang en-US --no-cache
+deepl write "Improve this text." --to en-US --no-cache
 ```
 
 ---
@@ -898,7 +898,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 
 **Required:**
 
-- `--targets, -t LANGS` - Target language(s), comma-separated
+- `--to, -t LANGS` - Target language(s), comma-separated (Alias: `--targets`)
 
 **Watch Options:**
 
@@ -926,47 +926,47 @@ Monitor files or directories for changes and automatically translate them. Suppo
 
 ```bash
 # Basic watching
-deepl watch README.md --targets es
+deepl watch README.md --to es
 
 # With custom output
-deepl watch README.md --targets es,fr --output translations/
+deepl watch README.md --to es,fr --output translations/
 
 # With options
-deepl watch tutorial.md --targets es --preserve-code --formality more
+deepl watch tutorial.md --to es --preserve-code --formality more
 ```
 
 **Watch directory:**
 
 ```bash
 # Watch all supported files
-deepl watch docs/ --targets es
+deepl watch docs/ --to es
 
 # Watch with pattern
-deepl watch docs/ --targets es,fr --pattern "*.md"
+deepl watch docs/ --to es,fr --pattern "*.md"
 
 # With custom debounce (wait 1 second after changes)
-deepl watch docs/ --targets es --debounce 1000
+deepl watch docs/ --to es --debounce 1000
 ```
 
 **With auto-commit:**
 
 ```bash
 # Automatically commit translations
-deepl watch docs/ --targets es --auto-commit
+deepl watch docs/ --to es --auto-commit
 ```
 
 **With git-staged filtering:**
 
 ```bash
 # Only translate files currently staged in git
-deepl watch . --targets es --git-staged
+deepl watch . --to es --git-staged
 
 # Combine with dry-run to preview staged files
-deepl watch . --targets es,fr --git-staged --dry-run
+deepl watch . --to es,fr --git-staged --dry-run
 
 # Pre-commit workflow: stage files, then watch only those
 git add docs/guide.md docs/faq.md
-deepl watch docs/ --targets de,ja --git-staged --auto-commit
+deepl watch docs/ --to de,ja --git-staged --auto-commit
 ```
 
 > **Note:** `--git-staged` takes a one-time snapshot of staged files at startup. Files staged after the watcher starts are not included. Requires a git repository — exits with an error otherwise.

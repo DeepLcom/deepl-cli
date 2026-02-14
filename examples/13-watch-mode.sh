@@ -39,7 +39,7 @@ echo "   In another terminal, try editing $TEST_DIR/document.md"
 echo
 
 # Run watch in background for demonstration
-deepl watch "$TEST_DIR/document.md" --targets es,fr --debounce 1000 &
+deepl watch "$TEST_DIR/document.md" --to es,fr --debounce 1000 &
 WATCH_PID=$!
 
 sleep 2
@@ -81,7 +81,7 @@ echo "   Watch only .md files with --pattern '*.md'"
 echo
 
 # This would run indefinitely in real usage
-echo "   Usage: deepl watch $TEST_DIR/docs --targets es --pattern '*.md'"
+echo "   Usage: deepl watch $TEST_DIR/docs --to es --pattern '*.md'"
 echo "   (Only .md files would be monitored, .txt files ignored)"
 echo
 
@@ -99,7 +99,7 @@ echo "   Created source directory: $TEST_DIR/src"
 echo "   Translations will be saved to: $TEST_DIR/translations"
 echo
 
-echo "   Usage: deepl watch $TEST_DIR/src --targets de,ja --output $TEST_DIR/translations"
+echo "   Usage: deepl watch $TEST_DIR/src --to de,ja --output $TEST_DIR/translations"
 echo
 
 # Example 4: Watch with auto-commit (requires git repo)
@@ -122,7 +122,7 @@ git add README.md
 git commit -q -m "Initial commit"
 
 echo "   Created git repository: $REPO_DIR"
-echo "   Usage: deepl watch README.md --targets es --auto-commit"
+echo "   Usage: deepl watch README.md --to es --auto-commit"
 echo "   Each translation update will create a git commit automatically"
 echo
 
@@ -144,14 +144,14 @@ const result = calculate(42);
 EOF
 
 echo "   Created technical document with code blocks"
-echo "   Usage: deepl watch $TEST_DIR/technical --targets de --preserve-code --formality more"
+echo "   Usage: deepl watch $TEST_DIR/technical --to de --preserve-code --formality more"
 echo "   This preserves code blocks and uses formal language"
 echo
 
 # Example 6: Watch with custom debounce
 echo "6. Watch with custom debounce delay"
 echo "   Default debounce: 300ms (waits 300ms after last change)"
-echo "   Custom debounce: deepl watch file.md --targets es --debounce 1000"
+echo "   Custom debounce: deepl watch file.md --to es --debounce 1000"
 echo "   Use higher debounce for rapidly changing files"
 echo
 

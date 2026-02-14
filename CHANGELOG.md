@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `formatValue()` and `formatConfig()` methods to ConfigCommand for human-readable text output
 
 ### Changed
+- Unify target language flags — `--to` (`-t`) is now the primary flag on translate, voice, watch, and write commands; `--targets` and `--lang` remain as hidden aliases for backward compatibility
+- Change `write --tone` short flag from `-t` to `-T` (freeing `-t` for `--to`)
 - Parallelize multi-target structured file translation — `translateFileToMultiple()` now parses the file once, extracts strings once, then translates to all target languages concurrently (up to 5 at a time) instead of sequentially
 - Extract `mapWithConcurrency()` utility to `src/utils/concurrency.ts` — shared by both `TranslationService.translateToMultiple()` and `StructuredFileTranslationService.translateFileToMultiple()`
 - Upgrade nock from v13 to v14 — removed redundant `Connection: keep-alive` header from HTTP client (transport-level keep-alive via agents is sufficient)
@@ -39,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extract duplicated file-reading pattern in WriteCommand to shared `readFileContent()` helper, removing ~50 lines of duplication across 5 methods
 
 ### Fixed
+- Fix API.md labeling `translate --to` as "Required" — now notes `defaults.targetLangs` config fallback
 - Restrict `--output-format` choices to `docx` only (PDF→DOCX is the only supported conversion) — previously accepted 10 formats that would fail at the API
 - Fix misleading help example `report.docx --to de --output-format pdf` → `report.pdf --to de --output-format docx`
 - Fix API.md config path docs — replace single legacy path with 4-level priority table matching `resolvePaths()` implementation

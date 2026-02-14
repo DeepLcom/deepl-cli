@@ -533,69 +533,69 @@ See [examples/12-model-type-selection.sh](./examples/12-model-type-selection.sh)
 
 Improve your writing with AI-powered grammar, style, and tone suggestions using the **DeepL Write API**.
 
-The `--lang` flag is optional. If omitted, DeepL auto-detects the language and rephrases in the original language. Generic codes `en` and `pt` are also accepted (mapped to `en-US` and `pt-BR` respectively).
+The `--to` flag is optional. If omitted, DeepL auto-detects the language and rephrases in the original language. Generic codes `en` and `pt` are also accepted (mapped to `en-US` and `pt-BR` respectively). (`--lang` is accepted as an alias.)
 
 ```bash
-# Auto-detect language (--lang is optional)
+# Auto-detect language (--to is optional)
 deepl write "This is a sentence."
 
 # Specify language explicitly
-deepl write "This is a sentence." --lang en-US
+deepl write "This is a sentence." --to en-US
 
 # Use generic language code (en maps to en-US, pt maps to pt-BR)
-deepl write "This is a sentence." --lang en
+deepl write "This is a sentence." --to en
 
 # Apply business writing style
-deepl write "We want to tell you about our new product." --lang en-US --style business
+deepl write "We want to tell you about our new product." --to en-US --style business
 
 # Apply academic writing style
-deepl write "This shows that the method works." --lang en-US --style academic
+deepl write "This shows that the method works." --to en-US --style academic
 
 # Apply casual tone
-deepl write "That is interesting." --lang en-US --style casual
+deepl write "That is interesting." --to en-US --style casual
 
 # Use confident tone
-deepl write "I think this will work." --lang en-US --tone confident
+deepl write "I think this will work." --to en-US --tone confident
 
 # Use diplomatic tone
-deepl write "Try something else." --lang en-US --tone diplomatic
+deepl write "Try something else." --to en-US --tone diplomatic
 
 # Show all alternative improvements
 deepl write "This is good." --tone enthusiastic --alternatives
 
 # Improve files and save to output
-deepl write input.txt --lang en-US --output improved.txt
+deepl write input.txt --to en-US --output improved.txt
 
 # Edit file in place
-deepl write document.md --lang en-US --in-place
+deepl write document.md --to en-US --in-place
 
 # Interactive mode - choose from multiple style alternatives
 # Generates improvements with simple, business, academic, and casual styles
-deepl write "Text to improve." --lang en-US --interactive
+deepl write "Text to improve." --to en-US --interactive
 
 # Interactive mode with file
-deepl write document.md --lang en-US --interactive --in-place
+deepl write document.md --to en-US --interactive --in-place
 
 # Interactive mode with specific style (single option)
-deepl write "Text to improve." --lang en-US --style business --interactive
+deepl write "Text to improve." --to en-US --style business --interactive
 
 # Check if text needs improvement (exit code 0 if no changes needed)
-deepl write document.md --lang en-US --check
+deepl write document.md --to en-US --check
 
 # Auto-fix files in place
-deepl write document.md --lang en-US --fix
+deepl write document.md --to en-US --fix
 
 # Auto-fix with backup
-deepl write document.md --lang en-US --fix --backup
+deepl write document.md --to en-US --fix --backup
 
 # Show diff between original and improved
-deepl write file.txt --lang en-US --diff
+deepl write file.txt --to en-US --diff
 
 # Show diff for plain text
-deepl write "This text could be better." --lang en-US --diff
+deepl write "This text could be better." --to en-US --diff
 
 # Bypass cache for this request
-deepl write "Fresh improvement please." --lang en-US --no-cache
+deepl write "Fresh improvement please." --to en-US --no-cache
 ```
 
 **Supported Languages:**
@@ -689,31 +689,31 @@ Monitor files or directories for changes and automatically translate them in rea
 
 ```bash
 # Watch a single file
-deepl watch README.md --targets es,fr,de
+deepl watch README.md --to es,fr,de
 
 # Watch a directory (all supported files)
-deepl watch docs/ --targets ja --output docs-i18n/
+deepl watch docs/ --to ja --output docs-i18n/
 
 # Watch with pattern filtering
-deepl watch src/locales/ --pattern "*.json" --targets es,fr,de
+deepl watch src/locales/ --pattern "*.json" --to es,fr,de
 
 # Watch markdown files only
-deepl watch docs/ --pattern "*.md" --targets ja
+deepl watch docs/ --pattern "*.md" --to ja
 
 # Auto-commit translations to git
-deepl watch docs/ --targets es --auto-commit
+deepl watch docs/ --to es --auto-commit
 
 # Custom debounce delay (default: 300ms)
-deepl watch src/ --targets es --debounce 1000
+deepl watch src/ --to es --debounce 1000
 
 # Preview what would be watched without starting the watcher
-deepl watch docs/ --targets es --dry-run
+deepl watch docs/ --to es --dry-run
 
 # Only watch git-staged files (useful in pre-commit workflows)
-deepl watch . --targets es --git-staged
+deepl watch . --to es --git-staged
 
 # With formality and code preservation
-deepl watch docs/ --targets de --formality more --preserve-code
+deepl watch docs/ --to de --formality more --preserve-code
 ```
 
 **Features:**
