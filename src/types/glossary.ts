@@ -3,6 +3,7 @@
  */
 
 import { Language } from './common.js';
+import { ValidationError } from '../utils/errors.js';
 
 /**
  * Raw API response from DeepL v3 glossary endpoints
@@ -83,7 +84,7 @@ export function getTargetLang(glossary: GlossaryInfo, targetLang?: Language): La
   // If specified, validate it exists
   if (targetLang) {
     if (!glossary.target_langs.includes(targetLang)) {
-      throw new Error(
+      throw new ValidationError(
         `Target language "${targetLang}" not found in glossary.\n` +
           `Available: ${glossary.target_langs.join(', ')}`
       );
@@ -93,11 +94,11 @@ export function getTargetLang(glossary: GlossaryInfo, targetLang?: Language): La
 
   // Otherwise, must be single-target glossary
   if (glossary.target_langs.length === 0) {
-    throw new Error('Glossary has no target languages');
+    throw new ValidationError('Glossary has no target languages');
   }
 
   if (glossary.target_langs.length > 1) {
-    throw new Error(
+    throw new ValidationError(
       `This glossary contains multiple language pairs: ${glossary.target_langs.join(', ')}\n` +
         `Please specify which pair using --target flag`
     );

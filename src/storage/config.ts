@@ -8,6 +8,7 @@ import * as path from 'path';
 import { DeepLConfig, Formality, OutputFormat } from '../types';
 import { resolvePaths } from '../utils/paths.js';
 import { isValidLanguage } from '../data/language-registry.js';
+import { ConfigError } from '../utils/errors.js';
 
 const VALID_FORMALITY: readonly Formality[] = [
   'default',
@@ -68,14 +69,14 @@ export class ConfigService {
     for (let i = 0; i < keys.length - 1; i++) {
       const k = keys[i];
       if (!k || !(k in current)) {
-        throw new Error(`Invalid path: ${key}`);
+        throw new ConfigError(`Invalid path: ${key}`);
       }
       current = current[k];
     }
 
     const lastKey = keys[keys.length - 1];
     if (lastKey && !(lastKey in current)) {
-      throw new Error(`Invalid path: ${key}`);
+      throw new ConfigError(`Invalid path: ${key}`);
     }
 
     if (lastKey) {
@@ -243,7 +244,7 @@ export class ConfigService {
       // Clean up temp file on failure
       const tmpPath = this.configPath + '.tmp';
       try { fs.unlinkSync(tmpPath); } catch { /* ignore cleanup errors */ }
-      throw new Error(`Failed to save config: ${String(error)}`);
+      throw new ConfigError(`Failed to save config: ${String(error)}`);
     }
   }
 
@@ -265,28 +266,28 @@ export class ConfigService {
 
   private validatePath(keys: string[], value: unknown): void {
     if (keys.length === 0) {
-      throw new Error('Invalid path: empty');
+      throw new ConfigError('Invalid path: empty');
     }
 
     for (const key of keys) {
       if (key.includes('\0')) {
-        throw new Error('Invalid path: contains null byte');
+        throw new ConfigError('Invalid path: contains null byte');
       }
 
       if (key.includes('/') || key.includes('\\')) {
-        throw new Error('Invalid path: contains path separator');
+        throw new ConfigError('Invalid path: contains path separator');
       }
 
       if (key === '..' || key.includes('..')) {
-        throw new Error('Invalid path: contains directory traversal');
+        throw new ConfigError('Invalid path: contains directory traversal');
       }
 
       if (key.startsWith('.')) {
-        throw new Error('Invalid path: segment starts with dot');
+        throw new ConfigError('Invalid path: segment starts with dot');
       }
 
       if (key === '') {
-        throw new Error('Invalid path: empty segment');
+        throw new ConfigError('Invalid path: empty segment');
       }
     }
 
@@ -300,7 +301,7 @@ export class ConfigService {
 
     if (path === 'defaults.targetLangs') {
       if (!Array.isArray(value)) {
-        throw new Error('Target languages must be an array');
+        throw new ConfigError('Target languages must be an array');
       }
       for (const lang of value) {
          
@@ -318,19 +319,19 @@ export class ConfigService {
 
     if (path === 'cache.maxSize') {
       if (typeof value !== 'number' || value < 0) {
-        throw new Error('Cache size must be positive');
+        throw new ConfigError('Cache size must be positive');
       }
     }
 
     if (path === 'api.baseUrl') {
       if (typeof value !== 'string' || !value.startsWith('https://')) {
-        throw new Error('API base URL must be an HTTPS URL');
+        throw new ConfigError('API base URL must be an HTTPS URL');
       }
     }
 
     // Validate boolean fields
     if (BOOLEAN_CONFIG_PATHS.includes(path as typeof BOOLEAN_CONFIG_PATHS[number]) && typeof value !== 'boolean') {
-      throw new Error('Expected boolean');
+      throw new ConfigError('Expected boolean');
     }
   }
 
@@ -339,7 +340,7 @@ export class ConfigService {
    */
   private validateLanguage(lang: string): void {
     if (!isValidLanguage(lang)) {
-      throw new Error('Invalid language code');
+      throw new ConfigError('Invalid language code');
     }
   }
 
@@ -348,7 +349,7 @@ export class ConfigService {
    */
   private validateFormality(formality: string): void {
     if (!VALID_FORMALITY.includes(formality as Formality)) {
-      throw new Error('Invalid formality');
+      throw new ConfigError('Invalid formality');
     }
   }
 
@@ -357,21 +358,21 @@ export class ConfigService {
    */
   private validateOutputFormat(format: string): void {
     if (!VALID_OUTPUT_FORMATS.includes(format as OutputFormat)) {
-      throw new Error('Invalid output format');
+      throw new ConfigError('Invalid output format');
     }
   }
 
   private validateKeyString(key: string): void {
     if (key.includes('../') || key.includes('..\\') || key.startsWith('..')) {
-      throw new Error('Invalid path: contains directory traversal');
+      throw new ConfigError('Invalid path: contains directory traversal');
     }
 
     if (key.startsWith('.')) {
-      throw new Error('Invalid path: segment starts with dot');
+      throw new ConfigError('Invalid path: segment starts with dot');
     }
 
     if (key.includes('..')) {
-      throw new Error('Invalid path: contains directory traversal');
+      throw new ConfigError('Invalid path: contains directory traversal');
     }
   }
 }

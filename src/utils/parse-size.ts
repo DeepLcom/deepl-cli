@@ -3,6 +3,8 @@
  * Converts human-readable size strings to bytes
  */
 
+import { ValidationError } from './errors.js';
+
 /**
  * Parse human-readable size string to bytes
  * Supports: bytes, KB, MB, GB, K, M, G
@@ -18,7 +20,7 @@
  */
 export function parseSize(size: string): number {
   if (!size || size.trim() === '') {
-    throw new Error('Size cannot be empty');
+    throw new ValidationError('Size cannot be empty');
   }
 
   const trimmed = size.trim().toUpperCase();
@@ -27,7 +29,7 @@ export function parseSize(size: string): number {
   const plainNumber = parseInt(trimmed, 10);
   if (!isNaN(plainNumber) && trimmed === plainNumber.toString()) {
     if (plainNumber < 0) {
-      throw new Error('Size must be positive');
+      throw new ValidationError('Size must be positive');
     }
     return plainNumber;
   }
@@ -36,14 +38,14 @@ export function parseSize(size: string): number {
   const match = trimmed.match(/^(\d+(?:\.\d+)?)\s*([KMGT]B?)$/);
 
   if (!match) {
-    throw new Error(`Invalid size format: ${size}. Use formats like: 100, 100K, 100MB, 1G`);
+    throw new ValidationError(`Invalid size format: ${size}. Use formats like: 100, 100K, 100MB, 1G`);
   }
 
   const value = parseFloat(match[1]!);
   const unit = match[2]!;
 
   if (value < 0) {
-    throw new Error('Size must be positive');
+    throw new ValidationError('Size must be positive');
   }
 
   // Convert to bytes based on unit
@@ -60,7 +62,7 @@ export function parseSize(size: string): number {
 
   const multiplier = multipliers[unit];
   if (!multiplier) {
-    throw new Error(`Unknown size unit: ${unit}`);
+    throw new ValidationError(`Unknown size unit: ${unit}`);
   }
 
   return Math.floor(value * multiplier);

@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { ValidationError } from './errors.js';
 
 /**
  * Read a file after verifying it is not a symlink.
@@ -10,7 +11,7 @@ export function safeReadFileSync(filePath: string): Buffer;
 export function safeReadFileSync(filePath: string, encoding?: 'utf-8'): string | Buffer {
   const stat = fs.lstatSync(filePath);
   if (stat.isSymbolicLink()) {
-    throw new Error(`Symlinks are not supported for security reasons: ${filePath}`);
+    throw new ValidationError(`Symlinks are not supported for security reasons: ${filePath}`);
   }
   if (encoding) {
     return fs.readFileSync(filePath, encoding);
@@ -26,7 +27,7 @@ export async function safeReadFile(filePath: string): Promise<Buffer>;
 export async function safeReadFile(filePath: string, encoding?: 'utf-8'): Promise<string | Buffer> {
   const stat = await fs.promises.lstat(filePath);
   if (stat.isSymbolicLink()) {
-    throw new Error(`Symlinks are not supported for security reasons: ${filePath}`);
+    throw new ValidationError(`Symlinks are not supported for security reasons: ${filePath}`);
   }
   if (encoding) {
     return fs.promises.readFile(filePath, encoding);

@@ -7,6 +7,7 @@ import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
 import { resolvePaths } from '../utils/paths.js';
+import { ConfigError } from '../utils/errors.js';
 
 export interface CacheServiceOptions {
   dbPath?: string;
@@ -233,7 +234,7 @@ export class CacheService {
    */
   setMaxSize(maxSize: number): void {
     if (maxSize < 0) {
-      throw new Error('Max size must be positive');
+      throw new ConfigError('Max size must be positive');
     }
     this.maxSize = maxSize;
   }
