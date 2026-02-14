@@ -2170,9 +2170,16 @@ Per-Key Usage (2 entries):
 
 **Configuration file location:**
 
-- **All platforms**: `~/.deepl-cli/config.json`
+The CLI resolves configuration and cache paths using the following priority order:
 
-**Override location:** Set `DEEPL_CONFIG_DIR` environment variable
+| Priority | Condition | Config path | Cache path |
+|----------|-----------|-------------|------------|
+| 1 | `DEEPL_CONFIG_DIR` set | `$DEEPL_CONFIG_DIR/config.json` | `$DEEPL_CONFIG_DIR/cache.db` |
+| 2 | `~/.deepl-cli/` exists | `~/.deepl-cli/config.json` | `~/.deepl-cli/cache.db` |
+| 3 | XDG env vars set | `$XDG_CONFIG_HOME/deepl-cli/config.json` | `$XDG_CACHE_HOME/deepl-cli/cache.db` |
+| 4 | Default | `~/.config/deepl-cli/config.json` | `~/.cache/deepl-cli/cache.db` |
+
+Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 
 ### Configuration Schema
 
