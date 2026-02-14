@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `formatValue()` and `formatConfig()` methods to ConfigCommand for human-readable text output
 
 ### Changed
+- Convert `new Error()` to typed `DeepLCLIError` subclasses across 36 files — errors now carry correct exit codes and user-facing suggestions without relying on `classifyByMessage()` string matching
 - Unify target language flags — `--to` (`-t`) is now the primary flag on translate, voice, watch, and write commands; `--targets` and `--lang` remain as hidden aliases for backward compatibility
 - Change `write --tone` short flag from `-t` to `-T` (freeing `-t` for `--to`)
 - Parallelize multi-target structured file translation — `translateFileToMultiple()` now parses the file once, extracts strings once, then translates to all target languages concurrently (up to 5 at a time) instead of sequentially
