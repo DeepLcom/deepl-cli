@@ -11,6 +11,7 @@ import { TranslationService, MAX_TEXT_BYTES } from './translation.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
 import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
+import { ValidationError } from '../utils/errors.js';
 
 interface FileTranslationOptions {
   preserveCode?: boolean;
@@ -59,7 +60,7 @@ export class StructuredFileTranslationService {
     const content = await this.readFile(inputPath);
 
     if (!content || content.trim() === '') {
-      throw new Error('Cannot translate empty file');
+      throw new ValidationError('Cannot translate empty file');
     }
 
     const ext = path.extname(inputPath).toLowerCase();
@@ -94,7 +95,7 @@ export class StructuredFileTranslationService {
     const content = await this.readFile(inputPath);
 
     if (!content || content.trim() === '') {
-      throw new Error('Cannot translate empty file');
+      throw new ValidationError('Cannot translate empty file');
     }
 
     const ext = path.extname(inputPath).toLowerCase();
@@ -158,7 +159,7 @@ export class StructuredFileTranslationService {
     } catch (err: unknown) {
       const nodeErr = err as Error & { code?: string };
       if (nodeErr.code === 'ENOENT') {
-        throw new Error(`Input file not found: ${filePath}`);
+        throw new ValidationError(`Input file not found: ${filePath}`);
       }
       throw err;
     }
@@ -183,12 +184,12 @@ export class StructuredFileTranslationService {
     const doc = YAML.parseDocument(content);
 
     if (doc.errors && doc.errors.length > 0) {
-      throw new Error(`YAML parse error: ${doc.errors[0]?.message}`);
+      throw new ValidationError(`YAML parse error: ${doc.errors[0]?.message}`);
     }
 
     const data: unknown = doc.toJSON();
     if (data === null || data === undefined) {
-      throw new Error('Cannot translate empty file');
+      throw new ValidationError('Cannot translate empty file');
     }
 
     const trailingNewline = content.endsWith('\n');

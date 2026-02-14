@@ -10,6 +10,7 @@ import { CacheService } from '../storage/cache.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
+import { ValidationError } from '../utils/errors.js';
 
 export { MULTI_TARGET_CONCURRENCY };
 
@@ -57,16 +58,16 @@ export class TranslationService {
   ): Promise<TranslationResult> {
     // Validate inputs
     if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty');
+      throw new ValidationError('Text cannot be empty');
     }
 
     if (!options.targetLang) {
-      throw new Error('Target language is required');
+      throw new ValidationError('Target language is required');
     }
 
     const textBytes = Buffer.byteLength(text, 'utf8');
     if (textBytes > MAX_TEXT_BYTES) {
-      throw new Error(
+      throw new ValidationError(
         `Text too large: ${textBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
         'Split the text into smaller chunks or use file translation for large documents.'
       );
@@ -161,7 +162,7 @@ export class TranslationService {
       }
       const itemBytes = Buffer.byteLength(text, 'utf8');
       if (itemBytes > MAX_TEXT_BYTES) {
-        throw new Error(
+        throw new ValidationError(
           `Text at index ${i} too large: ${itemBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
           'Split the text into smaller chunks or use file translation for large documents.'
         );
@@ -169,7 +170,7 @@ export class TranslationService {
       totalBytes += itemBytes;
     }
     if (totalBytes > MAX_TEXT_BYTES) {
-      throw new Error(
+      throw new ValidationError(
         `Batch text too large: ${totalBytes} bytes total exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
         'Reduce the number of texts or split them into smaller batches.'
       );
@@ -312,7 +313,7 @@ export class TranslationService {
     options: Omit<TranslationOptions, 'targetLang'> & { skipCache?: boolean } = {}
   ): Promise<MultiTargetResult[]> {
     if (targetLangs.length === 0) {
-      throw new Error('At least one target language is required');
+      throw new ValidationError('At least one target language is required');
     }
 
     return mapWithConcurrency(

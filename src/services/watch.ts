@@ -10,6 +10,7 @@ import { minimatch } from 'minimatch';
 import { FileTranslationService } from './file-translation.js';
 import { Language, TranslationOptions } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
+import { ValidationError } from '../utils/errors.js';
 
 export interface FileTranslationResult {
   targetLang: Language;
@@ -78,7 +79,7 @@ export class WatchService {
   watch(watchPath: string, options: WatchOptions): void {
     // Validate path exists
     if (!fs.existsSync(watchPath)) {
-      throw new Error(`Path not found: ${watchPath}`);
+      throw new ValidationError(`Path not found: ${watchPath}`);
     }
 
     this.watchOptions = options;
@@ -133,7 +134,7 @@ export class WatchService {
   handleFileChange(filePath: string): void {
     // Check if watch has been started at least once
     if (!this.watchOptions) {
-      throw new Error('Watch not started');
+      throw new ValidationError('Watch not started');
     }
 
     // Early check: Don't schedule new timers if watch is being stopped or has stopped
@@ -226,7 +227,7 @@ export class WatchService {
    */
   private async translateFile(filePath: string): Promise<void> {
     if (!this.watchOptions) {
-      throw new Error('Watch not started');
+      throw new ValidationError('Watch not started');
     }
 
     const { targetLangs, outputDir, sourceLang, formality, glossaryId, preserveCode } = this.watchOptions;

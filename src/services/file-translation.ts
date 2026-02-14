@@ -81,14 +81,14 @@ export class FileTranslationService {
     } catch (err: unknown) {
       const nodeErr = err as NodeErrno;
       if (nodeErr.code === 'ENOENT') {
-        throw new Error(`Input file not found: ${inputPath}`);
+        throw new ValidationError(`Input file not found: ${inputPath}`);
       }
       throw err;
     }
 
     // Check for empty files
     if (!content || content.trim() === '') {
-      throw new Error('Cannot translate empty file');
+      throw new ValidationError('Cannot translate empty file');
     }
 
     // Translate content
@@ -134,13 +134,13 @@ export class FileTranslationService {
     } catch (err: unknown) {
       const nodeErr = err as NodeErrno;
       if (nodeErr.code === 'ENOENT') {
-        throw new Error(`Input file not found: ${inputPath}`);
+        throw new ValidationError(`Input file not found: ${inputPath}`);
       }
       throw err;
     }
 
     if (!content || content.trim() === '') {
-      throw new Error('Cannot translate empty file');
+      throw new ValidationError('Cannot translate empty file');
     }
 
     // Translate to multiple languages

@@ -12,6 +12,7 @@ import { TranslationService, MAX_TEXT_BYTES, TRANSLATE_BATCH_SIZE } from './tran
 import { TranslationOptions } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
 import { Logger } from '../utils/logger.js';
+import { ValidationError } from '../utils/errors.js';
 
 interface BatchOptions {
   outputDir: string;
@@ -60,10 +61,10 @@ export class BatchTranslationService {
     // Validate concurrency parameter
     const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
     if (concurrency < 1) {
-      throw new Error('Concurrency must be at least 1');
+      throw new ValidationError('Concurrency must be at least 1');
     }
     if (concurrency > MAX_CONCURRENCY) {
-      throw new Error('Concurrency cannot exceed 100');
+      throw new ValidationError('Concurrency cannot exceed 100');
     }
 
     this.concurrency = concurrency;
@@ -314,12 +315,12 @@ export class BatchTranslationService {
   ): Promise<BatchResult> {
     // Check if directory exists
     if (!fs.existsSync(inputDir)) {
-      throw new Error(`Directory not found: ${inputDir}`);
+      throw new ValidationError(`Directory not found: ${inputDir}`);
     }
 
     const stats = fs.statSync(inputDir);
     if (!stats.isDirectory()) {
-      throw new Error(`Not a directory: ${inputDir}`);
+      throw new ValidationError(`Not a directory: ${inputDir}`);
     }
 
     // Build glob pattern

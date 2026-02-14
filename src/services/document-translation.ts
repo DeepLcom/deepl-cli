@@ -12,6 +12,7 @@ import {
   DocumentStatus,
 } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
+import { ValidationError, NetworkError } from '../utils/errors.js';
 
 interface NodeErrno extends Error {
   code?: string;
@@ -83,7 +84,7 @@ export class DocumentTranslationService {
     if (options.enableDocumentMinification) {
       const ext = path.extname(inputPath).toLowerCase();
       if (ext !== '.pptx' && ext !== '.docx') {
-        throw new Error(
+        throw new ValidationError(
           'Document minification is only supported for PPTX and DOCX files'
         );
       }
@@ -96,7 +97,7 @@ export class DocumentTranslationService {
     } catch (err: unknown) {
       const nodeErr = err as NodeErrno;
       if (nodeErr.code === 'ENOENT') {
-        throw new Error(`Input file not found: ${inputPath}`);
+        throw new ValidationError(`Input file not found: ${inputPath}`);
       }
       throw err;
     }
@@ -104,7 +105,7 @@ export class DocumentTranslationService {
     if (fileStat.size > MAX_DOCUMENT_FILE_SIZE) {
       const sizeMB = (fileStat.size / (1024 * 1024)).toFixed(1);
       const limitMB = (MAX_DOCUMENT_FILE_SIZE / (1024 * 1024)).toFixed(0);
-      throw new Error(
+      throw new ValidationError(
         `File size (${sizeMB} MB) exceeds the maximum allowed size of ${limitMB} MB. ` +
         `Please check DeepL's document size limits: https://developers.deepl.com/docs/api-reference/document`
       );
@@ -129,7 +130,7 @@ export class DocumentTranslationService {
 
     // Check for errors
     if (finalStatus.status === 'error') {
-      throw new Error(
+      throw new NetworkError(
         `Document translation failed: ${finalStatus.errorMessage ?? 'Unknown error'}`
       );
     }
@@ -172,14 +173,14 @@ export class DocumentTranslationService {
       // Check if total timeout exceeded
       const elapsed = Date.now() - startTime;
       if (elapsed > this.TOTAL_TIMEOUT_MS) {
-        throw new Error(
+        throw new ValidationError(
           `Document translation timeout exceeded (${this.TOTAL_TIMEOUT_MS / 1000 / 60} minutes). The document may still be processing on DeepL servers.`
         );
       }
 
       // Check if operation was cancelled
       if (abortSignal?.aborted) {
-        throw new Error('Document translation cancelled');
+        throw new ValidationError('Document translation cancelled');
       }
 
       status = await this.client.getDocumentStatus(handle);
@@ -202,7 +203,7 @@ export class DocumentTranslationService {
       await this.sleep(pollInterval, abortSignal);
 
       if (abortSignal?.aborted) {
-        throw new Error('Document translation cancelled');
+        throw new ValidationError('Document translation cancelled');
       }
 
       pollInterval = Math.min(
@@ -213,7 +214,7 @@ export class DocumentTranslationService {
 
     // Exceeded maximum attempts
     const totalElapsed = Date.now() - startTime;
-    throw new Error(
+    throw new ValidationError(
       `Document translation exceeded maximum polling attempts (${this.MAX_POLL_ATTEMPTS} attempts over ${(totalElapsed / 1000 / 60).toFixed(1)} minutes). The document may still be processing on DeepL servers.`
     );
   }
@@ -241,7 +242,7 @@ export class DocumentTranslationService {
     return new Promise((resolve, reject) => {
       // Check if already aborted
       if (abortSignal?.aborted) {
-        reject(new Error('Document translation cancelled'));
+        reject(new ValidationError('Document translation cancelled'));
         return;
       }
 
@@ -260,7 +261,7 @@ export class DocumentTranslationService {
         if (!isSettled) {
           isSettled = true;
           clearTimeout(timeout);
-          reject(new Error('Document translation cancelled'));
+          reject(new ValidationError('Document translation cancelled'));
         }
       };
 

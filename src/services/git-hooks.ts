@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { ValidationError } from '../utils/errors.js';
 
 export type HookType = 'pre-commit' | 'pre-push' | 'commit-msg' | 'post-commit';
 
@@ -30,7 +31,7 @@ export class GitHooksService {
 
   constructor(gitDir: string) {
     if (!fs.existsSync(gitDir)) {
-      throw new Error('Git directory not found: ' + gitDir);
+      throw new ValidationError('Git directory not found: ' + gitDir);
     }
 
     this.hooksDir = path.join(gitDir, 'hooks');
@@ -81,7 +82,7 @@ export class GitHooksService {
     // Verify it's a DeepL hook before removing
     const content = fs.readFileSync(hookPath, 'utf-8');
     if (!this.isDeepLHook(content)) {
-      throw new Error('Hook is not a DeepL CLI hook. Remove it manually if needed.');
+      throw new ValidationError('Hook is not a DeepL CLI hook. Remove it manually if needed.');
     }
 
     fs.unlinkSync(hookPath);
@@ -351,7 +352,7 @@ exit 0
 `;
     }
 
-    throw new Error('Invalid hook type');
+    throw new ValidationError('Invalid hook type');
   }
 
   /**
@@ -367,7 +368,7 @@ exit 0
   private validateHookType(hookType: string): asserts hookType is HookType {
     const validTypes: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
     if (!validTypes.includes(hookType as HookType)) {
-      throw new Error(`Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`);
+      throw new ValidationError(`Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`);
     }
   }
 }

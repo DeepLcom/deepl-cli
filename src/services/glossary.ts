@@ -7,6 +7,7 @@ import { DeepLClient } from '../api/deepl-client.js';
 import { GlossaryInfo, GlossaryLanguagePair, Language } from '../types/index.js';
 import { isMultilingual } from '../types/glossary.js';
 import { Logger } from '../utils/logger.js';
+import { ValidationError, ConfigError } from '../utils/errors.js';
 
 export class GlossaryService {
   private client: DeepLClient;
@@ -26,15 +27,15 @@ export class GlossaryService {
   ): Promise<GlossaryInfo> {
     // Validate inputs
     if (!name || name.trim() === '') {
-      throw new Error('Glossary name is required');
+      throw new ValidationError('Glossary name is required');
     }
 
     if (targetLangs.length === 0) {
-      throw new Error('At least one target language is required');
+      throw new ValidationError('At least one target language is required');
     }
 
     if (Object.keys(entries).length === 0) {
-      throw new Error('Glossary entries cannot be empty');
+      throw new ValidationError('Glossary entries cannot be empty');
     }
 
     // Convert entries to TSV format
@@ -54,15 +55,15 @@ export class GlossaryService {
     tsv: string
   ): Promise<GlossaryInfo> {
     if (!name || name.trim() === '') {
-      throw new Error('Glossary name is required');
+      throw new ValidationError('Glossary name is required');
     }
 
     if (targetLangs.length === 0) {
-      throw new Error('At least one target language is required');
+      throw new ValidationError('At least one target language is required');
     }
 
     if (!tsv || tsv.trim() === '') {
-      throw new Error('Glossary entries cannot be empty');
+      throw new ValidationError('Glossary entries cannot be empty');
     }
 
     return this.client.createGlossary(name, sourceLang, targetLangs, tsv);
@@ -100,7 +101,7 @@ export class GlossaryService {
     }
     const glossary = await this.getGlossaryByName(nameOrId);
     if (!glossary) {
-      throw new Error(`Glossary "${nameOrId}" not found`);
+      throw new ConfigError(`Glossary "${nameOrId}" not found`);
     }
     return glossary.glossary_id;
   }
@@ -143,10 +144,10 @@ export class GlossaryService {
   ): Promise<void> {
     // Validate inputs
     if (!sourceText || sourceText.trim() === '') {
-      throw new Error('Source text cannot be empty');
+      throw new ValidationError('Source text cannot be empty');
     }
     if (!targetText || targetText.trim() === '') {
-      throw new Error('Target text cannot be empty');
+      throw new ValidationError('Target text cannot be empty');
     }
 
     // Get existing entries
@@ -154,7 +155,7 @@ export class GlossaryService {
 
     // Check if entry already exists
     if (entries[sourceText] !== undefined) {
-      throw new Error(`Entry "${sourceText}" already exists in glossary`);
+      throw new ValidationError(`Entry "${sourceText}" already exists in glossary`);
     }
 
     // Add new entry
@@ -179,10 +180,10 @@ export class GlossaryService {
   ): Promise<void> {
     // Validate inputs
     if (!sourceText || sourceText.trim() === '') {
-      throw new Error('Source text cannot be empty');
+      throw new ValidationError('Source text cannot be empty');
     }
     if (!newTargetText || newTargetText.trim() === '') {
-      throw new Error('Target text cannot be empty');
+      throw new ValidationError('Target text cannot be empty');
     }
 
     // Get existing entries
@@ -190,7 +191,7 @@ export class GlossaryService {
 
     // Check if entry exists
     if (entries[sourceText] === undefined) {
-      throw new Error(`Entry "${sourceText}" not found in glossary`);
+      throw new ConfigError(`Entry "${sourceText}" not found in glossary`);
     }
 
     // Update entry
@@ -214,7 +215,7 @@ export class GlossaryService {
   ): Promise<void> {
     // Validate input
     if (!sourceText || sourceText.trim() === '') {
-      throw new Error('Source text cannot be empty');
+      throw new ValidationError('Source text cannot be empty');
     }
 
     // Get existing entries
@@ -222,12 +223,12 @@ export class GlossaryService {
 
     // Check if entry exists
     if (entries[sourceText] === undefined) {
-      throw new Error(`Entry "${sourceText}" not found in glossary`);
+      throw new ConfigError(`Entry "${sourceText}" not found in glossary`);
     }
 
     // Check if this is the last entry
     if (Object.keys(entries).length === 1) {
-      throw new Error('Cannot remove last entry from glossary. Delete the glossary instead.');
+      throw new ValidationError('Cannot remove last entry from glossary. Delete the glossary instead.');
     }
 
     // Remove entry
@@ -256,17 +257,17 @@ export class GlossaryService {
     }
   ): Promise<void> {
     if (options.name !== undefined && (!options.name || options.name.trim() === '')) {
-      throw new Error('New glossary name cannot be empty');
+      throw new ValidationError('New glossary name cannot be empty');
     }
 
     if (!options.name && !options.dictionaries) {
-      throw new Error('At least one of name or dictionaries must be provided');
+      throw new ValidationError('At least one of name or dictionaries must be provided');
     }
 
     if (options.name) {
       const glossary = await this.client.getGlossary(glossaryId);
       if (glossary.name === options.name) {
-        throw new Error('New name must be different from current name');
+        throw new ValidationError('New name must be different from current name');
       }
     }
 
@@ -318,7 +319,7 @@ export class GlossaryService {
   ): Promise<void> {
     const entries = GlossaryService.tsvToEntries(tsvContent);
     if (Object.keys(entries).length === 0) {
-      throw new Error('No valid entries found in TSV content');
+      throw new ValidationError('No valid entries found in TSV content');
     }
 
     const tsv = GlossaryService.entriesToTSV(entries);
@@ -339,12 +340,12 @@ export class GlossaryService {
 
     // Check if glossary has multiple dictionaries
     if (!isMultilingual(glossary)) {
-      throw new Error('Cannot delete dictionary from single-language glossary. Delete the entire glossary instead.');
+      throw new ValidationError('Cannot delete dictionary from single-language glossary. Delete the entire glossary instead.');
     }
 
     // Check if this would be the last dictionary
     if (glossary.dictionaries.length === 1) {
-      throw new Error('Cannot delete last dictionary from glossary. Delete the entire glossary instead.');
+      throw new ValidationError('Cannot delete last dictionary from glossary. Delete the entire glossary instead.');
     }
 
     // Validate the dictionary exists
@@ -354,7 +355,7 @@ export class GlossaryService {
     );
 
     if (!dictionaryExists) {
-      throw new Error(`Dictionary ${sourceLang}-${targetLang} not found in glossary`);
+      throw new ValidationError(`Dictionary ${sourceLang}-${targetLang} not found in glossary`);
     }
 
     // Delete the dictionary using v3 DELETE endpoint

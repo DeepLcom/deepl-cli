@@ -1,6 +1,7 @@
 import { DeepLClient } from '../api/deepl-client.js';
 import { Language } from '../types/index.js';
 import { getLanguageName } from '../data/language-registry.js';
+import { ValidationError } from '../utils/errors.js';
 
 export interface DetectResult {
   detectedLanguage: Language;
@@ -16,7 +17,7 @@ export class DetectService {
 
   async detect(text: string): Promise<DetectResult> {
     if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty. Provide text to detect language.');
+      throw new ValidationError('Text cannot be empty. Provide text to detect language.');
     }
 
     const result = await this.client.translate(text, {
@@ -24,7 +25,7 @@ export class DetectService {
     });
 
     if (!result.detectedSourceLang) {
-      throw new Error('Could not detect source language. The text may be too short or ambiguous.');
+      throw new ValidationError('Could not detect source language. The text may be too short or ambiguous.');
     }
 
     const langCode = result.detectedSourceLang;

@@ -9,6 +9,7 @@ import { ConfigService } from '../storage/config.js';
 import { CacheService } from '../storage/cache.js';
 import { WriteOptions, WriteImprovement, isWriteImprovementArray } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
+import { ValidationError, ConfigError } from '../utils/errors.js';
 
 export interface WriteServiceOptions {
   skipCache?: boolean;
@@ -21,11 +22,11 @@ export class WriteService {
 
   constructor(client: DeepLClient, config: ConfigService, cache?: CacheService) {
     if (!client) {
-      throw new Error('DeepL client is required');
+      throw new ConfigError('DeepL client is required');
     }
 
     if (!config) {
-      throw new Error('Config service is required');
+      throw new ConfigError('Config service is required');
     }
 
     this.client = client;
@@ -42,11 +43,11 @@ export class WriteService {
     serviceOptions: WriteServiceOptions = {}
   ): Promise<WriteImprovement[]> {
     if (!text || text.trim() === '') {
-      throw new Error('Text cannot be empty');
+      throw new ValidationError('Text cannot be empty');
     }
 
     if (options.writingStyle && options.tone) {
-      throw new Error('Cannot specify both writing_style and tone in a single request');
+      throw new ValidationError('Cannot specify both writing_style and tone in a single request');
     }
 
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
@@ -89,7 +90,7 @@ export class WriteService {
     const improvements = await this.improve(text, options, serviceOptions);
 
     if (!improvements || improvements.length === 0) {
-      throw new Error('No improvements available');
+      throw new ValidationError('No improvements available');
     }
 
     return improvements[0]!;
