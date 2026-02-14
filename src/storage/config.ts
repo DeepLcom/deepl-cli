@@ -232,12 +232,17 @@ export class ConfigService {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
       }
+      const tmpPath = this.configPath + '.tmp';
       fs.writeFileSync(
-        this.configPath,
+        tmpPath,
         JSON.stringify(this.config, null, 2),
         { encoding: 'utf-8', mode: 0o600 }
       );
+      fs.renameSync(tmpPath, this.configPath);
     } catch (error) {
+      // Clean up temp file on failure
+      const tmpPath = this.configPath + '.tmp';
+      try { fs.unlinkSync(tmpPath); } catch { /* ignore cleanup errors */ }
       throw new Error(`Failed to save config: ${String(error)}`);
     }
   }
