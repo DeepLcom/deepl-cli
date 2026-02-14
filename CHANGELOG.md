@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `formatValue()` and `formatConfig()` methods to ConfigCommand for human-readable text output
 
 ### Changed
+- Extract duplicated `readStdin()` into shared `src/utils/read-stdin.ts` utility — removes identical implementations from `translate.ts` and `register-detect.ts`, ensuring bug fixes apply to both call sites
 - Add security note to `auth` help text — examples now show `--from-stdin` first with a note that command arguments are visible via process listings
 - Standardize `--format` flag across all commands — every command now accepts `text` and `json`; commands with tabular data also accept `table`; validation uses commander `.choices()` everywhere; help text consistently says `text` instead of `plain text`
 - Convert `new Error()` to typed `DeepLCLIError` subclasses across 36 files — errors now carry correct exit codes and user-facing suggestions without relying on `classifyByMessage()` string matching

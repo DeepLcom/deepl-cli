@@ -17,6 +17,7 @@ import { formatTranslationJson, formatMultiTranslationJson, formatMultiTranslati
 import { Logger } from '../../utils/logger.js';
 import { ValidationError, AuthError } from '../../utils/errors.js';
 import { safeReadFileSync } from '../../utils/safe-read-file.js';
+import { readStdin } from '../../utils/read-stdin.js';
 import { getAllLanguageCodes, getExtendedLanguageCodes } from '../../data/language-registry.js';
 
 const VALID_LANGUAGES: ReadonlySet<string> = getAllLanguageCodes();
@@ -735,44 +736,13 @@ export class TranslateCommand {
    */
   async translateFromStdin(options: TranslateOptions): Promise<string> {
     // Read from stdin
-    const stdin = await this.readStdin();
+    const stdin = await readStdin();
 
     if (!stdin || stdin.trim() === '') {
       throw new ValidationError('No input provided from stdin');
     }
 
     return this.translateText(stdin, options);
-  }
-
-  /**
-   * Read from stdin
-   */
-  private async readStdin(): Promise<string> {
-    const MAX_STDIN_BYTES = 131072; // 128KB, matching DeepL API's text limit
-
-    return new Promise((resolve, reject) => {
-      let data = '';
-      let byteLength = 0;
-
-      process.stdin.setEncoding('utf8');
-
-      process.stdin.on('data', (chunk) => {
-        byteLength += Buffer.byteLength(String(chunk), 'utf8');
-        if (byteLength > MAX_STDIN_BYTES) {
-          reject(new ValidationError('Input exceeds maximum size of 128KB'));
-          return;
-        }
-        data += chunk;
-      });
-
-      process.stdin.on('end', () => {
-        resolve(data);
-      });
-
-      process.stdin.on('error', (error) => {
-        reject(error);
-      });
-    });
   }
 
   private async translateDocument(filePath: string, options: TranslateOptions): Promise<string> {

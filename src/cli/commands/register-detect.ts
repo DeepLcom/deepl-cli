@@ -1,6 +1,7 @@
 import { Option, type Command } from 'commander';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
+import { readStdin } from '../../utils/read-stdin.js';
 import { createDetectCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerDetect(
@@ -49,32 +50,4 @@ Examples:
         handleError(error);
       }
     });
-}
-
-async function readStdin(): Promise<string> {
-  const MAX_STDIN_BYTES = 131072; // 128KB
-
-  return new Promise((resolve, reject) => {
-    let data = '';
-    let byteLength = 0;
-
-    process.stdin.setEncoding('utf8');
-
-    process.stdin.on('data', (chunk) => {
-      byteLength += Buffer.byteLength(String(chunk), 'utf8');
-      if (byteLength > MAX_STDIN_BYTES) {
-        reject(new ValidationError('Input exceeds maximum size of 128KB'));
-        return;
-      }
-      data += chunk;
-    });
-
-    process.stdin.on('end', () => {
-      resolve(data);
-    });
-
-    process.stdin.on('error', (error) => {
-      reject(error);
-    });
-  });
 }
