@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import type { ConfigService } from '../../storage/config.js';
 import { Logger } from '../../utils/logger.js';
@@ -26,7 +26,7 @@ Examples:
       new Command('get')
         .description('Get configuration value')
         .argument('[key]', 'Config key (dot notation) or empty for all')
-        .option('--format <format>', 'Output format: text, json (default: json)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('json'))
         .action(async (key?: string, options?: { format?: string }) => {
           try {
             const { ConfigCommand: ConfigCmd } = await import('./config.js');
@@ -67,7 +67,7 @@ Examples:
     .addCommand(
       new Command('list')
         .description('List all configuration values')
-        .option('--format <format>', 'Output format: text, json (default: json)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('json'))
         .action(async (options: { format?: string }) => {
           try {
             const { ConfigCommand: ConfigCmd } = await import('./config.js');

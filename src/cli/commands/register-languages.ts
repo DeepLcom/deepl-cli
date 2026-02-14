@@ -1,4 +1,4 @@
-import type { Command } from 'commander';
+import { Option, type Command } from 'commander';
 import chalk from 'chalk';
 import type { ConfigService } from '../../storage/config.js';
 import { Logger } from '../../utils/logger.js';
@@ -19,7 +19,7 @@ export function registerLanguages(
     .description('List supported source and target languages')
     .option('-s, --source', 'Show only source languages')
     .option('-t, --target', 'Show only target languages')
-    .option('--format <format>', 'Output format: table, json (default: table)')
+    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('table'))
     .addHelpText('after', `
 Examples:
   $ deepl languages

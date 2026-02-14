@@ -1,4 +1,4 @@
-import type { Command } from 'commander';
+import { Option, type Command } from 'commander';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createDetectCommand, type CreateDeepLClient } from './service-factory.js';
@@ -16,7 +16,7 @@ export function registerDetect(
     .command('detect')
     .description('Detect the language of text using DeepL API')
     .argument('[text]', 'Text to detect language of (or read from stdin)')
-    .option('--format <format>', 'Output format: text, json (default: text)')
+    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
     .addHelpText('after', `
 Examples:
   $ deepl detect "Bonjour le monde"

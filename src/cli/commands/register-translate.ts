@@ -46,7 +46,7 @@ export function registerTranslate(
     .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
     .option('--dry-run', 'Show what would be translated without performing the operation')
     .optionsGroup('Output & Display:')
-    .option('--format <format>', 'Output format: json, table (default: plain text)')
+    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('text'))
     .option('--show-billed-characters', 'Request and display actual billed character count for cost transparency')
     .optionsGroup('Advanced:')
     .option('--enable-beta-languages', 'Include beta languages that are not yet stable (forward-compatibility)')

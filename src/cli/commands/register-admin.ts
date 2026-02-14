@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
@@ -37,7 +37,7 @@ Examples:
     .addCommand(
       new Command('list')
         .description('List all API keys')
-        .option('--format <format>', 'Output format: json (default: plain text)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (options: { format?: string }) => {
           try {
             const admin = await createAdminCommand(createDeepLClient);
@@ -56,7 +56,7 @@ Examples:
       new Command('create')
         .description('Create a new API key')
         .option('--label <label>', 'Label for the new key')
-        .option('--format <format>', 'Output format: json (default: plain text)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (options: { label?: string; format?: string }) => {
           try {
             const admin = await createAdminCommand(createDeepLClient);
@@ -155,7 +155,7 @@ Examples:
         .requiredOption('--start <date>', 'Start date (YYYY-MM-DD)')
         .requiredOption('--end <date>', 'End date (YYYY-MM-DD)')
         .option('--group-by <grouping>', 'Group results: key, key_and_day')
-        .option('--format <format>', 'Output format: json (default: plain text)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (options: {
           start: string;
           end: string;

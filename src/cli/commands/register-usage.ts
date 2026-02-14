@@ -1,4 +1,4 @@
-import type { Command } from 'commander';
+import { Option, type Command } from 'commander';
 import { Logger } from '../../utils/logger.js';
 import { createUsageCommand, type CreateDeepLClient } from './service-factory.js';
 
@@ -14,7 +14,7 @@ export function registerUsage(
   program
     .command('usage')
     .description('Show API usage statistics')
-    .option('--format <format>', 'Output format: table, json (default: table)')
+    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('table'))
     .addHelpText('after', `
 Examples:
   $ deepl usage

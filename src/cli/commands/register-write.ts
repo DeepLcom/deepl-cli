@@ -37,7 +37,7 @@ export function registerWrite(
     .optionsGroup('Advanced:')
     .option('--no-cache', 'Bypass cache for this request')
     .optionsGroup('Output:')
-    .option('--format <format>', 'Output format: json (default: plain text)')
+    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
     .addHelpText('after', `
 Examples:
   $ deepl write "Their going to the store" --to en-US
@@ -87,11 +87,6 @@ Examples:
 
         if (options.style && options.tone) {
           throw new ValidationError('Cannot specify both --style and --tone. Use one or the other.');
-        }
-
-        const validFormats = ['json'];
-        if (options.format && !validFormats.includes(options.format)) {
-          throw new ValidationError(`Unsupported output format: ${options.format}. Valid options: ${validFormats.join(', ')}`);
         }
 
         if (options.interactive && isNoInput()) {

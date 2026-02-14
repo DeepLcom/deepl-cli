@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { Logger } from '../../utils/logger.js';
 import { createStyleRulesCommand, type CreateDeepLClient } from './service-factory.js';
 
@@ -27,7 +27,7 @@ Examples:
         .option('--detailed', 'Show detailed information including configured rules and custom instructions')
         .option('--page <number>', 'Page number for pagination', parseInt)
         .option('--page-size <number>', 'Number of results per page (1-25)', parseInt)
-        .option('--format <format>', 'Output format: json (default: plain text)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (options: {
           detailed?: boolean;
           page?: number;

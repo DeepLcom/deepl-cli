@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import type { ConfigService } from '../../storage/config.js';
 import type { CacheService } from '../../storage/cache.js';
@@ -28,7 +28,7 @@ Examples:
     .addCommand(
       new Command('stats')
         .description('Show cache statistics')
-        .option('--format <format>', 'Output format: table, json (default: table)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('table'))
         .action(async (options: { format?: string }) => {
           try {
             const { CacheCommand } = await import('./cache.js');

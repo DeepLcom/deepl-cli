@@ -202,17 +202,15 @@ describe('registerWrite', () => {
     });
 
     it('should reject unsupported format', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'table']);
-      expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('Unsupported output format: table') }),
-      );
+      await expect(
+        program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'table']),
+      ).rejects.toThrow(/invalid.*Allowed choices are text, json/);
     });
 
     it('should reject unknown format values', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'xml']);
-      expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('Unsupported output format: xml') }),
-      );
+      await expect(
+        program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'xml']),
+      ).rejects.toThrow(/invalid.*Allowed choices are text, json/);
     });
 
     it('should accept json format', async () => {

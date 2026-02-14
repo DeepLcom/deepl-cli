@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import type { HookType } from '../../services/git-hooks.js';
 import { Logger } from '../../utils/logger.js';
 
@@ -56,7 +56,7 @@ Examples:
     .addCommand(
       new Command('list')
         .description('List all hooks and their status')
-        .option('--format <format>', 'Output format: text, json (default: text)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (options: { format?: string }) => {
           try {
             const { HooksCommand } = await import('./hooks.js');

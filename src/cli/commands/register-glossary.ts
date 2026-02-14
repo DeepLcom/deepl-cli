@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import type { Language } from '../../types/common.js';
 import { Logger } from '../../utils/logger.js';
@@ -59,7 +59,7 @@ Examples:
     .addCommand(
       new Command('list')
         .description('List all glossaries')
-        .option('--format <format>', 'Output format: text, json (default: text)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (options: { format?: string }) => {
           try {
             const glossaryCommand = await createGlossaryCommand(createDeepLClient);
@@ -80,7 +80,7 @@ Examples:
       new Command('show')
         .description('Show glossary details')
         .argument('<name-or-id>', 'Glossary name or ID')
-        .option('--format <format>', 'Output format: text, json (default: text)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (nameOrId: string, options: { format?: string }) => {
           try {
             const glossaryCommand = await createGlossaryCommand(createDeepLClient);
@@ -102,7 +102,7 @@ Examples:
         .description('Show glossary entries')
         .argument('<name-or-id>', 'Glossary name or ID')
         .option('--target-lang <lang>', 'Target language (required for multilingual glossaries)')
-        .option('--format <format>', 'Output format: text, json (default: text)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (nameOrId: string, options: { targetLang?: string; format?: string }) => {
           try {
             const glossaryCommand = await createGlossaryCommand(createDeepLClient);
