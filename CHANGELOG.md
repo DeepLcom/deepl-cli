@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add integration tests for watch `--auto-commit` git operations — verifies `git add`/`git commit` in a real temp repo, covers happy path, multi-file, not-a-git-repo, no output files, and commit failure
+- Add E2E tests for `deepl hooks install/uninstall/list/path` — verifies CLI-to-filesystem wiring in a real git repo
 - Support `--output -` for stdout in file translation — `deepl translate README.md --to es --output -` pipes translated content to stdout for shell composability; binary documents, structured files (JSON/YAML), and multi-target translations reject with clear errors
 - Show "Getting Started: Run deepl init to set up your API key" hint at the top of `--help` output when no API key is configured — experienced users never see it
 - Add `--no-input` global flag to disable all interactive prompts — confirmation prompts abort with "Aborted.", interactive-only commands (`init`, `write --interactive`) exit with code 6; `--yes` takes precedence when both flags are used
