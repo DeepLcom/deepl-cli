@@ -446,7 +446,7 @@ describe('CLI Workflow E2E', () => {
 
     it('should output to stdout for piping', () => {
       // Test that help commands output to stdout (can be piped)
-      const output = execSync('deepl --help | head -1', {
+      const output = execSync('deepl --help', {
         encoding: 'utf-8',
         env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
       });
