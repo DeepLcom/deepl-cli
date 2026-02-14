@@ -29,6 +29,7 @@ export interface WatchOptions {
   preserveCode?: boolean;
   pattern?: string;
   recursive?: boolean;
+  abortSignal?: AbortSignal;
   onChange?: (filePath: string) => void;
   onTranslate?: (filePath: string, result: WatchTranslationResult) => void;
   onError?: (filePath: string, error: Error) => void;
@@ -175,6 +176,10 @@ export class WatchService {
       void (async () => {
         try {
           if (!this.stats.isWatching) {
+            return;
+          }
+
+          if (this.watchOptions?.abortSignal?.aborted) {
             return;
           }
 

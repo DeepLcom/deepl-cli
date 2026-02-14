@@ -712,4 +712,84 @@ describe('BatchTranslationService', () => {
       expect(mockTranslationService.translateBatch).not.toHaveBeenCalled();
     });
   });
+
+  describe('abort signal', () => {
+    it('should skip remaining files when abort signal is triggered', async () => {
+      const files = [
+        path.join(testDir, 'file1.txt'),
+        path.join(testDir, 'file2.txt'),
+        path.join(testDir, 'file3.txt'),
+      ];
+
+      files.forEach((file, i) => {
+        fs.writeFileSync(file, `Content ${i + 1}`);
+      });
+
+      const controller = new AbortController();
+
+      // Abort after first file starts
+      mockFileTranslationService.translateFile.mockImplementation(async () => {
+        controller.abort();
+      });
+
+      const result = await batchTranslationService.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir, abortSignal: controller.signal }
+      );
+
+      // First file succeeds (abort happens during its translation),
+      // remaining files should be skipped
+      expect(result.successful.length + result.skipped.length + result.failed.length).toBe(files.length);
+      expect(result.skipped.some(s => s.reason === 'Aborted')).toBe(true);
+    });
+
+    it('should not skip files when abort signal is not triggered', async () => {
+      const files = [
+        path.join(testDir, 'file1.txt'),
+        path.join(testDir, 'file2.txt'),
+      ];
+
+      files.forEach((file, i) => {
+        fs.writeFileSync(file, `Content ${i + 1}`);
+      });
+
+      const controller = new AbortController();
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const result = await batchTranslationService.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir, abortSignal: controller.signal }
+      );
+
+      expect(result.successful).toHaveLength(2);
+      expect(result.skipped.filter(s => s.reason === 'Aborted')).toHaveLength(0);
+    });
+
+    it('should respect pre-aborted signal', async () => {
+      const files = [
+        path.join(testDir, 'file1.txt'),
+      ];
+
+      files.forEach((file, i) => {
+        fs.writeFileSync(file, `Content ${i + 1}`);
+      });
+
+      const controller = new AbortController();
+      controller.abort(); // Pre-abort
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const result = await batchTranslationService.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir, abortSignal: controller.signal }
+      );
+
+      // File should be skipped since signal was pre-aborted
+      expect(result.skipped.some(s => s.reason === 'Aborted')).toBe(true);
+      expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
+    });
+  });
 });

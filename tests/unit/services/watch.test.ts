@@ -1120,4 +1120,65 @@ describe('WatchService', () => {
       }).not.toThrow();
     });
   });
+
+  describe('abort signal', () => {
+    it('should skip pending translation when abort signal is triggered', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
+      const controller = new AbortController();
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: 300,
+      });
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        abortSignal: controller.signal,
+      };
+
+      await service.watch(testDir, options);
+      service.handleFileChange(testFile);
+
+      // Abort before the debounce timer fires
+      controller.abort();
+
+      jest.advanceTimersByTime(350);
+      await flushPromises();
+
+      // Translation should NOT occur because the signal was aborted
+      expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
+    });
+
+    it('should allow translations when abort signal is not triggered', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
+      const controller = new AbortController();
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        abortSignal: controller.signal,
+      };
+
+      await watchService.watch(testDir, options);
+      watchService.handleFileChange(testFile);
+
+      jest.advanceTimersByTime(350);
+      await flushPromises();
+
+      // Translation SHOULD occur because the signal was NOT aborted
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalled();
+    });
+  });
 });

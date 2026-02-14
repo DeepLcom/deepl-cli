@@ -126,6 +126,9 @@ export class WatchCommand {
 
     this.watchService = new WatchService(this.fileTranslationService, watchServiceOptions);
 
+    // Create abort controller for cancellation
+    const controller = new AbortController();
+
     // Build watch options
     const watchOpts = {
       targetLangs,
@@ -135,6 +138,7 @@ export class WatchCommand {
       glossaryId,
       preserveCode: options.preserveCode,
       preserveFormatting: options.preserveFormatting,
+      abortSignal: controller.signal,
       onChange: (filePath: string) => {
         Logger.info(chalk.blue('📝 Change detected:'), filePath);
       },
@@ -183,6 +187,7 @@ export class WatchCommand {
     // Handle graceful shutdown
     const cleanup = async () => {
       Logger.warn(chalk.yellow('\n\n🛑 Stopping watch...'));
+      controller.abort();
       if (this.watchService) {
         await this.watchService.stop();
         const stats = this.watchService.getStats();

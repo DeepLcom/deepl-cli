@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tighten `formatOutput()` format parameter from `string` to `OutputFormat` type — invalid formats are now caught at compile time
 - Replace `console.error` with `Logger.warn` in `ConfigService.load()` — config load failures now route through the unified logging system
 - Simplify `validateKeyString()` in `ConfigService` — consolidate redundant `../`, `..\\`, and `..` checks into a single `includes('..')` guard
+- Add `abortSignal` option to `WatchOptions` and `BatchOptions` — watch service checks signal before starting translations in debounce callbacks; batch translation skips remaining files when signal is aborted; CLI commands wire `AbortController` to SIGINT handlers for graceful cancellation
 - Add security note to `auth` help text — examples now show `--from-stdin` first with a note that command arguments are visible via process listings
 - Standardize `--format` flag across all commands — every command now accepts `text` and `json`; commands with tabular data also accept `table`; validation uses commander `.choices()` everywhere; help text consistently says `text` instead of `plain text`
 - Convert `new Error()` to typed `DeepLCLIError` subclasses across 36 files — errors now carry correct exit codes and user-facing suggestions without relying on `classifyByMessage()` string matching

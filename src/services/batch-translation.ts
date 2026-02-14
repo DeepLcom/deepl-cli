@@ -20,6 +20,7 @@ interface BatchOptions {
   recursive?: boolean;
   pattern?: string;
   baseDir?: string;
+  abortSignal?: AbortSignal;
   onProgress?: (progress: ProgressInfo) => void;
 }
 
@@ -138,6 +139,13 @@ export class BatchTranslationService {
 
       const tasks = perFileFiles.map(file =>
         limit(async () => {
+          if (batchOptions.abortSignal?.aborted) {
+            result.skipped.push({ file, reason: 'Aborted' });
+            completed++;
+            batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
+            return;
+          }
+
           try {
             const outputPath = this.generateOutputPath(
               file,
@@ -252,6 +260,14 @@ export class BatchTranslationService {
     // Translate each batch
     let completed = startCompleted;
     for (const batch of batches) {
+      if (batchOptions.abortSignal?.aborted) {
+        for (const entry of batch) {
+          completed++;
+          onProgress?.({ completed, total: totalFiles, current: entry.file });
+        }
+        continue;
+      }
+
       const texts = batch.map(e => e.processedText);
 
       try {

@@ -595,11 +595,17 @@ export class TranslateCommand {
     // Create spinner (conditional based on quiet mode)
     const spinner = Logger.shouldShowSpinner() ? ora('Scanning files...').start() : null;
 
+    // Create abort controller for batch cancellation
+    const controller = new AbortController();
+    const onAbort = () => { controller.abort(); };
+    process.on('SIGINT', onAbort);
+
     // Build batch options
     const batchOptions = {
       outputDir: options.output,
       recursive: options.recursive !== false,
       pattern: options.pattern,
+      abortSignal: controller.signal,
       onProgress: (progress: { completed: number; total: number; current?: string }) => {
         if (spinner) {
           spinner.text = `Translating files: ${progress.completed}/${progress.total}`;
@@ -654,6 +660,8 @@ export class TranslateCommand {
         spinner.fail('Translation failed');
       }
       throw error;
+    } finally {
+      process.removeListener('SIGINT', onAbort);
     }
   }
 
