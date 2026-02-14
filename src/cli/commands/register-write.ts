@@ -89,6 +89,10 @@ Examples:
           throw new Error(`Unsupported output format: ${options.format}. Valid options: ${validFormats.join(', ')}`);
         }
 
+        if (options.interactive && isNoInput()) {
+          throw new Error('--interactive is not supported in non-interactive mode. Remove --no-input or omit --interactive.');
+        }
+
         const writeCommand = await createWriteCommand(deps);
 
         const writeOptions = {
@@ -167,9 +171,6 @@ Examples:
         }
 
         if (options.interactive) {
-          if (isNoInput()) {
-            throw new Error('--interactive is not supported in non-interactive mode. Remove --no-input or omit --interactive.');
-          }
           let result: string;
 
           if (existsSync(text)) {
