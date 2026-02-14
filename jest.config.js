@@ -14,6 +14,7 @@ export default {
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/cli/index.ts', // Main entry point
+    '!src/cli/commands/translate/index.ts', // Barrel re-exports
     '!src/types/**/*.ts', // Type definitions
   ],
   coverageDirectory: 'coverage',
