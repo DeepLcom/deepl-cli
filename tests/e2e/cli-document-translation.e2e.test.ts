@@ -206,11 +206,11 @@ describe('Document Translation E2E', () => {
 
   describe('flag combinations', () => {
     it('should accept --output-format with --enable-minification', () => {
-      const testFile = path.join(testDir, 'doc.docx');
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4B, 0x03, 0x04]));
+      const testFile = path.join(testDir, 'doc.pdf');
+      fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
       const result = runCLIExpectError(
-        `translate "${testFile}" --to es --output-format pdf --enable-minification`,
+        `translate "${testFile}" --to es --output-format docx --enable-minification`,
         'test-key:fx'
       );
 
@@ -231,12 +231,12 @@ describe('Document Translation E2E', () => {
     });
 
     it('should accept --output-format with --output path', () => {
-      const testFile = path.join(testDir, 'input.docx');
-      const outputFile = path.join(testDir, 'output.pdf');
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4B, 0x03, 0x04]));
+      const testFile = path.join(testDir, 'input.pdf');
+      const outputFile = path.join(testDir, 'output.docx');
+      fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
       const result = runCLIExpectError(
-        `translate "${testFile}" --to es --output-format pdf --output "${outputFile}"`,
+        `translate "${testFile}" --to es --output-format docx --output "${outputFile}"`,
         'test-key:fx'
       );
 

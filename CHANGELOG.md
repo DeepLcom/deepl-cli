@@ -39,6 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extract duplicated file-reading pattern in WriteCommand to shared `readFileContent()` helper, removing ~50 lines of duplication across 5 methods
 
 ### Fixed
+- Restrict `--output-format` choices to `docx` only (PDF→DOCX is the only supported conversion) — previously accepted 10 formats that would fail at the API
+- Fix misleading help example `report.docx --to de --output-format pdf` → `report.pdf --to de --output-format docx`
+- Fix API.md config path docs — replace single legacy path with 4-level priority table matching `resolvePaths()` implementation
+- Fix API.md `--non-splitting-tags` description — was "non-translatable text", corrected to "tags that should not be used to split sentences"
+- Fix API.md `--model-type` description — remove incorrect "(default)" on `quality_optimized`; API server selects when omitted
+- Fix API.md `--dry-run` description — remove "(file/directory mode only)" restriction (works for all input modes)
+- Fix API.md exit code classification docs — replace oversimplified patterns with actual `classifyByMessage()` match strings
+- Add `detect` command to API.md command summary table
+- Use atomic writes for config file — write to `.tmp` then `rename` to prevent corruption on interrupted saves
 - Fix case-sensitive language code validation — mixed-case codes like `pt-BR` and `DE` are now normalized to lowercase before validation, matching the registry format
 - Fix `--split-sentences on/off` sending invalid values to the API — now maps `on` → `1` and `off` → `0` as the DeepL API expects
 - Validate that `--from` is required when using `--glossary` — previously failed with an opaque API error

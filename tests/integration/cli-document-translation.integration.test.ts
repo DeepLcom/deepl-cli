@@ -804,12 +804,12 @@ describe('Document Translation CLI Integration', () => {
     });
 
     it('should accept --output-format flag without unknown option error', () => {
-      const testFile = path.join(testDir, 'cli-doc4.docx');
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4B, 0x03, 0x04]));
+      const testFile = path.join(testDir, 'cli-doc4.pdf');
+      fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
       try {
         runCLI(
-          `deepl translate "${testFile}" --to es --output "${testDir}/out.pdf" --output-format pdf`,
+          `deepl translate "${testFile}" --to es --output "${testDir}/out.docx" --output-format docx`,
           { stdio: 'pipe' }
         );
       } catch (error: any) {

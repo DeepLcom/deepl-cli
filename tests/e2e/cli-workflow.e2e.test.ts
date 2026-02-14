@@ -801,12 +801,12 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should support output-format flag for document format conversion', () => {
-      const testFile = path.join(testDir, 'format-doc.docx');
-      // Create a dummy DOCX file (just needs to exist for CLI parsing test)
-      fs.writeFileSync(testFile, 'dummy docx content', 'utf-8');
+      const testFile = path.join(testDir, 'format-doc.pdf');
+      // Create a dummy PDF file (just needs to exist for CLI parsing test)
+      fs.writeFileSync(testFile, 'dummy pdf content', 'utf-8');
 
       try {
-        execSync(`deepl translate "${testFile}" --to es --output-format pdf --output format-doc.es.pdf`, {
+        execSync(`deepl translate "${testFile}" --to es --output-format docx --output format-doc.es.docx`, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
@@ -820,22 +820,10 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should accept various output format values', () => {
-      const testFile = path.join(testDir, 'multi-format.html');
-      fs.writeFileSync(testFile, '<html><body>Test</body></html>', 'utf-8');
+      const testFile = path.join(testDir, 'multi-format.pdf');
+      fs.writeFileSync(testFile, 'dummy pdf content', 'utf-8');
 
-      // Test PDF format
-      try {
-        execSync(`deepl translate "${testFile}" --to es --output-format pdf --output test.es.pdf`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-        });
-      } catch (error: any) {
-        const output = error.stderr || error.stdout;
-        expect(output).toMatch(/API key|auth/i);
-      }
-
-      // Test DOCX format
+      // Test DOCX format (only supported conversion: PDF→DOCX)
       try {
         execSync(`deepl translate "${testFile}" --to es --output-format docx --output test.es.docx`, {
           encoding: 'utf-8',
@@ -847,17 +835,6 @@ describe('CLI Workflow E2E', () => {
         expect(output).toMatch(/API key|auth/i);
       }
 
-      // Test TXT format
-      try {
-        execSync(`deepl translate "${testFile}" --to es --output-format txt --output test.es.txt`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-          env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir },
-        });
-      } catch (error: any) {
-        const output = error.stderr || error.stdout;
-        expect(output).toMatch(/API key|auth/i);
-      }
     });
 
     it('should include output-format in help text', () => {
