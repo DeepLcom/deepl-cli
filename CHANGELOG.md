@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Show "Getting Started: Run deepl init to set up your API key" hint at the top of `--help` output when no API key is configured — experienced users never see it
 - Add `--no-input` global flag to disable all interactive prompts — confirmation prompts abort with "Aborted.", interactive-only commands (`init`, `write --interactive`) exit with code 6; `--yes` takes precedence when both flags are used
 - Add XDG Base Directory Specification support — config and cache now use `~/.config/deepl-cli/` and `~/.cache/deepl-cli/` by default; legacy `~/.deepl-cli/` is preferred when it exists; `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` environment variables are respected
 - Add type-safe `CacheService.get<T>(key, guard)` overload — accepts a type guard for runtime validation of cached data; mismatches are logged, evicted, and return null

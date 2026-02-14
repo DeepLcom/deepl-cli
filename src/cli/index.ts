@@ -231,6 +231,13 @@ registerCompletion(program, deps);
 program.commandsGroup('Administration:');
 registerAdmin(program, deps);
 
+// Show Getting Started hint when no API key is configured
+const savedApiKey = configService.getValue<string>('auth.apiKey');
+const envApiKey = process.env['DEEPL_API_KEY'];
+if (!savedApiKey && !envApiKey) {
+  program.addHelpText('beforeAll', chalk.yellow('Getting Started: Run deepl init to set up your API key.\n'));
+}
+
 // Did-you-mean suggestion for unknown commands
 function levenshtein(a: string, b: string): number {
   const m = a.length;
