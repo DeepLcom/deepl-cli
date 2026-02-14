@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 import { createTranslateCommand, type ServiceDeps } from './service-factory.js';
 
 export function registerTranslate(
@@ -101,7 +102,7 @@ Examples:
           if (targetLangs && targetLangs.length > 0) {
             options.to = targetLangs[0];
           } else {
-            throw new Error(
+            throw new ValidationError(
               'Target language is required. Use --to <language> or set a default with: deepl config set defaults.targetLangs \'["es"]\'',
             );
           }

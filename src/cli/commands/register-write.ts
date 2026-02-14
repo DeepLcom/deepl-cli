@@ -6,6 +6,7 @@ import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/api.js'
 import { Logger } from '../../utils/logger.js';
 import { ExitCode } from '../../utils/exit-codes.js';
 import { isNoInput } from '../../utils/confirm.js';
+import { ValidationError } from '../../utils/errors.js';
 import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
 export function registerWrite(
@@ -71,30 +72,30 @@ Examples:
 
         const validLanguages = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt', 'pt-BR', 'pt-PT'];
         if (options.to && !validLanguages.includes(options.to)) {
-          throw new Error(`Invalid language code: ${options.to}. Valid options: ${validLanguages.join(', ')}`);
+          throw new ValidationError(`Invalid language code: ${options.to}. Valid options: ${validLanguages.join(', ')}`);
         }
 
         const validStyles = ['default', 'simple', 'business', 'academic', 'casual', 'prefer_simple', 'prefer_business', 'prefer_academic', 'prefer_casual'];
         if (options.style && !validStyles.includes(options.style)) {
-          throw new Error(`Invalid writing style: ${options.style}. Valid options: ${validStyles.join(', ')}`);
+          throw new ValidationError(`Invalid writing style: ${options.style}. Valid options: ${validStyles.join(', ')}`);
         }
 
         const validTones = ['default', 'enthusiastic', 'friendly', 'confident', 'diplomatic', 'prefer_enthusiastic', 'prefer_friendly', 'prefer_confident', 'prefer_diplomatic'];
         if (options.tone && !validTones.includes(options.tone)) {
-          throw new Error(`Invalid tone: ${options.tone}. Valid options: ${validTones.join(', ')}`);
+          throw new ValidationError(`Invalid tone: ${options.tone}. Valid options: ${validTones.join(', ')}`);
         }
 
         if (options.style && options.tone) {
-          throw new Error('Cannot specify both --style and --tone. Use one or the other.');
+          throw new ValidationError('Cannot specify both --style and --tone. Use one or the other.');
         }
 
         const validFormats = ['json'];
         if (options.format && !validFormats.includes(options.format)) {
-          throw new Error(`Unsupported output format: ${options.format}. Valid options: ${validFormats.join(', ')}`);
+          throw new ValidationError(`Unsupported output format: ${options.format}. Valid options: ${validFormats.join(', ')}`);
         }
 
         if (options.interactive && isNoInput()) {
-          throw new Error('--interactive is not supported in non-interactive mode. Remove --no-input or omit --interactive.');
+          throw new ValidationError('--interactive is not supported in non-interactive mode. Remove --no-input or omit --interactive.');
         }
 
         const writeCommand = await createWriteCommand(deps);
@@ -137,7 +138,7 @@ Examples:
 
         if (options.fix) {
           if (!existsSync(text)) {
-            throw new Error('--fix requires a file path as input');
+            throw new ValidationError('--fix requires a file path as input');
           }
 
           const result = await writeCommand.autoFixFile(text, writeOptions);
@@ -181,7 +182,7 @@ Examples:
             const interactiveResult = await writeCommand.improveFileInteractive(text, writeOptions);
             result = interactiveResult.selected;
 
-             
+
             if (options.output || options.inPlace) {
               const outputPath = options.inPlace ? text : options.output!;
               await writeFile(outputPath, result, 'utf-8');

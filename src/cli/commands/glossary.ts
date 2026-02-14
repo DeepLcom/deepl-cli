@@ -8,6 +8,7 @@ import { GlossaryService } from '../../services/glossary.js';
 import { GlossaryInfo, GlossaryLanguagePair, Language } from '../../types/index.js';
 import { getTargetLang, getTotalEntryCount, isMultilingual } from '../../types/glossary.js';
 import { safeReadFileSync } from '../../utils/safe-read-file.js';
+import { ValidationError, ConfigError } from '../../utils/errors.js';
 
 export class GlossaryCommand {
   private glossaryService: GlossaryService;
@@ -26,7 +27,7 @@ export class GlossaryCommand {
     filePath: string
   ): Promise<GlossaryInfo> {
     if (!fs.existsSync(filePath)) {
-      throw new Error(`File not found: ${filePath}`);
+      throw new ValidationError(`File not found: ${filePath}`);
     }
 
     const content = safeReadFileSync(filePath, 'utf-8');
@@ -56,7 +57,7 @@ export class GlossaryCommand {
       // If failed, try by name
       const glossary = await this.glossaryService.getGlossaryByName(nameOrId);
       if (!glossary) {
-        throw new Error(`Glossary not found: ${nameOrId}`);
+        throw new ConfigError(`Glossary not found: ${nameOrId}`);
       }
       return glossary;
     }
@@ -197,7 +198,7 @@ export class GlossaryCommand {
     filePath: string
   ): Promise<void> {
     if (!fs.existsSync(filePath)) {
-      throw new Error(`File not found: ${filePath}`);
+      throw new ValidationError(`File not found: ${filePath}`);
     }
 
     const glossary = await this.show(nameOrId);

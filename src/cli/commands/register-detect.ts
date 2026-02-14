@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 import { createDetectCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerDetect(
@@ -33,7 +34,7 @@ Examples:
         } else {
           inputText = await readStdin();
           if (!inputText || inputText.trim() === '') {
-            throw new Error('No input provided. Provide text as an argument or pipe via stdin.');
+            throw new ValidationError('No input provided. Provide text as an argument or pipe via stdin.');
           }
         }
 
@@ -62,7 +63,7 @@ async function readStdin(): Promise<string> {
     process.stdin.on('data', (chunk) => {
       byteLength += Buffer.byteLength(String(chunk), 'utf8');
       if (byteLength > MAX_STDIN_BYTES) {
-        reject(new Error('Input exceeds maximum size of 128KB'));
+        reject(new ValidationError('Input exceeds maximum size of 128KB'));
         return;
       }
       data += chunk;

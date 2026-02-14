@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import type { ConfigService } from '../../storage/config.js';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 
 export function registerAuth(
   program: Command,
@@ -31,7 +32,7 @@ Examples:
             let key = apiKey;
             if (opts.fromStdin === true || !key) {
               if (process.stdin.isTTY && !key) {
-                handleError(new Error('API key required: provide as argument or use --from-stdin'));
+                handleError(new ValidationError('API key required: provide as argument or use --from-stdin'));
                 return;
               }
               const MAX_STDIN_BYTES = 131072; // 128KB
@@ -41,7 +42,7 @@ Examples:
                 const buf = chunk as Buffer;
                 totalBytes += buf.length;
                 if (totalBytes > MAX_STDIN_BYTES) {
-                  throw new Error('Input exceeds maximum size of 128KB');
+                  throw new ValidationError('Input exceeds maximum size of 128KB');
                 }
                 chunks.push(buf);
               }

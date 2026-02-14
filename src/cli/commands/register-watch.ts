@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 import { createWatchCommand, type ServiceDeps } from './service-factory.js';
 
 export function registerWatch(
@@ -55,7 +56,7 @@ Examples:
       try {
         if (!options.to && options.targets) options.to = options.targets;
         if (!options.to) {
-          throw new Error('required option --to <languages> not specified');
+          throw new ValidationError('required option --to <languages> not specified');
         }
 
         if (options.dryRun) {

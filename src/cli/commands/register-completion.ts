@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 import type { ShellType } from './completion.js';
 
 const SUPPORTED_SHELLS = ['bash', 'zsh', 'fish'] as const;
@@ -32,7 +33,7 @@ Examples:
         const normalized = shell.toLowerCase().trim();
 
         if (!SUPPORTED_SHELLS.includes(normalized as ShellType)) {
-          throw new Error(
+          throw new ValidationError(
             `Unsupported shell: "${shell}". Supported shells: ${SUPPORTED_SHELLS.join(', ')}`,
           );
         }

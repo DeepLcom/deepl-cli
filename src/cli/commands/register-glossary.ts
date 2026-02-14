@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import type { Language } from '../../types/common.js';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 import { createGlossaryCommand, type CreateDeepLClient } from './service-factory.js';
 
 export function registerGlossary(
@@ -256,11 +257,11 @@ Examples:
         .action(async (nameOrId: string, options: { name?: string; targetLang?: string; file?: string }) => {
           try {
             if (!options.name && !options.file) {
-              throw new Error('At least one of --name or --file (with --target-lang) must be provided');
+              throw new ValidationError('At least one of --name or --file (with --target-lang) must be provided');
             }
 
             if (options.file && !options.targetLang) {
-              throw new Error('--target-lang is required when using --file');
+              throw new ValidationError('--target-lang is required when using --file');
             }
 
             const glossaryCommand = await createGlossaryCommand(createDeepLClient);
@@ -277,14 +278,14 @@ Examples:
             if (options.file && options.targetLang) {
               const fs = await import('fs');
               if (!fs.existsSync(options.file)) {
-                throw new Error(`File not found: ${options.file}`);
+                throw new ValidationError(`File not found: ${options.file}`);
               }
               const { safeReadFileSync } = await import('../../utils/safe-read-file.js');
               const content = safeReadFileSync(options.file, 'utf-8');
               const { GlossaryService } = await import('../../services/glossary.js');
               const entries = GlossaryService.tsvToEntries(content);
               if (Object.keys(entries).length === 0) {
-                throw new Error('No valid entries found in file');
+                throw new ValidationError('No valid entries found in file');
               }
               updateOptions.dictionaries = [{
                 targetLang: options.targetLang as Language,

@@ -15,7 +15,7 @@ import { ConfigService } from '../../storage/config.js';
 import { Language, Formality } from '../../types/index.js';
 import { formatTranslationJson, formatMultiTranslationJson, formatMultiTranslationTable } from '../../utils/formatters.js';
 import { Logger } from '../../utils/logger.js';
-import { ValidationError } from '../../utils/errors.js';
+import { ValidationError, AuthError } from '../../utils/errors.js';
 import { safeReadFileSync } from '../../utils/safe-read-file.js';
 import { getAllLanguageCodes, getExtendedLanguageCodes } from '../../data/language-registry.js';
 
@@ -142,15 +142,15 @@ export class TranslateCommand {
     const langList = extendedLangs.join(', ');
 
     if (options.modelType === 'latency_optimized') {
-      throw new Error(`Language(s) ${langList} only support quality_optimized model type, not latency_optimized`);
+      throw new ValidationError(`Language(s) ${langList} only support quality_optimized model type, not latency_optimized`);
     }
 
     if (options.formality && options.formality !== 'default') {
-      throw new Error(`Language(s) ${langList} do not support formality settings`);
+      throw new ValidationError(`Language(s) ${langList} do not support formality settings`);
     }
 
     if (options.glossary) {
-      throw new Error(`Language(s) ${langList} do not support glossaries`);
+      throw new ValidationError(`Language(s) ${langList} do not support glossaries`);
     }
   }
 
@@ -199,7 +199,7 @@ export class TranslateCommand {
     try {
       const lstat = fs.lstatSync(textOrPath);
       if (lstat.isSymbolicLink()) {
-        throw new Error(`Symlinks are not supported for security reasons: ${textOrPath}`);
+        throw new ValidationError(`Symlinks are not supported for security reasons: ${textOrPath}`);
       }
 
       stats = fs.statSync(textOrPath);
@@ -258,17 +258,17 @@ export class TranslateCommand {
     for (const tag of tags) {
       // Check if tag is empty
       if (!tag || tag.trim() === '') {
-        throw new Error(`${paramName}: Tag name cannot be empty`);
+        throw new ValidationError(`${paramName}: Tag name cannot be empty`);
       }
 
       // Check if tag starts with "xml" (case-insensitive)
       if (tag.toLowerCase().startsWith('xml')) {
-        throw new Error(`${paramName}: Tag name "${tag}" cannot start with "xml" (reserved)`);
+        throw new ValidationError(`${paramName}: Tag name "${tag}" cannot start with "xml" (reserved)`);
       }
 
       // Check if tag matches valid XML name pattern
       if (!xmlNamePattern.test(tag)) {
-        throw new Error(`${paramName}: Invalid XML tag name "${tag}". Tags must start with a letter or underscore and contain only letters, digits, hyphens, underscores, or periods.`);
+        throw new ValidationError(`${paramName}: Invalid XML tag name "${tag}". Tags must start with a letter or underscore and contain only letters, digits, hyphens, underscores, or periods.`);
       }
     }
   }
@@ -289,7 +289,7 @@ export class TranslateCommand {
 
   private async translateFile(filePath: string, options: TranslateOptions, cachedStats?: fs.Stats | null): Promise<string> {
     if (!options.output) {
-      throw new Error('Output file path is required for file translation. Use --output <path>');
+      throw new ValidationError('Output file path is required for file translation. Use --output <path>');
     }
 
     if (options.to.includes(',')) {
@@ -323,7 +323,7 @@ export class TranslateCommand {
       }
 
       if (fileSize === null) {
-        throw new Error(`File not found or cannot be accessed: ${filePath}`);
+        throw new ValidationError(`File not found or cannot be accessed: ${filePath}`);
       }
 
       if (fileSize <= SAFE_TEXT_SIZE_LIMIT) {
@@ -381,7 +381,7 @@ export class TranslateCommand {
     const apiKey = this.config.getValue<string>('auth.apiKey');
     const envKey = process.env['DEEPL_API_KEY'];
     if (!apiKey && !envKey) {
-      throw new Error('API key not set. Run: deepl auth set-key <your-api-key>');
+      throw new AuthError('API key not set. Run: deepl auth set-key <your-api-key>');
     }
 
     // Check if translating to multiple languages
@@ -407,22 +407,22 @@ export class TranslateCommand {
 
     if (options.customInstruction && options.customInstruction.length > 0) {
       if (options.customInstruction.length > MAX_CUSTOM_INSTRUCTIONS) {
-        throw new Error(`Maximum ${MAX_CUSTOM_INSTRUCTIONS} custom instructions allowed`);
+        throw new ValidationError(`Maximum ${MAX_CUSTOM_INSTRUCTIONS} custom instructions allowed`);
       }
       for (const instruction of options.customInstruction) {
         if (instruction.length > MAX_CUSTOM_INSTRUCTION_CHARS) {
-          throw new Error(`Custom instruction exceeds ${MAX_CUSTOM_INSTRUCTION_CHARS} character limit (${instruction.length} chars): "${instruction.substring(0, 50)}..."`);
+          throw new ValidationError(`Custom instruction exceeds ${MAX_CUSTOM_INSTRUCTION_CHARS} character limit (${instruction.length} chars): "${instruction.substring(0, 50)}..."`);
         }
       }
       if (options.modelType === 'latency_optimized') {
-        throw new Error('Custom instructions cannot be used with latency_optimized model type');
+        throw new ValidationError('Custom instructions cannot be used with latency_optimized model type');
       }
       (translationOptions as { customInstructions?: string[] }).customInstructions = options.customInstruction;
     }
 
     if (options.styleId) {
       if (options.modelType === 'latency_optimized') {
-        throw new Error('Style ID cannot be used with latency_optimized model type');
+        throw new ValidationError('Style ID cannot be used with latency_optimized model type');
       }
       (translationOptions as { styleId?: string }).styleId = options.styleId;
     }
@@ -430,14 +430,14 @@ export class TranslateCommand {
     // XML tag handling parameters (only valid with --tag-handling xml)
     if (options.outlineDetection !== undefined || options.splittingTags || options.nonSplittingTags || options.ignoreTags) {
       if (options.tagHandling !== 'xml') {
-        throw new Error('XML tag handling parameters (--outline-detection, --splitting-tags, --non-splitting-tags, --ignore-tags) require --tag-handling xml');
+        throw new ValidationError('XML tag handling parameters (--outline-detection, --splitting-tags, --non-splitting-tags, --ignore-tags) require --tag-handling xml');
       }
     }
 
     if (options.outlineDetection !== undefined) {
       const boolValue = options.outlineDetection.toLowerCase();
       if (boolValue !== 'true' && boolValue !== 'false') {
-        throw new Error('--outline-detection must be "true" or "false"');
+        throw new ValidationError('--outline-detection must be "true" or "false"');
       }
       (translationOptions as {outlineDetection?: boolean}).outlineDetection = boolValue === 'true';
     }
@@ -462,10 +462,10 @@ export class TranslateCommand {
 
     if (options.tagHandlingVersion) {
       if (!options.tagHandling) {
-        throw new Error('--tag-handling-version requires --tag-handling to be set (xml or html)');
+        throw new ValidationError('--tag-handling-version requires --tag-handling to be set (xml or html)');
       }
       if (options.tagHandlingVersion !== 'v1' && options.tagHandlingVersion !== 'v2') {
-        throw new Error('--tag-handling-version must be "v1" or "v2"');
+        throw new ValidationError('--tag-handling-version must be "v1" or "v2"');
       }
       (translationOptions as {tagHandlingVersion?: 'v1' | 'v2'}).tagHandlingVersion = options.tagHandlingVersion;
     }
@@ -575,7 +575,7 @@ export class TranslateCommand {
    */
   private async translateDirectory(dirPath: string, options: TranslateOptions): Promise<string> {
     if (!options.output) {
-      throw new Error('Output directory is required for batch translation. Use --output <dir>');
+      throw new ValidationError('Output directory is required for batch translation. Use --output <dir>');
     }
 
     const supported = new Set(['from', 'formality']);
@@ -722,7 +722,7 @@ export class TranslateCommand {
     const stdin = await this.readStdin();
 
     if (!stdin || stdin.trim() === '') {
-      throw new Error('No input provided from stdin');
+      throw new ValidationError('No input provided from stdin');
     }
 
     return this.translateText(stdin, options);
@@ -743,7 +743,7 @@ export class TranslateCommand {
       process.stdin.on('data', (chunk) => {
         byteLength += Buffer.byteLength(String(chunk), 'utf8');
         if (byteLength > MAX_STDIN_BYTES) {
-          reject(new Error('Input exceeds maximum size of 128KB'));
+          reject(new ValidationError('Input exceeds maximum size of 128KB'));
           return;
         }
         data += chunk;

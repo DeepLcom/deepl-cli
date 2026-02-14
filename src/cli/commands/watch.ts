@@ -13,6 +13,7 @@ import { GlossaryService } from '../../services/glossary.js';
 import { Language, Formality } from '../../types/index.js';
 import { FileTranslationResult, WatchTranslationResult } from '../../services/watch.js';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 
 interface WatchOptions {
   to: string;
@@ -55,7 +56,7 @@ export class WatchCommand {
     try {
       await execFileAsync('git', ['rev-parse', '--git-dir']);
     } catch {
-      throw new Error('--git-staged requires a git repository');
+      throw new ValidationError('--git-staged requires a git repository');
     }
 
     const { stdout } = await execFileAsync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACM']);
@@ -69,14 +70,14 @@ export class WatchCommand {
   async watch(pathToWatch: string, options: WatchOptions): Promise<void> {
     // Validate path exists
     if (!fs.existsSync(pathToWatch)) {
-      throw new Error(`Path not found: ${pathToWatch}`);
+      throw new ValidationError(`Path not found: ${pathToWatch}`);
     }
 
     // Parse target languages
     const targetLangs = options.to.split(',').map(lang => lang.trim()).filter(lang => lang.length > 0) as Language[];
 
     if (targetLangs.length === 0) {
-      throw new Error('At least one target language is required. Use --to es,fr,de');
+      throw new ValidationError('At least one target language is required. Use --to es,fr,de');
     }
 
     // Get git-staged files if requested

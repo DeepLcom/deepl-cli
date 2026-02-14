@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 import { createAdminCommand, type CreateDeepLClient, type GetApiKeyAndOptions } from './service-factory.js';
 
 export function registerAdmin(
@@ -120,14 +121,14 @@ Examples:
           try {
             const limit = characters === 'unlimited' ? null : parseInt(characters, 10);
             if (limit !== null && isNaN(limit)) {
-              throw new Error('Characters must be a number or "unlimited"');
+              throw new ValidationError('Characters must be a number or "unlimited"');
             }
 
             let sttLimit: number | null | undefined;
             if (options.sttLimit !== undefined) {
               sttLimit = options.sttLimit === 'unlimited' ? null : parseInt(options.sttLimit, 10);
               if (sttLimit !== null && isNaN(sttLimit)) {
-                throw new Error('STT limit must be a number or "unlimited"');
+                throw new ValidationError('STT limit must be a number or "unlimited"');
               }
             }
 

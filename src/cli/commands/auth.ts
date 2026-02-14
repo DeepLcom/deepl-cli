@@ -5,6 +5,7 @@
 
 import { ConfigService } from '../../storage/config.js';
 import { DeepLClient } from '../../api/deepl-client.js';
+import { ValidationError, AuthError } from '../../utils/errors.js';
 
 export class AuthCommand {
   private config: ConfigService;
@@ -19,7 +20,7 @@ export class AuthCommand {
   async setKey(apiKey: string): Promise<void> {
     // Validate input
     if (!apiKey || apiKey.trim() === '') {
-      throw new Error('API key cannot be empty');
+      throw new ValidationError('API key cannot be empty');
     }
 
     // Validate with DeepL API by making a test request
@@ -35,11 +36,11 @@ export class AuthCommand {
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes('Authentication failed')) {
-          throw new Error('Invalid API key: Authentication failed with DeepL API');
+          throw new AuthError('Invalid API key: Authentication failed with DeepL API');
         }
         throw error;
       }
-      throw new Error('Failed to validate API key');
+      throw new AuthError('Failed to validate API key');
     }
 
     // Save to config

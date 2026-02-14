@@ -5,6 +5,7 @@
 
 import chalk from 'chalk';
 import { GitHooksService, HookType } from '../../services/git-hooks.js';
+import { ValidationError } from '../../utils/errors.js';
 
 export class HooksCommand {
   private gitHooksService: GitHooksService | null = null;
@@ -25,7 +26,7 @@ export class HooksCommand {
    */
   install(hookType: HookType): string {
     if (!this.gitHooksService) {
-      throw new Error('Not in a git repository. Run this command from within a git repository.');
+      throw new ValidationError('Not in a git repository. Run this command from within a git repository.');
     }
 
     this.gitHooksService.install(hookType);
@@ -38,7 +39,7 @@ export class HooksCommand {
    */
   uninstall(hookType: HookType): string {
     if (!this.gitHooksService) {
-      throw new Error('Not in a git repository. Run this command from within a git repository.');
+      throw new ValidationError('Not in a git repository. Run this command from within a git repository.');
     }
 
     this.gitHooksService.uninstall(hookType);
@@ -81,7 +82,7 @@ export class HooksCommand {
    */
   showPath(hookType: HookType): string {
     if (!this.gitHooksService) {
-      throw new Error('Not in a git repository. Run this command from within a git repository.');
+      throw new ValidationError('Not in a git repository. Run this command from within a git repository.');
     }
 
     const hookPath = this.gitHooksService.getHookPath(hookType);

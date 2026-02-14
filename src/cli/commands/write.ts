@@ -13,6 +13,7 @@ import { select } from '@inquirer/prompts';
 import { formatWriteJson } from '../../utils/formatters.js';
 import { safeReadFile } from '../../utils/safe-read-file.js';
 import { Logger } from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 
 interface WriteOptions {
   lang?: WriteLanguage;
@@ -77,7 +78,7 @@ export class WriteCommand {
    */
   async improveFile(filePath: string, options: WriteOptions): Promise<string> {
     if (!filePath || filePath.trim() === '') {
-      throw new Error('File path cannot be empty');
+      throw new ValidationError('File path cannot be empty');
     }
 
     const absolutePath = resolve(filePath);
@@ -152,7 +153,7 @@ export class WriteCommand {
     options: WriteOptions
   ): Promise<{ original: string; improved: string; diff: string }> {
     if (!filePath || filePath.trim() === '') {
-      throw new Error('File path cannot be empty');
+      throw new ValidationError('File path cannot be empty');
     }
 
     const content = await this.readFileContent(filePath);
@@ -200,7 +201,7 @@ export class WriteCommand {
     changes: number;
   }> {
     if (!filePath || filePath.trim() === '') {
-      throw new Error('File path cannot be empty');
+      throw new ValidationError('File path cannot be empty');
     }
 
     const absolutePath = resolve(filePath);
@@ -227,7 +228,7 @@ export class WriteCommand {
     backupPath?: string;
   }> {
     if (!filePath || filePath.trim() === '') {
-      throw new Error('File path cannot be empty');
+      throw new ValidationError('File path cannot be empty');
     }
 
     const absolutePath = resolve(filePath);
@@ -337,7 +338,7 @@ export class WriteCommand {
     }
 
     if (allImprovements.length === 0) {
-      throw new Error('No improvements could be generated');
+      throw new ValidationError('No improvements could be generated');
     }
 
     // Remove duplicates (same text with different styles)
@@ -387,7 +388,7 @@ export class WriteCommand {
     original: string;
   }> {
     if (!filePath || filePath.trim() === '') {
-      throw new Error('File path cannot be empty');
+      throw new ValidationError('File path cannot be empty');
     }
 
     const content = await this.readFileContent(filePath);
@@ -434,7 +435,7 @@ export class WriteCommand {
         throw error;
       }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new Error(`File not found: ${filePath}`);
+        throw new ValidationError(`File not found: ${filePath}`);
       }
       throw error;
     }
