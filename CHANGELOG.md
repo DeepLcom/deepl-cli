@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `formatValue()` and `formatConfig()` methods to ConfigCommand for human-readable text output
 
 ### Changed
+- Decompose `TranslateCommand` god class into focused handler classes (text, file, document, directory, stdin) — reduces `translate.ts` from 826 to ~93 lines; each translation mode is independently testable
+- Replace `any` return type in `buildTranslationOptions()` with typed `TranslationParams` interface — eliminates 13+ unsafe `as` casts in handler code
 - Extract duplicated `readStdin()` into shared `src/utils/read-stdin.ts` utility — removes identical implementations from `translate.ts` and `register-detect.ts`, ensuring bug fixes apply to both call sites
 - Use `Pick<ServiceDeps, ...>` in `registerGlossary()` and `registerVoice()` instead of inline object types — consistent with the pattern established by `registerWrite()`
 - Tighten `formatOutput()` format parameter from `string` to `OutputFormat` type — invalid formats are now caught at compile time

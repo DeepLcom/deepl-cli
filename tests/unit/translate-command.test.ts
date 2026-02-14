@@ -18,6 +18,7 @@ import {
   createMockGlossaryService,
   createMockConfigService,
 } from '../helpers/mock-factories';
+import { buildTranslationOptions, getFileSize } from '../../src/cli/commands/translate/translate-utils';
 
 // Mock ESM dependencies
 jest.mock('ora', () => {
@@ -905,7 +906,7 @@ describe('TranslateCommand', () => {
       jest.spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
 
       // Create a spy on translateDirectory
-      const spy = jest.spyOn(translateCommand as any, 'translateDirectory')
+      const spy = jest.spyOn((translateCommand as any).directoryHandler, 'translateDirectory')
         .mockResolvedValue('Directory translation result');
 
       const result = await translateCommand.translate('/path/to/dir', {
@@ -928,7 +929,7 @@ describe('TranslateCommand', () => {
       jest.spyOn(fs, 'statSync').mockReturnValue(mockStats as any);
 
       // Create a spy on translateFile
-      const spy = jest.spyOn(translateCommand as any, 'translateFile')
+      const spy = jest.spyOn((translateCommand as any).fileHandler, 'translateFile')
         .mockResolvedValue('File translation result');
 
       const result = await translateCommand.translate('/path/to/file.txt', {
@@ -961,7 +962,7 @@ describe('TranslateCommand', () => {
   describe('translateFile()', () => {
     it('should throw error if output is not specified', async () => {
       await expect(
-        (translateCommand as any).translateFile('/path/to/file.txt', { to: 'es' })
+        (translateCommand as any).fileHandler.translateFile('/path/to/file.txt', { to: 'es' })
       ).rejects.toThrow('Output file path is required');
     });
 
@@ -981,7 +982,7 @@ describe('TranslateCommand', () => {
         text: 'Hola mundo',
       });
 
-      const result = await (translateCommand as any).translateFile('/input.txt', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/input.txt', {
         to: 'es',
         output: '/output.txt',
       });
@@ -1007,9 +1008,9 @@ describe('TranslateCommand', () => {
           { targetLang: 'de', outputPath: '/output.de.txt' },
         ]),
       };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      (translateCommand as any).ctx.fileTranslationService = mockFileService;
 
-      const result = await (translateCommand as any).translateFile('/input.txt', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/input.txt', {
         to: 'es,fr,de',
         output: '/output',
       });
@@ -1034,7 +1035,7 @@ describe('TranslateCommand', () => {
         text: 'Hola mundo',
       });
 
-      await (translateCommand as any).translateFile('/input.txt', {
+      await (translateCommand as any).fileHandler.translateFile('/input.txt', {
         to: 'es',
         from: 'en',
         output: '/output.txt',
@@ -1060,7 +1061,7 @@ describe('TranslateCommand', () => {
         text: 'Hola mundo',
       });
 
-      await (translateCommand as any).translateFile('/input.txt', {
+      await (translateCommand as any).fileHandler.translateFile('/input.txt', {
         to: 'es',
         formality: 'more',
         output: '/output.txt',
@@ -1086,7 +1087,7 @@ describe('TranslateCommand', () => {
         text: 'Hola mundo',
       });
 
-      await (translateCommand as any).translateFile('/input.txt', {
+      await (translateCommand as any).fileHandler.translateFile('/input.txt', {
         to: 'es',
         output: '/output.txt',
         preserveCode: true,
@@ -1110,9 +1111,9 @@ describe('TranslateCommand', () => {
           { targetLang: 'fr', outputPath: '/output.fr.txt' },
         ]),
       };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      (translateCommand as any).ctx.fileTranslationService = mockFileService;
 
-      await (translateCommand as any).translateFile('/input.txt', {
+      await (translateCommand as any).fileHandler.translateFile('/input.txt', {
         to: 'es,fr',
         from: 'en',
         output: '/output',
@@ -1136,9 +1137,9 @@ describe('TranslateCommand', () => {
           { targetLang: 'de', outputPath: '/output.de.txt' },
         ]),
       };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      (translateCommand as any).ctx.fileTranslationService = mockFileService;
 
-      await (translateCommand as any).translateFile('/input.txt', {
+      await (translateCommand as any).fileHandler.translateFile('/input.txt', {
         to: 'es,de',
         formality: 'more',
         output: '/output',
@@ -1155,7 +1156,7 @@ describe('TranslateCommand', () => {
   describe('translateDirectory()', () => {
     it('should throw error if output directory is not specified', async () => {
       await expect(
-        (translateCommand as any).translateDirectory('/path/to/dir', { to: 'es' })
+        (translateCommand as any).directoryHandler.translateDirectory('/path/to/dir', { to: 'es' })
       ).rejects.toThrow('Output directory is required');
     });
 
@@ -1339,7 +1340,7 @@ describe('TranslateCommand', () => {
         text: 'Translated content',
       });
 
-      const result = await (translateCommand as any).translateFile('/path/to/small.txt', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/path/to/small.txt', {
         to: 'es',
         output: '/out.txt',
       });
@@ -1362,7 +1363,7 @@ describe('TranslateCommand', () => {
         outputPath: '/out.txt',
       });
 
-      const result = await (translateCommand as any).translateFile('/path/to/large.txt', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/path/to/large.txt', {
         to: 'es',
         output: '/out.txt',
       });
@@ -1388,7 +1389,7 @@ describe('TranslateCommand', () => {
         text: 'Translated markdown',
       });
 
-      const result = await (translateCommand as any).translateFile('/path/to/doc.md', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/path/to/doc.md', {
         to: 'es',
         output: '/out.md',
       });
@@ -1412,7 +1413,7 @@ describe('TranslateCommand', () => {
         text: '<html><body>Hola</body></html>',
       });
 
-      await (translateCommand as any).translateFile('/path/to/page.html', {
+      await (translateCommand as any).fileHandler.translateFile('/path/to/page.html', {
         to: 'es',
         output: '/out.html',
       });
@@ -1436,7 +1437,7 @@ describe('TranslateCommand', () => {
         text: 'Translated subtitles',
       });
 
-      await (translateCommand as any).translateFile('/path/to/movie.srt', {
+      await (translateCommand as any).fileHandler.translateFile('/path/to/movie.srt', {
         to: 'es',
         output: '/out.srt',
       });
@@ -1460,7 +1461,7 @@ describe('TranslateCommand', () => {
         text: 'Translated XML',
       });
 
-      await (translateCommand as any).translateFile('/path/to/strings.xlf', {
+      await (translateCommand as any).fileHandler.translateFile('/path/to/strings.xlf', {
         to: 'es',
         output: '/out.xlf',
       });
@@ -1482,7 +1483,7 @@ describe('TranslateCommand', () => {
         outputPath: '/out.pdf',
       });
 
-      await (translateCommand as any).translateFile('/path/to/document.pdf', {
+      await (translateCommand as any).fileHandler.translateFile('/path/to/document.pdf', {
         to: 'es',
         output: '/out.pdf',
       });
@@ -1504,7 +1505,7 @@ describe('TranslateCommand', () => {
         outputPath: '/out.txt',
       });
 
-      const result = await (translateCommand as any).translateFile('/path/to/large.txt', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/path/to/large.txt', {
         to: 'es',
         output: '/out.txt',
       });
@@ -1532,7 +1533,7 @@ describe('TranslateCommand', () => {
         text: translatedContent,
       });
 
-      await (translateCommand as any).translateFile('/path/to/small.txt', {
+      await (translateCommand as any).fileHandler.translateFile('/path/to/small.txt', {
         to: 'es',
         output: '/out.txt',
       });
@@ -1555,7 +1556,7 @@ describe('TranslateCommand', () => {
         text: 'Hola 世界 🌍',
       });
 
-      await (translateCommand as any).translateFile('/path/to/unicode.txt', {
+      await (translateCommand as any).fileHandler.translateFile('/path/to/unicode.txt', {
         to: 'es',
         output: '/out.txt',
       });
@@ -1572,11 +1573,11 @@ describe('TranslateCommand', () => {
 
       // Access the private isFilePath method via translate()
       // Windows path should be detected as file path
-      const spy = jest.spyOn(translateCommand as any, 'translateFile')
+      const spy = jest.spyOn((translateCommand as any).fileHandler, 'translateFile')
         .mockResolvedValue('File translation result');
 
       // Mock fileTranslationService.isSupportedFile to return true for .txt
-      const mockFileService = (translateCommand as any).fileTranslationService;
+      const mockFileService = (translateCommand as any).ctx.fileTranslationService;
       jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
 
       await translateCommand.translate('C:\\Users\\Documents\\file.txt', {
@@ -1592,10 +1593,10 @@ describe('TranslateCommand', () => {
       const fs = jest.requireActual('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
 
-      const spy = jest.spyOn(translateCommand as any, 'translateFile')
+      const spy = jest.spyOn((translateCommand as any).fileHandler, 'translateFile')
         .mockResolvedValue('File translation result');
 
-      const mockFileService = (translateCommand as any).fileTranslationService;
+      const mockFileService = (translateCommand as any).ctx.fileTranslationService;
       jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
 
       await translateCommand.translate('/home/user/documents/file.txt', {
@@ -1611,7 +1612,7 @@ describe('TranslateCommand', () => {
       const fs = jest.requireActual('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
 
-      const mockFileService = (translateCommand as any).fileTranslationService;
+      const mockFileService = (translateCommand as any).ctx.fileTranslationService;
       jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
 
       (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
@@ -1635,7 +1636,7 @@ describe('TranslateCommand', () => {
       const fs = jest.requireActual('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
 
-      const mockFileService = (translateCommand as any).fileTranslationService;
+      const mockFileService = (translateCommand as any).ctx.fileTranslationService;
       jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(false);
 
       (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
@@ -1659,10 +1660,10 @@ describe('TranslateCommand', () => {
       const fs = jest.requireActual('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
 
-      const spy = jest.spyOn(translateCommand as any, 'translateFile')
+      const spy = jest.spyOn((translateCommand as any).fileHandler, 'translateFile')
         .mockResolvedValue('File translation result');
 
-      const mockFileService = (translateCommand as any).fileTranslationService;
+      const mockFileService = (translateCommand as any).ctx.fileTranslationService;
       jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
 
       await translateCommand.translate('folder\\subfolder\\file.txt', {
@@ -1678,10 +1679,10 @@ describe('TranslateCommand', () => {
       const fs = jest.requireActual('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
 
-      const spy = jest.spyOn(translateCommand as any, 'translateFile')
+      const spy = jest.spyOn((translateCommand as any).fileHandler, 'translateFile')
         .mockResolvedValue('File translation result');
 
-      const mockFileService = (translateCommand as any).fileTranslationService;
+      const mockFileService = (translateCommand as any).ctx.fileTranslationService;
       jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
 
       await translateCommand.translate('folder/subfolder/file.txt', {
@@ -1697,7 +1698,7 @@ describe('TranslateCommand', () => {
       const fs = jest.requireActual('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
 
-      const mockFileService = (translateCommand as any).fileTranslationService;
+      const mockFileService = (translateCommand as any).ctx.fileTranslationService;
       jest.spyOn(mockFileService, 'isSupportedFile').mockReturnValue(true);
 
       (mockTranslationService.translate as jest.Mock).mockResolvedValueOnce({
@@ -1819,7 +1820,7 @@ describe('TranslateCommand', () => {
       jest.spyOn(fs, 'readFileSync').mockReturnValue('Hello world');
 
       await expect(
-        (translateCommand as any).translateFile('/input.txt', {
+        (translateCommand as any).fileHandler.translateFile('/input.txt', {
           to: 'es,invalid,fr',
           output: '/output',
         })
@@ -1908,7 +1909,7 @@ describe('TranslateCommand', () => {
       } as any);
 
       // Mock translateDirectory to return success
-      const spy = jest.spyOn(translateCommand as any, 'translateDirectory')
+      const spy = jest.spyOn((translateCommand as any).directoryHandler, 'translateDirectory')
         .mockResolvedValue('Directory translation complete');
 
       const result = await translateCommand.translate('/path/to/regular-dir', {
@@ -2715,9 +2716,9 @@ describe('TranslateCommand', () => {
           skipped: 0,
         }),
       };
-      (translateCommand as any).batchTranslationService = mockBatchService;
+      (translateCommand as any).ctx.batchTranslationService = mockBatchService;
 
-      const result = await (translateCommand as any).translateDirectory('/src', {
+      const result = await (translateCommand as any).directoryHandler.translateDirectory('/src', {
         to: 'es',
         output: '/out',
       });
@@ -2742,9 +2743,9 @@ describe('TranslateCommand', () => {
           skipped: 0,
         }),
       };
-      (translateCommand as any).batchTranslationService = mockBatchService;
+      (translateCommand as any).ctx.batchTranslationService = mockBatchService;
 
-      const result = await (translateCommand as any).translateDirectory('/src', {
+      const result = await (translateCommand as any).directoryHandler.translateDirectory('/src', {
         to: 'es',
         output: '/out',
       });
@@ -2768,9 +2769,9 @@ describe('TranslateCommand', () => {
           skipped: 1,
         }),
       };
-      (translateCommand as any).batchTranslationService = mockBatchService;
+      (translateCommand as any).ctx.batchTranslationService = mockBatchService;
 
-      const result = await (translateCommand as any).translateDirectory('/src', {
+      const result = await (translateCommand as any).directoryHandler.translateDirectory('/src', {
         to: 'es',
         output: '/out',
       });
@@ -2792,9 +2793,9 @@ describe('TranslateCommand', () => {
           skipped: 0,
         }),
       };
-      (translateCommand as any).batchTranslationService = mockBatchService;
+      (translateCommand as any).ctx.batchTranslationService = mockBatchService;
 
-      await (translateCommand as any).translateDirectory('/src', {
+      await (translateCommand as any).directoryHandler.translateDirectory('/src', {
         to: 'es',
         from: 'en',
         formality: 'more',
@@ -2827,7 +2828,7 @@ describe('TranslateCommand', () => {
       };
       BatchTranslationService.mockImplementation(() => mockInstance);
 
-      await (translateCommand as any).translateDirectory('/src', {
+      await (translateCommand as any).directoryHandler.translateDirectory('/src', {
         to: 'es',
         output: '/out',
         concurrency: 10,
@@ -2845,10 +2846,10 @@ describe('TranslateCommand', () => {
         translateDirectory: jest.fn().mockRejectedValue(new Error('Batch failed')),
         getStatistics: jest.fn(),
       };
-      (translateCommand as any).batchTranslationService = mockBatchService;
+      (translateCommand as any).ctx.batchTranslationService = mockBatchService;
 
       await expect(
-        (translateCommand as any).translateDirectory('/src', {
+        (translateCommand as any).directoryHandler.translateDirectory('/src', {
           to: 'es',
           output: '/out',
         })
@@ -2881,9 +2882,9 @@ describe('TranslateCommand', () => {
           skipped: 0,
         }),
       };
-      (translateCommand as any).batchTranslationService = mockBatchService;
+      (translateCommand as any).ctx.batchTranslationService = mockBatchService;
 
-      const result = await (translateCommand as any).translateDirectory('/src', {
+      const result = await (translateCommand as any).directoryHandler.translateDirectory('/src', {
         to: 'es',
         output: '/out',
       });
@@ -2907,9 +2908,9 @@ describe('TranslateCommand', () => {
           skipped: 0,
         }),
       };
-      (translateCommand as any).batchTranslationService = mockBatchService;
+      (translateCommand as any).ctx.batchTranslationService = mockBatchService;
 
-      await (translateCommand as any).translateDirectory('/src', {
+      await (translateCommand as any).directoryHandler.translateDirectory('/src', {
         to: 'es',
         output: '/out',
         recursive: false,
@@ -2943,7 +2944,7 @@ describe('TranslateCommand', () => {
         outputPath: '/out.pdf',
       });
 
-      const result = await (translateCommand as any).translateDocument('/doc.pdf', {
+      const result = await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
         to: 'es',
         output: '/out.pdf',
       });
@@ -2963,7 +2964,7 @@ describe('TranslateCommand', () => {
         outputPath: '/out.pdf',
       });
 
-      await (translateCommand as any).translateDocument('/doc.pdf', {
+      await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
         to: 'es',
         from: 'en',
         output: '/out.pdf',
@@ -2983,7 +2984,7 @@ describe('TranslateCommand', () => {
         outputPath: '/out.pdf',
       });
 
-      await (translateCommand as any).translateDocument('/doc.pdf', {
+      await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
         to: 'es',
         formality: 'more',
         output: '/out.pdf',
@@ -3003,7 +3004,7 @@ describe('TranslateCommand', () => {
         outputPath: '/out.docx',
       });
 
-      await (translateCommand as any).translateDocument('/doc.pdf', {
+      await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
         to: 'es',
         output: '/out.docx',
         outputFormat: 'docx',
@@ -3023,7 +3024,7 @@ describe('TranslateCommand', () => {
         outputPath: '/out.pdf',
       });
 
-      await (translateCommand as any).translateDocument('/doc.pdf', {
+      await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
         to: 'es',
         output: '/out.pdf',
         enableMinification: true,
@@ -3044,7 +3045,7 @@ describe('TranslateCommand', () => {
         billedCharacters: 1500,
       });
 
-      const result = await (translateCommand as any).translateDocument('/doc.pdf', {
+      const result = await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
         to: 'es',
         output: '/out.pdf',
       });
@@ -3058,7 +3059,7 @@ describe('TranslateCommand', () => {
       );
 
       await expect(
-        (translateCommand as any).translateDocument('/doc.pdf', {
+        (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
           to: 'es',
           output: '/out.pdf',
         })
@@ -3088,7 +3089,7 @@ describe('TranslateCommand', () => {
         }
       );
 
-      const result = await (translateCommand as any).translateDocument('/doc.pdf', {
+      const result = await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
         to: 'es',
         output: '/out.pdf',
       });
@@ -3116,7 +3117,7 @@ describe('TranslateCommand', () => {
       );
 
       await expect(
-        (translateCommand as any).translateDocument('/doc.pdf', {
+        (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
           to: 'es',
           output: '/out.pdf',
         })
@@ -3151,9 +3152,9 @@ describe('TranslateCommand', () => {
         isSupportedFile: jest.fn().mockReturnValue(true),
         translateFileToMultiple: jest.fn(),
       };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      (translateCommand as any).ctx.fileTranslationService = mockFileService;
 
-      const result = await (translateCommand as any).translateFile('/input.csv', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/input.csv', {
         to: 'es',
         output: '/output.csv',
       });
@@ -3180,9 +3181,9 @@ describe('TranslateCommand', () => {
         isSupportedFile: jest.fn().mockReturnValue(true),
         translateFileToMultiple: jest.fn(),
       };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      (translateCommand as any).ctx.fileTranslationService = mockFileService;
 
-      await (translateCommand as any).translateFile('/input.csv', {
+      await (translateCommand as any).fileHandler.translateFile('/input.csv', {
         to: 'es',
         from: 'en',
         formality: 'less',
@@ -3204,7 +3205,7 @@ describe('TranslateCommand', () => {
       });
 
       await expect(
-        (translateCommand as any).translateFile('/nonexistent.txt', {
+        (translateCommand as any).fileHandler.translateFile('/nonexistent.txt', {
           to: 'es',
           output: '/out.txt',
         }, null)
@@ -3240,7 +3241,7 @@ describe('TranslateCommand', () => {
         detectedSourceLang: undefined,
       });
 
-      await (translateCommand as any).translateTextFile('/doc.txt', {
+      await (translateCommand as any).fileHandler.translateTextFile('/doc.txt', {
         to: 'es',
         from: 'en',
         output: '/out.txt',
@@ -3261,7 +3262,7 @@ describe('TranslateCommand', () => {
         detectedSourceLang: undefined,
       });
 
-      await (translateCommand as any).translateTextFile('/doc.txt', {
+      await (translateCommand as any).fileHandler.translateTextFile('/doc.txt', {
         to: 'es',
         output: '/out.txt',
         preserveFormatting: true,
@@ -3280,7 +3281,7 @@ describe('TranslateCommand', () => {
         detectedSourceLang: undefined,
       });
 
-      await (translateCommand as any).translateTextFile('/doc.txt', {
+      await (translateCommand as any).fileHandler.translateTextFile('/doc.txt', {
         to: 'es',
         output: '/out.txt',
         context: 'Technical documentation',
@@ -3306,7 +3307,7 @@ describe('TranslateCommand', () => {
         detectedSourceLang: undefined,
       });
 
-      await (translateCommand as any).translateTextFile('/doc.txt', {
+      await (translateCommand as any).fileHandler.translateTextFile('/doc.txt', {
         to: 'es',
         output: '/nested/dir/out.txt',
       });
@@ -3320,7 +3321,7 @@ describe('TranslateCommand', () => {
         detectedSourceLang: undefined,
       });
 
-      await (translateCommand as any).translateTextFile('/doc.txt', {
+      await (translateCommand as any).fileHandler.translateTextFile('/doc.txt', {
         to: 'es',
         from: 'en',
         formality: 'more',
@@ -3341,7 +3342,7 @@ describe('TranslateCommand', () => {
         detectedSourceLang: undefined,
       });
 
-      await (translateCommand as any).translateTextFile('/doc.txt', {
+      await (translateCommand as any).fileHandler.translateTextFile('/doc.txt', {
         to: 'es',
         output: '/out.txt',
       });
@@ -3360,7 +3361,7 @@ describe('TranslateCommand', () => {
       });
 
       await expect(
-        (translateCommand as any).translateTextFile('/doc.txt', {
+        (translateCommand as any).fileHandler.translateTextFile('/doc.txt', {
           to: 'es',
           output: '/out.txt',
         })
@@ -3397,9 +3398,9 @@ describe('TranslateCommand', () => {
         isSupportedFile: jest.fn().mockReturnValue(true),
         translateFileToMultiple: jest.fn(),
       };
-      (translateCommand as any).fileTranslationService = mockFileService;
+      (translateCommand as any).ctx.fileTranslationService = mockFileService;
 
-      const result = await (translateCommand as any).translateFile('/large.txt', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/large.txt', {
         to: 'es',
         output: '/out.txt',
       });
@@ -3427,14 +3428,14 @@ describe('TranslateCommand', () => {
         throw new Error('ENOENT');
       });
 
-      const result = (translateCommand as any).getFileSize('/nonexistent.txt');
+      const result = getFileSize('/nonexistent.txt');
       expect(result).toBeNull();
     });
 
     it('should return file size when file exists', () => {
       jest.spyOn(mockFs, 'statSync').mockReturnValue({ size: 42 } as any);
 
-      const result = (translateCommand as any).getFileSize('/existing.txt');
+      const result = getFileSize('/existing.txt');
       expect(result).toBe(42);
     });
   });
@@ -3463,7 +3464,7 @@ describe('TranslateCommand', () => {
         detectedSourceLang: undefined,
       });
 
-      const result = await (translateCommand as any).translateFile('/doc.txt', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/doc.txt', {
         to: 'es',
         output: '/out.txt',
       }, cachedStats);
@@ -3483,7 +3484,7 @@ describe('TranslateCommand', () => {
         detectedSourceLang: undefined,
       });
 
-      const result = await (translateCommand as any).translateFile('/doc.txt', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/doc.txt', {
         to: 'es',
         output: '/out.txt',
       }, null);
@@ -3566,7 +3567,7 @@ describe('TranslateCommand', () => {
     describe('directory mode', () => {
       it('should warn when unsupported options are passed to directory mode', async () => {
         await expect(
-          (translateCommand as any).translateDirectory('/path/to/dir', {
+          (translateCommand as any).directoryHandler.translateDirectory('/path/to/dir', {
             to: 'es',
             output: '/output',
             splitSentences: 'on',
@@ -3593,7 +3594,7 @@ describe('TranslateCommand', () => {
 
       it('should not warn when only supported options are used in directory mode', async () => {
         await expect(
-          (translateCommand as any).translateDirectory('/path/to/dir', {
+          (translateCommand as any).directoryHandler.translateDirectory('/path/to/dir', {
             to: 'es',
             output: '/output',
             from: 'en',
@@ -3615,7 +3616,7 @@ describe('TranslateCommand', () => {
       });
 
       it('should warn when unsupported options are passed to document mode', async () => {
-        await (translateCommand as any).translateDocument('/doc.pdf', {
+        await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
           to: 'es',
           output: '/output.pdf',
           splitSentences: 'on',
@@ -3641,7 +3642,7 @@ describe('TranslateCommand', () => {
       });
 
       it('should not warn when only supported options are used in document mode', async () => {
-        await (translateCommand as any).translateDocument('/doc.pdf', {
+        await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
           to: 'es',
           output: '/output.pdf',
           from: 'en',
@@ -3672,7 +3673,7 @@ describe('TranslateCommand', () => {
 
   describe('buildTranslationOptions()', () => {
     it('should build base options with sourceLang and formality', () => {
-      const result = (translateCommand as any).buildTranslationOptions({
+      const result = buildTranslationOptions({
         to: 'es',
         from: 'en',
         formality: 'more',
@@ -3685,7 +3686,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should omit undefined optional fields', () => {
-      const result = (translateCommand as any).buildTranslationOptions({
+      const result = buildTranslationOptions({
         to: 'de',
       });
       expect(result).toEqual({ targetLang: 'de' });
@@ -3695,7 +3696,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should include context when provided', () => {
-      const result = (translateCommand as any).buildTranslationOptions({
+      const result = buildTranslationOptions({
         to: 'fr',
         context: 'medical document',
       });
@@ -3703,7 +3704,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should not include glossaryId (resolved separately)', () => {
-      const result = (translateCommand as any).buildTranslationOptions({
+      const result = buildTranslationOptions({
         to: 'es',
         glossary: 'my-glossary',
       });
@@ -3711,7 +3712,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should include preserveFormatting when explicitly set', () => {
-      const result = (translateCommand as any).buildTranslationOptions({
+      const result = buildTranslationOptions({
         to: 'es',
         preserveFormatting: true,
       });
@@ -3719,7 +3720,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should include showBilledCharacters when set', () => {
-      const result = (translateCommand as any).buildTranslationOptions({
+      const result = buildTranslationOptions({
         to: 'es',
         showBilledCharacters: true,
       });
@@ -3727,7 +3728,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should include splitSentences when provided', () => {
-      const result = (translateCommand as any).buildTranslationOptions({
+      const result = buildTranslationOptions({
         to: 'es',
         splitSentences: 'nonewlines',
       });
@@ -3735,7 +3736,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should include tagHandling when provided', () => {
-      const result = (translateCommand as any).buildTranslationOptions({
+      const result = buildTranslationOptions({
         to: 'es',
         tagHandling: 'html',
       });
@@ -3743,7 +3744,7 @@ describe('TranslateCommand', () => {
     });
 
     it('should include modelType when provided', () => {
-      const result = (translateCommand as any).buildTranslationOptions({
+      const result = buildTranslationOptions({
         to: 'es',
         modelType: 'quality_optimized',
       });
@@ -3975,7 +3976,7 @@ describe('TranslateCommand', () => {
         text: 'Hola mundo',
       });
 
-      const result = await (translateCommand as any).translateFile('/input.txt', {
+      const result = await (translateCommand as any).fileHandler.translateFile('/input.txt', {
         to: 'es',
         output: '-',
       });
@@ -3987,7 +3988,7 @@ describe('TranslateCommand', () => {
 
     it('should reject --output - with multiple target languages', async () => {
       await expect(
-        (translateCommand as any).translateFile('/input.txt', {
+        (translateCommand as any).fileHandler.translateFile('/input.txt', {
           to: 'es,fr,de',
           output: '-',
         })
@@ -4002,7 +4003,7 @@ describe('TranslateCommand', () => {
       (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(true);
 
       await expect(
-        (translateCommand as any).translateDocument('/input.pdf', {
+        (translateCommand as any).fileHandler.documentHandler.translateDocument('/input.pdf', {
           to: 'es',
           output: '-',
         })
@@ -4018,7 +4019,7 @@ describe('TranslateCommand', () => {
       (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(false);
 
       await expect(
-        (translateCommand as any).translateFile('/input.json', {
+        (translateCommand as any).fileHandler.translateFile('/input.json', {
           to: 'es',
           output: '-',
         })
