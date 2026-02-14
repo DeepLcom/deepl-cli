@@ -178,7 +178,7 @@ Commands are organized into six groups, matching the `deepl --help` output:
 | **Resources** | `glossary` | Manage translation glossaries |
 | **Workflow** | `watch`, `hooks` | File watching and git hook automation |
 | **Configuration** | `init`, `auth`, `config`, `cache`, `style-rules` | Setup wizard, authentication, settings, caching, and style rules |
-| **Information** | `usage`, `languages`, `completion` | API usage, supported languages, and shell completions |
+| **Information** | `usage`, `languages`, `detect`, `completion` | API usage, supported languages, language detection, and shell completions |
 | **Administration** | `admin` | Organization key management and usage analytics |
 
 ---
