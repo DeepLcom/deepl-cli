@@ -30,7 +30,7 @@ export function registerTranslate(
     .option('--preserve-formatting', 'Preserve line breaks and whitespace formatting')
     .addOption(new Option('--split-sentences <mode>', 'Sentence splitting (default: on)').choices(['on', 'off', 'nonewlines']))
     .optionsGroup('Document Options:')
-    .addOption(new Option('--output-format <format>', 'Convert document format during translation').choices(['pdf', 'docx', 'pptx', 'xlsx', 'html', 'htm', 'txt', 'srt', 'xlf', 'xliff']))
+    .addOption(new Option('--output-format <format>', 'Convert PDF to DOCX during translation (only supported conversion)').choices(['docx']))
     .option('--enable-minification', 'Enable document minification (PPTX/DOCX only, reduces file size)')
     .optionsGroup('XML/HTML Options:')
     .addOption(new Option('--tag-handling <mode>', 'Tag handling for XML/HTML').choices(['xml', 'html']))
@@ -57,7 +57,7 @@ Examples:
   $ deepl translate README.md --to fr --output README.fr.md
   $ deepl translate ./docs --to de,es,fr --pattern "*.md"
   $ echo "Hello" | deepl translate --to ja
-  $ deepl translate report.docx --to de --output-format pdf
+  $ deepl translate report.pdf --to de --output-format docx
   $ deepl translate "Hello" --to es --formality more --glossary my-glossary
   $ deepl translate page.html --to fr --tag-handling html
   $ deepl translate "Hello" --to es --custom-instruction "Use informal language"

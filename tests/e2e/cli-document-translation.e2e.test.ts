@@ -32,7 +32,7 @@ describe('Document Translation E2E', () => {
       fs.writeFileSync(testFile, 'Test content');
 
       // Test with valid output formats (will fail at API call, not flag validation)
-      const formats = ['pdf', 'docx', 'pptx', 'xlsx', 'html'];
+      const formats = ['docx'];
 
       for (const format of formats) {
         const result = runCLIExpectError(`translate "${testFile}" --to es --output-format ${format}`, 'test-key:fx');
@@ -47,7 +47,7 @@ describe('Document Translation E2E', () => {
       const result = runCLIExpectError('translate --help', '');
 
       expect(result.output).toContain('--output-format');
-      expect(result.output).toMatch(/convert.*document.*format/i);
+      expect(result.output).toMatch(/convert.*pdf.*docx/i);
     });
 
     it('should require a value', () => {
