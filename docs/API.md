@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
 **Version**: 0.11.0
-**Last Updated**: February 8, 2026
+**Last Updated**: February 15, 2026
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -643,7 +643,8 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 **Style Options (mutually exclusive with tone):**
 
-- `--style STYLE` - Writing style:
+- `--style, -s STYLE` - Writing style:
+  - `default` - No style modification (API default)
   - `simple` - Simpler, more accessible language
   - `business` - Professional business language
   - `academic` - Formal academic language
@@ -652,7 +653,8 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 **Tone Options (mutually exclusive with style):**
 
-- `--tone TONE` - Tone:
+- `--tone, -T TONE` - Tone:
+  - `default` - No tone modification (API default)
   - `enthusiastic` - More enthusiastic and positive
   - `friendly` - Warmer, more approachable
   - `confident` - More assertive and certain
@@ -924,7 +926,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 **Translation Options:**
 
 - `--from, -f LANG` - Source language (auto-detect if omitted)
-- `--formality LEVEL` - Formality level
+- `--formality LEVEL` - Formality level: `default`, `more`, `less`, `prefer_more`, `prefer_less`
 - `--preserve-code` - Preserve code blocks
 - `--preserve-formatting` - Preserve line breaks and whitespace formatting
 - `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
@@ -1473,6 +1475,10 @@ Delete a specific language pair from a multilingual glossary (v3 API only).
 - `name-or-id` - Glossary name or ID
 - `target-lang` - Target language of the dictionary to delete (e.g., `es`, `fr`, `de`)
 
+**Options:**
+
+- `-y, --yes` - Skip confirmation prompt
+
 **Behavior:**
 
 - Removes a specific language pair from a multilingual glossary using v3 DELETE endpoint
@@ -1635,6 +1641,10 @@ deepl config set defaults.formality more
 ##### `reset`
 
 Reset configuration to defaults (keeps API key).
+
+**Options:**
+
+- `-y, --yes` - Skip confirmation prompt
 
 ---
 
@@ -2079,10 +2089,15 @@ Deactivate an API key (permanent, cannot be undone).
 
 - `<key-id>` - Key ID to deactivate (required)
 
+**Options:**
+
+- `-y, --yes` - Skip confirmation prompt
+
 **Examples:**
 
 ```bash
 deepl admin keys deactivate abc123-def456
+deepl admin keys deactivate abc123-def456 --yes
 ```
 
 ##### `keys rename`
@@ -2109,6 +2124,10 @@ Set character usage limit for an API key.
 - `<key-id>` - Key ID (required)
 - `<characters>` - Character limit (number or "unlimited") (required)
 
+**Options:**
+
+- `--stt-limit <milliseconds>` - Speech-to-text milliseconds limit (number or `unlimited`)
+
 **Examples:**
 
 ```bash
@@ -2117,6 +2136,9 @@ deepl admin keys set-limit abc123-def456 1000000
 
 # Remove the limit
 deepl admin keys set-limit abc123-def456 unlimited
+
+# Set character limit and speech-to-text limit together
+deepl admin keys set-limit abc123-def456 1000000 --stt-limit 3600000
 ```
 
 ##### `usage`
@@ -2388,5 +2410,5 @@ export NO_COLOR=1
 
 ---
 
-**Last Updated**: February 8, 2026
+**Last Updated**: February 15, 2026
 **DeepL CLI Version**: 0.11.0
