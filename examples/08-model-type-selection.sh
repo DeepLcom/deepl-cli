@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 12: Model Type Selection
+# Example 8: Model Type Selection
 # Demonstrates using different model types for quality vs. speed trade-offs
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 12: Model Type Selection ==="
+echo "=== DeepL CLI Example 8: Model Type Selection ==="
 echo
 
 # Check if API key is configured

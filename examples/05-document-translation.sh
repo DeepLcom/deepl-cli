@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 15: Document Translation
+# Example 5: Document Translation
 # Demonstrates translating complete documents while preserving formatting
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 15: Document Translation ==="
+echo "=== DeepL CLI Example 5: Document Translation ==="
 echo
 
 # Check if API key is configured
@@ -18,7 +18,7 @@ echo "✓ API key configured"
 echo
 
 # Create temporary directory for test files
-TEST_DIR="/tmp/deepl-example-15"
+TEST_DIR="/tmp/deepl-example-05"
 rm -rf "$TEST_DIR"
 mkdir -p "$TEST_DIR"
 
@@ -190,6 +190,11 @@ echo
 echo "✓ Translation complete with real-time progress updates!"
 echo
 
+echo "4b. Document minification for PPTX/DOCX:"
+echo "   Use --enable-minification to reduce file size during translation:"
+echo "   deepl translate presentation.pptx --to es --output presentation.es.pptx --enable-minification"
+echo
+
 # Example 5: Error Handling
 echo "5. Error handling for unsupported formats"
 echo
@@ -293,8 +298,8 @@ echo "  • Batch processing multiple documents"
 echo
 echo "🔗 Related examples:"
 echo "  • examples/02-file-translation.sh - Basic file translation"
-echo "  • examples/07-batch-processing.sh - Advanced batch processing"
-echo "  • examples/03-glossaries.sh - Using glossaries with documents"
+echo "  • examples/03-batch-processing.sh - Advanced batch processing"
+echo "  • examples/15-glossaries.sh - Using glossaries with documents"
 echo
 echo "📖 For more information:"
 echo "  deepl translate --help"

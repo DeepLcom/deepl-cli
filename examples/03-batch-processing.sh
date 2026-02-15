@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 7: Batch Processing
+# Example 3: Batch Processing
 # Demonstrates processing multiple files efficiently
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 7: Batch Processing ==="
+echo "=== DeepL CLI Example 3: Batch Processing ==="
 echo
 
 # Check if API key is configured
@@ -18,11 +18,11 @@ echo "✓ API key configured"
 echo
 
 # Setup: Create multiple sample files in temp directory
-SAMPLE_DIR="/tmp/deepl-example-07/sample-files/batch"
-OUTPUT_DIR="/tmp/deepl-example-07/output/batch"
-RECHECK_DIR="/tmp/deepl-example-07/sample-files/recheck"
+SAMPLE_DIR="/tmp/deepl-example-03/sample-files/batch"
+OUTPUT_DIR="/tmp/deepl-example-03/output/batch"
+RECHECK_DIR="/tmp/deepl-example-03/sample-files/recheck"
 
-rm -rf /tmp/deepl-example-07
+rm -rf /tmp/deepl-example-03
 mkdir -p "$SAMPLE_DIR" "$OUTPUT_DIR" "$RECHECK_DIR"
 
 # Create sample files
@@ -76,6 +76,12 @@ EOF
 echo "✓ Created 4 sample documentation files"
 echo
 
+# Example 0: Dry-run preview (see what would happen without translating)
+echo "0. Dry-run preview:"
+deepl translate "$SAMPLE_DIR" --to es,fr --output "$OUTPUT_DIR/" --pattern "*.md" --dry-run
+echo "   (No translations performed — just a preview)"
+echo
+
 # Example 1: Translate all files to a single language
 echo "1. Translate all markdown files to Spanish"
 for file in "$SAMPLE_DIR"/*.md; do
@@ -94,6 +100,15 @@ for file in "$SAMPLE_DIR"/*.md; do
   deepl translate "$file" --to fr,de --output "$OUTPUT_DIR/"
 done
 echo "   ✓ All files translated to French and German"
+echo
+
+echo "2b. Directory translation with concurrency control:"
+deepl translate "$SAMPLE_DIR" --to ja --output "$OUTPUT_DIR/ja/" --pattern "*.md" --concurrency 3
+echo "   Translated with max 3 parallel requests"
+echo
+
+echo "2c. Non-recursive directory translation (top-level only):"
+deepl translate "$SAMPLE_DIR" --to ko --output "$OUTPUT_DIR/ko/" --no-recursive
 echo
 
 # Example 3: Count and display results
@@ -233,7 +248,7 @@ echo
 
 # Cleanup
 echo "Cleaning up temporary files..."
-rm -rf /tmp/deepl-example-07
+rm -rf /tmp/deepl-example-03
 echo "✓ Cleanup complete"
 
 echo "=== All examples completed successfully! ==="

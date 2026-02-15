@@ -86,6 +86,11 @@ deepl translate "$SAMPLE_DIR/sample.md" --to ja --output "$OUTPUT_DIR/sample.ja.
 echo "   Output: $OUTPUT_DIR/sample.ja.md"
 echo
 
+echo "3b. Translate with formatting preservation (line breaks, whitespace):"
+deepl translate "$SAMPLE_DIR/sample.txt" --to es --output "$OUTPUT_DIR/sample.fmt.es.txt" --preserve-formatting
+echo "   Output: $OUTPUT_DIR/sample.fmt.es.txt"
+echo
+
 # Example 4: Show the translated markdown has preserved code
 echo "4. Verify code blocks are preserved:"
 echo "   Original code block:"

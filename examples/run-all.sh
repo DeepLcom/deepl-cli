@@ -47,61 +47,81 @@ done
 
 # List of all examples
 EXAMPLES=(
+  # Core Commands - Translate
   "01-basic-translation.sh"
   "02-file-translation.sh"
-  "03-glossaries.sh"
-  "04-configuration.sh"
-  "05-cache.sh"
-  "06-cicd-integration.sh"
-  "07-batch-processing.sh"
-  "08-context-aware-translation.sh"
-  "09-write-basic.sh"
-  "10-usage-monitoring.sh"
-  "11-languages.sh"
-  "12-model-type-selection.sh"
-  "13-watch-mode.sh"
-  "14-git-hooks.sh"
-  "15-document-translation.sh"
-  "16-document-format-conversion.sh"
-  "17-custom-config-files.sh"
-  "18-cost-transparency.sh"
-  "19-xml-tag-handling.sh"
-  "20-table-output.sh"
-  "21-custom-instructions.sh"
+  "03-batch-processing.sh"
+  "04-context-aware-translation.sh"
+  "05-document-translation.sh"
+  "06-document-format-conversion.sh"
+  "07-structured-file-translation.sh"
+  "08-model-type-selection.sh"
+  "09-xml-tag-handling.sh"
+  "10-custom-instructions.sh"
+  "11-table-output.sh"
+  "12-cost-transparency.sh"
+  # Core Commands - Write
+  "13-write.sh"
+  # Core Commands - Voice
+  "14-voice.sh"
+  # Resources
+  "15-glossaries.sh"
+  # Workflow
+  "16-watch-mode.sh"
+  "17-git-hooks.sh"
+  "18-cicd-integration.sh"
+  # Configuration
+  "19-configuration.sh"
+  "20-custom-config-files.sh"
+  "21-cache.sh"
   "22-style-rules.sh"
-  "23-admin.sh"
-  "24-voice.sh"
-  "25-structured-file-translation.sh"
+  # Information
+  "23-usage-monitoring.sh"
+  "24-languages.sh"
+  "25-detect.sh"
+  "26-completion.sh"
+  # Administration
+  "27-admin.sh"
 )
 
 # Skip slow examples in fast mode
 if [ "$FAST_MODE" = true ]; then
-  echo "ℹ️  Fast mode enabled - skipping slow examples (13, 14)"
+  echo "ℹ️  Fast mode enabled - skipping slow examples (16, 17)"
   echo
   EXAMPLES=(
+    # Core Commands - Translate
     "01-basic-translation.sh"
     "02-file-translation.sh"
-    "03-glossaries.sh"
-    "04-configuration.sh"
-    "05-cache.sh"
-    "06-cicd-integration.sh"
-    "07-batch-processing.sh"
-    "08-context-aware-translation.sh"
-    "09-write-basic.sh"
-    "10-usage-monitoring.sh"
-    "11-languages.sh"
-    "12-model-type-selection.sh"
-    "15-document-translation.sh"
-    "16-document-format-conversion.sh"
-    "17-custom-config-files.sh"
-    "18-cost-transparency.sh"
-    "19-xml-tag-handling.sh"
-    "20-table-output.sh"
-    "21-custom-instructions.sh"
+    "03-batch-processing.sh"
+    "04-context-aware-translation.sh"
+    "05-document-translation.sh"
+    "06-document-format-conversion.sh"
+    "07-structured-file-translation.sh"
+    "08-model-type-selection.sh"
+    "09-xml-tag-handling.sh"
+    "10-custom-instructions.sh"
+    "11-table-output.sh"
+    "12-cost-transparency.sh"
+    # Core Commands - Write
+    "13-write.sh"
+    # Core Commands - Voice
+    "14-voice.sh"
+    # Resources
+    "15-glossaries.sh"
+    # Workflow (watch/hooks skipped)
+    "18-cicd-integration.sh"
+    # Configuration
+    "19-configuration.sh"
+    "20-custom-config-files.sh"
+    "21-cache.sh"
     "22-style-rules.sh"
-    "23-admin.sh"
-    "24-voice.sh"
-    "25-structured-file-translation.sh"
+    # Information
+    "23-usage-monitoring.sh"
+    "24-languages.sh"
+    "25-detect.sh"
+    "26-completion.sh"
+    # Administration
+    "27-admin.sh"
   )
 fi
 

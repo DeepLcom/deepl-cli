@@ -1,11 +1,11 @@
 #!/bin/bash
-# Example 11: List Supported Languages
+# Example 24: List Supported Languages
 # Demonstrates listing source and target languages supported by DeepL,
 # including extended languages and graceful degradation without an API key
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 11: Supported Languages ==="
+echo "=== DeepL CLI Example 24: Supported Languages ==="
 echo
 
 # Check if API key is configured
@@ -47,6 +47,14 @@ else
   exit 1
 fi
 EOF
+echo
+
+echo "5. Languages in JSON format (for scripting):"
+deepl languages --format json | head -10
+echo
+
+echo "6. Target languages in JSON format:"
+deepl languages --target --format json | head -10
 echo
 
 echo "=== Language listing example completed! ===="

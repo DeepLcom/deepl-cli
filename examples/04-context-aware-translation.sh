@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 8: Context-Aware Translation
+# Example 4: Context-Aware Translation
 # Demonstrates using context to improve translation quality
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 8: Context-Aware Translation ==="
+echo "=== DeepL CLI Example 4: Context-Aware Translation ==="
 echo
 
 # Check if API key is configured

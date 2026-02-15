@@ -1,11 +1,11 @@
 #!/bin/bash
-# Example 3: Glossaries (v3 API)
+# Example 15: Glossaries (v3 API)
 # Demonstrates managing glossaries for consistent terminology
 # v3 API supports both single-target and multilingual glossaries
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 3: Glossaries (v3 API) ==="
+echo "=== DeepL CLI Example 15: Glossaries (v3 API) ==="
 echo
 
 # Check if API key is configured
@@ -19,8 +19,8 @@ echo "✓ API key configured"
 echo
 
 # Setup: Create sample glossary files in temp directory
-SAMPLE_DIR="/tmp/deepl-example-03/sample-files"
-rm -rf /tmp/deepl-example-03
+SAMPLE_DIR="/tmp/deepl-example-15/sample-files"
+rm -rf /tmp/deepl-example-15
 mkdir -p "$SAMPLE_DIR"
 
 # Create a tech terminology glossary (EN → DE)
@@ -66,9 +66,17 @@ echo "3. List all glossaries"
 deepl glossary list
 echo
 
+echo "3b. List glossaries in JSON format:"
+deepl glossary list --format json | head -5
+echo
+
 # Example 4: Show glossary details
 echo "4. Show tech glossary details"
 deepl glossary show tech-terms-demo
+echo
+
+echo "4b. Show glossary details in JSON format:"
+deepl glossary show tech-terms-demo --format json
 echo
 
 # Example 5: View glossary entries
@@ -93,10 +101,68 @@ deepl glossary show tech-terms-renamed
 echo
 
 # ═══════════════════════════════════════════════════════
+# ENTRY MANAGEMENT
+# ═══════════════════════════════════════════════════════
+
+echo "9. Add entry to tech glossary:"
+deepl glossary add-entry tech-terms-renamed "database" "Datenbank"
+echo
+
+echo "10. Verify new entry:"
+deepl glossary entries tech-terms-renamed
+echo
+
+echo "11. Update an entry:"
+deepl glossary update-entry tech-terms-renamed "request" "HTTP-Anfrage"
+echo
+
+echo "12. Remove an entry:"
+deepl glossary remove-entry tech-terms-renamed "JSON"
+echo
+
+# ═══════════════════════════════════════════════════════
+# MULTILINGUAL GLOSSARIES (v3 API)
+# ═══════════════════════════════════════════════════════
+
+cat > "$SAMPLE_DIR/multi-de.tsv" << 'EOF'
+hello	Hallo
+goodbye	Auf Wiedersehen
+EOF
+
+cat > "$SAMPLE_DIR/multi-fr.tsv" << 'EOF'
+hello	Bonjour
+goodbye	Au revoir
+EOF
+
+echo "13. Create multilingual glossary (EN → DE,FR):"
+deepl glossary create multi-demo en de,fr "$SAMPLE_DIR/multi-de.tsv"
+echo
+
+echo "14. View German entries:"
+deepl glossary entries multi-demo --target-lang de
+echo
+
+echo "15. View French entries:"
+deepl glossary entries multi-demo --target-lang fr
+echo
+
+echo "16. Add entry to German dictionary:"
+deepl glossary add-entry multi-demo "thank you" "Danke" --target-lang de
+echo
+
+echo "17. Replace French dictionary from file:"
+deepl glossary replace-dictionary multi-demo fr "$SAMPLE_DIR/multi-fr.tsv"
+echo
+
+echo "18. Delete French dictionary:"
+deepl glossary delete-dictionary multi-demo fr --yes
+echo
+
+# ═══════════════════════════════════════════════════════
 # USING GLOSSARIES IN TRANSLATION
 # ═══════════════════════════════════════════════════════
 
-echo "9. Translate with glossary"
+echo "19. Translate with glossary"
 echo "   Without glossary:"
 deepl translate "The API endpoint requires authentication." --from en --to de
 
@@ -107,10 +173,26 @@ deepl translate "The API endpoint requires authentication." --from en --to de --
 echo
 
 # ═══════════════════════════════════════════════════════
+# ADVANCED OPERATIONS
+# ═══════════════════════════════════════════════════════
+
+echo "20. Combined update (rename + dictionary):"
+deepl glossary update tech-terms-renamed --name tech-final --target-lang de --file "$SAMPLE_DIR/tech-glossary.tsv"
+echo
+
+echo "21. Dry-run delete:"
+deepl glossary delete tech-final --dry-run
+echo
+
+echo "22. JSON output for scripting:"
+deepl glossary show tech-final --format json
+echo
+
+# ═══════════════════════════════════════════════════════
 # GLOSSARY LANGUAGE PAIRS
 # ═══════════════════════════════════════════════════════
 
-echo "10. List supported glossary language pairs"
+echo "23. List supported glossary language pairs"
 deepl glossary languages | head -10
 echo "   (showing first 10 pairs - see 'deepl glossary languages' for full list)"
 echo
@@ -119,23 +201,26 @@ echo
 # CLEANUP
 # ═══════════════════════════════════════════════════════
 
-echo "11. Clean up - delete glossaries"
-echo "   Deleting tech-terms-renamed..."
-deepl glossary delete tech-terms-renamed --yes 2>/dev/null || echo "   (Already deleted)"
+echo "24. Clean up - delete glossaries"
+echo "   Deleting tech-final..."
+deepl glossary delete tech-final --yes 2>/dev/null || echo "   (Already deleted)"
 
 echo "   Deleting business-terms-demo..."
 deepl glossary delete business-terms-demo --yes 2>/dev/null || echo "   (Already deleted)"
 
+echo "   Deleting multi-demo..."
+deepl glossary delete multi-demo --yes 2>/dev/null || echo "   (Already deleted)"
+
 echo
 
 # Verify deletion
-echo "12. Verify glossaries are deleted"
+echo "25. Verify glossaries are deleted"
 deepl glossary list
 echo
 
 # Cleanup temporary files
 echo "Cleaning up temporary files..."
-rm -rf /tmp/deepl-example-03
+rm -rf /tmp/deepl-example-15
 echo "✓ Cleanup complete"
 
 echo "=== All glossary examples completed! ==="

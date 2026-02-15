@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 4: Configuration
+# Example 19: Configuration
 # Demonstrates configuration management
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 4: Configuration ==="
+echo "=== DeepL CLI Example 19: Configuration ==="
 echo
 
 # Check if API key is configured
@@ -20,6 +20,10 @@ echo
 # Example 1: View all configuration
 echo "1. View all configuration"
 deepl config list
+echo
+
+echo "1b. View configuration in text format:"
+deepl config list --format text
 echo
 
 # Example 2: Get specific values
@@ -100,6 +104,26 @@ echo "   $ deepl config reset"
 echo
 echo "   After reset, you'll need to set your API key again:"
 echo "   $ deepl auth set-key YOUR_API_KEY"
+echo
+
+# ═══════════════════════════════════════════════════════
+# AUTHENTICATION
+# ═══════════════════════════════════════════════════════
+
+echo "=== Authentication Commands ==="
+echo
+
+echo "8. Show current API key status:"
+deepl auth show
+echo
+
+echo "9. Set API key from stdin (for scripts/CI):"
+echo "   echo \"YOUR_API_KEY\" | deepl auth set-key --from-stdin"
+echo "   deepl auth set-key --from-stdin < ~/.deepl-api-key"
+echo
+
+echo "10. Clear stored API key (not running - would break subsequent examples):"
+echo "   deepl auth clear"
 echo
 
 echo "=== All configuration examples completed! ==="

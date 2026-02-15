@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Audit and expand all 27 example scripts to cover missing CLI flags and commands:
+  - Renumber examples to match `deepl --help` group ordering (Core Commands → Resources → Workflow → Configuration → Information → Administration)
+  - Add new `25-detect.sh` example for language detection (text, stdin, file, JSON output, detect-then-translate scripting)
+  - Add new `26-completion.sh` example for shell completions (bash/zsh/fish preview, sourcing, permanent install paths)
+  - Expand `13-write.sh` with file operations, `--check`/`--fix`/`--backup`, `--diff`, `--in-place`, `--format json`, interactive mode docs
+  - Expand `15-glossaries.sh` with entry management (`add-entry`, `update-entry`, `remove-entry`), multilingual glossaries (`replace-dictionary`, `delete-dictionary`), JSON format output
+  - Expand `16-watch-mode.sh` with `--dry-run`, `--git-staged`, combined advanced flags
+  - Expand `17-git-hooks.sh` with `commit-msg`/`post-commit` hook types, `--format json` output
+  - Add auth section to `19-configuration.sh` (`auth show`, `auth set-key --from-stdin`, `auth clear`)
+  - Add `--max-size`, `--dry-run`, `--format json` to `21-cache.sh`
+  - Add conditional `--style-id` demo to `22-style-rules.sh`
+  - Add `--format json`/`--format text` to `23-usage-monitoring.sh` and `24-languages.sh`
+  - Add `--source-language-mode` to `14-voice.sh`
+  - Add `--split-sentences`, `prefer_more`/`prefer_less` formality to `01-basic-translation.sh`
+  - Add `--preserve-formatting` to `02-file-translation.sh`
+  - Add `--dry-run`, `--concurrency`, `--no-recursive` to `03-batch-processing.sh`
+  - Add `--enable-minification` to `05-document-translation.sh`
+  - Add `--tag-handling html` to `09-xml-tag-handling.sh`
+  - Add `--style-id` section to `10-custom-instructions.sh`
+  - Add `--stt-limit` and `deactivate` key to `27-admin.sh`
+  - Update `examples/README.md` with grouped Quick Links matching commander help categories
+  - Update `examples/run-all.sh` with new filenames and grouping
+
 ### Changed
 - Rename `write` command flag from `--to, -t` to `--lang, -l` — better reflects that write improves text within a language rather than translating between languages
 

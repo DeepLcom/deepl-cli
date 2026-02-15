@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 14: Git Hooks Integration
+# Example 17: Git Hooks Integration
 # Demonstrates automating translation validation in git workflow
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 14: Git Hooks Integration ==="
+echo "=== DeepL CLI Example 17: Git Hooks Integration ==="
 echo
 
 # Check if API key is configured
@@ -79,8 +79,33 @@ echo "   This hook validates all translations before pushing"
 deepl hooks install pre-push
 echo
 
-# Example 6: Uninstall hooks
-echo "7. Uninstall hooks"
+# Example 6: Install commit-msg hook
+echo "=== Example 6: Commit-msg Hook ==="
+echo
+
+deepl hooks install commit-msg
+echo "   commit-msg hook validates or enriches commit messages with translation metadata"
+echo
+
+# Example 7: Install post-commit hook
+echo "=== Example 7: Post-commit Hook ==="
+echo
+
+deepl hooks install post-commit
+echo "   post-commit hook automatically triggers translation of changed files after each commit"
+echo
+
+# Example 8: List hooks and JSON format
+echo "8. Verify hooks are installed"
+deepl hooks list
+echo
+
+echo "8b. List hooks in JSON format (for CI/CD scripting):"
+deepl hooks list --format json
+echo
+
+# Example 9: Uninstall hooks
+echo "9. Uninstall hooks"
 echo "   Uninstalling pre-commit hook..."
 deepl hooks uninstall pre-commit
 echo
@@ -89,8 +114,16 @@ echo "   Uninstalling pre-push hook..."
 deepl hooks uninstall pre-push
 echo
 
-# Example 7: Re-check status
-echo "8. Verify hooks are uninstalled"
+echo "   Uninstalling commit-msg hook..."
+deepl hooks uninstall commit-msg
+echo
+
+echo "   Uninstalling post-commit hook..."
+deepl hooks uninstall post-commit
+echo
+
+# Example 10: Re-check status
+echo "10. Verify hooks are uninstalled"
 deepl hooks list
 echo
 
@@ -105,6 +138,8 @@ echo
 echo "Available hooks:"
 echo "  • pre-commit: Validates translations before each commit"
 echo "  • pre-push: Validates all translations before pushing to remote"
+echo "  • commit-msg: Validates or enriches commit messages with translation metadata"
+echo "  • post-commit: Automatically triggers translation of changed files after each commit"
 echo
 echo "Hook behavior:"
 echo "  • Checks translation file pairs (e.g., README.md + README.es.md)"

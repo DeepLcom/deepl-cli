@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 24: Voice (Real-Time Speech Translation)
+# Example 14: Voice (Real-Time Speech Translation)
 # Translate audio files using the DeepL Voice API with WebSocket streaming
 
 set -e
 
-echo "=== DeepL CLI Example 24: Voice ==="
+echo "=== DeepL CLI Example 14: Voice ==="
 echo
 
 # Check if API key is configured
@@ -51,46 +51,54 @@ echo
 echo "   Options: default, formal, more, informal, less"
 echo
 
-# 5. Reading from stdin with explicit content type
-echo "5. Pipe audio from stdin"
+# 5. Source language detection mode
+echo "5. Source language detection mode"
+echo "   deepl voice audio.flac --to ja --from en --source-language-mode fixed"
+echo
+echo "   Modes: auto (default), fixed. Use 'fixed' with --from to skip"
+echo "   auto-detection entirely, reducing latency for known source languages."
+echo
+
+# 6. Reading from stdin with explicit content type
+echo "6. Pipe audio from stdin"
 echo "   cat audio.pcm | deepl voice - --to es --content-type 'audio/pcm;encoding=s16le;rate=16000'"
 echo
 echo "   When reading from stdin, --content-type is required because there"
 echo "   is no file extension to auto-detect from."
 echo
 
-# 6. Collect output (non-streaming mode)
-echo "6. Collect all output at end (non-streaming)"
+# 7. Collect output (non-streaming mode)
+echo "7. Collect all output at end (non-streaming)"
 echo "   deepl voice speech.ogg --to de --no-stream"
 echo
 echo "   By default, translations are printed as they arrive. Use --no-stream"
 echo "   to buffer all output and print once the file is fully processed."
 echo
 
-# 7. JSON output format
-echo "7. JSON output format for scripting"
+# 8. JSON output format
+echo "8. JSON output format for scripting"
 echo "   deepl voice speech.ogg --to de --format json"
 echo
 echo "   JSON output includes timestamps and metadata per segment."
 echo
 
-# 8. Chunk size and interval tuning
-echo "8. Tuning chunk parameters"
+# 9. Chunk size and interval tuning
+echo "9. Tuning chunk parameters"
 echo "   deepl voice large-file.ogg --to de --chunk-size 12800 --chunk-interval 100"
 echo
 echo "   Larger chunks reduce overhead; smaller intervals provide faster streaming."
 echo "   Defaults: --chunk-size 6400, --chunk-interval 200"
 echo
 
-# 9. Glossary support
-echo "9. Using a glossary with voice translation"
+# 10. Glossary support
+echo "10. Using a glossary with voice translation"
 echo "   deepl voice speech.ogg --to de --glossary GLOSSARY_ID"
 echo
 echo "   Get glossary IDs from: deepl glossary list"
 echo
 
-# 10. Reconnection control
-echo "10. Controlling reconnection behavior"
+# 11. Reconnection control
+echo "11. Controlling reconnection behavior"
 echo "    deepl voice speech.ogg --to de --no-reconnect"
 echo "    deepl voice speech.ogg --to de --max-reconnect-attempts 5"
 echo

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 6: CI/CD Integration
+# Example 18: CI/CD Integration
 # Demonstrates using DeepL CLI in automated workflows
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 6: CI/CD Integration ==="
+echo "=== DeepL CLI Example 18: CI/CD Integration ==="
 echo
 
 # Check if API key is configured
@@ -18,7 +18,7 @@ echo "✓ API key configured"
 echo
 
 # Setup: Create temp directory for example scripts
-TEMP_DIR="/tmp/deepl-example-06"
+TEMP_DIR="/tmp/deepl-example-18"
 rm -rf "$TEMP_DIR"
 mkdir -p "$TEMP_DIR"
 

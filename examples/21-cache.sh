@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 5: Cache Management
+# Example 21: Cache Management
 # Demonstrates working with the translation cache
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 5: Cache Management ==="
+echo "=== DeepL CLI Example 21: Cache Management ==="
 echo
 
 # Check if API key is configured
@@ -70,9 +70,21 @@ deepl cache enable
 deepl cache stats
 echo
 
+echo "8b. Enable cache with max size limit:"
+deepl cache enable --max-size 500M
+echo
+
 # Example 9: Clear cache
 echo "9. Clear all cached translations"
 deepl cache clear --yes
+echo
+
+echo "9b. Clear cache with dry-run (preview what would be cleared):"
+deepl cache clear --dry-run
+echo
+
+echo "9c. Cache stats in JSON format (for scripting):"
+deepl cache stats --format json
 echo
 
 # Example 10: Verify cache is empty
@@ -90,4 +102,4 @@ echo "   - Default: 1GB max size, 30-day TTL"
 echo "   - Shared SQLite DB for both translate and write commands"
 echo "   - Bypass with --no-cache on any translate or write command"
 echo
-echo "📍 Cache location: ~/.deepl-cli/cache.db"
+echo "📍 Cache location: ~/.cache/deepl-cli/cache.db (XDG default)"

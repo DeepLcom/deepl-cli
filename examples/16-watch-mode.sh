@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 13: Watch Mode
+# Example 16: Watch Mode
 # Demonstrates real-time file monitoring and auto-translation
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 13: Watch Mode ==="
+echo "=== DeepL CLI Example 16: Watch Mode ==="
 echo
 
 # Check if API key is configured
@@ -155,6 +155,42 @@ echo "   Custom debounce: deepl watch file.md --to es --debounce 1000"
 echo "   Use higher debounce for rapidly changing files"
 echo
 
+# Example 7: Dry-run preview
+echo "=== Example 7: Dry-run Mode ==="
+echo
+
+echo "Preview what would be watched without starting the watcher:"
+deepl watch "$TEST_DIR/docs" --to es,fr,de --pattern "*.md" --dry-run
+echo
+echo "Dry-run shows the configuration and matched files without starting the watcher."
+echo
+
+# Example 8: Git-staged files (combined with dry-run)
+echo "=== Example 8: Git-Staged Files ==="
+echo
+
+echo "Watch only git-staged files (useful for pre-commit workflows):"
+echo "   deepl watch . --to es --git-staged --dry-run"
+echo "   (Requires a git repository with staged files)"
+echo
+
+# Example 9: Combined advanced flags
+echo "=== Example 9: Advanced Options ==="
+echo
+
+echo "Combine multiple flags for a comprehensive setup:"
+echo "   deepl watch ./src --to de,ja --from en --glossary project-terms \\"
+echo "     --preserve-formatting --preserve-code --formality more --debounce 500"
+echo
+echo "This combines:"
+echo "   --from en              Source language (skip auto-detection)"
+echo "   --glossary             Consistent terminology"
+echo "   --preserve-formatting  Keep line breaks and whitespace"
+echo "   --preserve-code        Protect code blocks"
+echo "   --formality more       Formal register"
+echo "   --debounce 500         500ms delay before re-translating"
+echo
+
 # Cleanup
 echo "Cleaning up test directory..."
 rm -rf "$TEST_DIR"
@@ -184,11 +220,16 @@ echo "  • --debounce <ms>: Adjust delay before translation"
 echo "  • --pattern: Filter which files to watch (e.g., '*.md', '**/*.json')"
 echo "  • Caching reduces redundant translations"
 echo
+echo "Preview and scoping:"
+echo "  • --dry-run: Preview configuration and matched files without starting the watcher"
+echo "  • --git-staged: Watch only git-staged files (ideal for pre-commit workflows)"
+echo
 echo "💡 Use cases:"
 echo "  • Documentation sites with live translation updates"
 echo "  • CI/CD pipelines with automated translation"
 echo "  • Development workflows with real-time localization"
 echo "  • Content management systems with multi-language support"
+echo "  • Pre-commit validation with --git-staged and --dry-run"
 echo
 
 echo "=== All examples completed successfully! ==="

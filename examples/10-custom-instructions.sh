@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 21: Custom Instructions
+# Example 10: Custom Instructions
 # Use custom instructions to guide DeepL translations with specific rules
 
 set -e
 
-echo "=== DeepL CLI Example 21: Custom Instructions ==="
+echo "=== DeepL CLI Example 10: Custom Instructions ==="
 echo
 
 # Check if API key is configured
@@ -56,6 +56,15 @@ echo "5. Technical domain translation"
 deepl translate "The API returns a 403 status code when the token expires" --to ja \
   --custom-instruction "This is technical API documentation" \
   --custom-instruction "Keep HTTP status codes and technical terms in English"
+echo
+
+echo "6. Style rules (Pro API only):"
+echo "   Use --style-id with a pre-configured style rule UUID:"
+echo "   deepl translate \"Hello world\" --to de --style-id \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\""
+echo
+echo "   Note: Style IDs are created and managed via the DeepL Pro dashboard."
+echo "   When --style-id is used, the model is automatically set to quality_optimized."
+echo "   Style IDs and --custom-instruction cannot be combined."
 echo
 
 echo "=== All examples completed successfully! ==="

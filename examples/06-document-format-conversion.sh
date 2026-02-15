@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 16: Document Format Conversion
+# Example 6: Document Format Conversion
 # Demonstrates the --output-format flag for document translation
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 16: Document Format Conversion ==="
+echo "=== DeepL CLI Example 6: Document Format Conversion ==="
 echo
 
 # Check if API key is configured
@@ -18,7 +18,7 @@ echo "✓ API key configured"
 echo
 
 # Create temporary directory for test files
-TEST_DIR="/tmp/deepl-example-16"
+TEST_DIR="/tmp/deepl-example-06"
 rm -rf "$TEST_DIR"
 mkdir -p "$TEST_DIR"
 
@@ -219,6 +219,6 @@ echo "  • How to use --output-format for PDF → DOCX"
 echo "  • Alternative approaches for other format conversions"
 echo
 echo "🔗 Related examples:"
-echo "  • examples/15-document-translation.sh - Basic document translation"
+echo "  • examples/05-document-translation.sh - Basic document translation"
 echo "  • examples/02-file-translation.sh - File translation basics"
 echo

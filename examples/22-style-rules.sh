@@ -49,4 +49,15 @@ echo "   Example: deepl translate \"Hello\" --to de --style-id \"your-style-uuid
 echo "   Note: Style rules force the quality_optimized model type."
 echo
 
+echo "3. Use style rule with translation (if available):"
+STYLE_ID=$(deepl style-rules list --format json 2>/dev/null | jq -r '.[0].styleId // empty' 2>/dev/null)
+if [ -n "$STYLE_ID" ]; then
+  echo "   Found style rule: $STYLE_ID"
+  deepl translate "Hello world" --to de --style-id "$STYLE_ID"
+else
+  echo "   No style rules configured. Create them in the DeepL Pro dashboard."
+  echo "   Usage: deepl translate \"Hello world\" --to de --style-id \"YOUR-STYLE-UUID\""
+fi
+echo
+
 echo "=== All examples completed successfully! ==="

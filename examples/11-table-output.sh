@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 20: Table Output Format
+# Example 11: Table Output Format
 # Demonstrates structured table output for comparing translations across multiple languages
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 20: Table Output Format ==="
+echo "=== DeepL CLI Example 11: Table Output Format ==="
 echo
 
 # Check if API key is configured
@@ -22,7 +22,7 @@ echo "showing language codes, translated text, and billed character counts."
 echo
 
 # Create temporary directory for examples
-TEMP_DIR="/tmp/deepl-example-20"
+TEMP_DIR="/tmp/deepl-example-11"
 rm -rf "$TEMP_DIR"
 mkdir -p "$TEMP_DIR"
 

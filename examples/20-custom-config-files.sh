@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 17: Custom Configuration Files
+# Example 20: Custom Configuration Files
 # Demonstrates using --config flag for multiple configurations
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 17: Custom Configuration Files ==="
+echo "=== DeepL CLI Example 20: Custom Configuration Files ==="
 echo
 
 # Check if API key is configured
@@ -18,7 +18,7 @@ echo "✓ API key configured"
 echo
 
 # Create temporary directory for config files
-CONFIG_DIR=/tmp/deepl-example-17
+CONFIG_DIR=/tmp/deepl-example-20
 mkdir -p "$CONFIG_DIR"
 
 echo "=== Creating Multiple Configuration Files ==="

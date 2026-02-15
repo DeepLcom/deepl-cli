@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 23: Admin API
+# Example 27: Admin API
 # Manage API keys and view organization usage analytics (requires admin API key)
 
 set -e
 
-echo "=== DeepL CLI Example 23: Admin API ==="
+echo "=== DeepL CLI Example 27: Admin API ==="
 echo
 echo "Note: Admin API requires an admin-level API key."
 echo "These commands manage developer keys and usage analytics for your organization."
@@ -49,6 +49,13 @@ echo "5. Setting usage limits (skipped in demo)"
 echo '   Command: deepl admin keys set-limit <key-id> 1000000'
 echo '   Command: deepl admin keys set-limit <key-id> unlimited'
 echo "   This would set or remove character usage limits for a key."
+echo
+
+echo "   Set STT (speech-to-text) limit:"
+echo "   deepl admin keys set-limit <key-id> 1000000 --stt-limit 3600000"
+echo
+echo "   Deactivate a key (irreversible!):"
+echo "   deepl admin keys deactivate <key-id> --yes"
 echo
 
 # 6. View organization usage

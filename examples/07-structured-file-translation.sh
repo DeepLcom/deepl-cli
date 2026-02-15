@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 25: Structured File Translation (JSON/YAML)
+# Example 7: Structured File Translation (JSON/YAML)
 # Demonstrates translating i18n locale files while preserving structure
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 25: Structured File Translation ==="
+echo "=== DeepL CLI Example 7: Structured File Translation ==="
 echo
 
 # Check if API key is configured
@@ -18,7 +18,7 @@ echo "API key configured"
 echo
 
 # Setup temp directory
-SAMPLE_DIR="/tmp/deepl-example-25"
+SAMPLE_DIR="/tmp/deepl-example-07"
 rm -rf "$SAMPLE_DIR"
 mkdir -p "$SAMPLE_DIR"
 
@@ -190,7 +190,7 @@ echo
 
 # Cleanup
 echo "Cleaning up temporary files..."
-rm -rf /tmp/deepl-example-25
+rm -rf /tmp/deepl-example-07
 echo "Cleanup complete"
 
 echo "=== All examples completed successfully! ==="

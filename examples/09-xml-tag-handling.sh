@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 19: Advanced XML Tag Handling
+# Example 9: Advanced XML Tag Handling
 # Demonstrates fine-tuned control over XML/HTML translation with tag handling parameters
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 19: Advanced XML Tag Handling ==="
+echo "=== DeepL CLI Example 9: Advanced XML Tag Handling ==="
 echo
 
 # Check if API key is configured
@@ -18,12 +18,17 @@ echo "✓ API key configured"
 echo
 
 # Create temporary directory for example files
-TEMP_DIR="/tmp/deepl-example-19"
+TEMP_DIR="/tmp/deepl-example-09"
 mkdir -p "$TEMP_DIR"
 
 echo "1. Basic XML tag preservation (default behavior)"
 echo "   Input: <p>Hello world</p>"
 deepl translate "<p>Hello world</p>" --to es --tag-handling xml
+echo
+
+echo "1b. HTML tag handling mode:"
+echo "    Use --tag-handling html for HTML content (smarter than xml for HTML):"
+deepl translate "<p>Hello <strong>world</strong>, welcome to <a href='#'>our site</a></p>" --to es --tag-handling html
 echo
 
 echo "2. Disable automatic XML structure detection"

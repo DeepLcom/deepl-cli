@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 18: Cost Transparency with Billed Characters
+# Example 12: Cost Transparency with Billed Characters
 # Demonstrates tracking actual billed characters for translation cost analysis
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 18: Cost Transparency ==="
+echo "=== DeepL CLI Example 12: Cost Transparency ==="
 echo
 
 # Check if API key is configured
@@ -18,7 +18,7 @@ echo "✓ API key configured"
 echo
 
 # Create temporary directory for file examples
-TEMP_DIR="/tmp/deepl-example-18"
+TEMP_DIR="/tmp/deepl-example-12"
 mkdir -p "$TEMP_DIR"
 
 # Example 1: Basic text translation with billed character count

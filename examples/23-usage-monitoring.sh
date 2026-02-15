@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 10: API Usage Monitoring
+# Example 23: API Usage Monitoring
 # Demonstrates checking API character usage and quota
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 10: API Usage Monitoring ==="
+echo "=== DeepL CLI Example 23: API Usage Monitoring ==="
 echo
 
 # Check if API key is configured
@@ -48,6 +48,14 @@ if deepl usage 2>&1 | grep -q "80.*%"; then
   echo "Consider pausing translations or upgrading plan"
 fi
 EOF
+echo
+
+echo "5. Usage in JSON format (for scripting):"
+deepl usage --format json
+echo
+
+echo "6. Usage in text format:"
+deepl usage --format text
 echo
 
 echo "=== Usage monitoring example completed! ==="
