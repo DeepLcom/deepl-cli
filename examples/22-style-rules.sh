@@ -39,7 +39,7 @@ echo
 # 4. Pagination
 echo "4. Paginated listing"
 echo "   Useful when you have many style rules..."
-deepl style-rules list --page 1 --page-size 5 || echo "   (No style rules found or Pro API required)"
+deepl style-rules list --page 0 --page-size 5 || echo "   (No style rules found or Pro API required)"
 echo
 
 # 5. Using a style rule with translation
@@ -49,14 +49,16 @@ echo "   Example: deepl translate \"Hello\" --to de --style-id \"your-style-uuid
 echo "   Note: Style rules force the quality_optimized model type."
 echo
 
-echo "3. Use style rule with translation (if available):"
-STYLE_ID=$(deepl style-rules list --format json 2>/dev/null | jq -r '.[0].styleId // empty' 2>/dev/null)
-if [ -n "$STYLE_ID" ]; then
-  echo "   Found style rule: $STYLE_ID"
-  deepl translate "Hello world" --to de --style-id "$STYLE_ID"
+echo "6. Use style rule with translation (if available):"
+STYLE_RULE=$(deepl style-rules list --format json 2>/dev/null | jq -r '.[0] // empty' 2>/dev/null)
+STYLE_ID=$(echo "$STYLE_RULE" | jq -r '.styleId // empty' 2>/dev/null)
+STYLE_LANG=$(echo "$STYLE_RULE" | jq -r '.language // empty' 2>/dev/null)
+if [ -n "$STYLE_ID" ] && [ -n "$STYLE_LANG" ]; then
+  echo "   Found style rule: $STYLE_ID (language: $STYLE_LANG)"
+  deepl translate "Hello world" --to "$STYLE_LANG" --style-id "$STYLE_ID"
 else
   echo "   No style rules configured. Create them in the DeepL Pro dashboard."
-  echo "   Usage: deepl translate \"Hello world\" --to de --style-id \"YOUR-STYLE-UUID\""
+  echo "   Usage: deepl translate \"Hello world\" --to <lang> --style-id \"YOUR-STYLE-UUID\""
 fi
 echo
 

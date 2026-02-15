@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename `write` command flag from `--to, -t` to `--lang, -l` — better reflects that write improves text within a language rather than translating between languages
 
 ### Fixed
+- Fix `examples/22-style-rules.sh`: correct 0-based pagination (`--page 0`), fix step numbering (3→6), and extract style rule language from JSON instead of hardcoding `--to de`
 - Fix nock v14 `replyWithError` async socket errors leaking across tests — add global `nock.abortPendingRequests()` cleanup and use no-retry client in write integration network error test
 - Fix XDG empty string handling — empty `XDG_CONFIG_HOME`/`XDG_CACHE_HOME` env vars now treated as unset per XDG spec, instead of producing relative paths
 - Fix `runExpectError()` in hooks E2E tests returning empty output when stderr is redirected to stdout
