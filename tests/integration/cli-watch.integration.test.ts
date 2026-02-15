@@ -6,6 +6,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+
+jest.mock('p-limit', () => ({
+  __esModule: true,
+  default: (_concurrency: number) => {
+    return (fn: () => Promise<any>) => fn();
+  },
+}));
+
 import { WatchService } from '../../src/services/watch.js';
 import { FileTranslationService } from '../../src/services/file-translation.js';
 import { TranslationService } from '../../src/services/translation.js';
