@@ -68,7 +68,7 @@ describe('CLI Success Paths E2E', () => {
       cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-      team: {},
+
     };
     fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
   }

@@ -43,7 +43,7 @@ describe('CLI --config flag integration', () => {
       cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: true },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-      team: { org: undefined, workspace: undefined },
+
     };
     fs.writeFileSync(defaultConfigPath, JSON.stringify(defaultConfig, null, 2));
 
@@ -55,7 +55,7 @@ describe('CLI --config flag integration', () => {
       cache: { enabled: false, maxSize: 104857600, ttl: 86400 },
       output: { format: 'json', verbose: true, color: false },
       watch: { debounceMs: 1000, autoCommit: true, pattern: '*.txt' },
-      team: { org: 'test-org', workspace: 'test-workspace' },
+
     };
     fs.writeFileSync(customConfigPath, JSON.stringify(customConfig, null, 2));
   });
@@ -228,7 +228,7 @@ describe('CLI --config flag integration', () => {
         cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
         output: { format: 'text', verbose: false, color: true },
         watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-        team: {},
+
       }, null, 2));
 
       const output = runCLI(`deepl --config "${upperCasePath}" config get auth.apiKey`);

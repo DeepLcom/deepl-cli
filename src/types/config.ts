@@ -33,8 +33,4 @@ export interface DeepLConfig {
     autoCommit: boolean;
     pattern: string;
   };
-  team: {
-    org?: string;
-    workspace?: string;
-  };
 }

@@ -112,7 +112,7 @@ describe('Translate CLI Integration', () => {
         cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
         output: { format: 'text', verbose: false, color: true },
         watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-        team: {},
+
       };
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
 

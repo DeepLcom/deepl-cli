@@ -47,7 +47,7 @@ describe('Config CLI Integration', () => {
         autoCommit: false,
         pattern: '**/*',
       },
-      team: {},
+
     };
 
     fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));

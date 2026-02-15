@@ -83,7 +83,7 @@ describe('CLI Entry Point', () => {
         cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
         output: { format: 'text', verbose: false, color: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-        team: {},
+
       }, null, 2));
 
       const configService = new ConfigService(configPath);
@@ -108,7 +108,7 @@ describe('CLI Entry Point', () => {
         cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
         output: { format: 'text', verbose: false, color: true },
         watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-        team: {},
+
       }, null, 2));
 
       const configService = new ConfigService(configPath);

@@ -53,7 +53,7 @@ describe('ConfigCommand', () => {
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-        team: {},
+
       });
 
       const config = await configCommand.get();
@@ -71,7 +71,7 @@ describe('ConfigCommand', () => {
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-        team: {},
+
       });
 
       const config = await configCommand.get() as Record<string, unknown>;
@@ -141,13 +141,13 @@ describe('ConfigCommand', () => {
     });
 
     it('should not coerce "true" to boolean for non-boolean keys', async () => {
-      await configCommand.set('team.org', 'true');
-      expect(mockConfigService.set).toHaveBeenCalledWith('team.org', 'true');
+      await configCommand.set('auth.apiKey', 'true');
+      expect(mockConfigService.set).toHaveBeenCalledWith('auth.apiKey', 'true');
     });
 
     it('should not coerce "false" to boolean for non-boolean keys', async () => {
-      await configCommand.set('team.org', 'false');
-      expect(mockConfigService.set).toHaveBeenCalledWith('team.org', 'false');
+      await configCommand.set('auth.apiKey', 'false');
+      expect(mockConfigService.set).toHaveBeenCalledWith('auth.apiKey', 'false');
     });
 
     it('should set number values', async () => {
@@ -167,8 +167,8 @@ describe('ConfigCommand', () => {
     });
 
     it('should not coerce numeric strings for non-numeric keys', async () => {
-      await configCommand.set('team.org', '12345');
-      expect(mockConfigService.set).toHaveBeenCalledWith('team.org', '12345');
+      await configCommand.set('auth.apiKey', '12345');
+      expect(mockConfigService.set).toHaveBeenCalledWith('auth.apiKey', '12345');
     });
 
     it('should pass non-boolean strings through for boolean keys', async () => {
@@ -207,7 +207,7 @@ describe('ConfigCommand', () => {
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-        team: {},
+
       });
 
       const config = await configCommand.list();
@@ -230,7 +230,7 @@ describe('ConfigCommand', () => {
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-        team: {},
+
       });
 
       const config = await configCommand.list();
@@ -251,7 +251,7 @@ describe('ConfigCommand', () => {
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-        team: {},
+
       });
 
       const config = await configCommand.list();

@@ -199,10 +199,6 @@ export class ConfigService {
         autoCommit: false,
         pattern: '*.md',
       },
-      team: {
-        org: undefined,
-        workspace: undefined,
-      },
     };
   }
 
@@ -261,7 +257,6 @@ export class ConfigService {
       cache: { ...defaults.cache, ...loaded.cache },
       output: { ...defaults.output, ...loaded.output },
       watch: { ...defaults.watch, ...loaded.watch },
-      team: { ...defaults.team, ...loaded.team },
     };
   }
 

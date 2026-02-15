@@ -50,7 +50,6 @@ describe('ConfigService', () => {
       expect(config).toHaveProperty('cache');
       expect(config).toHaveProperty('output');
       expect(config).toHaveProperty('watch');
-      expect(config).toHaveProperty('team');
     });
 
     it('should return readonly reference (mutations affect original)', () => {
@@ -154,7 +153,7 @@ describe('ConfigService', () => {
   describe('delete()', () => {
     beforeEach(() => {
       configService.set('auth.apiKey', 'test-key');
-      configService.set('team.org', 'test-org');
+      configService.set('output.verbose', true);
     });
 
     it('should delete a specific config value', () => {
@@ -164,7 +163,7 @@ describe('ConfigService', () => {
 
     it('should not affect other config values', () => {
       configService.delete('auth.apiKey');
-      expect(configService.getValue('team.org')).toBe('test-org');
+      expect(configService.getValue('output.verbose')).toBe(true);
     });
 
     it('should persist deletion to disk', () => {
@@ -260,8 +259,8 @@ describe('ConfigService', () => {
 
   describe('edge cases', () => {
     it('should handle empty string values', () => {
-      configService.set('team.org', '');
-      expect(configService.getValue('team.org')).toBe('');
+      configService.set('auth.apiKey', '');
+      expect(configService.getValue('auth.apiKey')).toBe('');
     });
 
     it('should handle null values', () => {
@@ -272,19 +271,19 @@ describe('ConfigService', () => {
     it('should handle concurrent writes', async () => {
       const promises = [
         configService.set('auth.apiKey', 'key1'),
-        configService.set('team.org', 'org1'),
+        configService.set('output.format', 'json'),
         configService.set('defaults.sourceLang', 'en'),
       ];
       await Promise.all(promises);
       expect(configService.getValue('auth.apiKey')).toBe('key1');
-      expect(configService.getValue('team.org')).toBe('org1');
+      expect(configService.getValue('output.format')).toBe('json');
       expect(configService.getValue('defaults.sourceLang')).toBe('en');
     });
 
     it('should handle very long values', () => {
       const longValue = 'a'.repeat(10000);
-      configService.set('team.org', longValue);
-      expect(configService.getValue('team.org')).toBe(longValue);
+      configService.set('auth.apiKey', longValue);
+      expect(configService.getValue('auth.apiKey')).toBe(longValue);
     });
   });
 
