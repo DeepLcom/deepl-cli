@@ -293,7 +293,9 @@ export class WatchService {
    * Stop watching
    */
   async stop(): Promise<void> {
-    // Clear all pending timers
+    this.stats.isWatching = false;
+    this.watchOptions = null;
+
     for (const timer of this.debounceTimers.values()) {
       clearTimeout(timer);
     }
@@ -303,9 +305,6 @@ export class WatchService {
       await this.watcher.close();
       this.watcher = null;
     }
-
-    this.stats.isWatching = false;
-    this.watchOptions = null;
   }
 
   /**

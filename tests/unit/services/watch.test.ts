@@ -275,6 +275,27 @@ describe('WatchService', () => {
       expect(watchService.isWatching()).toBe(false);
     });
 
+    it('should set isWatching to false before closing watcher', async () => {
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      await watchService.watch(testDir, options);
+      expect(watchService.isWatching()).toBe(true);
+
+      // Make watcher.close() verify isWatching is already false when called
+      let isWatchingDuringClose: boolean | undefined;
+      mockWatcher.close.mockImplementation(async () => {
+        isWatchingDuringClose = watchService.isWatching();
+      });
+
+      await watchService.stop();
+
+      expect(watchService.isWatching()).toBe(false);
+      expect(isWatchingDuringClose).toBe(false);
+    });
+
     it('should not error when stopping without watching', async () => {
       await expect(watchService.stop()).resolves.not.toThrow();
     });
