@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fix `getGlossaryEntries` to use `makeRequest` instead of `makeJsonRequest` for consistent GET request handling (query params instead of JSON body)
 - Fix `examples/15-glossaries.sh`: add delay after glossary rename to allow API propagation
+- Fix nock `replyWithError` async socket error leaking across style-rules integration tests — reorder network error test to last position in describe block
 
 ### Added
 - Support multi-target languages in directory translation (`deepl translate ./docs --to es,fr,de --output ./out/`)

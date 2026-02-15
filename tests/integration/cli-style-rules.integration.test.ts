@@ -548,18 +548,20 @@ describe('Style Rules API Integration', () => {
       await expect(noRetryCommand.list()).rejects.toThrow('Quota exceeded');
     });
 
-    it('should handle network errors', async () => {
-      nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .replyWithError('Connection refused');
-
-      await expect(noRetryCommand.list()).rejects.toThrow();
-    });
-
     it('should handle unexpected API response format', async () => {
       nock(FREE_API_URL)
         .get('/v3/style_rules')
         .reply(500, { error: 'Internal server error' });
+
+      await expect(noRetryCommand.list()).rejects.toThrow();
+    });
+
+    // replyWithError must be last in this block — nock v14 emits async socket
+    // errors that leak into subsequent tests despite abortPendingRequests()
+    it('should handle network errors', async () => {
+      nock(FREE_API_URL)
+        .get('/v3/style_rules')
+        .replyWithError('Connection refused');
 
       await expect(noRetryCommand.list()).rejects.toThrow();
     });
