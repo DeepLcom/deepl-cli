@@ -219,7 +219,7 @@ describe('Translate CLI Integration', () => {
       { flag: '--split-sentences <mode>', descriptionPattern: /on.*off.*nonewlines/i },
       { flag: '--tag-handling <mode>', descriptionPattern: /xml.*html/i },
       { flag: '--model-type <type>', descriptionPattern: /quality_optimized|latency_optimized/i },
-      { flag: '--recursive', description: 'subdirectories' },
+      { flag: '--no-recursive', description: 'subdirectories' },
       { flag: '--pattern <pattern>', description: 'Glob pattern' },
       { flag: '--concurrency <number>', description: 'parallel' },
       { flag: '--api-url <url>', description: 'Custom API endpoint' },
