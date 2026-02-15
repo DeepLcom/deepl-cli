@@ -132,9 +132,9 @@ describe('registerWrite', () => {
       );
     });
 
-    it('should map -T short flag to --tone', async () => {
+    it('should accept --tone as long flag only', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '-T', 'friendly']);
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--tone', 'friendly']);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
         expect.objectContaining({ tone: 'friendly' }),

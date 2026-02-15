@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Document 8 undocumented flags/values in API.md: `admin keys set-limit --stt-limit`, `admin keys deactivate -y/--yes`, `glossary delete-dictionary -y/--yes`, `config reset -y/--yes`, `write -s` (short for `--style`), `write -T` (short for `--tone`), `write --style/--tone 'default'` value, `watch --formality` valid choices
+- Document 6 undocumented flags/values in API.md: `admin keys set-limit --stt-limit`, `admin keys deactivate -y/--yes`, `glossary delete-dictionary -y/--yes`, `config reset -y/--yes`, `write --style/--tone 'default'` value, `watch --formality` valid choices
+
+### Removed
+- Remove `-s` short flag from `write --style` (conflicted with `languages -s/--source`)
+- Remove `-T` short flag from `write --tone` (uppercase short flag, easily confused with `-t/--to`)
+- Remove `-c` short flag from `write --check` (shadowed global `-c/--config`)
+- Remove `-f` short flag from `write --fix` (conflicted with `-f/--from` convention)
 
 ### Changed
 - Clean up test suite: remove ~106 duplicate/redundant/trivial tests and consolidate ~120 into `it.each` blocks across 26 files — reduces test LOC by ~2,000 lines while maintaining 94.12% coverage and 3,021 passing tests

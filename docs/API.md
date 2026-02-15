@@ -643,7 +643,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 **Style Options (mutually exclusive with tone):**
 
-- `--style, -s STYLE` - Writing style:
+- `--style STYLE` - Writing style:
   - `default` - No style modification (API default)
   - `simple` - Simpler, more accessible language
   - `business` - Professional business language
@@ -653,7 +653,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 **Tone Options (mutually exclusive with style):**
 
-- `--tone, -T TONE` - Tone:
+- `--tone TONE` - Tone:
   - `default` - No tone modification (API default)
   - `enthusiastic` - More enthusiastic and positive
   - `friendly` - Warmer, more approachable
@@ -666,8 +666,8 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 - `--alternatives, -a` - Show all improvement alternatives
 - `--interactive, -i` - Interactive mode: choose from multiple alternatives
 - `--diff, -d` - Show diff between original and improved text
-- `--check, -c` - Check if text needs improvement without modifying (exits with 0 if no changes, 8 if improvements suggested)
-- `--fix, -f` - Auto-fix files in place
+- `--check` - Check if text needs improvement without modifying (exits with 0 if no changes, 8 if improvements suggested)
+- `--fix` - Auto-fix files in place
 - `--output, -o FILE` - Write output to file
 - `--in-place` - Edit file in place
 - `--backup, -b` - Create backup before fixing (use with `--fix`)
