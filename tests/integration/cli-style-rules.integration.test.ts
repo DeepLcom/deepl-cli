@@ -512,66 +512,6 @@ describe('Style Rules API Integration', () => {
     });
   });
 
-  describe('error handling', () => {
-    let noRetryClient: DeepLClient;
-    let noRetryCommand: StyleRulesCommand;
-
-    beforeEach(() => {
-      noRetryClient = new DeepLClient(API_KEY, { maxRetries: 0 });
-      noRetryCommand = new StyleRulesCommand(new StyleRulesService(noRetryClient));
-    });
-
-    it('should handle 403 authentication error', async () => {
-      nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .reply(403, { message: 'Invalid API key' });
-
-      await expect(noRetryCommand.list()).rejects.toThrow('Authentication failed');
-    });
-
-    it('should handle 429 rate limit error', async () => {
-      nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .reply(429, { message: 'Too many requests' });
-
-      await expect(noRetryCommand.list()).rejects.toThrow('Rate limit exceeded');
-    });
-
-    it('should handle 503 service unavailable error', async () => {
-      nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .reply(503, { message: 'Service unavailable' });
-
-      await expect(noRetryCommand.list()).rejects.toThrow('Service temporarily unavailable');
-    });
-
-    it('should handle 456 quota exceeded error', async () => {
-      nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .reply(456, { message: 'Quota exceeded' });
-
-      await expect(noRetryCommand.list()).rejects.toThrow('Quota exceeded');
-    });
-
-    it('should handle unexpected API response format', async () => {
-      nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .reply(500, { error: 'Internal server error' });
-
-      await expect(noRetryCommand.list()).rejects.toThrow();
-    });
-
-    // replyWithError must be last in this block — nock v14 emits async socket
-    // errors that leak into subsequent tests despite abortPendingRequests()
-    it('should handle network errors', async () => {
-      nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .replyWithError('Connection refused');
-
-      await expect(noRetryCommand.list()).rejects.toThrow();
-    });
-  });
-
   describe('response field mapping', () => {
     it('should map snake_case API fields to camelCase', async () => {
       nock(FREE_API_URL)
@@ -626,6 +566,68 @@ describe('Style Rules API Integration', () => {
       expect(rule.styleId).toBe('test-id-002');
       expect(rule.configuredRules).toEqual(['formal_tone', 'no_contractions']);
       expect(rule.customInstructions).toEqual([{ label: 'Formality', prompt: 'Always use formal language' }]);
+    });
+  });
+
+  // error handling must be the last describe block — replyWithError in nock v14
+  // emits async socket errors that leak into subsequent tests
+  describe('error handling', () => {
+    let noRetryClient: DeepLClient;
+    let noRetryCommand: StyleRulesCommand;
+
+    beforeEach(() => {
+      noRetryClient = new DeepLClient(API_KEY, { maxRetries: 0 });
+      noRetryCommand = new StyleRulesCommand(new StyleRulesService(noRetryClient));
+    });
+
+    it('should handle 403 authentication error', async () => {
+      nock(FREE_API_URL)
+        .get('/v3/style_rules')
+        .reply(403, { message: 'Invalid API key' });
+
+      await expect(noRetryCommand.list()).rejects.toThrow('Authentication failed');
+    });
+
+    it('should handle 429 rate limit error', async () => {
+      nock(FREE_API_URL)
+        .get('/v3/style_rules')
+        .reply(429, { message: 'Too many requests' });
+
+      await expect(noRetryCommand.list()).rejects.toThrow('Rate limit exceeded');
+    });
+
+    it('should handle 503 service unavailable error', async () => {
+      nock(FREE_API_URL)
+        .get('/v3/style_rules')
+        .reply(503, { message: 'Service unavailable' });
+
+      await expect(noRetryCommand.list()).rejects.toThrow('Service temporarily unavailable');
+    });
+
+    it('should handle 456 quota exceeded error', async () => {
+      nock(FREE_API_URL)
+        .get('/v3/style_rules')
+        .reply(456, { message: 'Quota exceeded' });
+
+      await expect(noRetryCommand.list()).rejects.toThrow('Quota exceeded');
+    });
+
+    it('should handle unexpected API response format', async () => {
+      nock(FREE_API_URL)
+        .get('/v3/style_rules')
+        .reply(500, { error: 'Internal server error' });
+
+      await expect(noRetryCommand.list()).rejects.toThrow();
+    });
+
+    // replyWithError must be last — nock v14 emits async socket errors that
+    // leak into subsequent tests despite abortPendingRequests()
+    it('should handle network errors', async () => {
+      nock(FREE_API_URL)
+        .get('/v3/style_rules')
+        .replyWithError('Connection refused');
+
+      await expect(noRetryCommand.list()).rejects.toThrow();
     });
   });
 });
