@@ -63,12 +63,24 @@ describe('BatchTranslationService', () => {
       expect(batchTranslationService).toBeInstanceOf(BatchTranslationService);
     });
 
-    it('should accept custom concurrency limit', () => {
+    it('should accept custom concurrency limit', async () => {
+      mockPLimit.mockClear();
       const service = new BatchTranslationService(
         mockFileTranslationService,
         { concurrency: 5 }
       );
-      expect(service).toBeInstanceOf(BatchTranslationService);
+
+      const file = path.join(testDir, 'concurrency-test.txt');
+      fs.writeFileSync(file, 'test content');
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      await service.translateFiles(
+        [file],
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(mockPLimit).toHaveBeenCalledWith(5);
     });
   });
 

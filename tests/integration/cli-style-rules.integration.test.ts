@@ -484,13 +484,18 @@ describe('Style Rules API Integration', () => {
     });
 
     it('should not send request body for GET request', async () => {
+      let receivedBody: any = undefined;
       const scope = nock(FREE_API_URL)
         .get('/v3/style_rules')
-        .reply(200, { style_rules: [] });
+        .reply(function (_uri: string, body: any) {
+          receivedBody = body;
+          return [200, { style_rules: [] }];
+        });
 
       await styleRulesCommand.list();
 
       expect(scope.isDone()).toBe(true);
+      expect(receivedBody).toBe('');
     });
 
     it('should use Pro API URL when configured', async () => {
