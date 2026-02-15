@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Fix retry exhaustion throwing raw AxiosError — now wraps through `handleError` to produce typed errors (NetworkError, AuthError, etc.)
+- Fix unhandled 5xx status codes (500, 502, etc.) falling through to generic `Error` — now correctly mapped to `NetworkError` with exit code 5
+- Fix duplicated proxy URL parsing in `HttpClient` — extracted into `parseProxyFromEnv()` shared by `validateConfig()` and constructor
+- Fix `getCacheService()` ignoring `cache.ttl` and `cache.maxSize` from config — now reads and passes both values (converting TTL from seconds to milliseconds)
+- Fix `console.warn` in CacheService — replaced with `Logger.warn` for consistent logging
+- Fix stale `noCache?: boolean` in translate command options type — Commander.js creates `cache?: boolean` for `--no-cache`
+- Fix `--backup` silently ignored without `--fix` in write command — now warns user
+- Fix `WatchService.stop()` race condition — `isWatching` flag now set to `false` before async `watcher.close()` to reject in-flight events immediately
+- Fix glossary `normalizeGlossaryInfo` silently falling back to `'en'` for empty dictionaries — now logs a warning
+- Fix formality value documentation — added note in API.md clarifying that voice API uses `formal`/`informal` while translate API uses `prefer_more`/`prefer_less`
 - Fix translation cache key to include `modelType`, `splitSentences`, `tagHandling`, `tagHandlingVersion`, `customInstructions`, and `styleId` — previously, changing these options could return stale cached results
 - Fix structured file translation batch misalignment — partial batch failures could silently assign wrong translations to wrong JSON/YAML keys; now throws on result count mismatch
 - Fix `--recursive` flag in API.md and README.md examples — the CLI only has `--no-recursive` (recursion is default)
