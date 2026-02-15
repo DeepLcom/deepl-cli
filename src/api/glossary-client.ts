@@ -143,10 +143,14 @@ export class GlossaryClient extends HttpClient {
     try {
       await this.makeJsonRequest<void>(
         'PATCH',
-        `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`,
+        `/v3/glossaries/${glossaryId}`,
         {
-          entries,
-          entries_format: 'tsv',
+          dictionaries: [{
+            source_lang: sourceLang.toUpperCase(),
+            target_lang: targetLang.toUpperCase(),
+            entries,
+            entries_format: 'tsv',
+          }],
         }
       );
     } catch (error) {
@@ -164,8 +168,10 @@ export class GlossaryClient extends HttpClient {
     try {
       await this.makeJsonRequest<void>(
         'PUT',
-        `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`,
+        `/v3/glossaries/${glossaryId}/dictionaries`,
         {
+          source_lang: sourceLang.toUpperCase(),
+          target_lang: targetLang.toUpperCase(),
           entries,
           entries_format: 'tsv',
         }
@@ -213,9 +219,13 @@ export class GlossaryClient extends HttpClient {
   ): Promise<void> {
     this.validateGlossaryId(glossaryId);
     try {
+      const params = new URLSearchParams({
+        source_lang: sourceLang.toUpperCase(),
+        target_lang: targetLang.toUpperCase(),
+      });
       await this.makeRequest<void>(
         'DELETE',
-        `/v3/glossaries/${glossaryId}/dictionaries/${sourceLang.toUpperCase()}-${targetLang.toUpperCase()}`
+        `/v3/glossaries/${glossaryId}/dictionaries?${params.toString()}`
       );
     } catch (error) {
       throw this.handleError(error);
