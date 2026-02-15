@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { resolvePaths } from '../utils/paths.js';
 import { ConfigError } from '../utils/errors.js';
+import { Logger } from '../utils/logger.js';
 
 export interface CacheServiceOptions {
   dbPath?: string;
@@ -145,7 +146,7 @@ export class CacheService {
 
       if (guard && !guard(parsed)) {
         const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;
-        console.warn(`⚠ Cache type mismatch for key "${truncatedKey}". Removing entry.`);
+        Logger.warn(`Cache type mismatch for key "${truncatedKey}". Removing entry.`);
         this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
         return null;
       }
@@ -154,7 +155,7 @@ export class CacheService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;
-      console.warn(`⚠ Cache corruption detected for key "${truncatedKey}": ${errorMessage}. Removing entry.`);
+      Logger.warn(`Cache corruption detected for key "${truncatedKey}": ${errorMessage}. Removing entry.`);
       this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
       return null;
     }

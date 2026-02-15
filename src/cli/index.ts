@@ -55,7 +55,14 @@ let cacheService: CacheService | null = null;
 async function getCacheService(): Promise<CacheService> {
   if (!cacheService) {
     const { CacheService: CacheSvc } = await import('../storage/cache.js');
-    cacheService = CacheSvc.getInstance({ dbPath: paths.cacheFile });
+    const configTtl = configService.getValue<number>('cache.ttl');
+    const configMaxSize = configService.getValue<number>('cache.maxSize');
+    cacheService = CacheSvc.getInstance({
+      dbPath: paths.cacheFile,
+      // Config TTL is in seconds, CacheService expects milliseconds
+      ttl: configTtl !== undefined ? configTtl * 1000 : undefined,
+      maxSize: configMaxSize,
+    });
   }
   return cacheService;
 }
