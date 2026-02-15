@@ -34,7 +34,8 @@ describe('Hooks Command E2E', () => {
     } catch (error: any) {
       return {
         status: error.status ?? 1,
-        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        output: error.stderr?.toString() || error.stdout?.toString() || '',
       };
     }
   }

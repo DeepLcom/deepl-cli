@@ -122,7 +122,8 @@ describe('Voice CLI E2E', () => {
           shell: '/bin/sh',
         });
       } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|not set/i);
       }
     });
@@ -135,7 +136,8 @@ describe('Voice CLI E2E', () => {
       try {
         runCLIAll(`deepl voice ${testFile}`);
       } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const output = error.stderr || error.stdout;
         expect(output).toMatch(/target language|--to/i);
       }
     });
@@ -157,7 +159,8 @@ describe('Voice CLI E2E', () => {
           shell: '/bin/sh',
         });
       } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const output = error.stderr || error.stdout;
         // Should fail at auth, not at format validation
         expect(output).toMatch(/API key|not set|auth/i);
       }
@@ -178,7 +181,8 @@ describe('Voice CLI E2E', () => {
           shell: '/bin/sh',
         });
       } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const output = error.stderr || error.stdout;
         expect(output).toMatch(/API key|not set|auth/i);
       }
     });
@@ -192,7 +196,8 @@ describe('Voice CLI E2E', () => {
         runCLI(`deepl voice ${testFile} --to de --format xml`);
         throw new Error('Should have thrown');
       } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const output = error.stderr || error.stdout;
         expect(output).toMatch(/text|json|choices|allowed/i);
       }
     });
@@ -208,7 +213,8 @@ describe('Voice CLI E2E', () => {
         runCLI(`deepl voice ${testFile} --to de --formality extreme`);
         throw new Error('Should have thrown');
       } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const output = error.stderr || error.stdout;
         expect(output).toMatch(/choices|allowed|more|less/i);
       }
     });

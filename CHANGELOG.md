@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename `write` command flag from `--to, -t` to `--lang, -l` — better reflects that write improves text within a language rather than translating between languages
 
 ### Fixed
+- Fix XDG empty string handling — empty `XDG_CONFIG_HOME`/`XDG_CACHE_HOME` env vars now treated as unset per XDG spec, instead of producing relative paths
+- Fix `runExpectError()` in hooks E2E tests returning empty output when stderr is redirected to stdout
+- Fix voice E2E format validation tests returning empty output from `error.stderr` when stderr is merged via `2>&1`
+- Fix `ConfigCommand.set()` and `AuthCommand.setKey()` error-path tests — mock factories now use sync `jest.fn()` matching the real sync `ConfigService.set/delete/clear` signatures, preventing unhandled promise rejections
 - Document 6 undocumented flags/values in API.md: `admin keys set-limit --stt-limit`, `admin keys deactivate -y/--yes`, `glossary delete-dictionary -y/--yes`, `config reset -y/--yes`, `write --style/--tone 'default'` value, `watch --formality` valid choices
 
 ### Removed

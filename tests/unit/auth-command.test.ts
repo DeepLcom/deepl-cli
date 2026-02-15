@@ -65,7 +65,7 @@ describe('AuthCommand', () => {
         getUsage: mockGetUsage,
       } as any));
 
-      (mockConfigService.set as jest.Mock).mockRejectedValueOnce(new Error('Failed to save config'));
+      (mockConfigService.set as jest.Mock).mockImplementationOnce(() => { throw new Error('Failed to save config'); });
 
       await expect(authCommand.setKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx')).rejects.toThrow('Failed to save config');
     });
@@ -145,7 +145,7 @@ describe('AuthCommand', () => {
     });
 
     it('should handle config delete errors', async () => {
-      (mockConfigService.delete as jest.Mock).mockRejectedValueOnce(new Error('Failed to delete'));
+      (mockConfigService.delete as jest.Mock).mockImplementationOnce(() => { throw new Error('Failed to delete'); });
 
       await expect(authCommand.clearKey()).rejects.toThrow('Failed to delete');
     });

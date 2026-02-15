@@ -81,10 +81,10 @@ function configServiceDefaults(): MockShape<ConfigService> & { getDefaults: jest
   return {
     get: jest.fn().mockReturnValue({}),
     getValue: jest.fn().mockReturnValue(undefined),
-    set: jest.fn().mockResolvedValue(undefined),
+    set: jest.fn(),
     has: jest.fn().mockReturnValue(false),
-    delete: jest.fn().mockResolvedValue(undefined),
-    clear: jest.fn().mockResolvedValue(undefined),
+    delete: jest.fn(),
+    clear: jest.fn(),
     getDefaults: jest.fn().mockReturnValue({}),
   };
 }

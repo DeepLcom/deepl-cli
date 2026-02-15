@@ -177,7 +177,7 @@ describe('ConfigCommand', () => {
     });
 
     it('should throw error for invalid key', async () => {
-      (mockConfigService.set as jest.Mock).mockRejectedValueOnce(new Error('Invalid config key'));
+      (mockConfigService.set as jest.Mock).mockImplementationOnce(() => { throw new Error('Invalid config key'); });
 
       await expect(
         configCommand.set('invalid.key', 'value')
@@ -185,7 +185,7 @@ describe('ConfigCommand', () => {
     });
 
     it('should throw error for invalid value', async () => {
-      (mockConfigService.set as jest.Mock).mockRejectedValueOnce(new Error('Invalid language code'));
+      (mockConfigService.set as jest.Mock).mockImplementationOnce(() => { throw new Error('Invalid language code'); });
 
       await expect(
         configCommand.set('defaults.sourceLang', 'invalid')
@@ -320,7 +320,7 @@ describe('ConfigCommand', () => {
     });
 
     it('should handle reset errors', async () => {
-      (mockConfigService.clear as jest.Mock).mockRejectedValueOnce(new Error('Failed to reset'));
+      (mockConfigService.clear as jest.Mock).mockImplementationOnce(() => { throw new Error('Failed to reset'); });
 
       await expect(configCommand.reset()).rejects.toThrow('Failed to reset');
     });
