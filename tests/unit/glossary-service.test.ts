@@ -61,7 +61,7 @@ describe('GlossaryService', () => {
         'tech-terms',
         'en',
         ['es'],
-        expect.any(String)
+        'API\tAPI\nREST\tREST\nHello\tHola'
       );
     });
 
@@ -265,6 +265,56 @@ describe('GlossaryService', () => {
       const glossary = await glossaryService.getGlossaryByName('non-existent');
 
       expect(glossary).toBeNull();
+    });
+  });
+
+  describe('resolveGlossaryId()', () => {
+    it('should return UUID directly when given a valid glossary ID', async () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+      const result = await glossaryService.resolveGlossaryId(uuid);
+
+      expect(result).toBe(uuid);
+      expect(mockDeepLClient.listGlossaries).not.toHaveBeenCalled();
+    });
+
+    it('should look up glossary by name when given a non-UUID string', async () => {
+      mockDeepLClient.listGlossaries.mockResolvedValue([
+        {
+          glossary_id: 'found-glossary-id',
+          name: 'tech-terms',
+          source_lang: 'en',
+          target_langs: ['es'],
+          dictionaries: [{
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 10,
+          }],
+          creation_time: '2024-01-01T00:00:00Z',
+        },
+      ]);
+
+      const result = await glossaryService.resolveGlossaryId('tech-terms');
+
+      expect(result).toBe('found-glossary-id');
+      expect(mockDeepLClient.listGlossaries).toHaveBeenCalled();
+    });
+
+    it('should throw ConfigError when glossary name is not found', async () => {
+      mockDeepLClient.listGlossaries.mockResolvedValue([]);
+
+      await expect(
+        glossaryService.resolveGlossaryId('non-existent-glossary')
+      ).rejects.toThrow('Glossary "non-existent-glossary" not found');
+    });
+
+    it('should handle case-sensitive UUID matching', async () => {
+      const uppercaseUuid = 'A1B2C3D4-E5F6-7890-ABCD-EF1234567890';
+
+      const result = await glossaryService.resolveGlossaryId(uppercaseUuid);
+
+      expect(result).toBe(uppercaseUuid);
+      expect(mockDeepLClient.listGlossaries).not.toHaveBeenCalled();
     });
   });
 

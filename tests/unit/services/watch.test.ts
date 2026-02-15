@@ -73,6 +73,55 @@ describe('WatchService', () => {
       });
       expect(service).toBeInstanceOf(WatchService);
     });
+
+    it('should store debounceMs and use it for timers', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: 1000,
+      });
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      service.handleFileChange(testFile);
+
+      // At 500ms, translation should NOT have happened yet (debounce is 1000)
+      jest.advanceTimersByTime(500);
+      await flushPromises();
+      expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
+
+      // At 1000ms, translation should fire
+      jest.advanceTimersByTime(500);
+      await flushPromises();
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('should store pattern and pass it to chokidar ignored function', () => {
+      const service = new WatchService(mockFileTranslationService, {
+        pattern: '*.md',
+      });
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      const watchCall = (chokidar.watch as jest.Mock).mock.calls[0];
+      expect(watchCall[1]).toHaveProperty('ignored');
+      expect(typeof watchCall[1].ignored).toBe('function');
+
+      const ignored = watchCall[1].ignored;
+      expect(ignored('/path/to/file.txt')).toBe(true);
+      expect(ignored('/path/to/file.md')).toBe(false);
+    });
   });
 
   describe('watch()', () => {
@@ -84,8 +133,11 @@ describe('WatchService', () => {
 
       await watchService.watch(testDir, options);
 
-      // Verify watcher was created (will be implemented)
       expect(watchService.isWatching()).toBe(true);
+      expect(chokidar.watch).toHaveBeenCalledWith(testDir, expect.objectContaining({
+        persistent: true,
+        ignoreInitial: true,
+      }));
     });
 
     it('should watch a single file', async () => {
@@ -100,6 +152,7 @@ describe('WatchService', () => {
       await watchService.watch(testFile, options);
 
       expect(watchService.isWatching()).toBe(true);
+      expect(chokidar.watch).toHaveBeenCalledWith(testFile, expect.any(Object));
     });
 
     it('should throw error for non-existent path', () => {
@@ -122,8 +175,10 @@ describe('WatchService', () => {
 
       await watchService.watch(testDir, options);
 
-      // Verify pattern was applied
       expect(watchService.isWatching()).toBe(true);
+      const watchCall = (chokidar.watch as jest.Mock).mock.calls[0];
+      expect(watchCall[1]).toHaveProperty('ignored');
+      expect(typeof watchCall[1].ignored).toBe('function');
     });
 
     it('should respect debounce option', async () => {
@@ -1139,6 +1194,108 @@ describe('WatchService', () => {
       expect(() => {
         jest.advanceTimersByTime(300);
       }).not.toThrow();
+    });
+  });
+
+  describe('cleanup and teardown', () => {
+    it('should clear all pending debounce timers on stop with multiple files', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: 500,
+      });
+
+      const testFile1 = path.join(testDir, 'file1.txt');
+      const testFile2 = path.join(testDir, 'file2.txt');
+      const testFile3 = path.join(testDir, 'file3.md');
+      fs.writeFileSync(testFile1, 'Hello 1');
+      fs.writeFileSync(testFile2, 'Hello 2');
+      fs.writeFileSync(testFile3, 'Hello 3');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      await service.watch(testDir, options);
+
+      // Schedule multiple file changes
+      service.handleFileChange(testFile1);
+      service.handleFileChange(testFile2);
+      service.handleFileChange(testFile3);
+
+      // Stop before any timers fire
+      await service.stop();
+
+      jest.advanceTimersByTime(1000);
+      await flushPromises();
+
+      // No translations should have occurred
+      expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
+    });
+
+    it('should handle watcher.close() errors gracefully', async () => {
+      mockWatcher.close.mockRejectedValueOnce(new Error('Close failed'));
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      watchService.watch(testDir, options);
+
+      await expect(watchService.stop()).rejects.toThrow('Close failed');
+      expect(watchService.isWatching()).toBe(false);
+    });
+
+    it('should nullify watcher reference after stop', async () => {
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      watchService.watch(testDir, options);
+      await watchService.stop();
+
+      // Calling stop again should not call watcher.close() a second time
+      mockWatcher.close.mockClear();
+      await watchService.stop();
+      expect(mockWatcher.close).not.toHaveBeenCalled();
+    });
+
+    it('should increment errorsCount on translation failure and call onError', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const onError = jest.fn();
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      const translationError = new Error('Network timeout');
+      mockFileTranslationService.translateFile.mockRejectedValue(translationError);
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onError,
+      };
+
+      watchService.watch(testDir, options);
+      watchService.handleFileChange(testFile);
+
+      jest.advanceTimersByTime(350);
+      await flushPromises();
+
+      const stats = watchService.getStats();
+      expect(stats.errorsCount).toBe(1);
+      expect(onError).toHaveBeenCalledWith(
+        testFile,
+        expect.objectContaining({ message: 'Network timeout' })
+      );
+
+      consoleErrorSpy.mockRestore();
     });
   });
 
