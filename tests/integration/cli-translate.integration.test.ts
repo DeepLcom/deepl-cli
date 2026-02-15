@@ -211,70 +211,27 @@ describe('Translate CLI Integration', () => {
   });
 
   describe('option flags validation', () => {
-    it('should accept --from flag for source language', () => {
+    it.each([
+      { flag: '--from <language>', description: 'Source language' },
+      { flag: '--formality <level>', descriptionPattern: /more.*less/i },
+      { flag: '--preserve-code', description: 'code blocks' },
+      { flag: '--context <text>', description: 'context' },
+      { flag: '--split-sentences <mode>', descriptionPattern: /on.*off.*nonewlines/i },
+      { flag: '--tag-handling <mode>', descriptionPattern: /xml.*html/i },
+      { flag: '--model-type <type>', descriptionPattern: /quality_optimized|latency_optimized/i },
+      { flag: '--recursive', description: 'subdirectories' },
+      { flag: '--pattern <pattern>', description: 'Glob pattern' },
+      { flag: '--concurrency <number>', description: 'parallel' },
+      { flag: '--api-url <url>', description: 'Custom API endpoint' },
+    ])('should accept $flag flag', ({ flag, description, descriptionPattern }) => {
       const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--from <language>');
-      expect(helpOutput).toContain('Source language');
-    });
-
-    it('should accept --formality flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--formality <level>');
-      expect(helpOutput).toMatch(/more.*less/i);
-    });
-
-    it('should accept --preserve-code flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--preserve-code');
-      expect(helpOutput).toContain('code blocks');
-    });
-
-    it('should accept --context flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--context <text>');
-      expect(helpOutput).toContain('context');
-    });
-
-    it('should accept --split-sentences flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--split-sentences <mode>');
-      expect(helpOutput).toMatch(/on.*off.*nonewlines/i);
-    });
-
-    it('should accept --tag-handling flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--tag-handling <mode>');
-      expect(helpOutput).toMatch(/xml.*html/i);
-    });
-
-    it('should accept --model-type flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--model-type <type>');
-      expect(helpOutput).toMatch(/quality_optimized|latency_optimized/i);
-    });
-
-    it('should accept --recursive flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--recursive');
-      expect(helpOutput).toContain('subdirectories');
-    });
-
-    it('should accept --pattern flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--pattern <pattern>');
-      expect(helpOutput).toContain('Glob pattern');
-    });
-
-    it('should accept --concurrency flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--concurrency <number>');
-      expect(helpOutput).toContain('parallel');
-    });
-
-    it('should accept --api-url flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--api-url <url>');
-      expect(helpOutput).toContain('Custom API endpoint');
+      expect(helpOutput).toContain(flag);
+      if (description) {
+        expect(helpOutput).toContain(description);
+      }
+      if (descriptionPattern) {
+        expect(helpOutput).toMatch(descriptionPattern);
+      }
     });
   });
 
@@ -462,71 +419,56 @@ describe('Translate CLI Integration', () => {
   });
 
   describe('XML tag handling parameters', () => {
-    it('should show --outline-detection flag in help', () => {
+    it.each([
+      {
+        flag: '--outline-detection',
+        patterns: [/xml.*structure.*detection/i, /tag-handling.*xml/i],
+      },
+      {
+        flag: '--splitting-tags',
+        patterns: [/xml.*tags.*split/i],
+      },
+      {
+        flag: '--non-splitting-tags',
+        patterns: [/should not be used to split sentences/i],
+        normalizeWhitespace: true,
+      },
+      {
+        flag: '--ignore-tags',
+        patterns: [/ignore/i],
+      },
+    ])('should show $flag flag in help', ({ flag, patterns, normalizeWhitespace }) => {
       const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--outline-detection');
-      expect(helpOutput).toMatch(/xml.*structure.*detection/i);
-      expect(helpOutput).toMatch(/tag-handling.*xml/i);
-    });
-
-    it('should show --splitting-tags flag in help', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--splitting-tags');
-      expect(helpOutput).toMatch(/xml.*tags.*split/i);
-    });
-
-    it('should show --non-splitting-tags flag in help', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--non-splitting-tags');
-      expect(helpOutput.replace(/\s+/g, ' ')).toMatch(/should not be used to split sentences/i);
-    });
-
-    it('should show --ignore-tags flag in help', () => {
-      const helpOutput = runCLI('deepl translate --help');
-      expect(helpOutput).toContain('--ignore-tags');
-      expect(helpOutput).toMatch(/ignore/i);
-    });
-
-    it('should accept --outline-detection flag without error', () => {
-      try {
-        runCLI('deepl translate "<p>Hello</p>" --to es --tag-handling xml --outline-detection true', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr || error.stdout;
-        // Should fail on API key, not on unknown option
-        expect(output).not.toMatch(/unknown.*option.*outline-detection/i);
-        expect(output).toMatch(/API key|auth/i);
+      expect(helpOutput).toContain(flag);
+      for (const pattern of patterns) {
+        const text = normalizeWhitespace ? helpOutput.replace(/\s+/g, ' ') : helpOutput;
+        expect(text).toMatch(pattern);
       }
     });
 
-    it('should accept --splitting-tags flag without error', () => {
+    it.each([
+      {
+        flag: '--outline-detection',
+        args: '--outline-detection true',
+      },
+      {
+        flag: '--splitting-tags',
+        args: '--splitting-tags "br,hr,div"',
+      },
+      {
+        flag: '--non-splitting-tags',
+        args: '--non-splitting-tags "code,pre"',
+      },
+      {
+        flag: '--ignore-tags',
+        args: '--ignore-tags "script,style"',
+      },
+    ])('should accept $flag flag without error', ({ flag, args }) => {
       try {
-        runCLI('deepl translate "<p>Hello</p>" --to es --tag-handling xml --splitting-tags "br,hr,div"', { stdio: 'pipe' });
+        runCLI(`deepl translate "<p>Hello</p>" --to es --tag-handling xml ${args}`, { stdio: 'pipe' });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should fail on API key, not on unknown option
-        expect(output).not.toMatch(/unknown.*option.*splitting-tags/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should accept --non-splitting-tags flag without error', () => {
-      try {
-        runCLI('deepl translate "<p>Hello</p>" --to es --tag-handling xml --non-splitting-tags "code,pre"', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr || error.stdout;
-        // Should fail on API key, not on unknown option
-        expect(output).not.toMatch(/unknown.*option.*non-splitting-tags/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should accept --ignore-tags flag without error', () => {
-      try {
-        runCLI('deepl translate "<p>Hello</p>" --to es --tag-handling xml --ignore-tags "script,style"', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr || error.stdout;
-        // Should fail on API key, not on unknown option
-        expect(output).not.toMatch(/unknown.*option.*ignore-tags/i);
+        expect(output).not.toMatch(new RegExp(`unknown.*option.*${flag.replace('--', '')}`, 'i'));
         expect(output).toMatch(/API key|auth/i);
       }
     });
@@ -536,7 +478,6 @@ describe('Translate CLI Integration', () => {
         runCLI('deepl translate "<p>Hello</p>" --to es --tag-handling xml --outline-detection false --splitting-tags "br,hr" --non-splitting-tags "code" --ignore-tags "script"', { stdio: 'pipe' });
       } catch (error: any) {
         const output = error.stderr || error.stdout;
-        // Should fail on API key, not on unknown options
         expect(output).not.toMatch(/unknown.*option/i);
         expect(output).toMatch(/API key|auth/i);
       }

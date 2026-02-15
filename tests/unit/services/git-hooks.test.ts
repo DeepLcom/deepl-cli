@@ -31,6 +31,19 @@ describe('GitHooksService', () => {
     }
   });
 
+  describe('invalid hook type', () => {
+    it.each([
+      { method: 'install', invoke: (svc: any) => svc.install('invalid-hook') },
+      { method: 'uninstall', invoke: (svc: any) => svc.uninstall('invalid-hook') },
+      { method: 'isInstalled', invoke: (svc: any) => svc.isInstalled('invalid-hook') },
+      { method: 'getHookPath', invoke: (svc: any) => svc.getHookPath('invalid-hook') },
+      { method: 'generateHookContent', invoke: (svc: any) => svc.generateHookContent('invalid') },
+      { method: 'verifyIntegrity', invoke: (svc: any) => svc.verifyIntegrity('invalid-hook') },
+    ])('$method should throw error for invalid hook type', ({ invoke }) => {
+      expect(() => invoke(gitHooksService)).toThrow('Invalid hook type');
+    });
+  });
+
   describe('constructor', () => {
     it('should create GitHooksService with valid git directory', () => {
       expect(gitHooksService).toBeInstanceOf(GitHooksService);
@@ -145,11 +158,6 @@ describe('GitHooksService', () => {
       expect(fs.existsSync(backupPath)).toBe(false);
     });
 
-    it('should throw error for invalid hook type', () => {
-      expect(() => {
-        (gitHooksService as any).install('invalid-hook');
-      }).toThrow('Invalid hook type');
-    });
   });
 
   describe('uninstall()', () => {
@@ -204,11 +212,6 @@ describe('GitHooksService', () => {
       );
     });
 
-    it('should throw error for invalid hook type', () => {
-      expect(() => {
-        (gitHooksService as any).uninstall('invalid-hook');
-      }).toThrow('Invalid hook type');
-    });
   });
 
   describe('isInstalled()', () => {
@@ -233,11 +236,6 @@ describe('GitHooksService', () => {
       expect(gitHooksService.isInstalled('pre-commit')).toBe(false);
     });
 
-    it('should throw error for invalid hook type', () => {
-      expect(() => {
-        (gitHooksService as any).isInstalled('invalid-hook');
-      }).toThrow('Invalid hook type');
-    });
   });
 
   describe('list()', () => {
@@ -310,11 +308,6 @@ describe('GitHooksService', () => {
       expect(hookPath).toBe(path.join(testHooksDir, 'post-commit'));
     });
 
-    it('should throw error for invalid hook type', () => {
-      expect(() => {
-        (gitHooksService as any).getHookPath('invalid-hook');
-      }).toThrow('Invalid hook type');
-    });
   });
 
   describe('findGitRoot()', () => {
@@ -446,11 +439,6 @@ describe('GitHooksService', () => {
       expect(hash1).not.toBe(hash2);
     });
 
-    it('should throw error for invalid hook type', () => {
-      expect(() => {
-        (gitHooksService as any).generateHookContent('invalid');
-      }).toThrow('Invalid hook type');
-    });
   });
 
   describe('isDeepLHook()', () => {
@@ -617,11 +605,6 @@ describe('GitHooksService', () => {
       }
     });
 
-    it('should throw error for invalid hook type', () => {
-      expect(() => {
-        (gitHooksService as any).verifyIntegrity('invalid-hook');
-      }).toThrow('Invalid hook type');
-    });
   });
 
   describe('backward compatibility', () => {

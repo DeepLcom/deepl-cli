@@ -42,40 +42,20 @@ describe('DetectCommand', () => {
   });
 
   describe('detect()', () => {
-    it('should detect language of French text', async () => {
+    it.each([
+      { text: 'Bonjour le monde', code: 'fr', name: 'French' },
+      { text: 'Hallo Welt', code: 'de', name: 'German' },
+      { text: 'こんにちは世界', code: 'ja', name: 'Japanese' },
+    ])('should detect $name ($code) from text', async ({ text, code, name }) => {
       mockService.detect = jest.fn().mockResolvedValue({
-        detectedLanguage: 'fr',
-        languageName: 'French',
+        detectedLanguage: code,
+        languageName: name,
       });
 
-      const result = await detectCommand.detect('Bonjour le monde');
+      const result = await detectCommand.detect(text);
 
-      expect(result.detectedLanguage).toBe('fr');
-      expect(result.languageName).toBe('French');
-    });
-
-    it('should detect language of German text', async () => {
-      mockService.detect = jest.fn().mockResolvedValue({
-        detectedLanguage: 'de',
-        languageName: 'German',
-      });
-
-      const result = await detectCommand.detect('Hallo Welt');
-
-      expect(result.detectedLanguage).toBe('de');
-      expect(result.languageName).toBe('German');
-    });
-
-    it('should detect language of Japanese text', async () => {
-      mockService.detect = jest.fn().mockResolvedValue({
-        detectedLanguage: 'ja',
-        languageName: 'Japanese',
-      });
-
-      const result = await detectCommand.detect('こんにちは世界');
-
-      expect(result.detectedLanguage).toBe('ja');
-      expect(result.languageName).toBe('Japanese');
+      expect(result.detectedLanguage).toBe(code);
+      expect(result.languageName).toBe(name);
     });
 
     it('should delegate to service', async () => {
@@ -84,22 +64,15 @@ describe('DetectCommand', () => {
       expect(mockService.detect).toHaveBeenCalledWith('Bonjour');
     });
 
-    it('should throw error for empty text', async () => {
+    it.each([
+      { scenario: 'empty text', input: '' },
+      { scenario: 'whitespace-only text', input: '   ' },
+    ])('should throw error for $scenario', async ({ input }) => {
       mockService.detect = jest.fn().mockRejectedValue(
         new Error('Text cannot be empty. Provide text to detect language.')
       );
 
-      await expect(detectCommand.detect('')).rejects.toThrow(
-        'Text cannot be empty'
-      );
-    });
-
-    it('should throw error for whitespace-only text', async () => {
-      mockService.detect = jest.fn().mockRejectedValue(
-        new Error('Text cannot be empty. Provide text to detect language.')
-      );
-
-      await expect(detectCommand.detect('   ')).rejects.toThrow(
+      await expect(detectCommand.detect(input)).rejects.toThrow(
         'Text cannot be empty'
       );
     });
@@ -168,48 +141,34 @@ describe('DetectCommand', () => {
   });
 
   describe('formatPlain()', () => {
-    it('should format detected language as plain text', () => {
+    it.each([
+      { code: 'fr', name: 'French', expected: 'Detected language: French (fr)' },
+      { code: 'de', name: 'German', expected: 'Detected language: German (de)' },
+    ])('should format $name ($code) as plain text', ({ code, name, expected }) => {
       const output = detectCommand.formatPlain({
-        detectedLanguage: 'fr' as any,
-        languageName: 'French',
+        detectedLanguage: code as any,
+        languageName: name,
       });
 
-      expect(output).toBe('Detected language: French (fr)');
-    });
-
-    it('should format German detection as plain text', () => {
-      const output = detectCommand.formatPlain({
-        detectedLanguage: 'de' as any,
-        languageName: 'German',
-      });
-
-      expect(output).toBe('Detected language: German (de)');
+      expect(output).toBe(expected);
     });
   });
 
   describe('formatJson()', () => {
-    it('should format detected language as JSON', () => {
+    it.each([
+      { code: 'fr', name: 'French' },
+      { code: 'de', name: 'German' },
+    ])('should format $name ($code) as valid JSON', ({ code, name }) => {
       const output = detectCommand.formatJson({
-        detectedLanguage: 'fr' as any,
-        languageName: 'French',
+        detectedLanguage: code as any,
+        languageName: name,
       });
 
       const parsed = JSON.parse(output);
       expect(parsed).toEqual({
-        detected_language: 'fr',
-        language_name: 'French',
+        detected_language: code,
+        language_name: name,
       });
-    });
-
-    it('should produce valid JSON for German', () => {
-      const output = detectCommand.formatJson({
-        detectedLanguage: 'de' as any,
-        languageName: 'German',
-      });
-
-      const parsed = JSON.parse(output);
-      expect(parsed.detected_language).toBe('de');
-      expect(parsed.language_name).toBe('German');
     });
 
     it('should produce pretty-printed JSON', () => {

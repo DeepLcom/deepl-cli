@@ -581,27 +581,11 @@ describe('registerCompletion', () => {
     registerCompletion(program, { handleError } as any);
   }
 
-  it('should generate completion script for bash', async () => {
+  it.each(['bash', 'zsh', 'fish'])('should generate completion script for %s', async (shell) => {
     await loadAndRegister();
-    await program.parseAsync(['node', 'test', 'completion', 'bash']);
+    await program.parseAsync(['node', 'test', 'completion', shell]);
 
-    expect(mockCompletionGenerate).toHaveBeenCalledWith('bash');
-    expect(mockLogger.output).toHaveBeenCalledWith('# completion script');
-  });
-
-  it('should generate completion script for zsh', async () => {
-    await loadAndRegister();
-    await program.parseAsync(['node', 'test', 'completion', 'zsh']);
-
-    expect(mockCompletionGenerate).toHaveBeenCalledWith('zsh');
-    expect(mockLogger.output).toHaveBeenCalledWith('# completion script');
-  });
-
-  it('should generate completion script for fish', async () => {
-    await loadAndRegister();
-    await program.parseAsync(['node', 'test', 'completion', 'fish']);
-
-    expect(mockCompletionGenerate).toHaveBeenCalledWith('fish');
+    expect(mockCompletionGenerate).toHaveBeenCalledWith(shell);
     expect(mockLogger.output).toHaveBeenCalledWith('# completion script');
   });
 

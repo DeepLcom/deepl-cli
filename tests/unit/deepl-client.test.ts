@@ -552,16 +552,66 @@ describe('DeepLClient', () => {
   });
 
   describe('error handling', () => {
-    it('should handle 403 authentication error', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .reply(403, {
-          message: 'Authorization failed',
-        });
+    const endpoints: Array<{
+      name: string;
+      path: string;
+      call: (c: DeepLClient) => Promise<unknown>;
+    }> = [
+      {
+        name: 'translate()',
+        path: '/v2/translate',
+        call: (c) => c.translate('Hello', { targetLang: 'es' }),
+      },
+      {
+        name: 'improveText()',
+        path: '/v2/write/rephrase',
+        call: (c) => c.improveText('Test', { targetLang: 'en-US' }),
+      },
+    ];
 
-      await expect(
-        client.translate('Hello', { targetLang: 'es' })
-      ).rejects.toThrow('Authentication failed');
+    describe.each(endpoints)('$name', ({ path, call }) => {
+      it('should handle 403 authentication error', async () => {
+        nock(baseUrl)
+          .post(path)
+          .reply(403, { message: 'Authorization failed' });
+
+        await expect(call(client)).rejects.toThrow('Authentication failed');
+      });
+
+      it('should handle 456 quota exceeded error', async () => {
+        nock(baseUrl)
+          .post(path)
+          .reply(456, { message: 'Quota exceeded' });
+
+        await expect(call(client)).rejects.toThrow('Quota exceeded');
+      });
+
+      it('should handle 429 rate limit error', async () => {
+        nock(baseUrl)
+          .post(path)
+          .times(4)
+          .reply(429, { message: 'Too many requests' });
+
+        await expect(call(client)).rejects.toThrow('Rate limit exceeded');
+      });
+
+      it('should handle 503 service unavailable', async () => {
+        nock(baseUrl)
+          .post(path)
+          .times(4)
+          .reply(503, { message: 'Service temporarily unavailable' });
+
+        await expect(call(client)).rejects.toThrow('Service temporarily unavailable');
+      });
+
+      it('should handle network errors', async () => {
+        nock(baseUrl)
+          .post(path)
+          .times(4)
+          .replyWithError('Network error');
+
+        await expect(call(client)).rejects.toThrow();
+      });
     });
 
     it('should throw classified AuthError for 403, not raw AxiosError', async () => {
@@ -579,18 +629,6 @@ describe('DeepLClient', () => {
       }
     });
 
-    it('should handle 456 quota exceeded error', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .reply(456, {
-          message: 'Quota exceeded',
-        });
-
-      await expect(
-        client.translate('Hello', { targetLang: 'es' })
-      ).rejects.toThrow('Quota exceeded');
-    });
-
     it('should throw classified QuotaError for 456, not raw AxiosError', async () => {
       nock(baseUrl)
         .post('/v2/translate')
@@ -604,19 +642,6 @@ describe('DeepLClient', () => {
       } catch (error) {
         expect((error as Error).name).toBe('QuotaError');
       }
-    });
-
-    it('should handle 429 rate limit error', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .times(4)
-        .reply(429, {
-          message: 'Too many requests',
-        });
-
-      await expect(
-        client.translate('Hello', { targetLang: 'es' })
-      ).rejects.toThrow('Rate limit exceeded');
     });
 
     it('should throw classified RateLimitError for 429, not raw AxiosError', async () => {
@@ -633,30 +658,6 @@ describe('DeepLClient', () => {
       } catch (error) {
         expect((error as Error).name).toBe('RateLimitError');
       }
-    });
-
-    it('should handle 503 service unavailable', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .times(4) // Should retry 3 times + initial = 4 requests total
-        .reply(503, {
-          message: 'Service temporarily unavailable',
-        });
-
-      await expect(
-        client.translate('Hello', { targetLang: 'es' })
-      ).rejects.toThrow('Service temporarily unavailable');
-    });
-
-    it('should handle network errors', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .times(4) // Should retry 3 times + initial = 4 requests total
-        .replyWithError('Network error');
-
-      await expect(
-        client.translate('Hello', { targetLang: 'es' })
-      ).rejects.toThrow('Network error');
     });
 
     it('should handle invalid JSON response', async () => {
@@ -1436,60 +1437,6 @@ describe('DeepLClient', () => {
         });
 
         expect(result[0]?.targetLanguage).toBe('en-GB');
-      });
-    });
-
-    describe('error handling', () => {
-      it('should handle 403 authentication error', async () => {
-        nock(baseUrl)
-          .post('/v2/write/rephrase')
-          .reply(403, { message: 'Invalid API key' });
-
-        await expect(
-          client.improveText('Test', { targetLang: 'en-US' })
-        ).rejects.toThrow('Authentication failed');
-      });
-
-      it('should handle 456 quota exceeded error', async () => {
-        nock(baseUrl)
-          .post('/v2/write/rephrase')
-          .reply(456, { message: 'Quota exceeded' });
-
-        await expect(
-          client.improveText('Test', { targetLang: 'en-US' })
-        ).rejects.toThrow('Quota exceeded');
-      });
-
-      it('should handle 429 rate limit error', async () => {
-        nock(baseUrl)
-          .post('/v2/write/rephrase')
-          .times(4)
-          .reply(429, { message: 'Too many requests' });
-
-        await expect(
-          client.improveText('Test', { targetLang: 'en-US' })
-        ).rejects.toThrow('Rate limit exceeded');
-      });
-
-      it('should handle 503 service unavailable', async () => {
-        nock(baseUrl)
-          .post('/v2/write/rephrase')
-          .times(4)
-          .reply(503, { message: 'Service unavailable' });
-
-        await expect(
-          client.improveText('Test', { targetLang: 'en-US' })
-        ).rejects.toThrow('Service temporarily unavailable');
-      });
-
-      it('should handle network errors', async () => {
-        nock(baseUrl)
-          .post('/v2/write/rephrase')
-          .replyWithError('Network error');
-
-        await expect(
-          client.improveText('Test', { targetLang: 'en-US' })
-        ).rejects.toThrow();
       });
     });
 

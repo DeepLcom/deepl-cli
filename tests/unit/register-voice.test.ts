@@ -157,31 +157,15 @@ describe('registerVoice', () => {
   });
 
   describe('bounds validation for numeric options', () => {
-    it('should reject non-numeric --chunk-size', async () => {
+    it.each([
+      ['non-numeric', 'abc'],
+      ['zero', '0'],
+      ['negative', '-100'],
+      ['excessively large', '10485761'],
+    ])('should reject %s --chunk-size (%s)', async (_label, value) => {
       await loadAndRegister();
       await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-size', 'abc']),
-      ).rejects.toThrow(/chunk-size/i);
-    });
-
-    it('should reject zero --chunk-size', async () => {
-      await loadAndRegister();
-      await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-size', '0']),
-      ).rejects.toThrow(/chunk-size/i);
-    });
-
-    it('should reject negative --chunk-size', async () => {
-      await loadAndRegister();
-      await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-size', '-100']),
-      ).rejects.toThrow(/chunk-size/i);
-    });
-
-    it('should reject excessively large --chunk-size', async () => {
-      await loadAndRegister();
-      await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-size', '10485761']),
+        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-size', value]),
       ).rejects.toThrow(/chunk-size/i);
     });
 
@@ -195,31 +179,15 @@ describe('registerVoice', () => {
       );
     });
 
-    it('should reject non-numeric --chunk-interval', async () => {
+    it.each([
+      ['non-numeric', 'xyz'],
+      ['zero', '0'],
+      ['negative', '-50'],
+      ['excessively large', '60001'],
+    ])('should reject %s --chunk-interval (%s)', async (_label, value) => {
       await loadAndRegister();
       await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-interval', 'xyz']),
-      ).rejects.toThrow(/chunk-interval/i);
-    });
-
-    it('should reject zero --chunk-interval', async () => {
-      await loadAndRegister();
-      await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-interval', '0']),
-      ).rejects.toThrow(/chunk-interval/i);
-    });
-
-    it('should reject negative --chunk-interval', async () => {
-      await loadAndRegister();
-      await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-interval', '-50']),
-      ).rejects.toThrow(/chunk-interval/i);
-    });
-
-    it('should reject excessively large --chunk-interval', async () => {
-      await loadAndRegister();
-      await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-interval', '60001']),
+        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-interval', value]),
       ).rejects.toThrow(/chunk-interval/i);
     });
 
@@ -233,44 +201,27 @@ describe('registerVoice', () => {
       );
     });
 
-    it('should reject non-numeric --max-reconnect-attempts', async () => {
+    it.each([
+      ['non-numeric', 'abc'],
+      ['negative', '-1'],
+      ['excessively large', '101'],
+    ])('should reject %s --max-reconnect-attempts (%s)', async (_label, value) => {
       await loadAndRegister();
       await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--max-reconnect-attempts', 'abc']),
+        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--max-reconnect-attempts', value]),
       ).rejects.toThrow(/max-reconnect-attempts/i);
     });
 
-    it('should reject negative --max-reconnect-attempts', async () => {
+    it.each([
+      ['zero (disable reconnection)', '0', 0],
+      ['valid', '5', 5],
+    ])('should accept %s --max-reconnect-attempts (%s)', async (_label, value, expected) => {
       await loadAndRegister();
-      await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--max-reconnect-attempts', '-1']),
-      ).rejects.toThrow(/max-reconnect-attempts/i);
-    });
-
-    it('should reject excessively large --max-reconnect-attempts', async () => {
-      await loadAndRegister();
-      await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--max-reconnect-attempts', '101']),
-      ).rejects.toThrow(/max-reconnect-attempts/i);
-    });
-
-    it('should accept zero --max-reconnect-attempts (disable reconnection)', async () => {
-      await loadAndRegister();
-      await program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--max-reconnect-attempts', '0']);
+      await program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--max-reconnect-attempts', value]);
 
       expect(mockTranslate).toHaveBeenCalledWith(
         'recording.ogg',
-        expect.objectContaining({ maxReconnectAttempts: 0 }),
-      );
-    });
-
-    it('should accept valid --max-reconnect-attempts', async () => {
-      await loadAndRegister();
-      await program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--max-reconnect-attempts', '5']);
-
-      expect(mockTranslate).toHaveBeenCalledWith(
-        'recording.ogg',
-        expect.objectContaining({ maxReconnectAttempts: 5 }),
+        expect.objectContaining({ maxReconnectAttempts: expected }),
       );
     });
   });

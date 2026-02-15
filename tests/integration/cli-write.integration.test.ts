@@ -12,6 +12,7 @@ import { WriteService } from '../../src/services/write.js';
 import { ConfigService } from '../../src/storage/config.js';
 import { CacheService } from '../../src/storage/cache.js';
 import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers';
+import type { WritingStyle, WriteTone, WriteLanguage } from '../../src/types/api.js';
 
 describe('Write Command Integration', () => {
   const API_KEY = TEST_API_KEY;
@@ -127,279 +128,156 @@ describe('Write Command Integration', () => {
   });
 
   describe('improve() - Writing Styles', () => {
-    it('should apply business writing style', async () => {
+    it.each([
+      {
+        style: 'business',
+        input: 'I want to buy your product',
+        output: 'I would like to purchase your product',
+        expectedSubstring: 'I would like to purchase your product',
+      },
+      {
+        style: 'casual',
+        input: 'Thank you for contacting us',
+        output: 'Hey! Thanks for reaching out!',
+        expectedSubstring: 'Hey! Thanks for reaching out!',
+      },
+      {
+        style: 'academic',
+        input: 'The results show a connection',
+        output: 'The findings demonstrate a significant correlation',
+        expectedSubstring: 'demonstrate',
+      },
+      {
+        style: 'simple',
+        input: 'Utilize this functionality',
+        output: 'Use this feature',
+        expectedSubstring: undefined,
+      },
+    ])('should apply $style writing style', async ({ style, input, output, expectedSubstring }) => {
+      const writingStyle = style as WritingStyle;
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
-          expect(body.writing_style).toBe('business');
-          expect(body.text).toBe('I want to buy your product');
+          expect(body.writing_style).toBe(writingStyle);
           return true;
         })
         .reply(200, {
-          improvements: [
-            {
-              text: 'I would like to purchase your product',
-              target_language: 'en-US',
-            },
-          ],
+          improvements: [{ text: output, target_language: 'en-US' }],
         });
 
-      const result = await writeService.improve('I want to buy your product', {
+      const result = await writeService.improve(input, {
         targetLang: 'en-US',
-        writingStyle: 'business',
+        writingStyle,
       });
 
-      expect(result[0]?.text).toBe('I would like to purchase your product');
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should apply casual writing style', async () => {
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.writing_style).toBe('casual');
-          return true;
-        })
-        .reply(200, {
-          improvements: [
-            {
-              text: 'Hey! Thanks for reaching out!',
-              target_language: 'en-US',
-            },
-          ],
-        });
-
-      const result = await writeService.improve('Thank you for contacting us', {
-        targetLang: 'en-US',
-        writingStyle: 'casual',
-      });
-
-      expect(result[0]?.text).toBe('Hey! Thanks for reaching out!');
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should apply academic writing style', async () => {
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.writing_style).toBe('academic');
-          return true;
-        })
-        .reply(200, {
-          improvements: [
-            {
-              text: 'The findings demonstrate a significant correlation',
-              target_language: 'en-US',
-            },
-          ],
-        });
-
-      const result = await writeService.improve('The results show a connection', {
-        targetLang: 'en-US',
-        writingStyle: 'academic',
-      });
-
-      expect(result[0]?.text).toContain('demonstrate');
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should apply simple writing style', async () => {
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.writing_style).toBe('simple');
-          return true;
-        })
-        .reply(200, {
-          improvements: [
-            {
-              text: 'Use this feature',
-              target_language: 'en-US',
-            },
-          ],
-        });
-
-      await writeService.improve('Utilize this functionality', {
-        targetLang: 'en-US',
-        writingStyle: 'simple',
-      });
-
+      if (expectedSubstring !== undefined) {
+        expect(result[0]?.text).toContain(expectedSubstring);
+      }
       expect(scope.isDone()).toBe(true);
     });
   });
 
   describe('improve() - Tones', () => {
-    it('should apply friendly tone', async () => {
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.tone).toBe('friendly');
-          expect(body.writing_style).toBeUndefined();
-          return true;
-        })
-        .reply(200, {
-          improvements: [
-            {
-              text: 'We would love to help you with that!',
-              target_language: 'en-US',
-            },
-          ],
-        });
-
-      const result = await writeService.improve('We can help with that', {
-        targetLang: 'en-US',
+    it.each([
+      {
         tone: 'friendly',
-      });
-
-      expect(result[0]?.text).toContain('love to help');
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should apply confident tone', async () => {
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.tone).toBe('confident');
-          return true;
-        })
-        .reply(200, {
-          improvements: [
-            {
-              text: 'We will definitely deliver on time',
-              target_language: 'en-US',
-            },
-          ],
-        });
-
-      const result = await writeService.improve('We hope to deliver on time', {
-        targetLang: 'en-US',
+        input: 'We can help with that',
+        output: 'We would love to help you with that!',
+        expectedSubstring: 'love to help',
+        checkNoWritingStyle: true,
+      },
+      {
         tone: 'confident',
-      });
-
-      expect(result[0]?.text).toContain('will definitely');
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should apply diplomatic tone', async () => {
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.tone).toBe('diplomatic');
-          return true;
-        })
-        .reply(200, {
-          improvements: [
-            {
-              text: 'We respectfully suggest considering an alternative approach',
-              target_language: 'en-US',
-            },
-          ],
-        });
-
-      await writeService.improve('Your approach might not work', {
-        targetLang: 'en-US',
+        input: 'We hope to deliver on time',
+        output: 'We will definitely deliver on time',
+        expectedSubstring: 'will definitely',
+        checkNoWritingStyle: false,
+      },
+      {
         tone: 'diplomatic',
-      });
-
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should apply enthusiastic tone', async () => {
+        input: 'Your approach might not work',
+        output: 'We respectfully suggest considering an alternative approach',
+        expectedSubstring: undefined,
+        checkNoWritingStyle: false,
+      },
+      {
+        tone: 'enthusiastic',
+        input: 'This is good news',
+        output: 'This is fantastic news!',
+        expectedSubstring: undefined,
+        checkNoWritingStyle: false,
+      },
+    ])('should apply $tone tone', async ({ tone, input, output, expectedSubstring, checkNoWritingStyle }) => {
+      const toneValue = tone as WriteTone;
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
-          expect(body.tone).toBe('enthusiastic');
+          expect(body.tone).toBe(toneValue);
+          if (checkNoWritingStyle) {
+            expect(body.writing_style).toBeUndefined();
+          }
           return true;
         })
         .reply(200, {
-          improvements: [
-            {
-              text: 'This is fantastic news!',
-              target_language: 'en-US',
-            },
-          ],
+          improvements: [{ text: output, target_language: 'en-US' }],
         });
 
-      await writeService.improve('This is good news', {
+      const result = await writeService.improve(input, {
         targetLang: 'en-US',
-        tone: 'enthusiastic',
+        tone: toneValue,
       });
 
+      if (expectedSubstring !== undefined) {
+        expect(result[0]?.text).toContain(expectedSubstring);
+      }
       expect(scope.isDone()).toBe(true);
     });
   });
 
   describe('improve() - Different Languages', () => {
-    it('should improve German text', async () => {
+    it.each([
+      {
+        lang: 'de',
+        label: 'German',
+        input: 'Ich möchte das kaufen',
+        output: 'Ich würde das gerne kaufen',
+        expectedExact: 'Ich würde das gerne kaufen',
+      },
+      {
+        lang: 'fr',
+        label: 'French',
+        input: 'Je veux acheter ça',
+        output: 'Je voudrais acheter cela',
+        expectedExact: undefined,
+      },
+      {
+        lang: 'es',
+        label: 'Spanish',
+        input: 'Quiero comprar esto',
+        output: 'Me gustaría comprar esto',
+        expectedExact: undefined,
+      },
+      {
+        lang: 'en-GB',
+        label: 'British English',
+        input: 'I want to buy this',
+        output: 'I should like to purchase this item',
+        expectedExact: undefined,
+      },
+    ])('should improve $label text', async ({ lang, input, output, expectedExact }) => {
+      const targetLang = lang as WriteLanguage;
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
-          expect(body.target_lang).toBe('de');
-          expect(body.text).toBe('Ich möchte das kaufen');
+          expect(body.target_lang).toBe(targetLang);
           return true;
         })
         .reply(200, {
-          improvements: [
-            {
-              text: 'Ich würde das gerne kaufen',
-              target_language: 'de',
-            },
-          ],
+          improvements: [{ text: output, target_language: targetLang }],
         });
 
-      const result = await writeService.improve('Ich möchte das kaufen', {
-        targetLang: 'de',
-      });
+      const result = await writeService.improve(input, { targetLang });
 
-      expect(result[0]?.text).toBe('Ich würde das gerne kaufen');
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should improve French text', async () => {
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.target_lang).toBe('fr');
-          return true;
-        })
-        .reply(200, {
-          improvements: [
-            {
-              text: 'Je voudrais acheter cela',
-              target_language: 'fr',
-            },
-          ],
-        });
-
-      await writeService.improve('Je veux acheter ça', { targetLang: 'fr' });
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should improve Spanish text', async () => {
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.target_lang).toBe('es');
-          return true;
-        })
-        .reply(200, {
-          improvements: [
-            {
-              text: 'Me gustaría comprar esto',
-              target_language: 'es',
-            },
-          ],
-        });
-
-      await writeService.improve('Quiero comprar esto', { targetLang: 'es' });
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should improve British English text', async () => {
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.target_lang).toBe('en-GB');
-          return true;
-        })
-        .reply(200, {
-          improvements: [
-            {
-              text: 'I should like to purchase this item',
-              target_language: 'en-GB',
-            },
-          ],
-        });
-
-      await writeService.improve('I want to buy this', { targetLang: 'en-GB' });
+      if (expectedExact !== undefined) {
+        expect(result[0]?.text).toBe(expectedExact);
+      }
       expect(scope.isDone()).toBe(true);
     });
   });
