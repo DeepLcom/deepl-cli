@@ -35,14 +35,22 @@ describe('DeepLClient', () => {
       expect(client).toBeInstanceOf(DeepLClient);
     });
 
-    it('should use free API endpoint by default', () => {
+    it('should use free API endpoint by default', async () => {
       const freeClient = new DeepLClient('test-key');
-      expect(freeClient).toBeDefined();
+      nock('https://api-free.deepl.com')
+        .post('/v2/translate')
+        .reply(200, { translations: [{ text: 'Hola' }] });
+      const result = await freeClient.translate('Hello', { targetLang: 'es' });
+      expect(result.text).toBe('Hola');
     });
 
-    it('should use pro API endpoint when specified', () => {
+    it('should use pro API endpoint when specified', async () => {
       const proClient = new DeepLClient('test-key', { usePro: true });
-      expect(proClient).toBeDefined();
+      nock('https://api.deepl.com')
+        .post('/v2/translate')
+        .reply(200, { translations: [{ text: 'Hola' }] });
+      const result = await proClient.translate('Hello', { targetLang: 'es' });
+      expect(result.text).toBe('Hola');
     });
 
     it('should throw error for invalid API key', () => {
@@ -927,12 +935,12 @@ describe('DeepLClient', () => {
   describe('configuration', () => {
     it('should allow custom timeout', () => {
       const customClient = new DeepLClient(apiKey, { timeout: 5000 });
-      expect(customClient).toBeDefined();
+      expect(customClient).toBeInstanceOf(DeepLClient);
     });
 
     it('should allow custom max retries', () => {
       const customClient = new DeepLClient(apiKey, { maxRetries: 5 });
-      expect(customClient).toBeDefined();
+      expect(customClient).toBeInstanceOf(DeepLClient);
     });
 
     it('should respect custom maxRetries setting', async () => {
@@ -980,11 +988,15 @@ describe('DeepLClient', () => {
       expect(nock.isDone()).toBe(true);
     });
 
-    it('should allow custom base URL', () => {
+    it('should allow custom base URL', async () => {
       const customClient = new DeepLClient(apiKey, {
         baseUrl: 'https://custom.api.com',
       });
-      expect(customClient).toBeDefined();
+      nock('https://custom.api.com')
+        .post('/v2/translate')
+        .reply(200, { translations: [{ text: 'Hola' }] });
+      const result = await customClient.translate('Hello', { targetLang: 'es' });
+      expect(result.text).toBe('Hola');
     });
 
     it('should allow HTTP proxy configuration', () => {
@@ -995,7 +1007,7 @@ describe('DeepLClient', () => {
           port: 8080,
         },
       });
-      expect(proxyClient).toBeDefined();
+      expect(proxyClient).toBeInstanceOf(DeepLClient);
     });
 
     it('should allow HTTPS proxy configuration', () => {
@@ -1006,7 +1018,7 @@ describe('DeepLClient', () => {
           port: 8443,
         },
       });
-      expect(proxyClient).toBeDefined();
+      expect(proxyClient).toBeInstanceOf(DeepLClient);
     });
 
     it('should allow proxy configuration with authentication', () => {
@@ -1021,20 +1033,20 @@ describe('DeepLClient', () => {
           },
         },
       });
-      expect(proxyClient).toBeDefined();
+      expect(proxyClient).toBeInstanceOf(DeepLClient);
     });
 
     it('should allow proxy configuration from environment variables', () => {
       process.env['HTTP_PROXY'] = 'http://proxy.example.com:8080';
       const proxyClient = new DeepLClient(apiKey);
-      expect(proxyClient).toBeDefined();
+      expect(proxyClient).toBeInstanceOf(DeepLClient);
       delete process.env['HTTP_PROXY'];
     });
 
     it('should allow proxy configuration from HTTPS_PROXY environment variable', () => {
       process.env['HTTPS_PROXY'] = 'https://proxy.example.com:8443';
       const proxyClient = new DeepLClient(apiKey);
-      expect(proxyClient).toBeDefined();
+      expect(proxyClient).toBeInstanceOf(DeepLClient);
       delete process.env['HTTPS_PROXY'];
     });
 
