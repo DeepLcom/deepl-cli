@@ -459,6 +459,12 @@ export class TranslationService {
       formality: options.formality,      // 4. Formality level
       glossaryId: options.glossaryId,    // 5. Glossary ID
       context: options.context,          // 6. Context hint
+      modelType: options.modelType,      // 7. Model type affects output quality
+      splitSentences: options.splitSentences, // 8. Sentence splitting behavior
+      tagHandling: options.tagHandling,  // 9. HTML/XML processing
+      tagHandlingVersion: options.tagHandlingVersion, // 10. Tag handling version
+      customInstructions: options.customInstructions, // 11. Custom instructions
+      styleId: options.styleId,          // 12. Style rules
       // Note: preserveFormatting doesn't affect translation output, so not cached
     };
 

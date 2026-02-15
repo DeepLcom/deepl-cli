@@ -318,6 +318,12 @@ export class StructuredFileTranslationService {
 
       if (batch.length > 0 && batchBytes + strBytes > MAX_TEXT_BYTES) {
         const batchResults = await this.translationService.translateBatch(batch, options);
+        if (batchResults.length !== batch.length) {
+          throw new Error(
+            `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
+            'Aborting to prevent misaligned output.'
+          );
+        }
         for (const r of batchResults) {
           results.push(r.text);
         }
@@ -331,6 +337,12 @@ export class StructuredFileTranslationService {
 
     if (batch.length > 0) {
       const batchResults = await this.translationService.translateBatch(batch, options);
+      if (batchResults.length !== batch.length) {
+        throw new Error(
+          `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
+          'Aborting to prevent misaligned output.'
+        );
+      }
       for (const r of batchResults) {
         results.push(r.text);
       }
