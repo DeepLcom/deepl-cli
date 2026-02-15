@@ -708,6 +708,77 @@ describe('CacheService', () => {
     });
   });
 
+  describe('corruption recovery', () => {
+    it('should recover from a corrupt database file', () => {
+      cacheService.close();
+
+      // Write garbage bytes to the database file
+      fs.writeFileSync(testCachePath, 'THIS IS NOT A VALID SQLITE DATABASE');
+
+      const recovered = new CacheService({ dbPath: testCachePath });
+      expect(recovered).toBeInstanceOf(CacheService);
+
+      // Should work normally after recovery
+      recovered.set('key', { text: 'Hello' });
+      expect(recovered.get('key')).toEqual({ text: 'Hello' });
+
+      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('Cache database corrupted'));
+
+      recovered.close();
+    });
+
+    it('should clean up WAL and SHM files during recovery', () => {
+      cacheService.close();
+
+      // Create WAL and SHM files alongside the corrupt DB
+      fs.writeFileSync(testCachePath, 'CORRUPT');
+      fs.writeFileSync(testCachePath + '-wal', 'OLD WAL GARBAGE DATA');
+      fs.writeFileSync(testCachePath + '-shm', 'OLD SHM GARBAGE DATA');
+
+      const recovered = new CacheService({ dbPath: testCachePath });
+
+      // Old corrupt WAL/SHM content should be gone (SQLite may recreate fresh ones)
+      if (fs.existsSync(testCachePath + '-wal')) {
+        expect(fs.readFileSync(testCachePath + '-wal', 'utf8')).not.toBe('OLD WAL GARBAGE DATA');
+      }
+      if (fs.existsSync(testCachePath + '-shm')) {
+        expect(fs.readFileSync(testCachePath + '-shm', 'utf8')).not.toBe('OLD SHM GARBAGE DATA');
+      }
+
+      // DB should be functional
+      recovered.set('test', { value: 1 });
+      expect(recovered.get('test')).toEqual({ value: 1 });
+
+      recovered.close();
+    });
+
+    it('should throw original error if recreation also fails', () => {
+      cacheService.close();
+
+      // Write corrupt data
+      fs.writeFileSync(testCachePath, 'CORRUPT');
+
+      // Make the directory read-only so recreation fails
+      const readOnlyDir = path.join(os.tmpdir(), `deepl-cli-readonly-${Date.now()}`);
+      fs.mkdirSync(readOnlyDir, { recursive: true });
+      const readOnlyPath = path.join(readOnlyDir, 'subdir', 'cache.db');
+
+      // Create a corrupt file at a location where recreation will also fail
+      fs.mkdirSync(path.join(readOnlyDir, 'subdir'), { recursive: true });
+      fs.writeFileSync(readOnlyPath, 'CORRUPT');
+      // Make directory read-only to prevent recreation
+      fs.chmodSync(path.join(readOnlyDir, 'subdir'), 0o444);
+
+      try {
+        expect(() => new CacheService({ dbPath: readOnlyPath })).toThrow();
+      } finally {
+        // Restore permissions for cleanup
+        fs.chmodSync(path.join(readOnlyDir, 'subdir'), 0o755);
+        fs.rmSync(readOnlyDir, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('cache size tracking (Issue #5)', () => {
     it('should maintain accurate cache size in memory', () => {
       // Add entries

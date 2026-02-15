@@ -37,7 +37,7 @@ const CLEANUP_INTERVAL = 60_000; // 60 seconds
 export class CacheService {
   private static instance: CacheService | null = null;
   private static handlersRegistered: boolean = false;
-  private db: Database.Database;
+  private db!: Database.Database;
   private maxSize: number;
   private ttl: number;
   private enabled: boolean = true;
@@ -55,12 +55,28 @@ export class CacheService {
     this.maxSize = options.maxSize ?? DEFAULT_MAX_SIZE;
     this.ttl = options.ttl ?? DEFAULT_TTL;
 
-    // Ensure directory exists with restrictive permissions
+    try {
+      this.openDatabase(dbPath);
+    } catch (error) {
+      Logger.warn(`Cache database corrupted, recreating: ${(error as Error).message}`);
+      try {
+        if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+        for (const suffix of ['-wal', '-shm']) {
+          const f = dbPath + suffix;
+          if (fs.existsSync(f)) fs.unlinkSync(f);
+        }
+        this.openDatabase(dbPath);
+      } catch {
+        throw error;
+      }
+    }
+  }
+
+  private openDatabase(dbPath: string): void {
     const dir = path.dirname(dbPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     }
-
     this.db = new Database(dbPath);
     fs.chmodSync(dbPath, 0o600);
     this.initialize();
