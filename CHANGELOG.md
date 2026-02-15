@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Clean up test suite: remove ~106 duplicate/redundant/trivial tests and consolidate ~120 into `it.each` blocks across 26 files — reduces test LOC by ~2,000 lines while maintaining 94.12% coverage and 3,021 passing tests
+
 ### Added
 - Add integration tests for watch `--auto-commit` git operations — verifies `git add`/`git commit` in a real temp repo, covers happy path, multi-file, not-a-git-repo, no output files, and commit failure
 - Add E2E tests for `deepl hooks install/uninstall/list/path` — verifies CLI-to-filesystem wiring in a real git repo
