@@ -113,8 +113,8 @@ export function makeRunCLI(configDir: string, defaultOptions: CLIRunOptions = {}
       return { status: 0, output };
     } catch (error: any) {
       return {
-        status: error.status ?? 1,
-        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
+        status: error.status || 1,
+        output: error.stderr?.toString() || error.stdout?.toString() || '',
       };
     }
   }
@@ -125,17 +125,17 @@ export function makeRunCLI(configDir: string, defaultOptions: CLIRunOptions = {}
   function runCLIWithStdin(command: string, stdin: string, options: CLIRunOptions = {}): CLIErrorResult {
     const merged = mergeOptions(options);
     try {
-      const output = execSync(`echo "${stdin}" | ${command}`, {
+      const output = execSync(command, {
         encoding: 'utf-8',
-        shell: '/bin/bash',
+        input: stdin,
         env: buildEnv(configDir, merged),
         ...(merged.timeout ? { timeout: merged.timeout } : {}),
       });
       return { status: 0, output };
     } catch (error: any) {
       return {
-        status: error.status ?? 1,
-        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
+        status: error.status || 1,
+        output: error.stderr?.toString() || error.stdout?.toString() || '',
       };
     }
   }
@@ -180,17 +180,17 @@ export function makeNodeRunCLI(configDir: string, defaultOptions: CLIRunOptions 
       return { status: 0, output };
     } catch (error: any) {
       return {
-        status: error.status ?? 1,
-        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
+        status: error.status || 1,
+        output: error.stderr?.toString() || error.stdout?.toString() || '',
       };
     }
   }
 
   function runCLIPipe(stdin: string, args: string, options: CLIRunOptions = {}): string {
     const merged = mergeOptions(options);
-    return execSync(`printf '%s' "${stdin}" | node ${cliPath} ${args}`, {
+    return execSync(`node ${cliPath} ${args}`, {
       encoding: 'utf-8',
-      shell: '/bin/bash',
+      input: stdin,
       env: buildEnv(configDir, merged),
       ...(merged.timeout ? { timeout: merged.timeout } : {}),
     });
@@ -199,17 +199,17 @@ export function makeNodeRunCLI(configDir: string, defaultOptions: CLIRunOptions 
   function runCLIWithStdin(args: string, stdin: string, options: CLIRunOptions = {}): CLIErrorResult {
     const merged = mergeOptions(options);
     try {
-      const output = execSync(`echo "${stdin}" | node ${cliPath} ${args}`, {
+      const output = execSync(`node ${cliPath} ${args}`, {
         encoding: 'utf-8',
-        shell: '/bin/bash',
+        input: stdin,
         env: buildEnv(configDir, merged),
         ...(merged.timeout ? { timeout: merged.timeout } : {}),
       });
       return { status: 0, output };
     } catch (error: any) {
       return {
-        status: error.status ?? 1,
-        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
+        status: error.status || 1,
+        output: error.stderr?.toString() || error.stdout?.toString() || '',
       };
     }
   }

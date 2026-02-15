@@ -34,4 +34,9 @@ export {
   createMockWriteService,
   createMockVoiceClient,
   createMockVoiceService,
+  createMockAdminService,
+  createMockUsageService,
+  createMockStyleRulesService,
+  createMockDetectService,
+  createMockLanguagesService,
 } from './mock-factories';
