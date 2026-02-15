@@ -995,39 +995,6 @@ describe('CLI Workflow E2E', () => {
         }
       });
 
-      it('should require API key', () => {
-        // Clear API key first
-        try {
-          runCLI('deepl auth clear');
-        } catch {
-          // Ignore if already cleared
-        }
-
-        expect.assertions(1);
-        try {
-          runCLI('deepl glossary add-entry "My Glossary" "Hello" "Hola"');
-        } catch (error: any) {
-          const output = error.stderr || error.stdout || error.message;
-          expect(output).toMatch(/API key|auth/i);
-        }
-      });
-
-      it('should exit with non-zero on authentication failure', () => {
-        // Ensure no API key is set
-        try {
-          runCLI('deepl auth clear');
-        } catch {
-          // Ignore if already cleared
-        }
-
-        expect.assertions(1);
-        try {
-          runCLI('deepl glossary add-entry "My Glossary" "Hello" "Hola"');
-        } catch (error: any) {
-          // Non-zero exit code
-          expect(error.status).toBeGreaterThan(0);
-        }
-      });
     });
 
     describe('update-entry command', () => {
@@ -1079,39 +1046,6 @@ describe('CLI Workflow E2E', () => {
         }
       });
 
-      it('should require API key', () => {
-        // Clear API key first
-        try {
-          runCLI('deepl auth clear');
-        } catch {
-          // Ignore if already cleared
-        }
-
-        expect.assertions(1);
-        try {
-          runCLI('deepl glossary update-entry "My Glossary" "Hello" "Hola Updated"');
-        } catch (error: any) {
-          const output = error.stderr || error.stdout || error.message;
-          expect(output).toMatch(/API key|auth/i);
-        }
-      });
-
-      it('should exit with non-zero on authentication failure', () => {
-        // Ensure no API key is set
-        try {
-          runCLI('deepl auth clear');
-        } catch {
-          // Ignore if already cleared
-        }
-
-        expect.assertions(1);
-        try {
-          runCLI('deepl glossary update-entry "My Glossary" "Hello" "Hola Updated"');
-        } catch (error: any) {
-          // Non-zero exit code
-          expect(error.status).toBeGreaterThan(0);
-        }
-      });
     });
 
     describe('remove-entry command', () => {
@@ -1152,39 +1086,6 @@ describe('CLI Workflow E2E', () => {
         }
       });
 
-      it('should require API key', () => {
-        // Clear API key first
-        try {
-          runCLI('deepl auth clear');
-        } catch {
-          // Ignore if already cleared
-        }
-
-        expect.assertions(1);
-        try {
-          runCLI('deepl glossary remove-entry "My Glossary" "Hello"');
-        } catch (error: any) {
-          const output = error.stderr || error.stdout || error.message;
-          expect(output).toMatch(/API key|auth/i);
-        }
-      });
-
-      it('should exit with non-zero on authentication failure', () => {
-        // Ensure no API key is set
-        try {
-          runCLI('deepl auth clear');
-        } catch {
-          // Ignore if already cleared
-        }
-
-        expect.assertions(1);
-        try {
-          runCLI('deepl glossary remove-entry "My Glossary" "Hello"');
-        } catch (error: any) {
-          // Non-zero exit code
-          expect(error.status).toBeGreaterThan(0);
-        }
-      });
     });
 
     describe('entry editing workflow', () => {

@@ -57,13 +57,6 @@ describe('TranslationService', () => {
       expect(translationService).toBeInstanceOf(TranslationService);
     });
 
-    it('should initialize with DeepLClient', () => {
-      expect(mockDeepLClient).toBeDefined();
-    });
-
-    it('should initialize with ConfigService', () => {
-      expect(mockConfigService).toBeDefined();
-    });
   });
 
   describe('translate()', () => {

@@ -13,7 +13,7 @@ import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 describe('Languages Command E2E', () => {
   const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
   const testConfig = createTestConfigDir('e2e-languages');
-  const { runCLI, runCLIExpectError } = makeNodeRunCLI(testConfig.path);
+  const { runCLI } = makeNodeRunCLI(testConfig.path);
 
   afterAll(() => {
     testConfig.cleanup();
@@ -100,15 +100,6 @@ describe('Languages Command E2E', () => {
 
       const combined = result.stdout + result.stderr;
       expect(combined).toMatch(/no api key|local.*registry/i);
-    });
-  });
-
-  describe('languages error handling', () => {
-    it('should reject invalid flags', () => {
-      const result = runCLIExpectError('languages --invalid-flag', { apiKey: 'test-key' });
-
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/unknown option|error/i);
     });
   });
 

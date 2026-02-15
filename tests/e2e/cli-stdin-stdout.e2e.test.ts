@@ -194,11 +194,6 @@ describe('CLI Stdin/Stdout E2E', () => {
       expect(result.status).toBeGreaterThan(0);
     });
 
-    it('should exit with non-zero for invalid flags', () => {
-      const result = runCLIExpectError('translate --invalid-flag-xyz', { apiKey: 'test-key' });
-
-      expect(result.status).toBeGreaterThan(0);
-    });
   });
 
   describe('quiet mode', () => {

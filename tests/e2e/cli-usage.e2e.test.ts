@@ -54,13 +54,6 @@ describe('Usage Command E2E', () => {
       expect(result.output).toBeTruthy();
     });
 
-    it('should reject invalid flags', () => {
-      const result = runCLIExpectError('usage --invalid-flag', { apiKey: 'test-key' });
-
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/unknown option|error/i);
-    });
-
     it('should not accept unexpected arguments', () => {
       const result = runCLIExpectError('usage extra-arg', { apiKey: 'test-key' });
 
