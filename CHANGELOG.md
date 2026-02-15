@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `examples/15-glossaries.sh`: add delay after glossary rename to allow API propagation
 
 ### Added
+- Support multi-target languages in directory translation (`deepl translate ./docs --to es,fr,de --output ./out/`)
 - Audit and expand all 27 example scripts to cover missing CLI flags and commands:
   - Renumber examples to match `deepl --help` group ordering (Core Commands → Resources → Workflow → Configuration → Information → Administration)
   - Add new `25-detect.sh` example for language detection (text, stdin, file, JSON output, detect-then-translate scripting)
@@ -40,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fix `examples/22-style-rules.sh`: correct 0-based pagination (`--page 0`), fix step numbering (3→6), and extract style rule language from JSON instead of hardcoding `--to de`
+- Fix `--no-recursive` flag not recognized in directory translation — Commander.js requires `--no-` prefix form for boolean negation
 - Fix nock v14 `replyWithError` async socket errors leaking across tests — add global `nock.abortPendingRequests()` cleanup and use no-retry client in write integration network error test
 - Fix XDG empty string handling — empty `XDG_CONFIG_HOME`/`XDG_CACHE_HOME` env vars now treated as unset per XDG spec, instead of producing relative paths
 - Fix `runExpectError()` in hooks E2E tests returning empty output when stderr is redirected to stdout

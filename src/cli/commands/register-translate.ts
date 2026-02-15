@@ -41,7 +41,7 @@ export function registerTranslate(
     .option('--non-splitting-tags <tags>', 'Comma-separated XML tags that should not be used to split sentences (requires --tag-handling xml)')
     .option('--ignore-tags <tags>', 'Comma-separated XML tags with content to ignore (requires --tag-handling xml)')
     .optionsGroup('File/Directory Options:')
-    .option('--recursive', 'Process subdirectories recursively (default: true)', true)
+    .option('--no-recursive', 'Do not recurse into subdirectories')
     .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
     .option('--concurrency <number>', 'Number of parallel translations (default: 5)', parseInt)
     .option('--dry-run', 'Show what would be translated without performing the operation')

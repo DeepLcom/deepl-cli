@@ -16,6 +16,25 @@ export class DirectoryTranslationHandler {
     const supported = new Set(['from', 'formality']);
     warnIgnoredOptions('directory', options, supported);
 
+    if (options.to.includes(',')) {
+      const targetLangs = options.to.split(',').map(lang => lang.trim());
+      validateLanguageCodes(targetLangs);
+
+      const allOutputs: string[] = [];
+
+      for (const lang of targetLangs) {
+        const singleOptions = { ...options, to: lang };
+        const result = await this.translateSingleTarget(dirPath, singleOptions);
+        allOutputs.push(`[${lang}]\n${result}`);
+      }
+
+      return allOutputs.join('\n\n');
+    }
+
+    return this.translateSingleTarget(dirPath, options);
+  }
+
+  private async translateSingleTarget(dirPath: string, options: TranslateOptions): Promise<string> {
     validateLanguageCodes([options.to]);
 
     const translationOptions = buildTranslationOptions(options);
@@ -27,7 +46,7 @@ export class DirectoryTranslationHandler {
     process.on('SIGINT', onAbort);
 
     const batchOptions = {
-      outputDir: options.output,
+      outputDir: options.output!,
       recursive: options.recursive !== false,
       pattern: options.pattern,
       abortSignal: controller.signal,
