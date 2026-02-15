@@ -1,5 +1,6 @@
 import nock from 'nock';
 import { HttpClient } from '../../src/api/http-client';
+import { NetworkError } from '../../src/utils/errors';
 
 class TestHttpClient extends HttpClient {
   async get<T>(path: string, params?: Record<string, unknown>): Promise<T> {
@@ -217,6 +218,74 @@ describe('HttpClient', () => {
 
       await expect(client.get('/v2/test')).rejects.toThrow('Authentication failed');
       expect(sleepSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('retry error wrapping (W6)', () => {
+    it('should throw NetworkError after retry exhaustion on 500', async () => {
+      nock(baseUrl)
+        .get('/v2/test')
+        .times(4)
+        .reply(500, { message: 'Internal Server Error' });
+
+      await expect(client.get('/v2/test')).rejects.toThrow(NetworkError);
+      expect(sleepSpy).toHaveBeenCalledTimes(3);
+    });
+
+    it('should wrap retry-exhausted errors through handleError', async () => {
+      nock(baseUrl)
+        .get('/v2/test')
+        .times(4)
+        .reply(500, { message: 'Internal Server Error' });
+
+      await expect(client.get('/v2/test')).rejects.toThrow(/Server error \(500\)/);
+    });
+  });
+
+  describe('5xx error mapping (W7)', () => {
+    it('should map 500 to NetworkError with status in message', async () => {
+      nock(baseUrl)
+        .get('/v2/test')
+        .times(4)
+        .reply(500, { message: 'Internal Server Error' });
+
+      try {
+        await client.get('/v2/test');
+        fail('Expected error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(NetworkError);
+        expect((error as Error).message).toContain('500');
+      }
+    });
+
+    it('should map 502 to NetworkError with status in message', async () => {
+      nock(baseUrl)
+        .get('/v2/test')
+        .times(4)
+        .reply(502, { message: 'Bad Gateway' });
+
+      try {
+        await client.get('/v2/test');
+        fail('Expected error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(NetworkError);
+        expect((error as Error).message).toContain('502');
+      }
+    });
+
+    it('should still map 503 to the specific service unavailable message', async () => {
+      nock(baseUrl)
+        .get('/v2/test')
+        .times(4)
+        .reply(503, { message: 'Service Unavailable' });
+
+      try {
+        await client.get('/v2/test');
+        fail('Expected error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(NetworkError);
+        expect((error as Error).message).toContain('Service temporarily unavailable');
+      }
     });
   });
 });

@@ -52,38 +52,42 @@ export class HttpClient {
   protected maxRetries: number;
   protected _lastTraceId?: string;
 
+  private static parseProxyFromEnv(): ProxyConfig | undefined {
+    const httpProxy = process.env['HTTP_PROXY'] ?? process.env['http_proxy'];
+    const httpsProxy = process.env['HTTPS_PROXY'] ?? process.env['https_proxy'];
+    const proxyUrl = httpsProxy ?? httpProxy;
+
+    if (!proxyUrl) return undefined;
+
+    try {
+      const url = new URL(proxyUrl);
+      const config: ProxyConfig = {
+        protocol: url.protocol.replace(':', '') as 'http' | 'https',
+        host: url.hostname,
+        port: parseInt(url.port || (url.protocol === 'https:' ? '443' : '80'), 10),
+      };
+
+      if (url.username && url.password) {
+        config.auth = {
+          username: url.username,
+          password: url.password,
+        };
+      }
+
+      return config;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new ConfigError(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
+    }
+  }
+
   static validateConfig(apiKey: string, options: DeepLClientOptions = {}): void {
     if (!apiKey || apiKey.trim() === '') {
       throw new AuthError('API key is required');
     }
 
-    let proxyConfig = options.proxy;
-
-    if (!proxyConfig) {
-      const httpProxy = process.env['HTTP_PROXY'] ?? process.env['http_proxy'];
-      const httpsProxy = process.env['HTTPS_PROXY'] ?? process.env['https_proxy'];
-      const proxyUrl = httpsProxy ?? httpProxy;
-
-      if (proxyUrl) {
-        try {
-          const url = new URL(proxyUrl);
-          proxyConfig = {
-            protocol: url.protocol.replace(':', '') as 'http' | 'https',
-            host: url.hostname,
-            port: parseInt(url.port || (url.protocol === 'https:' ? '443' : '80'), 10),
-          };
-
-          if (url.username && url.password) {
-            proxyConfig.auth = {
-              username: url.username,
-              password: url.password,
-            };
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          throw new ConfigError(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
-        }
-      }
+    if (!options.proxy) {
+      HttpClient.parseProxyFromEnv();
     }
   }
 
@@ -118,34 +122,7 @@ export class HttpClient {
       }),
     };
 
-    let proxyConfig = options.proxy;
-
-    if (!proxyConfig) {
-      const httpProxy = process.env['HTTP_PROXY'] ?? process.env['http_proxy'];
-      const httpsProxy = process.env['HTTPS_PROXY'] ?? process.env['https_proxy'];
-      const proxyUrl = httpsProxy ?? httpProxy;
-
-      if (proxyUrl) {
-        try {
-          const url = new URL(proxyUrl);
-          proxyConfig = {
-            protocol: url.protocol.replace(':', '') as 'http' | 'https',
-            host: url.hostname,
-            port: parseInt(url.port || (url.protocol === 'https:' ? '443' : '80'), 10),
-          };
-
-          if (url.username && url.password) {
-            proxyConfig.auth = {
-              username: url.username,
-              password: url.password,
-            };
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          throw new ConfigError(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
-        }
-      }
-    }
+    const proxyConfig = options.proxy ?? HttpClient.parseProxyFromEnv();
 
     if (proxyConfig) {
       axiosConfig['proxy'] = {
@@ -289,7 +266,7 @@ export class HttpClient {
       }
     }
 
-    throw lastError;
+    throw lastError ? this.handleError(lastError) : new NetworkError('Request failed after retries');
   }
 
   protected handleError(error: unknown): Error {
@@ -310,6 +287,9 @@ export class HttpClient {
         case 503:
           return new NetworkError(`Service temporarily unavailable: Please try again later${traceIdSuffix}`);
         default:
+          if (status && status >= 500) {
+            return new NetworkError(`Server error (${status}): ${message}${traceIdSuffix}`);
+          }
           if (!error.response && this.isNetworkLevelError(error)) {
             return new NetworkError(`Network error: ${error.message}`);
           }
