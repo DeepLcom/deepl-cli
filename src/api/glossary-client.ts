@@ -106,7 +106,7 @@ export class GlossaryClient extends HttpClient {
   ): Promise<string> {
     this.validateGlossaryId(glossaryId);
     try {
-      const response = await this.makeJsonRequest<{
+      const response = await this.makeRequest<{
         dictionaries: Array<{
           source_lang: string;
           target_lang: string;

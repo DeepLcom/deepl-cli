@@ -93,6 +93,8 @@ echo
 echo "7. Rename glossary"
 deepl glossary rename tech-terms-demo tech-terms-renamed
 echo "✓ Renamed tech-terms-demo to tech-terms-renamed"
+echo "   (waiting for API propagation...)"
+sleep 2
 echo
 
 # Example 8: Verify rename
