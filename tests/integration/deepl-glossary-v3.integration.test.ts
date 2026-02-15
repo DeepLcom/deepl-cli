@@ -378,6 +378,32 @@ describe('DeepLClient v3 Glossary Integration', () => {
         client.getGlossaryEntries('glossary-123', 'en', 'fr')
       ).rejects.toThrow();
     });
+
+    it('should use query params (not JSON body) for GET request', async () => {
+      const client = new DeepLClient(API_KEY);
+
+      const scope = nock(FREE_API_URL)
+        .get('/v3/glossaries/test-id/entries')
+        .query({
+          source_lang: 'EN',
+          target_lang: 'DE',
+        })
+        .reply(200, {
+          dictionaries: [
+            {
+              source_lang: 'EN',
+              target_lang: 'DE',
+              entries: 'Hello\tHallo\nGoodbye\tAuf Wiedersehen',
+              entries_format: 'tsv',
+            },
+          ],
+        });
+
+      const result = await client.getGlossaryEntries('test-id', 'en', 'de');
+
+      expect(result).toBe('Hello\tHallo\nGoodbye\tAuf Wiedersehen');
+      expect(scope.isDone()).toBe(true);
+    });
   });
 
   describe('updateGlossaryEntries() - v3 API', () => {

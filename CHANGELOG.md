@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix `getGlossaryEntries` to use `makeRequest` instead of `makeJsonRequest` for consistent GET request handling (query params instead of JSON body)
+- Fix `examples/15-glossaries.sh`: add delay after glossary rename to allow API propagation
+
 ### Added
 - Audit and expand all 27 example scripts to cover missing CLI flags and commands:
   - Renumber examples to match `deepl --help` group ordering (Core Commands → Resources → Workflow → Configuration → Information → Administration)
