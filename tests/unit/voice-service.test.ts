@@ -464,6 +464,8 @@ describe('VoiceService', () => {
       expect(mockClient.createSession).toHaveBeenCalledWith(
         expect.objectContaining({
           target_languages: ['de'],
+          formality: 'more',
+          glossary_id: 'glossary-123',
         }),
       );
     });

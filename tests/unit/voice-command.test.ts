@@ -934,13 +934,16 @@ describe('VoiceCommand', () => {
 
     it('should accept valid target language codes', async () => {
       mockService.translateFile.mockResolvedValue(mockResult);
-      await expect(command.translate('test.mp3', { to: 'de' })).resolves.toBeDefined();
+      const result = await command.translate('test.mp3', { to: 'de' });
+      expect(result).toContain('[de] Hallo Welt');
     });
 
     it('should accept regional target language variants', async () => {
       mockService.translateFile.mockResolvedValue(mockResult);
-      await expect(command.translate('test.mp3', { to: 'en-GB' })).resolves.toBeDefined();
-      await expect(command.translate('test.mp3', { to: 'pt-BR' })).resolves.toBeDefined();
+      const result1 = await command.translate('test.mp3', { to: 'en-GB' });
+      expect(result1).toContain('[source] Hello world');
+      const result2 = await command.translate('test.mp3', { to: 'pt-BR' });
+      expect(result2).toContain('[source] Hello world');
     });
 
     it('should reject invalid source language code', async () => {
@@ -951,9 +954,8 @@ describe('VoiceCommand', () => {
 
     it('should accept valid source language code', async () => {
       mockService.translateFile.mockResolvedValue(mockResult);
-      await expect(
-        command.translate('test.mp3', { to: 'de', from: 'en' }),
-      ).resolves.toBeDefined();
+      const result = await command.translate('test.mp3', { to: 'de', from: 'en' });
+      expect(result).toContain('[de] Hallo Welt');
     });
 
     it('should reject invalid content type', async () => {
@@ -964,9 +966,8 @@ describe('VoiceCommand', () => {
 
     it('should accept valid content type', async () => {
       mockService.translateFile.mockResolvedValue(mockResult);
-      await expect(
-        command.translate('test.mp3', { to: 'de', contentType: 'audio/mpeg' }),
-      ).resolves.toBeDefined();
+      const result = await command.translate('test.mp3', { to: 'de', contentType: 'audio/mpeg' });
+      expect(result).toContain('[de] Hallo Welt');
     });
 
     it('should validate language codes for translateFromStdin too', async () => {

@@ -415,10 +415,12 @@ describe('TranslateCommand', () => {
 
       const result = await translateCommand.translateText('Hello', {
         to: 'es',
+        format: 'json',
       });
 
-      // Should be able to parse as JSON when format is set
-      expect(result).toBeDefined();
+      const parsed = JSON.parse(result);
+      expect(parsed.text).toBe('Hola');
+      expect(parsed.targetLang).toBe('es');
     });
 
     it('should display source language when detected', async () => {
