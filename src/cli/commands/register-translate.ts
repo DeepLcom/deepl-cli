@@ -90,7 +90,6 @@ Examples:
       customInstruction?: string[];
       styleId?: string;
       enableBetaLanguages?: boolean;
-      noCache?: boolean;
       format?: string;
       apiUrl?: string;
       dryRun?: boolean;

@@ -186,6 +186,12 @@ describe('registerWrite', () => {
       }
     });
 
+    it('should warn when --backup is used without --fix', async () => {
+      mockWriteCommand.improve.mockResolvedValue('Improved text');
+      await program.parseAsync(['node', 'test', 'write', 'Some text', '--backup']);
+      expect(Logger.warn).toHaveBeenCalledWith('--backup has no effect without --fix');
+    });
+
     it('should reject unsupported format', async () => {
       await expect(
         program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'table']),

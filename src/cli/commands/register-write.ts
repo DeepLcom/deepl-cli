@@ -89,6 +89,10 @@ Examples:
           throw new ValidationError('--interactive is not supported in non-interactive mode. Remove --no-input or omit --interactive.');
         }
 
+        if (options.backup && !options.fix) {
+          Logger.warn('--backup has no effect without --fix');
+        }
+
         const writeCommand = await createWriteCommand(deps);
 
         const writeOptions = {
