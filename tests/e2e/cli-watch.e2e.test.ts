@@ -92,5 +92,46 @@ describe('Watch Command E2E', () => {
         expect(execError.status).toBeGreaterThan(0);
       }
     });
+
+    it('should show actionable error when --to is missing and no config default', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-e2e-'));
+      const { runCLIExpectError } = makeNodeRunCLI(testConfig.path);
+      try {
+        const { status, output } = runCLIExpectError(`watch ${tmpDir} --dry-run`);
+        expect(status).toBeGreaterThan(0);
+        expect(output).toContain('Target language is required');
+        expect(output).toContain('deepl config set');
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should use config default targetLangs when --to is not specified', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-e2e-'));
+      const configWithDefaults = {
+        auth: { apiKey: 'test-key:fx' },
+        api: { baseUrl: 'https://api-free.deepl.com', usePro: false },
+        defaults: { targetLangs: ['es', 'fr'], formality: 'default', preserveFormatting: true },
+        cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
+        output: { format: 'text', verbose: false, color: false },
+        watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
+      };
+
+      const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-config-'));
+      fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(configWithDefaults, null, 2));
+      fs.writeFileSync(path.join(tmpDir, 'test.md'), 'Hello');
+
+      const { runCLI: runWithConfig } = makeNodeRunCLI(configDir);
+
+      try {
+        const output = runWithConfig(`watch ${tmpDir} --dry-run`);
+        expect(output).toContain('[dry-run]');
+        expect(output).toContain('es');
+        expect(output).toContain('fr');
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+        fs.rmSync(configDir, { recursive: true, force: true });
+      }
+    });
   });
 });

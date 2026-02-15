@@ -16,7 +16,7 @@ export function registerWatch(
     .description('Watch files/directories for changes and auto-translate')
     .argument('<path>', 'File or directory path to watch')
     .optionsGroup('Core Options:')
-    .option('-t, --to <languages>', 'Target language(s), comma-separated (required)')
+    .option('-t, --to <languages>', 'Target language(s), comma-separated (uses config default if omitted)')
     .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
     .option('-o, --output <path>', 'Output directory (default: <path>/translations or same dir for files)')
     .optionsGroup('Translation Quality:')
@@ -53,7 +53,15 @@ Examples:
     }) => {
       try {
         if (!options.to) {
-          throw new ValidationError('required option --to <languages> not specified');
+          const configService = deps.getConfigService();
+          const targetLangs = configService.getValue<string[]>('defaults.targetLangs');
+          if (targetLangs && targetLangs.length > 0) {
+            options.to = targetLangs.join(',');
+          } else {
+            throw new ValidationError(
+              'Target language is required. Use --to <language> or set a default with: deepl config set defaults.targetLangs \'["es"]\'',
+            );
+          }
         }
 
         if (options.dryRun) {
