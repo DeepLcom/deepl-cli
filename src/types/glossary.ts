@@ -3,6 +3,7 @@
  */
 
 import { Language } from './common.js';
+import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
 
 /**
@@ -51,9 +52,13 @@ export function normalizeGlossaryInfo(response: GlossaryApiResponse): GlossaryIn
 
   // For v3 glossaries, there should be one source language
   // (but dictionaries might be empty if still processing)
-  const source_lang = sourceLangs.size > 0
-    ? Array.from(sourceLangs)[0]!
-    : 'en' as Language; // Fallback (shouldn't happen in practice)
+  let source_lang: Language;
+  if (sourceLangs.size > 0) {
+    source_lang = Array.from(sourceLangs)[0]!;
+  } else {
+    Logger.warn('Glossary has empty dictionaries; defaulting source language to "en"');
+    source_lang = 'en' as Language;
+  }
 
   return {
     ...response,

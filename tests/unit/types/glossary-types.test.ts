@@ -2,12 +2,66 @@
  * Tests for glossary type helpers
  */
 
+jest.mock('../../../src/utils/logger', () => ({
+  Logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    success: jest.fn(),
+    output: jest.fn(),
+  },
+}));
+
+import { Logger } from '../../../src/utils/logger';
 import {
   GlossaryInfo,
+  GlossaryApiResponse,
+  normalizeGlossaryInfo,
   isMultilingual,
   getTotalEntryCount,
   getTargetLang,
 } from '../../../src/types/glossary';
+
+describe('normalizeGlossaryInfo', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should warn and default to "en" when dictionaries are empty', () => {
+    const response: GlossaryApiResponse = {
+      glossary_id: 'test-123',
+      name: 'Empty Glossary',
+      dictionaries: [],
+      creation_time: '2025-10-13T10:00:00Z',
+    };
+
+    const result = normalizeGlossaryInfo(response);
+
+    expect(result.source_lang).toBe('en');
+    expect(result.target_langs).toEqual([]);
+    expect(Logger.warn).toHaveBeenCalledWith(
+      'Glossary has empty dictionaries; defaulting source language to "en"'
+    );
+  });
+
+  it('should not warn when dictionaries are present', () => {
+    const response: GlossaryApiResponse = {
+      glossary_id: 'test-123',
+      name: 'Valid Glossary',
+      dictionaries: [{
+        source_lang: 'en',
+        target_lang: 'es',
+        entry_count: 5,
+      }],
+      creation_time: '2025-10-13T10:00:00Z',
+    };
+
+    const result = normalizeGlossaryInfo(response);
+
+    expect(result.source_lang).toBe('en');
+    expect(Logger.warn).not.toHaveBeenCalled();
+  });
+});
 
 describe('Glossary Type Helpers', () => {
   describe('isMultilingual', () => {

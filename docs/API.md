@@ -820,6 +820,8 @@ deepl voice [options] <file>
 | `--source-language-mode <mode>` | | Source language detection mode: `auto`, `fixed` | - |
 | `--format <format>` | | Output format: `text`, `json` | `text` |
 
+> **Note:** The voice API accepts `formal`/`informal` as formality values (in addition to `more`/`less`), while the translate API uses `prefer_more`/`prefer_less`. This reflects the underlying DeepL API differences between the voice and text translation endpoints.
+
 #### Supported Audio Formats
 
 | Extension | Content Type |
