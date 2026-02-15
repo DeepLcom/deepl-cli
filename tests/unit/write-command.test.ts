@@ -169,6 +169,11 @@ describe('WriteCommand', () => {
         });
 
         expect(result).toBe('We are pleased to inform you.');
+        expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
+          'We want to tell you.',
+          { targetLang: 'en-US', writingStyle: 'business' },
+          { skipCache: undefined }
+        );
       });
 
       it('should apply academic writing style', async () => {
@@ -185,6 +190,11 @@ describe('WriteCommand', () => {
         });
 
         expect(result).toContain('demonstrates');
+        expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
+          'This shows it works.',
+          { targetLang: 'en-US', writingStyle: 'academic' },
+          { skipCache: undefined }
+        );
       });
 
       it('should apply casual writing style', async () => {
@@ -201,6 +211,11 @@ describe('WriteCommand', () => {
         });
 
         expect(result).toContain('cool');
+        expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
+          'That is interesting.',
+          { targetLang: 'en-US', writingStyle: 'casual' },
+          { skipCache: undefined }
+        );
       });
     });
 
@@ -495,7 +510,11 @@ describe('WriteCommand', () => {
 
         await writeCommand.improveFile(testFile, { lang: 'en-US' });
 
-        expect(mockWriteService.getBestImprovement).toHaveBeenCalled();
+        expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
+          'Plain text content',
+          { targetLang: 'en-US' },
+          { skipCache: undefined }
+        );
       });
 
       it('should handle .md files', async () => {
@@ -511,7 +530,11 @@ describe('WriteCommand', () => {
 
         await writeCommand.improveFile(testFile, { lang: 'en-US' });
 
-        expect(mockWriteService.getBestImprovement).toHaveBeenCalled();
+        expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
+          '# Original Heading',
+          { targetLang: 'en-US' },
+          { skipCache: undefined }
+        );
       });
     });
   });
@@ -961,6 +984,56 @@ describe('WriteCommand', () => {
         'string error'
       );
       expect(mockLogger.verbose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw when all style variants fail', async () => {
+      mockWriteService.improve
+        .mockRejectedValueOnce(new Error('API error'))
+        .mockRejectedValueOnce(new Error('API error'))
+        .mockRejectedValueOnce(new Error('API error'))
+        .mockRejectedValueOnce(new Error('API error'));
+
+      await expect(
+        writeCommand.improveInteractive('Original text.', { lang: 'en-US' })
+      ).rejects.toThrow('No improvements could be generated');
+    });
+
+    it('should use single style path when tone is specified', async () => {
+      const mockImprovements: WriteImprovement[] = [
+        { text: 'Enthusiastic improvement!', targetLanguage: 'en-US' },
+      ];
+
+      mockWriteService.improve.mockResolvedValue(mockImprovements);
+      mockSelect.mockResolvedValue(0);
+
+      const result = await writeCommand.improveInteractive('Original text.', {
+        lang: 'en-US',
+        tone: 'enthusiastic',
+      });
+
+      expect(mockWriteService.improve).toHaveBeenCalledTimes(1);
+      expect(mockWriteService.improve).toHaveBeenCalledWith(
+        'Original text.',
+        { targetLang: 'en-US', tone: 'enthusiastic' },
+        { skipCache: undefined }
+      );
+      expect(result).toBe('Enthusiastic improvement!');
+    });
+
+    it('should return original text when user selects keep original with tone specified', async () => {
+      const mockImprovements: WriteImprovement[] = [
+        { text: 'Improved.', targetLanguage: 'en-US' },
+      ];
+
+      mockWriteService.improve.mockResolvedValue(mockImprovements);
+      mockSelect.mockResolvedValue(-1);
+
+      const result = await writeCommand.improveInteractive('Original text.', {
+        lang: 'en-US',
+        tone: 'friendly',
+      });
+
+      expect(result).toBe('Original text.');
     });
   });
 
