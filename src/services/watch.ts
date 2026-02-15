@@ -24,7 +24,7 @@ export interface WatchOptions {
   targetLangs: readonly Language[];
   outputDir: string;
   sourceLang?: Language;
-  formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less';
+  formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less' | 'formal' | 'informal';
   glossaryId?: string;
   preserveCode?: boolean;
   pattern?: string;

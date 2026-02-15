@@ -36,7 +36,7 @@ export function registerVoice(
     .requiredOption('-t, --to <languages>', 'Target language(s), comma-separated, max 5')
     .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
     .optionsGroup('Translation Quality:')
-    .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'formal', 'more', 'informal', 'less']))
+    .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'formal', 'more', 'informal', 'less', 'prefer_more', 'prefer_less']))
     .addOption(new Option('--source-language-mode <mode>', 'Source language detection mode').choices(['auto', 'fixed']))
     .option('--glossary <id>', 'Glossary ID to use for translation')
     .optionsGroup('Streaming & Audio:')

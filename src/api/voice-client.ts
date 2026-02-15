@@ -14,6 +14,7 @@ import type {
   VoiceStreamCallbacks,
 } from '../types/voice.js';
 import { AuthError, VoiceError } from '../utils/errors.js';
+import { normalizeFormality } from '../utils/formality.js';
 
 const PRO_API_URL = 'https://api.deepl.com';
 const WS_HIGH_WATER_MARK = 1024 * 1024; // 1 MiB
@@ -31,7 +32,7 @@ export class VoiceClient extends HttpClient {
       };
       if (request.source_language !== undefined) { body['source_language'] = request.source_language; }
       if (request.source_language_mode !== undefined) { body['source_language_mode'] = request.source_language_mode; }
-      if (request.formality !== undefined) { body['formality'] = request.formality; }
+      if (request.formality !== undefined) { body['formality'] = normalizeFormality(request.formality, 'voice'); }
       if (request.glossary_id !== undefined) { body['glossary_id'] = request.glossary_id; }
       return await this.makeJsonRequest<VoiceSessionResponse>(
         'POST',

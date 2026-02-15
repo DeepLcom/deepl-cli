@@ -1,6 +1,7 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { DocumentTranslationOptions, DocumentHandle, DocumentStatus } from '../types';
 import { ValidationError } from '../utils/errors.js';
+import { normalizeFormality } from '../utils/formality.js';
 
 interface DeepLDocumentUploadResponse {
   document_id: string;
@@ -47,7 +48,7 @@ export class DocumentClient extends HttpClient {
             formData.append('source_lang', this.normalizeLanguage(options.sourceLang).toUpperCase());
           }
           if (options.formality) {
-            formData.append('formality', options.formality);
+            formData.append('formality', normalizeFormality(options.formality, 'text'));
           }
           if (options.glossaryId) {
             formData.append('glossary_id', options.glossaryId);

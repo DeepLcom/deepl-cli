@@ -105,7 +105,7 @@ export type VoiceSourceMediaContentType =
 export type VoiceSourceLanguageMode = 'auto' | 'fixed';
 
 // Voice-specific formality values (differs from text translation API)
-export type VoiceFormality = 'default' | 'formal' | 'more' | 'informal' | 'less';
+export type VoiceFormality = 'default' | 'formal' | 'more' | 'informal' | 'less' | 'prefer_more' | 'prefer_less';
 
 // REST endpoint: POST /v3/voice/realtime
 

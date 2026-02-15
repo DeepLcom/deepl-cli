@@ -1,6 +1,7 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { TranslationOptions, Language } from '../types';
 import { NetworkError } from '../utils/errors.js';
+import { normalizeFormality } from '../utils/formality.js';
 
 interface DeepLTranslateResponse {
   translations: Array<{
@@ -258,7 +259,7 @@ export class TranslationClient extends HttpClient {
     }
 
     if (options.formality) {
-      params['formality'] = options.formality;
+      params['formality'] = normalizeFormality(options.formality, 'text');
     }
 
     if (options.glossaryId) {

@@ -20,7 +20,7 @@ export function registerTranslate(
     .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
     .option('-o, --output <path>', 'Output file path or directory (required for file/directory translation)')
     .optionsGroup('Translation Quality:')
-    .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less']))
+    .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less', 'formal', 'informal']))
     .option('--context <text>', 'Additional context to improve translation quality')
     .option('--glossary <name-or-id>', 'Use glossary by name or ID')
     .option('--custom-instruction <instruction>', 'Custom instruction for translation (repeatable, max 10, max 300 chars each)', (val: string, prev: string[]) => prev.concat([val]), [] as string[])

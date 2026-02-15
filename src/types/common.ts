@@ -26,6 +26,8 @@ export type Formality =
   | 'more'
   | 'less'
   | 'prefer_more'
-  | 'prefer_less';
+  | 'prefer_less'
+  | 'formal'
+  | 'informal';
 
 export type OutputFormat = 'text' | 'json' | 'table';
