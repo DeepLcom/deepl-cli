@@ -4,6 +4,11 @@
   "description": "Next-generation CLI for DeepL translation and writing enhancement",
   "type": "module",
   "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "bin": {
     "deepl": "dist/cli/index.js"
   },
