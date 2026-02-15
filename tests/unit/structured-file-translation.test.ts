@@ -632,4 +632,88 @@ describe('StructuredFileTranslationService', () => {
       );
     });
   });
+
+  describe('batch-mismatch error', () => {
+    it('should throw when translateBatch returns fewer results than expected', async () => {
+      const inputPath = path.join(testDir, 'en.json');
+      const outputPath = path.join(testDir, 'es.json');
+
+      fs.writeFileSync(inputPath, JSON.stringify({
+        a: 'Hello',
+        b: 'World',
+        c: 'Goodbye',
+      }, null, 2));
+
+      // Return only 2 results for 3 strings → triggers mismatch
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: 'Hola', detectedSourceLang: 'en' },
+        { text: 'Mundo', detectedSourceLang: 'en' },
+      ]);
+
+      await expect(
+        service.translateFile(inputPath, outputPath, { targetLang: 'es' })
+      ).rejects.toThrow(
+        /Translation batch failed: expected 3 results but got 2/
+      );
+    });
+
+    it('should throw when translateBatch returns more results than expected', async () => {
+      const inputPath = path.join(testDir, 'en.json');
+      const outputPath = path.join(testDir, 'es.json');
+
+      fs.writeFileSync(inputPath, JSON.stringify({
+        a: 'Hello',
+      }, null, 2));
+
+      // Return 2 results for 1 string → triggers mismatch
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: 'Hola', detectedSourceLang: 'en' },
+        { text: 'Extra', detectedSourceLang: 'en' },
+      ]);
+
+      await expect(
+        service.translateFile(inputPath, outputPath, { targetLang: 'es' })
+      ).rejects.toThrow(
+        /Translation batch failed: expected 1 results but got 2/
+      );
+    });
+
+    it('should throw on mismatch in the final batch of a multi-batch translation', async () => {
+      const inputPath = path.join(testDir, 'big.json');
+      const outputPath = path.join(testDir, 'big-es.json');
+
+      // Create data that forces two batches (strings > 128KB boundary)
+      const bigStr = 'A'.repeat(70000); // ~70KB each
+      const data: Record<string, string> = {
+        key1: bigStr,
+        key2: bigStr, // ~140KB total → batch split
+      };
+      fs.writeFileSync(inputPath, JSON.stringify(data, null, 2));
+
+      // First batch succeeds
+      mockTranslationService.translateBatch
+        .mockResolvedValueOnce([
+          { text: 'T1', detectedSourceLang: 'en' },
+        ])
+        // Second batch returns mismatch (0 results for 1 string)
+        .mockResolvedValueOnce([]);
+
+      await expect(
+        service.translateFile(inputPath, outputPath, { targetLang: 'es' })
+      ).rejects.toThrow(/Translation batch failed/);
+    });
+
+    it('should throw mismatch with abort message', async () => {
+      const inputPath = path.join(testDir, 'mismatch.json');
+      const outputPath = path.join(testDir, 'out.json');
+
+      fs.writeFileSync(inputPath, JSON.stringify({ x: 'test' }, null, 2));
+
+      mockTranslationService.translateBatch.mockResolvedValue([]);
+
+      await expect(
+        service.translateFile(inputPath, outputPath, { targetLang: 'es' })
+      ).rejects.toThrow('Aborting to prevent misaligned output');
+    });
+  });
 });
