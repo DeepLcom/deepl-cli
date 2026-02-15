@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Add `"files"` field to `package.json` — `npm pack` now ships only `dist/`, `README.md`, and `LICENSE` (237 KB, down from 7.1 MB)
+- Remove unused `team.org` and `team.workspace` config fields — dead code never read by any command
+- Watch command `--to` now falls back to `defaults.targetLangs` from config, matching translate behavior
+- Use atomic writes (write-to-tmp + rename) for all translated/improved output files to prevent partial writes on crash
 - Fix `deepl auth verify` → `deepl auth show` in TROUBLESHOOTING.md
 - Fix `deepl languages --type source/target` → `--source`/`--target` in TROUBLESHOOTING.md
 - Fix API key precedence docs: stored config key takes precedence over `DEEPL_API_KEY` env var
