@@ -612,6 +612,41 @@ describe('CLI Workflow E2E', () => {
           expect(output).toMatch(/API key|auth|output/i);
         }
       });
+
+      it('should handle special characters in file names', () => {
+        const specialFile = path.join(testDir, 'file with spaces & special.txt');
+        fs.writeFileSync(specialFile, 'Special chars');
+
+        expect.assertions(1);
+        try {
+          execSync(`deepl translate "${specialFile}" --to es`, {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+            env: { ...process.env, DEEPL_API_KEY: 'test-key:fx', DEEPL_CONFIG_DIR: testConfigDir },
+          });
+        } catch (error: any) {
+          const output = error.stderr || error.stdout || error.message;
+          expect(output).not.toMatch(/invalid.*character.*path/i);
+        }
+      });
+
+      it('should reject invalid flag combinations', () => {
+        const testFile = path.join(testDir, 'invalid-flag.txt');
+        fs.writeFileSync(testFile, 'Test');
+
+        expect.assertions(2);
+        try {
+          execSync(`deepl translate "${testFile}" --to es --invalid-flag-that-does-not-exist`, {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+            env: { ...process.env, DEEPL_API_KEY: 'test-key', DEEPL_CONFIG_DIR: testConfigDir },
+          });
+        } catch (error: any) {
+          expect(error.status).toBeGreaterThan(0);
+          const output = error.stderr || error.stdout || error.message;
+          expect(output).toMatch(/unknown option|invalid.*flag|unrecognized/i);
+        }
+      });
     });
 
     describe('config command validation', () => {
