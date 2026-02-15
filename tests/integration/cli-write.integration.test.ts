@@ -327,12 +327,15 @@ describe('Write Command Integration', () => {
     });
 
     it('should handle network errors', async () => {
+      const noRetryClient = new DeepLClient(API_KEY, { maxRetries: 0 });
+      const noRetryWriteService = new WriteService(noRetryClient, configService, cacheService);
+
       nock(FREE_API_URL)
         .post('/v2/write/rephrase')
         .replyWithError('Network error');
 
       await expect(
-        writeService.improve('Test', { targetLang: 'en-US' })
+        noRetryWriteService.improve('Test', { targetLang: 'en-US' })
       ).rejects.toThrow();
     });
   });
