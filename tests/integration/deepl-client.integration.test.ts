@@ -27,20 +27,38 @@ describe('DeepLClient Integration', () => {
       expect(() => new DeepLClient('')).toThrow('API key is required');
     });
 
-    it('should use free API URL by default', () => {
-      // This is implicitly tested by checking which URL nock intercepts
+    it('should use free API URL by default', async () => {
       const client = new DeepLClient(API_KEY);
-      expect(client).toBeDefined();
+
+      const scope = nock(FREE_API_URL)
+        .get('/v2/usage')
+        .reply(200, { character_count: 0, character_limit: 500000 });
+
+      await client.getUsage();
+      expect(scope.isDone()).toBe(true);
     });
 
-    it('should use pro API URL when usePro is true', () => {
+    it('should use pro API URL when usePro is true', async () => {
       const client = new DeepLClient(API_KEY, { usePro: true });
-      expect(client).toBeDefined();
+
+      const scope = nock(PRO_API_URL)
+        .get('/v2/usage')
+        .reply(200, { character_count: 0, character_limit: 500000 });
+
+      await client.getUsage();
+      expect(scope.isDone()).toBe(true);
     });
 
-    it('should use custom baseUrl when provided', () => {
-      const client = new DeepLClient(API_KEY, { baseUrl: 'https://custom-api.example.com' });
-      expect(client).toBeDefined();
+    it('should use custom baseUrl when provided', async () => {
+      const customUrl = 'https://custom-api.example.com';
+      const client = new DeepLClient(API_KEY, { baseUrl: customUrl });
+
+      const scope = nock(customUrl)
+        .get('/v2/usage')
+        .reply(200, { character_count: 0, character_limit: 500000 });
+
+      await client.getUsage();
+      expect(scope.isDone()).toBe(true);
     });
   });
 
