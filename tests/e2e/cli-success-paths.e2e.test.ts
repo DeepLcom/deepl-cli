@@ -148,7 +148,7 @@ describe('CLI Success Paths E2E', () => {
 
   describe('write command success paths', () => {
     it('should improve text using write command', () => {
-      const output = runCLIAll('write "Their going to the store" --to en-US');
+      const output = runCLIAll('write "Their going to the store" --lang en-US');
       expect(output).toContain('Improved:');
     });
 
@@ -158,7 +158,7 @@ describe('CLI Success Paths E2E', () => {
     });
 
     it('should exit with code 0 on successful write', () => {
-      const output = runCLIAll('write "Test text" --to en-US');
+      const output = runCLIAll('write "Test text" --lang en-US');
       expect(output).toBeTruthy();
     });
   });
