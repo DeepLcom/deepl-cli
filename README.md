@@ -385,7 +385,7 @@ deepl translate ./docs --to fr --output ./docs-fr --pattern "*.md"
 # Only translates markdown files
 
 # Non-recursive (current directory only)
-deepl translate ./docs --to de --output ./docs-de --recursive false
+deepl translate ./docs --to de --output ./docs-de --no-recursive
 
 # Custom concurrency (default: 5)
 deepl translate ./large-docs --to ja --output ./large-docs-ja --concurrency 10

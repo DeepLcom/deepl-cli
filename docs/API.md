@@ -435,8 +435,8 @@ deepl translate docs/ --to es --output docs-es/
 # With glob pattern
 deepl translate docs/ --to es --output docs-es/ --pattern "*.md"
 
-# Recursive with custom concurrency
-deepl translate src/ --to es,fr --output translations/ --recursive --concurrency 10
+# Recursive (default) with custom concurrency
+deepl translate src/ --to es,fr --output translations/ --concurrency 10
 ```
 
 **Context-aware translation:**
