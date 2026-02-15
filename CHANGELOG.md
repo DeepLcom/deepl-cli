@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Fix translation cache key to include `modelType`, `splitSentences`, `tagHandling`, `tagHandlingVersion`, `customInstructions`, and `styleId` — previously, changing these options could return stale cached results
+- Fix structured file translation batch misalignment — partial batch failures could silently assign wrong translations to wrong JSON/YAML keys; now throws on result count mismatch
+- Fix `--recursive` flag in API.md and README.md examples — the CLI only has `--no-recursive` (recursion is default)
 - Fix `getGlossaryEntries` to use `makeRequest` instead of `makeJsonRequest` for consistent GET request handling (query params instead of JSON body)
 - Fix `examples/15-glossaries.sh`: add delay after glossary rename to allow API propagation
 - Fix nock `replyWithError` async socket error leaking across style-rules integration tests — reorder network error test to last position in describe block
