@@ -2927,6 +2927,63 @@ describe('TranslateCommand', () => {
         })
       );
     });
+
+    it('should support --no-recursive to disable recursive directory scanning', async () => {
+      const mockBatchService = {
+        translateDirectory: jest.fn().mockResolvedValue({
+          successful: [],
+          failed: [],
+          skipped: [],
+        }),
+        getStatistics: jest.fn().mockReturnValue({
+          total: 0,
+          successful: 0,
+          failed: 0,
+          skipped: 0,
+        }),
+      };
+      (translateCommand as any).ctx.batchTranslationService = mockBatchService;
+
+      await (translateCommand as any).directoryHandler.translateDirectory('/src', {
+        to: 'es',
+        output: '/out',
+        recursive: false,
+      });
+
+      expect(mockBatchService.translateDirectory).toHaveBeenCalledWith(
+        '/src',
+        expect.any(Object),
+        expect.objectContaining({
+          recursive: false,
+        })
+      );
+    });
+
+    it('should support multi-target directory translation with comma-separated languages', async () => {
+      const mockBatchService = {
+        translateDirectory: jest.fn().mockResolvedValue({
+          successful: [{ file: 'a.txt', outputPath: '/out/a.txt' }],
+          failed: [],
+          skipped: [],
+        }),
+        getStatistics: jest.fn().mockReturnValue({
+          total: 1,
+          successful: 1,
+          failed: 0,
+          skipped: 0,
+        }),
+      };
+      (translateCommand as any).ctx.batchTranslationService = mockBatchService;
+
+      const result = await (translateCommand as any).directoryHandler.translateDirectory('/src', {
+        to: 'es,fr',
+        output: '/out',
+      });
+
+      expect(mockBatchService.translateDirectory).toHaveBeenCalledTimes(2);
+      expect(result).toContain('[es]');
+      expect(result).toContain('[fr]');
+    });
   });
 
   describe('translateDocument()', () => {

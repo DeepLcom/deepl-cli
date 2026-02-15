@@ -251,7 +251,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 
 **Batch Options (for directories):**
 
-- `--recursive` - Process subdirectories recursively (default: true)
+- `--no-recursive` - Do not recurse into subdirectories (recursive is the default)
 - `--pattern GLOB` - File pattern (e.g., `*.md`, `**/*.txt`)
 - `--concurrency N` - Number of parallel translations (default: 5)
 
