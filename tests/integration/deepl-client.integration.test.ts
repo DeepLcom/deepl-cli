@@ -14,6 +14,7 @@ describe('DeepLClient Integration', () => {
   const PRO_API_URL = DEEPL_PRO_API_URL;
 
   afterEach(() => {
+    nock.abortPendingRequests();
     nock.cleanAll();
   });
 
@@ -296,7 +297,7 @@ describe('DeepLClient Integration', () => {
     });
 
     it('should handle network timeouts', async () => {
-      const client = new DeepLClient(API_KEY, { timeout: 100 });
+      const client = new DeepLClient(API_KEY, { timeout: 100, maxRetries: 0 });
 
       nock(FREE_API_URL)
         .post('/v2/translate')

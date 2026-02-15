@@ -34,6 +34,7 @@ describe('Write Command Integration', () => {
   });
 
   afterEach(() => {
+    nock.abortPendingRequests();
     nock.cleanAll();
     try { cacheService.close(); } catch { /* ignore */ }
     fs.rmSync(testDir, { recursive: true, force: true });
@@ -326,18 +327,6 @@ describe('Write Command Integration', () => {
       ).rejects.toThrow('Rate limit exceeded');
     });
 
-    it('should handle network errors', async () => {
-      const noRetryClient = new DeepLClient(API_KEY, { maxRetries: 0 });
-      const noRetryWriteService = new WriteService(noRetryClient, configService, cacheService);
-
-      nock(FREE_API_URL)
-        .post('/v2/write/rephrase')
-        .replyWithError('Network error');
-
-      await expect(
-        noRetryWriteService.improve('Test', { targetLang: 'en-US' })
-      ).rejects.toThrow();
-    });
   });
 
   describe('improve() - Edge Cases', () => {
@@ -539,6 +528,23 @@ describe('Write Command Integration', () => {
       expect(business[0]?.text).toBe('Business text');
       expect(casual[0]?.text).toBe('Casual text');
       expect(nock.isDone()).toBe(true);
+    });
+  });
+
+  // replyWithError must be last — nock v14 emits async socket errors that
+  // leak into subsequent tests despite nock.cleanAll()
+  describe('error handling - network', () => {
+    it('should handle network errors', async () => {
+      const noRetryClient = new DeepLClient(API_KEY, { maxRetries: 0 });
+      const noRetryWriteService = new WriteService(noRetryClient, configService, cacheService);
+
+      nock(FREE_API_URL)
+        .post('/v2/write/rephrase')
+        .replyWithError('Network error');
+
+      await expect(
+        noRetryWriteService.improve('Test', { targetLang: 'en-US' })
+      ).rejects.toThrow();
     });
   });
 });
