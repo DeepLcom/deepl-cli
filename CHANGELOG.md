@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Fix `deepl auth verify` → `deepl auth show` in TROUBLESHOOTING.md
+- Fix `deepl languages --type source/target` → `--source`/`--target` in TROUBLESHOOTING.md
+- Fix API key precedence docs: stored config key takes precedence over `DEEPL_API_KEY` env var
+- Remove dead `--targets` alias from watch command (use `--to` instead)
+- Fix `--target de` → `--target-lang de` in glossary example
+- Fix `.language` → `.detected_language` in detect example
+- Fix `(default)` incorrectly shown for `quality_optimized` voice model
+- Fix `--page 0` → `--page 1` in style-rules example (1-indexed pagination)
+- Add API.md reference for complete format list in TROUBLESHOOTING.md
+- Fix test helper stdin piping: replace shell `echo` with `execSync({ input })` to avoid shell interpretation
+- Fix test helper `??` → `||` for stderr/stdout fallback in catch blocks
+- Add 5 missing mock factory exports to test helpers barrel file
+
+### Added
+- Add E2E tests for glossary, detect, auth, config, and cache commands
+- Add unit tests for 5 API clients (document, glossary, translation, write, style-rules)
+- Add directory-translation-handler unit tests (multi-target, concurrency, error paths)
+- Add file-translation integration and E2E tests
+- Add batch-mismatch test for structured file translation
+- Add `resolveGlossaryId()` unit tests (ID passthrough, name lookup, not-found)
+- Add watch service autoCommit error and cleanup tests
+- Add write command interactive mode fallback tests
+- Strengthen weak `toBeDefined()` assertions across test suite with specific value checks
+- Add `expect.assertions(N)` to try/catch tests preventing silent passes
 - Fix retry exhaustion throwing raw AxiosError — now wraps through `handleError` to produce typed errors (NetworkError, AuthError, etc.)
 - Fix unhandled 5xx status codes (500, 502, etc.) falling through to generic `Error` — now correctly mapped to `NetworkError` with exit code 5
 - Fix duplicated proxy URL parsing in `HttpClient` — extracted into `parseProxyFromEnv()` shared by `validateConfig()` and constructor
