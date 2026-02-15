@@ -238,5 +238,5 @@ echo "     - Domain-specific vocabulary (e.g., legal, medical, financial terms)"
 echo
 echo "   ✓ For multilingual glossaries, use --target-lang flag to specify"
 echo "     which language pair to view/modify:"
-echo "     deepl glossary entries my-glossary --target de"
+echo "     deepl glossary entries my-glossary --target-lang de"
 echo "     deepl glossary add-entry my-glossary 'source' 'target' --target-lang de"

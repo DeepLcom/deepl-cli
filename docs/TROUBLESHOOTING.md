@@ -27,13 +27,13 @@ Common issues and solutions when using the DeepL CLI.
 
 4. Verify the key works:
    ```bash
-   deepl auth verify
+   deepl auth show
    ```
 
 **Notes:**
 - Free API keys end with `:fx`. Pro keys do not.
 - The CLI auto-detects the API tier (Free vs Pro) from the key suffix.
-- Environment variable `DEEPL_API_KEY` takes precedence over the stored config key.
+- The stored config key takes precedence over the `DEEPL_API_KEY` environment variable.
 
 ---
 
@@ -180,9 +180,9 @@ Common causes and fixes:
   deepl translate "Hello" --to es
   ```
 
-- **watch**: Requires a path and `--targets`:
+- **watch**: Requires a path and `--to`:
   ```bash
-  deepl watch ./docs --targets es,fr
+  deepl watch ./docs --to es,fr
   ```
 
 - **completion**: Requires a shell name:
@@ -194,8 +194,8 @@ Common causes and fixes:
 
 Use `deepl languages` to see all supported languages:
 ```bash
-deepl languages --type source
-deepl languages --type target
+deepl languages --source
+deepl languages --target
 ```
 
 ---
@@ -241,7 +241,7 @@ deepl translate ./docs --to es --output ./docs-es
 
 ### Unsupported document format
 
-Supported document formats: PDF, DOCX, PPTX, XLSX, HTML.
+Supported document formats: PDF, DOCX, PPTX, XLSX, HTML. See [docs/API.md](API.md) for the complete list of supported formats.
 
 ```bash
 deepl translate document.docx --to fr --output translated.docx
@@ -298,7 +298,7 @@ esac
 
 | Variable | Purpose |
 |----------|---------|
-| `DEEPL_API_KEY` | API key (overrides stored config) |
+| `DEEPL_API_KEY` | API key (fallback when no stored config key) |
 | `DEEPL_CONFIG_DIR` | Override config and cache directory |
 | `XDG_CONFIG_HOME` | Override XDG config base (default: `~/.config`) |
 | `XDG_CACHE_HOME` | Override XDG cache base (default: `~/.cache`) |

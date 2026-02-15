@@ -45,7 +45,7 @@ rm -f "$TEMP_FILE"
 echo
 
 echo "8. Scripting: detect then conditionally translate:"
-LANG_CODE=$(deepl detect "Bonjour le monde" --format json | jq -r '.language')
+LANG_CODE=$(deepl detect "Bonjour le monde" --format json | jq -r '.detected_language')
 echo "   Detected language: $LANG_CODE"
 if [ "$LANG_CODE" != "EN" ]; then
   echo "   Not English — translating:"

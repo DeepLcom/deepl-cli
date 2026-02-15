@@ -39,7 +39,7 @@ echo
 # 4. Pagination
 echo "4. Paginated listing"
 echo "   Useful when you have many style rules..."
-deepl style-rules list --page 0 --page-size 5 || echo "   (No style rules found or Pro API required)"
+deepl style-rules list --page 1 --page-size 5 || echo "   (No style rules found or Pro API required)"
 echo
 
 # 5. Using a style rule with translation

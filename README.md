@@ -524,7 +524,7 @@ See [examples/19-xml-tag-handling.sh](./examples/19-xml-tag-handling.sh) for com
 
 **Model Types:**
 
-- `quality_optimized` (default) - Best translation quality, standard latency
+- `quality_optimized` - Best translation quality, standard latency
 - `prefer_quality_optimized` - Prefer quality, fallback to latency if unavailable
 - `latency_optimized` - Faster responses, slightly lower quality (ideal for real-time use)
 

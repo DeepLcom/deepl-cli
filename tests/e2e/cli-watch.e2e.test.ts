@@ -80,19 +80,6 @@ describe('Watch Command E2E', () => {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }
     });
-
-    it('should accept --targets as a hidden alias for --to', () => {
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-e2e-'));
-      fs.writeFileSync(path.join(tmpDir, 'readme.md'), 'Hello world');
-
-      try {
-        const output = runCLI(`watch ${tmpDir} --targets es --dry-run`);
-        expect(output).toContain('[dry-run]');
-        expect(output).toContain('es');
-      } finally {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
   });
 
   describe('watch without required arguments', () => {

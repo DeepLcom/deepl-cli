@@ -17,7 +17,6 @@ export function registerWatch(
     .argument('<path>', 'File or directory path to watch')
     .optionsGroup('Core Options:')
     .option('-t, --to <languages>', 'Target language(s), comma-separated (required)')
-    .addOption(new Option('--targets <languages>').hideHelp())
     .option('-f, --from <language>', 'Source language (auto-detect if not specified)')
     .option('-o, --output <path>', 'Output directory (default: <path>/translations or same dir for files)')
     .optionsGroup('Translation Quality:')
@@ -40,7 +39,6 @@ Examples:
 `)
     .action(async (watchPath: string, options: {
       to?: string;
-      targets?: string;
       from?: string;
       output?: string;
       formality?: string;
@@ -54,7 +52,6 @@ Examples:
       dryRun?: boolean;
     }) => {
       try {
-        if (!options.to && options.targets) options.to = options.targets;
         if (!options.to) {
           throw new ValidationError('required option --to <languages> not specified');
         }
