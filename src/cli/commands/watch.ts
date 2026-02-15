@@ -24,6 +24,7 @@ interface WatchOptions {
   preserveFormatting?: boolean;
   pattern?: string;
   debounce?: number;
+  concurrency?: number;
   output?: string;
   autoCommit?: boolean;
   gitStaged?: boolean;
@@ -119,10 +120,20 @@ export class WatchCommand {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    // Create watch service with optional debounce
-    const watchServiceOptions = options.debounce
-      ? { debounceMs: options.debounce, pattern: options.pattern, stagedFiles }
-      : { pattern: options.pattern, stagedFiles };
+    // Create watch service with optional debounce and concurrency
+    const watchServiceOptions: {
+      debounceMs?: number;
+      concurrency?: number;
+      pattern?: string;
+      stagedFiles?: Set<string>;
+    } = { pattern: options.pattern, stagedFiles };
+
+    if (options.debounce) {
+      watchServiceOptions.debounceMs = options.debounce;
+    }
+    if (options.concurrency) {
+      watchServiceOptions.concurrency = options.concurrency;
+    }
 
     this.watchService = new WatchService(this.fileTranslationService, watchServiceOptions);
 

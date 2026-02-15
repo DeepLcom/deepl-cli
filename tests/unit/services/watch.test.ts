@@ -7,12 +7,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as chokidar from 'chokidar';
+import pLimit from 'p-limit';
 import { WatchService } from '../../../src/services/watch';
 import { FileTranslationService } from '../../../src/services/file-translation';
 import { createMockFileTranslationService } from '../../helpers/mock-factories';
 
 // Mock chokidar
 jest.mock('chokidar');
+
+// Mock p-limit
+jest.mock('p-limit');
+
+const mockPLimit = pLimit as jest.MockedFunction<typeof pLimit>;
 
 // Mock FileTranslationService
 jest.mock('../../../src/services/file-translation');
@@ -33,6 +39,11 @@ describe('WatchService', () => {
     // Reset mocks
     jest.clearAllMocks();
     mockWatcher.on.mockReturnThis();
+
+    // Mock p-limit to execute tasks immediately
+    (mockPLimit as any).mockImplementation((_concurrency: number) => {
+      return (fn: () => Promise<any>) => fn();
+    });
 
     // Mock chokidar.watch to return our mockWatcher
     (chokidar.watch as jest.Mock).mockImplementation(() => mockWatcher);
@@ -1357,6 +1368,46 @@ describe('WatchService', () => {
 
       // Translation SHOULD occur because the signal was NOT aborted
       expect(mockFileTranslationService.translateFile).toHaveBeenCalled();
+    });
+  });
+
+  describe('concurrency limit', () => {
+    it('should default to concurrency of 5', () => {
+      new WatchService(mockFileTranslationService);
+      expect(mockPLimit).toHaveBeenCalledWith(5);
+    });
+
+    it('should accept custom concurrency', () => {
+      new WatchService(mockFileTranslationService, { concurrency: 2 });
+      expect(mockPLimit).toHaveBeenCalledWith(2);
+    });
+
+    it('should route translations through the concurrency limiter', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+
+      const limitFn = jest.fn((fn: () => Promise<any>) => fn());
+      (mockPLimit as any).mockImplementation(() => limitFn);
+
+      const service = new WatchService(mockFileTranslationService);
+
+      const testFile = path.join(testDir, 'test.txt');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const options = {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      };
+
+      await service.watch(testDir, options);
+      service.handleFileChange(testFile);
+
+      jest.advanceTimersByTime(350);
+      await flushPromises();
+
+      expect(limitFn).toHaveBeenCalledTimes(1);
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
     });
   });
 });

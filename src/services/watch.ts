@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import chokidar, { FSWatcher } from 'chokidar';
 import { minimatch } from 'minimatch';
+import pLimit, { type LimitFunction } from 'p-limit';
 import { FileTranslationService } from './file-translation.js';
 import { Language, TranslationOptions } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
@@ -37,6 +38,7 @@ export interface WatchOptions {
 
 export interface WatchServiceOptions {
   debounceMs?: number;
+  concurrency?: number;
   pattern?: string;
   stagedFiles?: Set<string>;
 }
@@ -50,12 +52,15 @@ export interface WatchStats {
 
 const DEFAULT_DEBOUNCE_MS = 300;
 
+const DEFAULT_CONCURRENCY = 5;
+
 export class WatchService {
   private fileTranslationService: FileTranslationService;
   private watcher: FSWatcher | null = null;
   private options: WatchServiceOptions;
   private watchOptions: WatchOptions | null = null;
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
+  private limit: LimitFunction;
   private stats: WatchStats = {
     isWatching: false,
     filesWatched: 0,
@@ -72,6 +77,7 @@ export class WatchService {
       debounceMs: DEFAULT_DEBOUNCE_MS,
       ...options,
     };
+    this.limit = pLimit(options.concurrency ?? DEFAULT_CONCURRENCY);
   }
 
   /**
@@ -183,7 +189,7 @@ export class WatchService {
             return;
           }
 
-          await this.translateFile(filePath);
+          await this.limit(() => this.translateFile(filePath));
         } catch (error) {
           this.stats.errorsCount++;
           if (this.watchOptions?.onError) {
