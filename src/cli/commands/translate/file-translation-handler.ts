@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Language } from '../../../types/index.js';
 import { ValidationError } from '../../../utils/errors.js';
+import { atomicWriteFileSync } from '../../../utils/atomic-write.js';
 import { Logger } from '../../../utils/logger.js';
 import { safeReadFileSync } from '../../../utils/safe-read-file.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
@@ -150,7 +151,7 @@ export class FileTranslationHandler {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    fs.writeFileSync(options.output!, result.text, 'utf-8');
+    atomicWriteFileSync(options.output!, result.text, 'utf-8');
 
     return `Translated ${filePath} -> ${options.output}`;
   }

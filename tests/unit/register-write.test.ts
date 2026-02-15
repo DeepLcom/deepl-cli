@@ -30,8 +30,9 @@ jest.mock('fs', () => ({
 }));
 
 const mockWriteFile = jest.fn().mockResolvedValue(undefined);
-jest.mock('fs/promises', () => ({
-  writeFile: (...args: unknown[]) => mockWriteFile(...args),
+jest.mock('../../src/utils/atomic-write', () => ({
+  atomicWriteFile: (...args: unknown[]) => mockWriteFile(...args),
+  atomicWriteFileSync: jest.fn(),
 }));
 
 const mockWriteCommand = {

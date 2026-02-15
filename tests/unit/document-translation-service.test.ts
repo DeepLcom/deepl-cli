@@ -22,6 +22,13 @@ jest.mock('fs', () => ({
   },
 }));
 
+// Mock atomic-write module
+const mockAtomicWriteFile = jest.fn().mockResolvedValue(undefined);
+jest.mock('../../src/utils/atomic-write.js', () => ({
+  atomicWriteFile: (...args: unknown[]) => mockAtomicWriteFile(...args),
+  atomicWriteFileSync: jest.fn(),
+}));
+
 // Mock safe-read-file module
 const mockSafeReadFile = jest.fn();
 jest.mock('../../src/utils/safe-read-file.js', () => ({
@@ -106,7 +113,7 @@ describe('DocumentTranslationService', () => {
         documentKey: 'key-456',
       });
 
-      expect(mockWriteFile).toHaveBeenCalledWith(
+      expect(mockAtomicWriteFile).toHaveBeenCalledWith(
         outputPath,
         translatedBuffer
       );
@@ -233,7 +240,7 @@ describe('DocumentTranslationService', () => {
 
       // Should have made 5 status checks
       expect(mockClient.getDocumentStatus).toHaveBeenCalledTimes(5);
-      expect(mockWriteFile).toHaveBeenCalled();
+      expect(mockAtomicWriteFile).toHaveBeenCalled();
     });
 
     it('should pass outputFormat parameter to API client', async () => {
@@ -741,7 +748,7 @@ describe('DocumentTranslationService', () => {
       });
 
       expect(mockClient.downloadDocument).toHaveBeenCalled();
-      expect(mockWriteFile).toHaveBeenCalledWith(outputPath, translatedBuffer);
+      expect(mockAtomicWriteFile).toHaveBeenCalledWith(outputPath, translatedBuffer);
     });
 
     it('should work without AbortSignal (backward compatibility)', async () => {

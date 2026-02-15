@@ -8,6 +8,7 @@ import * as path from 'path';
 import { TranslationService } from './translation.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { ValidationError } from '../utils/errors.js';
+import { atomicWriteFile } from '../utils/atomic-write.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
 import type { StructuredFileTranslationService } from './structured-file-translation.js';
 
@@ -109,7 +110,7 @@ export class FileTranslationService {
     await fs.promises.mkdir(outputDir, { recursive: true });
 
     // Write translated content
-    await fs.promises.writeFile(outputPath, result.text, 'utf-8');
+    await atomicWriteFile(outputPath, result.text, 'utf-8');
   }
 
   /**
@@ -174,7 +175,7 @@ export class FileTranslationService {
       for (const result of results) {
         const outputFilename = `${basename}.${result.targetLang}${ext}`;
         const outputPath = path.join(outputDir, outputFilename);
-        await fs.promises.writeFile(outputPath, result.text, 'utf-8');
+        await atomicWriteFile(outputPath, result.text, 'utf-8');
         result.outputPath = outputPath;
       }
     }

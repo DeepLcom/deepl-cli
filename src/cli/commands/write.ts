@@ -6,6 +6,7 @@
 import { WriteService } from '../../services/write.js';
 import { WriteLanguage, WritingStyle, WriteTone } from '../../types/index.js';
 import { promises as fs } from 'fs';
+import { atomicWriteFile } from '../../utils/atomic-write.js';
 import { resolve, dirname } from 'path';
 import * as Diff from 'diff';
 import chalk from 'chalk';
@@ -92,9 +93,9 @@ export class WriteCommand {
       const outputPath = resolve(options.outputFile);
       // Ensure output directory exists
       await fs.mkdir(dirname(outputPath), { recursive: true });
-      await fs.writeFile(outputPath, improvedText, 'utf-8');
+      await atomicWriteFile(outputPath, improvedText, 'utf-8');
     } else if (options.inPlace) {
-      await fs.writeFile(absolutePath, improvedText, 'utf-8');
+      await atomicWriteFile(absolutePath, improvedText, 'utf-8');
     }
 
     return improvedText;
@@ -253,7 +254,7 @@ export class WriteCommand {
     }
 
     // Write improved content
-    await fs.writeFile(absolutePath, checkResult.improved, 'utf-8');
+    await atomicWriteFile(absolutePath, checkResult.improved, 'utf-8');
 
     return {
       fixed: true,

@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'yaml';
 import { TranslationService, MAX_TEXT_BYTES } from './translation.js';
+import { atomicWriteFile } from '../utils/atomic-write.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
 import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
@@ -84,7 +85,7 @@ export class StructuredFileTranslationService {
 
     const outputDir = path.dirname(outputPath);
     await fs.promises.mkdir(outputDir, { recursive: true });
-    await fs.promises.writeFile(outputPath, serialized, 'utf-8');
+    await atomicWriteFile(outputPath, serialized, 'utf-8');
   }
 
   async translateFileToMultiple(
@@ -143,7 +144,7 @@ export class StructuredFileTranslationService {
           const outputFilename = `${basename}.${targetLang}${inputExt}`;
           const outputFilePath = path.join(options.outputDir, outputFilename);
 
-          await fs.promises.writeFile(outputFilePath, serialized, 'utf-8');
+          await atomicWriteFile(outputFilePath, serialized, 'utf-8');
           result.outputPath = outputFilePath;
         }
 

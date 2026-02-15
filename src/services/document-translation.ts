@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { DeepLClient } from '../api/deepl-client.js';
+import { atomicWriteFile } from '../utils/atomic-write.js';
 import {
   DocumentTranslationOptions,
   DocumentHandle,
@@ -143,7 +144,7 @@ export class DocumentTranslationService {
     await fs.promises.mkdir(outputDir, { recursive: true });
 
     // Write translated document to output path
-    await fs.promises.writeFile(outputPath, translatedBuffer);
+    await atomicWriteFile(outputPath, translatedBuffer);
 
     return {
       success: true,

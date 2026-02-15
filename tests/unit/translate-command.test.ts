@@ -19,6 +19,7 @@ import {
   createMockConfigService,
 } from '../helpers/mock-factories';
 import { buildTranslationOptions, getFileSize } from '../../src/cli/commands/translate/translate-utils';
+import { atomicWriteFileSync } from '../../src/utils/atomic-write';
 
 // Mock ESM dependencies
 jest.mock('ora', () => {
@@ -42,6 +43,10 @@ jest.mock('../../src/services/document-translation');
 jest.mock('../../src/services/glossary');
 jest.mock('../../src/storage/config');
 jest.mock('../../src/utils/safe-read-file');
+jest.mock('../../src/utils/atomic-write', () => ({
+  atomicWriteFile: jest.fn().mockResolvedValue(undefined),
+  atomicWriteFileSync: jest.fn(),
+}));
 
 describe('TranslateCommand', () => {
   let mockTranslationService: jest.Mocked<TranslationService>;
@@ -1540,8 +1545,8 @@ describe('TranslateCommand', () => {
         output: '/out.txt',
       });
 
-      // Should write translated content to file
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith('/out.txt', translatedContent, 'utf-8');
+      // Should write translated content to file via atomic write
+      expect(atomicWriteFileSync).toHaveBeenCalledWith('/out.txt', translatedContent, 'utf-8');
     });
 
     it('should handle UTF-8 encoding correctly', async () => {
@@ -4042,7 +4047,7 @@ describe('TranslateCommand', () => {
 
       expect(stdoutWriteSpy).toHaveBeenCalledWith('Hola mundo');
       expect(result).toBe('');
-      expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+      expect(atomicWriteFileSync).not.toHaveBeenCalled();
     });
 
     it('should reject --output - with multiple target languages', async () => {

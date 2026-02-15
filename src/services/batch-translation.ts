@@ -8,6 +8,7 @@ import * as path from 'path';
 import pLimit from 'p-limit';
 import fg from 'fast-glob';
 import { FileTranslationService } from './file-translation.js';
+import { atomicWriteFile } from '../utils/atomic-write.js';
 import { TranslationService, MAX_TEXT_BYTES, TRANSLATE_BATCH_SIZE } from './translation.js';
 import { TranslationOptions } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
@@ -293,7 +294,7 @@ export class BatchTranslationService {
           try {
             const outputDir = path.dirname(entry.outputPath);
             await fs.promises.mkdir(outputDir, { recursive: true });
-            await fs.promises.writeFile(entry.outputPath, translatedText, 'utf-8');
+            await atomicWriteFile(entry.outputPath, translatedText, 'utf-8');
 
             successful.push({ file: entry.file, outputPath: entry.outputPath });
           } catch (error) {

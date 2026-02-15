@@ -1,6 +1,6 @@
 import { type Command, Option } from 'commander';
 import { existsSync } from 'fs';
-import { writeFile } from 'fs/promises';
+import { atomicWriteFile } from '../../utils/atomic-write.js';
 import chalk from 'chalk';
 import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/api.js';
 import { Logger } from '../../utils/logger.js';
@@ -180,7 +180,7 @@ Examples:
 
             if (options.output || options.inPlace) {
               const outputPath = options.inPlace ? text : options.output!;
-              await writeFile(outputPath, result, 'utf-8');
+              await atomicWriteFile(outputPath, result, 'utf-8');
               Logger.success(chalk.green(`\u2713 Saved to ${outputPath}`));
             }
           } else {
@@ -201,7 +201,7 @@ Examples:
 
         const result = await writeCommand.improve(text, writeOptions);
         if (options.output) {
-          await writeFile(options.output, result, 'utf-8');
+          await atomicWriteFile(options.output, result, 'utf-8');
           Logger.success(chalk.green(`\u2713 Saved to ${options.output}`));
         }
         Logger.output(result);
