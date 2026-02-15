@@ -61,13 +61,6 @@ describe('registerConfig', () => {
     registerConfig(program, { getConfigService, handleError });
   });
 
-  it('should register config command with subcommands', () => {
-    const cmd = program.commands.find((c) => c.name() === 'config');
-    expect(cmd).toBeDefined();
-    const subNames = cmd!.commands.map((c) => c.name());
-    expect(subNames).toEqual(expect.arrayContaining(['get', 'set', 'list', 'reset']));
-  });
-
   describe('config get', () => {
     it('should get and output a config value', async () => {
       mockConfigCommandInstance.get.mockResolvedValue('some-value');

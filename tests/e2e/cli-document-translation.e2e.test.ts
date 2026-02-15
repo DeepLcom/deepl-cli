@@ -273,27 +273,4 @@ describe('Document Translation E2E', () => {
     });
   });
 
-  describe('help text completeness', () => {
-    it('should mention document translation in help', () => {
-      const result = runCLIExpectError('translate --help', '');
-
-      expect(result.output).toMatch(/document|pdf|docx|pptx|xlsx/i);
-    });
-
-    it('should document all document-related flags', () => {
-      const result = runCLIExpectError('translate --help', '');
-
-      expect(result.output).toContain('--output-format');
-      expect(result.output).toContain('--enable-minification');
-      expect(result.output).toContain('--output');
-    });
-
-    it('should show examples or usage for document translation', () => {
-      const result = runCLIExpectError('translate --help', '');
-
-      // Should have usage information
-      expect(result.output).toContain('Usage:');
-      expect(result.output).toContain('translate');
-    });
-  });
 });

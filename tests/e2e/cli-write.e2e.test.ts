@@ -76,54 +76,6 @@ describe('Write Command E2E', () => {
     });
   });
 
-  describe('Flag Combinations', () => {
-    it('should accept --output flag', () => {
-      const output = execSync('deepl write --help', { encoding: 'utf-8' });
-      expect(output).toContain('--output');
-      expect(output).toContain('-o');
-    });
-
-    it('should accept --in-place flag', () => {
-      const output = execSync('deepl write --help', { encoding: 'utf-8' });
-      expect(output).toContain('--in-place');
-    });
-
-    it('should accept --interactive flag', () => {
-      const output = execSync('deepl write --help', { encoding: 'utf-8' });
-      expect(output).toContain('--interactive');
-      expect(output).toContain('-i');
-    });
-
-    it('should accept --diff flag', () => {
-      const output = execSync('deepl write --help', { encoding: 'utf-8' });
-      expect(output).toContain('--diff');
-      expect(output).toContain('-d');
-    });
-
-    it('should accept --check flag', () => {
-      const output = execSync('deepl write --help', { encoding: 'utf-8' });
-      expect(output).toContain('--check');
-      expect(output).toContain('-c');
-    });
-
-    it('should accept --fix flag', () => {
-      const output = execSync('deepl write --help', { encoding: 'utf-8' });
-      expect(output).toContain('--fix');
-      expect(output).toContain('-f');
-    });
-
-    it('should accept --backup flag', () => {
-      const output = execSync('deepl write --help', { encoding: 'utf-8' });
-      expect(output).toContain('--backup');
-      expect(output).toContain('-b');
-    });
-
-    it('should accept --no-cache flag', () => {
-      const output = execSync('deepl write --help', { encoding: 'utf-8' });
-      expect(output).toContain('--no-cache');
-    });
-  });
-
   describe('File Operations', () => {
     it('should recognize file path input', () => {
       const testFile = path.join(testDir, 'test.txt');

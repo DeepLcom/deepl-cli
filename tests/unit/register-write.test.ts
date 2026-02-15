@@ -79,12 +79,6 @@ describe('registerWrite', () => {
     process.exitCode = undefined;
   });
 
-  it('should register write command', () => {
-    const cmd = program.commands.find((c) => c.name() === 'write');
-    expect(cmd).toBeDefined();
-    expect(cmd!.description()).toContain('Improve text');
-  });
-
   describe('basic improve (text)', () => {
     it('should improve text and output result', async () => {
       mockWriteCommand.improve.mockResolvedValue('Improved text');

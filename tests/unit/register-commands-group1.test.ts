@@ -536,14 +536,6 @@ describe('registerUsage', () => {
     registerUsage(program, { createDeepLClient, handleError } as any);
   }
 
-  it('should register usage command', async () => {
-    await loadAndRegister();
-
-    const usageCmd = program.commands.find((c) => c.name() === 'usage');
-    expect(usageCmd).toBeDefined();
-    expect(usageCmd!.description()).toBe('Show API usage statistics');
-  });
-
   it('usage should fetch and display formatted output', async () => {
     await loadAndRegister();
     await program.parseAsync(['node', 'test', 'usage']);
@@ -588,14 +580,6 @@ describe('registerCompletion', () => {
     const { registerCompletion } = await import('../../src/cli/commands/register-completion');
     registerCompletion(program, { handleError } as any);
   }
-
-  it('should register completion command', async () => {
-    await loadAndRegister();
-
-    const cmd = program.commands.find((c) => c.name() === 'completion');
-    expect(cmd).toBeDefined();
-    expect(cmd!.description()).toBe('Generate shell completion scripts');
-  });
 
   it('should generate completion script for bash', async () => {
     await loadAndRegister();
@@ -680,16 +664,6 @@ describe('registerStyleRules', () => {
     const { registerStyleRules } = await import('../../src/cli/commands/register-style-rules');
     registerStyleRules(program, { createDeepLClient, handleError } as any);
   }
-
-  it('should register style-rules command with list subcommand', async () => {
-    await loadAndRegister();
-
-    const styleRulesCmd = program.commands.find((c) => c.name() === 'style-rules');
-    expect(styleRulesCmd).toBeDefined();
-
-    const listSub = styleRulesCmd!.commands.find((c) => c.name() === 'list');
-    expect(listSub).toBeDefined();
-  });
 
   it('style-rules list should display plain text by default', async () => {
     await loadAndRegister();

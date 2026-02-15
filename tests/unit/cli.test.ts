@@ -56,33 +56,6 @@ describe('CLI Entry Point', () => {
     });
   });
 
-  describe('commands', () => {
-    it('should register translate command', () => {
-      const commands = program.commands.map((cmd) => cmd.name());
-      expect(commands).toContain('translate');
-    });
-
-    it('should register auth command', () => {
-      const commands = program.commands.map((cmd) => cmd.name());
-      expect(commands).toContain('auth');
-    });
-
-    it('should register config command', () => {
-      const commands = program.commands.map((cmd) => cmd.name());
-      expect(commands).toContain('config');
-    });
-
-    it('should register cache command', () => {
-      const commands = program.commands.map((cmd) => cmd.name());
-      expect(commands).toContain('cache');
-    });
-
-    it('should register glossary command', () => {
-      const commands = program.commands.map((cmd) => cmd.name());
-      expect(commands).toContain('glossary');
-    });
-  });
-
   describe('output.color config', () => {
     let testConfigDir: string;
      

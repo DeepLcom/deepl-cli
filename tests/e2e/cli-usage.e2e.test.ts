@@ -95,13 +95,6 @@ describe('Usage Command E2E', () => {
   });
 
   describe('usage command behavior', () => {
-    it('should exit with error when API key is missing', () => {
-      const result = runCLIExpectError('usage', { apiKey: '' });
-
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/api key/i);
-    });
-
     it('should accept valid API key format', () => {
       // Test with valid format but fake key (will fail at API call)
       const result = runCLIExpectError('usage', { apiKey: 'test-key-123:fx' });

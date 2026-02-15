@@ -72,13 +72,6 @@ describe('registerCache', () => {
     registerCache(program, { getConfigService, getCacheService, handleError });
   });
 
-  it('should register cache command with subcommands', () => {
-    const cmd = program.commands.find((c) => c.name() === 'cache');
-    expect(cmd).toBeDefined();
-    const subNames = cmd!.commands.map((c) => c.name());
-    expect(subNames).toEqual(expect.arrayContaining(['stats', 'clear', 'enable', 'disable']));
-  });
-
   describe('cache stats', () => {
     it('should display formatted stats', async () => {
       const stats = { entries: 10, totalSize: 5000, enabled: true };

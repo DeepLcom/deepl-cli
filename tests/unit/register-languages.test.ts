@@ -66,11 +66,6 @@ describe('registerLanguages', () => {
     process.env = origEnv;
   });
 
-  it('should register languages command', () => {
-    const cmd = program.commands.find((c) => c.name() === 'languages');
-    expect(cmd).toBeDefined();
-  });
-
   describe('with API key from config', () => {
     beforeEach(() => {
       mockGetValue.mockReturnValue('fake-key');

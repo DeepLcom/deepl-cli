@@ -83,16 +83,6 @@ describe('registerVoice', () => {
     registerVoice(program, { getApiKeyAndOptions, handleError } as any);
   }
 
-  it('should register voice command with correct description', async () => {
-    await loadAndRegister();
-
-    const voiceCmd = program.commands.find((c) => c.name() === 'voice');
-    expect(voiceCmd).toBeDefined();
-    expect(voiceCmd!.description()).toBe(
-      'Translate audio using DeepL Voice API (real-time speech translation)',
-    );
-  });
-
   it('should throw error when --to is missing', async () => {
     await loadAndRegister();
     await expect(

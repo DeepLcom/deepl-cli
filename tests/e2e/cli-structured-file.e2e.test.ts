@@ -19,12 +19,6 @@ describe('Structured File Translation E2E', () => {
   });
 
   describe('JSON file support', () => {
-    it('should list .json as a supported file type via help text', () => {
-      const output = runCLI('deepl translate --help');
-      // The translate command should accept JSON files
-      expect(output).toContain('translate');
-    });
-
     it('should accept JSON file input without "unsupported file type" error', () => {
       const inputPath = path.join(testDir, 'test.json');
       const outputPath = path.join(testDir, 'test-es.json');

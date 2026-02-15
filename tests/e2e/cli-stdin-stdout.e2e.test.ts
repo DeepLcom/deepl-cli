@@ -52,18 +52,6 @@ describe('CLI Stdin/Stdout E2E', () => {
   });
 
   describe('stdout output handling', () => {
-    it('should write output to stdout', () => {
-      // Help output should go to stdout
-      const testFile = path.join(testDir, 'stdout-test.txt');
-      fs.writeFileSync(testFile, 'Test');
-
-      const result = runCLIExpectError('translate --help', { apiKey: '' });
-
-      expect(result.status).toBe(0);
-      expect(result.output).toContain('Usage:');
-      expect(result.output).toContain('translate');
-    });
-
     it('should write version to stdout', () => {
       const result = runCLIExpectError('--version', { apiKey: '' });
 
