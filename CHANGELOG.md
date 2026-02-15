@@ -201,6 +201,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Unit tests for all command registration modules** - Added 150 tests across 8 new test files covering `register-admin`, `register-auth`, `register-cache`, `register-completion`, `register-config`, `register-glossary`, `register-hooks`, `register-languages`, `register-style-rules`, `register-usage`, `register-write`, and `service-factory`. Function coverage improved from 81.58% to 97.23%, well above the 86% CI threshold.
+- **`deepl completion` command for shell tab completion** - Generates completion scripts for bash, zsh, and fish shells. Dynamically introspects all registered commands, subcommands, and options from the Commander.js program tree. Usage: `deepl completion bash`, `deepl completion zsh`, `deepl completion fish`. Scripts can be sourced directly or saved to shell completion directories.
 
 ### Changed
 - **Extract magic numbers to named constants** - Replaced hardcoded numeric literals with descriptive constants across the codebase: `TRANSLATE_BATCH_SIZE` (50), `MAX_SOCKETS`/`MAX_FREE_SOCKETS`/`KEEP_ALIVE_MSECS` and retry delay constants in HTTP client, `DEFAULT_CONCURRENCY`/`MAX_CONCURRENCY` in batch translation, `MAX_CUSTOM_INSTRUCTIONS`/`MAX_CUSTOM_INSTRUCTION_CHARS` in translate command, `DEFAULT_DEBOUNCE_MS` in watch service
@@ -214,9 +215,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **TOCTOU race conditions in file operations** - Eliminated time-of-check-to-time-of-use races where `existsSync()` followed by `readFileSync()`/`statSync()` could fail if a file was removed between the two calls. Now uses try/catch around the read with `ENOENT` handling
 - **Remove dead `preserveVars` type field** - Removed the unused `preserveVars` field from `TranslationOptions` that had no corresponding CLI flag
 - **Cache eviction optimization** - Replaced separate SELECT SUM + DELETE queries with a single `DELETE...RETURNING` query, reducing eviction from 3 SQL round-trips to 2
-
-### Added
-- **`deepl completion` command for shell tab completion** - Generates completion scripts for bash, zsh, and fish shells. Dynamically introspects all registered commands, subcommands, and options from the Commander.js program tree. Usage: `deepl completion bash`, `deepl completion zsh`, `deepl completion fish`. Scripts can be sourced directly or saved to shell completion directories.
 - **`--dry-run` flag for destructive/batch operations** - Added `--dry-run` to `translate` (file/directory mode), `glossary delete`, `cache clear`, and `watch` commands. Shows what would happen without performing the operation, using yellow-highlighted `[dry-run]` messages. No API calls are made and no side effects occur.
 - **Input length validation before API calls** - Text is validated against the DeepL API's 128KB (131072 bytes) limit before sending requests. Single translations check text byte length; batch translations check both per-item and aggregate sizes. Prevents unnecessary API round-trips and provides clear error messages suggesting to split text or use file translation.
 - **Per-product breakdown in `deepl admin usage`** - Usage analytics now show character counts per product (text translation, document translation, write) instead of aggregate totals only. Uses the new `/v2/admin/analytics` endpoint.

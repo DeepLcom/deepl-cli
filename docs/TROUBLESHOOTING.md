@@ -277,7 +277,7 @@ deepl translate document.docx --to fr --output translated.docx
 | 6 | Invalid input | No |
 | 7 | Configuration error | No |
 | 8 | Check found issues (write --check) | No |
-| 9 | Voice API error | Depends |
+| 9 | Voice API error | No |
 
 Use exit codes in scripts for retry logic:
 

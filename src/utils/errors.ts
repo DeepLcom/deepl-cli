@@ -35,14 +35,14 @@ export class RateLimitError extends DeepLCLIError {
 export class QuotaError extends DeepLCLIError {
   readonly exitCode = 4;
   constructor(message: string, suggestion?: string) {
-    super(message, suggestion ?? 'Run: deepl usage  to check your limits, or upgrade your plan at https://www.deepl.com/pro');
+    super(message, suggestion ?? 'Run: deepl usage to check your limits, or upgrade your plan at https://www.deepl.com/pro');
   }
 }
 
 export class NetworkError extends DeepLCLIError {
   readonly exitCode = 5;
   constructor(message: string, suggestion?: string) {
-    super(message, suggestion ?? 'Check your internet connection and proxy settings (deepl config set api.proxy <url>)');
+    super(message, suggestion ?? 'Check your internet connection and proxy settings (HTTPS_PROXY or HTTP_PROXY environment variable)');
   }
 }
 
