@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Rename `write` command flag from `--to, -t` to `--lang, -l` — better reflects that write improves text within a language rather than translating between languages
+
 ### Fixed
 - Document 6 undocumented flags/values in API.md: `admin keys set-limit --stt-limit`, `admin keys deactivate -y/--yes`, `glossary delete-dictionary -y/--yes`, `config reset -y/--yes`, `write --style/--tone 'default'` value, `watch --formality` valid choices
 

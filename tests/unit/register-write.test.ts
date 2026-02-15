@@ -87,16 +87,7 @@ describe('registerWrite', () => {
       expect(Logger.output).toHaveBeenCalledWith('Improved text');
     });
 
-    it('should pass lang option via --to', async () => {
-      mockWriteCommand.improve.mockResolvedValue('Hallo');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'de']);
-      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
-        'Hello',
-        expect.objectContaining({ lang: 'de' }),
-      );
-    });
-
-    it('should accept --lang as a hidden alias for --to', async () => {
+    it('should pass lang option via --lang', async () => {
       mockWriteCommand.improve.mockResolvedValue('Hallo');
       await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'de']);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
@@ -123,9 +114,9 @@ describe('registerWrite', () => {
       );
     });
 
-    it('should map -t short flag to --to (not --tone)', async () => {
+    it('should map -l short flag to --lang', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '-t', 'en-US']);
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '-l', 'en-US']);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
         expect.objectContaining({ lang: 'en-US' }),
@@ -144,7 +135,7 @@ describe('registerWrite', () => {
 
   describe('validation', () => {
     it('should reject invalid language code', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'xx']);
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'xx']);
       expect(handleError).toHaveBeenCalledWith(
         expect.objectContaining({ message: expect.stringContaining('Invalid language code') }),
       );
