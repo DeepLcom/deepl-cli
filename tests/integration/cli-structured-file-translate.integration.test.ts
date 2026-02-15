@@ -49,7 +49,7 @@ describe('Structured File Translation CLI Integration', () => {
       try {
         runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.json`);
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on API auth, not argument validation or file type
         expect(output).not.toMatch(/Unsupported file type/i);
       }
@@ -62,7 +62,7 @@ describe('Structured File Translation CLI Integration', () => {
       try {
         runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.yaml`);
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Unsupported file type/i);
       }
     });
@@ -74,7 +74,7 @@ describe('Structured File Translation CLI Integration', () => {
       try {
         runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.yml`);
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Unsupported file type/i);
       }
     });

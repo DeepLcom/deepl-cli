@@ -113,8 +113,8 @@ export function makeRunCLI(configDir: string, defaultOptions: CLIRunOptions = {}
       return { status: 0, output };
     } catch (error: any) {
       return {
-        status: error.status || 1,
-        output: error.stderr?.toString() || error.stdout?.toString() || '',
+        status: error.status ?? 1,
+        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
       };
     }
   }
@@ -134,8 +134,8 @@ export function makeRunCLI(configDir: string, defaultOptions: CLIRunOptions = {}
       return { status: 0, output };
     } catch (error: any) {
       return {
-        status: error.status || 1,
-        output: error.stderr?.toString() || error.stdout?.toString() || '',
+        status: error.status ?? 1,
+        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
       };
     }
   }
@@ -180,8 +180,8 @@ export function makeNodeRunCLI(configDir: string, defaultOptions: CLIRunOptions 
       return { status: 0, output };
     } catch (error: any) {
       return {
-        status: error.status || 1,
-        output: error.stderr?.toString() || error.stdout?.toString() || '',
+        status: error.status ?? 1,
+        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
       };
     }
   }
@@ -208,8 +208,8 @@ export function makeNodeRunCLI(configDir: string, defaultOptions: CLIRunOptions 
       return { status: 0, output };
     } catch (error: any) {
       return {
-        status: error.status || 1,
-        output: error.stderr?.toString() || error.stdout?.toString() || '',
+        status: error.status ?? 1,
+        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
       };
     }
   }

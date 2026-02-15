@@ -52,7 +52,7 @@ describe('Style Rules CLI Integration', () => {
       try {
         runCLI('deepl style-rules list', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
       }
     });
@@ -62,7 +62,7 @@ describe('Style Rules CLI Integration', () => {
       try {
         runCLI('deepl style-rules list --detailed', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
       }
     });
@@ -72,7 +72,7 @@ describe('Style Rules CLI Integration', () => {
       try {
         runCLI('deepl style-rules list --page 1 --page-size 10', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
       }
     });
@@ -83,7 +83,7 @@ describe('Style Rules CLI Integration', () => {
       try {
         runCLI('deepl style-rules list --detailed', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*detailed/i);
         expect(output).toMatch(/API key|auth/i);
       }
@@ -93,7 +93,7 @@ describe('Style Rules CLI Integration', () => {
       try {
         runCLI('deepl style-rules list --page 2', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*page/i);
         expect(output).toMatch(/API key|auth/i);
       }
@@ -103,7 +103,7 @@ describe('Style Rules CLI Integration', () => {
       try {
         runCLI('deepl style-rules list --page-size 10', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*page-size/i);
         expect(output).toMatch(/API key|auth/i);
       }
@@ -113,7 +113,7 @@ describe('Style Rules CLI Integration', () => {
       try {
         runCLI('deepl style-rules list --format json', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*format/i);
         expect(output).toMatch(/API key|auth/i);
       }
@@ -123,7 +123,7 @@ describe('Style Rules CLI Integration', () => {
       try {
         runCLI('deepl style-rules list --detailed --page 1 --page-size 5 --format json', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
         expect(output).toMatch(/API key|auth/i);
       }

@@ -21,8 +21,8 @@ describe('CLI did-you-mean suggestions', () => {
       return { stdout, stderr: '', exitCode: 0 };
     } catch (error: any) {
       return {
-        stdout: (error.stdout as string) || '',
-        stderr: (error.stderr as string) || '',
+        stdout: (error.stdout as string) ?? '',
+        stderr: (error.stderr as string) ?? '',
         exitCode: error.status as number,
       };
     }

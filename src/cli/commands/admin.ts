@@ -151,7 +151,7 @@ export class AdminCommand {
       lines.push(`Per-Key Usage (${report.entries.length} entries):\n`);
 
       for (const entry of report.entries) {
-        const label = entry.apiKeyLabel || entry.apiKey || 'unknown';
+        const label = entry.apiKeyLabel ?? entry.apiKey ?? 'unknown';
         const datePart = entry.usageDate ? ` (${entry.usageDate})` : '';
         lines.push(`  ${label}${datePart}`);
         lines.push(...this.formatBreakdown(entry.usage, '    '));

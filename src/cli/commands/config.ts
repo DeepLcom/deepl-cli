@@ -47,7 +47,7 @@ export class ConfigCommand {
   async set(key: string, value: string): Promise<void> {
     // Parse value based on type
     const parsedValue = this.parseValue(key, value);
-    await this.config.set(key, parsedValue);
+    this.config.set(key, parsedValue);
   }
 
   /**
@@ -64,7 +64,7 @@ export class ConfigCommand {
    * Reset config to defaults
    */
   async reset(): Promise<void> {
-    await this.config.clear();
+    this.config.clear();
   }
 
   /**

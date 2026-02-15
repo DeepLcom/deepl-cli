@@ -86,7 +86,7 @@ describe('Write Command E2E', () => {
         execSync(`deepl write "${testFile}" --to en-US`, { encoding: 'utf-8', stdio: 'pipe' });
       } catch (error: any) {
         // Expected to fail without API key, but should not error on file path recognition
-        const stderr = error.stderr?.toString() || '';
+        const stderr = error.stderr?.toString() ?? '';
         expect(stderr).not.toContain('File not found');
       }
     });

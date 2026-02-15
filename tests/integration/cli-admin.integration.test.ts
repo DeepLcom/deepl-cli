@@ -77,7 +77,7 @@ describe('Admin CLI Integration', () => {
       try {
         runCLI('deepl admin keys list', { excludeApiKey: true });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
       }
     });
@@ -89,7 +89,7 @@ describe('Admin CLI Integration', () => {
       try {
         runCLI('deepl admin usage --end 2024-01-31', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/required|start/i);
       }
     });
@@ -99,7 +99,7 @@ describe('Admin CLI Integration', () => {
       try {
         runCLI('deepl admin usage --start 2024-01-01', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/required|end/i);
       }
     });
@@ -111,7 +111,7 @@ describe('Admin CLI Integration', () => {
       try {
         runCLI('deepl admin keys deactivate', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/key-id|argument|missing/i);
       }
     });
@@ -134,7 +134,7 @@ describe('Admin CLI Integration', () => {
       try {
         runCLI('deepl admin keys rename', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/key-id|argument|missing/i);
       }
     });
@@ -146,7 +146,7 @@ describe('Admin CLI Integration', () => {
       try {
         runCLI('deepl admin keys set-limit', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/key-id|argument|missing/i);
       }
     });

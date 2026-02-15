@@ -19,7 +19,7 @@ describe('Detect CLI Integration', () => {
       });
       throw new Error('Expected command to fail');
     } catch (error: any) {
-      return (error.stderr || '') + (error.stdout || '');
+      return (error.stderr ?? '') + (error.stdout ?? '');
     }
   };
 

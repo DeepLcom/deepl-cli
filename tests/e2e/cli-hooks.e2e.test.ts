@@ -33,8 +33,8 @@ describe('Hooks Command E2E', () => {
       return { status: 0, output };
     } catch (error: any) {
       return {
-        status: error.status || 1,
-        output: error.stderr?.toString() || error.stdout?.toString() || '',
+        status: error.status ?? 1,
+        output: error.stderr?.toString() ?? error.stdout?.toString() ?? '',
       };
     }
   }

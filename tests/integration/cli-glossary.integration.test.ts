@@ -46,7 +46,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary list', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should indicate API key is required
         expect(output).toMatch(/API key|auth|not set/i);
       }
@@ -66,7 +66,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary create "Test" en de', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|file|API key|auth/i);
       }
     });
@@ -78,7 +78,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI(`deepl glossary create "Test" en de "${nonExistentFile}"`, { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/not found|does not exist|API key|auth/i);
       }
     });
@@ -91,7 +91,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should recognize file type
         runCLI(`deepl glossary create "Test" en es "${tsvFile}"`, { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth, not file format
         expect(output).toMatch(/API key|auth/i);
         expect(output).not.toMatch(/invalid.*format|unsupported/i);
@@ -106,7 +106,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should recognize file type
         runCLI(`deepl glossary create "Test" en es "${csvFile}"`, { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth, not file format
         expect(output).toMatch(/API key|auth/i);
       }
@@ -119,7 +119,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI(`deepl glossary create "MultiTest" en de,fr,es "${tsvFile}"`, { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth/i);
         expect(output).not.toMatch(/unsupported|invalid.*format/i);
       }
@@ -139,7 +139,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key
         runCLI('deepl glossary list', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth, not missing arguments
         expect(output).toMatch(/API key|auth/i);
         expect(output).not.toMatch(/required|missing.*argument/i);
@@ -173,7 +173,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary show', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -183,7 +183,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should accept argument
         runCLI('deepl glossary show "My Glossary"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth or not found, not argument validation
         expect(output).toMatch(/API key|auth|not found/i);
       }
@@ -209,7 +209,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary entries', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -219,7 +219,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should accept argument
         runCLI('deepl glossary entries "My Glossary"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth or not found, not argument validation
         expect(output).toMatch(/API key|auth|not found/i);
       }
@@ -239,7 +239,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary delete', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -249,7 +249,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should accept argument
         runCLI('deepl glossary delete "My Glossary" --yes', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth or not found, not argument validation
         expect(output).toMatch(/API key|auth|not found/i);
       }
@@ -265,7 +265,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary delete "My Glossary" -y', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not found/i);
       }
     });
@@ -325,7 +325,7 @@ describe('Glossary CLI Integration', () => {
         // Common language pairs
         runCLI(`deepl glossary create "Test" en es "${tsvFile}"`, { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth, not language validation
         expect(output).toMatch(/API key|auth/i);
         expect(output).not.toMatch(/invalid.*language|unsupported.*language/i);
@@ -346,7 +346,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key
         runCLI('deepl glossary languages', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth, not missing arguments
         expect(output).toMatch(/API key|auth/i);
         expect(output).not.toMatch(/required|missing.*argument/i);
@@ -358,7 +358,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key, but should not accept extra args
         runCLI('deepl glossary languages extra-arg', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail (either too many args or auth)
         expect(output).toMatch(/argument|API key|auth/i);
       }
@@ -391,7 +391,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary add-entry', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -401,7 +401,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary add-entry "My Glossary"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -411,7 +411,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary add-entry "My Glossary" "Hello"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -421,7 +421,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should accept arguments
         runCLI('deepl glossary add-entry "My Glossary" "Hello" "Hola"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth or not found, not argument validation
         expect(output).toMatch(/API key|auth|not found/i);
       }
@@ -454,7 +454,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary update-entry', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -464,7 +464,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary update-entry "My Glossary"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -474,7 +474,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary update-entry "My Glossary" "Hello"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -484,7 +484,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should accept arguments
         runCLI('deepl glossary update-entry "My Glossary" "Hello" "Hola Updated"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth or not found, not argument validation
         expect(output).toMatch(/API key|auth|not found/i);
       }
@@ -517,7 +517,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary remove-entry', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -527,7 +527,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary remove-entry "My Glossary"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -537,7 +537,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should accept arguments
         runCLI('deepl glossary remove-entry "My Glossary" "Hello"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth or not found, not argument validation
         expect(output).toMatch(/API key|auth|not found/i);
       }
@@ -570,7 +570,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary rename', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -580,7 +580,7 @@ describe('Glossary CLI Integration', () => {
       try {
         runCLI('deepl glossary rename "My Glossary"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|argument|required/i);
       }
     });
@@ -590,7 +590,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should accept arguments
         runCLI('deepl glossary rename "My Glossary" "New Name"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth or not found, not argument validation
         expect(output).toMatch(/API key|auth|not found/i);
       }
@@ -601,7 +601,7 @@ describe('Glossary CLI Integration', () => {
         // Will fail without API key but should accept ID format
         runCLI('deepl glossary rename "abc123-def456" "New Name"', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         // Should fail on auth or not found, not argument validation
         expect(output).toMatch(/API key|auth|not found/i);
       }

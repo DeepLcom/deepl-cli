@@ -75,7 +75,7 @@ describe('Voice CLI Integration', () => {
       try {
         runCLI('deepl voice --to de', { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/missing|required|argument/i);
       }
     });
@@ -88,7 +88,7 @@ describe('Voice CLI Integration', () => {
       try {
         runCLI(`deepl voice ${testFile}`, { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/target language|--to/i);
       }
     });
@@ -109,7 +109,7 @@ describe('Voice CLI Integration', () => {
       try {
         runCLI(`deepl voice ${testFile} --to de`, { excludeApiKey: true });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
       }
     });

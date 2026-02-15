@@ -421,7 +421,7 @@ describe('Watch Service Integration', () => {
         fail('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
-        const output = (error.stderr || error.stdout || '').toString();
+        const output = (error.stderr ?? error.stdout ?? '').toString();
         expect(output).toContain('git repository');
       } finally {
         fs.rmSync(nonGitDir, { recursive: true, force: true });
@@ -503,7 +503,7 @@ await cmd.getStagedFiles();
         fail('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
-        const output = error.stderr?.toString() || '';
+        const output = error.stderr?.toString() ?? '';
         expect(output).toContain('--git-staged requires a git repository');
       } finally {
         fs.rmSync(nonGitDir, { recursive: true, force: true });

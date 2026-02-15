@@ -770,7 +770,7 @@ describe('Document Translation CLI Integration', () => {
       try {
         runCLI(`deepl translate "${testFile}"`, { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/required.*--to|target.*language/i);
       }
     });
@@ -783,7 +783,7 @@ describe('Document Translation CLI Integration', () => {
       try {
         runCLI(`deepl translate "${testFile}" --to es`, { stdio: 'pipe' });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|output/i);
       }
     });
@@ -798,7 +798,7 @@ describe('Document Translation CLI Integration', () => {
           stdio: 'pipe',
         });
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
       }
     });
@@ -813,7 +813,7 @@ describe('Document Translation CLI Integration', () => {
           { stdio: 'pipe' }
         );
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*output-format/i);
         expect(output).toMatch(/API key|auth/i);
       }
@@ -829,7 +829,7 @@ describe('Document Translation CLI Integration', () => {
           { stdio: 'pipe' }
         );
       } catch (error: any) {
-        const output = error.stderr || error.stdout;
+        const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*enable-minification/i);
         expect(output).toMatch(/API key|auth/i);
       }
@@ -863,7 +863,7 @@ describe('Document Translation CLI Integration', () => {
             { stdio: 'pipe' }
           );
         } catch (error: any) {
-          const output = error.stderr || error.stdout;
+          const output = error.stderr ?? error.stdout;
           expect(output).not.toMatch(/unsupported.*file.*type/i);
           expect(output).toMatch(/API key|auth/i);
         }

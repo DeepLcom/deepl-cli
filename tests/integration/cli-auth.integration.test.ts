@@ -35,7 +35,7 @@ describe('Auth CLI Integration', () => {
       try {
         runCLI('deepl auth set-key ""');
       } catch (error: any) {
-        expect(error.stderr || error.stdout).toContain('API key cannot be empty');
+        expect(error.stderr ?? error.stdout).toContain('API key cannot be empty');
       }
     });
 
@@ -45,7 +45,7 @@ describe('Auth CLI Integration', () => {
         runCLI('deepl auth set-key invalid-key-123');
       } catch (error: any) {
         // Now expects API validation error (not format error)
-        expect(error.stderr || error.stdout).toContain('Authentication failed');
+        expect(error.stderr ?? error.stdout).toContain('Authentication failed');
       }
     });
   });

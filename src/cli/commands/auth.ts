@@ -44,7 +44,7 @@ export class AuthCommand {
     }
 
     // Save to config
-    await this.config.set('auth.apiKey', apiKey);
+    this.config.set('auth.apiKey', apiKey);
   }
 
   /**
@@ -65,6 +65,6 @@ export class AuthCommand {
    * Remove API key from config
    */
   async clearKey(): Promise<void> {
-    await this.config.delete('auth.apiKey');
+    this.config.delete('auth.apiKey');
   }
 }

@@ -188,7 +188,7 @@ describe('CLI --config flag integration', () => {
         runCLI(`deepl --config "${txtPath}" config get auth.apiKey`);
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
-        expect(error.stderr || error.stdout).toContain('.json extension');
+        expect(error.stderr ?? error.stdout).toContain('.json extension');
       }
     });
 
@@ -215,7 +215,7 @@ describe('CLI --config flag integration', () => {
         runCLI(`deepl --config "${symlinkConfig}" config get auth.apiKey`);
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
-        expect(error.stderr || error.stdout).toContain('symlink');
+        expect(error.stderr ?? error.stdout).toContain('symlink');
       }
     });
 

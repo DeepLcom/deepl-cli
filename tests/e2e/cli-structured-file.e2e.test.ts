@@ -28,7 +28,7 @@ describe('Structured File Translation E2E', () => {
       try {
         runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
       } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
+        const output = error.stderr ?? error.stdout ?? '';
         // Should NOT fail with "Unsupported file type"
         expect(output).not.toContain('Unsupported file type');
       }
@@ -98,7 +98,7 @@ describe('Structured File Translation E2E', () => {
         runCLI(`deepl translate "${inputPath}" --to es`);
         fail('Should have thrown');
       } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
+        const output = error.stderr ?? error.stdout ?? '';
         expect(output).toMatch(/output/i);
       }
     });
@@ -114,7 +114,7 @@ describe('Structured File Translation E2E', () => {
       try {
         runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
       } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
+        const output = error.stderr ?? error.stdout ?? '';
         expect(output).not.toContain('Unsupported file type');
       }
     });
@@ -128,7 +128,7 @@ describe('Structured File Translation E2E', () => {
       try {
         runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
       } catch (error: any) {
-        const output = error.stderr || error.stdout || '';
+        const output = error.stderr ?? error.stdout ?? '';
         expect(output).not.toContain('Unsupported file type');
       }
     });

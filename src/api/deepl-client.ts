@@ -43,44 +43,32 @@ export class DeepLClient {
   }
 
   private get translationClient(): TranslationClient {
-    if (!this._translationClient) {
-      this._translationClient = new TranslationClient(this.apiKey, this.options);
-    }
+    this._translationClient ??= new TranslationClient(this.apiKey, this.options);
     return this._translationClient;
   }
 
   private get glossaryClient(): GlossaryClient {
-    if (!this._glossaryClient) {
-      this._glossaryClient = new GlossaryClient(this.apiKey, this.options);
-    }
+    this._glossaryClient ??= new GlossaryClient(this.apiKey, this.options);
     return this._glossaryClient;
   }
 
   private get documentClient(): DocumentClient {
-    if (!this._documentClient) {
-      this._documentClient = new DocumentClient(this.apiKey, this.options);
-    }
+    this._documentClient ??= new DocumentClient(this.apiKey, this.options);
     return this._documentClient;
   }
 
   private get writeClient(): WriteClient {
-    if (!this._writeClient) {
-      this._writeClient = new WriteClient(this.apiKey, this.options);
-    }
+    this._writeClient ??= new WriteClient(this.apiKey, this.options);
     return this._writeClient;
   }
 
   private get styleRulesClient(): StyleRulesClient {
-    if (!this._styleRulesClient) {
-      this._styleRulesClient = new StyleRulesClient(this.apiKey, this.options);
-    }
+    this._styleRulesClient ??= new StyleRulesClient(this.apiKey, this.options);
     return this._styleRulesClient;
   }
 
   private get adminClient(): AdminClient {
-    if (!this._adminClient) {
-      this._adminClient = new AdminClient(this.apiKey, this.options);
-    }
+    this._adminClient ??= new AdminClient(this.apiKey, this.options);
     return this._adminClient;
   }
 

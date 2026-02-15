@@ -166,7 +166,7 @@ export class WatchCommand {
     };
 
     // Start watching
-    await this.watchService.watch(pathToWatch, watchOpts);
+    this.watchService.watch(pathToWatch, watchOpts);
 
     // Display initial message
     Logger.success(chalk.green('👀 Watching for changes...'));
@@ -198,8 +198,8 @@ export class WatchCommand {
       process.exit(0);
     };
 
-    process.on('SIGINT', cleanup);
-    process.on('SIGTERM', cleanup);
+    process.on('SIGINT', () => void cleanup());
+    process.on('SIGTERM', () => void cleanup());
 
     // Keep process alive
     await new Promise(() => {
