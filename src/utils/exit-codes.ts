@@ -4,6 +4,7 @@
  */
 
 import { DeepLCLIError } from './errors.js';
+import { Logger } from './logger.js';
 
 /**
  * Exit codes for different error types
@@ -52,6 +53,7 @@ export function getExitCodeFromError(error: Error): ExitCode {
 }
 
 function classifyByMessage(rawMessage: string): ExitCode {
+  Logger.verbose(`Untyped error reached fallback classifier: "${rawMessage.substring(0, 120)}"`);
   const message = rawMessage.toLowerCase();
 
   // Authentication errors - specific multi-word phrases

@@ -4,6 +4,8 @@
  */
 
 import { ExitCode, getExitCodeFromError, isRetryableError } from '../../src/utils/exit-codes';
+import { AuthError } from '../../src/utils/errors';
+import { Logger } from '../../src/utils/logger';
 
 describe('ExitCode', () => {
   describe('enum values', () => {
@@ -124,6 +126,20 @@ describe('ExitCode', () => {
         expect(getExitCodeFromError(new Error(message))).toBe(ExitCode.GeneralError);
       },
     );
+
+    it('should log verbose warning when classifyByMessage is invoked', () => {
+      const verboseSpy = jest.spyOn(Logger, 'verbose').mockImplementation();
+      getExitCodeFromError(new Error('some unknown error'));
+      expect(verboseSpy).toHaveBeenCalledWith(expect.stringContaining('Untyped error'));
+      verboseSpy.mockRestore();
+    });
+
+    it('should not log verbose warning for typed DeepLCLIError', () => {
+      const verboseSpy = jest.spyOn(Logger, 'verbose').mockImplementation();
+      getExitCodeFromError(new AuthError('test'));
+      expect(verboseSpy).not.toHaveBeenCalled();
+      verboseSpy.mockRestore();
+    });
   });
 
   describe('isRetryableError', () => {
