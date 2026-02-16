@@ -11,6 +11,7 @@ import { TranslationOptions, Language } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
 import { ValidationError } from '../utils/errors.js';
+import { preserveCodeBlocks, preserveVariables, restorePlaceholders } from '../utils/text-preservation.js';
 
 export { MULTI_TARGET_CONCURRENCY };
 
@@ -90,11 +91,11 @@ export class TranslationService {
     const preservationMap: Map<string, string> = new Map();
 
     if (serviceOptions.preserveCode) {
-      processedText = TranslationService.preserveCodeBlocks(text, preservationMap);
+      processedText = preserveCodeBlocks(text, preservationMap);
     }
 
     // Always preserve variables
-    processedText = TranslationService.preserveVariables(processedText, preservationMap);
+    processedText = preserveVariables(processedText, preservationMap);
 
     // Check cache (only if cache is enabled AND skipCache is not set)
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
@@ -115,7 +116,7 @@ export class TranslationService {
         Logger.verbose('[verbose] Cache hit');
         return {
           ...cachedResult,
-          text: TranslationService.restorePlaceholders(cachedResult.text, preservationMap),
+          text: restorePlaceholders(cachedResult.text, preservationMap),
         };
       }
       Logger.verbose('[verbose] Cache miss');
@@ -134,7 +135,7 @@ export class TranslationService {
 
     return {
       ...result,
-      text: TranslationService.restorePlaceholders(result.text, preservationMap),
+      text: restorePlaceholders(result.text, preservationMap),
     };
   }
 
@@ -374,68 +375,16 @@ export class TranslationService {
     return languages;
   }
 
-  /**
-   * Restore placeholders in translated text back to their original values
-   */
   static restorePlaceholders(text: string, preservationMap: Map<string, string>): string {
-    let restored = text;
-    for (const [placeholder, original] of preservationMap.entries()) {
-      restored = restored.replace(placeholder, original);
-    }
-    return restored;
+    return restorePlaceholders(text, preservationMap);
   }
 
-  /**
-   * Preserve code blocks by replacing with placeholders
-   */
   static preserveCodeBlocks(text: string, preservationMap: Map<string, string>): string {
-    let processed = text;
-    let counter = 0;
-
-    // Preserve multi-line code blocks (```)
-    processed = processed.replace(/```[\s\S]*?```/g, (match) => {
-      const placeholder = `__CODE_${counter++}__`;
-      preservationMap.set(placeholder, match);
-      return placeholder;
-    });
-
-    // Preserve inline code blocks (`)
-    processed = processed.replace(/`[^`]+`/g, (match) => {
-      const placeholder = `__CODE_${counter++}__`;
-      preservationMap.set(placeholder, match);
-      return placeholder;
-    });
-
-    return processed;
+    return preserveCodeBlocks(text, preservationMap);
   }
 
-  /**
-   * Preserve variables by replacing with placeholders
-   * Uses simple counter for efficient placeholder generation (10-20x faster than crypto)
-   */
   static preserveVariables(text: string, preservationMap: Map<string, string>): string {
-    let processed = text;
-    let counter = 0;  // Simple counter suffices - no need for crypto-secure random
-
-    // Preserve various variable formats (order matters - do ${} before {})
-    const patterns = [
-      /\$\{[a-zA-Z0-9_]+\}/g,         // ${name}
-      /\{[a-zA-Z0-9_]+\}/g,           // {name}, {0}
-      /%[sd]/g,                        // %s, %d
-    ];
-
-    for (const pattern of patterns) {
-      processed = processed.replace(pattern, (match) => {
-        // Simple counter-based placeholder
-        // Collision risk is negligible since variables are replaced immediately
-        // and placeholders are ephemeral (used only during translation)
-        const placeholder = `__VAR_${counter++}__`;
-        preservationMap.set(placeholder, match);
-        return placeholder;
-      });
-    }
-
-    return processed;
+    return preserveVariables(text, preservationMap);
   }
 
   /**
