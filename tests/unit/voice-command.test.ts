@@ -405,7 +405,7 @@ describe('VoiceCommand', () => {
       await command.translate('test.mp3', { to: 'de' });
 
       const callArgs = mockService.translateFile.mock.calls[0]!;
-      expect(callArgs[2]).toBeDefined();
+      expect(callArgs[2]).toEqual(expect.objectContaining({ onSourceTranscript: expect.any(Function) }));
       expect(callArgs[2]).toHaveProperty('onSourceTranscript');
       expect(callArgs[2]).toHaveProperty('onTargetTranscript');
     });
@@ -770,7 +770,7 @@ describe('VoiceCommand', () => {
       await command.translateFromStdin({ to: 'de' });
 
       const callArgs = mockService.translateStdin.mock.calls[0]!;
-      expect(callArgs[1]).toBeDefined();
+      expect(callArgs[1]).toEqual(expect.objectContaining({ onSourceTranscript: expect.any(Function) }));
       expect(callArgs[1]).toHaveProperty('onSourceTranscript');
       expect(callArgs[1]).toHaveProperty('onTargetTranscript');
     });
@@ -852,7 +852,7 @@ describe('VoiceCommand', () => {
       const warningCall = stderrSpy.mock.calls.find(
         (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Warning'),
       );
-      expect(warningCall).toBeDefined();
+      expect(warningCall).toEqual(expect.arrayContaining([expect.stringContaining('Warning')]));
       expect(warningCall![0]).toContain('de, fr');
     });
 
