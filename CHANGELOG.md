@@ -10,7 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `languages` and `usage` commands now default to `text` format instead of `table`, consistent with all other commands
 
+### Added
+- `destroy()` method on `HttpClient` and `DeepLClient` to tear down keepAlive HTTP agents and prevent socket leaks
+
 ### Fixed
+- Voice reconnection test CI timeout — move file I/O out of fake-timer context so `createReadStream` progresses on slow CI machines
+- HTTP keepAlive agents now destroyed in test teardown, preventing flaky integration tests and "worker process failed to exit gracefully" warnings
 - Tighten `classifyByMessage` fallback patterns to prevent false-positive error classification — bare `"not found"`, `"invalid"`, `"unsupported"`, `"expected"` no longer misclassify third-party errors as InvalidInput
 - Convert remaining raw `Error` throws to typed `DeepLCLIError` subclasses: batch mismatch → `NetworkError`, missing VoiceClient → `ValidationError`, unrecognized 4xx → `ValidationError`, chunk stream failure → `VoiceError`
 - Cache database corruption no longer crashes the CLI — corrupt DB is automatically deleted and recreated
