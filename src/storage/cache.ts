@@ -263,6 +263,10 @@ export class CacheService {
     if (!this.isClosed) {
       this.db.close();
       this.isClosed = true;
+      if (CacheService.instance === this) {
+        CacheService.instance = null;
+        CacheService.handlersRegistered = false;
+      }
     }
   }
 
