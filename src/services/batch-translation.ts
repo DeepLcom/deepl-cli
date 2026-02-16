@@ -10,6 +10,7 @@ import fg from 'fast-glob';
 import { FileTranslationService } from './file-translation.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { TranslationService, MAX_TEXT_BYTES, TRANSLATE_BATCH_SIZE } from './translation.js';
+import { preserveCodeBlocks, preserveVariables, restorePlaceholders } from '../utils/text-preservation.js';
 import { TranslationOptions } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
 import { Logger } from '../utils/logger.js';
@@ -221,8 +222,8 @@ export class BatchTranslationService {
         }
 
         const preservationMap = new Map<string, string>();
-        let processedText = TranslationService.preserveCodeBlocks(content, preservationMap);
-        processedText = TranslationService.preserveVariables(processedText, preservationMap);
+        let processedText = preserveCodeBlocks(content, preservationMap);
+        processedText = preserveVariables(processedText, preservationMap);
 
         const outputPath = this.generateOutputPath(
           file,
@@ -286,7 +287,7 @@ export class BatchTranslationService {
 
         for (let i = 0; i < batch.length; i++) {
           const entry = batch[i]!;
-          const translatedText = TranslationService.restorePlaceholders(
+          const translatedText = restorePlaceholders(
             results[i]!.text,
             entry.preservationMap,
           );
