@@ -917,7 +917,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 
 **Required:**
 
-- `--to, -t LANGS` - Target language(s), comma-separated (Alias: `--targets`)
+- `--to, -t LANGS` - Target language(s), comma-separated
 
 **Watch Options:**
 
