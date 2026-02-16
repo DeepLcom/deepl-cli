@@ -616,20 +616,17 @@ describe('VoiceService', () => {
         return mockWs as any;
       });
 
-      // stat() passes, but file is removed before createReadStream runs
-      jest.useRealTimers();
-      const trickyFile = path.join(tmpDir, 'tricky.mp3');
-      await fs.writeFile(trickyFile, Buffer.alloc(100));
-      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
+      // Mock the chunk reader to throw deterministically
+      // (avoids a filesystem race between createReadStream and unlink)
+      // eslint-disable-next-line require-yield
+      jest.spyOn(service as any, 'readFileInChunks').mockImplementation(async function*() {
+        throw new Error('ENOENT: no such file or directory');
+      });
 
-      const promise = service.translateFile(trickyFile, {
+      const promise = service.translateFile(testFile, {
         targetLangs: ['de'],
         chunkInterval: 0,
       });
-
-      jest.useRealTimers();
-      await fs.unlink(trickyFile);
-      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
 
       await expect(promise).rejects.toThrow();
       expect(mockWs.close).toHaveBeenCalled();
