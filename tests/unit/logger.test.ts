@@ -162,6 +162,103 @@ describe('Logger', () => {
     });
   });
 
+  describe('verbose() sanitization', () => {
+    beforeEach(() => {
+      Logger.setVerbose(true);
+    });
+
+    it('should redact ?token= query parameter from URLs', () => {
+      Logger.verbose('wss://api.deepl.com/ws?token=abc123-secret');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'wss://api.deepl.com/ws?token=[REDACTED]'
+      );
+    });
+
+    it('should redact &token= query parameter from URLs', () => {
+      Logger.verbose('https://api.deepl.com/ws?lang=en&token=abc123-secret&format=text');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'https://api.deepl.com/ws?lang=en&token=[REDACTED]&format=text'
+      );
+    });
+
+    it('should redact DeepL-Auth-Key header values', () => {
+      Logger.verbose('Authorization: DeepL-Auth-Key abc123-secret:fx');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Authorization: DeepL-Auth-Key [REDACTED]'
+      );
+    });
+
+    it('should redact DeepL-Auth-Key case-insensitively', () => {
+      Logger.verbose('deepl-auth-key MY-KEY:fx');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'DeepL-Auth-Key [REDACTED]'
+      );
+    });
+
+    it('should redact DEEPL_API_KEY env var value from strings', () => {
+      const originalKey = process.env['DEEPL_API_KEY'];
+      process.env['DEEPL_API_KEY'] = 'test-secret-key-123:fx';
+      try {
+        Logger.verbose('Using key test-secret-key-123:fx for request');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Using key [REDACTED] for request'
+        );
+      } finally {
+        if (originalKey === undefined) {
+          delete process.env['DEEPL_API_KEY'];
+        } else {
+          process.env['DEEPL_API_KEY'] = originalKey;
+        }
+      }
+    });
+
+    it('should not redact when DEEPL_API_KEY is not set', () => {
+      const originalKey = process.env['DEEPL_API_KEY'];
+      delete process.env['DEEPL_API_KEY'];
+      try {
+        Logger.verbose('Some message with no key to redact');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Some message with no key to redact'
+        );
+      } finally {
+        if (originalKey !== undefined) {
+          process.env['DEEPL_API_KEY'] = originalKey;
+        }
+      }
+    });
+
+    it('should pass non-string args through unchanged', () => {
+      const obj = { url: 'wss://api.deepl.com/ws?token=secret' };
+      Logger.verbose(obj, 42, null);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(obj, 42, null);
+    });
+
+    it('should sanitize multiple string args independently', () => {
+      Logger.verbose('wss://host?token=secret', 'DeepL-Auth-Key my-key');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'wss://host?token=[REDACTED]',
+        'DeepL-Auth-Key [REDACTED]'
+      );
+    });
+
+    it('should apply all sanitization patterns to a single string', () => {
+      const originalKey = process.env['DEEPL_API_KEY'];
+      process.env['DEEPL_API_KEY'] = 'combo-key:fx';
+      try {
+        Logger.verbose('url?token=tok1 header DeepL-Auth-Key combo-key:fx end');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'url?token=[REDACTED] header DeepL-Auth-Key [REDACTED] end'
+        );
+      } finally {
+        if (originalKey === undefined) {
+          delete process.env['DEEPL_API_KEY'];
+        } else {
+          process.env['DEEPL_API_KEY'] = originalKey;
+        }
+      }
+    });
+  });
+
   describe('spinner control', () => {
     it('should return true for shouldShowSpinner in normal mode', () => {
       expect(Logger.shouldShowSpinner()).toBe(true);

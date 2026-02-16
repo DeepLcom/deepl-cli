@@ -35,12 +35,24 @@ class LoggerClass {
     return this.verboseMode;
   }
 
+  private sanitize(value: unknown): unknown {
+    if (typeof value !== 'string') return value;
+    let result = value;
+    result = result.replace(/([?&])token=[^&\s]*/gi, '$1token=[REDACTED]');
+    result = result.replace(/DeepL-Auth-Key\s+\S+/gi, 'DeepL-Auth-Key [REDACTED]');
+    const apiKey = process.env['DEEPL_API_KEY'];
+    if (apiKey) {
+      result = result.replaceAll(apiKey, '[REDACTED]');
+    }
+    return result;
+  }
+
   /**
    * Log verbose messages (only shown when verbose mode is enabled, suppressed in quiet mode)
    */
   verbose(...args: unknown[]): void {
     if (this.verboseMode && !this.quiet) {
-      console.error(...args);
+      console.error(...args.map((arg) => this.sanitize(arg)));
     }
   }
 
