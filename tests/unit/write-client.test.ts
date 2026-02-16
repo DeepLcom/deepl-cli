@@ -4,6 +4,7 @@
  */
 
 import { WriteClient } from '../../src/api/write-client.js';
+import { HttpClient } from '../../src/api/http-client.js';
 import axios from 'axios';
 
 jest.mock('axios');
@@ -24,6 +25,7 @@ describe('WriteClient', () => {
     jest.spyOn(axios, 'isAxiosError').mockReturnValue(false);
 
     client = new WriteClient('test-api-key');
+    jest.spyOn(HttpClient.prototype, 'sleep' as any).mockResolvedValue(undefined);
   });
 
   afterAll(() => {

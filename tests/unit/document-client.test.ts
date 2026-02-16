@@ -4,6 +4,7 @@
  */
 
 import { DocumentClient } from '../../src/api/document-client.js';
+import { HttpClient } from '../../src/api/http-client.js';
 import axios from 'axios';
 
 jest.mock('axios');
@@ -24,6 +25,7 @@ describe('DocumentClient', () => {
     jest.spyOn(axios, 'isAxiosError').mockReturnValue(false);
 
     client = new DocumentClient('test-api-key');
+    jest.spyOn(HttpClient.prototype, 'sleep' as any).mockResolvedValue(undefined);
   });
 
   afterAll(() => {
