@@ -81,7 +81,7 @@ describe('File Translation E2E', () => {
       );
 
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toBeTruthy();
+      expect(result.output).toMatch(/error|authentication|invalid/i);
     });
   });
 

@@ -295,7 +295,7 @@ describe('CacheService', () => {
       const recentEntry = cacheService.get('key-149');
 
       expect(veryOldEntry).toBeNull();
-      expect(recentEntry).toBeDefined();
+      expect(recentEntry).toEqual({ text: 'x'.repeat(1000) });
     });
 
     it('should maintain cache size under maxSize', () => {
@@ -325,7 +325,7 @@ describe('CacheService', () => {
 
       // Large entry should exist
       const largeEntry = cacheService.get('huge');
-      expect(largeEntry).toBeDefined();
+      expect(largeEntry).toHaveProperty('text');
 
       // At least some old entries should have been evicted
       const oldEntry = cacheService.get('key-0');
@@ -359,7 +359,7 @@ describe('CacheService', () => {
 
       // New entry should exist
       const newEntry = smallCache.get('new-key');
-      expect(newEntry).toBeDefined();
+      expect(newEntry).toHaveProperty('text');
 
       // Oldest entries should be evicted
       const veryOldEntry = smallCache.get('key-0');
@@ -367,7 +367,7 @@ describe('CacheService', () => {
 
       // Some recent entries should still exist
       const recentEntry = smallCache.get(`key-${49}`);
-      expect(recentEntry).toBeDefined();
+      expect(recentEntry).toHaveProperty('text');
 
       smallCache.close();
     });
@@ -385,7 +385,7 @@ describe('CacheService', () => {
 
       // Should exist immediately
       let value = service.get('test');
-      expect(value).toBeDefined();
+      expect(value).toEqual({ text: 'Hello' });
 
       // Should expire after TTL
       jest.advanceTimersByTime(150);
@@ -407,7 +407,7 @@ describe('CacheService', () => {
       jest.advanceTimersByTime(100);
 
       const value = service.get('test');
-      expect(value).toBeDefined();
+      expect(value).toEqual({ text: 'Hello' });
 
       service.close();
       jest.useRealTimers();

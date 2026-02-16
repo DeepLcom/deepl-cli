@@ -52,7 +52,7 @@ describe('DeepLClient lazy sub-client construction', () => {
 
     await client.translate('Hello', { targetLang: 'es' });
 
-    expect((client as any)._translationClient).toBeDefined();
+    expect((client as any)._translationClient).not.toBeNull();
     // Other clients should still be undefined
     expect((client as any)._glossaryClient).toBeUndefined();
     expect((client as any)._documentClient).toBeUndefined();
@@ -91,7 +91,7 @@ describe('DeepLClient lazy sub-client construction', () => {
     nock(baseUrl).get('/v3/glossaries').reply(200, { glossaries: [] });
     await client.listGlossaries();
 
-    expect((client as any)._glossaryClient).toBeDefined();
+    expect((client as any)._glossaryClient).not.toBeNull();
     expect((client as any)._translationClient).toBeUndefined();
   });
 
@@ -107,7 +107,7 @@ describe('DeepLClient lazy sub-client construction', () => {
     });
     await client.improveText('Test.', { targetLang: 'en-US' });
 
-    expect((client as any)._writeClient).toBeDefined();
+    expect((client as any)._writeClient).not.toBeNull();
     expect((client as any)._translationClient).toBeUndefined();
   });
 
@@ -121,7 +121,7 @@ describe('DeepLClient lazy sub-client construction', () => {
     nock(baseUrl).get('/v2/admin/developer-keys').reply(200, []);
     await client.listApiKeys();
 
-    expect((client as any)._adminClient).toBeDefined();
+    expect((client as any)._adminClient).not.toBeNull();
     expect((client as any)._translationClient).toBeUndefined();
   });
 
@@ -135,7 +135,7 @@ describe('DeepLClient lazy sub-client construction', () => {
     nock(baseUrl).get('/v3/style_rules').reply(200, { style_rules: [] });
     await client.getStyleRules();
 
-    expect((client as any)._styleRulesClient).toBeDefined();
+    expect((client as any)._styleRulesClient).not.toBeNull();
     expect((client as any)._translationClient).toBeUndefined();
   });
 });

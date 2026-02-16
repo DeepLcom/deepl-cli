@@ -135,7 +135,7 @@ describe('CLI Success Paths E2E', () => {
 
     it('should exit with code 0 on successful translation', () => {
       const output = runCLI('translate "Hello" --to es');
-      expect(output).toBeTruthy();
+      expect(output).toContain('Hola');
     });
 
     it('should output JSON format when --format json is used', () => {
@@ -159,7 +159,7 @@ describe('CLI Success Paths E2E', () => {
 
     it('should exit with code 0 on successful write', () => {
       const output = runCLIAll('write "Test text" --lang en-US');
-      expect(output).toBeTruthy();
+      expect(output).toContain('Improved:');
     });
   });
 
@@ -183,7 +183,7 @@ describe('CLI Success Paths E2E', () => {
 
     it('should exit with code 0', () => {
       const output = runCLI('usage');
-      expect(output).toBeTruthy();
+      expect(output).toContain('Character Usage:');
     });
   });
 
@@ -210,7 +210,7 @@ describe('CLI Success Paths E2E', () => {
 
     it('should exit with code 0', () => {
       const output = runCLIAll('languages');
-      expect(output).toBeTruthy();
+      expect(output).toContain('Source Languages:');
     });
   });
 });

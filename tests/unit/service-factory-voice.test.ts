@@ -53,7 +53,7 @@ describe('createVoiceCommand', () => {
     });
 
     const voiceCommand = await createVoiceCommand(getApiKeyAndOptions);
-    expect(voiceCommand).toBeDefined();
+    expect(voiceCommand).toHaveProperty('translate');
   });
 
   it('should allow HTTP localhost for testing', async () => {
@@ -63,7 +63,7 @@ describe('createVoiceCommand', () => {
     });
 
     const voiceCommand = await createVoiceCommand(getApiKeyAndOptions);
-    expect(voiceCommand).toBeDefined();
+    expect(voiceCommand).toHaveProperty('translate');
   });
 
   it('should allow HTTP 127.0.0.1 for testing', async () => {
@@ -73,7 +73,7 @@ describe('createVoiceCommand', () => {
     });
 
     const voiceCommand = await createVoiceCommand(getApiKeyAndOptions);
-    expect(voiceCommand).toBeDefined();
+    expect(voiceCommand).toHaveProperty('translate');
   });
 
   it('should allow undefined base URL (uses default)', async () => {
@@ -83,7 +83,7 @@ describe('createVoiceCommand', () => {
     });
 
     const voiceCommand = await createVoiceCommand(getApiKeyAndOptions);
-    expect(voiceCommand).toBeDefined();
+    expect(voiceCommand).toHaveProperty('translate');
   });
 
   it('should reject invalid URL format', async () => {

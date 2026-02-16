@@ -296,7 +296,7 @@ describe('service-factory', () => {
     expect(StyleRulesService).toHaveBeenCalledWith(mockClient);
     const { StyleRulesCommand } = require('../../src/cli/commands/style-rules');
     expect(StyleRulesCommand).toHaveBeenCalledWith(mockStyleRulesServiceObj);
-    expect(cmd).toBeDefined();
+    expect(cmd).toHaveProperty('list');
   });
 
   it('createUsageCommand should create client, UsageService, and UsageCommand', async () => {
@@ -308,7 +308,7 @@ describe('service-factory', () => {
     expect(UsageService).toHaveBeenCalledWith(mockClient);
     const { UsageCommand } = require('../../src/cli/commands/usage');
     expect(UsageCommand).toHaveBeenCalledWith(mockUsageServiceObj);
-    expect(cmd).toBeDefined();
+    expect(cmd).toHaveProperty('getUsage');
   });
 
   it('createTranslateCommand should wire up all translation dependencies', async () => {
@@ -431,7 +431,7 @@ describe('registerAuth', () => {
     await loadAndRegister();
 
     const authCmd = program.commands.find((c) => c.name() === 'auth');
-    expect(authCmd).toBeDefined();
+    expect(authCmd).toBeInstanceOf(Command);
 
     const subNames = authCmd!.commands.map((c) => c.name());
     expect(subNames).toContain('set-key');

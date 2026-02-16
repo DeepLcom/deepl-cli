@@ -263,7 +263,7 @@ describe('Document Translation E2E', () => {
 
       expect(result.status).toBeGreaterThan(0);
       // Should show meaningful error message
-      expect(result.output).toBeTruthy();
+      expect(result.output).toMatch(/error|authentication|invalid/i);
     });
 
     it('should exit with non-zero code on error', () => {

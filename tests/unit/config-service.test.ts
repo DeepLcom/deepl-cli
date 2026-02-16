@@ -30,7 +30,7 @@ describe('ConfigService', () => {
 
     it('should return default config when no config file exists', () => {
       const config = configService.get();
-      expect(config).toBeDefined();
+      expect(config).toHaveProperty('defaults');
       expect(config.defaults.targetLangs).toEqual([]);
       expect(config.cache.enabled).toBe(true);
     });
@@ -197,10 +197,10 @@ describe('ConfigService', () => {
   describe('getDefaults()', () => {
     it('should return default configuration', () => {
       const defaults = ConfigService.getDefaults();
-      expect(defaults).toBeDefined();
-      expect(defaults.auth).toBeDefined();
-      expect(defaults.defaults).toBeDefined();
-      expect(defaults.cache).toBeDefined();
+      expect(defaults).toHaveProperty('auth');
+      expect(defaults.auth).toHaveProperty('apiKey');
+      expect(defaults.defaults).toHaveProperty('targetLangs');
+      expect(defaults.cache).toHaveProperty('enabled');
     });
 
     it('should return same defaults each time', () => {

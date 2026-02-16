@@ -51,7 +51,7 @@ describe('Usage Command E2E', () => {
 
       expect(result.status).toBeGreaterThan(0);
       // Should fail during API call or validation
-      expect(result.output).toBeTruthy();
+      expect(result.output).toMatch(/error|invalid|api/i);
     });
 
     it('should not accept unexpected arguments', () => {
@@ -83,7 +83,7 @@ describe('Usage Command E2E', () => {
 
       expect(result.status).toBeGreaterThan(0);
       // Should show meaningful error message
-      expect(result.output).toBeTruthy();
+      expect(result.output).toMatch(/error|authentication|invalid/i);
     });
   });
 

@@ -281,7 +281,7 @@ describe('Git Hooks Service Integration', () => {
     it('should use process.cwd() when startPath not provided', () => {
       const gitRoot = GitHooksService.findGitRoot();
       // Should find the git root of the test project itself
-      expect(gitRoot).toBeTruthy();
+      expect(gitRoot).toContain('/');
     });
   });
 });
