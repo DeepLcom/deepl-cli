@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as http from 'http';
 import * as https from 'https';
 import { Language } from '../types';
-import { AuthError, RateLimitError, QuotaError, NetworkError, ConfigError } from '../utils/errors.js';
+import { AuthError, RateLimitError, QuotaError, NetworkError, ConfigError, ValidationError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 
 export interface ProxyConfig {
@@ -293,7 +293,7 @@ export class HttpClient {
           if (!error.response && this.isNetworkLevelError(error)) {
             return new NetworkError(`Network error: ${error.message}`);
           }
-          return new Error(`API error: ${message}${traceIdSuffix}`);
+          return new ValidationError(`API error: ${message}${traceIdSuffix}`);
       }
     }
 

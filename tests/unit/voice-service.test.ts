@@ -82,7 +82,7 @@ describe('VoiceService', () => {
     });
 
     it('should throw error if client is not provided', () => {
-      expect(() => new VoiceService(null as unknown as VoiceClient)).toThrow();
+      expect(() => new VoiceService(null as unknown as VoiceClient)).toThrow(ValidationError);
     });
   });
 

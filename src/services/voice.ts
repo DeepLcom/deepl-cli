@@ -37,7 +37,7 @@ export class VoiceService {
 
   constructor(client: VoiceClient) {
     if (!client) {
-      throw new Error('VoiceClient is required');
+      throw new ValidationError('VoiceClient is required');
     }
     this.client = client;
   }

@@ -207,6 +207,19 @@ describe('HttpClient.handleError suggestions', () => {
       });
   });
 
+  it('should wrap unrecognized 4xx errors with ValidationError', async () => {
+    const { DeepLClient } = await import('../../src/api/deepl-client');
+    const client = new DeepLClient('test-api-key', { maxRetries: 0 });
+
+    nock(baseUrl)
+      .post('/v2/translate')
+      .reply(422, { message: 'Unprocessable Entity' });
+
+    await expect(client.translate('Hello', { targetLang: 'es' }))
+      .rejects
+      .toBeInstanceOf(ValidationError);
+  });
+
   it('should wrap network-level errors with NetworkError and suggestion', async () => {
     const { DeepLClient } = await import('../../src/api/deepl-client');
     const client = new DeepLClient('test-api-key', {

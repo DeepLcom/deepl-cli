@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { StructuredFileTranslationService } from '../../src/services/structured-file-translation';
 import { TranslationService } from '../../src/services/translation';
+import { NetworkError } from '../../src/utils/errors';
 import { createMockTranslationService } from '../helpers/mock-factories';
 
 jest.mock('../../src/services/translation');
@@ -634,7 +635,7 @@ describe('StructuredFileTranslationService', () => {
   });
 
   describe('batch-mismatch error', () => {
-    it('should throw when translateBatch returns fewer results than expected', async () => {
+    it('should throw NetworkError when translateBatch returns fewer results than expected', async () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
@@ -652,12 +653,15 @@ describe('StructuredFileTranslationService', () => {
 
       await expect(
         service.translateFile(inputPath, outputPath, { targetLang: 'es' })
+      ).rejects.toThrow(NetworkError);
+      await expect(
+        service.translateFile(inputPath, outputPath, { targetLang: 'es' })
       ).rejects.toThrow(
         /Translation batch failed: expected 3 results but got 2/
       );
     });
 
-    it('should throw when translateBatch returns more results than expected', async () => {
+    it('should throw NetworkError when translateBatch returns more results than expected', async () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
@@ -671,6 +675,9 @@ describe('StructuredFileTranslationService', () => {
         { text: 'Extra', detectedSourceLang: 'en' },
       ]);
 
+      await expect(
+        service.translateFile(inputPath, outputPath, { targetLang: 'es' })
+      ).rejects.toThrow(NetworkError);
       await expect(
         service.translateFile(inputPath, outputPath, { targetLang: 'es' })
       ).rejects.toThrow(

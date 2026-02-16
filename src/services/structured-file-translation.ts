@@ -12,7 +12,7 @@ import { atomicWriteFile } from '../utils/atomic-write.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
 import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
-import { ValidationError } from '../utils/errors.js';
+import { ValidationError, NetworkError } from '../utils/errors.js';
 
 interface FileTranslationOptions {
   preserveCode?: boolean;
@@ -320,7 +320,7 @@ export class StructuredFileTranslationService {
       if (batch.length > 0 && batchBytes + strBytes > MAX_TEXT_BYTES) {
         const batchResults = await this.translationService.translateBatch(batch, options);
         if (batchResults.length !== batch.length) {
-          throw new Error(
+          throw new NetworkError(
             `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
             'Aborting to prevent misaligned output.'
           );
@@ -339,7 +339,7 @@ export class StructuredFileTranslationService {
     if (batch.length > 0) {
       const batchResults = await this.translationService.translateBatch(batch, options);
       if (batchResults.length !== batch.length) {
-        throw new Error(
+        throw new NetworkError(
           `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
           'Aborting to prevent misaligned output.'
         );

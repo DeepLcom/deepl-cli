@@ -203,7 +203,7 @@ export class VoiceStreamSession {
         this.client.sendEndOfSource(this.ws);
       } catch (error) {
         this.ws.close();
-        reject(error instanceof Error ? error : new Error(String(error)));
+        reject(error instanceof Error ? error : new VoiceError(String(error)));
       }
     })();
   }
