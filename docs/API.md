@@ -922,7 +922,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 
 - `--output, -o DIR` - Output directory (default: `<path>/translations` for directories, same dir for files)
 - `--pattern GLOB` - File pattern filter (e.g., `*.md`, `**/*.json`)
-- `--debounce MS` - Debounce delay in milliseconds (default: 300)
+- `--debounce MS` - Debounce delay in milliseconds (default: 500)
 
 **Translation Options:**
 

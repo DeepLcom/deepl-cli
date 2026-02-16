@@ -26,7 +26,7 @@ export function registerWatch(
     .option('--preserve-formatting', 'Preserve line breaks and whitespace formatting')
     .optionsGroup('Watch Behavior:')
     .option('--pattern <pattern>', 'Glob pattern for file filtering (e.g., "*.md")')
-    .option('--debounce <ms>', 'Debounce delay in milliseconds (default: 300)', parseInt)
+    .option('--debounce <ms>', 'Debounce delay in milliseconds (default: 500)', parseInt)
     .option('--concurrency <number>', 'Max parallel translations (default: 5)', parseInt)
     .option('--dry-run', 'Show what would be watched without starting the watcher')
     .option('--git-staged', 'Only watch git-staged files (snapshot at startup)')

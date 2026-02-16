@@ -704,7 +704,7 @@ deepl watch docs/ --pattern "*.md" --to ja
 # Auto-commit translations to git
 deepl watch docs/ --to es --auto-commit
 
-# Custom debounce delay (default: 300ms)
+# Custom debounce delay (default: 500ms)
 deepl watch src/ --to es --debounce 1000
 
 # Preview what would be watched without starting the watcher
