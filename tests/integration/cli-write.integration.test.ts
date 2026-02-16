@@ -546,6 +546,8 @@ describe('Write Command Integration', () => {
       await expect(
         noRetryWriteService.improve('Test', { targetLang: 'en-US' })
       ).rejects.toThrow();
+
+      noRetryClient.destroy();
     });
   });
 });
