@@ -12,8 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `destroy()` method on `HttpClient` and `DeepLClient` to tear down keepAlive HTTP agents and prevent socket leaks
+- Voice `--glossary` now accepts a glossary name or ID (matching translate/watch behavior)
 
 ### Fixed
+- All Logger methods (`error()`, `info()`, `warn()`, `success()`) now sanitize output to redact API keys, matching existing `verbose()` behavior
+- `getApiKeyAndOptions()` now validates API base URL with `validateApiUrl()`, preventing insecure HTTP URLs for voice commands
+- Replace "Internal DeepL project" README disclaimer with MIT license reference
+- Fix 8 broken example script links in README (renumbered after reordering)
+- Remove stale `--targets` alias from watch command in API.md
+- Remove stale `team` config section from API.md
+- Fix debounce default documented as 300ms → 500ms in API.md, README, and help text
+- Document all formality values (`prefer_more`/`prefer_less`) for voice command in API.md
 - Voice reconnection test CI timeout — move file I/O out of fake-timer context so `createReadStream` progresses on slow CI machines
 - HTTP keepAlive agents now destroyed in test teardown, preventing flaky integration tests and "worker process failed to exit gracefully" warnings
 - Tighten `classifyByMessage` fallback patterns to prevent false-positive error classification — bare `"not found"`, `"invalid"`, `"unsupported"`, `"expected"` no longer misclassify third-party errors as InvalidInput
