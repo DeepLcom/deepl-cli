@@ -26,6 +26,10 @@ describe('WriteClient', () => {
     client = new WriteClient('test-api-key');
   });
 
+  afterAll(() => {
+    client.destroy();
+  });
+
   describe('constructor', () => {
     it('should create a WriteClient instance', () => {
       expect(client).toBeInstanceOf(WriteClient);

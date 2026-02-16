@@ -18,6 +18,7 @@ describe('FileTranslation Integration', () => {
   let testDir: string;
   let configDir: string;
   let service: FileTranslationService;
+  let client: DeepLClient;
 
   beforeEach(() => {
     testDir = path.join(os.tmpdir(), `deepl-file-integ-${Date.now()}`);
@@ -25,7 +26,7 @@ describe('FileTranslation Integration', () => {
     fs.mkdirSync(testDir, { recursive: true });
     fs.mkdirSync(configDir, { recursive: true });
 
-    const client = new DeepLClient(TEST_API_KEY);
+    client = new DeepLClient(TEST_API_KEY);
     const configService = new ConfigService(path.join(configDir, 'config.json'));
     const cacheService = new CacheService({ dbPath: path.join(configDir, 'cache.db') });
     const translationService = new TranslationService(client, configService, cacheService);
@@ -33,6 +34,7 @@ describe('FileTranslation Integration', () => {
   });
 
   afterEach(() => {
+    client.destroy();
     nock.cleanAll();
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });

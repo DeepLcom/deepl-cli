@@ -26,6 +26,10 @@ describe('StyleRulesClient', () => {
     client = new StyleRulesClient('test-api-key');
   });
 
+  afterAll(() => {
+    client.destroy();
+  });
+
   describe('constructor', () => {
     it('should create a StyleRulesClient instance', () => {
       expect(client).toBeInstanceOf(StyleRulesClient);

@@ -61,6 +61,7 @@ describe('Batch Translation Service Integration', () => {
   });
 
   afterEach(() => {
+    client.destroy();
     // Cleanup temp directory
     if (fs.existsSync(tmpDir)) {
       fs.rmSync(tmpDir, { recursive: true, force: true });

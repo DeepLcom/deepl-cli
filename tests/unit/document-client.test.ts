@@ -26,6 +26,10 @@ describe('DocumentClient', () => {
     client = new DocumentClient('test-api-key');
   });
 
+  afterAll(() => {
+    client.destroy();
+  });
+
   describe('constructor', () => {
     it('should create a DocumentClient instance', () => {
       expect(client).toBeInstanceOf(DocumentClient);

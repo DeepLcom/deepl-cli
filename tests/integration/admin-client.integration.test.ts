@@ -10,14 +10,18 @@ import { DEEPL_FREE_API_URL } from '../helpers';
 describe('AdminClient Integration', () => {
   const API_KEY = 'test-admin-key:fx';
   const API_URL = DEEPL_FREE_API_URL;
+  const clients: AdminClient[] = [];
 
   afterEach(() => {
+    clients.forEach(c => c.destroy());
+    clients.length = 0;
     nock.cleanAll();
   });
 
   describe('listApiKeys()', () => {
     it('should make GET request and normalize response', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(API_URL)
         .get('/v2/admin/developer-keys')
@@ -53,6 +57,7 @@ describe('AdminClient Integration', () => {
 
     it('should handle 403 authentication error', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       nock(API_URL)
         .get('/v2/admin/developer-keys')
@@ -65,6 +70,7 @@ describe('AdminClient Integration', () => {
   describe('createApiKey()', () => {
     it('should POST with label and return new key', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(API_URL)
         .post('/v2/admin/developer-keys', (body) => {
@@ -89,6 +95,7 @@ describe('AdminClient Integration', () => {
 
     it('should POST without label when not provided', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(API_URL)
         .post('/v2/admin/developer-keys', (body) => {
@@ -110,6 +117,7 @@ describe('AdminClient Integration', () => {
   describe('deactivateApiKey()', () => {
     it('should PUT with key_id', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(API_URL)
         .put('/v2/admin/developer-keys/deactivate', (body) => {
@@ -126,6 +134,7 @@ describe('AdminClient Integration', () => {
   describe('renameApiKey()', () => {
     it('should PUT with key_id and label', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(API_URL)
         .put('/v2/admin/developer-keys/label', (body) => {
@@ -143,6 +152,7 @@ describe('AdminClient Integration', () => {
   describe('setApiKeyLimit()', () => {
     it('should PUT with character limit', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(API_URL)
         .put('/v2/admin/developer-keys/limits', (body) => {
@@ -158,6 +168,7 @@ describe('AdminClient Integration', () => {
 
     it('should PUT with null to remove limit', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(API_URL)
         .put('/v2/admin/developer-keys/limits', (body) => {
@@ -175,6 +186,7 @@ describe('AdminClient Integration', () => {
   describe('getAdminUsage()', () => {
     it('should GET with date range and parse response', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(API_URL)
         .get('/v2/admin/analytics')
@@ -210,6 +222,7 @@ describe('AdminClient Integration', () => {
 
     it('should include group_by when specified', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(API_URL)
         .get('/v2/admin/analytics')
@@ -257,6 +270,7 @@ describe('AdminClient Integration', () => {
 
     it('should handle 403 for non-admin keys', async () => {
       const client = new AdminClient(API_KEY);
+      clients.push(client);
 
       nock(API_URL)
         .get('/v2/admin/analytics')

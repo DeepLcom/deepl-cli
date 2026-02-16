@@ -26,6 +26,10 @@ describe('GlossaryClient', () => {
     client = new GlossaryClient('test-api-key');
   });
 
+  afterAll(() => {
+    client.destroy();
+  });
+
   describe('constructor', () => {
     it('should create a GlossaryClient instance', () => {
       expect(client).toBeInstanceOf(GlossaryClient);

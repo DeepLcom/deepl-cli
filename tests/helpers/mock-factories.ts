@@ -65,6 +65,7 @@ function deepLClientDefaults(): MockShape<DeepLClient> {
     renameApiKey: jest.fn().mockResolvedValue(undefined),
     setApiKeyLimit: jest.fn().mockResolvedValue(undefined),
     getAdminUsage: jest.fn().mockResolvedValue({ totalUsage: {}, startDate: '', endDate: '', entries: [] }),
+    destroy: jest.fn(),
   };
 }
 

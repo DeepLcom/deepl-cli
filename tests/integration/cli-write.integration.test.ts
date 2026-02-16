@@ -34,6 +34,7 @@ describe('Write Command Integration', () => {
   });
 
   afterEach(() => {
+    client.destroy();
     nock.abortPendingRequests();
     nock.cleanAll();
     try { cacheService.close(); } catch { /* ignore */ }

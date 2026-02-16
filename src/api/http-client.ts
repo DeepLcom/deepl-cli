@@ -136,6 +136,13 @@ export class HttpClient {
     this.client = axios.create(axiosConfig);
   }
 
+  destroy(): void {
+    const httpAgent = this.client.defaults?.httpAgent as http.Agent | undefined;
+    const httpsAgent = this.client.defaults?.httpsAgent as https.Agent | undefined;
+    httpAgent?.destroy();
+    httpsAgent?.destroy();
+  }
+
   get lastTraceId(): string | undefined {
     return this._lastTraceId;
   }

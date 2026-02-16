@@ -17,6 +17,7 @@ const API_KEY = 'test-api-key-integration:fx';
 
 describe('Document Translation Integration', () => {
   let testDir: string;
+  const clients: DeepLClient[] = [];
 
   beforeAll(() => {
     testDir = path.join(os.tmpdir(), `.deepl-doc-integration-${Date.now()}`);
@@ -30,12 +31,15 @@ describe('Document Translation Integration', () => {
   });
 
   afterEach(() => {
+    clients.forEach(c => c.destroy());
+    clients.length = 0;
     nock.cleanAll();
   });
 
   describe('Service-level: happy path (upload -> poll -> download)', () => {
     it('should complete the full document translation workflow', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-happy.pdf');
@@ -117,6 +121,7 @@ describe('Document Translation Integration', () => {
 
     it('should handle immediate "done" status without intermediate polling', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-fast.txt');
@@ -154,6 +159,7 @@ describe('Document Translation Integration', () => {
   describe('Service-level: upload request structure validation', () => {
     it('should send target_lang in uppercase in multipart form', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-struct.pdf');
@@ -181,6 +187,7 @@ describe('Document Translation Integration', () => {
 
     it('should include source_lang when specified', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-src.pdf');
@@ -212,6 +219,7 @@ describe('Document Translation Integration', () => {
 
     it('should include formality when specified', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-form.pdf');
@@ -243,6 +251,7 @@ describe('Document Translation Integration', () => {
 
     it('should include glossary_id when specified', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-gloss.pdf');
@@ -274,6 +283,7 @@ describe('Document Translation Integration', () => {
 
     it('should include output_format when specified', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-fmt.docx');
@@ -305,6 +315,7 @@ describe('Document Translation Integration', () => {
 
     it('should include enable_document_minification when specified', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-min.docx');
@@ -335,6 +346,7 @@ describe('Document Translation Integration', () => {
 
     it('should use correct Authorization header for document upload', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-auth.pdf');
@@ -365,6 +377,7 @@ describe('Document Translation Integration', () => {
   describe('Service-level: polling request structure validation', () => {
     it('should POST document_key as form-encoded body to status endpoint', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-poll-struct.pdf');
@@ -398,6 +411,7 @@ describe('Document Translation Integration', () => {
   describe('Service-level: download request structure validation', () => {
     it('should POST document_key as form-encoded body to result endpoint', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-dl-struct.pdf');
@@ -429,6 +443,7 @@ describe('Document Translation Integration', () => {
 
     it('should handle binary content correctly', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-binary.pdf');
@@ -461,6 +476,7 @@ describe('Document Translation Integration', () => {
   describe('Service-level: upload error handling', () => {
     it('should throw on 403 authentication error during upload', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-403.pdf');
@@ -478,6 +494,7 @@ describe('Document Translation Integration', () => {
 
     it('should throw on 413 file too large error during upload', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-413.pdf');
@@ -495,6 +512,7 @@ describe('Document Translation Integration', () => {
 
     it('should throw on 456 quota exceeded error during upload', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-456.pdf');
@@ -512,6 +530,7 @@ describe('Document Translation Integration', () => {
 
     it('should throw for non-existent input file', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       await expect(
@@ -527,6 +546,7 @@ describe('Document Translation Integration', () => {
   describe('Service-level: polling error handling', () => {
     it('should throw when API returns error status during translation', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-poll-err.pdf');
@@ -552,6 +572,7 @@ describe('Document Translation Integration', () => {
 
     it('should throw when polling returns 404 document not found', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-poll-404.pdf');
@@ -573,6 +594,7 @@ describe('Document Translation Integration', () => {
 
     it('should report error status via progress callback', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-poll-cb.pdf');
@@ -616,6 +638,7 @@ describe('Document Translation Integration', () => {
   describe('Service-level: download error handling', () => {
     it('should throw when download returns 404', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-dl-404.pdf');
@@ -641,6 +664,7 @@ describe('Document Translation Integration', () => {
 
     it('should throw when download returns 503 service unavailable', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-dl-503.pdf');
@@ -668,6 +692,7 @@ describe('Document Translation Integration', () => {
   describe('Service-level: output directory creation', () => {
     it('should create output directory if it does not exist', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-mkdir.pdf');
@@ -700,6 +725,7 @@ describe('Document Translation Integration', () => {
   describe('Service-level: document minification validation', () => {
     it('should reject minification for non-PPTX/DOCX files', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-min-reject.pdf');
@@ -718,6 +744,7 @@ describe('Document Translation Integration', () => {
   describe('Service-level: abort signal support', () => {
     it('should cancel translation when abort signal fires', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-abort.pdf');
