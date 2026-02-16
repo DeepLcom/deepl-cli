@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Tighten `classifyByMessage` fallback patterns to prevent false-positive error classification — bare `"not found"`, `"invalid"`, `"unsupported"`, `"expected"` no longer misclassify third-party errors as InvalidInput
+- Convert remaining raw `Error` throws to typed `DeepLCLIError` subclasses: batch mismatch → `NetworkError`, missing VoiceClient → `ValidationError`, unrecognized 4xx → `ValidationError`, chunk stream failure → `VoiceError`
 - Cache database corruption no longer crashes the CLI — corrupt DB is automatically deleted and recreated
 - Formality vocabulary is now consistent across translate, watch, and voice commands (`formal`/`informal` accepted everywhere alongside `more`/`less`/`prefer_more`/`prefer_less`)
 - Add `"files"` field to `package.json` — `npm pack` now ships only `dist/`, `README.md`, and `LICENSE` (237 KB, down from 7.1 MB)
@@ -28,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add 5 missing mock factory exports to test helpers barrel file
 
 ### Added
+- Verbose warning when untyped errors reach the fallback exit code classifier (`--verbose` flag)
 - Watch mode `--concurrency` flag to limit parallel API calls (default: 5), preventing API flooding on bulk file changes
 - Add E2E tests for glossary, detect, auth, config, and cache commands
 - Add unit tests for 5 API clients (document, glossary, translation, write, style-rules)
