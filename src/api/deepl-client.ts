@@ -72,6 +72,15 @@ export class DeepLClient {
     return this._adminClient;
   }
 
+  destroy(): void {
+    this._translationClient?.destroy();
+    this._glossaryClient?.destroy();
+    this._documentClient?.destroy();
+    this._writeClient?.destroy();
+    this._styleRulesClient?.destroy();
+    this._adminClient?.destroy();
+  }
+
   get lastTraceId(): string | undefined {
     return this.translationClient.lastTraceId;
   }
