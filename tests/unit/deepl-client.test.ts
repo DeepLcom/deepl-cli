@@ -5,6 +5,7 @@
 
 import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client';
+import { HttpClient } from '../../src/api/http-client';
 
 describe('DeepLClient', () => {
   let client: DeepLClient;
@@ -18,11 +19,13 @@ describe('DeepLClient', () => {
   });
 
   beforeEach(() => {
+    jest.spyOn(HttpClient.prototype, 'sleep' as any).mockResolvedValue(undefined);
     client = new DeepLClient(apiKey);
     nock.cleanAll();
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     nock.cleanAll();
   });
 
