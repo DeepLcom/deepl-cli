@@ -15,6 +15,17 @@ describe('CLI Workflow E2E', () => {
   const testConfigDir = testConfig.path;
   const { runCLI, runCLIAll } = makeRunCLI(testConfig.path);
 
+  // Cache help outputs to avoid redundant process spawns
+  let mainHelp: string;
+  let translateHelp: string;
+  let glossaryHelp: string;
+
+  beforeAll(() => {
+    mainHelp = execSync('deepl --help', { encoding: 'utf-8' });
+    translateHelp = execSync('deepl translate --help', { encoding: 'utf-8' });
+    glossaryHelp = execSync('deepl glossary --help', { encoding: 'utf-8' });
+  });
+
   afterAll(() => {
     testFiles.cleanup();
     testConfig.cleanup();
@@ -22,7 +33,7 @@ describe('CLI Workflow E2E', () => {
 
   describe('Help and Version Commands', () => {
     it('should display help for main command', () => {
-      const output = execSync('deepl --help', { encoding: 'utf-8' });
+      const output = mainHelp;
 
       expect(output).toContain('Usage:');
       expect(output).toContain('translate');
@@ -40,7 +51,7 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should display help for translate command', () => {
-      const output = execSync('deepl translate --help', { encoding: 'utf-8' });
+      const output = translateHelp;
 
       expect(output).toContain('Usage:');
       expect(output).toContain('--to');
@@ -80,7 +91,7 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should display help for glossary command', () => {
-      const output = execSync('deepl glossary --help', { encoding: 'utf-8' });
+      const output = glossaryHelp;
 
       expect(output).toContain('Usage:');
       expect(output).toContain('create');
@@ -737,7 +748,7 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should handle HTML document structure in help text', () => {
-      const helpOutput = execSync('deepl translate --help', { encoding: 'utf-8' });
+      const helpOutput = translateHelp;
 
       // Should mention documents or files in help
       expect(helpOutput).toMatch(/file|document/i);
@@ -873,7 +884,7 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should include output-format in help text', () => {
-      const helpOutput = execSync('deepl translate --help', { encoding: 'utf-8' });
+      const helpOutput = translateHelp;
 
       // Should mention output-format flag
       expect(helpOutput).toContain('--output-format');
@@ -883,7 +894,7 @@ describe('CLI Workflow E2E', () => {
 
   describe('Glossary Languages Workflow', () => {
     it('should display glossary languages help text', () => {
-      const helpOutput = execSync('deepl glossary --help', { encoding: 'utf-8' });
+      const helpOutput = glossaryHelp;
 
       // Should mention languages subcommand
       expect(helpOutput).toContain('languages');
@@ -959,7 +970,7 @@ describe('CLI Workflow E2E', () => {
       });
 
       it('should mention add-entry in glossary help', () => {
-        const helpOutput = execSync('deepl glossary --help', { encoding: 'utf-8' });
+        const helpOutput = glossaryHelp;
 
         expect(helpOutput).toContain('add-entry');
         expect(helpOutput).toContain('Add a new entry to a glossary');
@@ -1010,7 +1021,7 @@ describe('CLI Workflow E2E', () => {
       });
 
       it('should mention update-entry in glossary help', () => {
-        const helpOutput = execSync('deepl glossary --help', { encoding: 'utf-8' });
+        const helpOutput = glossaryHelp;
 
         expect(helpOutput).toContain('update-entry');
         expect(helpOutput).toContain('Update an existing entry in a glossary');
@@ -1060,7 +1071,7 @@ describe('CLI Workflow E2E', () => {
       });
 
       it('should mention remove-entry in glossary help', () => {
-        const helpOutput = execSync('deepl glossary --help', { encoding: 'utf-8' });
+        const helpOutput = glossaryHelp;
 
         expect(helpOutput).toContain('remove-entry');
         expect(helpOutput).toContain('Remove an entry from a glossary');
@@ -1154,7 +1165,7 @@ describe('CLI Workflow E2E', () => {
       });
 
       it('should mention replace-dictionary in glossary help', () => {
-        const helpOutput = execSync('deepl glossary --help', { encoding: 'utf-8' });
+        const helpOutput = glossaryHelp;
 
         expect(helpOutput).toContain('replace-dictionary');
       });
@@ -1163,7 +1174,7 @@ describe('CLI Workflow E2E', () => {
 
   describe('Cost Transparency Workflow', () => {
     it('should display --show-billed-characters flag in translate help', () => {
-      const helpOutput = execSync('deepl translate --help', { encoding: 'utf-8' });
+      const helpOutput = translateHelp;
 
       expect(helpOutput).toContain('--show-billed-characters');
       expect(helpOutput).toMatch(/billed.*character/i);
@@ -1279,7 +1290,7 @@ describe('CLI Workflow E2E', () => {
 
   describe('Style Rules Command', () => {
     it('should show style-rules command in help', () => {
-      const result = runCLI('deepl --help');
+      const result = mainHelp;
       expect(result).toContain('style-rules');
     });
 
@@ -1356,7 +1367,7 @@ describe('CLI Workflow E2E', () => {
 
   describe('Admin Command', () => {
     it('should show admin command in main help', () => {
-      const output = runCLI('deepl --help');
+      const output = mainHelp;
       expect(output).toContain('admin');
     });
 
