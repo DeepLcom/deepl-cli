@@ -340,7 +340,7 @@ deepl translate document.pdf --to es --output-format docx --output document.es.d
 
 # Note: DeepL API only supports PDF → DOCX conversion
 # All other format conversions (DOCX→PDF, HTML→TXT, etc.) are NOT supported
-# See examples/16-document-format-conversion.sh for details
+# See examples/06-document-format-conversion.sh for details
 ```
 
 **Document Translation Features:**
@@ -520,7 +520,7 @@ Advanced XML/HTML tag handling is perfect for:
 - 🔒 Protecting non-translatable content (scripts, styles, code)
 - ✂️ Fine-tuned control over sentence splitting for better context
 
-See [examples/19-xml-tag-handling.sh](./examples/19-xml-tag-handling.sh) for comprehensive XML tag handling examples with real-world scenarios.
+See [examples/09-xml-tag-handling.sh](./examples/09-xml-tag-handling.sh) for comprehensive XML tag handling examples with real-world scenarios.
 
 **Model Types:**
 
@@ -528,7 +528,7 @@ See [examples/19-xml-tag-handling.sh](./examples/19-xml-tag-handling.sh) for com
 - `prefer_quality_optimized` - Prefer quality, fallback to latency if unavailable
 - `latency_optimized` - Faster responses, slightly lower quality (ideal for real-time use)
 
-See [examples/12-model-type-selection.sh](./examples/12-model-type-selection.sh) for a complete example with different model types.
+See [examples/08-model-type-selection.sh](./examples/08-model-type-selection.sh) for a complete example with different model types.
 
 ### Writing Enhancement
 
@@ -745,7 +745,7 @@ Pattern: *.md
 Press Ctrl+C to stop
 ```
 
-See [examples/13-watch-mode.sh](./examples/13-watch-mode.sh) for a complete watch mode example with multiple scenarios.
+See [examples/16-watch-mode.sh](./examples/16-watch-mode.sh) for a complete watch mode example with multiple scenarios.
 
 ### Git Hooks
 
@@ -794,7 +794,7 @@ Git Hooks Status:
 
 **Note:** The hooks are generated with placeholder validation logic. You can customize them based on your project's translation workflow by editing the hook files directly at `.git/hooks/pre-commit` or `.git/hooks/pre-push`.
 
-See [examples/14-git-hooks.sh](./examples/14-git-hooks.sh) for a complete git hooks example demonstrating installation, usage, and management.
+See [examples/17-git-hooks.sh](./examples/17-git-hooks.sh) for a complete git hooks example demonstrating installation, usage, and management.
 
 ### Configuration
 
@@ -848,13 +848,13 @@ deepl usage
 
 **Note:** Usage statistics help you track your DeepL API character quota and avoid exceeding limits.
 
-See [examples/10-usage-monitoring.sh](./examples/10-usage-monitoring.sh) for a complete usage monitoring example.
+See [examples/23-usage-monitoring.sh](./examples/23-usage-monitoring.sh) for a complete usage monitoring example.
 
 **Cost Transparency:**
 
 For detailed cost tracking per translation, use the `--show-billed-characters` flag with the translate command (see Advanced Translation Options above). This displays the actual billed character count for each translation, helping with budget planning and cost analysis.
 
-See [examples/18-cost-transparency.sh](./examples/18-cost-transparency.sh) for comprehensive cost tracking examples.
+See [examples/12-cost-transparency.sh](./examples/12-cost-transparency.sh) for comprehensive cost tracking examples.
 
 #### Language Detection
 
@@ -917,7 +917,7 @@ deepl languages
 - **Regional** (7) — Target-only variants like `en-us`, `en-gb`, `pt-br`
 - **Extended** (82) — Only support `quality_optimized` model, no formality or glossary
 
-See [examples/11-languages.sh](./examples/11-languages.sh) for a complete example.
+See [examples/24-languages.sh](./examples/24-languages.sh) for a complete example.
 
 #### Configure Defaults
 
