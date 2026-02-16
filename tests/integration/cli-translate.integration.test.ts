@@ -15,6 +15,19 @@ describe('Translate CLI Integration', () => {
   const testDir = testFiles.path;
   const { runCLI } = makeRunCLI(testConfig.path);
 
+  // Cache help outputs to avoid redundant process spawns (~25 duplicate calls eliminated)
+  let translateHelp: string;
+  let mainHelp: string;
+  let styleRulesHelp: string;
+  let styleRulesListHelp: string;
+
+  beforeAll(() => {
+    translateHelp = runCLI('deepl translate --help');
+    mainHelp = runCLI('deepl --help');
+    styleRulesHelp = runCLI('deepl style-rules --help');
+    styleRulesListHelp = runCLI('deepl style-rules list --help');
+  });
+
   afterAll(() => {
     testConfig.cleanup();
     testFiles.cleanup();
@@ -22,7 +35,7 @@ describe('Translate CLI Integration', () => {
 
   describe('deepl translate --help', () => {
     it('should display help for translate command', () => {
-      const output = runCLI('deepl translate --help');
+      const output = translateHelp;
 
       expect(output).toContain('Usage:');
       expect(output).toContain('deepl translate');
@@ -64,7 +77,7 @@ describe('Translate CLI Integration', () => {
     });
 
     it('should accept text argument with --to flag', () => {
-      const helpOutput = runCLI('deepl translate --help');
+      const helpOutput = translateHelp;
       // Verify command structure accepts text argument
       expect(helpOutput).toContain('[text]');
       expect(helpOutput).toContain('--to <language>');
@@ -227,7 +240,7 @@ describe('Translate CLI Integration', () => {
       { flag: '--concurrency <number>', description: 'parallel' },
       { flag: '--api-url <url>', description: 'Custom API endpoint' },
     ])('should accept $flag flag', ({ flag, description, descriptionPattern }) => {
-      const helpOutput = runCLI('deepl translate --help');
+      const helpOutput = translateHelp;
       expect(helpOutput).toContain(flag);
       if (description) {
         expect(helpOutput).toContain(description);
@@ -240,21 +253,21 @@ describe('Translate CLI Integration', () => {
 
   describe('multiple target languages', () => {
     it('should accept comma-separated target languages', () => {
-      const helpOutput = runCLI('deepl translate --help');
+      const helpOutput = translateHelp;
       expect(helpOutput).toContain('--to <language>');
       expect(helpOutput).toContain('comma-separated');
     });
 
     it('should validate comma-separated format', () => {
       // Help should indicate comma-separated format is supported
-      const helpOutput = runCLI('deepl translate --help');
+      const helpOutput = translateHelp;
       expect(helpOutput).toContain('comma-separated');
     });
   });
 
   describe('command structure', () => {
     it('should be available as a command', () => {
-      const helpOutput = runCLI('deepl --help');
+      const helpOutput = mainHelp;
 
       // Translate command should be listed in main help
       expect(helpOutput).toContain('translate');
@@ -262,7 +275,7 @@ describe('Translate CLI Integration', () => {
     });
 
     it('should accept text as optional argument', () => {
-      const output = runCLI('deepl translate --help');
+      const output = translateHelp;
 
       // Text should be optional (can use stdin)
       // Shown in usage line as [text]
@@ -271,7 +284,7 @@ describe('Translate CLI Integration', () => {
     });
 
     it('should support stdin input', () => {
-      const output = runCLI('deepl translate --help');
+      const output = translateHelp;
 
       // Help should mention stdin
       expect(output).toMatch(/stdin|read from stdin/i);
@@ -355,7 +368,7 @@ describe('Translate CLI Integration', () => {
   describe('output format', () => {
     it('should support --format option', () => {
       // Help should show --format option
-      const output = runCLI('deepl translate --help');
+      const output = translateHelp;
       expect(output).toContain('--format <format>');
       expect(output).toContain('json');
       expect(output).toContain('text');
@@ -364,7 +377,7 @@ describe('Translate CLI Integration', () => {
 
   describe('billed characters', () => {
     it('should show --show-billed-characters flag in help', () => {
-      const helpOutput = runCLI('deepl translate --help');
+      const helpOutput = translateHelp;
       expect(helpOutput).toContain('--show-billed-characters');
       expect(helpOutput).toMatch(/billed.*character/i);
       expect(helpOutput).toMatch(/cost.*transparency/i);
@@ -386,7 +399,7 @@ describe('Translate CLI Integration', () => {
 
   describe('document minification', () => {
     it('should show --enable-minification flag in help', () => {
-      const helpOutput = runCLI('deepl translate --help');
+      const helpOutput = translateHelp;
       expect(helpOutput).toContain('--enable-minification');
       expect(helpOutput).toMatch(/minification/i);
       expect(helpOutput).toMatch(/pptx|docx/i);
@@ -446,7 +459,7 @@ describe('Translate CLI Integration', () => {
         patterns: [/ignore/i],
       },
     ])('should show $flag flag in help', ({ flag, patterns, normalizeWhitespace }) => {
-      const helpOutput = runCLI('deepl translate --help');
+      const helpOutput = translateHelp;
       expect(helpOutput).toContain(flag);
       for (const pattern of patterns) {
         const text = normalizeWhitespace ? helpOutput.replace(/\s+/g, ' ') : helpOutput;
@@ -496,7 +509,7 @@ describe('Translate CLI Integration', () => {
 
   describe('table output format', () => {
     it('should show table format option in help', () => {
-      const helpOutput = runCLI('deepl translate --help');
+      const helpOutput = translateHelp;
       expect(helpOutput).toContain('--format <format>');
       expect(helpOutput).toMatch(/json/i);
     });
@@ -566,7 +579,7 @@ describe('Translate CLI Integration', () => {
 
   describe('--custom-instruction flag', () => {
     it('should display --custom-instruction in help text', () => {
-      const output = runCLI('deepl translate --help');
+      const output = translateHelp;
       expect(output).toContain('--custom-instruction');
     });
 
@@ -608,7 +621,7 @@ describe('Translate CLI Integration', () => {
 
   describe('--style-id flag', () => {
     it('should show --style-id in help text', () => {
-      const result = runCLI('deepl translate --help');
+      const result = translateHelp;
       expect(result).toContain('--style-id');
     });
 
@@ -637,7 +650,7 @@ describe('Translate CLI Integration', () => {
 
   describe('--enable-beta-languages flag', () => {
     it('should show --enable-beta-languages in help text', () => {
-      const result = runCLI('deepl translate --help');
+      const result = translateHelp;
       expect(result).toContain('--enable-beta-languages');
     });
 
@@ -666,17 +679,17 @@ describe('Translate CLI Integration', () => {
 
   describe('style-rules command', () => {
     it('should show style-rules in main help', () => {
-      const result = runCLI('deepl --help');
+      const result = mainHelp;
       expect(result).toContain('style-rules');
     });
 
     it('should show list subcommand in style-rules help', () => {
-      const result = runCLI('deepl style-rules --help');
+      const result = styleRulesHelp;
       expect(result).toContain('list');
     });
 
     it('should show --detailed flag in style-rules list help', () => {
-      const result = runCLI('deepl style-rules list --help');
+      const result = styleRulesListHelp;
       expect(result).toContain('--detailed');
       expect(result).toContain('--page');
       expect(result).toContain('--page-size');
@@ -743,7 +756,7 @@ describe('Translate CLI Integration', () => {
 
   describe('--tag-handling-version flag', () => {
     it('should show --tag-handling-version in help text', () => {
-      const result = runCLI('deepl translate --help');
+      const result = translateHelp;
       expect(result).toContain('--tag-handling-version');
     });
 
@@ -763,6 +776,7 @@ describe('Translate CLI Integration', () => {
     const runCLIWithKey = (command: string): string => {
       return execSync(command, {
         encoding: 'utf-8',
+        timeout: 3000,
         env: {
           ...process.env,
           DEEPL_CONFIG_DIR: testConfigDir,
@@ -931,7 +945,7 @@ describe('Translate CLI Integration', () => {
     });
 
     it('should show choices in help text for constrained options', () => {
-      const helpOutput = runCLI('deepl translate --help');
+      const helpOutput = translateHelp;
       expect(helpOutput).toMatch(/--formality.*choices/is);
       expect(helpOutput).toMatch(/--tag-handling.*choices/is);
       expect(helpOutput).toMatch(/--model-type.*choices/is);
