@@ -14,7 +14,7 @@ export function registerUsage(
   program
     .command('usage')
     .description('Show API usage statistics')
-    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('table'))
+    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('text'))
     .addHelpText('after', `
 Examples:
   $ deepl usage

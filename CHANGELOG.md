@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `languages` and `usage` commands now default to `text` format instead of `table`, consistent with all other commands
+
 ### Fixed
 - Tighten `classifyByMessage` fallback patterns to prevent false-positive error classification — bare `"not found"`, `"invalid"`, `"unsupported"`, `"expected"` no longer misclassify third-party errors as InvalidInput
 - Convert remaining raw `Error` throws to typed `DeepLCLIError` subclasses: batch mismatch → `NetworkError`, missing VoiceClient → `ValidationError`, unrecognized 4xx → `ValidationError`, chunk stream failure → `VoiceError`

@@ -19,7 +19,7 @@ export function registerLanguages(
     .description('List supported source and target languages')
     .option('-s, --source', 'Show only source languages')
     .option('-t, --target', 'Show only target languages')
-    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('table'))
+    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('text'))
     .addHelpText('after', `
 Examples:
   $ deepl languages

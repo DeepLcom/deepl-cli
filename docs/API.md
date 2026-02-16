@@ -1666,7 +1666,7 @@ Display your DeepL API character usage and remaining quota. Helps you monitor co
 
 #### Options
 
-- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `table`)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
 
 #### Examples
 
@@ -1742,7 +1742,7 @@ You can filter to show only source languages, only target languages, or both (de
 
 - `--source, -s` - Show only source languages
 - `--target, -t` - Show only target languages
-- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `table`)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
 
 #### Examples
 
