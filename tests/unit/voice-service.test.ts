@@ -675,12 +675,15 @@ describe('VoiceService', () => {
   describe('reconnection', () => {
     let tmpDir: string;
     let testFile: string;
+    let largeFile: string;
 
     beforeEach(async () => {
       jest.useRealTimers();
       tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'voice-reconnect-'));
       testFile = path.join(tmpDir, 'test.mp3');
+      largeFile = path.join(tmpDir, 'large.mp3');
       await fs.writeFile(testFile, Buffer.alloc(1024));
+      await fs.writeFile(largeFile, Buffer.alloc(5000));
       jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
     });
 
@@ -883,11 +886,6 @@ describe('VoiceService', () => {
 
     it('should resume chunk streaming on new WebSocket after reconnection', async () => {
       // Use a larger file so chunking is in-flight when the first WS drops
-      jest.useRealTimers();
-      const largeFile = path.join(tmpDir, 'large.mp3');
-      await fs.writeFile(largeFile, Buffer.alloc(5000));
-      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
-
       const mockWs1 = createMockWebSocket();
       const mockWs2 = createMockWebSocket();
 
@@ -958,7 +956,7 @@ describe('VoiceService', () => {
 
       // Interleave timer advances with I/O processing so file reads and
       // paceChunks setTimeout delays both make progress
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 200; i++) {
         await jest.advanceTimersByTimeAsync(10);
         await new Promise((r) => setImmediate(r));
       }
