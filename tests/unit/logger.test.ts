@@ -259,6 +259,121 @@ describe('Logger', () => {
     });
   });
 
+  describe('error() sanitization', () => {
+    it('should redact API key from error messages', () => {
+      const originalKey = process.env['DEEPL_API_KEY'];
+      process.env['DEEPL_API_KEY'] = 'secret-error-key:fx';
+      try {
+        Logger.error('Request failed with key secret-error-key:fx');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Request failed with key [REDACTED]'
+        );
+      } finally {
+        if (originalKey === undefined) {
+          delete process.env['DEEPL_API_KEY'];
+        } else {
+          process.env['DEEPL_API_KEY'] = originalKey;
+        }
+      }
+    });
+
+    it('should redact DeepL-Auth-Key from error messages', () => {
+      Logger.error('Auth failed: DeepL-Auth-Key abc123-secret:fx');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Auth failed: DeepL-Auth-Key [REDACTED]'
+      );
+    });
+
+    it('should redact token query parameters from error messages', () => {
+      Logger.error('Connection failed: wss://api.deepl.com/ws?token=secret123');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Connection failed: wss://api.deepl.com/ws?token=[REDACTED]'
+      );
+    });
+
+    it('should sanitize even in quiet mode', () => {
+      const originalKey = process.env['DEEPL_API_KEY'];
+      process.env['DEEPL_API_KEY'] = 'quiet-key:fx';
+      try {
+        Logger.setQuiet(true);
+        Logger.error('Error with quiet-key:fx exposed');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Error with [REDACTED] exposed'
+        );
+      } finally {
+        if (originalKey === undefined) {
+          delete process.env['DEEPL_API_KEY'];
+        } else {
+          process.env['DEEPL_API_KEY'] = originalKey;
+        }
+      }
+    });
+  });
+
+  describe('info() sanitization', () => {
+    it('should redact API key from info messages', () => {
+      const originalKey = process.env['DEEPL_API_KEY'];
+      process.env['DEEPL_API_KEY'] = 'info-secret-key:fx';
+      try {
+        Logger.info('Using key info-secret-key:fx for request');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Using key [REDACTED] for request'
+        );
+      } finally {
+        if (originalKey === undefined) {
+          delete process.env['DEEPL_API_KEY'];
+        } else {
+          process.env['DEEPL_API_KEY'] = originalKey;
+        }
+      }
+    });
+
+    it('should redact DeepL-Auth-Key from info messages', () => {
+      Logger.info('Header: DeepL-Auth-Key my-secret-key');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Header: DeepL-Auth-Key [REDACTED]'
+      );
+    });
+  });
+
+  describe('warn() sanitization', () => {
+    it('should redact API key from warn messages', () => {
+      const originalKey = process.env['DEEPL_API_KEY'];
+      process.env['DEEPL_API_KEY'] = 'warn-secret-key:fx';
+      try {
+        Logger.warn('Deprecation: key warn-secret-key:fx will expire');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Deprecation: key [REDACTED] will expire'
+        );
+      } finally {
+        if (originalKey === undefined) {
+          delete process.env['DEEPL_API_KEY'];
+        } else {
+          process.env['DEEPL_API_KEY'] = originalKey;
+        }
+      }
+    });
+  });
+
+  describe('success() sanitization', () => {
+    it('should redact API key from success messages', () => {
+      const originalKey = process.env['DEEPL_API_KEY'];
+      process.env['DEEPL_API_KEY'] = 'success-secret-key:fx';
+      try {
+        Logger.success('Authenticated with success-secret-key:fx');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Authenticated with [REDACTED]'
+        );
+      } finally {
+        if (originalKey === undefined) {
+          delete process.env['DEEPL_API_KEY'];
+        } else {
+          process.env['DEEPL_API_KEY'] = originalKey;
+        }
+      }
+    });
+  });
+
   describe('spinner control', () => {
     it('should return true for shouldShowSpinner in normal mode', () => {
       expect(Logger.shouldShowSpinner()).toBe(true);

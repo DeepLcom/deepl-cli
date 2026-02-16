@@ -119,7 +119,7 @@ export class WatchService {
       try {
         this.handleFileChange(filePath);
       } catch (error) {
-        Logger.error(`Error handling file change for ${filePath}:`, error);
+        Logger.error(`Error handling file change for ${filePath}:`, error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -127,7 +127,7 @@ export class WatchService {
       try {
         this.handleFileChange(filePath);
       } catch (error) {
-        Logger.error(`Error handling file add for ${filePath}:`, error);
+        Logger.error(`Error handling file add for ${filePath}:`, error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -195,7 +195,7 @@ export class WatchService {
           if (this.watchOptions?.onError) {
             this.watchOptions.onError(filePath, error as Error);
           }
-          Logger.error(`Translation failed for ${filePath}:`, error);
+          Logger.error(`Translation failed for ${filePath}:`, error instanceof Error ? error.message : String(error));
         } finally {
           this.debounceTimers.delete(filePath);
         }
