@@ -809,8 +809,8 @@ deepl voice [options] <file>
 |--------|-------|-------------|---------|
 | `--to <languages>` | `-t` | Target language(s), comma-separated, max 5 (required) | - |
 | `--from <language>` | `-f` | Source language (auto-detect if not specified) | auto |
-| `--formality <level>` | | Formality level: `default`, `formal`, `more`, `informal`, `less` | `default` |
-| `--glossary <id>` | | Glossary ID to use for translation | - |
+| `--formality <level>` | | Formality level: `default`, `formal`, `more`, `informal`, `less`, `prefer_more`, `prefer_less` | `default` |
+| `--glossary <name-or-id>` | | Use glossary by name or ID | - |
 | `--content-type <type>` | | Audio content type (auto-detected from file extension) | auto |
 | `--chunk-size <bytes>` | | Audio chunk size in bytes | `6400` |
 | `--chunk-interval <ms>` | | Interval between audio chunks in milliseconds | `200` |
@@ -820,7 +820,7 @@ deepl voice [options] <file>
 | `--source-language-mode <mode>` | | Source language detection mode: `auto`, `fixed` | - |
 | `--format <format>` | | Output format: `text`, `json` | `text` |
 
-> **Note:** The voice API accepts `formal`/`informal` as formality values (in addition to `more`/`less`), while the translate API uses `prefer_more`/`prefer_less`. This reflects the underlying DeepL API differences between the voice and text translation endpoints.
+> **Note:** All formality values (`default`, `formal`, `informal`, `more`, `less`, `prefer_more`, `prefer_less`) are accepted. The voice API natively uses `formal`/`informal` (in addition to `more`/`less`), while the translate API uses `prefer_more`/`prefer_less`.
 
 #### Supported Audio Formats
 
