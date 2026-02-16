@@ -1415,7 +1415,7 @@ npm run examples:fast
 
 ## 🔒 Security & Privacy
 
-- **Secure key storage** - API keys stored in config file (gitignored), follows [XDG Base Directory Spec](#configuration-paths)
+- **API key storage** - Keys are stored as **plaintext** in `config.json` with `0600` file permissions (owner read/write only). For CI/CD or shared environments, prefer the `DEEPL_API_KEY` environment variable instead. Avoid committing `config.json` to version control — it is gitignored by default.
 - **Local caching** - All cached data stored locally in SQLite, never shared
 - **No telemetry** - Zero usage tracking or data collection
 - **Environment variable support** - Use `DEEPL_API_KEY` environment variable for CI/CD
