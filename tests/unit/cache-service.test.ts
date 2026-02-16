@@ -706,6 +706,37 @@ describe('CacheService', () => {
       processOnceSpy.mockRestore();
       instances[0]?.close();
     });
+
+    it('should re-register signal handlers after close and recreate', () => {
+      (CacheService as any).instance = null;
+      (CacheService as any).handlersRegistered = false;
+
+      const instance1 = CacheService.getInstance({ dbPath: testCachePath });
+      instance1.close();
+
+      const processOnceSpy = jest.spyOn(process, 'once');
+
+      const instance2 = CacheService.getInstance({ dbPath: testCachePath });
+
+      expect(processOnceSpy).toHaveBeenCalledTimes(3);
+      expect(processOnceSpy).toHaveBeenCalledWith('exit', expect.any(Function));
+      expect(processOnceSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+      expect(processOnceSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+
+      processOnceSpy.mockRestore();
+      instance2.close();
+    });
+
+    it('should null instance on close', () => {
+      (CacheService as any).instance = null;
+      (CacheService as any).handlersRegistered = false;
+
+      const instance = CacheService.getInstance({ dbPath: testCachePath });
+      instance.close();
+
+      expect((CacheService as any).instance).toBeNull();
+      expect((CacheService as any).handlersRegistered).toBe(false);
+    });
   });
 
   describe('corruption recovery', () => {
