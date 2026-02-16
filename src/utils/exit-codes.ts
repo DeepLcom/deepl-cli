@@ -125,12 +125,22 @@ function classifyByMessage(rawMessage: string): ExitCode {
   // Invalid input - specific phrases indicating user input problems
   if (
     message.includes('cannot be empty') ||
-    message.includes('not found') ||
-    message.includes('unsupported') ||
-    message.includes('not supported') ||
-    message.includes('invalid') ||
+    message.includes('file not found') ||
+    message.includes('path not found') ||
+    message.includes('directory not found') ||
+    message.includes('not found in glossary') ||
+    message.includes('unsupported format') ||
+    message.includes('unsupported language') ||
+    message.includes('not supported for') ||
+    message.includes('not supported in') ||
+    message.includes('invalid target language') ||
+    message.includes('invalid source language') ||
+    message.includes('invalid language code') ||
+    message.includes('invalid glossary') ||
+    message.includes('invalid hook') ||
+    message.includes('invalid url') ||
+    message.includes('invalid size') ||
     message.includes('is required') ||
-    message.includes('expected') ||
     message.includes('cannot specify both')
   ) {
     return ExitCode.InvalidInput;
