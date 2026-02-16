@@ -26,6 +26,10 @@ describe('TranslationClient', () => {
     client = new TranslationClient('test-api-key');
   });
 
+  afterAll(() => {
+    client.destroy();
+  });
+
   describe('constructor', () => {
     it('should create a TranslationClient instance', () => {
       expect(client).toBeInstanceOf(TranslationClient);

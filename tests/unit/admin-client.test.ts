@@ -27,6 +27,7 @@ describe('AdminClient', () => {
   });
 
   afterAll(() => {
+    client.destroy();
     nock.restore();
   });
 

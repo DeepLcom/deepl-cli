@@ -12,8 +12,11 @@ describe('DeepLClient Integration', () => {
   const API_KEY = TEST_API_KEY;
   const FREE_API_URL = DEEPL_FREE_API_URL;
   const PRO_API_URL = DEEPL_PRO_API_URL;
+  const clients: DeepLClient[] = [];
 
   afterEach(() => {
+    clients.forEach(c => c.destroy());
+    clients.length = 0;
     nock.abortPendingRequests();
     nock.cleanAll();
   });
@@ -21,6 +24,7 @@ describe('DeepLClient Integration', () => {
   describe('constructor', () => {
     it('should create client with API key', () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       expect(client).toBeInstanceOf(DeepLClient);
     });
 
@@ -30,6 +34,7 @@ describe('DeepLClient Integration', () => {
 
     it('should use free API URL by default', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .get('/v2/usage')
@@ -41,6 +46,7 @@ describe('DeepLClient Integration', () => {
 
     it('should use pro API URL when usePro is true', async () => {
       const client = new DeepLClient(API_KEY, { usePro: true });
+      clients.push(client);
 
       const scope = nock(PRO_API_URL)
         .get('/v2/usage')
@@ -53,6 +59,7 @@ describe('DeepLClient Integration', () => {
     it('should use custom baseUrl when provided', async () => {
       const customUrl = 'https://custom-api.example.com';
       const client = new DeepLClient(API_KEY, { baseUrl: customUrl });
+      clients.push(client);
 
       const scope = nock(customUrl)
         .get('/v2/usage')
@@ -66,6 +73,7 @@ describe('DeepLClient Integration', () => {
   describe('translate()', () => {
     it('should make correct HTTP POST request for translation', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/translate', (body) => {
@@ -87,6 +95,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include source language when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/translate', (body) => {
@@ -104,6 +113,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include formality when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/translate', (body) => {
@@ -120,6 +130,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include context when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/translate', (body) => {
@@ -136,6 +147,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include splitSentences when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/translate', (body) => {
@@ -152,6 +164,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include tagHandling when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/translate', (body) => {
@@ -168,6 +181,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include modelType when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/translate', (body) => {
@@ -184,6 +198,7 @@ describe('DeepLClient Integration', () => {
 
     it('should parse model_type_used from response', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/translate')
@@ -201,6 +216,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle response without model_type_used', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/translate')
@@ -214,6 +230,7 @@ describe('DeepLClient Integration', () => {
 
     it('should use correct Authorization header', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
@@ -231,6 +248,7 @@ describe('DeepLClient Integration', () => {
 
     it('should use form-encoded content type', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
@@ -248,6 +266,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle 403 authentication errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/translate')
@@ -260,6 +279,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle 456 quota exceeded errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/translate')
@@ -272,6 +292,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle 429 rate limit errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/translate')
@@ -285,6 +306,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle 503 service unavailable errors', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 2 });
+      clients.push(client);
 
       // Mock all retry attempts (initial + 2 retries = 3 total)
       nock(FREE_API_URL).post('/v2/translate').reply(503, { message: 'Service temporarily unavailable' });
@@ -298,6 +320,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle network timeouts', async () => {
       const client = new DeepLClient(API_KEY, { timeout: 100, maxRetries: 0 });
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/translate')
@@ -311,6 +334,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle malformed API responses', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL).post('/v2/translate').reply(200, { invalid: 'response' });
 
@@ -321,6 +345,7 @@ describe('DeepLClient Integration', () => {
 
     it('should retry on 500 errors', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 2 });
+      clients.push(client);
 
       // First two attempts fail with 500, third succeeds
       nock(FREE_API_URL).post('/v2/translate').reply(500, 'Internal Server Error');
@@ -337,6 +362,7 @@ describe('DeepLClient Integration', () => {
 
     it('should NOT retry on 4xx errors', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 2 });
+      clients.push(client);
 
       // Only one request should be made for 4xx errors
       const scope = nock(FREE_API_URL).post('/v2/translate').reply(403, 'Forbidden');
@@ -354,6 +380,7 @@ describe('DeepLClient Integration', () => {
   describe('getUsage()', () => {
     it('should make correct HTTP GET request for usage', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .get('/v2/usage')
@@ -371,6 +398,7 @@ describe('DeepLClient Integration', () => {
 
     it('should parse usage response correctly', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v2/usage')
@@ -387,6 +415,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle authentication errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL).get('/v2/usage').reply(403, { message: 'Invalid API key' });
 
@@ -395,6 +424,7 @@ describe('DeepLClient Integration', () => {
 
     it('should parse Pro API usage response with all fields', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v2/usage')
@@ -427,6 +457,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle Free API response without Pro fields', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v2/usage')
@@ -448,6 +479,7 @@ describe('DeepLClient Integration', () => {
   describe('getSupportedLanguages()', () => {
     it('should make correct HTTP GET request for source languages', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .get('/v2/languages')
@@ -468,6 +500,7 @@ describe('DeepLClient Integration', () => {
 
     it('should make correct HTTP GET request for target languages', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .get('/v2/languages')
@@ -488,6 +521,7 @@ describe('DeepLClient Integration', () => {
 
     it('should normalize language codes to lowercase', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v2/languages')
@@ -501,6 +535,7 @@ describe('DeepLClient Integration', () => {
 
     it('should parse supports_formality for target languages', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v2/languages')
@@ -518,6 +553,7 @@ describe('DeepLClient Integration', () => {
 
     it('should omit supportsFormality when not in response', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v2/languages')
@@ -533,6 +569,7 @@ describe('DeepLClient Integration', () => {
   describe('improveText() - Write API', () => {
     it('should make correct HTTP POST request for text improvement', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
@@ -553,6 +590,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include writing style when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
@@ -569,6 +607,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include tone when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
@@ -589,6 +628,7 @@ describe('DeepLClient Integration', () => {
     it('should use custom baseUrl when provided', async () => {
       const customUrl = 'https://custom-api.example.com';
       const client = new DeepLClient(API_KEY, { baseUrl: customUrl });
+      clients.push(client);
 
       const scope = nock(customUrl)
         .get('/v2/usage')
@@ -603,6 +643,7 @@ describe('DeepLClient Integration', () => {
 
     it('should use pro API URL when usePro is true', async () => {
       const client = new DeepLClient(API_KEY, { usePro: true });
+      clients.push(client);
 
       const scope = nock(PRO_API_URL)
         .get('/v2/usage')
@@ -619,6 +660,7 @@ describe('DeepLClient Integration', () => {
   describe('uploadDocument() - Document API', () => {
     it('should make correct HTTP POST with multipart/form-data', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test pdf content');
 
       const scope = nock(FREE_API_URL)
@@ -643,6 +685,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include source language when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
       const scope = nock(FREE_API_URL)
@@ -665,6 +708,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include formality when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
       const scope = nock(FREE_API_URL)
@@ -687,6 +731,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include glossary ID when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
       const scope = nock(FREE_API_URL)
@@ -709,6 +754,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include output_format when specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
       const scope = nock(FREE_API_URL)
@@ -731,6 +777,7 @@ describe('DeepLClient Integration', () => {
 
     it('should not include output_format when not specified', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
       const scope = nock(FREE_API_URL)
@@ -752,6 +799,7 @@ describe('DeepLClient Integration', () => {
 
     it('should use correct Authorization header', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
       const scope = nock(FREE_API_URL, {
@@ -775,6 +823,7 @@ describe('DeepLClient Integration', () => {
 
     it('should throw error for empty file buffer', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       await expect(
         client.uploadDocument(Buffer.from(''), {
@@ -786,6 +835,7 @@ describe('DeepLClient Integration', () => {
 
     it('should throw error for missing filename', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
       await expect(
@@ -798,6 +848,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle 403 authentication errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
       nock(FREE_API_URL).post('/v2/document').reply(403, { message: 'Invalid API key' });
@@ -812,6 +863,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle 413 file too large errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
       nock(FREE_API_URL).post('/v2/document').reply(413, { message: 'File too large' });
@@ -828,6 +880,7 @@ describe('DeepLClient Integration', () => {
   describe('getDocumentStatus() - Document API', () => {
     it('should make correct HTTP POST with document_key', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v2/document/doc-123', (body) => {
@@ -854,6 +907,7 @@ describe('DeepLClient Integration', () => {
 
     it('should return status "queued"', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/document/doc-123')
@@ -874,6 +928,7 @@ describe('DeepLClient Integration', () => {
 
     it('should return status "translating" with seconds remaining', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/document/doc-123')
@@ -894,6 +949,7 @@ describe('DeepLClient Integration', () => {
 
     it('should return status "done" with billed characters', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/document/doc-123')
@@ -914,6 +970,7 @@ describe('DeepLClient Integration', () => {
 
     it('should return status "error" with error message', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/document/doc-123')
@@ -934,6 +991,7 @@ describe('DeepLClient Integration', () => {
 
     it('should use form-encoded content type', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
@@ -956,6 +1014,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle 404 document not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/document/doc-nonexistent')
@@ -973,6 +1032,7 @@ describe('DeepLClient Integration', () => {
   describe('downloadDocument() - Document API', () => {
     it('should make correct HTTP POST and return buffer', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const translatedContent = Buffer.from('translated content');
 
       const scope = nock(FREE_API_URL)
@@ -995,6 +1055,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle binary content (PDF)', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       const pdfContent = Buffer.from([0x25, 0x50, 0x44, 0x46]); // PDF header bytes
 
       nock(FREE_API_URL)
@@ -1015,6 +1076,7 @@ describe('DeepLClient Integration', () => {
 
     it('should use form-encoded content type', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
@@ -1034,6 +1096,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle 404 document not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/document/doc-nonexistent/result')
@@ -1049,6 +1112,7 @@ describe('DeepLClient Integration', () => {
 
     it('should handle 503 document not ready errors', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/document/doc-123/result')
@@ -1066,6 +1130,7 @@ describe('DeepLClient Integration', () => {
   describe('X-Trace-ID handling', () => {
     it('should capture trace ID from successful response', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/translate')
@@ -1079,6 +1144,7 @@ describe('DeepLClient Integration', () => {
 
     it('should capture trace ID from error response', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v2/usage')
@@ -1096,6 +1162,7 @@ describe('DeepLClient Integration', () => {
 
     it('should include trace ID in error messages', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v2/usage')
@@ -1108,11 +1175,13 @@ describe('DeepLClient Integration', () => {
 
     it('should return undefined when no trace ID present', () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
       expect(client.lastTraceId).toBeUndefined();
     });
 
     it('should update trace ID on each request', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v2/translate')

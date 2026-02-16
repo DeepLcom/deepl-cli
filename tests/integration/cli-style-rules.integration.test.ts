@@ -161,6 +161,7 @@ describe('Style Rules API Integration', () => {
   });
 
   afterEach(() => {
+    client.destroy();
     nock.cleanAll();
   });
 
@@ -507,6 +508,7 @@ describe('Style Rules API Integration', () => {
         .reply(200, { style_rules: [] });
 
       await proCommand.list();
+      proClient.destroy();
 
       expect(scope.isDone()).toBe(true);
     });
@@ -578,6 +580,10 @@ describe('Style Rules API Integration', () => {
     beforeEach(() => {
       noRetryClient = new DeepLClient(API_KEY, { maxRetries: 0 });
       noRetryCommand = new StyleRulesCommand(new StyleRulesService(noRetryClient));
+    });
+
+    afterEach(() => {
+      noRetryClient.destroy();
     });
 
     it('should handle 403 authentication error', async () => {

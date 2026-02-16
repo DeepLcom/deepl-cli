@@ -47,6 +47,7 @@ describe('Watch Service Integration', () => {
     if (watchService.isWatching()) {
       await watchService.stop();
     }
+    client.destroy();
 
     // Cleanup temp directory
     if (fs.existsSync(tmpDir)) {

@@ -11,14 +11,18 @@ import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers';
 describe('DeepLClient v3 Glossary Integration', () => {
   const API_KEY = TEST_API_KEY;
   const FREE_API_URL = DEEPL_FREE_API_URL;
+  const clients: DeepLClient[] = [];
 
   afterEach(() => {
+    clients.forEach(c => c.destroy());
+    clients.length = 0;
     nock.cleanAll();
   });
 
   describe('createGlossary() - v3 API', () => {
     it('should make correct HTTP POST request for single-target glossary', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v3/glossaries', (body) => {
@@ -57,6 +61,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should make correct HTTP POST request for multilingual glossary', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .post('/v3/glossaries', (body) => {
@@ -109,6 +114,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should throw error for empty target_langs array', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       await expect(
         client.createGlossary('Test', 'en', [], 'Hello\tHola')
@@ -117,6 +123,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should use correct Authorization header', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
@@ -139,6 +146,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should use JSON content type', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
@@ -159,6 +167,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 403 authentication errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v3/glossaries')
@@ -171,6 +180,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 456 quota exceeded errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .post('/v3/glossaries')
@@ -185,6 +195,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   describe('listGlossaries() - v3 API', () => {
     it('should make correct HTTP GET request', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .get('/v3/glossaries')
@@ -224,6 +235,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should return empty array when no glossaries exist', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v3/glossaries')
@@ -236,6 +248,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle authentication errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v3/glossaries')
@@ -248,6 +261,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   describe('getGlossary() - v3 API', () => {
     it('should make correct HTTP GET request', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .get('/v3/glossaries/glossary-123')
@@ -271,6 +285,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 glossary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v3/glossaries/nonexistent')
@@ -283,6 +298,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   describe('deleteGlossary() - v3 API', () => {
     it('should make correct HTTP DELETE request', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .delete('/v3/glossaries/glossary-123')
@@ -295,6 +311,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 glossary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .delete('/v3/glossaries/nonexistent')
@@ -307,6 +324,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   describe('getGlossaryEntries() - v3 API', () => {
     it('should make correct HTTP GET request with language pair', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .get('/v3/glossaries/glossary-123/entries')
@@ -333,6 +351,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should extract TSV from JSON response', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .get('/v3/glossaries/glossary-123/entries')
@@ -355,6 +374,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 glossary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v3/glossaries/nonexistent/entries')
@@ -368,6 +388,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle invalid language pair errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .get('/v3/glossaries/glossary-123/entries')
@@ -381,6 +402,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should use query params (not JSON body) for GET request', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .get('/v3/glossaries/test-id/entries')
@@ -409,6 +431,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   describe('updateGlossaryEntries() - v3 API', () => {
     it('should make correct HTTP PATCH request', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .patch('/v3/glossaries/glossary-123', (body) => {
@@ -428,6 +451,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should use JSON content type', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
@@ -443,6 +467,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 glossary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .patch('/v3/glossaries/nonexistent')
@@ -455,6 +480,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle invalid language pair errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .patch('/v3/glossaries/glossary-123')
@@ -469,6 +495,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   describe('updateGlossary() - v3 API', () => {
     it('should make correct PATCH request with name only', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .patch('/v3/glossaries/glossary-123', (body) => {
@@ -485,6 +512,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should make correct PATCH request with dictionaries only', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .patch('/v3/glossaries/glossary-123', (body) => {
@@ -512,6 +540,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should combine name and dictionaries in a single PATCH request', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .patch('/v3/glossaries/glossary-123', (body) => {
@@ -540,6 +569,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should use JSON content type', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
@@ -555,6 +585,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should throw when neither name nor dictionaries provided', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       await expect(
         client.updateGlossary('glossary-123', {})
@@ -563,6 +594,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 glossary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .patch('/v3/glossaries/nonexistent')
@@ -577,6 +609,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   describe('renameGlossary() - v3 API', () => {
     it('should delegate to updateGlossary with name via PATCH', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .patch('/v3/glossaries/glossary-123', (body) => {
@@ -592,6 +625,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should use JSON content type', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
@@ -607,6 +641,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 glossary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .patch('/v3/glossaries/nonexistent')
@@ -621,6 +656,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   describe('deleteGlossaryDictionary() - v3 API', () => {
     it('should make correct HTTP DELETE request', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .delete('/v3/glossaries/glossary-123/dictionaries?source_lang=EN&target_lang=ES')
@@ -633,6 +669,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should uppercase language codes in URL', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .delete('/v3/glossaries/glossary-456/dictionaries?source_lang=EN&target_lang=FR')
@@ -645,6 +682,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 glossary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .delete('/v3/glossaries/nonexistent/dictionaries?source_lang=EN&target_lang=ES')
@@ -657,6 +695,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 dictionary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .delete('/v3/glossaries/glossary-123/dictionaries?source_lang=EN&target_lang=FR')
@@ -669,6 +708,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 400 last dictionary errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .delete('/v3/glossaries/glossary-123/dictionaries?source_lang=EN&target_lang=ES')
@@ -683,6 +723,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   describe('replaceGlossaryDictionary() - v3 API', () => {
     it('should make correct HTTP PUT request', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .put('/v3/glossaries/glossary-123/dictionaries', (body) => {
@@ -700,6 +741,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should uppercase language codes in body', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(FREE_API_URL)
         .put('/v3/glossaries/glossary-456/dictionaries', (body) => {
@@ -715,6 +757,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 glossary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .put('/v3/glossaries/nonexistent/dictionaries')
@@ -727,6 +770,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
     it('should handle 404 dictionary not found errors', async () => {
       const client = new DeepLClient(API_KEY);
+      clients.push(client);
 
       nock(FREE_API_URL)
         .put('/v3/glossaries/glossary-123/dictionaries')

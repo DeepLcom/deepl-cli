@@ -134,6 +134,7 @@ describe('Structured File Translation CLI Integration', () => {
     const FREE_API_URL = DEEPL_FREE_API_URL;
     let fileTranslationService: FileTranslationService;
     let cacheService: CacheService;
+    let client: DeepLClient;
 
     beforeEach(() => {
       const svcDir = path.join(testDir, `svc-${Date.now()}`);
@@ -142,12 +143,13 @@ describe('Structured File Translation CLI Integration', () => {
       const cachePath = path.join(svcDir, 'cache.db');
       const config = new ConfigService(configPath);
       cacheService = new CacheService({ dbPath: cachePath, maxSize: 1024 * 100 });
-      const client = new DeepLClient(API_KEY);
+      client = new DeepLClient(API_KEY);
       const translationService = new TranslationService(client, config, cacheService);
       fileTranslationService = new FileTranslationService(translationService);
     });
 
     afterEach(() => {
+      client.destroy();
       try { cacheService.close(); } catch { /* ignore */ }
     });
 

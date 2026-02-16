@@ -27,6 +27,7 @@ describe('DeepLClient', () => {
   });
 
   afterAll(() => {
+    client.destroy();
     nock.restore();
   });
 
