@@ -151,7 +151,6 @@ deepl --config /path/to/test-config.json usage
 
 - **Multiple API keys**: Switch between free and paid accounts
 - **Project isolation**: Different settings per project (glossaries, formality, etc.)
-- **Team configurations**: Share standardized configs via version control
 - **Environment separation**: Separate configs for dev/staging/production
 - **Testing**: Use test configurations without affecting default settings
 
@@ -2258,10 +2257,6 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
     "debounceMs": 500,
     "autoCommit": false,
     "pattern": "*.md"
-  },
-  "team": {
-    "org": null,
-    "workspace": null
   }
 }
 ```
