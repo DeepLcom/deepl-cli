@@ -115,6 +115,27 @@ describe('Voice CLI Integration', () => {
     });
   });
 
+  describe('URL validation in getApiKeyAndOptions', () => {
+    it('should reject insecure HTTP base URL', () => {
+      const testFile = path.join(testDir, 'test-url.mp3');
+      fs.writeFileSync(testFile, Buffer.alloc(100));
+
+      const configPath = path.join(testConfig.path, 'config.json');
+      fs.writeFileSync(configPath, JSON.stringify({
+        auth: { apiKey: 'test-key-for-url-validation' },
+        api: { baseUrl: 'http://evil-server.example.com/v2', usePro: false },
+      }));
+
+      expect.assertions(1);
+      try {
+        runCLI(`deepl voice ${testFile} --to de`);
+      } catch (error: any) {
+        const output = error.stderr?.toString() ?? error.stdout?.toString() ?? '';
+        expect(output).toMatch(/Insecure HTTP URL rejected/i);
+      }
+    });
+  });
+
   describe('voice appears in main help', () => {
     it('should list voice command in main help', () => {
       const output = runCLI('deepl --help');

@@ -61,7 +61,7 @@ class LoggerClass {
    */
   info(...args: unknown[]): void {
     if (!this.quiet) {
-      console.error(...args);
+      console.error(...args.map((arg) => this.sanitize(arg)));
     }
   }
 
@@ -70,7 +70,7 @@ class LoggerClass {
    */
   success(...args: unknown[]): void {
     if (!this.quiet) {
-      console.error(...args);
+      console.error(...args.map((arg) => this.sanitize(arg)));
     }
   }
 
@@ -79,7 +79,7 @@ class LoggerClass {
    */
   warn(...args: unknown[]): void {
     if (!this.quiet) {
-      console.error(...args);
+      console.error(...args.map((arg) => this.sanitize(arg)));
     }
   }
 
@@ -87,7 +87,7 @@ class LoggerClass {
    * Log error messages (ALWAYS shown, even in quiet mode)
    */
   error(...args: unknown[]): void {
-    console.error(...args);
+    console.error(...args.map((arg) => this.sanitize(arg)));
   }
 
   /**
