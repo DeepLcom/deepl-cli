@@ -45,6 +45,14 @@ jest.mock('../../src/cli/commands/service-factory', () => ({
   createVoiceCommand: jest.fn(),
 }));
 
+// ── Mock GlossaryService ────────────────────────────────────────────────────
+const mockResolveGlossaryId = jest.fn();
+jest.mock('../../src/services/glossary', () => ({
+  GlossaryService: jest.fn().mockImplementation(() => ({
+    resolveGlossaryId: mockResolveGlossaryId,
+  })),
+}));
+
 import { Logger } from '../../src/utils/logger';
 const mockLogger = Logger as jest.Mocked<typeof Logger>;
 
@@ -63,9 +71,12 @@ describe('registerVoice', () => {
   let program: Command;
   let handleError: jest.Mock;
   let getApiKeyAndOptions: jest.Mock;
+  let createDeepLClient: jest.Mock;
 
   beforeEach(() => {
     resetAllMockImplementations();
+    mockResolveGlossaryId.mockReset();
+    mockResolveGlossaryId.mockImplementation((id: string) => Promise.resolve(id));
 
     program = new Command();
     program.exitOverride();
@@ -76,11 +87,12 @@ describe('registerVoice', () => {
       apiKey: 'test-key',
       options: {},
     });
+    createDeepLClient = jest.fn().mockResolvedValue({ destroy: jest.fn() });
   });
 
   async function loadAndRegister() {
     const { registerVoice } = await import('../../src/cli/commands/register-voice');
-    registerVoice(program, { getApiKeyAndOptions, handleError } as any);
+    registerVoice(program, { getApiKeyAndOptions, createDeepLClient, handleError } as any);
   }
 
   it('should throw error when --to is missing', async () => {
