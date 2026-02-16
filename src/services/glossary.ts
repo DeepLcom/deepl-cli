@@ -142,30 +142,18 @@ export class GlossaryService {
     sourceText: string,
     targetText: string
   ): Promise<void> {
-    // Validate inputs
     if (!sourceText || sourceText.trim() === '') {
       throw new ValidationError('Source text cannot be empty');
     }
     if (!targetText || targetText.trim() === '') {
       throw new ValidationError('Target text cannot be empty');
     }
-
-    // Get existing entries
-    const entries = await this.getGlossaryEntries(glossaryId, sourceLang, targetLang);
-
-    // Check if entry already exists
-    if (entries[sourceText] !== undefined) {
-      throw new ValidationError(`Entry "${sourceText}" already exists in glossary`);
-    }
-
-    // Add new entry
-    entries[sourceText] = targetText;
-
-    // Convert to TSV
-    const tsv = GlossaryService.entriesToTSV(entries);
-
-    // Update glossary using v3 PATCH endpoint
-    await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
+    await this.mutateEntries(glossaryId, sourceLang, targetLang, (entries) => {
+      if (entries[sourceText] !== undefined) {
+        throw new ValidationError(`Entry "${sourceText}" already exists in glossary`);
+      }
+      entries[sourceText] = targetText;
+    });
   }
 
   /**
@@ -178,30 +166,18 @@ export class GlossaryService {
     sourceText: string,
     newTargetText: string
   ): Promise<void> {
-    // Validate inputs
     if (!sourceText || sourceText.trim() === '') {
       throw new ValidationError('Source text cannot be empty');
     }
     if (!newTargetText || newTargetText.trim() === '') {
       throw new ValidationError('Target text cannot be empty');
     }
-
-    // Get existing entries
-    const entries = await this.getGlossaryEntries(glossaryId, sourceLang, targetLang);
-
-    // Check if entry exists
-    if (entries[sourceText] === undefined) {
-      throw new ConfigError(`Entry "${sourceText}" not found in glossary`);
-    }
-
-    // Update entry
-    entries[sourceText] = newTargetText;
-
-    // Convert to TSV
-    const tsv = GlossaryService.entriesToTSV(entries);
-
-    // Update glossary using v3 PATCH endpoint
-    await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
+    await this.mutateEntries(glossaryId, sourceLang, targetLang, (entries) => {
+      if (entries[sourceText] === undefined) {
+        throw new ConfigError(`Entry "${sourceText}" not found in glossary`);
+      }
+      entries[sourceText] = newTargetText;
+    });
   }
 
   /**
@@ -213,31 +189,29 @@ export class GlossaryService {
     targetLang: Language,
     sourceText: string
   ): Promise<void> {
-    // Validate input
     if (!sourceText || sourceText.trim() === '') {
       throw new ValidationError('Source text cannot be empty');
     }
+    await this.mutateEntries(glossaryId, sourceLang, targetLang, (entries) => {
+      if (entries[sourceText] === undefined) {
+        throw new ConfigError(`Entry "${sourceText}" not found in glossary`);
+      }
+      if (Object.keys(entries).length === 1) {
+        throw new ValidationError('Cannot remove last entry from glossary. Delete the glossary instead.');
+      }
+      delete entries[sourceText];
+    });
+  }
 
-    // Get existing entries
+  private async mutateEntries(
+    glossaryId: string,
+    sourceLang: Language,
+    targetLang: Language,
+    mutate: (entries: Record<string, string>) => void
+  ): Promise<void> {
     const entries = await this.getGlossaryEntries(glossaryId, sourceLang, targetLang);
-
-    // Check if entry exists
-    if (entries[sourceText] === undefined) {
-      throw new ConfigError(`Entry "${sourceText}" not found in glossary`);
-    }
-
-    // Check if this is the last entry
-    if (Object.keys(entries).length === 1) {
-      throw new ValidationError('Cannot remove last entry from glossary. Delete the glossary instead.');
-    }
-
-    // Remove entry
-    delete entries[sourceText];
-
-    // Convert to TSV
+    mutate(entries);
     const tsv = GlossaryService.entriesToTSV(entries);
-
-    // Update glossary using v3 PATCH endpoint
     await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
   }
 
