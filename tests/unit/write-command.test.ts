@@ -557,7 +557,7 @@ describe('WriteCommand', () => {
 
       const diff = writeCommand.generateDiff(text, text);
 
-      expect(diff).toBeTruthy();
+      expect(diff).toContain('===');
     });
 
     it('should handle multi-line text', () => {
@@ -615,7 +615,7 @@ describe('WriteCommand', () => {
 
       expect(result.original).toBe('Original content');
       expect(result.improved).toBe('Improved content.');
-      expect(result.diff).toBeTruthy();
+      expect(result.diff).toContain('Original content');
     });
   });
 
@@ -794,7 +794,7 @@ describe('WriteCommand', () => {
       });
 
       expect(result.fixed).toBe(true);
-      expect(result.backupPath).toBeTruthy();
+      expect(result.backupPath).toMatch(/\.bak/);
 
       // Verify backup exists
       const backupContent = await fs.readFile(result.backupPath!, 'utf-8');
@@ -890,7 +890,7 @@ describe('WriteCommand', () => {
       });
 
       // Should work and return a result
-      expect(result).toBeTruthy();
+      expect(['Same improvement.', 'Different improvement.']).toContain(result);
       expect(mockSelect).toHaveBeenCalled();
 
       // Verify deduplication happened - select() receives a config object with choices

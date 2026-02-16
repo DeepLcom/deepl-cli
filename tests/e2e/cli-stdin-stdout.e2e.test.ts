@@ -38,7 +38,7 @@ describe('CLI Stdin/Stdout E2E', () => {
 
       expect(result.status).toBeGreaterThan(0);
       // Should handle empty input (may fail at validation or API)
-      expect(result.output).toBeTruthy();
+      expect(result.output.length).toBeGreaterThan(0);
     });
 
     it('should handle multiline stdin', () => {
@@ -63,7 +63,7 @@ describe('CLI Stdin/Stdout E2E', () => {
       const result = runCLIExpectError('config list', { apiKey: '' });
 
       expect(result.status).toBe(0);
-      expect(result.output).toBeTruthy();
+      expect(result.output).toMatch(/[a-zA-Z]/);
       expect(result.output.length).toBeGreaterThan(0);
     });
 
@@ -81,7 +81,7 @@ describe('CLI Stdin/Stdout E2E', () => {
 
       expect(result.status).toBeGreaterThan(0);
       // Errors should be in output (stderr or stdout)
-      expect(result.output).toBeTruthy();
+      expect(result.output).toMatch(/error|not found|enoent|authentication|api/i);
     });
 
     it('should write missing API key error to stderr', () => {
