@@ -35,6 +35,7 @@ import { registerCompletion } from './commands/register-completion.js';
 import { registerVoice } from './commands/register-voice.js';
 import { registerInit } from './commands/register-init.js';
 import { registerDetect } from './commands/register-detect.js';
+import { validateApiUrl } from '../utils/validate-url.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -194,6 +195,9 @@ function getApiKeyAndOptions(): { apiKey: string; options: import('../api/http-c
   }
 
   const baseUrl = configService.getValue<string>('api.baseUrl');
+  if (baseUrl) {
+    validateApiUrl(baseUrl);
+  }
   const usePro = configService.getValue<boolean>('api.usePro');
 
   return { apiKey: key, options: { baseUrl, usePro } };
