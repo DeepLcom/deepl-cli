@@ -14,6 +14,8 @@ Common issues and solutions when using the DeepL CLI.
    ```bash
    deepl auth show
    ```
+   - With a key configured: `API Key: XXXX...XXXX` (shows first 4 and last 4 characters)
+   - Without a key: `No API key set`
 
 2. Set or update your key:
    ```bash
@@ -34,6 +36,42 @@ Common issues and solutions when using the DeepL CLI.
 - Free API keys end with `:fx`. Pro keys do not.
 - The CLI auto-detects the API tier (Free vs Pro) from the key suffix.
 - The stored config key takes precedence over the `DEEPL_API_KEY` environment variable.
+
+---
+
+## Setup Wizard Issues (`deepl init`)
+
+### Setup wizard fails with network error
+
+**Cause:** The `deepl init` wizard validates your API key by contacting the DeepL API. If the network is unreachable, validation will fail.
+
+**Solutions:**
+
+1. Check your internet connection and try again:
+   ```bash
+   deepl init
+   ```
+
+2. If behind a proxy, set proxy environment variables before running init:
+   ```bash
+   export HTTPS_PROXY=https://proxy.example.com:8443
+   deepl init
+   ```
+
+### API key validation fails during setup
+
+**Cause:** The key you entered is invalid, expired, or for a different API tier than expected.
+
+**Solutions:**
+
+1. Double-check your API key on the [DeepL account page](https://www.deepl.com/account/summary).
+
+2. Ensure you're copying the full key, including the `:fx` suffix for free-tier keys.
+
+3. As a manual fallback, skip the wizard and set the key directly:
+   ```bash
+   deepl auth set-key YOUR_API_KEY
+   ```
 
 ---
 
@@ -99,6 +137,43 @@ Common issues and solutions when using the DeepL CLI.
 
 4. The CLI retries on transient network errors automatically with exponential backoff.
 
+### "Request failed with status code 503"
+
+**Cause:** The DeepL API is temporarily overloaded or undergoing maintenance.
+
+**Solutions:**
+
+1. Wait a few minutes and retry your request.
+
+2. Use `--no-cache` to bypass any stale cached error responses:
+   ```bash
+   deepl translate "Hello" --to es --no-cache
+   ```
+
+3. The CLI automatically retries on 503 errors with exponential backoff. If the error persists, the API may be experiencing an extended outage.
+
+---
+
+## CheckFailed (Exit Code 8)
+
+### `deepl write --check` returns exit code 8
+
+**Cause:** This is expected behavior, not an error. Exit code 8 means `deepl write --check` found improvements for your text.
+
+**Details:**
+
+- **Exit 0** — Text is clean, no improvements suggested.
+- **Exit 8** — Improvements were found and suggested.
+
+This exit code is useful in CI/CD pipelines or scripts to detect when text could be improved:
+
+```bash
+deepl write --check "Your text" --lang en-US
+if [ $? -eq 8 ]; then
+  echo "Text has suggested improvements"
+fi
+```
+
 ---
 
 ## Voice API Errors (Exit Code 9)
@@ -111,7 +186,7 @@ Common issues and solutions when using the DeepL CLI.
 
 1. Verify your account has Voice API access on the DeepL website.
 2. Voice API always uses the Pro endpoint (`api.deepl.com`), even with free keys.
-3. Check that your audio file format is supported (OGG, WebM, FLAC, MP3, PCM).
+3. Check that your audio file format is supported (OGG, Opus, WebM, MKA, FLAC, MP3, PCM).
 
 ### "Invalid streaming URL"
 
@@ -149,7 +224,7 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 
 2. Use `--verbose` to see the API request and response details:
    ```bash
-   deepl write "Your text" --to en-US --verbose
+   deepl write "Your text" --lang en-US --verbose
    ```
 
 3. If your language pair is unsupported, use the translate command as a fallback.
@@ -179,12 +254,12 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 
 2. Use `--check` mode to compare the original with the improved version:
    ```bash
-   deepl write "Your text" --to en-US --check
+   deepl write "Your text" --lang en-US --check
    ```
 
 3. Check the verbose output for details:
    ```bash
-   deepl write "Your text" --to en-US --verbose
+   deepl write "Your text" --lang en-US --verbose
    ```
 
 ### Rate limiting on Write API
@@ -311,7 +386,7 @@ deepl translate ./docs --to es --output ./docs-es
 
 ### Unsupported document format
 
-Supported document formats: PDF, DOCX, PPTX, XLSX, HTML. See [docs/API.md](API.md) for the complete list of supported formats.
+Supported document formats: PDF, DOCX, DOC, PPTX, XLSX, TXT, HTML, HTM, XLF, XLIFF, SRT, JPG, JPEG, PNG. See [docs/API.md](API.md) for the complete list of supported formats.
 
 ```bash
 deepl translate document.docx --to fr --output translated.docx
@@ -393,4 +468,15 @@ deepl glossary --help
 deepl --version
 ```
 
-If you encounter an issue not covered here, check the [DeepL API documentation](https://www.deepl.com/docs-api) or file an issue on the project repository.
+If you encounter an issue not covered here, check the [DeepL API documentation](https://www.deepl.com/docs-api).
+
+---
+
+## Still Having Issues?
+
+If your problem isn't listed above, [file a bug report](https://github.com/DeepLcom/deepl-cli/issues/new) with:
+
+- The command you ran
+- The full error output
+- Your CLI version (`deepl --version`)
+- Your OS and Node.js version
