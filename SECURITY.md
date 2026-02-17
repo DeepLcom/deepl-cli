@@ -1,3 +1,12 @@
+## Supported Versions
+
+| Version | Supported          |
+|---------|--------------------|
+| 0.11.x  | :white_check_mark: |
+| < 0.11  | :x:                |
+
+## Reporting a Vulnerability
+
 To report security concerns or vulnerabilities within deepl-cli, please email
 us at [security@deepl.com](mailto:security@deepl.com).
 
