@@ -90,10 +90,6 @@ export function isWriteImprovementArray(data: unknown): data is WriteImprovement
   });
 }
 
-export interface WriteResult {
-  improvements: WriteImprovement[];
-}
-
 // Document Translation Types
 
 export type DocumentStatusCode = 'queued' | 'translating' | 'error' | 'done';

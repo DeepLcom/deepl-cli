@@ -1,8 +1,6 @@
 import { DeepLClient } from '../api/deepl-client.js';
-import type { DeepLClientOptions } from '../api/http-client.js';
 import { AdminApiKey, AdminUsageOptions, AdminUsageReport } from '../types/index.js';
-
-export type GetApiKeyAndOptions = () => { apiKey: string; options: DeepLClientOptions };
+import type { GetApiKeyAndOptions } from '../cli/commands/service-factory.js';
 
 export class AdminService {
   private client: DeepLClient;
