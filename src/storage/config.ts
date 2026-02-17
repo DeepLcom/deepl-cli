@@ -211,15 +211,32 @@ export class ConfigService {
       if (fs.existsSync(this.configPath)) {
         const data = fs.readFileSync(this.configPath, 'utf-8');
         const loaded = JSON.parse(data) as DeepLConfig;
-        // Merge with defaults to ensure all fields exist
-        return this.mergeWithDefaults(loaded);
+        const merged = this.mergeWithDefaults(loaded);
+        this.validateLoadedConfig(merged);
+        return merged;
       }
     } catch (error) {
-      // If load fails, use defaults
       Logger.warn('Failed to load config, using defaults:', error instanceof Error ? error.message : String(error));
     }
 
     return ConfigService.getDefaults();
+  }
+
+  private validateLoadedConfig(config: DeepLConfig): void {
+    if (config.api?.baseUrl) {
+      validateApiUrl(config.api.baseUrl);
+    }
+    if (config.defaults?.sourceLang) {
+      this.validateLanguage(config.defaults.sourceLang);
+    }
+    if (config.defaults?.targetLangs) {
+      for (const lang of config.defaults.targetLangs) {
+        this.validateLanguage(lang);
+      }
+    }
+    if (config.defaults?.formality) {
+      this.validateFormality(config.defaults.formality);
+    }
   }
 
   /**
