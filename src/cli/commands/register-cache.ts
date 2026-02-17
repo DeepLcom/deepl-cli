@@ -28,7 +28,7 @@ Examples:
     .addCommand(
       new Command('stats')
         .description('Show cache statistics')
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('table'))
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('text'))
         .action(async (options: { format?: string }) => {
           try {
             const { CacheCommand } = await import('./cache.js');

@@ -68,9 +68,8 @@ describe('Languages CLI Integration', () => {
     it('should support --target flag', () => {
       const output = runCLI('deepl languages --help');
 
-      // Should have --target flag
+      // Should have --target flag (no -t short flag to avoid conflict with --to)
       expect(output).toContain('--target');
-      expect(output).toContain('-t');
       expect(output).toContain('Show only target languages');
     });
 
