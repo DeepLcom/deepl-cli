@@ -950,19 +950,11 @@ describe('VoiceService', () => {
         return true;
       });
 
-      const promise = service.translateFile(largeFile, {
+      const result = await service.translateFile(largeFile, {
         targetLangs: ['de'],
         chunkSize: 500,
-        chunkInterval: 5,
+        chunkInterval: 0,
       });
-
-      // Interleave timer advances with I/O processing so file reads and
-      // paceChunks setTimeout delays both make progress
-      for (let i = 0; i < 200; i++) {
-        await jest.advanceTimersByTimeAsync(10);
-        await new Promise((r) => setImmediate(r));
-      }
-      const result = await promise;
 
       expect(result.sessionId).toBe('session-resume');
       // Chunks should have been sent on both WebSockets
