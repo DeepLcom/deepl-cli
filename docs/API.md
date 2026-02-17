@@ -2261,7 +2261,10 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 }
 ```
 
-**Note:** Most users configure settings via `deepl config set` command rather than editing the file directly.
+**Configuration Notes:**
+
+- **`baseUrl`** overrides the auto-detected API endpoint. By default, the endpoint is auto-detected from the API key tier: keys ending with `:fx` use the Free API (`api-free.deepl.com`), all others use the Pro API (`api.deepl.com`). The `usePro` flag can also be used to control tier selection explicitly.
+- Most users configure settings via `deepl config set` command rather than editing the file directly.
 
 ---
 
