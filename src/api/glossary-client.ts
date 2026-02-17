@@ -16,19 +16,15 @@ export class GlossaryClient extends HttpClient {
   }
 
   async getGlossaryLanguages(): Promise<GlossaryLanguagePair[]> {
-    try {
-      const response = await this.makeRequest<DeepLGlossaryLanguagePairsResponse>(
-        'GET',
-        '/v2/glossary-language-pairs'
-      );
+    const response = await this.makeRequest<DeepLGlossaryLanguagePairsResponse>(
+      'GET',
+      '/v2/glossary-language-pairs'
+    );
 
-      return response.supported_languages.map((pair) => ({
-        sourceLang: this.normalizeLanguage(pair.source_lang),
-        targetLang: this.normalizeLanguage(pair.target_lang),
-      }));
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return response.supported_languages.map((pair) => ({
+      sourceLang: this.normalizeLanguage(pair.source_lang),
+      targetLang: this.normalizeLanguage(pair.target_lang),
+    }));
   }
 
   async createGlossary(
@@ -41,62 +37,46 @@ export class GlossaryClient extends HttpClient {
       throw new ValidationError('At least one target language is required');
     }
 
-    try {
-      const dictionaries = targetLangs.map(targetLang => ({
-        source_lang: sourceLang.toUpperCase(),
-        target_lang: targetLang.toUpperCase(),
-        entries,
-        entries_format: 'tsv',
-      }));
+    const dictionaries = targetLangs.map(targetLang => ({
+      source_lang: sourceLang.toUpperCase(),
+      target_lang: targetLang.toUpperCase(),
+      entries,
+      entries_format: 'tsv',
+    }));
 
-      const response = await this.makeJsonRequest<GlossaryApiResponse>(
-        'POST', '/v3/glossaries',
-        { name, dictionaries } as unknown as Record<string, unknown>
-      );
+    const response = await this.makeJsonRequest<GlossaryApiResponse>(
+      'POST', '/v3/glossaries',
+      { name, dictionaries }
+    );
 
-      return normalizeGlossaryInfo(response);
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return normalizeGlossaryInfo(response);
   }
 
   async listGlossaries(): Promise<GlossaryInfo[]> {
-    try {
-      const response = await this.makeRequest<{ glossaries: GlossaryApiResponse[] }>(
-        'GET',
-        '/v3/glossaries'
-      );
+    const response = await this.makeRequest<{ glossaries: GlossaryApiResponse[] }>(
+      'GET',
+      '/v3/glossaries'
+    );
 
-      return (response.glossaries || []).map(normalizeGlossaryInfo);
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return (response.glossaries || []).map(normalizeGlossaryInfo);
   }
 
   async getGlossary(glossaryId: string): Promise<GlossaryInfo> {
     this.validateGlossaryId(glossaryId);
-    try {
-      const response = await this.makeRequest<GlossaryApiResponse>(
-        'GET',
-        `/v3/glossaries/${glossaryId}`
-      );
+    const response = await this.makeRequest<GlossaryApiResponse>(
+      'GET',
+      `/v3/glossaries/${glossaryId}`
+    );
 
-      return normalizeGlossaryInfo(response);
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return normalizeGlossaryInfo(response);
   }
 
   async deleteGlossary(glossaryId: string): Promise<void> {
     this.validateGlossaryId(glossaryId);
-    try {
-      await this.makeRequest<void>(
-        'DELETE',
-        `/v3/glossaries/${glossaryId}`
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    await this.makeRequest<void>(
+      'DELETE',
+      `/v3/glossaries/${glossaryId}`
+    );
   }
 
   async getGlossaryEntries(
@@ -105,32 +85,28 @@ export class GlossaryClient extends HttpClient {
     targetLang: Language
   ): Promise<string> {
     this.validateGlossaryId(glossaryId);
-    try {
-      const response = await this.makeRequest<{
-        dictionaries: Array<{
-          source_lang: string;
-          target_lang: string;
-          entries: string;
-          entries_format: string;
-        }>;
-      }>('GET', `/v3/glossaries/${glossaryId}/entries`, {
-        source_lang: sourceLang.toUpperCase(),
-        target_lang: targetLang.toUpperCase(),
-      });
+    const response = await this.makeRequest<{
+      dictionaries: Array<{
+        source_lang: string;
+        target_lang: string;
+        entries: string;
+        entries_format: string;
+      }>;
+    }>('GET', `/v3/glossaries/${glossaryId}/entries`, {
+      source_lang: sourceLang.toUpperCase(),
+      target_lang: targetLang.toUpperCase(),
+    });
 
-      if (!response.dictionaries || response.dictionaries.length === 0) {
-        return '';
-      }
-
-      const dictionary = response.dictionaries[0];
-      if (!dictionary) {
-        return '';
-      }
-
-      return dictionary.entries;
-    } catch (error) {
-      throw this.handleError(error);
+    if (!response.dictionaries || response.dictionaries.length === 0) {
+      return '';
     }
+
+    const dictionary = response.dictionaries[0];
+    if (!dictionary) {
+      return '';
+    }
+
+    return dictionary.entries;
   }
 
   async updateGlossaryEntries(
@@ -140,22 +116,18 @@ export class GlossaryClient extends HttpClient {
     entries: string
   ): Promise<void> {
     this.validateGlossaryId(glossaryId);
-    try {
-      await this.makeJsonRequest<void>(
-        'PATCH',
-        `/v3/glossaries/${glossaryId}`,
-        {
-          dictionaries: [{
-            source_lang: sourceLang.toUpperCase(),
-            target_lang: targetLang.toUpperCase(),
-            entries,
-            entries_format: 'tsv',
-          }],
-        }
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    await this.makeJsonRequest<void>(
+      'PATCH',
+      `/v3/glossaries/${glossaryId}`,
+      {
+        dictionaries: [{
+          source_lang: sourceLang.toUpperCase(),
+          target_lang: targetLang.toUpperCase(),
+          entries,
+          entries_format: 'tsv',
+        }],
+      }
+    );
   }
 
   async replaceGlossaryDictionary(
@@ -165,20 +137,16 @@ export class GlossaryClient extends HttpClient {
     entries: string
   ): Promise<void> {
     this.validateGlossaryId(glossaryId);
-    try {
-      await this.makeJsonRequest<void>(
-        'PUT',
-        `/v3/glossaries/${glossaryId}/dictionaries`,
-        {
-          source_lang: sourceLang.toUpperCase(),
-          target_lang: targetLang.toUpperCase(),
-          entries,
-          entries_format: 'tsv',
-        }
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    await this.makeJsonRequest<void>(
+      'PUT',
+      `/v3/glossaries/${glossaryId}/dictionaries`,
+      {
+        source_lang: sourceLang.toUpperCase(),
+        target_lang: targetLang.toUpperCase(),
+        entries,
+        entries_format: 'tsv',
+      }
+    );
   }
 
   async updateGlossary(
@@ -197,15 +165,11 @@ export class GlossaryClient extends HttpClient {
     if (!updates.name && !updates.dictionaries) {
       throw new ValidationError('At least one of name or dictionaries must be provided');
     }
-    try {
-      await this.makeJsonRequest<void>(
-        'PATCH',
-        `/v3/glossaries/${glossaryId}`,
-        updates as unknown as Record<string, unknown>
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    await this.makeJsonRequest<void>(
+      'PATCH',
+      `/v3/glossaries/${glossaryId}`,
+      updates
+    );
   }
 
   async renameGlossary(glossaryId: string, newName: string): Promise<void> {
@@ -218,18 +182,14 @@ export class GlossaryClient extends HttpClient {
     targetLang: Language
   ): Promise<void> {
     this.validateGlossaryId(glossaryId);
-    try {
-      const params = new URLSearchParams({
-        source_lang: sourceLang.toUpperCase(),
-        target_lang: targetLang.toUpperCase(),
-      });
-      await this.makeRequest<void>(
-        'DELETE',
-        `/v3/glossaries/${glossaryId}/dictionaries?${params.toString()}`
-      );
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    const params = new URLSearchParams({
+      source_lang: sourceLang.toUpperCase(),
+      target_lang: targetLang.toUpperCase(),
+    });
+    await this.makeRequest<void>(
+      'DELETE',
+      `/v3/glossaries/${glossaryId}/dictionaries?${params.toString()}`
+    );
   }
 
   private validateGlossaryId(glossaryId: string): void {
