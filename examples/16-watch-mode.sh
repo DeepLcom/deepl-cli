@@ -150,7 +150,7 @@ echo
 
 # Example 6: Watch with custom debounce
 echo "6. Watch with custom debounce delay"
-echo "   Default debounce: 300ms (waits 300ms after last change)"
+echo "   Default debounce: 500ms (waits 500ms after last change)"
 echo "   Custom debounce: deepl watch file.md --to es --debounce 1000"
 echo "   Use higher debounce for rapidly changing files"
 echo

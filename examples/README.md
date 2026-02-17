@@ -54,6 +54,14 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 
 - [Admin API](./27-admin.sh) - Managing API keys and viewing organization usage analytics
 
+### Getting Started
+
+- [Setup Wizard](./28-init.sh) - Interactive first-time setup with `deepl init`
+
+### Advanced
+
+- [Advanced Translation](./29-advanced-translate.sh) - Tag handling versions, beta languages, custom API URLs, and document minification
+
 ## Prerequisites
 
 All examples assume you have:

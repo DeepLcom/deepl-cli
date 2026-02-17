@@ -155,7 +155,7 @@ echo
 echo "🔧 **Environment-Specific Configs**"
 echo "   dev-config.json   → Development API key, verbose logging"
 echo "   prod-config.json  → Production API key, quiet mode"
-echo "   $ deepl --config prod-config.json translate --quiet ..."
+echo "   $ deepl --quiet --config prod-config.json translate ..."
 echo
 
 echo "👥 **Team Configurations**"
@@ -175,7 +175,7 @@ echo
 echo "Priority (highest to lowest):"
 echo "  1. --config flag (highest priority)"
 echo "  2. DEEPL_CONFIG_DIR environment variable"
-echo "  3. Default location (~/.deepl-cli/config.json)"
+echo "  3. Default location (~/.config/deepl-cli/config.json)"
 echo
 
 echo "Example with precedence:"

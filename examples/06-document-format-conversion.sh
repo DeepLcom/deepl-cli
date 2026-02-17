@@ -104,7 +104,7 @@ echo
 echo "Expected result: ❌ Error - Conversion not supported"
 echo
 echo "If you try this, you'll see:"
-echo '  Error: API error: Conversion between different document types is not supported'
+echo "  error: option '--output-format <format>' argument 'txt' is invalid. Allowed choices are docx."
 echo
 
 # Example 4: Working with different document types

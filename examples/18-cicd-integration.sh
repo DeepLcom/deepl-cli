@@ -131,10 +131,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
@@ -205,7 +205,7 @@ for file in "$SOURCE_DIR"/*.{txt,md}; do
       echo "  ✓ Success" | tee -a "$LOG_FILE"
       ((SUCCESS++))
     else
-      echo "  ✗ Failed (see $ERROR_LOG)" | tee -a "$LOG_FILE"
+      echo "  ❌ Failed (see $ERROR_LOG)" | tee -a "$LOG_FILE"
       ((FAILED++))
     fi
   fi

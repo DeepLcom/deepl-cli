@@ -82,6 +82,10 @@ EXAMPLES=(
   "26-completion.sh"
   # Administration
   "27-admin.sh"
+  # Getting Started
+  "28-init.sh"
+  # Advanced
+  "29-advanced-translate.sh"
 )
 
 # Skip slow examples in fast mode
@@ -122,6 +126,10 @@ if [ "$FAST_MODE" = true ]; then
     "26-completion.sh"
     # Administration
     "27-admin.sh"
+    # Getting Started
+    "28-init.sh"
+    # Advanced
+    "29-advanced-translate.sh"
   )
 fi
 
