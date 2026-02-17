@@ -376,18 +376,6 @@ export class TranslationService {
     return languages;
   }
 
-  static restorePlaceholders(text: string, preservationMap: Map<string, string>): string {
-    return restorePlaceholders(text, preservationMap);
-  }
-
-  static preserveCodeBlocks(text: string, preservationMap: Map<string, string>): string {
-    return preserveCodeBlocks(text, preservationMap);
-  }
-
-  static preserveVariables(text: string, preservationMap: Map<string, string>): string {
-    return preserveVariables(text, preservationMap);
-  }
-
   /**
    * Generate cache key from text and options
    *
