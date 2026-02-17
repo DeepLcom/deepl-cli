@@ -7,14 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- `languages` and `usage` commands now default to `text` format instead of `table`, consistent with all other commands
-
 ### Added
 - `destroy()` method on `HttpClient` and `DeepLClient` to tear down keepAlive HTTP agents and prevent socket leaks
 - Voice `--glossary` now accepts a glossary name or ID (matching translate/watch behavior)
+- Stdin support for `write` command — reads from stdin when no text argument provided, matching translate/detect pattern (jhcn)
+- `types` and `exports` fields in package.json for TypeScript consumers (w7pl)
+- `.npmignore` to exclude build artifacts and source maps from npm package — ~50% package size reduction (3h5w, wgyh)
+- Schema validation on config load — invalid values fall back to defaults with warning (szxl)
+- Path traversal defense for `--output-pattern` in batch translation (3zc7)
+
+### Changed
+- `languages` and `usage` commands now default to `text` format instead of `table`, consistent with all other commands
+- `makeJsonRequest` is now generic, eliminating 4 double-cast workarounds in API clients (ymno)
+- Removed 17 redundant try/catch blocks from API client subclasses (bq7s)
+- Replaced `any` types in ConfigService with `Record<string, unknown>` and `unknown` (c1ir)
+- Deduplicated `GetApiKeyAndOptions` type — single definition in service-factory.ts (c7py)
+- Removed unused `WriteResult` export from types/api.ts (xau1)
 
 ### Fixed
+- `config set api.baseUrl` now accepts `http://localhost` for local testing, consistent with `validateApiUrl()` (f6vg)
+- `watch --to` documented as optional in API.md, matching actual behavior of falling back to `defaults.targetLangs` (9wty)
+- Document `watch --concurrency` flag in API.md (6uvz)
+- Document `better-sqlite3` native build requirements in README.md (8r39)
+- Document `FORCE_COLOR` and `TERM=dumb` environment variables in API.md (om5d)
 - All Logger methods (`error()`, `info()`, `warn()`, `success()`) now sanitize output to redact API keys, matching existing `verbose()` behavior
 - `getApiKeyAndOptions()` now validates API base URL with `validateApiUrl()`, preventing insecure HTTP URLs for voice commands
 - Replace "Internal DeepL project" README disclaimer with MIT license reference
