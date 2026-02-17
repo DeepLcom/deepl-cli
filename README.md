@@ -2,11 +2,8 @@
 
 > A next-generation command-line interface for DeepL translation and writing enhancement
 
-[![npm version](https://img.shields.io/npm/v/deepl-cli)](https://www.npmjs.com/package/deepl-cli)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
-[![Node Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
-[![Stability: Beta](https://img.shields.io/badge/stability-beta-orange.svg)](https://github.com/DeepLcom/deepl-cli)
+[![CI](https://github.com/DeepLcom/deepl-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/DeepLcom/deepl-cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blueviolet.svg)](https://opensource.org/licenses/MIT)
 
 **DeepL CLI** is a comprehensive, developer-friendly command-line tool that integrates DeepL's powerful translation API and cutting-edge Write API for grammar and style enhancement. Built with TypeScript and designed for modern development workflows.
 
@@ -72,7 +69,7 @@ npm link
 
 # Verify installation
 deepl --version
-# Output: 0.11.0
+# Output: 1.0.0
 ```
 
 > **Note:** This project uses [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3) for local caching, which requires native compilation. If `npm install` fails with build errors, ensure you have:

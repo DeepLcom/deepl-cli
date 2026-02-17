@@ -6,7 +6,7 @@ DeepL CLI is a command-line interface for the DeepL API that integrates translat
 
 ### Current Status
 
-- **Version**: 0.11.0
+- **Version**: 1.0.0
 - **Tests**: 2757 tests passing (100% pass rate), ~91% coverage
 - **Test mix**: ~70-75% unit, ~25-30% integration/e2e
 - **Next Milestone**: 1.0.0 (stable public API)
