@@ -11,12 +11,6 @@ describe('AdminClient', () => {
   const apiKey = 'test-admin-key';
   const baseUrl = 'https://api-free.deepl.com';
 
-  beforeAll(() => {
-    if (!nock.isActive()) {
-      nock.activate();
-    }
-  });
-
   beforeEach(() => {
     client = new AdminClient(apiKey);
     nock.cleanAll();
@@ -28,7 +22,6 @@ describe('AdminClient', () => {
 
   afterAll(() => {
     client.destroy();
-    nock.restore();
   });
 
   describe('createApiKey', () => {

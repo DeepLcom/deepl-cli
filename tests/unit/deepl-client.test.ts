@@ -12,12 +12,6 @@ describe('DeepLClient', () => {
   const apiKey = 'test-api-key';
   const baseUrl = 'https://api-free.deepl.com';
 
-  beforeAll(() => {
-    if (!nock.isActive()) {
-      nock.activate();
-    }
-  });
-
   beforeEach(() => {
     jest.spyOn(HttpClient.prototype, 'sleep' as any).mockResolvedValue(undefined);
     client = new DeepLClient(apiKey);
@@ -31,7 +25,6 @@ describe('DeepLClient', () => {
 
   afterAll(() => {
     client.destroy();
-    nock.restore();
   });
 
   describe('initialization', () => {

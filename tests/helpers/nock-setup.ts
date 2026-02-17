@@ -8,14 +8,6 @@ export function setupDeepLNock(baseUrl: string = DEEPL_FREE_API_URL): nock.Scope
   return nock(baseUrl);
 }
 
-export function cleanupNock(): void {
-  nock.cleanAll();
-  if (nock.isActive()) {
-    nock.restore();
-  }
-  nock.activate();
-}
-
 export function mockTranslateResponse(
   scope: nock.Scope,
   response: { text: string; detected_source_language?: string }[],

@@ -11,14 +11,18 @@ import { DEEPL_PRO_API_URL } from '../helpers';
 describe('VoiceClient Integration', () => {
   const API_KEY = 'test-voice-key:fx';
   const PRO_URL = DEEPL_PRO_API_URL;
+  const clients: VoiceClient[] = [];
 
   afterEach(() => {
+    clients.forEach(c => c.destroy());
+    clients.length = 0;
     nock.cleanAll();
   });
 
   describe('createSession()', () => {
     it('should POST session request and parse response', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(PRO_URL)
         .post('/v3/voice/realtime', (body) => {
@@ -46,6 +50,7 @@ describe('VoiceClient Integration', () => {
 
     it('should include optional source_language', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(PRO_URL)
         .post('/v3/voice/realtime', (body) => {
@@ -70,6 +75,7 @@ describe('VoiceClient Integration', () => {
 
     it('should include optional formality', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(PRO_URL)
         .post('/v3/voice/realtime', (body) => {
@@ -94,6 +100,7 @@ describe('VoiceClient Integration', () => {
 
     it('should include optional glossary_id', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(PRO_URL)
         .post('/v3/voice/realtime', (body) => {
@@ -118,6 +125,7 @@ describe('VoiceClient Integration', () => {
 
     it('should handle 403 access denied with VoiceError', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       nock(PRO_URL)
         .post('/v3/voice/realtime')
@@ -133,6 +141,7 @@ describe('VoiceClient Integration', () => {
 
     it('should handle 400 bad request', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       nock(PRO_URL)
         .post('/v3/voice/realtime')
@@ -148,6 +157,7 @@ describe('VoiceClient Integration', () => {
 
     it('should use Pro API URL by default', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(PRO_URL)
         .post('/v3/voice/realtime')
@@ -168,6 +178,7 @@ describe('VoiceClient Integration', () => {
 
     it('should use correct Authorization header', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(PRO_URL, {
         reqheaders: {
@@ -194,6 +205,7 @@ describe('VoiceClient Integration', () => {
   describe('reconnectSession()', () => {
     it('should GET with token query parameter', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       const scope = nock(PRO_URL)
         .get('/v3/voice/realtime')
@@ -212,6 +224,7 @@ describe('VoiceClient Integration', () => {
 
     it('should handle 403 on expired session', async () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       nock(PRO_URL)
         .get('/v3/voice/realtime')
@@ -227,6 +240,7 @@ describe('VoiceClient Integration', () => {
   describe('URL validation', () => {
     it('should reject non-wss streaming URLs', () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       expect(() =>
         client.createWebSocket('ws://evil.com/stream', 'token', {})
@@ -235,6 +249,7 @@ describe('VoiceClient Integration', () => {
 
     it('should reject non-deepl.com hostnames', () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       expect(() =>
         client.createWebSocket('wss://evil.com/stream', 'token', {})
@@ -243,6 +258,7 @@ describe('VoiceClient Integration', () => {
 
     it('should reject unparseable URLs', () => {
       const client = new VoiceClient(API_KEY);
+      clients.push(client);
 
       expect(() =>
         client.createWebSocket('not-a-url', 'token', {})

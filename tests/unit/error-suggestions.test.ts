@@ -142,22 +142,12 @@ describe('Error suggestions', () => {
 describe('HttpClient.handleError suggestions', () => {
   const baseUrl = 'https://api-free.deepl.com';
 
-  beforeAll(() => {
-    if (!nock.isActive()) {
-      nock.activate();
-    }
-  });
-
   beforeEach(() => {
     nock.cleanAll();
   });
 
   afterEach(() => {
     nock.cleanAll();
-  });
-
-  afterAll(() => {
-    nock.restore();
   });
 
   async function createClientAndTranslate(statusCode: number, body: Record<string, unknown> = {}) {

@@ -18,12 +18,6 @@ describe('HttpClient', () => {
   let client: TestHttpClient;
   let sleepSpy: jest.SpyInstance;
 
-  beforeAll(() => {
-    if (!nock.isActive()) {
-      nock.activate();
-    }
-  });
-
   beforeEach(() => {
     jest.useFakeTimers({ advanceTimers: true });
     client = new TestHttpClient(apiKey, { maxRetries: 3 });
@@ -34,10 +28,6 @@ describe('HttpClient', () => {
   afterEach(() => {
     jest.useRealTimers();
     nock.cleanAll();
-  });
-
-  afterAll(() => {
-    nock.restore();
   });
 
   describe('Retry-After header parsing', () => {

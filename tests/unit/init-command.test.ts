@@ -21,10 +21,6 @@ describe('InitCommand', () => {
   let configService: ConfigService;
   const baseUrl = 'https://api.deepl.com';
 
-  beforeAll(() => {
-    if (!nock.isActive()) { nock.activate(); }
-  });
-
   beforeEach(() => {
     testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-init-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     fs.mkdirSync(testConfigDir, { recursive: true });
@@ -40,10 +36,6 @@ describe('InitCommand', () => {
     if (fs.existsSync(testConfigDir)) {
       fs.rmSync(testConfigDir, { recursive: true, force: true });
     }
-  });
-
-  afterAll(() => {
-    nock.restore();
   });
 
   it('should save API key after validation', async () => {

@@ -10,7 +10,6 @@ export {
 
 export {
   setupDeepLNock,
-  cleanupNock,
   mockTranslateResponse,
   mockTranslateError,
   mockUsageResponse,

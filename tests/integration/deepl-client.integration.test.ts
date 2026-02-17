@@ -15,11 +15,12 @@ describe('DeepLClient Integration', () => {
   const clients: DeepLClient[] = [];
 
   afterEach(() => {
+    nock.abortPendingRequests();
     clients.forEach(c => c.destroy());
     clients.length = 0;
-    nock.abortPendingRequests();
     nock.cleanAll();
   });
+
 
   describe('constructor', () => {
     it('should create client with API key', () => {
@@ -324,10 +325,7 @@ describe('DeepLClient Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/translate')
-        .delayConnection(200)
-        .reply(200, {
-          translations: [{ text: 'Hola' }],
-        });
+        .replyWithError({ code: 'ECONNABORTED', message: 'timeout of 100ms exceeded' });
 
       await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow();
     });

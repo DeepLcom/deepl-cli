@@ -1,6 +1,9 @@
 import nock from 'nock';
 
 beforeAll(() => {
+  if (!nock.isActive()) {
+    nock.activate();
+  }
   nock.disableNetConnect();
 });
 
@@ -10,5 +13,7 @@ afterEach(() => {
 });
 
 afterAll(() => {
+  nock.cleanAll();
   nock.enableNetConnect();
+  nock.restore();
 });

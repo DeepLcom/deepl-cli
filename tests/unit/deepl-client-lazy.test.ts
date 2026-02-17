@@ -8,20 +8,12 @@ describe('DeepLClient lazy sub-client construction', () => {
   const apiKey = 'test-api-key';
   const baseUrl = 'https://api-free.deepl.com';
 
-  beforeAll(() => {
-    if (!nock.isActive()) { nock.activate(); }
-  });
-
   beforeEach(() => {
     nock.cleanAll();
   });
 
   afterEach(() => {
     nock.cleanAll();
-  });
-
-  afterAll(() => {
-    nock.restore();
   });
 
   it('should still validate API key eagerly', () => {
