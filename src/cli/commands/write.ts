@@ -15,6 +15,7 @@ import { formatWriteJson } from '../../utils/formatters.js';
 import { safeReadFile } from '../../utils/safe-read-file.js';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
+import { errorMessage } from '../../utils/error-message.js';
 
 interface WriteOptions {
   lang?: WriteLanguage;
@@ -334,7 +335,7 @@ export class WriteCommand {
           });
         }
       } catch (error) {
-        Logger.verbose(`Write style ${style} failed:`, error instanceof Error ? error.message : String(error));
+        Logger.verbose(`Write style ${style} failed:`, errorMessage(error));
       }
     }
 

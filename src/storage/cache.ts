@@ -9,6 +9,7 @@ import * as path from 'path';
 import { resolvePaths } from '../utils/paths.js';
 import { ConfigError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
+import { errorMessage } from '../utils/error-message.js';
 
 export interface CacheServiceOptions {
   dbPath?: string;
@@ -169,9 +170,8 @@ export class CacheService {
 
       return parsed as T;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
       const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;
-      Logger.warn(`Cache corruption detected for key "${truncatedKey}": ${errorMessage}. Removing entry.`);
+      Logger.warn(`Cache corruption detected for key "${truncatedKey}": ${errorMessage(error)}. Removing entry.`);
       this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
       return null;
     }
