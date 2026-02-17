@@ -43,7 +43,7 @@ if deepl languages --target | grep -q "ja"; then
   echo "✓ Japanese is supported as a target language"
   # Proceed with Japanese translation
 else
-  echo "✗ Japanese is not supported"
+  echo "❌ Japanese is not supported"
   exit 1
 fi
 EOF

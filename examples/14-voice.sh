@@ -48,7 +48,7 @@ echo
 echo "4. Formality level"
 echo "   deepl voice speech.ogg --to de --formality formal"
 echo
-echo "   Options: default, formal, more, informal, less"
+echo "   Options: default, more, less, prefer_more, prefer_less, formal, informal"
 echo
 
 # 5. Source language detection mode

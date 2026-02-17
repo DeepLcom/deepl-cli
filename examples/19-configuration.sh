@@ -129,7 +129,7 @@ echo
 echo "=== All configuration examples completed! ==="
 echo
 echo "💡 Configuration tips:"
-echo "   - Config file location: ~/.deepl-cli/config.json"
+echo "   - Config file location: ~/.config/deepl-cli/config.json"
 echo "   - Use defaults.targetLangs to avoid --to flag every time"
 echo "   - Disable cache if disk space is limited"
 echo "   - Use api.baseUrl to switch between Free and Pro APIs"

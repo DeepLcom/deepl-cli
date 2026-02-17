@@ -192,7 +192,7 @@ for file in "$SAMPLE_DIR"/*.md; do
     SUCCESS=$((SUCCESS + 1))
   else
     FAILED=$((FAILED + 1))
-    echo "   ✗ Failed: $filename (logged to errors.log)"
+    echo "   ❌ Failed: $filename (logged to errors.log)"
   fi
 done
 
