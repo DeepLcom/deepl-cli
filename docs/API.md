@@ -1953,6 +1953,8 @@ deepl auth set-key YOUR-API-KEY-HERE
 
 **Security Note:** Prefer `--from-stdin` over passing the key as a command argument. Command arguments are visible to other users via process listings (`ps aux`).
 
+> **Deprecation:** Passing the API key as a positional argument is deprecated and will emit a warning. Use `--from-stdin` instead for secure key input.
+
 ##### `show`
 
 Show current API key (masked for security).
