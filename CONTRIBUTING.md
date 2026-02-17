@@ -20,7 +20,7 @@ project maintainer.
 
 ```bash
 # Clone the repository
-git clone https://git.deepl.dev/hack-projects/deepl-cli.git
+git clone https://github.com/DeepLcom/deepl-cli.git
 cd deepl-cli
 
 # Install dependencies
@@ -123,9 +123,12 @@ tests/
 
 ```bash
 npm run lint          # Check for issues
-npm run lint:fix      # Auto-fix issues
+npm run lint:fix      # Fix lint issues automatically
 npm run type-check    # TypeScript compilation check
-npm run format        # Format with Prettier
+npm run format        # Format code with Prettier
+npm run format:check  # Check code formatting
+npm run examples      # Run all example scripts
+npm run examples:fast # Run examples (skip slow ones)
 ```
 
 ## Commit Messages
@@ -189,6 +192,9 @@ Contributions must be licensed under the same license as the project:
 - [ ] New code includes unit, integration, and e2e tests
 - [ ] Commit messages follow conventional commits format
 - [ ] `CHANGELOG.md` updated under **Unreleased** section
+- [ ] `README.md` updated if user-facing feature changed
+- [ ] `docs/API.md` updated if command/flag added or changed
+- [ ] Example script added/updated in `examples/` for new features
 
 ## Adding a New CLI Command
 
