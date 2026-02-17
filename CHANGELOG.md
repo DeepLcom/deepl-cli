@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed unused `WriteResult` export from types/api.ts (xau1)
 
 ### Fixed
+- Centralize nock lifecycle in global `tests/setup.ts` — eliminates Jest hang after test completion and flaky `deepl-client.test.ts` failures caused by conflicting per-file `nock.activate()`/`nock.restore()` calls
 - `config set api.baseUrl` now accepts `http://localhost` for local testing, consistent with `validateApiUrl()` (f6vg)
 - `watch --to` documented as optional in API.md, matching actual behavior of falling back to `defaults.targetLangs` (9wty)
 - Document `watch --concurrency` flag in API.md (6uvz)
