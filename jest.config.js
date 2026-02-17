@@ -16,6 +16,7 @@ export default {
     '!src/cli/index.ts', // Main entry point
     '!src/cli/commands/translate/index.ts', // Barrel re-exports
     '!src/types/**/*.ts', // Type definitions
+    '!src/version.ts', // Mocked in tests (uses import.meta.url)
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'cobertura'],
@@ -32,6 +33,7 @@ export default {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '(.*)/version\\.js$': '<rootDir>/tests/__mocks__/version',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
 

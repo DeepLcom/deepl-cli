@@ -5,7 +5,7 @@
 
 import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client';
-import { HttpClient } from '../../src/api/http-client';
+import { HttpClient, USER_AGENT } from '../../src/api/http-client';
 
 describe('DeepLClient', () => {
   let client: DeepLClient;
@@ -54,6 +54,21 @@ describe('DeepLClient', () => {
       expect(() => {
         new DeepLClient('');
       }).toThrow('API key is required');
+    });
+
+    it('should send User-Agent header with requests', async () => {
+      const scope = nock(baseUrl, {
+        reqheaders: { 'User-Agent': USER_AGENT },
+      })
+        .post('/v2/translate')
+        .reply(200, { translations: [{ text: 'Hola' }] });
+      const result = await client.translate('Hello', { targetLang: 'es' });
+      expect(result.text).toBe('Hola');
+      scope.done();
+    });
+
+    it('should include cli version and node version in User-Agent', () => {
+      expect(USER_AGENT).toMatch(/^deepl-cli\/\d+\.\d+\.\d+ node\/\d+\.\d+\.\d+$/);
     });
   });
 

@@ -5,6 +5,9 @@ import { Language } from '../types/index.js';
 import { AuthError, RateLimitError, QuotaError, NetworkError, ConfigError, ValidationError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 import { errorMessage } from '../utils/error-message.js';
+import { VERSION } from '../version.js';
+
+export const USER_AGENT = `deepl-cli/${VERSION} node/${process.versions.node}`;
 
 export interface ProxyConfig {
   protocol?: 'http' | 'https';
@@ -105,6 +108,7 @@ export class HttpClient {
       timeout: options.timeout ?? DEFAULT_TIMEOUT,
       headers: {
         'Authorization': `DeepL-Auth-Key ${apiKey}`,
+        'User-Agent': USER_AGENT,
       },
       httpAgent: new http.Agent({
         keepAlive: true,
