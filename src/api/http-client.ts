@@ -179,10 +179,10 @@ export class HttpClient {
     return this.executeWithRetry<T>(method, path, buildConfig);
   }
 
-  protected async makeJsonRequest<T>(
+  protected async makeJsonRequest<T, D = Record<string, unknown>>(
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
-    data?: Record<string, unknown>,
+    data?: D,
     params?: Record<string, string | number | boolean>
   ): Promise<T> {
     const buildConfig = (): Record<string, unknown> => {
@@ -194,7 +194,7 @@ export class HttpClient {
 
       if (method === 'GET') {
         if (data) {
-          config['params'] = { ...params as Record<string, unknown>, ...data };
+          config['params'] = { ...params as Record<string, unknown>, ...data as Record<string, unknown> };
         }
       } else if (data !== undefined) {
         config['data'] = data;

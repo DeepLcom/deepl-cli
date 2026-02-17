@@ -18,7 +18,7 @@ export function registerWrite(
   program
     .command('write')
     .description('Improve text using DeepL Write API (grammar, style, tone)')
-    .argument('<text>', 'Text to improve (or file path when used with file operations)')
+    .argument('[text]', 'Text to improve, file path, or read from stdin')
     .optionsGroup('Core Options:')
     .option('-l, --lang <language>', 'Target language: de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT (auto-detect if omitted)')
     .option('--style <style>', 'Writing style: default, simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
@@ -50,7 +50,7 @@ Examples:
   $ deepl write report.txt --output improved.txt
   $ deepl write "Text here" --format json
 `)
-    .action(async (text: string, options: {
+    .action(async (text: string | undefined, options: {
       lang?: string;
       style?: string;
       tone?: string;
@@ -66,6 +66,15 @@ Examples:
       cache?: boolean;
     }) => {
       try {
+        if (!text) {
+          const { readStdin } = await import('../../utils/read-stdin.js');
+          const stdinText = await readStdin();
+          if (!stdinText || stdinText.trim() === '') {
+            throw new ValidationError('No input provided. Provide text as an argument, a file path, or pipe via stdin.');
+          }
+          text = stdinText;
+        }
+
         const validLanguages = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt', 'pt-BR', 'pt-PT'];
         if (options.lang && !validLanguages.includes(options.lang)) {
           throw new ValidationError(`Invalid language code: ${options.lang}. Valid options: ${validLanguages.join(', ')}`);

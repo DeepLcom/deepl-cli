@@ -66,14 +66,13 @@ export class ConfigService {
     const keys = key.split('.');
     this.validatePath(keys, value);
 
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    let current: any = this.config;
+    let current: Record<string, unknown> = this.config as unknown as Record<string, unknown>;
     for (let i = 0; i < keys.length - 1; i++) {
       const k = keys[i];
       if (!k || !(k in current)) {
         throw new ConfigError(`Invalid path: ${key}`);
       }
-      current = current[k];
+      current = current[k] as Record<string, unknown>;
     }
 
     const lastKey = keys[keys.length - 1];
@@ -84,7 +83,6 @@ export class ConfigService {
     if (lastKey) {
       current[lastKey] = value;
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any */
     this.save();
   }
 
@@ -93,17 +91,15 @@ export class ConfigService {
    */
   getValue<T = unknown>(key: string, defaultValue?: T): T | undefined {
     const keys = key.split('.');
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    let current: any = this.config;
+    let current: unknown = this.config;
 
     for (const k of keys) {
-      if (current && typeof current === 'object' && k in current) {
-        current = current[k];
+      if (current && typeof current === 'object' && k in (current as Record<string, unknown>)) {
+        current = (current as Record<string, unknown>)[k];
       } else {
         return defaultValue;
       }
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     return current as T;
   }
@@ -113,17 +109,15 @@ export class ConfigService {
    */
   has(key: string): boolean {
     const keys = key.split('.');
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    let current: any = this.config;
+    let current: unknown = this.config;
 
     for (const k of keys) {
-      if (current && typeof current === 'object' && k in current) {
-        current = current[k];
+      if (current && typeof current === 'object' && k in (current as Record<string, unknown>)) {
+        current = (current as Record<string, unknown>)[k];
       } else {
         return false;
       }
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     return current !== undefined;
   }
@@ -133,15 +127,14 @@ export class ConfigService {
    */
   delete(key: string): void {
     const keys = key.split('.');
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    let current: any = this.config;
+    let current: Record<string, unknown> = this.config as unknown as Record<string, unknown>;
 
     for (let i = 0; i < keys.length - 1; i++) {
       const k = keys[i];
       if (!k || !(k in current)) {
         return;
       }
-      current = current[k];
+      current = current[k] as Record<string, unknown>;
     }
 
     const lastKey = keys[keys.length - 1];
@@ -149,7 +142,6 @@ export class ConfigService {
       delete current[lastKey];
       this.save();
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 
   /**
