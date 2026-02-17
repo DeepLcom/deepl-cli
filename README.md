@@ -71,6 +71,11 @@ deepl --version
 # Output: 0.11.0
 ```
 
+> **Note:** This project uses [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3) for local caching, which requires native compilation. If `npm install` fails with build errors, ensure you have:
+> - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+> - **Linux**: `python3`, `make`, and `gcc` (`apt install python3 make gcc g++`)
+> - **Windows**: Visual Studio Build Tools or `windows-build-tools` (`npm install -g windows-build-tools`)
+
 ## 🚀 Quick Start
 
 ### 1. Get Your DeepL API Key
