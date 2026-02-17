@@ -1,13 +1,11 @@
 # Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+.npm
 
 # Build outputs
 dist/
 build/
+lib/
 *.tsbuildinfo
 
 # Testing
@@ -16,8 +14,16 @@ coverage/
 
 # Environment variables
 .env
-.env.local
-.env.*.local
+.env.*
+
+# Secrets and credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+*.crt
+credentials.json
 
 # IDEs and editors
 .vscode/
@@ -25,13 +31,17 @@ coverage/
 *.swp
 *.swo
 *~
+
+# OS files
 .DS_Store
+Thumbs.db
+Desktop.ini
 
-# Claude Code local settings
-.claude/settings.local.json
-
-# Beads issue tracking (local)
-.beads/
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Runtime data
 *.pid
@@ -47,24 +57,17 @@ logs/
 .temp/
 .tmp/
 *.tmp
+.eslintcache
 
 # DeepL CLI specific
 .deepl-cli/
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
 
-# OS files
-Thumbs.db
-.DS_Store
+# Claude Code local settings
+.claude/settings.local.json
 
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# TypeScript cache
-*.tsbuildinfo
-
-# Build files
-lib/
+# Beads issue tracking (local)
+.beads/
