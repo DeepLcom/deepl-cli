@@ -30,6 +30,9 @@ coverage/
 # Claude Code local settings
 .claude/settings.local.json
 
+# Beads issue tracking (local)
+.beads/
+
 # Runtime data
 *.pid
 *.seed

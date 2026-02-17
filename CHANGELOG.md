@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Write API troubleshooting section in `docs/TROUBLESHOOTING.md` covering unsupported language pairs, style/tone issues, empty output, and rate limiting (xuhx)
 - `destroy()` method on `HttpClient` and `DeepLClient` to tear down keepAlive HTTP agents and prevent socket leaks
 - Voice `--glossary` now accepts a glossary name or ID (matching translate/watch behavior)
 - Stdin support for `write` command — reads from stdin when no text argument provided, matching translate/detect pattern (jhcn)
@@ -17,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Path traversal defense for `--output-pattern` in batch translation (3zc7)
 
 ### Changed
+- `cache stats` now defaults to `text` format instead of `table`, consistent with all other commands (yh9f)
+- Formality help text now clarifies that `formal`/`informal` are aliases for `more`/`less` in translate and voice commands (ygsp)
+- Standardized all `types/` imports to barrel pattern (`types/index.js`) across 19 source files (ycgc)
 - `languages` and `usage` commands now default to `text` format instead of `table`, consistent with all other commands
 - `makeJsonRequest` is now generic, eliminating 4 double-cast workarounds in API clients (ymno)
 - Removed 17 redundant try/catch blocks from API client subclasses (bq7s)
@@ -25,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed unused `WriteResult` export from types/api.ts (xau1)
 
 ### Fixed
+- Remove `-t` short flag from `languages` command to avoid conflict with `-t, --to` in translate/voice/watch (nm2w)
+- Set WebSocket `maxPayload` limit (1 MiB) for voice client to prevent unbounded memory allocation (gs64)
+- Deprecation warning when passing API key as positional argument to `auth set-key` (visible in `ps`) — use `--from-stdin` instead (mylw)
+- Document `baseUrl` auto-detection from API key tier in API.md configuration schema (gyb5)
+- Extract `errorMessage()` utility replacing 13 duplicated `error instanceof Error ? error.message : String(error)` patterns (4vca)
+- Remove dead static pass-through methods (`restorePlaceholders`, `preserveCodeBlocks`, `preserveVariables`) from `TranslationService` (whgp)
 - Centralize nock lifecycle in global `tests/setup.ts` — eliminates Jest hang after test completion and flaky `deepl-client.test.ts` failures caused by conflicting per-file `nock.activate()`/`nock.restore()` calls
 - `config set api.baseUrl` now accepts `http://localhost` for local testing, consistent with `validateApiUrl()` (f6vg)
 - `watch --to` documented as optional in API.md, matching actual behavior of falling back to `defaults.targetLangs` (9wty)
