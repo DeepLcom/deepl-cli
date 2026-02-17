@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `User-Agent` header (`deepl-cli/{version} node/{version}`) on all HTTP requests and WebSocket handshakes for API request tracking
 - Write API troubleshooting section in `docs/TROUBLESHOOTING.md` covering unsupported language pairs, style/tone issues, empty output, and rate limiting (xuhx)
 - `destroy()` method on `HttpClient` and `DeepLClient` to tear down keepAlive HTTP agents and prevent socket leaks
 - Voice `--glossary` now accepts a glossary name or ID (matching translate/watch behavior)
@@ -222,6 +223,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extract i18n-translate Claude Code skill to standalone repo ([deepl-i18n-skill](https://git.deepl.dev/hack-projects/deepl-i18n-skill)) — removes 151 skill tests and all skill source files from this repo
 
 ### Security
+- Harden `.gitignore` — broader `.env.*` coverage, safety-net patterns for private keys (`*.pem`, `*.key`, `*.p12`), SQLite WAL/SHM files, dedup
 - Fix info disclosure: error logs no longer expose full error objects or internal paths
 - Mask API key in `config set` success message and `config get` (no-argument) output — previously echoed the full plaintext key
 - Add global `nock.disableNetConnect()` in Jest setup to prevent accidental real API calls during tests
