@@ -134,6 +134,76 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 
 ---
 
+## Write API Issues
+
+### Unsupported language pair
+
+**Cause:** The Write API supports fewer language pairs than the Translate API. Not all combinations are available.
+
+**Solutions:**
+
+1. Check which languages Write API supports:
+   ```bash
+   deepl write --help
+   ```
+
+2. Use `--verbose` to see the API request and response details:
+   ```bash
+   deepl write "Your text" --to en-US --verbose
+   ```
+
+3. If your language pair is unsupported, use the translate command as a fallback.
+
+### Style or tone not applied
+
+**Cause:** The formality or style parameter may not be supported for the target language, or the text already matches the requested style.
+
+**Solutions:**
+
+1. Not all languages support formality settings. Check the DeepL API documentation for supported languages.
+
+2. Verify you are using valid formality values:
+   ```bash
+   deepl write --help
+   ```
+
+3. Use `--verbose` to inspect the API response and confirm the style was applied.
+
+### Empty or unchanged output
+
+**Cause:** The input text may already match the requested style, or the Write API determined no changes were needed.
+
+**Solutions:**
+
+1. Try a different style or formality level to see if changes are applied.
+
+2. Use `--check` mode to compare the original with the improved version:
+   ```bash
+   deepl write "Your text" --to en-US --check
+   ```
+
+3. Check the verbose output for details:
+   ```bash
+   deepl write "Your text" --to en-US --verbose
+   ```
+
+### Rate limiting on Write API
+
+**Cause:** The Write API has its own rate limits, separate from the Translate API.
+
+**Solutions:**
+
+1. The CLI automatically retries rate-limited requests with exponential backoff.
+
+2. If processing multiple texts, consider adding delays between requests.
+
+3. Check your current API usage:
+   ```bash
+   deepl usage
+   ```
+
+---
+
 ## Configuration Errors (Exit Code 7)
 
 ### "Configuration error: invalid config file"
