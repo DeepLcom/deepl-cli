@@ -4,6 +4,7 @@ import * as https from 'https';
 import { Language } from '../types';
 import { AuthError, RateLimitError, QuotaError, NetworkError, ConfigError, ValidationError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
+import { errorMessage } from '../utils/error-message.js';
 
 export interface ProxyConfig {
   protocol?: 'http' | 'https';
@@ -76,8 +77,7 @@ export class HttpClient {
 
       return config;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new ConfigError(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage}`);
+      throw new ConfigError(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage(error)}`);
     }
   }
 

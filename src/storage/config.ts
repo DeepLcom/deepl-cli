@@ -11,6 +11,7 @@ import { isValidLanguage } from '../data/language-registry.js';
 import { ConfigError } from '../utils/errors.js';
 import { validateApiUrl } from '../utils/validate-url.js';
 import { Logger } from '../utils/logger.js';
+import { errorMessage } from '../utils/error-message.js';
 
 const VALID_FORMALITY: readonly Formality[] = [
   'default',
@@ -208,7 +209,7 @@ export class ConfigService {
         return merged;
       }
     } catch (error) {
-      Logger.warn('Failed to load config, using defaults:', error instanceof Error ? error.message : String(error));
+      Logger.warn('Failed to load config, using defaults:', errorMessage(error));
     }
 
     return ConfigService.getDefaults();

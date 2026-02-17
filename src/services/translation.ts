@@ -11,6 +11,7 @@ import { TranslationOptions, Language } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
 import { ValidationError } from '../utils/errors.js';
+import { errorMessage } from '../utils/error-message.js';
 import { preserveCodeBlocks, preserveVariables, restorePlaceholders } from '../utils/text-preservation.js';
 
 export { MULTI_TARGET_CONCURRENCY };
@@ -258,7 +259,7 @@ export class TranslationService {
         }
       } catch (error) {
         lastError = error as Error;
-        Logger.error(`Batch translation failed: ${error instanceof Error ? error.message : String(error)}`);
+        Logger.error(`Batch translation failed: ${errorMessage(error)}`);
         // Mark all texts in this batch as processed (but failed)
         // Continue with other batches rather than failing completely
       }
@@ -373,18 +374,6 @@ export class TranslationService {
     this.languageCache.set(type, { data: languages, timestamp: now });
 
     return languages;
-  }
-
-  static restorePlaceholders(text: string, preservationMap: Map<string, string>): string {
-    return restorePlaceholders(text, preservationMap);
-  }
-
-  static preserveCodeBlocks(text: string, preservationMap: Map<string, string>): string {
-    return preserveCodeBlocks(text, preservationMap);
-  }
-
-  static preserveVariables(text: string, preservationMap: Map<string, string>): string {
-    return preserveVariables(text, preservationMap);
   }
 
   /**

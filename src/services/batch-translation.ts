@@ -15,6 +15,7 @@ import { TranslationOptions } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
+import { errorMessage } from '../utils/error-message.js';
 
 interface BatchOptions {
   outputDir: string;
@@ -168,7 +169,7 @@ export class BatchTranslationService {
           } catch (error) {
             result.failed.push({
               file,
-              error: error instanceof Error ? error.message : String(error),
+              error: errorMessage(error),
             });
             completed++;
             batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
@@ -233,7 +234,7 @@ export class BatchTranslationService {
 
         entries.push({ file, outputPath, processedText, preservationMap });
       } catch (error) {
-        failed.push({ file, error: error instanceof Error ? error.message : String(error) });
+        failed.push({ file, error: errorMessage(error) });
       }
     }
 
@@ -301,18 +302,18 @@ export class BatchTranslationService {
           } catch (error) {
             failed.push({
               file: entry.file,
-              error: error instanceof Error ? error.message : String(error),
+              error: errorMessage(error),
             });
           }
           completed++;
           onProgress?.({ completed, total: totalFiles, current: entry.file });
         }
       } catch (error) {
-        Logger.error(`Batch translation failed: ${error instanceof Error ? error.message : String(error)}`);
+        Logger.error(`Batch translation failed: ${errorMessage(error)}`);
         for (const entry of batch) {
           failed.push({
             file: entry.file,
-            error: error instanceof Error ? error.message : String(error),
+            error: errorMessage(error),
           });
           completed++;
           onProgress?.({ completed, total: totalFiles, current: entry.file });

@@ -12,6 +12,7 @@ import { FileTranslationService } from './file-translation.js';
 import { Language, TranslationOptions } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
+import { errorMessage } from '../utils/error-message.js';
 
 export interface FileTranslationResult {
   targetLang: Language;
@@ -119,7 +120,7 @@ export class WatchService {
       try {
         this.handleFileChange(filePath);
       } catch (error) {
-        Logger.error(`Error handling file change for ${filePath}:`, error instanceof Error ? error.message : String(error));
+        Logger.error(`Error handling file change for ${filePath}:`, errorMessage(error));
       }
     });
 
@@ -127,7 +128,7 @@ export class WatchService {
       try {
         this.handleFileChange(filePath);
       } catch (error) {
-        Logger.error(`Error handling file add for ${filePath}:`, error instanceof Error ? error.message : String(error));
+        Logger.error(`Error handling file add for ${filePath}:`, errorMessage(error));
       }
     });
 
@@ -195,7 +196,7 @@ export class WatchService {
           if (this.watchOptions?.onError) {
             this.watchOptions.onError(filePath, error as Error);
           }
-          Logger.error(`Translation failed for ${filePath}:`, error instanceof Error ? error.message : String(error));
+          Logger.error(`Translation failed for ${filePath}:`, errorMessage(error));
         } finally {
           this.debounceTimers.delete(filePath);
         }
