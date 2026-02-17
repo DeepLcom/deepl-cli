@@ -2,9 +2,11 @@
 
 > A next-generation command-line interface for DeepL translation and writing enhancement
 
+[![npm version](https://img.shields.io/npm/v/deepl-cli)](https://www.npmjs.com/package/deepl-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
+[![Stability: Beta](https://img.shields.io/badge/stability-beta-orange.svg)](https://github.com/DeepLcom/deepl-cli)
 
 **DeepL CLI** is a comprehensive, developer-friendly command-line tool that integrates DeepL's powerful translation API and cutting-edge Write API for grammar and style enhancement. Built with TypeScript and designed for modern development workflows.
 
@@ -22,6 +24,8 @@
 - **🔧 Developer Workflows** - Git hooks, CI/CD integration
 - **🔒 Privacy-First** - Local caching, no telemetry, secure key storage
 
+For security policy and vulnerability reporting, see [SECURITY.md](SECURITY.md).
+
 ## 📋 Table of Contents
 
 - [Installation](#-installation)
@@ -32,9 +36,9 @@
   - [Custom Configuration Files](#custom-configuration-files)
 - [Usage](#-usage)
   - **Core Commands:** [Translation](#translation) | [Writing Enhancement](#writing-enhancement) | [Voice Translation](#voice-translation)
-  - **Resources:** [Glossaries](#glossaries) | [Style Rules](#style-rules)
+  - **Resources:** [Glossaries](#glossaries)
   - **Workflow:** [Watch Mode](#watch-mode) | [Git Hooks](#git-hooks)
-  - **Configuration:** [Setup Wizard](#setup-wizard) | [Authentication](#authentication) | [Configure Defaults](#configure-defaults) | [Cache Management](#cache-management)
+  - **Configuration:** [Setup Wizard](#setup-wizard) | [Authentication](#authentication) | [Configure Defaults](#configure-defaults) | [Cache Management](#cache-management) | [Style Rules](#style-rules)
   - **Information:** [Usage Statistics](#api-usage-statistics) | [Language Detection](#language-detection) | [Languages](#supported-languages) | [Shell Completion](#shell-completion)
   - **Administration:** [Admin API](#admin-api)
 - [Development](#-development)
@@ -54,7 +58,7 @@ npm install -g deepl-cli
 
 ```bash
 # Clone the repository
-git clone https://git.deepl.dev/hack-projects/deepl-cli.git
+git clone https://github.com/DeepLcom/deepl-cli.git
 cd deepl-cli
 
 # Install dependencies
@@ -94,6 +98,9 @@ Or set your API key directly:
 
 ```bash
 deepl auth set-key YOUR_API_KEY
+
+# Recommended: pipe key from stdin to avoid exposing it in process listings
+echo "YOUR_API_KEY" | deepl auth set-key --from-stdin
 ```
 
 Or use an environment variable:
@@ -114,6 +121,14 @@ deepl translate "Hello, world!" --to es
 ## 🔧 Global Options
 
 DeepL CLI supports global flags that work with all commands:
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--version` | `-V` | Show version number |
+| `--quiet` | `-q` | Suppress non-essential output |
+| `--verbose` | `-v` | Show extra information |
+| `--config FILE` | `-c` | Use alternate configuration file |
+| `--no-input` | | Disable all interactive prompts (abort instead of prompting) |
 
 ### Verbose Mode
 
@@ -309,7 +324,7 @@ deepl translate large-document.txt --to es --output large-document.es.txt
 
 #### Document Translation
 
-**Supported Document Formats:** `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.html`, `.htm`, `.txt`, `.srt`, `.xlf`, `.xliff`
+**Supported Document Formats:** `.pdf`, `.docx`, `.doc`, `.pptx`, `.xlsx`, `.html`, `.htm`, `.txt`, `.srt`, `.xlf`, `.xliff`, `.jpg`, `.jpeg`, `.png`
 
 Translate complete documents while preserving formatting, structure, and layout:
 
@@ -367,6 +382,8 @@ deepl translate document.pdf --to es --output-format docx --output document.es.d
 - `.txt` - Plain text files
 - `.srt` - Subtitle files
 - `.xlf`, `.xliff` - XLIFF localization files
+- `.jpg`, `.jpeg` - JPEG images
+- `.png` - PNG images
 
 **Note:** Document translation uses DeepL's async translation API. The CLI automatically handles upload, polling, and download. Translation time varies based on document size and complexity.
 
@@ -414,7 +431,13 @@ This optimization is automatic and transparent - no configuration needed.
 # Preserve code blocks and variables
 deepl translate tutorial.md --preserve-code --to ja --output tutorial.ja.md
 
-# Set formality level (default, more, less, prefer_more, prefer_less)
+# Preserve line breaks and whitespace formatting
+deepl translate document.txt --preserve-formatting --to es --output document.es.txt
+
+# Enable document minification for PPTX/DOCX (reduces file size)
+deepl translate presentation.pptx --enable-minification --to de --output presentation.de.pptx
+
+# Set formality level (default, more, less, prefer_more, prefer_less, formal, informal)
 deepl translate "How are you?" --formality more --to de --output formal.txt
 # More formal: Wie geht es Ihnen?
 
@@ -754,14 +777,14 @@ See [examples/16-watch-mode.sh](./examples/16-watch-mode.sh) for a complete watc
 
 ### Git Hooks
 
-Automate translation validation in your git workflow with pre-commit and pre-push hooks.
+Automate translation validation in your git workflow with pre-commit, pre-push, commit-msg, and post-commit hooks.
 
 ```bash
-# Install pre-commit hook (validates translations before commit)
+# Install hooks
 deepl hooks install pre-commit
-
-# Install pre-push hook (validates all translations before push)
 deepl hooks install pre-push
+deepl hooks install commit-msg
+deepl hooks install post-commit
 
 # List hook installation status
 deepl hooks list
@@ -777,6 +800,8 @@ deepl hooks uninstall pre-commit
 
 - **pre-commit**: Checks if staged files include translatable content (`.md`, `.txt` files) and validates translations are up-to-date
 - **pre-push**: Validates all translations in the repository before pushing to remote
+- **commit-msg**: Validates or augments commit messages with translation context
+- **post-commit**: Runs post-commit translation tasks (e.g., auto-translate changed files)
 
 **Features:**
 
@@ -795,6 +820,8 @@ Git Hooks Status:
 
   ✓ pre-commit      installed
   ✗ pre-push        not installed
+  ✗ commit-msg      not installed
+  ✗ post-commit     not installed
 ```
 
 **Note:** The hooks are generated with placeholder validation logic. You can customize them based on your project's translation workflow by editing the hook files directly at `.git/hooks/pre-commit` or `.git/hooks/pre-push`.
@@ -820,17 +847,17 @@ deepl init
 ```bash
 # Set API key
 deepl auth set-key YOUR_API_KEY
-# ✓ API key configured successfully
+# ✓ API key saved and validated successfully
 # Account type: DeepL API Free
 
 # Show current API key status
 deepl auth show
-# API Key: abc12***********:fx (masked)
+# API Key: abc1...2def
 # Status: Valid
 
 # Clear API key
 deepl auth clear
-# ✓ API key cleared
+# ✓ API key removed
 ```
 
 Or use an environment variable:
@@ -875,7 +902,7 @@ echo "こんにちは" | deepl detect
 
 # JSON output for scripting
 deepl detect "Hola mundo" --format json
-# { "detected_language": "ES", "language_name": "Spanish" }
+# { "detected_language": "es", "language_name": "Spanish" }
 ```
 
 #### Supported Languages
@@ -919,7 +946,7 @@ deepl languages
 
 **Note:** Languages are grouped into three categories:
 - **Core** (32) — Full feature support including formality and glossaries
-- **Regional** (7) — Target-only variants like `en-us`, `en-gb`, `pt-br`
+- **Regional** (7) — Target-only variants: `en-gb`, `en-us`, `es-419`, `pt-br`, `pt-pt`, `zh-hans`, `zh-hant`
 - **Extended** (82) — Only support `quality_optimized` model, no formality or glossary
 
 See [examples/24-languages.sh](./examples/24-languages.sh) for a complete example.
@@ -1267,7 +1294,7 @@ deepl cache stats
 
 # Clear all cached translations
 deepl cache clear
-# ✓ Cache cleared (removed 42 entries)
+# ✓ Cache cleared successfully
 
 # Preview what would be cleared without performing the operation
 deepl cache clear --dry-run
@@ -1295,7 +1322,7 @@ Cache location: `~/.cache/deepl-cli/cache.db` (or `~/.deepl-cli/cache.db` for le
 
 ```bash
 # Clone repository
-git clone https://git.deepl.dev/hack-projects/deepl-cli.git
+git clone https://github.com/DeepLcom/deepl-cli.git
 cd deepl-cli
 
 # Install dependencies
@@ -1417,6 +1444,20 @@ npm run examples:fast
 - **[Development Guidelines](./CLAUDE.md)** - TDD workflow and contribution standards
 - **[DeepL API Docs](https://www.deepl.com/docs-api)** - Official API documentation
 - **[CLI Guidelines](https://clig.dev/)** - Command-line best practices
+
+## 🌐 Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `DEEPL_API_KEY` | API authentication key |
+| `DEEPL_CONFIG_DIR` | Override config and cache directory |
+| `XDG_CONFIG_HOME` | Override XDG config base (default: `~/.config`) |
+| `XDG_CACHE_HOME` | Override XDG cache base (default: `~/.cache`) |
+| `NO_COLOR` | Disable colored output |
+| `FORCE_COLOR` | Force colored output even when terminal doesn't support it. Useful in CI. `NO_COLOR` takes priority if both are set. |
+| `TERM=dumb` | Disables colored output and progress spinners. Automatically set by some CI environments and editors. |
+
+See [docs/API.md#environment-variables](./docs/API.md#environment-variables) for full details.
 
 ## 🔒 Security & Privacy
 

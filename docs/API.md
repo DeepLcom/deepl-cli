@@ -44,7 +44,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
 Options that work with all commands:
 
 ```bash
---version           Show version number
+--version, -V       Show version number
 --help              Show help message
 --quiet, -q         Suppress all non-essential output (errors and results only)
 --verbose, -v       Show extra information (source language, timing, cache status)
@@ -219,13 +219,13 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 **Output Options:**
 
 - `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text). Use `-` for stdout (text-based files only)
-- `--output-format FORMAT` - Convert PDF to DOCX during translation (only supported conversion)
+- `--output-format FORMAT` - Convert PDF to DOCX during translation. Valid choices: `docx` (only supported conversion)
 - `--enable-minification` - Enable document minification for PPTX/DOCX files (reduces file size)
 - `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
 
 **Translation Options:**
 
-- `--formality LEVEL` - Formality: `default`, `less`, `more`, `prefer_less`, `prefer_more`
+- `--formality LEVEL` - Formality: `default`, `more`, `less`, `prefer_more`, `prefer_less`, `formal`, `informal`
 - `--model-type TYPE` - Model type: `quality_optimized`, `prefer_quality_optimized`, `latency_optimized` (no CLI default; the API server selects the model when omitted)
 - `--preserve-code` - Preserve code blocks (markdown, etc.)
 - `--preserve-formatting` - Preserve line breaks and whitespace formatting
@@ -925,7 +925,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 **Translation Options:**
 
 - `--from, -f LANG` - Source language (auto-detect if omitted)
-- `--formality LEVEL` - Formality level: `default`, `more`, `less`, `prefer_more`, `prefer_less`
+- `--formality LEVEL` - Formality level: `default`, `more`, `less`, `prefer_more`, `prefer_less`, `formal`, `informal`
 - `--preserve-code` - Preserve code blocks
 - `--preserve-formatting` - Preserve line breaks and whitespace formatting
 - `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
