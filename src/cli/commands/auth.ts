@@ -1,0 +1,70 @@
+/**
+ * Auth Command
+ * Handles API key management
+ */
+
+import { ConfigService } from '../../storage/config.js';
+import { DeepLClient } from '../../api/deepl-client.js';
+import { ValidationError, AuthError } from '../../utils/errors.js';
+
+export class AuthCommand {
+  private config: ConfigService;
+
+  constructor(config: ConfigService) {
+    this.config = config;
+  }
+
+  /**
+   * Set API key and validate it
+   */
+  async setKey(apiKey: string): Promise<void> {
+    // Validate input
+    if (!apiKey || apiKey.trim() === '') {
+      throw new ValidationError('API key cannot be empty');
+    }
+
+    // Validate with DeepL API by making a test request
+    // Note: No format validation - let the API determine if the key is valid
+    // This supports production keys (:fx suffix), free keys, and test keys
+    try {
+      // Use configured API endpoint for validation
+      const baseUrl = this.config.getValue<string>('api.baseUrl');
+      const usePro = this.config.getValue<boolean>('api.usePro');
+
+      const client = new DeepLClient(apiKey, { baseUrl, usePro });
+      await client.getUsage(); // Test API key validity
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication failed')) {
+          throw new AuthError('Invalid API key: Authentication failed with DeepL API');
+        }
+        throw error;
+      }
+      throw new AuthError('Failed to validate API key');
+    }
+
+    // Save to config
+    this.config.set('auth.apiKey', apiKey);
+  }
+
+  /**
+   * Get API key from config or environment
+   */
+  async getKey(): Promise<string | undefined> {
+    // Check environment variable first (for CI/CD)
+    const envKey = process.env['DEEPL_API_KEY'];
+
+    // Check config
+    const configKey = this.config.getValue<string>('auth.apiKey');
+
+    // Prefer config over environment
+    return configKey ?? envKey;
+  }
+
+  /**
+   * Remove API key from config
+   */
+  async clearKey(): Promise<void> {
+    this.config.delete('auth.apiKey');
+  }
+}
