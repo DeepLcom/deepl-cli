@@ -935,12 +935,13 @@ describe('VoiceService', () => {
         if (ws === mockWs1) {
           chunksSentOnWs1.push(data);
           ws1ChunkCount++;
-          // After a few chunks on ws1, close it unexpectedly
-          if (ws1ChunkCount >= 2) {
-            process.nextTick(() => {
-              mockWs1.readyState = 3;
-              mockWs1.emit('close');
-            });
+          // After exactly 2 chunks on ws1, close it unexpectedly.
+          // Emit synchronously so the reconnect starts before the next
+          // paceChunks timer fires — avoids CI flakiness where nextTick
+          // drains after multiple timer callbacks in advanceTimersByTimeAsync.
+          if (ws1ChunkCount === 2) {
+            mockWs1.readyState = 3;
+            mockWs1.emit('close');
           }
         } else if (ws === mockWs2) {
           chunksSentOnWs2.push(data);
