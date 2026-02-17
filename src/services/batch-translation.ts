@@ -404,7 +404,14 @@ export class BatchTranslationService {
         .replace('{lang}', targetLang)
         .replace('{ext}', ext);
 
-      return path.join(outputDir, outputFilename);
+      const outputPath = path.resolve(outputDir, outputFilename);
+      const resolvedOutputDir = path.resolve(outputDir);
+      if (!outputPath.startsWith(resolvedOutputDir + path.sep) && outputPath !== resolvedOutputDir) {
+        throw new ValidationError(
+          `Output path "${outputFilename}" escapes output directory "${outputDir}"`
+        );
+      }
+      return outputPath;
     }
 
     // Default pattern: name.lang.ext
