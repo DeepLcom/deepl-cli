@@ -61,7 +61,7 @@ export class VoiceClient extends HttpClient {
   createWebSocket(streamingUrl: string, token: string, callbacks: VoiceStreamCallbacks): WebSocket {
     this.validateStreamingUrl(streamingUrl);
     const url = `${streamingUrl}?token=${encodeURIComponent(token)}`;
-    const ws = new WebSocket(url, { handshakeTimeout: 30_000 });
+    const ws = new WebSocket(url, { handshakeTimeout: 30_000, maxPayload: 1024 * 1024 });
 
     ws.on('message', (data: WebSocket.Data) => {
       const text = typeof data === 'string' ? data : Buffer.from(data as ArrayBuffer).toString('utf-8');

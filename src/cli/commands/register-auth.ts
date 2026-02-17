@@ -35,6 +35,9 @@ Command arguments are visible to other users via process listings.
         .action(async (apiKey: string | undefined, opts: { fromStdin?: boolean }) => {
           try {
             let key = apiKey;
+            if (apiKey && !opts.fromStdin) {
+              Logger.warn('Passing API key as argument is deprecated (visible in ps). Use --from-stdin instead.');
+            }
             if (opts.fromStdin === true || !key) {
               if (process.stdin.isTTY && !key) {
                 handleError(new ValidationError('API key required: provide as argument or use --from-stdin'));

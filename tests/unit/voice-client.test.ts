@@ -16,8 +16,9 @@ jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 // Mock ws
+let lastWsConstructorArgs: { url: string; options?: Record<string, unknown> } | null = null;
 jest.mock('ws', () => {
-   
+
   const EventEmitter = require('events');
   class MockWebSocket extends EventEmitter {
     static OPEN = 1;
@@ -26,8 +27,9 @@ jest.mock('ws', () => {
     bufferedAmount = 0;
     send = jest.fn();
     close = jest.fn();
-    constructor(_url: string, _options?: Record<string, unknown>) {
+    constructor(url: string, options?: Record<string, unknown>) {
       super();
+      lastWsConstructorArgs = { url, options };
     }
     get readyState() {
       return this._readyState;
@@ -244,6 +246,13 @@ describe('VoiceClient', () => {
   });
 
   describe('createWebSocket()', () => {
+    it('should set maxPayload to 1 MiB on the WebSocket', () => {
+      client.createWebSocket('wss://voice.deepl.com/ws/123', 'token', {});
+      expect(lastWsConstructorArgs?.options).toEqual(
+        expect.objectContaining({ maxPayload: 1048576 }),
+      );
+    });
+
     it('should create a WebSocket and route messages', () => {
       const callbacks: VoiceStreamCallbacks = {
         onSourceTranscript: jest.fn(),

@@ -5,10 +5,33 @@
 
  
 
+import { Command } from 'commander';
 import { AuthCommand } from '../../src/cli/commands/auth';
 import { ConfigService } from '../../src/storage/config';
 import { DeepLClient } from '../../src/api/deepl-client';
 import { createMockConfigService } from '../helpers/mock-factories';
+
+// Mock chalk (ESM-only)
+jest.mock('chalk', () => {
+  const passthrough = (s: string) => s;
+  const obj: Record<string, unknown> & { level: number } = {
+    level: 3, red: passthrough, green: passthrough, blue: passthrough,
+    yellow: passthrough, gray: passthrough, bold: passthrough,
+  };
+  return { __esModule: true, default: obj };
+});
+
+// Mock Logger for registerAuth deprecation tests
+jest.mock('../../src/utils/logger', () => ({
+  Logger: {
+    info: jest.fn(),
+    success: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    output: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
 
 // Mock dependencies
 jest.mock('../../src/storage/config');
@@ -149,5 +172,40 @@ describe('AuthCommand', () => {
 
       await expect(authCommand.clearKey()).rejects.toThrow('Failed to delete');
     });
+  });
+});
+
+describe('registerAuth - deprecation warning', () => {
+  // Dynamic import to avoid hoisting issues with chalk mock
+  let registerAuth: typeof import('../../src/cli/commands/register-auth').registerAuth;
+
+  beforeAll(async () => {
+    registerAuth = (await import('../../src/cli/commands/register-auth')).registerAuth;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should warn when positional API key is passed without --from-stdin', async () => {
+    const mockConfigService = createMockConfigService();
+    const mockGetUsage = jest.fn().mockResolvedValue({ character: { count: 0, limit: 500000 } });
+    (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
+      getUsage: mockGetUsage,
+    } as any));
+
+    const program = new Command();
+    program.exitOverride();
+    registerAuth(program, {
+      getConfigService: () => mockConfigService,
+      handleError: (error: unknown) => { throw error; },
+    });
+
+    await program.parseAsync(['node', 'deepl', 'auth', 'set-key', 'test-key-123']);
+
+    const { Logger } = await import('../../src/utils/logger');
+    expect(Logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('deprecated'),
+    );
   });
 });
