@@ -920,6 +920,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - `--output, -o DIR` - Output directory (default: `<path>/translations` for directories, same dir for files)
 - `--pattern GLOB` - File pattern filter (e.g., `*.md`, `**/*.json`)
 - `--debounce MS` - Debounce delay in milliseconds (default: 500)
+- `--concurrency NUM` - Maximum parallel translations (default: 5)
 
 **Translation Options:**
 
@@ -2393,6 +2394,22 @@ Disable colored output.
 
 ```bash
 export NO_COLOR=1
+```
+
+### `FORCE_COLOR`
+
+Force colored output even when the terminal doesn't appear to support it. Note: `NO_COLOR` takes priority if both are set. Useful in CI environments.
+
+```bash
+export FORCE_COLOR=1
+```
+
+### `TERM`
+
+When set to `dumb`, disables colored output and progress spinners. This is automatically set by some CI environments and editors.
+
+```bash
+export TERM=dumb
 ```
 
 ---
