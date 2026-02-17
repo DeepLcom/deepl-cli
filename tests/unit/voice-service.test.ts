@@ -905,6 +905,8 @@ describe('VoiceService', () => {
       let wsCallCount = 0;
       let ws1ChunkCount = 0;
 
+      let ws2Callbacks: any = null;
+
       mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
         wsCallCount++;
         if (wsCallCount === 1) {
@@ -913,21 +915,20 @@ describe('VoiceService', () => {
           });
           return mockWs1 as any;
         } else {
+          ws2Callbacks = callbacks;
           process.nextTick(() => {
             mockWs2.emit('open');
           });
-          // End the stream only after all remaining chunks arrive on ws2
-          const totalExpected = Math.ceil(5000 / 500);
-          const checkAndEnd = () => {
-            if (chunksSentOnWs1.length + chunksSentOnWs2.length >= totalExpected) {
-              process.nextTick(() => callbacks.onEndOfStream?.());
-            } else {
-              setImmediate(checkAndEnd);
-            }
-          };
-          setImmediate(checkAndEnd);
           return mockWs2 as any;
         }
+      });
+
+      // Signal end-of-stream when sendEndOfSource is called (after all
+      // chunks have been sent). This is deterministic — the previous
+      // setImmediate-based polling loop raced with timer advancement and
+      // file I/O, causing timeouts on slow CI machines.
+      mockClient.sendEndOfSource.mockImplementation(() => {
+        process.nextTick(() => ws2Callbacks?.onEndOfStream?.());
       });
 
       // Track which WS each chunk was sent on

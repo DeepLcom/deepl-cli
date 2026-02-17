@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed unused `WriteResult` export from types/api.ts (xau1)
 
 ### Fixed
+- Eliminate CI flakiness in voice reconnection chunk-resume test — replace non-deterministic `setImmediate` polling with deterministic `sendEndOfSource` mock
 - Remove `-t` short flag from `languages` command to avoid conflict with `-t, --to` in translate/voice/watch (nm2w)
 - Set WebSocket `maxPayload` limit (1 MiB) for voice client to prevent unbounded memory allocation (gs64)
 - Deprecation warning when passing API key as positional argument to `auth set-key` (visible in `ps`) — use `--from-stdin` instead (mylw)
