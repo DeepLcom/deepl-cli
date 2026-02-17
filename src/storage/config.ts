@@ -9,6 +9,7 @@ import { DeepLConfig, Formality, OutputFormat } from '../types';
 import { resolvePaths } from '../utils/paths.js';
 import { isValidLanguage } from '../data/language-registry.js';
 import { ConfigError } from '../utils/errors.js';
+import { validateApiUrl } from '../utils/validate-url.js';
 import { Logger } from '../utils/logger.js';
 
 const VALID_FORMALITY: readonly Formality[] = [
@@ -320,8 +321,10 @@ export class ConfigService {
     }
 
     if (path === 'api.baseUrl') {
-      if (typeof value !== 'string' || !value.startsWith('https://')) {
-        throw new ConfigError('API base URL must be an HTTPS URL');
+      try {
+        validateApiUrl(value as string);
+      } catch {
+        throw new ConfigError('Invalid API base URL: must be HTTPS (or http://localhost for testing)');
       }
     }
 
