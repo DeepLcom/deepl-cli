@@ -57,7 +57,7 @@ describe('Languages Command E2E', () => {
       const output = runCLI('languages --help');
 
       expect(output).toContain('-s,');
-      expect(output).toContain('-t,');
+      // -t short flag removed from languages to avoid conflict with --to in other commands
     });
   });
 
@@ -146,8 +146,8 @@ describe('Languages Command E2E', () => {
       expect(result.stdout).toContain('Source Languages:');
     });
 
-    it('should accept -t short flag', () => {
-      const result = runCLIWithEnv('languages -t', { DEEPL_API_KEY: '' });
+    it('should accept --target flag', () => {
+      const result = runCLIWithEnv('languages --target', { DEEPL_API_KEY: '' });
 
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('Target Languages:');

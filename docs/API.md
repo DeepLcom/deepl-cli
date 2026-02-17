@@ -1526,7 +1526,7 @@ Show cache statistics (status, entries count, size, percentage used).
 
 **Options:**
 
-- `--format <format>` - Output format: `text`, `json`, `table` (default: `table`)
+- `--format <format>` - Output format: `text`, `json`, `table` (default: `text`)
 
 ##### `clear`
 
@@ -1738,7 +1738,7 @@ You can filter to show only source languages, only target languages, or both (de
 #### Options
 
 - `--source, -s` - Show only source languages
-- `--target, -t` - Show only target languages
+- `--target` - Show only target languages
 - `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
 
 #### Examples
