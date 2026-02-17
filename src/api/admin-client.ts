@@ -1,5 +1,5 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { AdminApiKey, AdminUsageOptions, AdminUsageReport, UsageBreakdown } from '../types';
+import { AdminApiKey, AdminUsageOptions, AdminUsageReport, UsageBreakdown } from '../types/index.js';
 
 export class AdminClient extends HttpClient {
   constructor(apiKey: string, options: DeepLClientOptions = {}) {

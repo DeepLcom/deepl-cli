@@ -4,8 +4,7 @@
  */
 
 import { DeepLClient } from '../api/deepl-client.js';
-import { GlossaryInfo, GlossaryLanguagePair, Language } from '../types/index.js';
-import { isMultilingual } from '../types/glossary.js';
+import { GlossaryInfo, GlossaryLanguagePair, Language, isMultilingual } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError, ConfigError } from '../utils/errors.js';
 

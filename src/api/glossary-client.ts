@@ -1,6 +1,5 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { Language, GlossaryInfo, GlossaryLanguagePair } from '../types';
-import { normalizeGlossaryInfo, GlossaryApiResponse } from '../types/glossary.js';
+import { Language, GlossaryInfo, GlossaryLanguagePair, normalizeGlossaryInfo, GlossaryApiResponse } from '../types/index.js';
 import { ValidationError } from '../utils/errors.js';
 
 interface DeepLGlossaryLanguagePairsResponse {

@@ -1,5 +1,5 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { StyleRule, StyleRuleDetailed, StyleRulesListOptions } from '../types';
+import { StyleRule, StyleRuleDetailed, StyleRulesListOptions } from '../types/index.js';
 
 export class StyleRulesClient extends HttpClient {
   constructor(apiKey: string, options: DeepLClientOptions = {}) {

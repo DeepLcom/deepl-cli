@@ -6,7 +6,7 @@
 import Table from 'cli-table3';
 import { TranslationResult } from '../api/deepl-client.js';
 import { Language } from '../types/index.js';
-import type { VoiceSessionResult } from '../types/voice.js';
+import type { VoiceSessionResult } from '../types/index.js';
 
 /**
  * Determine whether color output should be enabled.

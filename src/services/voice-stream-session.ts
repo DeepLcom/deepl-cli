@@ -18,7 +18,7 @@ import type {
   VoiceTargetTranscriptUpdate,
   VoiceTargetLanguage,
   VoiceSourceLanguage,
-} from '../types/voice.js';
+} from '../types/index.js';
 
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 

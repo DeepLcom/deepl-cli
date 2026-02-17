@@ -4,7 +4,7 @@
  * Centralises the JSON-vs-text branching used across all commands.
  */
 
-import type { OutputFormat } from '../types/common.js';
+import type { OutputFormat } from '../types/index.js';
 
 /**
  * Serialize data as pretty-printed JSON.

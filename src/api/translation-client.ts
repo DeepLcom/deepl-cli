@@ -1,5 +1,5 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { TranslationOptions, Language } from '../types';
+import { TranslationOptions, Language } from '../types/index.js';
 import { NetworkError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
 

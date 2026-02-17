@@ -1,5 +1,5 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { DocumentTranslationOptions, DocumentHandle, DocumentStatus } from '../types';
+import { DocumentTranslationOptions, DocumentHandle, DocumentStatus } from '../types/index.js';
 import { ValidationError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
 

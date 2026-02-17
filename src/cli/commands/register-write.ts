@@ -2,7 +2,7 @@ import { type Command, Option } from 'commander';
 import { existsSync } from 'fs';
 import { atomicWriteFile } from '../../utils/atomic-write.js';
 import chalk from 'chalk';
-import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/api.js';
+import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/index.js';
 import { Logger } from '../../utils/logger.js';
 import { ExitCode } from '../../utils/exit-codes.js';
 import { isNoInput } from '../../utils/confirm.js';
