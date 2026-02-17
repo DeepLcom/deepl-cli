@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.npmignore` to exclude build artifacts and source maps from npm package — ~50% package size reduction (3h5w, wgyh)
 - Schema validation on config load — invalid values fall back to defaults with warning (szxl)
 - Path traversal defense for `--output-pattern` in batch translation (3zc7)
+- `deepl init` troubleshooting section in TROUBLESHOOTING.md (27ni)
+- 503 Service Unavailable and CheckFailed (exit 8) troubleshooting entries (7o0t)
+- Issue-filing link in TROUBLESHOOTING.md (6090)
+- Supported versions table in SECURITY.md (p2mx)
+- Doc update reminders in CONTRIBUTING.md PR checklist (mit9)
+- README badges (npm version, license, Node.js), stability indicators, and SECURITY.md link (kb08)
+- Example scripts for `deepl init` and advanced translate flags (dpe9)
 
 ### Changed
 - `cache stats` now defaults to `text` format instead of `table`, consistent with all other commands (yh9f)
@@ -28,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced `any` types in ConfigService with `Record<string, unknown>` and `unknown` (c1ir)
 - Deduplicated `GetApiKeyAndOptions` type — single definition in service-factory.ts (c7py)
 - Removed unused `WriteResult` export from types/api.ts (xau1)
+- Repository URLs from internal `git.deepl.dev` to `github.com/DeepLcom/deepl-cli` in package.json, README, and CONTRIBUTING.md (gffl)
+- Config path references in examples from legacy `~/.deepl-cli/` to XDG `~/.config/deepl-cli/` (wnr1)
+- GitHub Actions in CI/CD example from v3 to v4 (45sb)
 
 ### Fixed
 - Eliminate CI flakiness in voice reconnection chunk-resume test — replace non-deterministic `setImmediate` polling with deterministic `sendEndOfSource` mock
@@ -73,6 +83,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix test helper stdin piping: replace shell `echo` with `execSync({ input })` to avoid shell interpretation
 - Fix test helper `??` → `||` for stderr/stdout fallback in catch blocks
 - Add 5 missing mock factory exports to test helpers barrel file
+- Fix `Hint:` → `Suggestion:` in README error format examples (bgly)
+- Fix auth output examples in README: "configured" → "saved and validated", masked key format, "cleared" → "removed" (igmk)
+- Add `formal`/`informal` aliases to formality value lists in README and API.md (9260)
+- Document `--from-stdin` for `auth set-key`, `--no-input` global option, `--enable-minification`, `--preserve-formatting` in README (bgey, j4oc, mlhw)
+- Document all 4 git hook types in README (cfoi)
+- Add image formats (jpg, jpeg, png) to document formats list in README (iisi)
+- Fix regional language variants count to 7 in README (lat3)
+- Fix cache clear output to "Cache cleared successfully" in README (jae7)
+- Document `-V` short flag for `--version` in API.md (fp56)
+- List `--output-format` valid choice (`docx`) in API.md (kn46)
+- Fix detect JSON output casing to lowercase in README (zem3)
+- Fix Style Rules ToC grouping in README (34sk)
+- Document `FORCE_COLOR` and `TERM=dumb` env vars in README (0azp)
+- Fix Write API examples in TROUBLESHOOTING.md: `--to` → `--lang` (a0lc)
+- Fix `auth show` output description in TROUBLESHOOTING.md (d97k)
+- Expand voice format list and document format list in TROUBLESHOOTING.md (bgqe)
+- Fix `--quiet` flag placement in examples (global option before subcommand) (uv6n)
+- Complete formality options in voice example script (ve5h)
+- Fix debounce default to 500ms in watch mode example (cjkz)
+- Fix error message in document format conversion example (q51z)
+- Standardize error emoji formatting across example scripts (wmky)
+- Add missing npm run commands to CONTRIBUTING.md (woff)
 
 ### Added
 - Verbose warning when untyped errors reach the fallback exit code classifier (`--verbose` flag)
