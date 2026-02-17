@@ -12,7 +12,7 @@ import type {
   VoiceReconnectResponse,
   VoiceServerMessage,
   VoiceStreamCallbacks,
-} from '../types/voice.js';
+} from '../types/index.js';
 import { AuthError, VoiceError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
 

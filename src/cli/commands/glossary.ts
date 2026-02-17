@@ -5,8 +5,7 @@
 
 import * as fs from 'fs';
 import { GlossaryService } from '../../services/glossary.js';
-import { GlossaryInfo, GlossaryLanguagePair, Language } from '../../types/index.js';
-import { getTargetLang, getTotalEntryCount, isMultilingual } from '../../types/glossary.js';
+import { GlossaryInfo, GlossaryLanguagePair, Language, getTargetLang, getTotalEntryCount, isMultilingual } from '../../types/index.js';
 import { safeReadFileSync } from '../../utils/safe-read-file.js';
 import { ValidationError, ConfigError } from '../../utils/errors.js';
 

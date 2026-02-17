@@ -21,7 +21,7 @@ import {
   AdminApiKey,
   AdminUsageOptions,
   AdminUsageReport,
-} from '../types';
+} from '../types/index.js';
 
 export { TranslationResult, isTranslationResult, ProductUsage, UsageInfo, LanguageInfo };
 

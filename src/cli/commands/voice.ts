@@ -15,7 +15,7 @@ import type {
   VoiceSourceLanguage,
   VoiceSourceLanguageMode,
   VoiceSourceMediaContentType,
-} from '../../types/voice.js';
+} from '../../types/index.js';
 import { ValidationError } from '../../utils/errors.js';
 
 const VALID_VOICE_TARGET_LANGS: ReadonlySet<string> = new Set<VoiceTargetLanguage>([

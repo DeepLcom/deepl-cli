@@ -14,7 +14,7 @@ import type {
   VoiceTranslateOptions,
   VoiceSessionResult,
   VoiceStreamCallbacks,
-} from '../types/voice.js';
+} from '../types/index.js';
 
 const MAX_TARGET_LANGS = 5;
 const DEFAULT_CHUNK_SIZE = 6400;

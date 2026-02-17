@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as http from 'http';
 import * as https from 'https';
-import { Language } from '../types';
+import { Language } from '../types/index.js';
 import { AuthError, RateLimitError, QuotaError, NetworkError, ConfigError, ValidationError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 import { errorMessage } from '../utils/error-message.js';

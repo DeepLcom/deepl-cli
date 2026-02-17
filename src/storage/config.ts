@@ -5,7 +5,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { DeepLConfig, Formality, OutputFormat } from '../types';
+import { DeepLConfig, Formality, OutputFormat } from '../types/index.js';
 import { resolvePaths } from '../utils/paths.js';
 import { isValidLanguage } from '../data/language-registry.js';
 import { ConfigError } from '../utils/errors.js';

@@ -1,5 +1,5 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { WriteOptions, WriteImprovement } from '../types';
+import { WriteOptions, WriteImprovement } from '../types/index.js';
 import { NetworkError } from '../utils/errors.js';
 
 interface DeepLWriteResponse {

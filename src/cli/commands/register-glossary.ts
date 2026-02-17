@@ -1,6 +1,6 @@
 import { Command, Option } from 'commander';
 import chalk from 'chalk';
-import type { Language } from '../../types/common.js';
+import type { Language } from '../../types/index.js';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createGlossaryCommand, type ServiceDeps } from './service-factory.js';
