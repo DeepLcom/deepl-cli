@@ -1,5 +1,5 @@
 import nock from 'nock';
-import { HttpClient } from '../../src/api/http-client';
+import { HttpClient, isFreeApiKey } from '../../src/api/http-client';
 import { NetworkError } from '../../src/utils/errors';
 
 class TestHttpClient extends HttpClient {
@@ -11,6 +11,28 @@ class TestHttpClient extends HttpClient {
     return this.parseRetryAfter(value);
   }
 }
+
+describe('isFreeApiKey', () => {
+  it('should return true for keys ending with :fx', () => {
+    expect(isFreeApiKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx')).toBe(true);
+  });
+
+  it('should return true for short keys ending with :fx', () => {
+    expect(isFreeApiKey('test-key:fx')).toBe(true);
+  });
+
+  it('should return false for pro keys without :fx suffix', () => {
+    expect(isFreeApiKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890')).toBe(false);
+  });
+
+  it('should return false for keys with :fx in the middle', () => {
+    expect(isFreeApiKey('key:fx:extra')).toBe(false);
+  });
+
+  it('should return false for empty string', () => {
+    expect(isFreeApiKey('')).toBe(false);
+  });
+});
 
 describe('HttpClient', () => {
   const apiKey = 'test-api-key';
@@ -276,6 +298,39 @@ describe('HttpClient', () => {
         expect(error).toBeInstanceOf(NetworkError);
         expect((error as Error).message).toContain('Service temporarily unavailable');
       }
+    });
+  });
+
+  describe('API URL auto-detection from key suffix', () => {
+    it('should use free API URL for keys ending with :fx', async () => {
+      const freeClient = new TestHttpClient('test-key:fx');
+      const scope = nock('https://api-free.deepl.com')
+        .get('/v2/test')
+        .reply(200, { result: 'ok' });
+
+      await freeClient.get('/v2/test');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should use pro API URL for keys without :fx suffix', async () => {
+      const proClient = new TestHttpClient('test-pro-key');
+      const scope = nock('https://api.deepl.com')
+        .get('/v2/test')
+        .reply(200, { result: 'ok' });
+
+      await proClient.get('/v2/test');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should allow explicit baseUrl to override auto-detection', async () => {
+      const customUrl = 'https://custom.example.com';
+      const customClient = new TestHttpClient('test-key:fx', { baseUrl: customUrl });
+      const scope = nock(customUrl)
+        .get('/v2/test')
+        .reply(200, { result: 'ok' });
+
+      await customClient.get('/v2/test');
+      expect(scope.isDone()).toBe(true);
     });
   });
 });

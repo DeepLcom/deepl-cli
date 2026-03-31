@@ -69,6 +69,46 @@ describe('DeepLClient Integration', () => {
       await client.getUsage();
       expect(scope.isDone()).toBe(true);
     });
+
+    it('should auto-detect free API URL from :fx key suffix', async () => {
+      const freeKey = 'my-free-api-key:fx';
+      const client = new DeepLClient(freeKey);
+      clients.push(client);
+
+      const scope = nock(FREE_API_URL)
+        .get('/v2/usage')
+        .reply(200, { character_count: 0, character_limit: 500000 });
+
+      await client.getUsage();
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should auto-detect pro API URL for keys without :fx suffix', async () => {
+      const proKey = 'my-pro-api-key';
+      const client = new DeepLClient(proKey);
+      clients.push(client);
+
+      const scope = nock(PRO_API_URL)
+        .get('/v2/usage')
+        .reply(200, { character_count: 0, character_limit: 500000 });
+
+      await client.getUsage();
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should use explicit baseUrl even for :fx keys', async () => {
+      const freeKey = 'my-free-api-key:fx';
+      const customUrl = 'https://custom-deepl.example.com';
+      const client = new DeepLClient(freeKey, { baseUrl: customUrl });
+      clients.push(client);
+
+      const scope = nock(customUrl)
+        .get('/v2/usage')
+        .reply(200, { character_count: 0, character_limit: 500000 });
+
+      await client.getUsage();
+      expect(scope.isDone()).toBe(true);
+    });
   });
 
   describe('translate()', () => {
