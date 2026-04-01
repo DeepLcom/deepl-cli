@@ -169,8 +169,8 @@ export class ConfigService {
         apiKey: undefined,
       },
       api: {
-        baseUrl: 'https://api.deepl.com',
-        usePro: true,
+        baseUrl: undefined,
+        usePro: undefined,
       },
       defaults: {
         sourceLang: undefined,

@@ -42,6 +42,10 @@ export function sanitizeUrl(url: string): string {
 
 const FREE_API_URL = 'https://api-free.deepl.com';
 const PRO_API_URL = 'https://api.deepl.com';
+
+export function isFreeApiKey(apiKey: string): boolean {
+  return apiKey.endsWith(':fx');
+}
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_MAX_RETRIES = 3;
 const MAX_SOCKETS = 10;
@@ -99,7 +103,8 @@ export class HttpClient {
       throw new AuthError('API key is required');
     }
 
-    const baseURL = options.baseUrl ?? (options.usePro ? PRO_API_URL : FREE_API_URL);
+    const autoUrl = isFreeApiKey(apiKey) ? FREE_API_URL : PRO_API_URL;
+    const baseURL = options.baseUrl ?? autoUrl;
 
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
 
