@@ -9,7 +9,7 @@ import { HttpClient, USER_AGENT } from '../../src/api/http-client';
 
 describe('DeepLClient', () => {
   let client: DeepLClient;
-  const apiKey = 'test-api-key';
+  const apiKey = 'test-api-key:fx';
   const baseUrl = 'https://api-free.deepl.com';
 
   beforeEach(() => {
@@ -32,8 +32,8 @@ describe('DeepLClient', () => {
       expect(client).toBeInstanceOf(DeepLClient);
     });
 
-    it('should use free API endpoint by default', async () => {
-      const freeClient = new DeepLClient('test-key');
+    it('should auto-detect free API endpoint for :fx keys', async () => {
+      const freeClient = new DeepLClient('test-key:fx');
       nock('https://api-free.deepl.com')
         .post('/v2/translate')
         .reply(200, { translations: [{ text: 'Hola' }] });
@@ -41,8 +41,8 @@ describe('DeepLClient', () => {
       expect(result.text).toBe('Hola');
     });
 
-    it('should use pro API endpoint when specified', async () => {
-      const proClient = new DeepLClient('test-key', { usePro: true });
+    it('should auto-detect pro API endpoint for non-:fx keys', async () => {
+      const proClient = new DeepLClient('test-pro-key');
       nock('https://api.deepl.com')
         .post('/v2/translate')
         .reply(200, { translations: [{ text: 'Hola' }] });

@@ -35,7 +35,7 @@ describe('isFreeApiKey', () => {
 });
 
 describe('HttpClient', () => {
-  const apiKey = 'test-api-key';
+  const apiKey = 'test-api-key:fx';
   const baseUrl = 'https://api-free.deepl.com';
   let client: TestHttpClient;
   let sleepSpy: jest.SpyInstance;

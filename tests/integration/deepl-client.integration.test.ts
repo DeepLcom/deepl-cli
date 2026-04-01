@@ -33,8 +33,8 @@ describe('DeepLClient Integration', () => {
       expect(() => new DeepLClient('')).toThrow('API key is required');
     });
 
-    it('should use free API URL by default', async () => {
-      const client = new DeepLClient(API_KEY);
+    it('should auto-detect free API URL from :fx key suffix', async () => {
+      const client = new DeepLClient(API_KEY); // API_KEY ends with :fx
       clients.push(client);
 
       const scope = nock(FREE_API_URL)
@@ -45,8 +45,9 @@ describe('DeepLClient Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('should use pro API URL when usePro is true', async () => {
-      const client = new DeepLClient(API_KEY, { usePro: true });
+    it('should auto-detect pro API URL for keys without :fx suffix', async () => {
+      const proKey = 'test-pro-api-key';
+      const client = new DeepLClient(proKey);
       clients.push(client);
 
       const scope = nock(PRO_API_URL)
@@ -63,32 +64,6 @@ describe('DeepLClient Integration', () => {
       clients.push(client);
 
       const scope = nock(customUrl)
-        .get('/v2/usage')
-        .reply(200, { character_count: 0, character_limit: 500000 });
-
-      await client.getUsage();
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should auto-detect free API URL from :fx key suffix', async () => {
-      const freeKey = 'my-free-api-key:fx';
-      const client = new DeepLClient(freeKey);
-      clients.push(client);
-
-      const scope = nock(FREE_API_URL)
-        .get('/v2/usage')
-        .reply(200, { character_count: 0, character_limit: 500000 });
-
-      await client.getUsage();
-      expect(scope.isDone()).toBe(true);
-    });
-
-    it('should auto-detect pro API URL for keys without :fx suffix', async () => {
-      const proKey = 'my-pro-api-key';
-      const client = new DeepLClient(proKey);
-      clients.push(client);
-
-      const scope = nock(PRO_API_URL)
         .get('/v2/usage')
         .reply(200, { character_count: 0, character_limit: 500000 });
 
@@ -679,8 +654,9 @@ describe('DeepLClient Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('should use pro API URL when usePro is true', async () => {
-      const client = new DeepLClient(API_KEY, { usePro: true });
+    it('should auto-detect pro API URL for pro key', async () => {
+      const proKey = 'test-pro-api-key';
+      const client = new DeepLClient(proKey);
       clients.push(client);
 
       const scope = nock(PRO_API_URL)

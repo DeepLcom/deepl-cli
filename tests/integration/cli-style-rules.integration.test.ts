@@ -499,8 +499,8 @@ describe('Style Rules API Integration', () => {
       expect(receivedBody).toBe('');
     });
 
-    it('should use Pro API URL when configured', async () => {
-      const proClient = new DeepLClient(API_KEY, { usePro: true });
+    it('should use Pro API URL for pro keys', async () => {
+      const proClient = new DeepLClient('test-pro-api-key');
       const proCommand = new StyleRulesCommand(new StyleRulesService(proClient));
 
       const scope = nock('https://api.deepl.com')
