@@ -100,7 +100,6 @@ async function createDeepLClient(overrideBaseUrl?: string): Promise<DeepLClient>
   }
 
   const baseUrl = overrideBaseUrl ?? configService.getValue<string>('api.baseUrl');
-  const usePro = configService.getValue<boolean>('api.usePro');
 
   if (baseUrl) {
     const { validateApiUrl } = await import('../utils/validate-url.js');
@@ -108,7 +107,7 @@ async function createDeepLClient(overrideBaseUrl?: string): Promise<DeepLClient>
   }
 
   const { DeepLClient: Client } = await import('../api/deepl-client.js');
-  return new Client(key, { baseUrl, usePro });
+  return new Client(key, { baseUrl });
 }
 
 // Create program
@@ -198,9 +197,8 @@ function getApiKeyAndOptions(): { apiKey: string; options: import('../api/http-c
   if (baseUrl) {
     validateApiUrl(baseUrl);
   }
-  const usePro = configService.getValue<boolean>('api.usePro');
 
-  return { apiKey: key, options: { baseUrl, usePro } };
+  return { apiKey: key, options: { baseUrl } };
 }
 
 // Shared dependencies passed to register functions

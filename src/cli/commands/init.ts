@@ -39,9 +39,7 @@ export class InitCommand {
     Logger.output('\nValidating API key...');
 
     const { DeepLClient } = await import('../../api/deepl-client.js');
-    const baseUrl = this.config.getValue<string>('api.baseUrl');
-    const usePro = this.config.getValue<boolean>('api.usePro');
-    const client = new DeepLClient(apiKey.trim(), { baseUrl, usePro });
+    const client = new DeepLClient(apiKey.trim());
     await client.getUsage();
 
     this.config.set('auth.apiKey', apiKey.trim());

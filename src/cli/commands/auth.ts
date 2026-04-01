@@ -27,11 +27,8 @@ export class AuthCommand {
     // Note: No format validation - let the API determine if the key is valid
     // This supports production keys (:fx suffix), free keys, and test keys
     try {
-      // Use configured API endpoint for validation
-      const baseUrl = this.config.getValue<string>('api.baseUrl');
-      const usePro = this.config.getValue<boolean>('api.usePro');
-
-      const client = new DeepLClient(apiKey, { baseUrl, usePro });
+      // Let the client auto-detect the endpoint from the key suffix
+      const client = new DeepLClient(apiKey);
       await client.getUsage(); // Test API key validity
     } catch (error) {
       if (error instanceof Error) {
