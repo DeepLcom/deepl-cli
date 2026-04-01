@@ -32,7 +32,7 @@ describe('Translation Workflow Integration', () => {
     mockConfig = createMockConfigService({
       get: jest.fn(() => ({
         auth: {},
-        api: { baseUrl: '', usePro: false },
+        api: { baseUrl: '' },
         defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
         cache: { enabled: true },
         output: { format: 'text', color: true },
@@ -87,7 +87,7 @@ describe('Translation Workflow Integration', () => {
       mockConfig = createMockConfigService({
         get: jest.fn(() => ({
           auth: {},
-          api: { baseUrl: '', usePro: false },
+          api: { baseUrl: '' },
           defaults: {
             targetLangs: [],
             sourceLang: 'en',

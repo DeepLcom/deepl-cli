@@ -20,7 +20,6 @@ export interface ProxyConfig {
 }
 
 export interface DeepLClientOptions {
-  usePro?: boolean;
   timeout?: number;
   maxRetries?: number;
   baseUrl?: string;

@@ -17,7 +17,7 @@ export function registerConfig(
     .description('Manage configuration')
     .addHelpText('after', `
 Examples:
-  $ deepl config set api.usePro true
+  $ deepl config set api.baseUrl https://api.deepl.com
   $ deepl config get auth.apiKey
   $ deepl config list
   $ deepl config reset

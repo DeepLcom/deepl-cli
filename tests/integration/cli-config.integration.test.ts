@@ -24,7 +24,6 @@ describe('Config CLI Integration', () => {
       auth: { apiKey: undefined },
       api: {
         baseUrl: 'https://api-free.deepl.com/v2',
-        usePro: false,
       },
       defaults: {
         sourceLang: undefined,

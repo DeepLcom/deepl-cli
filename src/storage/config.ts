@@ -28,7 +28,6 @@ const VALID_OUTPUT_FORMATS: readonly OutputFormat[] = [
 ] as const;
 
 const BOOLEAN_CONFIG_PATHS = [
-  'api.usePro',
   'cache.enabled',
   'output.verbose',
   'output.color',
@@ -170,7 +169,6 @@ export class ConfigService {
       },
       api: {
         baseUrl: undefined,
-        usePro: undefined,
       },
       defaults: {
         sourceLang: undefined,

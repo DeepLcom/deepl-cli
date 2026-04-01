@@ -43,7 +43,7 @@ describe('ConfigCommand', () => {
     it('should get entire config when no key specified', async () => {
       (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'test-key' },
-        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
+        api: { baseUrl: 'https://api.deepl.com/v2' },
         defaults: {
           sourceLang: undefined,
           targetLangs: ['es', 'fr'],
@@ -66,7 +66,7 @@ describe('ConfigCommand', () => {
     it('should mask API key when returning entire config', async () => {
       (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'super-secret-key-123' },
-        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
+        api: { baseUrl: 'https://api.deepl.com/v2' },
         defaults: { sourceLang: undefined, targetLangs: [], formality: 'default', preserveFormatting: true },
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
@@ -108,7 +108,6 @@ describe('ConfigCommand', () => {
 
     it('should coerce "false" to boolean false for all known boolean keys', async () => {
       const booleanKeys = [
-        'api.usePro',
         'cache.enabled',
         'output.verbose',
         'output.color',
@@ -125,7 +124,6 @@ describe('ConfigCommand', () => {
 
     it('should coerce "true" to boolean true for all known boolean keys', async () => {
       const booleanKeys = [
-        'api.usePro',
         'cache.enabled',
         'output.verbose',
         'output.color',
@@ -197,7 +195,7 @@ describe('ConfigCommand', () => {
     it('should list all config values', async () => {
       (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'test-key' },
-        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
+        api: { baseUrl: 'https://api.deepl.com/v2' },
         defaults: {
           sourceLang: 'en',
           targetLangs: ['es', 'fr'],
@@ -220,7 +218,7 @@ describe('ConfigCommand', () => {
     it('should format config as readable key-value pairs', async () => {
       (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'test-key' },
-        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
+        api: { baseUrl: 'https://api.deepl.com/v2' },
         defaults: {
           sourceLang: 'en',
           targetLangs: ['es', 'fr'],
@@ -241,7 +239,7 @@ describe('ConfigCommand', () => {
     it('should hide sensitive values like API keys', async () => {
       (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'super-secret-key-123' },
-        api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
+        api: { baseUrl: 'https://api.deepl.com/v2' },
         defaults: {
           sourceLang: undefined,
           targetLangs: [],

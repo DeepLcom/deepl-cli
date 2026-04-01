@@ -59,7 +59,7 @@ describe('CLI Success Paths E2E', () => {
   function writeConfig(configDir: string, apiUrl: string): void {
     const config = {
       auth: { apiKey: 'mock-api-key-for-testing:fx' },
-      api: { baseUrl: apiUrl, usePro: false },
+      api: { baseUrl: apiUrl },
       defaults: {
         targetLangs: [],
         formality: 'default',

@@ -6,7 +6,6 @@
 import { ConfigService } from '../../storage/config.js';
 
 const BOOLEAN_KEYS = [
-  'api.usePro',
   'cache.enabled',
   'output.verbose',
   'output.color',

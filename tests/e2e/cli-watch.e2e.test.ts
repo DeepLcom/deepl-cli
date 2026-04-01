@@ -110,7 +110,7 @@ describe('Watch Command E2E', () => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-e2e-'));
       const configWithDefaults = {
         auth: { apiKey: 'test-key:fx' },
-        api: { baseUrl: 'https://api-free.deepl.com', usePro: false },
+        api: { baseUrl: 'https://api-free.deepl.com' },
         defaults: { targetLangs: ['es', 'fr'], formality: 'default', preserveFormatting: true },
         cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
         output: { format: 'text', verbose: false, color: false },

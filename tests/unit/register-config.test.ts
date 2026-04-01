@@ -91,9 +91,9 @@ describe('registerConfig', () => {
   describe('config set', () => {
     it('should set a config value', async () => {
       mockConfigCommandInstance.set.mockResolvedValue(undefined);
-      await program.parseAsync(['node', 'test', 'config', 'set', 'api.usePro', 'true']);
-      expect(mockConfigCommandInstance.set).toHaveBeenCalledWith('api.usePro', 'true');
-      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('Set api.usePro = true'));
+      await program.parseAsync(['node', 'test', 'config', 'set', 'cache.enabled', 'true']);
+      expect(mockConfigCommandInstance.set).toHaveBeenCalledWith('cache.enabled', 'true');
+      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('Set cache.enabled = true'));
     });
 
     it('should mask API key in success message', async () => {

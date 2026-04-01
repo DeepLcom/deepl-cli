@@ -78,7 +78,7 @@ describe('CLI Entry Point', () => {
       const configPath = path.join(testConfigDir, 'config.json');
       fs.writeFileSync(configPath, JSON.stringify({
         auth: {},
-        api: { baseUrl: 'https://api.deepl.com', usePro: true },
+        api: { baseUrl: 'https://api.deepl.com' },
         defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
         cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
         output: { format: 'text', verbose: false, color: false },
@@ -103,7 +103,7 @@ describe('CLI Entry Point', () => {
       const configPath = path.join(testConfigDir, 'config.json');
       fs.writeFileSync(configPath, JSON.stringify({
         auth: {},
-        api: { baseUrl: 'https://api.deepl.com', usePro: true },
+        api: { baseUrl: 'https://api.deepl.com' },
         defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
         cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
         output: { format: 'text', verbose: false, color: true },

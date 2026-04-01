@@ -123,7 +123,7 @@ describe('Voice CLI Integration', () => {
       const configPath = path.join(testConfig.path, 'config.json');
       fs.writeFileSync(configPath, JSON.stringify({
         auth: { apiKey: 'test-key-for-url-validation' },
-        api: { baseUrl: 'http://evil-server.example.com/v2', usePro: false },
+        api: { baseUrl: 'http://evil-server.example.com/v2' },
       }));
 
       expect.assertions(1);

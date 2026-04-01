@@ -38,7 +38,7 @@ describe('CLI --config flag integration', () => {
     // Set up default config with a test API key
     const defaultConfig = {
       auth: { apiKey: 'default-test-key' },
-      api: { baseUrl: 'https://api.deepl.com', usePro: true },
+      api: { baseUrl: 'https://api.deepl.com' },
       defaults: { sourceLang: undefined, targetLangs: [], formality: 'default', preserveFormatting: true },
       cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: true },
@@ -50,7 +50,7 @@ describe('CLI --config flag integration', () => {
     // Set up custom config with different API key
     const customConfig = {
       auth: { apiKey: 'custom-test-key' },
-      api: { baseUrl: 'https://api-free.deepl.com', usePro: false },
+      api: { baseUrl: 'https://api-free.deepl.com' },
       defaults: { sourceLang: 'en', targetLangs: ['es', 'fr'], formality: 'more', preserveFormatting: false },
       cache: { enabled: false, maxSize: 104857600, ttl: 86400 },
       output: { format: 'json', verbose: true, color: false },
@@ -79,7 +79,7 @@ describe('CLI --config flag integration', () => {
     });
 
     it('should read nested config values from custom config', () => {
-      const output = runCLI(`deepl --config "${customConfigPath}" config get api.usePro`);
+      const output = runCLI(`deepl --config "${customConfigPath}" config get cache.enabled`);
       expect(output.trim()).toBe('false');
     });
 
@@ -116,7 +116,7 @@ describe('CLI --config flag integration', () => {
       const config = JSON.parse(output.trim());
       // API keys are masked in list output
       expect(config.auth.apiKey).toBe('defa...-key');
-      expect(config.api.usePro).toBe(true);
+      expect(config.api.baseUrl).toBe('https://api.deepl.com');
     });
 
     it('should list custom config when --config is specified', () => {
@@ -124,7 +124,7 @@ describe('CLI --config flag integration', () => {
       const config = JSON.parse(output.trim());
       // API keys are masked in list output
       expect(config.auth.apiKey).toBe('cust...-key');
-      expect(config.api.usePro).toBe(false);
+      expect(config.api.baseUrl).toBe('https://api-free.deepl.com');
       expect(config.defaults.formality).toBe('more');
     });
   });
@@ -223,7 +223,7 @@ describe('CLI --config flag integration', () => {
       const upperCasePath = path.join(testDir, 'config.JSON');
       fs.writeFileSync(upperCasePath, JSON.stringify({
         auth: { apiKey: 'upper-case-key' },
-        api: { baseUrl: 'https://api.deepl.com', usePro: true },
+        api: { baseUrl: 'https://api.deepl.com' },
         defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
         cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
         output: { format: 'text', verbose: false, color: true },

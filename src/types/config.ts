@@ -10,7 +10,6 @@ export interface DeepLConfig {
   };
   api: {
     baseUrl?: string;
-    usePro?: boolean;
   };
   defaults: {
     sourceLang?: Language;

@@ -24,7 +24,7 @@ describe('Structured File Translation CLI Integration', () => {
       path.join(testConfig.path, 'config.json'),
       JSON.stringify({
         auth: { apiKey: 'test-api-key-123' },
-        api: { baseUrl: 'https://api-free.deepl.com/v2', usePro: false },
+        api: { baseUrl: 'https://api-free.deepl.com/v2' },
         defaults: { sourceLang: undefined, targetLangs: [], formality: 'default', preserveFormatting: true },
         cache: { enabled: false, maxSize: 1073741824, ttl: 2592000 },
       })

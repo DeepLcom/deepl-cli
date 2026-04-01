@@ -41,16 +41,16 @@ describe('DocumentClient', () => {
       expect(() => new DocumentClient('')).toThrow('API key is required');
     });
 
-    it('should use Free API URL by default', () => {
+    it('should auto-detect Pro API URL for non-:fx keys', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          baseURL: 'https://api-free.deepl.com',
+          baseURL: 'https://api.deepl.com',
         }),
       );
     });
 
-    it('should use Pro API URL when usePro is true', () => {
-      new DocumentClient('test-key', { usePro: true });
+    it('should use Pro API URL when baseUrl is set to pro', () => {
+      new DocumentClient('test-key', { baseUrl: 'https://api.deepl.com' });
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
           baseURL: 'https://api.deepl.com',

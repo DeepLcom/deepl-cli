@@ -377,13 +377,13 @@ describe('service-factory', () => {
   });
 
   it('createVoiceCommand should wire up VoiceClient, VoiceService, and VoiceCommand', async () => {
-    const getApiKeyAndOptions = jest.fn().mockReturnValue({ apiKey: 'test-key', options: { usePro: true } });
+    const getApiKeyAndOptions = jest.fn().mockReturnValue({ apiKey: 'test-key', options: {} });
     const { createVoiceCommand } = await import('../../src/cli/commands/service-factory');
     const cmd = await createVoiceCommand(getApiKeyAndOptions);
 
     expect(getApiKeyAndOptions).toHaveBeenCalled();
     const { VoiceClient } = require('../../src/api/voice-client');
-    expect(VoiceClient).toHaveBeenCalledWith('test-key', { usePro: true });
+    expect(VoiceClient).toHaveBeenCalledWith('test-key', {});
     const { VoiceService } = require('../../src/services/voice');
     expect(VoiceService).toHaveBeenCalledWith(mockVoiceClientObj);
     const { VoiceCommand } = require('../../src/cli/commands/voice');
