@@ -63,6 +63,18 @@ describe('AuthCommand', () => {
       expect(mockGetUsage).toHaveBeenCalled();
     });
 
+    it('should create client without config baseUrl to allow auto-detection', async () => {
+      const mockGetUsage = jest.fn().mockResolvedValue({ character: { count: 0, limit: 500000 } });
+      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
+        getUsage: mockGetUsage,
+      } as any));
+
+      await authCommand.setKey('test-key:fx');
+
+      // Client should be created with just the key, no baseUrl from config
+      expect(DeepLClient).toHaveBeenCalledWith('test-key:fx');
+    });
+
     it('should throw error for empty API key', async () => {
       await expect(authCommand.setKey('')).rejects.toThrow('API key cannot be empty');
     });

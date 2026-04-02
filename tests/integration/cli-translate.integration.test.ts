@@ -116,7 +116,7 @@ describe('Translate CLI Integration', () => {
       const configPath = path.join(testConfigDir, 'config.json');
       const config = {
         auth: {},
-        api: { baseUrl: 'https://api.deepl.com' },
+        api: {},
         defaults: {
           targetLangs: ['es'],
           formality: 'default',
