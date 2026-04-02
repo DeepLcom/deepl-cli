@@ -35,8 +35,6 @@ import { registerCompletion } from './commands/register-completion.js';
 import { registerVoice } from './commands/register-voice.js';
 import { registerInit } from './commands/register-init.js';
 import { registerDetect } from './commands/register-detect.js';
-import { validateApiUrl } from '../utils/validate-url.js';
-
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -99,15 +97,13 @@ async function createDeepLClient(overrideBaseUrl?: string): Promise<DeepLClient>
     process.exit(ExitCode.AuthError);
   }
 
-  const baseUrl = overrideBaseUrl ?? configService.getValue<string>('api.baseUrl');
-
-  if (baseUrl) {
+  if (overrideBaseUrl) {
     const { validateApiUrl } = await import('../utils/validate-url.js');
-    validateApiUrl(baseUrl);
+    validateApiUrl(overrideBaseUrl);
   }
 
   const { DeepLClient: Client } = await import('../api/deepl-client.js');
-  return new Client(key, { baseUrl });
+  return new Client(key, { baseUrl: overrideBaseUrl });
 }
 
 // Create program
@@ -193,12 +189,7 @@ function getApiKeyAndOptions(): { apiKey: string; options: import('../api/http-c
     process.exit(ExitCode.AuthError);
   }
 
-  const baseUrl = configService.getValue<string>('api.baseUrl');
-  if (baseUrl) {
-    validateApiUrl(baseUrl);
-  }
-
-  return { apiKey: key, options: { baseUrl } };
+  return { apiKey: key, options: {} };
 }
 
 // Shared dependencies passed to register functions
