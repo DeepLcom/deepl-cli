@@ -11,35 +11,32 @@ export function isFreeKey(apiKey: string): boolean {
   return apiKey.endsWith(':fx');
 }
 
+/**
+ * Returns true only for the two standard DeepL API hostnames
+ * (api.deepl.com and api-free.deepl.com). Any other URL —
+ * including localhost, 127.0.0.1, regional endpoints like
+ * api-jp.deepl.com, or custom proxies — returns false.
+ */
 export function isStandardDeepLUrl(url?: string): boolean {
-  if (!url) {
-    return false;
-  }
-
+  if (!url) return false;
   try {
-    const parsed = new URL(url);
-    return (
-      parsed.hostname === 'api.deepl.com' ||
-      parsed.hostname === 'api-free.deepl.com'
-    );
+    const { hostname } = new URL(url);
+    return hostname === 'api.deepl.com' || hostname === 'api-free.deepl.com';
   } catch {
     return false;
   }
 }
 
-function isLocalApiUrl(url?: string): boolean {
-  if (!url) {
-    return false;
-  }
-
-  try {
-    const parsed = new URL(url);
-    return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
-  } catch {
-    return false;
-  }
-}
-
+/**
+ * Resolves the effective API base URL.
+ *
+ * Priority:
+ *   1. --api-url CLI flag (apiUrlOverride)
+ *   2. Custom config baseUrl (any non-standard hostname)
+ *   3. Key suffix: :fx → free endpoint
+ *   4. usePro === false → free endpoint
+ *   5. Default → pro endpoint
+ */
 export function resolveEndpoint(options: ResolveEndpointOptions): string {
   const { apiKey, configBaseUrl, usePro, apiUrlOverride } = options;
 
@@ -47,10 +44,7 @@ export function resolveEndpoint(options: ResolveEndpointOptions): string {
     return apiUrlOverride;
   }
 
-  if (
-    configBaseUrl &&
-    (!isStandardDeepLUrl(configBaseUrl) || isLocalApiUrl(configBaseUrl))
-  ) {
+  if (configBaseUrl && !isStandardDeepLUrl(configBaseUrl)) {
     return configBaseUrl;
   }
 

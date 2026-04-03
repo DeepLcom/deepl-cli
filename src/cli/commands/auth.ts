@@ -33,7 +33,7 @@ export class AuthCommand {
       const usePro = this.config.getValue<boolean>('api.usePro');
       const baseUrl = resolveEndpoint({ apiKey, configBaseUrl, usePro });
 
-      const client = new DeepLClient(apiKey, { baseUrl, usePro });
+      const client = new DeepLClient(apiKey, { baseUrl });
       await client.getUsage(); // Test API key validity
     } catch (error) {
       if (error instanceof Error) {

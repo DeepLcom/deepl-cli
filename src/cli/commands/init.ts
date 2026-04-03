@@ -48,7 +48,7 @@ export class InitCommand {
       configBaseUrl,
       usePro,
     });
-    const client = new DeepLClient(apiKey.trim(), { baseUrl, usePro });
+    const client = new DeepLClient(apiKey.trim(), { baseUrl });
     await client.getUsage();
 
     this.config.set('auth.apiKey', apiKey.trim());
