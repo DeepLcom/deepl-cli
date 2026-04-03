@@ -36,6 +36,7 @@ import { registerVoice } from './commands/register-voice.js';
 import { registerInit } from './commands/register-init.js';
 import { registerDetect } from './commands/register-detect.js';
 import { validateApiUrl } from '../utils/validate-url.js';
+import { resolveEndpoint } from '../utils/resolve-endpoint.js';
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -43,7 +44,9 @@ const __dirname = dirname(__filename);
 
 // Read version from package.json
 const packageJsonPath = join(__dirname, '../../package.json');
-const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as { version: string };
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as {
+  version: string;
+};
 const { version } = packageJson;
 
 // Initialize services
@@ -73,7 +76,10 @@ async function getCacheService(): Promise<CacheService> {
  */
 function handleError(error: unknown): never {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-  const exitCode = error instanceof Error ? getExitCodeFromError(error) : ExitCode.GeneralError;
+  const exitCode =
+    error instanceof Error
+      ? getExitCodeFromError(error)
+      : ExitCode.GeneralError;
 
   Logger.error(chalk.red('Error:'), errorMessage);
 
@@ -87,7 +93,9 @@ function handleError(error: unknown): never {
 /**
  * Create DeepL client with API key from config or env
  */
-async function createDeepLClient(overrideBaseUrl?: string): Promise<DeepLClient> {
+async function createDeepLClient(
+  overrideBaseUrl?: string
+): Promise<DeepLClient> {
   const apiKey = configService.getValue<string>('auth.apiKey');
   const envKey = process.env['DEEPL_API_KEY'];
 
@@ -95,12 +103,22 @@ async function createDeepLClient(overrideBaseUrl?: string): Promise<DeepLClient>
 
   if (!key) {
     Logger.error(chalk.red('Error: API key not set'));
-    Logger.warn(chalk.yellow('Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>'));
+    Logger.warn(
+      chalk.yellow(
+        'Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>'
+      )
+    );
     process.exit(ExitCode.AuthError);
   }
 
-  const baseUrl = overrideBaseUrl ?? configService.getValue<string>('api.baseUrl');
+  const configBaseUrl = configService.getValue<string>('api.baseUrl');
   const usePro = configService.getValue<boolean>('api.usePro');
+  const baseUrl = resolveEndpoint({
+    apiKey: key,
+    configBaseUrl,
+    usePro,
+    apiUrlOverride: overrideBaseUrl,
+  });
 
   if (baseUrl) {
     const { validateApiUrl } = await import('../utils/validate-url.js');
@@ -117,12 +135,23 @@ program.showSuggestionAfterError(true);
 
 program
   .name('deepl')
-  .description('DeepL CLI - Next-generation translation tool powered by DeepL API')
+  .description(
+    'DeepL CLI - Next-generation translation tool powered by DeepL API'
+  )
   .version(version)
-  .option('-q, --quiet', 'Suppress all non-essential output (errors and results only)')
-  .option('-v, --verbose', 'Show extra information (source language, timing, cache status)')
+  .option(
+    '-q, --quiet',
+    'Suppress all non-essential output (errors and results only)'
+  )
+  .option(
+    '-v, --verbose',
+    'Show extra information (source language, timing, cache status)'
+  )
   .option('-c, --config <file>', 'Use alternate configuration file')
-  .option('--no-input', 'Disable all interactive prompts (abort instead of prompting)')
+  .option(
+    '--no-input',
+    'Disable all interactive prompts (abort instead of prompting)'
+  )
   .hook('preAction', (thisCommand) => {
     const options = thisCommand.opts();
 
@@ -139,7 +168,9 @@ program
 
       // SECURITY: Require .json extension to prevent overwriting arbitrary files
       if (extname(safePath).toLowerCase() !== '.json') {
-        Logger.error(chalk.red('Error: --config path must have a .json extension'));
+        Logger.error(
+          chalk.red('Error: --config path must have a .json extension')
+        );
         process.exit(ExitCode.InvalidInput);
       }
 
@@ -183,24 +214,32 @@ program
  * Get raw API key and client options without constructing a client.
  * Used by VoiceClient which needs direct access to create its own client.
  */
-function getApiKeyAndOptions(): { apiKey: string; options: import('../api/http-client.js').DeepLClientOptions } {
+function getApiKeyAndOptions(): {
+  apiKey: string;
+  options: import('../api/http-client.js').DeepLClientOptions;
+} {
   const apiKey = configService.getValue<string>('auth.apiKey');
   const envKey = process.env['DEEPL_API_KEY'];
   const key = apiKey ?? envKey;
 
   if (!key) {
     Logger.error(chalk.red('Error: API key not set'));
-    Logger.warn(chalk.yellow('Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>'));
+    Logger.warn(
+      chalk.yellow(
+        'Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>'
+      )
+    );
     process.exit(ExitCode.AuthError);
   }
 
-  const baseUrl = configService.getValue<string>('api.baseUrl');
+  const configBaseUrl = configService.getValue<string>('api.baseUrl');
+  const usePro = configService.getValue<boolean>('api.usePro');
+  const baseUrl = resolveEndpoint({ apiKey: key, configBaseUrl, usePro });
   if (baseUrl) {
     validateApiUrl(baseUrl);
   }
-  const usePro = configService.getValue<boolean>('api.usePro');
 
-  return { apiKey: key, options: { baseUrl, usePro } };
+  return { apiKey: key, options: { baseUrl } };
 }
 
 // Shared dependencies passed to register functions
@@ -246,21 +285,32 @@ registerAdmin(program, deps);
 const savedApiKey = configService.getValue<string>('auth.apiKey');
 const envApiKey = process.env['DEEPL_API_KEY'];
 if (!savedApiKey && !envApiKey) {
-  program.addHelpText('beforeAll', chalk.yellow('Getting Started: Run deepl init to set up your API key.\n'));
+  program.addHelpText(
+    'beforeAll',
+    chalk.yellow('Getting Started: Run deepl init to set up your API key.\n')
+  );
 }
 
 // Did-you-mean suggestion for unknown commands
 function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[]);
-  for (let i = 0; i <= m; i++) { dp[i]![0] = i; }
-  for (let j = 0; j <= n; j++) { dp[0]![j] = j; }
+  const dp: number[][] = Array.from(
+    { length: m + 1 },
+    () => Array(n + 1).fill(0) as number[]
+  );
+  for (let i = 0; i <= m; i++) {
+    dp[i]![0] = i;
+  }
+  for (let j = 0; j <= n; j++) {
+    dp[0]![j] = j;
+  }
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      dp[i]![j] = a[i - 1] === b[j - 1]
-        ? dp[i - 1]![j - 1]!
-        : 1 + Math.min(dp[i - 1]![j]!, dp[i]![j - 1]!, dp[i - 1]![j - 1]!);
+      dp[i]![j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1]![j - 1]!
+          : 1 + Math.min(dp[i - 1]![j]!, dp[i]![j - 1]!, dp[i - 1]![j - 1]!);
     }
   }
   return dp[m]![n]!;

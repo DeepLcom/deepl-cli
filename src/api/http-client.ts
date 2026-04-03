@@ -2,7 +2,14 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as http from 'http';
 import * as https from 'https';
 import { Language } from '../types/index.js';
-import { AuthError, RateLimitError, QuotaError, NetworkError, ConfigError, ValidationError } from '../utils/errors.js';
+import {
+  AuthError,
+  RateLimitError,
+  QuotaError,
+  NetworkError,
+  ConfigError,
+  ValidationError,
+} from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 import { errorMessage } from '../utils/error-message.js';
 import { VERSION } from '../version.js';
@@ -40,8 +47,8 @@ export function sanitizeUrl(url: string): string {
   }
 }
 
-const FREE_API_URL = 'https://api-free.deepl.com';
-const PRO_API_URL = 'https://api.deepl.com';
+export const FREE_API_URL = 'https://api-free.deepl.com';
+export const PRO_API_URL = 'https://api.deepl.com';
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_MAX_RETRIES = 3;
 const MAX_SOCKETS = 10;
@@ -68,7 +75,10 @@ export class HttpClient {
       const config: ProxyConfig = {
         protocol: url.protocol.replace(':', '') as 'http' | 'https',
         host: url.hostname,
-        port: parseInt(url.port || (url.protocol === 'https:' ? '443' : '80'), 10),
+        port: parseInt(
+          url.port || (url.protocol === 'https:' ? '443' : '80'),
+          10
+        ),
       };
 
       if (url.username && url.password) {
@@ -80,11 +90,16 @@ export class HttpClient {
 
       return config;
     } catch (error) {
-      throw new ConfigError(`Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage(error)}`);
+      throw new ConfigError(
+        `Invalid proxy URL "${sanitizeUrl(proxyUrl)}": ${errorMessage(error)}`
+      );
     }
   }
 
-  static validateConfig(apiKey: string, options: DeepLClientOptions = {}): void {
+  static validateConfig(
+    apiKey: string,
+    options: DeepLClientOptions = {}
+  ): void {
     if (!apiKey || apiKey.trim() === '') {
       throw new AuthError('API key is required');
     }
@@ -99,7 +114,8 @@ export class HttpClient {
       throw new AuthError('API key is required');
     }
 
-    const baseURL = options.baseUrl ?? (options.usePro ? PRO_API_URL : FREE_API_URL);
+    const baseURL =
+      options.baseUrl ?? (options.usePro ? PRO_API_URL : FREE_API_URL);
 
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
 
@@ -107,7 +123,7 @@ export class HttpClient {
       baseURL,
       timeout: options.timeout ?? DEFAULT_TIMEOUT,
       headers: {
-        'Authorization': `DeepL-Auth-Key ${apiKey}`,
+        Authorization: `DeepL-Auth-Key ${apiKey}`,
         'User-Agent': USER_AGENT,
       },
       httpAgent: new http.Agent({
@@ -142,7 +158,9 @@ export class HttpClient {
 
   destroy(): void {
     const httpAgent = this.client.defaults?.httpAgent as http.Agent | undefined;
-    const httpsAgent = this.client.defaults?.httpsAgent as https.Agent | undefined;
+    const httpsAgent = this.client.defaults?.httpsAgent as
+      | https.Agent
+      | undefined;
     httpAgent?.destroy();
     httpsAgent?.destroy();
   }
@@ -164,7 +182,7 @@ export class HttpClient {
         if (data) {
           for (const [key, value] of Object.entries(data)) {
             if (Array.isArray(value)) {
-              value.forEach(v => formData.append(key, String(v)));
+              value.forEach((v) => formData.append(key, String(v)));
             } else {
               formData.append(key, String(value));
             }
@@ -198,7 +216,10 @@ export class HttpClient {
 
       if (method === 'GET') {
         if (data) {
-          config['params'] = { ...params as Record<string, unknown>, ...data as Record<string, unknown> };
+          config['params'] = {
+            ...(params as Record<string, unknown>),
+            ...(data as Record<string, unknown>),
+          };
         }
       } else if (data !== undefined) {
         config['data'] = data;
@@ -239,7 +260,9 @@ export class HttpClient {
           ...config,
         });
         const requestElapsed = Date.now() - requestStart;
-        Logger.verbose(`[verbose] HTTP ${method} ${path} completed in ${requestElapsed}ms (status ${response.status})`);
+        Logger.verbose(
+          `[verbose] HTTP ${method} ${path} completed in ${requestElapsed}ms (status ${response.status})`
+        );
 
         const traceId = response.headers?.['x-trace-id'] as string | undefined;
         if (traceId) {
@@ -251,7 +274,9 @@ export class HttpClient {
         lastError = error as Error;
 
         if (this.isAxiosError(error)) {
-          const traceId = error.response?.headers?.['x-trace-id'] as string | undefined;
+          const traceId = error.response?.headers?.['x-trace-id'] as
+            | string
+            | undefined;
           if (traceId) {
             this._lastTraceId = traceId;
           }
@@ -260,8 +285,15 @@ export class HttpClient {
         if (this.isAxiosError(error)) {
           const status = error.response?.status;
           if (status === 429 && attempt < this.maxRetries) {
-            const retryAfterDelay = this.parseRetryAfter(error.response?.headers?.['retry-after'] as string | undefined);
-            const delay = retryAfterDelay ?? Math.min(RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
+            const retryAfterDelay = this.parseRetryAfter(
+              error.response?.headers?.['retry-after'] as string | undefined
+            );
+            const delay =
+              retryAfterDelay ??
+              Math.min(
+                RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt),
+                RETRY_MAX_DELAY_MS
+              );
             await this.sleep(delay);
             continue;
           }
@@ -271,35 +303,54 @@ export class HttpClient {
         }
 
         if (attempt < this.maxRetries) {
-          const delay = Math.min(RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
+          const delay = Math.min(
+            RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt),
+            RETRY_MAX_DELAY_MS
+          );
           await this.sleep(delay);
         }
       }
     }
 
-    throw lastError ? this.handleError(lastError) : new NetworkError('Request failed after retries');
+    throw lastError
+      ? this.handleError(lastError)
+      : new NetworkError('Request failed after retries');
   }
 
   protected handleError(error: unknown): Error {
-    const traceIdSuffix = this._lastTraceId ? ` (Trace ID: ${this._lastTraceId})` : '';
+    const traceIdSuffix = this._lastTraceId
+      ? ` (Trace ID: ${this._lastTraceId})`
+      : '';
 
     if (this.isAxiosError(error)) {
       const status = error.response?.status;
-      const responseData = error.response?.data as { message?: string } | undefined;
+      const responseData = error.response?.data as
+        | { message?: string }
+        | undefined;
       const message = responseData?.message ?? error.message;
 
       switch (status) {
         case 403:
-          return new AuthError(`Authentication failed: Invalid API key${traceIdSuffix}`);
+          return new AuthError(
+            `Authentication failed: Invalid API key${traceIdSuffix}`
+          );
         case 456:
-          return new QuotaError(`Quota exceeded: Character limit reached${traceIdSuffix}`);
+          return new QuotaError(
+            `Quota exceeded: Character limit reached${traceIdSuffix}`
+          );
         case 429:
-          return new RateLimitError(`Rate limit exceeded: Too many requests${traceIdSuffix}`);
+          return new RateLimitError(
+            `Rate limit exceeded: Too many requests${traceIdSuffix}`
+          );
         case 503:
-          return new NetworkError(`Service temporarily unavailable: Please try again later${traceIdSuffix}`);
+          return new NetworkError(
+            `Service temporarily unavailable: Please try again later${traceIdSuffix}`
+          );
         default:
           if (status && status >= 500) {
-            return new NetworkError(`Server error (${status}): ${message}${traceIdSuffix}`);
+            return new NetworkError(
+              `Server error (${status}): ${message}${traceIdSuffix}`
+            );
           }
           if (!error.response && this.isNetworkLevelError(error)) {
             return new NetworkError(`Network error: ${error.message}`);
@@ -320,11 +371,13 @@ export class HttpClient {
 
   private isNetworkLevelError(error: Error): boolean {
     const msg = error.message.toLowerCase();
-    return msg.includes('econnrefused') ||
+    return (
+      msg.includes('econnrefused') ||
       msg.includes('enotfound') ||
       msg.includes('econnreset') ||
       msg.includes('etimedout') ||
-      msg.includes('socket hang up');
+      msg.includes('socket hang up')
+    );
   }
 
   protected normalizeLanguage(lang: string): Language {
@@ -335,7 +388,9 @@ export class HttpClient {
     return axios.isAxiosError(error);
   }
 
-  protected parseRetryAfter(headerValue: string | undefined): number | undefined {
+  protected parseRetryAfter(
+    headerValue: string | undefined
+  ): number | undefined {
     if (headerValue === undefined || headerValue === null) {
       return undefined;
     }

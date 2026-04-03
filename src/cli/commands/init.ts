@@ -1,5 +1,6 @@
 import { ConfigService } from '../../storage/config.js';
 import { Logger } from '../../utils/logger.js';
+import { resolveEndpoint } from '../../utils/resolve-endpoint.js';
 
 const COMMON_TARGET_LANGUAGES = [
   { name: 'German (DE)', value: 'de' },
@@ -26,12 +27,13 @@ export class InitCommand {
 
   async run(): Promise<void> {
     const { input, select } = await import('@inquirer/prompts');
-    Logger.output('Welcome to DeepL CLI! Let\'s get you set up.\n');
+    Logger.output("Welcome to DeepL CLI! Let's get you set up.\n");
 
     const apiKey = await input({
       message: 'Enter your DeepL API key:',
       validate: (value: string) => {
-        if (!value.trim()) return 'API key is required. Get one at https://www.deepl.com/pro-api';
+        if (!value.trim())
+          return 'API key is required. Get one at https://www.deepl.com/pro-api';
         return true;
       },
     });
@@ -39,8 +41,13 @@ export class InitCommand {
     Logger.output('\nValidating API key...');
 
     const { DeepLClient } = await import('../../api/deepl-client.js');
-    const baseUrl = this.config.getValue<string>('api.baseUrl');
+    const configBaseUrl = this.config.getValue<string>('api.baseUrl');
     const usePro = this.config.getValue<boolean>('api.usePro');
+    const baseUrl = resolveEndpoint({
+      apiKey: apiKey.trim(),
+      configBaseUrl,
+      usePro,
+    });
     const client = new DeepLClient(apiKey.trim(), { baseUrl, usePro });
     await client.getUsage();
 
@@ -58,12 +65,14 @@ export class InitCommand {
     }
 
     Logger.output('\n---');
-    Logger.output('You\'re all set! Here are some commands to get started:\n');
+    Logger.output("You're all set! Here are some commands to get started:\n");
     Logger.output('  deepl translate "Hello world" --to es    Translate text');
     Logger.output('  deepl write "Check this text" --to en    Improve writing');
     Logger.output('  deepl glossary list                      List glossaries');
     Logger.output('  deepl usage                              Check API usage');
-    Logger.output('  deepl --help                             See all commands');
+    Logger.output(
+      '  deepl --help                             See all commands'
+    );
     Logger.output('');
   }
 }
