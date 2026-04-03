@@ -27,6 +27,19 @@ export function isStandardDeepLUrl(url?: string): boolean {
   }
 }
 
+function isLocalApiUrl(url?: string): boolean {
+  if (!url) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
 export function resolveEndpoint(options: ResolveEndpointOptions): string {
   const { apiKey, configBaseUrl, usePro, apiUrlOverride } = options;
 
@@ -34,7 +47,10 @@ export function resolveEndpoint(options: ResolveEndpointOptions): string {
     return apiUrlOverride;
   }
 
-  if (configBaseUrl && !isStandardDeepLUrl(configBaseUrl)) {
+  if (
+    configBaseUrl &&
+    (!isStandardDeepLUrl(configBaseUrl) || isLocalApiUrl(configBaseUrl))
+  ) {
     return configBaseUrl;
   }
 

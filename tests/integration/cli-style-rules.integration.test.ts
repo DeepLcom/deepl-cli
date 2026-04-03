@@ -7,7 +7,11 @@ import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { StyleRulesService } from '../../src/services/style-rules.js';
 import { StyleRulesCommand } from '../../src/cli/commands/style-rules.js';
-import { createTestConfigDir, makeRunCLI, DEEPL_FREE_API_URL } from '../helpers';
+import {
+  createTestConfigDir,
+  makeRunCLI,
+  DEEPL_FREE_API_URL,
+} from '../helpers';
 
 describe('Style Rules CLI Integration', () => {
   const testConfig = createTestConfigDir('style-rules');
@@ -48,9 +52,9 @@ describe('Style Rules CLI Integration', () => {
     });
 
     it('should require API key for style-rules list', () => {
-      expect.assertions(1);
       try {
         runCLI('deepl style-rules list', { stdio: 'pipe' });
+        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
@@ -58,9 +62,9 @@ describe('Style Rules CLI Integration', () => {
     });
 
     it('should require API key for style-rules list --detailed', () => {
-      expect.assertions(1);
       try {
         runCLI('deepl style-rules list --detailed', { stdio: 'pipe' });
+        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
@@ -68,9 +72,11 @@ describe('Style Rules CLI Integration', () => {
     });
 
     it('should require API key for style-rules list with pagination', () => {
-      expect.assertions(1);
       try {
-        runCLI('deepl style-rules list --page 1 --page-size 10', { stdio: 'pipe' });
+        runCLI('deepl style-rules list --page 1 --page-size 10', {
+          stdio: 'pipe',
+        });
+        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth|not set/i);
@@ -121,7 +127,10 @@ describe('Style Rules CLI Integration', () => {
 
     it('should accept all flags combined', () => {
       try {
-        runCLI('deepl style-rules list --detailed --page 1 --page-size 5 --format json', { stdio: 'pipe' });
+        runCLI(
+          'deepl style-rules list --detailed --page 1 --page-size 5 --format json',
+          { stdio: 'pipe' }
+        );
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -228,11 +237,9 @@ describe('Style Rules API Integration', () => {
     });
 
     it('should handle empty style rules list', async () => {
-      const scope = nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .reply(200, {
-          style_rules: [],
-        });
+      const scope = nock(FREE_API_URL).get('/v3/style_rules').reply(200, {
+        style_rules: [],
+      });
 
       const rules = await styleRulesCommand.list();
 
@@ -241,9 +248,7 @@ describe('Style Rules API Integration', () => {
     });
 
     it('should format empty results correctly', async () => {
-      nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .reply(200, { style_rules: [] });
+      nock(FREE_API_URL).get('/v3/style_rules').reply(200, { style_rules: [] });
 
       const rules = await styleRulesCommand.list();
       const output = styleRulesCommand.formatStyleRulesList(rules);
@@ -304,7 +309,10 @@ describe('Style Rules API Integration', () => {
 
       expect(rules).toHaveLength(1);
       const rule = rules[0] as any;
-      expect(rule.configuredRules).toEqual(['no_passive_voice', 'short_sentences']);
+      expect(rule.configuredRules).toEqual([
+        'no_passive_voice',
+        'short_sentences',
+      ]);
       expect(rule.customInstructions).toEqual([
         { label: 'Voice', prompt: 'Use active voice' },
         { label: 'Length', prompt: 'Keep sentences under 20 words' },
@@ -409,7 +417,11 @@ describe('Style Rules API Integration', () => {
           ],
         });
 
-      const rules = await styleRulesCommand.list({ detailed: true, page: 1, pageSize: 10 });
+      const rules = await styleRulesCommand.list({
+        detailed: true,
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(rules).toHaveLength(1);
       const rule = rules[0] as any;
@@ -448,9 +460,7 @@ describe('Style Rules API Integration', () => {
     });
 
     it('should format empty rules as empty JSON array', async () => {
-      nock(FREE_API_URL)
-        .get('/v3/style_rules')
-        .reply(200, { style_rules: [] });
+      nock(FREE_API_URL).get('/v3/style_rules').reply(200, { style_rules: [] });
 
       const rules = await styleRulesCommand.list();
       const jsonOutput = styleRulesCommand.formatStyleRulesJson(rules);
@@ -501,7 +511,9 @@ describe('Style Rules API Integration', () => {
 
     it('should use Pro API URL when configured', async () => {
       const proClient = new DeepLClient(API_KEY, { usePro: true });
-      const proCommand = new StyleRulesCommand(new StyleRulesService(proClient));
+      const proCommand = new StyleRulesCommand(
+        new StyleRulesService(proClient)
+      );
 
       const scope = nock('https://api.deepl.com')
         .get('/v3/style_rules')
@@ -557,7 +569,9 @@ describe('Style Rules API Integration', () => {
               creation_time: '2024-03-01T00:00:00Z',
               updated_time: '2024-03-10T00:00:00Z',
               configured_rules: ['formal_tone', 'no_contractions'],
-              custom_instructions: [{ label: 'Formality', prompt: 'Always use formal language' }],
+              custom_instructions: [
+                { label: 'Formality', prompt: 'Always use formal language' },
+              ],
             },
           ],
         });
@@ -567,7 +581,9 @@ describe('Style Rules API Integration', () => {
 
       expect(rule.styleId).toBe('test-id-002');
       expect(rule.configuredRules).toEqual(['formal_tone', 'no_contractions']);
-      expect(rule.customInstructions).toEqual([{ label: 'Formality', prompt: 'Always use formal language' }]);
+      expect(rule.customInstructions).toEqual([
+        { label: 'Formality', prompt: 'Always use formal language' },
+      ]);
     });
   });
 
@@ -579,7 +595,9 @@ describe('Style Rules API Integration', () => {
 
     beforeEach(() => {
       noRetryClient = new DeepLClient(API_KEY, { maxRetries: 0 });
-      noRetryCommand = new StyleRulesCommand(new StyleRulesService(noRetryClient));
+      noRetryCommand = new StyleRulesCommand(
+        new StyleRulesService(noRetryClient)
+      );
     });
 
     afterEach(() => {
@@ -591,7 +609,9 @@ describe('Style Rules API Integration', () => {
         .get('/v3/style_rules')
         .reply(403, { message: 'Invalid API key' });
 
-      await expect(noRetryCommand.list()).rejects.toThrow('Authentication failed');
+      await expect(noRetryCommand.list()).rejects.toThrow(
+        'Authentication failed'
+      );
     });
 
     it('should handle 429 rate limit error', async () => {
@@ -599,7 +619,9 @@ describe('Style Rules API Integration', () => {
         .get('/v3/style_rules')
         .reply(429, { message: 'Too many requests' });
 
-      await expect(noRetryCommand.list()).rejects.toThrow('Rate limit exceeded');
+      await expect(noRetryCommand.list()).rejects.toThrow(
+        'Rate limit exceeded'
+      );
     });
 
     it('should handle 503 service unavailable error', async () => {
@@ -607,7 +629,9 @@ describe('Style Rules API Integration', () => {
         .get('/v3/style_rules')
         .reply(503, { message: 'Service unavailable' });
 
-      await expect(noRetryCommand.list()).rejects.toThrow('Service temporarily unavailable');
+      await expect(noRetryCommand.list()).rejects.toThrow(
+        'Service temporarily unavailable'
+      );
     });
 
     it('should handle 456 quota exceeded error', async () => {

@@ -220,6 +220,16 @@ describe('resolveEndpoint', () => {
       ).toBe('http://localhost:8080');
     });
 
+    it('should use 127.0.0.1 URL even for :fx key', () => {
+      expect(
+        resolveEndpoint({
+          apiKey: 'test-key:fx',
+          configBaseUrl: 'http://127.0.0.1:3000',
+          usePro: false,
+        })
+      ).toBe('http://127.0.0.1:3000');
+    });
+
     it('should use custom proxy URL even for :fx key', () => {
       expect(
         resolveEndpoint({
