@@ -27,7 +27,6 @@ describe('Auth CLI Integration', () => {
     it('should store valid API key in config file', () => {
       // This will fail validation but should test the storage logic
       // For now, skip actual execution as it requires API validation
-      expect(true).toBe(true);
     });
 
     it('should reject empty API key', () => {

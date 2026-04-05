@@ -170,7 +170,6 @@ describe('Config CLI Integration', () => {
       // Config file should be removed or reset
       // (implementation may vary - either delete or reset to defaults)
       // This test validates the reset command executes successfully
-      expect(true).toBe(true);
     });
 
     it('should abort without --yes in non-TTY mode', () => {

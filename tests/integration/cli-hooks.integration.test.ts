@@ -155,7 +155,6 @@ describe('Git Hooks Service Integration', () => {
 
     it('should not throw error when uninstalling non-existent hook', () => {
       hooksService.uninstall('post-commit'); // Not installed
-      expect(true).toBe(true); // Test passes without error
     });
 
     it('should throw error when uninstalling non-DeepL hook', () => {

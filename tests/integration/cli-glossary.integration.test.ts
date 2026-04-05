@@ -42,9 +42,9 @@ describe('Glossary CLI Integration', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl glossary list', { stdio: 'pipe' });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         // Should indicate API key is required
@@ -113,7 +113,6 @@ describe('Glossary CLI Integration', () => {
         runCLI(`deepl glossary create "Test" en es "${csvFile}"`, {
           stdio: 'pipe',
         });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         // Should not fail on file format

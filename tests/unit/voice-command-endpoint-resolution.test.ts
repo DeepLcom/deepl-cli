@@ -1,8 +1,7 @@
 /**
- * Tests for voice endpoint resolution at the service-factory boundary.
- *
- * Endpoint policy should be centralized before VoiceClient construction,
- * not inferred inside the VoiceClient constructor itself.
+ * Verify that createVoiceCommand passes the resolved baseUrl through
+ * to VoiceClient unchanged. One test is sufficient — the resolver
+ * logic is tested in resolve-endpoint.test.ts; this pins the wiring.
  */
 
 jest.mock('ws', () => {
@@ -22,13 +21,8 @@ jest.mock('chalk', () => {
   return {
     __esModule: true,
     default: {
-      red: passthrough,
-      green: passthrough,
-      blue: passthrough,
-      yellow: passthrough,
-      gray: passthrough,
-      bold: passthrough,
-      level: 3,
+      red: passthrough, green: passthrough, blue: passthrough,
+      yellow: passthrough, gray: passthrough, bold: passthrough, level: 3,
     },
   };
 });
@@ -57,72 +51,18 @@ jest.mock('../../src/cli/commands/voice.js', () => ({
   })),
 }));
 
-describe('createVoiceCommand endpoint resolution', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+it('createVoiceCommand passes resolved baseUrl to VoiceClient', async () => {
+  const getApiKeyAndOptions = jest.fn().mockReturnValue({
+    apiKey: 'test-key:fx',
+    options: { baseUrl: 'https://api-free.deepl.com' },
   });
 
-  it('should pass api-free.deepl.com to VoiceClient for :fx key', async () => {
-    const getApiKeyAndOptions = jest.fn().mockReturnValue({
-      apiKey: 'test-key:fx',
-      options: { baseUrl: 'https://api-free.deepl.com' },
-    });
+  const { createVoiceCommand } =
+    await import('../../src/cli/commands/service-factory.js');
+  await createVoiceCommand(getApiKeyAndOptions);
 
-    const { createVoiceCommand } =
-      await import('../../src/cli/commands/service-factory.js');
-    await createVoiceCommand(getApiKeyAndOptions);
-
-    const { VoiceClient } = require('../../src/api/voice-client');
-    expect(VoiceClient).toHaveBeenCalledWith('test-key:fx', {
-      baseUrl: 'https://api-free.deepl.com',
-    });
-  });
-
-  it('should pass api.deepl.com to VoiceClient for non-:fx key', async () => {
-    const getApiKeyAndOptions = jest.fn().mockReturnValue({
-      apiKey: 'test-key-pro',
-      options: { baseUrl: 'https://api.deepl.com' },
-    });
-
-    const { createVoiceCommand } =
-      await import('../../src/cli/commands/service-factory.js');
-    await createVoiceCommand(getApiKeyAndOptions);
-
-    const { VoiceClient } = require('../../src/api/voice-client');
-    expect(VoiceClient).toHaveBeenCalledWith('test-key-pro', {
-      baseUrl: 'https://api.deepl.com',
-    });
-  });
-
-  it('should preserve custom regional URL for :fx key', async () => {
-    const getApiKeyAndOptions = jest.fn().mockReturnValue({
-      apiKey: 'test-key:fx',
-      options: { baseUrl: 'https://api-jp.deepl.com' },
-    });
-
-    const { createVoiceCommand } =
-      await import('../../src/cli/commands/service-factory.js');
-    await createVoiceCommand(getApiKeyAndOptions);
-
-    const { VoiceClient } = require('../../src/api/voice-client');
-    expect(VoiceClient).toHaveBeenCalledWith('test-key:fx', {
-      baseUrl: 'https://api-jp.deepl.com',
-    });
-  });
-
-  it('should preserve localhost URL for :fx key', async () => {
-    const getApiKeyAndOptions = jest.fn().mockReturnValue({
-      apiKey: 'test-key:fx',
-      options: { baseUrl: 'http://localhost:8080' },
-    });
-
-    const { createVoiceCommand } =
-      await import('../../src/cli/commands/service-factory.js');
-    await createVoiceCommand(getApiKeyAndOptions);
-
-    const { VoiceClient } = require('../../src/api/voice-client');
-    expect(VoiceClient).toHaveBeenCalledWith('test-key:fx', {
-      baseUrl: 'http://localhost:8080',
-    });
+  const { VoiceClient } = require('../../src/api/voice-client');
+  expect(VoiceClient).toHaveBeenCalledWith('test-key:fx', {
+    baseUrl: 'https://api-free.deepl.com',
   });
 });

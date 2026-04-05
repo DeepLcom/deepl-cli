@@ -174,7 +174,6 @@ describe('Translate CLI Integration', () => {
           `deepl translate "${testFile}" --to es --output "${outputFile}"`,
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/output.*required/i);
@@ -225,7 +224,6 @@ describe('Translate CLI Integration', () => {
       fs.mkdirSync(testSubDir2, { recursive: true });
       fs.writeFileSync(path.join(testSubDir2, 'file1.txt'), 'Content', 'utf-8');
 
-      expect.assertions(1);
       try {
         // This will fail without API key, but should recognize valid arguments
         runCLI(
@@ -233,7 +231,6 @@ describe('Translate CLI Integration', () => {
           { stdio: 'pipe' }
         );
         // CLI accepted the arguments without error
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         // Should fail on API key, not argument validation
@@ -366,7 +363,6 @@ describe('Translate CLI Integration', () => {
           `deepl translate "${txtFile}" --to es --output "${outputFile}"`,
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unsupported.*file/i);
@@ -383,7 +379,6 @@ describe('Translate CLI Integration', () => {
         runCLI(`deepl translate "${mdFile}" --to es --output "${outputFile}"`, {
           stdio: 'pipe',
         });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unsupported.*file/i);
@@ -415,7 +410,6 @@ describe('Translate CLI Integration', () => {
         runCLI('deepl translate "Hello" --to es --show-billed-characters', {
           stdio: 'pipe',
         });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*show-billed-characters/i);
@@ -442,7 +436,6 @@ describe('Translate CLI Integration', () => {
           `deepl translate "${pptxFile}" --to es --output "${outputFile}" --enable-minification`,
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*enable-minification/i);
@@ -525,7 +518,6 @@ describe('Translate CLI Integration', () => {
           `deepl translate "<p>Hello</p>" --to es --tag-handling xml ${args}`,
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(
@@ -540,7 +532,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "<p>Hello</p>" --to es --tag-handling xml --outline-detection false --splitting-tags "br,hr" --non-splitting-tags "code" --ignore-tags "script"',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -560,7 +551,6 @@ describe('Translate CLI Integration', () => {
         runCLI('deepl translate "Hello" --to es,fr,de --format table', {
           stdio: 'pipe',
         });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*format.*table/i);
@@ -573,7 +563,6 @@ describe('Translate CLI Integration', () => {
         runCLI('deepl translate "Test" --to es,fr --format table', {
           stdio: 'pipe',
         });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout ?? error.message;
         expect(output).not.toMatch(/invalid.*format/i);
@@ -587,7 +576,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "Hello world" --to es,fr,de,ja --format table',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/invalid.*format/i);
@@ -601,7 +589,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "Test" --to es,fr --format table --formality more --context "Business email"',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/invalid.*format/i);
@@ -614,7 +601,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "Test" --to es,fr,de --format table --show-billed-characters --no-cache',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/invalid.*format/i);
@@ -635,7 +621,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "Hello" --to es --custom-instruction "Use informal tone"',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -648,7 +633,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "Hello" --to es --custom-instruction "Use informal tone" --custom-instruction "Preserve brand names"',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -661,7 +645,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "Hello" --to es --formality more --custom-instruction "Keep it formal" --model-type quality_optimized',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -680,7 +663,6 @@ describe('Translate CLI Integration', () => {
         runCLI('deepl translate "Hello" --to es --style-id "abc-123-def"', {
           stdio: 'pipe',
         });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -693,7 +675,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "Hello" --to es --style-id "abc-123" --formality more',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -712,7 +693,6 @@ describe('Translate CLI Integration', () => {
         runCLI('deepl translate "Hello" --to es --enable-beta-languages', {
           stdio: 'pipe',
         });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -725,7 +705,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "Hello" --to es --enable-beta-languages --formality more',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -753,9 +732,9 @@ describe('Translate CLI Integration', () => {
     });
 
     it('should require API key for style-rules list', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl style-rules list', { stdio: 'pipe' });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -767,7 +746,6 @@ describe('Translate CLI Integration', () => {
     it('should accept extended language codes', () => {
       try {
         runCLI('deepl translate "Hello" --to sw', { stdio: 'pipe' });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Invalid target language/i);
@@ -777,7 +755,6 @@ describe('Translate CLI Integration', () => {
     it('should accept ES-419 target variant', () => {
       try {
         runCLI('deepl translate "Hello" --to es-419', { stdio: 'pipe' });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Invalid target language/i);
@@ -787,7 +764,6 @@ describe('Translate CLI Integration', () => {
     it('should accept zh-hans and zh-hant variants', () => {
       try {
         runCLI('deepl translate "Hello" --to zh-hans', { stdio: 'pipe' });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Invalid target language/i);
@@ -797,7 +773,6 @@ describe('Translate CLI Integration', () => {
     it('should accept newly added core languages (he, vi)', () => {
       try {
         runCLI('deepl translate "Hello" --to he', { stdio: 'pipe' });
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Invalid target language/i);
@@ -817,7 +792,6 @@ describe('Translate CLI Integration', () => {
           'deepl translate "<p>Hello</p>" --to es --tag-handling html --tag-handling-version v2',
           { stdio: 'pipe' }
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -856,7 +830,6 @@ describe('Translate CLI Integration', () => {
         runCLIWithKey(
           'deepl translate "Hello" --to es --api-url https://api-free.deepl.com/v2'
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Insecure HTTP URL rejected/i);
@@ -868,7 +841,6 @@ describe('Translate CLI Integration', () => {
         runCLIWithKey(
           'deepl translate "Hello" --to es --api-url http://localhost:3000/v2'
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Insecure HTTP URL rejected/i);
@@ -880,7 +852,6 @@ describe('Translate CLI Integration', () => {
         runCLIWithKey(
           'deepl translate "Hello" --to es --api-url http://127.0.0.1:5000/v2'
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Insecure HTTP URL rejected/i);
@@ -921,7 +892,6 @@ describe('Translate CLI Integration', () => {
           runCLI(`deepl translate "Hello" --to es --formality ${value}`, {
             stdio: 'pipe',
           });
-          expect(true).toBe(true);
         } catch (error: any) {
           const output = error.stderr ?? error.stdout ?? '';
           expect(output).not.toMatch(/invalid.*Allowed choices/i);
@@ -953,7 +923,6 @@ describe('Translate CLI Integration', () => {
             `deepl translate "<p>Hello</p>" --to es --tag-handling ${value}`,
             { stdio: 'pipe' }
           );
-          expect(true).toBe(true);
         } catch (error: any) {
           const output = error.stderr ?? error.stdout ?? '';
           expect(output).not.toMatch(/invalid.*Allowed choices/i);
@@ -989,7 +958,6 @@ describe('Translate CLI Integration', () => {
           runCLI(`deepl translate "Hello" --to es --model-type ${value}`, {
             stdio: 'pipe',
           });
-          expect(true).toBe(true);
         } catch (error: any) {
           const output = error.stderr ?? error.stdout ?? '';
           expect(output).not.toMatch(/invalid.*Allowed choices/i);
@@ -1021,7 +989,6 @@ describe('Translate CLI Integration', () => {
           runCLI(`deepl translate "Hello" --to es --split-sentences ${value}`, {
             stdio: 'pipe',
           });
-          expect(true).toBe(true);
         } catch (error: any) {
           const output = error.stderr ?? error.stdout ?? '';
           expect(output).not.toMatch(/invalid.*Allowed choices/i);

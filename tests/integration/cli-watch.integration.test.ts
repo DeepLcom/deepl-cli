@@ -159,7 +159,6 @@ describe('Watch Service Integration', () => {
 
       watchService.handleFileChange(textFile);
       // File change registered (debounce timer set)
-      expect(true).toBe(true); // Test passes without error
     });
 
     it('should handle markdown files', () => {
@@ -167,7 +166,6 @@ describe('Watch Service Integration', () => {
       fs.writeFileSync(mdFile, '# Hello\n\nWorld');
 
       watchService.handleFileChange(mdFile);
-      expect(true).toBe(true);
     });
 
     it('should handle HTML files', () => {
@@ -175,7 +173,6 @@ describe('Watch Service Integration', () => {
       fs.writeFileSync(htmlFile, '<html><body>Hello</body></html>');
 
       watchService.handleFileChange(htmlFile);
-      expect(true).toBe(true);
     });
   });
 

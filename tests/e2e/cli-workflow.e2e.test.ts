@@ -350,9 +350,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl glossary languages');
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout ?? error.message;
         expect(output).toMatch(/API key|auth/i);
@@ -360,6 +360,7 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should not require any arguments', () => {
+      expect.assertions(2);
       try {
         // Will fail without API key but should not require arguments
         runCLI('deepl glossary languages');
@@ -379,9 +380,9 @@ describe('CLI Workflow E2E', () => {
         // Ignore if already cleared
       }
 
+      expect.assertions(1);
       try {
         runCLI('deepl glossary languages');
-        expect(true).toBe(true);
       } catch (error: any) {
         // Non-zero exit code
         expect(error.status).toBeGreaterThan(0);
@@ -760,9 +761,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should require API key for style-rules list', () => {
+      expect.assertions(1);
       try {
         runCLI('deepl style-rules list');
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -772,7 +773,6 @@ describe('CLI Workflow E2E', () => {
     it('should accept --detailed and pagination flags', () => {
       try {
         runCLI('deepl style-rules list --detailed --page 1 --page-size 10');
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -784,7 +784,6 @@ describe('CLI Workflow E2E', () => {
     it('should accept extended language codes like Swahili', () => {
       try {
         runCLI('deepl translate "Hello" --to sw');
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Invalid target language/i);
@@ -794,7 +793,6 @@ describe('CLI Workflow E2E', () => {
     it('should accept ES-419 Latin American Spanish', () => {
       try {
         runCLI('deepl translate "Hello" --to es-419');
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Invalid target language/i);
@@ -804,7 +802,6 @@ describe('CLI Workflow E2E', () => {
     it('should accept Chinese simplified/traditional variants', () => {
       try {
         runCLI('deepl translate "Hello" --to zh-hant');
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/Invalid target language/i);
@@ -818,7 +815,6 @@ describe('CLI Workflow E2E', () => {
         runCLI(
           'deepl translate "<p>Hello</p>" --to es --tag-handling html --tag-handling-version v2'
         );
-        expect(true).toBe(true);
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);

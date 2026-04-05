@@ -125,7 +125,6 @@ describe('CLI Stdin/Stdout E2E', () => {
         expect(content).toMatch(/\d+\.\d+\.\d+/);
       } catch (error) {
         // File may not exist if command failed, but shouldn't crash
-        expect(true).toBe(true);
       }
     });
 
@@ -144,7 +143,6 @@ describe('CLI Stdin/Stdout E2E', () => {
         expect(result).toContain('Usage:');
       } catch (error) {
         // May fail if grep doesn't find pattern, but shouldn't crash
-        expect(true).toBe(true);
       }
     });
 
