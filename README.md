@@ -73,6 +73,7 @@ deepl --version
 ```
 
 > **Note:** This project uses [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3) for local caching, which requires native compilation. If `npm install` fails with build errors, ensure you have:
+>
 > - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
 > - **Linux**: `python3`, `make`, and `gcc` (`apt install python3 make gcc g++`)
 > - **Windows**: Visual Studio Build Tools or `windows-build-tools` (`npm install -g windows-build-tools`)
@@ -119,13 +120,13 @@ deepl translate "Hello, world!" --to es
 
 DeepL CLI supports global flags that work with all commands:
 
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--version` | `-V` | Show version number |
-| `--quiet` | `-q` | Suppress non-essential output |
-| `--verbose` | `-v` | Show extra information |
-| `--config FILE` | `-c` | Use alternate configuration file |
-| `--no-input` | | Disable all interactive prompts (abort instead of prompting) |
+| Flag            | Short | Description                                                  |
+| --------------- | ----- | ------------------------------------------------------------ |
+| `--version`     | `-V`  | Show version number                                          |
+| `--quiet`       | `-q`  | Suppress non-essential output                                |
+| `--verbose`     | `-v`  | Show extra information                                       |
+| `--config FILE` | `-c`  | Use alternate configuration file                             |
+| `--no-input`    |       | Disable all interactive prompts (abort instead of prompting) |
 
 ### Verbose Mode
 
@@ -222,12 +223,12 @@ $ deepl -c /path/to/test-config.json usage
 
 The CLI follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/):
 
-| Priority | Condition | Config path | Cache path |
-|----------|-----------|-------------|------------|
-| 1 | `DEEPL_CONFIG_DIR` set | `$DEEPL_CONFIG_DIR/config.json` | `$DEEPL_CONFIG_DIR/cache.db` |
-| 2 | `~/.deepl-cli/` exists | `~/.deepl-cli/config.json` | `~/.deepl-cli/cache.db` |
-| 3 | XDG env vars set | `$XDG_CONFIG_HOME/deepl-cli/config.json` | `$XDG_CACHE_HOME/deepl-cli/cache.db` |
-| 4 | Default | `~/.config/deepl-cli/config.json` | `~/.cache/deepl-cli/cache.db` |
+| Priority | Condition              | Config path                              | Cache path                           |
+| -------- | ---------------------- | ---------------------------------------- | ------------------------------------ |
+| 1        | `DEEPL_CONFIG_DIR` set | `$DEEPL_CONFIG_DIR/config.json`          | `$DEEPL_CONFIG_DIR/cache.db`         |
+| 2        | `~/.deepl-cli/` exists | `~/.deepl-cli/config.json`               | `~/.deepl-cli/cache.db`              |
+| 3        | XDG env vars set       | `$XDG_CONFIG_HOME/deepl-cli/config.json` | `$XDG_CACHE_HOME/deepl-cli/cache.db` |
+| 4        | Default                | `~/.config/deepl-cli/config.json`        | `~/.cache/deepl-cli/cache.db`        |
 
 Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 
@@ -942,6 +943,7 @@ deepl languages
 ```
 
 **Note:** Languages are grouped into three categories:
+
 - **Core** (32) — Full feature support including formality and glossaries
 - **Regional** (7) — Target-only variants: `en-gb`, `en-us`, `es-419`, `pt-br`, `pt-pt`, `zh-hans`, `zh-hant`
 - **Extended** (82) — Only support `quality_optimized` model, no formality or glossary
@@ -957,7 +959,7 @@ Configuration is stored in `~/.config/deepl-cli/config.json` (or `~/.deepl-cli/c
 deepl config list
 # {
 #   "auth": { "apiKey": "..." },
-#   "api": { "baseUrl": "https://api-free.deepl.com/v2", ... },
+#   "api": { "baseUrl": "https://api.deepl.com", "usePro": true, ... },
 #   "cache": { "enabled": true, "maxSize": 1073741824, "ttl": 2592000 },
 #   ...
 # }
@@ -1444,15 +1446,15 @@ npm run examples:fast
 
 ## 🌐 Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DEEPL_API_KEY` | API authentication key |
-| `DEEPL_CONFIG_DIR` | Override config and cache directory |
-| `XDG_CONFIG_HOME` | Override XDG config base (default: `~/.config`) |
-| `XDG_CACHE_HOME` | Override XDG cache base (default: `~/.cache`) |
-| `NO_COLOR` | Disable colored output |
-| `FORCE_COLOR` | Force colored output even when terminal doesn't support it. Useful in CI. `NO_COLOR` takes priority if both are set. |
-| `TERM=dumb` | Disables colored output and progress spinners. Automatically set by some CI environments and editors. |
+| Variable           | Description                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `DEEPL_API_KEY`    | API authentication key                                                                                               |
+| `DEEPL_CONFIG_DIR` | Override config and cache directory                                                                                  |
+| `XDG_CONFIG_HOME`  | Override XDG config base (default: `~/.config`)                                                                      |
+| `XDG_CACHE_HOME`   | Override XDG cache base (default: `~/.cache`)                                                                        |
+| `NO_COLOR`         | Disable colored output                                                                                               |
+| `FORCE_COLOR`      | Force colored output even when terminal doesn't support it. Useful in CI. `NO_COLOR` takes priority if both are set. |
+| `TERM=dumb`        | Disables colored output and progress spinners. Automatically set by some CI environments and editors.                |
 
 See [docs/API.md#environment-variables](./docs/API.md#environment-variables) for full details.
 

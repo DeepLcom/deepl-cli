@@ -11,18 +11,22 @@ Common issues and solutions when using the DeepL CLI.
 **Solutions:**
 
 1. Verify your key is set:
+
    ```bash
    deepl auth show
    ```
+
    - With a key configured: `API Key: XXXX...XXXX` (shows first 4 and last 4 characters)
    - Without a key: `No API key set`
 
 2. Set or update your key:
+
    ```bash
    deepl auth set-key YOUR_API_KEY
    ```
 
 3. Alternatively, use the environment variable:
+
    ```bash
    export DEEPL_API_KEY="your-key-here"
    ```
@@ -33,8 +37,9 @@ Common issues and solutions when using the DeepL CLI.
    ```
 
 **Notes:**
+
 - Free API keys end with `:fx`. Pro keys do not.
-- The CLI auto-detects the API tier (Free vs Pro) from the key suffix.
+- The CLI auto-detects the API endpoint from the key suffix: `:fx` keys use `api-free.deepl.com`, others use `api.deepl.com`. Custom regional endpoints (e.g. `api-jp.deepl.com`) always take priority.
 - The stored config key takes precedence over the `DEEPL_API_KEY` environment variable.
 
 ---
@@ -48,6 +53,7 @@ Common issues and solutions when using the DeepL CLI.
 **Solutions:**
 
 1. Check your internet connection and try again:
+
    ```bash
    deepl init
    ```
@@ -84,11 +90,13 @@ Common issues and solutions when using the DeepL CLI.
 **Solutions:**
 
 1. Check your current usage:
+
    ```bash
    deepl usage
    ```
 
 2. For detailed breakdown:
+
    ```bash
    deepl usage --format json
    ```
@@ -124,11 +132,13 @@ Common issues and solutions when using the DeepL CLI.
 1. Check your internet connection.
 
 2. Verify DeepL API is reachable:
+
    ```bash
    curl -s https://api-free.deepl.com/v2/languages -H "Authorization: DeepL-Auth-Key YOUR_KEY"
    ```
 
 3. If behind a corporate proxy, configure it via environment variables:
+
    ```bash
    export HTTPS_PROXY=https://proxy.example.com:8443
    # or
@@ -146,6 +156,7 @@ Common issues and solutions when using the DeepL CLI.
 1. Wait a few minutes and retry your request.
 
 2. Use `--no-cache` to bypass any stale cached error responses:
+
    ```bash
    deepl translate "Hello" --to es --no-cache
    ```
@@ -185,7 +196,7 @@ fi
 **Solutions:**
 
 1. Verify your account has Voice API access on the DeepL website.
-2. Voice API always uses the Pro endpoint (`api.deepl.com`), even with free keys.
+2. Voice API uses the same endpoint resolution as other commands (`:fx` keys use `api-free.deepl.com`).
 3. Check that your audio file format is supported (OGG, Opus, WebM, MKA, FLAC, MP3, PCM).
 
 ### "Invalid streaming URL"
@@ -193,6 +204,7 @@ fi
 **Cause:** The WebSocket URL returned by the API failed validation.
 
 **Notes:**
+
 - The CLI validates that streaming URLs use `wss://` scheme and `*.deepl.com` hostnames.
 - This is a security check to prevent connection to unauthorized servers.
 - If you see this error, it may indicate an API issue. Try again later.
@@ -218,11 +230,13 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 **Solutions:**
 
 1. Check which languages Write API supports:
+
    ```bash
    deepl write --help
    ```
 
 2. Use `--verbose` to see the API request and response details:
+
    ```bash
    deepl write "Your text" --lang en-US --verbose
    ```
@@ -238,6 +252,7 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 1. Not all languages support formality settings. Check the DeepL API documentation for supported languages.
 
 2. Verify you are using valid formality values:
+
    ```bash
    deepl write --help
    ```
@@ -253,6 +268,7 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 1. Try a different style or formality level to see if changes are applied.
 
 2. Use `--check` mode to compare the original with the improved version:
+
    ```bash
    deepl write "Your text" --lang en-US --check
    ```
@@ -286,22 +302,26 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 **Cause:** The config file is corrupted or has invalid JSON.
 
 The config file location depends on your setup (see [Configuration Paths](../README.md#configuration-paths)):
+
 - XDG default: `~/.config/deepl-cli/config.json`
 - Legacy: `~/.deepl-cli/config.json`
 
 **Solutions:**
 
 1. View current config:
+
    ```bash
    deepl config list
    ```
 
 2. Reset a specific setting:
+
    ```bash
    deepl config set <key> <value>
    ```
 
 3. If the config file is corrupted, remove it and reconfigure:
+
    ```bash
    rm ~/.config/deepl-cli/config.json   # or ~/.deepl-cli/config.json
    deepl auth set-key YOUR_API_KEY
@@ -321,11 +341,13 @@ The config file location depends on your setup (see [Configuration Paths](../REA
 Common causes and fixes:
 
 - **translate**: Requires text or file path and `--to` language:
+
   ```bash
   deepl translate "Hello" --to es
   ```
 
 - **watch**: Requires a path and `--to`:
+
   ```bash
   deepl watch ./docs --to es,fr
   ```
@@ -338,6 +360,7 @@ Common causes and fixes:
 ### "Unsupported language"
 
 Use `deepl languages` to see all supported languages:
+
 ```bash
 deepl languages --source
 deepl languages --target
@@ -409,6 +432,7 @@ deepl translate document.docx --to fr --output translated.docx
 ### "Glossary not found"
 
 1. List available glossaries:
+
    ```bash
    deepl glossary list
    ```
@@ -421,18 +445,18 @@ deepl translate document.docx --to fr --output translated.docx
 
 ## Exit Codes Reference
 
-| Code | Meaning | Retryable? |
-|------|---------|------------|
-| 0 | Success | N/A |
-| 1 | General error | No |
-| 2 | Authentication error | No |
-| 3 | Rate limit exceeded | Yes |
-| 4 | Quota exceeded | No |
-| 5 | Network error | Yes |
-| 6 | Invalid input | No |
-| 7 | Configuration error | No |
-| 8 | Check found issues (write --check) | No |
-| 9 | Voice API error | No |
+| Code | Meaning                            | Retryable? |
+| ---- | ---------------------------------- | ---------- |
+| 0    | Success                            | N/A        |
+| 1    | General error                      | No         |
+| 2    | Authentication error               | No         |
+| 3    | Rate limit exceeded                | Yes        |
+| 4    | Quota exceeded                     | No         |
+| 5    | Network error                      | Yes        |
+| 6    | Invalid input                      | No         |
+| 7    | Configuration error                | No         |
+| 8    | Check found issues (write --check) | No         |
+| 9    | Voice API error                    | No         |
 
 Use exit codes in scripts for retry logic:
 
@@ -451,15 +475,15 @@ esac
 
 ## Environment Variables
 
-| Variable | Purpose |
-|----------|---------|
-| `DEEPL_API_KEY` | API key (fallback when no stored config key) |
-| `DEEPL_CONFIG_DIR` | Override config and cache directory |
-| `XDG_CONFIG_HOME` | Override XDG config base (default: `~/.config`) |
-| `XDG_CACHE_HOME` | Override XDG cache base (default: `~/.cache`) |
-| `HTTP_PROXY` | HTTP proxy URL |
-| `HTTPS_PROXY` | HTTPS proxy URL (takes precedence over `HTTP_PROXY`) |
-| `NO_COLOR` | Disable colored output when set to any value |
+| Variable           | Purpose                                              |
+| ------------------ | ---------------------------------------------------- |
+| `DEEPL_API_KEY`    | API key (fallback when no stored config key)         |
+| `DEEPL_CONFIG_DIR` | Override config and cache directory                  |
+| `XDG_CONFIG_HOME`  | Override XDG config base (default: `~/.config`)      |
+| `XDG_CACHE_HOME`   | Override XDG cache base (default: `~/.cache`)        |
+| `HTTP_PROXY`       | HTTP proxy URL                                       |
+| `HTTPS_PROXY`      | HTTPS proxy URL (takes precedence over `HTTP_PROXY`) |
+| `NO_COLOR`         | Disable colored output when set to any value         |
 
 ---
 

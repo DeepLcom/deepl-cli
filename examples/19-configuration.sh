@@ -80,18 +80,14 @@ echo
 
 # Example 6: Configure API endpoint (demonstration only)
 echo "6. Configure API endpoint"
-echo "   Current API endpoint:"
-ORIGINAL_BASE_URL=$(deepl config get api.baseUrl 2>/dev/null || echo "https://api-free.deepl.com/v2")
-echo "   $ORIGINAL_BASE_URL"
+echo "   The CLI auto-detects the correct endpoint from your API key:"
+echo "   - Keys ending with :fx → api-free.deepl.com"
+echo "   - All other keys      → api.deepl.com"
 echo
-
-echo "   ℹ️  You can change the API endpoint for Pro accounts:"
-echo "   $ deepl config set api.baseUrl https://api.deepl.com/v2"
+echo "   For regional endpoints, set a custom base URL:"
+echo "   $ deepl config set api.baseUrl https://api-jp.deepl.com"
 echo
-echo "   Or set it back to Free:"
-echo "   $ deepl config set api.baseUrl https://api-free.deepl.com/v2"
-echo
-echo "   (Not changing it in this example to avoid breaking API key compatibility)"
+echo "   Custom/regional URLs always take priority over auto-detection."
 echo
 
 # Example 7: Reset configuration (demonstration only - not actually run)
@@ -132,4 +128,4 @@ echo "💡 Configuration tips:"
 echo "   - Config file location: ~/.config/deepl-cli/config.json"
 echo "   - Use defaults.targetLangs to avoid --to flag every time"
 echo "   - Disable cache if disk space is limited"
-echo "   - Use api.baseUrl to switch between Free and Pro APIs"
+echo "   - Endpoint is auto-detected from your API key; use api.baseUrl for regional endpoints"
