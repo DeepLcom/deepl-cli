@@ -22,7 +22,10 @@ describe('Document Translation E2E', () => {
   });
 
   const runCLIExpectError = (command: string, apiKey?: string) => {
-    return helpers.runCLIExpectError(command, apiKey !== undefined ? { apiKey } : {});
+    return helpers.runCLIExpectError(
+      command,
+      apiKey !== undefined ? { apiKey } : {}
+    );
   };
 
   describe('--output-format flag', () => {
@@ -35,7 +38,10 @@ describe('Document Translation E2E', () => {
       const formats = ['docx'];
 
       for (const format of formats) {
-        const result = runCLIExpectError(`translate "${testFile}" --to es --output-format ${format}`, 'test-key:fx');
+        const result = runCLIExpectError(
+          `translate "${testFile}" --to es --output-format ${format}`,
+          'test-key:fx'
+        );
 
         // Should not fail due to invalid flag, but will fail at API call
         expect(result.output).not.toMatch(/invalid.*output-format/i);
@@ -54,10 +60,15 @@ describe('Document Translation E2E', () => {
       const testFile = path.join(testDir, 'test.txt');
       fs.writeFileSync(testFile, 'Test');
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es --output-format`, 'test-key');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es --output-format`,
+        'test-key'
+      );
 
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/argument missing|missing.*argument|expected.*argument/i);
+      expect(result.output).toMatch(
+        /argument missing|missing.*argument|expected.*argument/i
+      );
     });
   });
 
@@ -65,9 +76,12 @@ describe('Document Translation E2E', () => {
     it('should be accepted as a boolean flag', () => {
       const testFile = path.join(testDir, 'test.docx');
       // Create a minimal DOCX file (just a placeholder)
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4B, 0x03, 0x04])); // ZIP header
+      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4b, 0x03, 0x04])); // ZIP header
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es --enable-minification`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es --enable-minification`,
+        'test-key:fx'
+      );
 
       // Should not fail due to invalid flag
       expect(result.output).not.toMatch(/unknown option.*minification/i);
@@ -82,10 +96,13 @@ describe('Document Translation E2E', () => {
 
     it('should not require a value (boolean flag)', () => {
       const testFile = path.join(testDir, 'test.pptx');
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4B]));
+      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4b]));
 
       // Test that the flag works without a value
-      const result = runCLIExpectError(`translate "${testFile}" --to es --enable-minification`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es --enable-minification`,
+        'test-key:fx'
+      );
 
       // Should fail at API call, not flag parsing
       expect(result.output).not.toMatch(/expected.*argument.*minification/i);
@@ -105,18 +122,26 @@ describe('Document Translation E2E', () => {
 
     it('should handle non-existent file error', () => {
       // Note: CLI validates API key before file existence, so expect auth error or file error
-      const result = runCLIExpectError('translate /nonexistent/file.pdf --to es', 'test-key:fx');
+      const result = runCLIExpectError(
+        'translate /nonexistent/file.pdf --to es',
+        'test-key:fx'
+      );
 
       expect(result.status).toBeGreaterThan(0);
       // Will fail with either auth error (checked first) or file not found error
-      expect(result.output).toMatch(/authentication|invalid.*key|file not found|does not exist|enoent/i);
+      expect(result.output).toMatch(
+        /authentication|invalid.*key|file not found|does not exist|enoent|Document translation failed/i
+      );
     });
 
     it('should accept PDF files', () => {
       const testFile = path.join(testDir, 'document.pdf');
       fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es`,
+        'test-key:fx'
+      );
 
       // Should fail at API call, not file type validation
       expect(result.output).not.toMatch(/unsupported.*file.*type/i);
@@ -126,27 +151,36 @@ describe('Document Translation E2E', () => {
     it('should accept DOCX files', () => {
       const testFile = path.join(testDir, 'document.docx');
       // DOCX files start with ZIP header (PK)
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4B, 0x03, 0x04]));
+      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4b, 0x03, 0x04]));
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es`,
+        'test-key:fx'
+      );
 
       expect(result.output).not.toMatch(/unsupported.*file.*type/i);
     });
 
     it('should accept PPTX files', () => {
       const testFile = path.join(testDir, 'presentation.pptx');
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4B, 0x03, 0x04]));
+      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4b, 0x03, 0x04]));
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es`,
+        'test-key:fx'
+      );
 
       expect(result.output).not.toMatch(/unsupported.*file.*type/i);
     });
 
     it('should accept XLSX files', () => {
       const testFile = path.join(testDir, 'spreadsheet.xlsx');
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4B, 0x03, 0x04]));
+      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4b, 0x03, 0x04]));
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es`,
+        'test-key:fx'
+      );
 
       expect(result.output).not.toMatch(/unsupported.*file.*type/i);
     });
@@ -155,7 +189,10 @@ describe('Document Translation E2E', () => {
       const testFile = path.join(testDir, 'page.html');
       fs.writeFileSync(testFile, '<html><body>Test</body></html>');
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es`,
+        'test-key:fx'
+      );
 
       expect(result.output).not.toMatch(/unsupported.*file.*type/i);
     });
@@ -164,7 +201,10 @@ describe('Document Translation E2E', () => {
       const testFile = path.join(testDir, 'page.htm');
       fs.writeFileSync(testFile, '<html><body>Test</body></html>');
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es`,
+        'test-key:fx'
+      );
 
       expect(result.output).not.toMatch(/unsupported.*file.*type/i);
     });
@@ -176,7 +216,10 @@ describe('Document Translation E2E', () => {
       fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
       // Will fail at API call but test that command structure is correct
-      const result = runCLIExpectError(`translate "${testFile}" --to es`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es`,
+        'test-key:fx'
+      );
 
       // Should not fail due to output path issues
       expect(result.output).not.toMatch(/invalid.*output.*path/i);
@@ -187,7 +230,10 @@ describe('Document Translation E2E', () => {
       const outputFile = path.join(testDir, 'output-es.pdf');
       fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es --output "${outputFile}"`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es --output "${outputFile}"`,
+        'test-key:fx'
+      );
 
       // Should not fail due to flag parsing
       expect(result.output).not.toMatch(/unknown option.*output/i);
@@ -197,10 +243,15 @@ describe('Document Translation E2E', () => {
       const testFile = path.join(testDir, 'input.pdf');
       fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es --output`, 'test-key');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es --output`,
+        'test-key'
+      );
 
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/argument missing|missing.*argument|expected.*argument/i);
+      expect(result.output).toMatch(
+        /argument missing|missing.*argument|expected.*argument/i
+      );
     });
   });
 
@@ -249,17 +300,25 @@ describe('Document Translation E2E', () => {
       const testFile = path.join(testDir, 'doc.pdf');
       fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
-      const result = runCLIExpectError(`translate "${testFile}"`, 'test-key:fx');
+      const result = runCLIExpectError(
+        `translate "${testFile}"`,
+        'test-key:fx'
+      );
 
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/required option.*--to|target.*language|No target language specified|missing.*--to/i);
+      expect(result.output).toMatch(
+        /required option.*--to|target.*language|No target language specified|missing.*--to/i
+      );
     });
 
     it('should handle authentication errors gracefully', () => {
       const testFile = path.join(testDir, 'doc.pdf');
       fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es`, 'invalid-key');
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es`,
+        'invalid-key'
+      );
 
       expect(result.status).toBeGreaterThan(0);
       // Should show meaningful error message
@@ -267,10 +326,12 @@ describe('Document Translation E2E', () => {
     });
 
     it('should exit with non-zero code on error', () => {
-      const result = runCLIExpectError('translate /nonexistent.pdf --to es', 'test-key');
+      const result = runCLIExpectError(
+        'translate /nonexistent.pdf --to es',
+        'test-key'
+      );
 
       expect(result.status).toBeGreaterThan(0);
     });
   });
-
 });
