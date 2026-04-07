@@ -6,15 +6,15 @@
 
 import nock from 'nock';
 import { VoiceClient } from '../../src/api/voice-client.js';
-import { DEEPL_PRO_API_URL } from '../helpers';
+import { DEEPL_FREE_API_URL } from '../helpers';
 
 describe('VoiceClient Integration', () => {
   const API_KEY = 'test-voice-key:fx';
-  const PRO_URL = DEEPL_PRO_API_URL;
+  const FREE_URL = DEEPL_FREE_API_URL;
   const clients: VoiceClient[] = [];
 
   afterEach(() => {
-    clients.forEach(c => c.destroy());
+    clients.forEach((c) => c.destroy());
     clients.length = 0;
     nock.cleanAll();
   });
@@ -24,7 +24,7 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      const scope = nock(PRO_URL)
+      const scope = nock(FREE_URL)
         .post('/v3/voice/realtime', (body) => {
           expect(body.target_languages).toEqual(['de', 'fr']);
           expect(body.source_media_content_type).toBe('audio/ogg');
@@ -52,7 +52,7 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      const scope = nock(PRO_URL)
+      const scope = nock(FREE_URL)
         .post('/v3/voice/realtime', (body) => {
           expect(body.source_language).toBe('en');
           return true;
@@ -77,7 +77,7 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      const scope = nock(PRO_URL)
+      const scope = nock(FREE_URL)
         .post('/v3/voice/realtime', (body) => {
           expect(body.formality).toBe('more');
           return true;
@@ -102,7 +102,7 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      const scope = nock(PRO_URL)
+      const scope = nock(FREE_URL)
         .post('/v3/voice/realtime', (body) => {
           expect(body.glossary_id).toBe('gloss-123');
           return true;
@@ -127,7 +127,7 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      nock(PRO_URL)
+      nock(FREE_URL)
         .post('/v3/voice/realtime')
         .reply(403, { message: 'Voice API not available' });
 
@@ -143,7 +143,7 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      nock(PRO_URL)
+      nock(FREE_URL)
         .post('/v3/voice/realtime')
         .reply(400, { message: 'Invalid content type' });
 
@@ -155,18 +155,16 @@ describe('VoiceClient Integration', () => {
       ).rejects.toThrow();
     });
 
-    it('should use Pro API URL by default', async () => {
+    it('should use Free API URL for :fx key by default', async () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      const scope = nock(PRO_URL)
-        .post('/v3/voice/realtime')
-        .reply(200, {
-          session_id: 'sess-pro',
-          streaming_url: 'wss://stream.deepl.com/v3/voice/realtime/sess-pro',
-          token: 'token-pro',
-          expires_at: '2024-07-01T10:00:00Z',
-        });
+      const scope = nock(FREE_URL).post('/v3/voice/realtime').reply(200, {
+        session_id: 'sess-pro',
+        streaming_url: 'wss://stream.deepl.com/v3/voice/realtime/sess-pro',
+        token: 'token-pro',
+        expires_at: '2024-07-01T10:00:00Z',
+      });
 
       await client.createSession({
         target_languages: ['de'],
@@ -180,9 +178,9 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      const scope = nock(PRO_URL, {
+      const scope = nock(FREE_URL, {
         reqheaders: {
-          'authorization': `DeepL-Auth-Key ${API_KEY}`,
+          authorization: `DeepL-Auth-Key ${API_KEY}`,
         },
       })
         .post('/v3/voice/realtime')
@@ -207,11 +205,12 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      const scope = nock(PRO_URL)
+      const scope = nock(FREE_URL)
         .get('/v3/voice/realtime')
         .query({ token: 'reconnect-token' })
         .reply(200, {
-          streaming_url: 'wss://stream.deepl.com/v3/voice/realtime/sess-reconnect',
+          streaming_url:
+            'wss://stream.deepl.com/v3/voice/realtime/sess-reconnect',
           token: 'new-token',
         });
 
@@ -226,14 +225,14 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      nock(PRO_URL)
+      nock(FREE_URL)
         .get('/v3/voice/realtime')
         .query({ token: 'expired-token' })
         .reply(403, { message: 'Session expired' });
 
-      await expect(
-        client.reconnectSession('expired-token')
-      ).rejects.toThrow(/Voice API access denied|Authentication failed/);
+      await expect(client.reconnectSession('expired-token')).rejects.toThrow(
+        /Voice API access denied|Authentication failed/
+      );
     });
   });
 
@@ -260,9 +259,9 @@ describe('VoiceClient Integration', () => {
       const client = new VoiceClient(API_KEY);
       clients.push(client);
 
-      expect(() =>
-        client.createWebSocket('not-a-url', 'token', {})
-      ).toThrow('Invalid streaming URL');
+      expect(() => client.createWebSocket('not-a-url', 'token', {})).toThrow(
+        'Invalid streaming URL'
+      );
     });
   });
 });

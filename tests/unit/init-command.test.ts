@@ -109,4 +109,20 @@ describe('InitCommand', () => {
 
     expect(configService.getValue('auth.apiKey')).toBe('test-api-key-123');
   });
+
+  it('should validate :fx key against api-free.deepl.com', async () => {
+    mockInput.mockResolvedValueOnce('test-init-key:fx');
+    mockSelect.mockResolvedValueOnce('');
+
+    const scope = nock('https://api-free.deepl.com')
+      .get('/v2/usage')
+      .reply(200, { character_count: 0, character_limit: 500000 });
+
+    const { InitCommand } = await import('../../src/cli/commands/init');
+    const cmd = new InitCommand(configService);
+    await cmd.run();
+
+    expect(scope.isDone()).toBe(true);
+    expect(configService.getValue('auth.apiKey')).toBe('test-init-key:fx');
+  });
 });

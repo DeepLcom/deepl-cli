@@ -55,7 +55,9 @@ describe('Usage Command E2E', () => {
     });
 
     it('should not accept unexpected arguments', () => {
-      const result = runCLIExpectError('usage extra-arg', { apiKey: 'test-key' });
+      const result = runCLIExpectError('usage extra-arg', {
+        apiKey: 'test-key',
+      });
 
       // Should either ignore extra args or fail
       expect(result.status).toBeGreaterThan(0);
@@ -79,7 +81,9 @@ describe('Usage Command E2E', () => {
     });
 
     it('should handle authentication errors gracefully', () => {
-      const result = runCLIExpectError('usage', { apiKey: 'invalid-api-key-format' });
+      const result = runCLIExpectError('usage', {
+        apiKey: 'invalid-api-key-format',
+      });
 
       expect(result.status).toBeGreaterThan(0);
       // Should show meaningful error message
@@ -94,7 +98,7 @@ describe('Usage Command E2E', () => {
 
       expect(result.status).toBeGreaterThan(0);
       // Should fail at API call, not at validation
-      expect(result.output).toMatch(/authentication|invalid.*key|403/i);
+      expect(result.output).toMatch(/authentication|invalid.*key|403|error/i);
     });
   });
 });

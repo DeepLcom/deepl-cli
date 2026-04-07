@@ -7,12 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Free API key (`:fx` suffix) support with automatic endpoint resolution to `api-free.deepl.com`
+- Shared endpoint resolver used by all commands including voice, auth, and init
+- Custom/regional endpoint support (e.g. `api-jp.deepl.com`) that takes priority over auto-detection
+
+### Changed
+
+- Voice API no longer hardcodes the Pro endpoint; it follows the same endpoint resolution as all other commands
+- `auth set-key` and `init` now validate entered keys against the correct endpoint based on key suffix
+- Standard DeepL URLs (`api.deepl.com`, `api-free.deepl.com`) in saved config no longer override key-based auto-detection
+
 ### Security
+
 - Updated `minimatch` from `^9.0.5` to `^10.2.1` to fix ReDoS vulnerability (GHSA-3ppc-4f35-3m26)
 
 ## [1.0.0] - 2026-02-17
 
 ### Added
+
 - Text translation via DeepL's next-generation LLM (`deepl translate`)
 - Document translation for PDF, DOCX, PPTX, XLSX, HTML, SRT, XLIFF, and images with formatting preservation
 - Structured file translation for JSON and YAML i18n locale files (keys, nesting, comments preserved)
@@ -42,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Advanced XML/HTML tag handling with splitting, non-splitting, and ignore tags
 
 ### Security
+
 - HTTPS enforcement for all API communication (localhost exempted for testing)
 - Symlink rejection on all file-reading paths to prevent directory traversal
 - API key masking in logs, config output, and error messages
@@ -50,4 +65,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Atomic writes for translated output and config files to prevent corruption
 
 ### Changed
+
 - Requires Node.js >= 20

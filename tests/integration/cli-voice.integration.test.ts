@@ -66,7 +66,6 @@ describe('Voice CLI Integration', () => {
       expect(output).toContain('informal');
       expect(output).toContain('less');
     });
-
   });
 
   describe('argument validation', () => {
@@ -116,21 +115,32 @@ describe('Voice CLI Integration', () => {
   });
 
   describe('URL validation in getApiKeyAndOptions', () => {
-    it('should reject insecure HTTP base URL', () => {
+    it('should warn about insecure HTTP base URL', () => {
       const testFile = path.join(testDir, 'test-url.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
       const configPath = path.join(testConfig.path, 'config.json');
-      fs.writeFileSync(configPath, JSON.stringify({
-        auth: { apiKey: 'test-key-for-url-validation' },
-        api: { baseUrl: 'http://evil-server.example.com/v2', usePro: false },
-      }));
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify({
+          auth: { apiKey: 'test-key-for-url-validation' },
+          api: { baseUrl: 'http://evil-server.example.com/v2', usePro: false },
+        })
+      );
 
-      expect.assertions(1);
+      // CLI falls back to defaults when config contains an insecure URL
       try {
-        runCLI(`deepl voice ${testFile} --to de`);
+        const output = runCLI(`deepl voice ${testFile} --to de`, {
+          stdio: 'pipe',
+        });
+        // Should show the rejection warning but continue with defaults
+        expect(output).toMatch(/Insecure HTTP URL rejected/i);
       } catch (error: any) {
-        const output = error.stderr?.toString() ?? error.stdout?.toString() ?? '';
+        const output =
+          error.stderr?.toString() ??
+          error.stdout?.toString() ??
+          error.message ??
+          '';
         expect(output).toMatch(/Insecure HTTP URL rejected/i);
       }
     });

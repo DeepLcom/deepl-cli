@@ -171,14 +171,14 @@ Error: Unknown command 'transalte'. Did you mean 'translate'?
 
 Commands are organized into six groups, matching the `deepl --help` output:
 
-| Group | Commands | Description |
-|-------|----------|-------------|
-| **Core Commands** | `translate`, `write`, `voice` | Translation, writing enhancement, and speech translation |
-| **Resources** | `glossary` | Manage translation glossaries |
-| **Workflow** | `watch`, `hooks` | File watching and git hook automation |
-| **Configuration** | `init`, `auth`, `config`, `cache`, `style-rules` | Setup wizard, authentication, settings, caching, and style rules |
-| **Information** | `usage`, `languages`, `detect`, `completion` | API usage, supported languages, language detection, and shell completions |
-| **Administration** | `admin` | Organization key management and usage analytics |
+| Group              | Commands                                         | Description                                                               |
+| ------------------ | ------------------------------------------------ | ------------------------------------------------------------------------- |
+| **Core Commands**  | `translate`, `write`, `voice`                    | Translation, writing enhancement, and speech translation                  |
+| **Resources**      | `glossary`                                       | Manage translation glossaries                                             |
+| **Workflow**       | `watch`, `hooks`                                 | File watching and git hook automation                                     |
+| **Configuration**  | `init`, `auth`, `config`, `cache`, `style-rules` | Setup wizard, authentication, settings, caching, and style rules          |
+| **Information**    | `usage`, `languages`, `detect`, `completion`     | API usage, supported languages, language detection, and shell completions |
+| **Administration** | `admin`                                          | Organization key management and usage analytics                           |
 
 ---
 
@@ -611,6 +611,7 @@ deepl translate "This is a very long sentence that demonstrates word wrapping." 
 ```
 
 **Notes:**
+
 - Table format is only available when translating to multiple target languages. For single language translations, use default plain text or JSON format.
 - The Characters column is only shown when using `--show-billed-characters` flag.
 - Without `--show-billed-characters`, the Translation column is wider (70 characters vs 60) for better readability.
@@ -798,39 +799,39 @@ deepl voice [options] <file>
 
 #### Arguments
 
-| Argument | Description |
-|----------|-------------|
-| `file` | Audio file to translate. Use `-` for stdin. |
+| Argument | Description                                 |
+| -------- | ------------------------------------------- |
+| `file`   | Audio file to translate. Use `-` for stdin. |
 
 #### Options
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--to <languages>` | `-t` | Target language(s), comma-separated, max 5 (required) | - |
-| `--from <language>` | `-f` | Source language (auto-detect if not specified) | auto |
-| `--formality <level>` | | Formality level: `default`, `formal`, `more`, `informal`, `less`, `prefer_more`, `prefer_less` | `default` |
-| `--glossary <name-or-id>` | | Use glossary by name or ID | - |
-| `--content-type <type>` | | Audio content type (auto-detected from file extension) | auto |
-| `--chunk-size <bytes>` | | Audio chunk size in bytes | `6400` |
-| `--chunk-interval <ms>` | | Interval between audio chunks in milliseconds | `200` |
-| `--no-stream` | | Disable live streaming output, collect and print at end | - |
-| `--no-reconnect` | | Disable automatic reconnection on WebSocket drop | - |
-| `--max-reconnect-attempts <n>` | | Maximum reconnect attempts on WebSocket drop | `3` |
-| `--source-language-mode <mode>` | | Source language detection mode: `auto`, `fixed` | - |
-| `--format <format>` | | Output format: `text`, `json` | `text` |
+| Option                          | Short | Description                                                                                    | Default   |
+| ------------------------------- | ----- | ---------------------------------------------------------------------------------------------- | --------- |
+| `--to <languages>`              | `-t`  | Target language(s), comma-separated, max 5 (required)                                          | -         |
+| `--from <language>`             | `-f`  | Source language (auto-detect if not specified)                                                 | auto      |
+| `--formality <level>`           |       | Formality level: `default`, `formal`, `more`, `informal`, `less`, `prefer_more`, `prefer_less` | `default` |
+| `--glossary <name-or-id>`       |       | Use glossary by name or ID                                                                     | -         |
+| `--content-type <type>`         |       | Audio content type (auto-detected from file extension)                                         | auto      |
+| `--chunk-size <bytes>`          |       | Audio chunk size in bytes                                                                      | `6400`    |
+| `--chunk-interval <ms>`         |       | Interval between audio chunks in milliseconds                                                  | `200`     |
+| `--no-stream`                   |       | Disable live streaming output, collect and print at end                                        | -         |
+| `--no-reconnect`                |       | Disable automatic reconnection on WebSocket drop                                               | -         |
+| `--max-reconnect-attempts <n>`  |       | Maximum reconnect attempts on WebSocket drop                                                   | `3`       |
+| `--source-language-mode <mode>` |       | Source language detection mode: `auto`, `fixed`                                                | -         |
+| `--format <format>`             |       | Output format: `text`, `json`                                                                  | `text`    |
 
 > **Note:** All formality values (`default`, `formal`, `informal`, `more`, `less`, `prefer_more`, `prefer_less`) are accepted. The voice API natively uses `formal`/`informal` (in addition to `more`/`less`), while the translate API uses `prefer_more`/`prefer_less`.
 
 #### Supported Audio Formats
 
-| Extension | Content Type |
-|-----------|-------------|
-| `.ogg`, `.opus` | `audio/opus;container=ogg` |
-| `.webm` | `audio/opus;container=webm` |
-| `.mka` | `audio/opus;container=matroska` |
-| `.flac` | `audio/flac` |
-| `.mp3` | `audio/mpeg` |
-| `.pcm`, `.raw` | `audio/pcm;encoding=s16le;rate=16000` |
+| Extension       | Content Type                          |
+| --------------- | ------------------------------------- |
+| `.ogg`, `.opus` | `audio/opus;container=ogg`            |
+| `.webm`         | `audio/opus;container=webm`           |
+| `.mka`          | `audio/opus;container=matroska`       |
+| `.flac`         | `audio/flac`                          |
+| `.mp3`          | `audio/mpeg`                          |
+| `.pcm`, `.raw`  | `audio/pcm;encoding=s16le;rate=16000` |
 
 #### Examples
 
@@ -865,17 +866,13 @@ deepl voice speech.ogg --to de --no-stream
   "source": {
     "lang": "en",
     "text": "Hello world",
-    "segments": [
-      { "text": "Hello world", "startTime": 0, "endTime": 1.5 }
-    ]
+    "segments": [{ "text": "Hello world", "startTime": 0, "endTime": 1.5 }]
   },
   "targets": [
     {
       "lang": "de",
       "text": "Hallo Welt",
-      "segments": [
-        { "text": "Hallo Welt", "startTime": 0, "endTime": 1.5 }
-      ]
+      "segments": [{ "text": "Hallo Welt", "startTime": 0, "endTime": 1.5 }]
     }
   ]
 }
@@ -887,7 +884,7 @@ deepl voice speech.ogg --to de --no-stream
 - Maximum 5 target languages per session.
 - Maximum audio chunk size: 100KB, recommended pacing: 200ms between chunks.
 - Sessions have a 30-second inactivity timeout and 1-hour maximum duration.
-- The Voice API always uses the Pro endpoint (`api.deepl.com`).
+- The Voice API uses the same endpoint resolution as other commands: `:fx` keys use `api-free.deepl.com`, others use `api.deepl.com`, and custom regional URLs are always honored.
 
 ---
 
@@ -1542,9 +1539,11 @@ Clear all cache entries (displays: "✓ Cache cleared successfully").
 Enable cache (displays: "✓ Cache enabled").
 
 **Options:**
+
 - `--max-size <size>` - Maximum cache size (e.g., `100M`, `1G`, `500MB`)
 
 **Examples:**
+
 ```bash
 # Enable cache with default size
 deepl cache enable
@@ -2217,12 +2216,12 @@ Per-Key Usage (2 entries):
 
 The CLI resolves configuration and cache paths using the following priority order:
 
-| Priority | Condition | Config path | Cache path |
-|----------|-----------|-------------|------------|
-| 1 | `DEEPL_CONFIG_DIR` set | `$DEEPL_CONFIG_DIR/config.json` | `$DEEPL_CONFIG_DIR/cache.db` |
-| 2 | `~/.deepl-cli/` exists | `~/.deepl-cli/config.json` | `~/.deepl-cli/cache.db` |
-| 3 | XDG env vars set | `$XDG_CONFIG_HOME/deepl-cli/config.json` | `$XDG_CACHE_HOME/deepl-cli/cache.db` |
-| 4 | Default | `~/.config/deepl-cli/config.json` | `~/.cache/deepl-cli/cache.db` |
+| Priority | Condition              | Config path                              | Cache path                           |
+| -------- | ---------------------- | ---------------------------------------- | ------------------------------------ |
+| 1        | `DEEPL_CONFIG_DIR` set | `$DEEPL_CONFIG_DIR/config.json`          | `$DEEPL_CONFIG_DIR/cache.db`         |
+| 2        | `~/.deepl-cli/` exists | `~/.deepl-cli/config.json`               | `~/.deepl-cli/cache.db`              |
+| 3        | XDG env vars set       | `$XDG_CONFIG_HOME/deepl-cli/config.json` | `$XDG_CACHE_HOME/deepl-cli/cache.db` |
+| 4        | Default                | `~/.config/deepl-cli/config.json`        | `~/.cache/deepl-cli/cache.db`        |
 
 Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 
@@ -2263,7 +2262,7 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 
 **Configuration Notes:**
 
-- **`baseUrl`** overrides the auto-detected API endpoint. By default, the endpoint is auto-detected from the API key tier: keys ending with `:fx` use the Free API (`api-free.deepl.com`), all others use the Pro API (`api.deepl.com`). The `usePro` flag can also be used to control tier selection explicitly.
+- **`baseUrl`** — when set to a custom/regional endpoint (e.g. `https://api-jp.deepl.com`), it overrides all auto-detection. Standard DeepL URLs (`api.deepl.com`, `api-free.deepl.com`) are treated as tier defaults and do **not** override key-based auto-detection. By default, the endpoint is auto-detected from the API key: keys ending with `:fx` use the Free API (`api-free.deepl.com`), all others use the Pro API (`api.deepl.com`). The `usePro` flag serves as a backward-compatible fallback for non-`:fx` keys.
 - Most users configure settings via `deepl config set` command rather than editing the file directly.
 
 ---
@@ -2272,18 +2271,18 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 
 The CLI uses semantic exit codes to enable intelligent error handling in scripts and CI/CD pipelines.
 
-| Code | Meaning                         | Description                                                    | Retryable |
-| ---- | ------------------------------- | -------------------------------------------------------------- | --------- |
-| 0    | Success                         | Operation completed successfully                               | N/A       |
-| 1    | General Error                   | Unclassified error                                             | No        |
-| 2    | Authentication Error            | Invalid or missing API key                                     | No        |
-| 3    | Rate Limit Error                | Too many requests (HTTP 429)                                   | Yes       |
-| 4    | Quota Exceeded                  | Character limit reached (HTTP 456)                             | No        |
-| 5    | Network Error                   | Connection timeout, refused, or service unavailable (HTTP 503) | Yes       |
-| 6    | Invalid Input                   | Missing arguments, unsupported format, or validation error     | No        |
-| 7    | Configuration Error             | Invalid configuration file or settings                         | No        |
-| 8    | Check Failed                    | Text needs improvement (`deepl write --check`)                 | No        |
-| 9    | Voice Error                     | Voice API error (unsupported plan or session failure)          | No        |
+| Code | Meaning              | Description                                                    | Retryable |
+| ---- | -------------------- | -------------------------------------------------------------- | --------- |
+| 0    | Success              | Operation completed successfully                               | N/A       |
+| 1    | General Error        | Unclassified error                                             | No        |
+| 2    | Authentication Error | Invalid or missing API key                                     | No        |
+| 3    | Rate Limit Error     | Too many requests (HTTP 429)                                   | Yes       |
+| 4    | Quota Exceeded       | Character limit reached (HTTP 456)                             | No        |
+| 5    | Network Error        | Connection timeout, refused, or service unavailable (HTTP 503) | Yes       |
+| 6    | Invalid Input        | Missing arguments, unsupported format, or validation error     | No        |
+| 7    | Configuration Error  | Invalid configuration file or settings                         | No        |
+| 8    | Check Failed         | Text needs improvement (`deepl write --check`)                 | No        |
+| 9    | Voice Error          | Voice API error (unsupported plan or session failure)          | No        |
 
 **Special Cases:**
 

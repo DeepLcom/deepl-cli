@@ -157,25 +157,21 @@ describe('Watch Service Integration', () => {
       const textFile = path.join(tmpDir, 'document.txt');
       fs.writeFileSync(textFile, 'Hello world');
 
-      watchService.handleFileChange(textFile);
-      // File change registered (debounce timer set)
-      expect(true).toBe(true); // Test passes without error
+      expect(() => watchService.handleFileChange(textFile)).not.toThrow();
     });
 
     it('should handle markdown files', () => {
       const mdFile = path.join(tmpDir, 'readme.md');
       fs.writeFileSync(mdFile, '# Hello\n\nWorld');
 
-      watchService.handleFileChange(mdFile);
-      expect(true).toBe(true);
+      expect(() => watchService.handleFileChange(mdFile)).not.toThrow();
     });
 
     it('should handle HTML files', () => {
       const htmlFile = path.join(tmpDir, 'index.html');
       fs.writeFileSync(htmlFile, '<html><body>Hello</body></html>');
 
-      watchService.handleFileChange(htmlFile);
-      expect(true).toBe(true);
+      expect(() => watchService.handleFileChange(htmlFile)).not.toThrow();
     });
   });
 

@@ -73,20 +73,20 @@ echo
 echo "=== 3. Custom API Endpoint ==="
 echo
 
-echo "Override the API endpoint for specific use cases:"
+echo "The CLI auto-detects the correct endpoint from your API key:"
+echo "  - Keys ending with :fx → api-free.deepl.com"
+echo "  - All other keys      → api.deepl.com"
 echo
-echo "  # Use the free API explicitly"
-echo "  deepl translate 'Hello' --to es --api-url https://api-free.deepl.com/v2"
+echo "Use --api-url to override for specific use cases:"
 echo
-echo "  # Use the Pro API"
-echo "  deepl translate 'Hello' --to es --api-url https://api.deepl.com/v2"
+echo "  # Use a regional endpoint"
+echo "  deepl translate 'Hello' --to es --api-url https://api-jp.deepl.com"
 echo
 echo "  # Use an internal proxy or test server"
 echo "  deepl translate 'Hello' --to es --api-url https://deepl-proxy.internal.example.com/v2"
 echo
 echo "This is useful for:"
-echo "  - Switching between Free and Pro APIs per command"
-echo "  - Routing through a corporate proxy"
+echo "  - Routing through a regional endpoint or corporate proxy"
 echo "  - Testing against staging environments"
 echo
 

@@ -63,6 +63,7 @@ cat > "$CONFIG_DIR/work-config.json" <<'EOF'
 EOF
 
 echo "Created work-config.json (formal translations, de/fr targets)"
+echo "Note: api.baseUrl is auto-detected from your key; set a custom URL only for regional endpoints"
 
 # Create personal config (casual translations)
 cat > "$CONFIG_DIR/personal-config.json" <<'EOF'

@@ -16,9 +16,11 @@ jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 // Mock ws
-let lastWsConstructorArgs: { url: string; options?: Record<string, unknown> } | null = null;
+let lastWsConstructorArgs: {
+  url: string;
+  options?: Record<string, unknown>;
+} | null = null;
 jest.mock('ws', () => {
-
   const EventEmitter = require('events');
   class MockWebSocket extends EventEmitter {
     static OPEN = 1;
@@ -67,11 +69,11 @@ describe('VoiceClient', () => {
       expect(() => new VoiceClient('')).toThrow('API key is required');
     });
 
-    it('should use Pro API URL by default', () => {
+    it('should use Free API URL by default when no baseUrl is provided', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          baseURL: 'https://api.deepl.com',
-        }),
+          baseURL: 'https://api-free.deepl.com',
+        })
       );
     });
 
@@ -80,7 +82,7 @@ describe('VoiceClient', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
           baseURL: 'https://custom.example.com',
-        }),
+        })
       );
     });
   });
@@ -111,7 +113,7 @@ describe('VoiceClient', () => {
         expect.objectContaining({
           method: 'POST',
           url: '/v3/voice/realtime',
-        }),
+        })
       );
     });
 
@@ -124,19 +126,27 @@ describe('VoiceClient', () => {
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-      await expect(client.createSession(mockRequest)).rejects.toThrow(VoiceError);
+      await expect(client.createSession(mockRequest)).rejects.toThrow(
+        VoiceError
+      );
     });
 
     it('should throw VoiceError on 400', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 400, data: { message: 'Invalid request' }, headers: {} },
+        response: {
+          status: 400,
+          data: { message: 'Invalid request' },
+          headers: {},
+        },
         message: 'Bad request',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-      await expect(client.createSession(mockRequest)).rejects.toThrow(VoiceError);
+      await expect(client.createSession(mockRequest)).rejects.toThrow(
+        VoiceError
+      );
     });
 
     it('should include source_lang when provided', async () => {
@@ -158,7 +168,7 @@ describe('VoiceClient', () => {
           data: expect.objectContaining({
             source_language: 'en',
           }),
-        }),
+        })
       );
     });
 
@@ -181,7 +191,7 @@ describe('VoiceClient', () => {
           data: expect.objectContaining({
             target_languages: ['de', 'fr', 'es'],
           }),
-        }),
+        })
       );
     });
   });
@@ -189,7 +199,10 @@ describe('VoiceClient', () => {
   describe('reconnectSession()', () => {
     it('should return new streaming_url and token on success', async () => {
       mockAxiosInstance.request.mockResolvedValue({
-        data: { streaming_url: 'wss://voice.deepl.com/ws/456', token: 'new-token' },
+        data: {
+          streaming_url: 'wss://voice.deepl.com/ws/456',
+          token: 'new-token',
+        },
         status: 200,
         headers: {},
       });
@@ -216,7 +229,7 @@ describe('VoiceClient', () => {
           method: 'GET',
           url: '/v3/voice/realtime',
           params: expect.objectContaining({ token: 'my-token' }),
-        }),
+        })
       );
     });
 
@@ -229,19 +242,27 @@ describe('VoiceClient', () => {
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-      await expect(client.reconnectSession('expired-token')).rejects.toThrow(VoiceError);
+      await expect(client.reconnectSession('expired-token')).rejects.toThrow(
+        VoiceError
+      );
     });
 
     it('should throw VoiceError on 400', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 400, data: { message: 'Invalid token' }, headers: {} },
+        response: {
+          status: 400,
+          data: { message: 'Invalid token' },
+          headers: {},
+        },
         message: 'Bad request',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-      await expect(client.reconnectSession('bad-token')).rejects.toThrow(VoiceError);
+      await expect(client.reconnectSession('bad-token')).rejects.toThrow(
+        VoiceError
+      );
     });
   });
 
@@ -249,7 +270,7 @@ describe('VoiceClient', () => {
     it('should set maxPayload to 1 MiB on the WebSocket', () => {
       client.createWebSocket('wss://voice.deepl.com/ws/123', 'token', {});
       expect(lastWsConstructorArgs?.options).toEqual(
-        expect.objectContaining({ maxPayload: 1048576 }),
+        expect.objectContaining({ maxPayload: 1048576 })
       );
     });
 
@@ -263,56 +284,76 @@ describe('VoiceClient', () => {
         onError: jest.fn(),
       };
 
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws/123', 'token', callbacks);
+      const ws = client.createWebSocket(
+        'wss://voice.deepl.com/ws/123',
+        'token',
+        callbacks
+      );
       expect(ws).toBeDefined();
     });
 
     it('should accept wss:// URLs with deepl.com hostname', () => {
-      expect(() => client.createWebSocket('wss://voice.deepl.com/ws/123', 'token', {})).not.toThrow();
+      expect(() =>
+        client.createWebSocket('wss://voice.deepl.com/ws/123', 'token', {})
+      ).not.toThrow();
     });
 
     it('should accept wss:// URLs with subdomains of deepl.com', () => {
-      expect(() => client.createWebSocket('wss://api.voice.deepl.com/ws/123', 'token', {})).not.toThrow();
+      expect(() =>
+        client.createWebSocket('wss://api.voice.deepl.com/ws/123', 'token', {})
+      ).not.toThrow();
     });
 
     it('should reject non-wss:// schemes', () => {
-      expect(() => client.createWebSocket('ws://voice.deepl.com/ws/123', 'token', {}))
-        .toThrow(VoiceError);
-      expect(() => client.createWebSocket('ws://voice.deepl.com/ws/123', 'token', {}))
-        .toThrow('Invalid streaming URL: scheme must be wss://');
+      expect(() =>
+        client.createWebSocket('ws://voice.deepl.com/ws/123', 'token', {})
+      ).toThrow(VoiceError);
+      expect(() =>
+        client.createWebSocket('ws://voice.deepl.com/ws/123', 'token', {})
+      ).toThrow('Invalid streaming URL: scheme must be wss://');
     });
 
     it('should reject http:// schemes', () => {
-      expect(() => client.createWebSocket('http://voice.deepl.com/ws/123', 'token', {}))
-        .toThrow(VoiceError);
+      expect(() =>
+        client.createWebSocket('http://voice.deepl.com/ws/123', 'token', {})
+      ).toThrow(VoiceError);
     });
 
     it('should reject hostnames not under deepl.com', () => {
-      expect(() => client.createWebSocket('wss://evil.example.com/ws/123', 'token', {}))
-        .toThrow(VoiceError);
-      expect(() => client.createWebSocket('wss://evil.example.com/ws/123', 'token', {}))
-        .toThrow('Invalid streaming URL: hostname must be under deepl.com');
+      expect(() =>
+        client.createWebSocket('wss://evil.example.com/ws/123', 'token', {})
+      ).toThrow(VoiceError);
+      expect(() =>
+        client.createWebSocket('wss://evil.example.com/ws/123', 'token', {})
+      ).toThrow('Invalid streaming URL: hostname must be under deepl.com');
     });
 
     it('should reject hostnames that look like deepl.com but are not', () => {
-      expect(() => client.createWebSocket('wss://notdeepl.com/ws/123', 'token', {}))
-        .toThrow(VoiceError);
-      expect(() => client.createWebSocket('wss://deepl.com.evil.com/ws/123', 'token', {}))
-        .toThrow(VoiceError);
+      expect(() =>
+        client.createWebSocket('wss://notdeepl.com/ws/123', 'token', {})
+      ).toThrow(VoiceError);
+      expect(() =>
+        client.createWebSocket('wss://deepl.com.evil.com/ws/123', 'token', {})
+      ).toThrow(VoiceError);
     });
 
     it('should reject invalid URLs', () => {
-      expect(() => client.createWebSocket('not-a-url', 'token', {}))
-        .toThrow(VoiceError);
+      expect(() => client.createWebSocket('not-a-url', 'token', {})).toThrow(
+        VoiceError
+      );
     });
 
     it('should dispatch source_transcript_update messages', () => {
       const onSourceTranscript = jest.fn();
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onSourceTranscript });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {
+        onSourceTranscript,
+      });
 
       const message = JSON.stringify({
         source_transcript_update: {
-          concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+          concluded: [
+            { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+          ],
           tentative: [],
         },
       });
@@ -320,14 +361,18 @@ describe('VoiceClient', () => {
       ws.emit('message', Buffer.from(message));
       expect(onSourceTranscript).toHaveBeenCalledWith(
         expect.objectContaining({
-          concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
-        }),
+          concluded: [
+            { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+          ],
+        })
       );
     });
 
     it('should dispatch target_transcript_update messages', () => {
       const onTargetTranscript = jest.fn();
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onTargetTranscript });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {
+        onTargetTranscript,
+      });
 
       const message = JSON.stringify({
         target_transcript_update: {
@@ -341,13 +386,15 @@ describe('VoiceClient', () => {
       expect(onTargetTranscript).toHaveBeenCalledWith(
         expect.objectContaining({
           language: 'de',
-        }),
+        })
       );
     });
 
     it('should dispatch end_of_stream messages', () => {
       const onEndOfStream = jest.fn();
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onEndOfStream });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {
+        onEndOfStream,
+      });
 
       ws.emit('message', Buffer.from(JSON.stringify({ end_of_stream: {} })));
       expect(onEndOfStream).toHaveBeenCalled();
@@ -355,55 +402,78 @@ describe('VoiceClient', () => {
 
     it('should dispatch end_of_source_transcript messages', () => {
       const onEndOfSourceTranscript = jest.fn();
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onEndOfSourceTranscript });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {
+        onEndOfSourceTranscript,
+      });
 
-      ws.emit('message', Buffer.from(JSON.stringify({ end_of_source_transcript: {} })));
+      ws.emit(
+        'message',
+        Buffer.from(JSON.stringify({ end_of_source_transcript: {} }))
+      );
       expect(onEndOfSourceTranscript).toHaveBeenCalled();
     });
 
     it('should dispatch end_of_target_transcript messages', () => {
       const onEndOfTargetTranscript = jest.fn();
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onEndOfTargetTranscript });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {
+        onEndOfTargetTranscript,
+      });
 
-      ws.emit('message', Buffer.from(JSON.stringify({ end_of_target_transcript: { language: 'de' } })));
+      ws.emit(
+        'message',
+        Buffer.from(
+          JSON.stringify({ end_of_target_transcript: { language: 'de' } })
+        )
+      );
       expect(onEndOfTargetTranscript).toHaveBeenCalledWith('de');
     });
 
     it('should dispatch error messages', () => {
       const onError = jest.fn();
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onError });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {
+        onError,
+      });
 
-      ws.emit('message', Buffer.from(JSON.stringify({
-        error: {
-          request_type: 'unknown',
-          error_code: 400,
-          reason_code: 9040000,
-          error_message: 'Invalid audio format',
-        },
-      })));
+      ws.emit(
+        'message',
+        Buffer.from(
+          JSON.stringify({
+            error: {
+              request_type: 'unknown',
+              error_code: 400,
+              reason_code: 9040000,
+              error_message: 'Invalid audio format',
+            },
+          })
+        )
+      );
       expect(onError).toHaveBeenCalledWith(
         expect.objectContaining({
           error_code: 400,
           error_message: 'Invalid audio format',
-        }),
+        })
       );
     });
 
     it('should handle WebSocket errors via callback', () => {
       const onError = jest.fn();
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onError });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {
+        onError,
+      });
 
       ws.emit('error', new Error('Connection failed'));
       expect(onError).toHaveBeenCalledWith(
         expect.objectContaining({
           error_message: 'Connection failed',
-        }),
+        })
       );
     });
 
     it('should ignore unparseable messages', () => {
       const onError = jest.fn();
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onError });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {
+        onError,
+      });
 
       ws.emit('message', Buffer.from('not json'));
       expect(onError).not.toHaveBeenCalled();
@@ -413,32 +483,46 @@ describe('VoiceClient', () => {
       const onSourceTranscript = jest.fn().mockImplementation(() => {
         throw new Error('callback error');
       });
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', { onSourceTranscript });
+      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {
+        onSourceTranscript,
+      });
 
       const message = JSON.stringify({
         source_transcript_update: {
-          concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+          concluded: [
+            { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+          ],
           tentative: [],
         },
       });
 
-      expect(() => ws.emit('message', Buffer.from(message))).toThrow('callback error');
+      expect(() => ws.emit('message', Buffer.from(message))).toThrow(
+        'callback error'
+      );
     });
   });
 
   describe('sendAudioChunk()', () => {
     it('should send base64 audio chunk and return true when buffer is low', () => {
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
+      const ws = client.createWebSocket(
+        'wss://voice.deepl.com/ws',
+        'token',
+        {}
+      );
       Object.defineProperty(ws, 'bufferedAmount', { value: 0, writable: true });
       const result = client.sendAudioChunk(ws, 'dGVzdA==');
       expect(ws.send).toHaveBeenCalledWith(
-        JSON.stringify({ source_media_chunk: { data: 'dGVzdA==' } }),
+        JSON.stringify({ source_media_chunk: { data: 'dGVzdA==' } })
       );
       expect(result).toBe(true);
     });
 
     it('should return false when WebSocket is not open', () => {
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
+      const ws = client.createWebSocket(
+        'wss://voice.deepl.com/ws',
+        'token',
+        {}
+      );
       (ws as any).readyState = 3; // CLOSED
       const result = client.sendAudioChunk(ws, 'dGVzdA==');
       expect(ws.send).not.toHaveBeenCalled();
@@ -446,8 +530,15 @@ describe('VoiceClient', () => {
     });
 
     it('should return false when bufferedAmount exceeds high-water mark', () => {
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
-      Object.defineProperty(ws, 'bufferedAmount', { value: 2 * 1024 * 1024, writable: true });
+      const ws = client.createWebSocket(
+        'wss://voice.deepl.com/ws',
+        'token',
+        {}
+      );
+      Object.defineProperty(ws, 'bufferedAmount', {
+        value: 2 * 1024 * 1024,
+        writable: true,
+      });
       const result = client.sendAudioChunk(ws, 'dGVzdA==');
       expect(ws.send).toHaveBeenCalled();
       expect(result).toBe(false);
@@ -456,15 +547,23 @@ describe('VoiceClient', () => {
 
   describe('sendEndOfSource()', () => {
     it('should send end_of_source_media message', () => {
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
+      const ws = client.createWebSocket(
+        'wss://voice.deepl.com/ws',
+        'token',
+        {}
+      );
       client.sendEndOfSource(ws);
       expect(ws.send).toHaveBeenCalledWith(
-        JSON.stringify({ end_of_source_media: {} }),
+        JSON.stringify({ end_of_source_media: {} })
       );
     });
 
     it('should not send if WebSocket is not open', () => {
-      const ws = client.createWebSocket('wss://voice.deepl.com/ws', 'token', {});
+      const ws = client.createWebSocket(
+        'wss://voice.deepl.com/ws',
+        'token',
+        {}
+      );
       (ws as any).readyState = 3; // CLOSED
       client.sendEndOfSource(ws);
       expect(ws.send).not.toHaveBeenCalled();

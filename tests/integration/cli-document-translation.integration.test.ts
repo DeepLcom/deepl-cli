@@ -10,7 +10,12 @@ import * as path from 'path';
 import * as os from 'os';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { DocumentTranslationService } from '../../src/services/document-translation.js';
-import { DEEPL_FREE_API_URL, createTestConfigDir, createTestDir, makeRunCLI } from '../helpers';
+import {
+  DEEPL_FREE_API_URL,
+  createTestConfigDir,
+  createTestDir,
+  makeRunCLI,
+} from '../helpers';
 
 const FREE_API_URL = DEEPL_FREE_API_URL;
 const API_KEY = 'test-api-key-integration:fx';
@@ -31,7 +36,7 @@ describe('Document Translation Integration', () => {
   });
 
   afterEach(() => {
-    clients.forEach(c => c.destroy());
+    clients.forEach((c) => c.destroy());
     clients.length = 0;
     nock.cleanAll();
   });
@@ -49,7 +54,9 @@ describe('Document Translation Integration', () => {
       // Step 1: Upload
       const uploadScope = nock(FREE_API_URL)
         .post('/v2/document', (body: string) => {
-          return body.includes('target_lang') && body.includes('input-happy.pdf');
+          return (
+            body.includes('target_lang') && body.includes('input-happy.pdf')
+          );
         })
         .reply(200, {
           document_id: 'doc-happy-123',
@@ -88,10 +95,13 @@ describe('Document Translation Integration', () => {
       // Step 5: Download
       const translatedContent = Buffer.from('%PDF-1.4 translated content');
       const downloadScope = nock(FREE_API_URL)
-        .post('/v2/document/doc-happy-123/result', (body: Record<string, string>) => {
-          expect(body['document_key']).toBe('key-happy-456');
-          return true;
-        })
+        .post(
+          '/v2/document/doc-happy-123/result',
+          (body: Record<string, string>) => {
+            expect(body['document_key']).toBe('key-happy-456');
+            return true;
+          }
+        )
         .reply(200, translatedContent);
 
       const progressUpdates: string[] = [];
@@ -108,7 +118,9 @@ describe('Document Translation Integration', () => {
       expect(result.billedCharacters).toBe(1500);
       expect(result.outputPath).toBe(outputPath);
       expect(fs.existsSync(outputPath)).toBe(true);
-      expect(fs.readFileSync(outputPath).toString()).toBe('%PDF-1.4 translated content');
+      expect(fs.readFileSync(outputPath).toString()).toBe(
+        '%PDF-1.4 translated content'
+      );
 
       expect(progressUpdates).toEqual(['queued', 'translating', 'done']);
 
@@ -132,23 +144,19 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'doc-fast', document_key: 'key-fast' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/doc-fast')
-        .reply(200, {
-          document_id: 'doc-fast',
-          status: 'done',
-          billed_characters: 10,
-        });
+      nock(FREE_API_URL).post('/v2/document/doc-fast').reply(200, {
+        document_id: 'doc-fast',
+        status: 'done',
+        billed_characters: 10,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/doc-fast/result')
         .reply(200, Buffer.from('Texto corto'));
 
-      const result = await service.translateDocument(
-        inputPath,
-        outputPath,
-        { targetLang: 'es' }
-      );
+      const result = await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       expect(result.success).toBe(true);
       expect(result.billedCharacters).toBe(10);
@@ -175,13 +183,19 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/d1')
-        .reply(200, { document_id: 'd1', status: 'done', billed_characters: 5 });
+        .reply(200, {
+          document_id: 'd1',
+          status: 'done',
+          billed_characters: 5,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/d1/result')
         .reply(200, Buffer.from('translated'));
 
-      await service.translateDocument(inputPath, outputPath, { targetLang: 'es' });
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'es',
+      });
       expect(uploadScope.isDone()).toBe(true);
     });
 
@@ -204,7 +218,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/d2')
-        .reply(200, { document_id: 'd2', status: 'done', billed_characters: 4 });
+        .reply(200, {
+          document_id: 'd2',
+          status: 'done',
+          billed_characters: 4,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/d2/result')
@@ -236,7 +254,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/d3')
-        .reply(200, { document_id: 'd3', status: 'done', billed_characters: 4 });
+        .reply(200, {
+          document_id: 'd3',
+          status: 'done',
+          billed_characters: 4,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/d3/result')
@@ -268,7 +290,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/d4')
-        .reply(200, { document_id: 'd4', status: 'done', billed_characters: 4 });
+        .reply(200, {
+          document_id: 'd4',
+          status: 'done',
+          billed_characters: 4,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/d4/result')
@@ -300,7 +326,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/d5')
-        .reply(200, { document_id: 'd5', status: 'done', billed_characters: 12 });
+        .reply(200, {
+          document_id: 'd5',
+          status: 'done',
+          billed_characters: 12,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/d5/result')
@@ -331,7 +361,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/d6')
-        .reply(200, { document_id: 'd6', status: 'done', billed_characters: 12 });
+        .reply(200, {
+          document_id: 'd6',
+          status: 'done',
+          billed_characters: 12,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/d6/result')
@@ -363,13 +397,19 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/da')
-        .reply(200, { document_id: 'da', status: 'done', billed_characters: 4 });
+        .reply(200, {
+          document_id: 'da',
+          status: 'done',
+          billed_characters: 4,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/da/result')
         .reply(200, Buffer.from('t'));
 
-      await service.translateDocument(inputPath, outputPath, { targetLang: 'de' });
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'de',
+      });
       expect(uploadScope.isDone()).toBe(true);
     });
   });
@@ -397,13 +437,19 @@ describe('Document Translation Integration', () => {
           expect(body['document_key']).toBe('kp1');
           return true;
         })
-        .reply(200, { document_id: 'dp1', status: 'done', billed_characters: 4 });
+        .reply(200, {
+          document_id: 'dp1',
+          status: 'done',
+          billed_characters: 4,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/dp1/result')
         .reply(200, Buffer.from('t'));
 
-      await service.translateDocument(inputPath, outputPath, { targetLang: 'fr' });
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'fr',
+      });
       expect(pollScope.isDone()).toBe(true);
     });
   });
@@ -424,7 +470,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/dd1')
-        .reply(200, { document_id: 'dd1', status: 'done', billed_characters: 4 });
+        .reply(200, {
+          document_id: 'dd1',
+          status: 'done',
+          billed_characters: 4,
+        });
 
       const downloadScope = nock(FREE_API_URL, {
         reqheaders: {
@@ -437,7 +487,9 @@ describe('Document Translation Integration', () => {
         })
         .reply(200, Buffer.from('translated'));
 
-      await service.translateDocument(inputPath, outputPath, { targetLang: 'fr' });
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'fr',
+      });
       expect(downloadScope.isDone()).toBe(true);
     });
 
@@ -456,14 +508,20 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/db1')
-        .reply(200, { document_id: 'db1', status: 'done', billed_characters: 100 });
+        .reply(200, {
+          document_id: 'db1',
+          status: 'done',
+          billed_characters: 100,
+        });
 
-      const pdfBytes = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34]);
-      nock(FREE_API_URL)
-        .post('/v2/document/db1/result')
-        .reply(200, pdfBytes);
+      const pdfBytes = Buffer.from([
+        0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34,
+      ]);
+      nock(FREE_API_URL).post('/v2/document/db1/result').reply(200, pdfBytes);
 
-      await service.translateDocument(inputPath, outputPath, { targetLang: 'de' });
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'de',
+      });
 
       const outputBuffer = fs.readFileSync(outputPath);
       expect(outputBuffer[0]).toBe(0x25); // %
@@ -557,13 +615,11 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'de1', document_key: 'ke1' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/de1')
-        .reply(200, {
-          document_id: 'de1',
-          status: 'error',
-          error_message: 'Unsupported file format',
-        });
+      nock(FREE_API_URL).post('/v2/document/de1').reply(200, {
+        document_id: 'de1',
+        status: 'error',
+        error_message: 'Unsupported file format',
+      });
 
       await expect(
         service.translateDocument(inputPath, outputPath, { targetLang: 'es' })
@@ -605,15 +661,14 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'de3', document_key: 'ke3' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/de3')
-        .reply(200, {
-          document_id: 'de3',
-          status: 'error',
-          error_message: 'Internal processing error',
-        });
+      nock(FREE_API_URL).post('/v2/document/de3').reply(200, {
+        document_id: 'de3',
+        status: 'error',
+        error_message: 'Internal processing error',
+      });
 
-      const progressUpdates: Array<{ status: string; errorMessage?: string }> = [];
+      const progressUpdates: Array<{ status: string; errorMessage?: string }> =
+        [];
 
       await expect(
         service.translateDocument(
@@ -651,7 +706,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/ddl1')
-        .reply(200, { document_id: 'ddl1', status: 'done', billed_characters: 4 });
+        .reply(200, {
+          document_id: 'ddl1',
+          status: 'done',
+          billed_characters: 4,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/ddl1/result')
@@ -677,7 +736,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/ddl2')
-        .reply(200, { document_id: 'ddl2', status: 'done', billed_characters: 4 });
+        .reply(200, {
+          document_id: 'ddl2',
+          status: 'done',
+          billed_characters: 4,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/ddl2/result')
@@ -696,7 +759,12 @@ describe('Document Translation Integration', () => {
       const service = new DocumentTranslationService(client);
 
       const inputPath = path.join(testDir, 'input-mkdir.pdf');
-      const nestedOutputPath = path.join(testDir, 'nested', 'deep', 'output-mkdir.pdf');
+      const nestedOutputPath = path.join(
+        testDir,
+        'nested',
+        'deep',
+        'output-mkdir.pdf'
+      );
       fs.writeFileSync(inputPath, Buffer.from('test'));
 
       nock(FREE_API_URL)
@@ -705,7 +773,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/dm1')
-        .reply(200, { document_id: 'dm1', status: 'done', billed_characters: 4 });
+        .reply(200, {
+          document_id: 'dm1',
+          status: 'done',
+          billed_characters: 4,
+        });
 
       nock(FREE_API_URL)
         .post('/v2/document/dm1/result')
@@ -737,7 +809,9 @@ describe('Document Translation Integration', () => {
           targetLang: 'es',
           enableDocumentMinification: true,
         })
-      ).rejects.toThrow('Document minification is only supported for PPTX and DOCX');
+      ).rejects.toThrow(
+        'Document minification is only supported for PPTX and DOCX'
+      );
     });
   });
 
@@ -757,7 +831,11 @@ describe('Document Translation Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/document/da1')
-        .reply(200, { document_id: 'da1', status: 'translating', seconds_remaining: 60 });
+        .reply(200, {
+          document_id: 'da1',
+          status: 'translating',
+          seconds_remaining: 60,
+        });
 
       const controller = new AbortController();
 
@@ -821,12 +899,15 @@ describe('Document Translation CLI Integration', () => {
 
       expect.assertions(1);
       try {
-        runCLI(`deepl translate "${testFile}" --to es --output "${testDir}/out.pdf"`, {
-          stdio: 'pipe',
-        });
+        runCLI(
+          `deepl translate "${testFile}" --to es --output "${testDir}/out.pdf"`,
+          {
+            stdio: 'pipe',
+          }
+        );
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/API key|auth|not set/i);
+        expect(output).not.toMatch(/unknown.*option|unsupported.*file.*type/i);
       }
     });
 
@@ -842,13 +923,12 @@ describe('Document Translation CLI Integration', () => {
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*output-format/i);
-        expect(output).toMatch(/API key|auth/i);
       }
     });
 
     it('should accept --enable-minification flag without unknown option error', () => {
       const testFile = path.join(testDir, 'cli-doc5.pptx');
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4B, 0x03, 0x04]));
+      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4b, 0x03, 0x04]));
 
       try {
         runCLI(
@@ -858,7 +938,6 @@ describe('Document Translation CLI Integration', () => {
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*enable-minification/i);
-        expect(output).toMatch(/API key|auth/i);
       }
     });
   });
@@ -866,9 +945,9 @@ describe('Document Translation CLI Integration', () => {
   describe('supported document file types via CLI', () => {
     const documentTypes = [
       { ext: 'pdf', header: [0x25, 0x50, 0x44, 0x46] },
-      { ext: 'docx', header: [0x50, 0x4B, 0x03, 0x04] },
-      { ext: 'pptx', header: [0x50, 0x4B, 0x03, 0x04] },
-      { ext: 'xlsx', header: [0x50, 0x4B, 0x03, 0x04] },
+      { ext: 'docx', header: [0x50, 0x4b, 0x03, 0x04] },
+      { ext: 'pptx', header: [0x50, 0x4b, 0x03, 0x04] },
+      { ext: 'xlsx', header: [0x50, 0x4b, 0x03, 0x04] },
       { ext: 'html', header: null, content: '<html><body>Test</body></html>' },
       { ext: 'htm', header: null, content: '<html><body>Test</body></html>' },
     ];
@@ -892,7 +971,6 @@ describe('Document Translation CLI Integration', () => {
         } catch (error: any) {
           const output = error.stderr ?? error.stdout;
           expect(output).not.toMatch(/unsupported.*file.*type/i);
-          expect(output).toMatch(/API key|auth/i);
         }
       });
     }

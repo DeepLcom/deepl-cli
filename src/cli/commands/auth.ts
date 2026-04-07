@@ -6,6 +6,7 @@
 import { ConfigService } from '../../storage/config.js';
 import { DeepLClient } from '../../api/deepl-client.js';
 import { ValidationError, AuthError } from '../../utils/errors.js';
+import { resolveEndpoint } from '../../utils/resolve-endpoint.js';
 
 export class AuthCommand {
   private config: ConfigService;
@@ -28,15 +29,18 @@ export class AuthCommand {
     // This supports production keys (:fx suffix), free keys, and test keys
     try {
       // Use configured API endpoint for validation
-      const baseUrl = this.config.getValue<string>('api.baseUrl');
+      const configBaseUrl = this.config.getValue<string>('api.baseUrl');
       const usePro = this.config.getValue<boolean>('api.usePro');
+      const baseUrl = resolveEndpoint({ apiKey, configBaseUrl, usePro });
 
-      const client = new DeepLClient(apiKey, { baseUrl, usePro });
+      const client = new DeepLClient(apiKey, { baseUrl });
       await client.getUsage(); // Test API key validity
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes('Authentication failed')) {
-          throw new AuthError('Invalid API key: Authentication failed with DeepL API');
+          throw new AuthError(
+            'Invalid API key: Authentication failed with DeepL API'
+          );
         }
         throw error;
       }
