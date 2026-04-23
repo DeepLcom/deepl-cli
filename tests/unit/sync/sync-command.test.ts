@@ -794,11 +794,12 @@ describe('SyncCommand', () => {
     // fake timers, flushing that chain requires alternating microtask drains
     // (`await Promise.resolve()`) with zero-duration timer advances — timers
     // advance queued macrotasks, Promise.resolve drains microtask-only awaits.
-    // 50 rounds is well above the ~10-level await depth of the setup chain,
-    // giving parallel-load runs headroom (the previous 20-round count flaked
-    // intermittently under heavy jest worker contention).
+    // History: 20 rounds flaked → 50 rounds flaked under Node 22 CI worker
+    // contention (sync-command.test.ts in PR 44). 250 gives ample headroom
+    // (each round is sub-microsecond) without hiding real hangs — tests still
+    // fail loudly if setup never finishes, just with a longer safety margin.
     async function flushWatchSetup(): Promise<void> {
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < 250; i++) {
         await Promise.resolve();
         await jest.advanceTimersByTimeAsync(0);
       }
