@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **tests**: The shared `tests/setup.ts` `afterEach` hook now asserts that every `nock` interceptor registered during a test actually fired. An unasserted mock (registered scope with no matching request) now throws with the pending interceptor list, surfacing silent test gaps where the SUT never exercised the mocked network call. No test changes were required — the existing suite (49 integration files, 766 tests, plus unit + E2E = 4501 tests) already had clean hygiene. Negative-path tests that intentionally register non-firing interceptors can opt out by calling `nock.cleanAll()` from their own `afterEach` before the shared hook runs.
+
 ### Fixed
 
 - **docs**: `docs/API.md` and `docs/SYNC.md` now document the `--format FORMAT` option on `deepl sync export` (previously undocumented even though the flag was registered in `src/cli/commands/sync/register-sync-export.ts`). Clarified that on `sync export` the format choice affects only the error envelope on stderr; the success output is always XLIFF 1.2.
