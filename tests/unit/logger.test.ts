@@ -375,12 +375,41 @@ describe('Logger', () => {
   });
 
   describe('spinner control', () => {
-    it('should return true for shouldShowSpinner in normal mode', () => {
+    const originalStderrIsTTY = process.stderr.isTTY;
+
+    afterEach(() => {
+      Object.defineProperty(process.stderr, 'isTTY', {
+        value: originalStderrIsTTY,
+        configurable: true,
+        writable: true,
+      });
+    });
+
+    it('should return true when not quiet and stderr is a TTY', () => {
+      Object.defineProperty(process.stderr, 'isTTY', {
+        value: true,
+        configurable: true,
+        writable: true,
+      });
       expect(Logger.shouldShowSpinner()).toBe(true);
     });
 
-    it('should return false for shouldShowSpinner in quiet mode', () => {
+    it('should return false in quiet mode even when stderr is a TTY', () => {
+      Object.defineProperty(process.stderr, 'isTTY', {
+        value: true,
+        configurable: true,
+        writable: true,
+      });
       Logger.setQuiet(true);
+      expect(Logger.shouldShowSpinner()).toBe(false);
+    });
+
+    it('should return false when stderr is not a TTY (piped / CI)', () => {
+      Object.defineProperty(process.stderr, 'isTTY', {
+        value: false,
+        configurable: true,
+        writable: true,
+      });
       expect(Logger.shouldShowSpinner()).toBe(false);
     });
   });

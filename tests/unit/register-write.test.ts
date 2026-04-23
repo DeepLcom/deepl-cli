@@ -317,6 +317,24 @@ describe('registerWrite', () => {
   });
 
   describe('--interactive mode', () => {
+    const originalStdinIsTTY = process.stdin.isTTY;
+
+    beforeEach(() => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+        writable: true,
+      });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: originalStdinIsTTY,
+        configurable: true,
+        writable: true,
+      });
+    });
+
     it('should run interactive mode for text', async () => {
       mockWriteCommand.improveInteractive.mockResolvedValue('selected text');
       await program.parseAsync(['node', 'test', 'write', 'some text', '-i']);
@@ -345,6 +363,21 @@ describe('registerWrite', () => {
       mockWriteCommand.improveFileInteractive.mockResolvedValue({ selected: 'improved' });
       await program.parseAsync(['node', 'test', 'write', 'file.txt', '-i', '--in-place']);
       expect(mockWriteFile).toHaveBeenCalledWith('file.txt', 'improved', 'utf-8');
+    });
+
+    it('should reject --interactive when stdin is not a TTY', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: false,
+        configurable: true,
+        writable: true,
+      });
+      await program.parseAsync(['node', 'test', 'write', 'some text', '-i']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('--interactive requires an interactive terminal'),
+        }),
+      );
+      expect(mockWriteCommand.improveInteractive).not.toHaveBeenCalled();
     });
   });
 

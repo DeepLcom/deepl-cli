@@ -111,11 +111,14 @@ class LoggerClass {
   }
 
   /**
-   * Check if spinners should be shown
-   * Returns false in quiet mode
+   * Check if spinners should be shown.
+   * Returns false in quiet mode or when stderr is not a TTY — ora writes to
+   * stderr by default, so a non-TTY stderr means spinners would either no-op
+   * silently inside ora or (on older ora versions) leak ANSI escapes into CI
+   * logs. Gating at this single chokepoint covers every `ora(...)` callsite.
    */
   shouldShowSpinner(): boolean {
-    return !this.quiet;
+    return !this.quiet && !!process.stderr.isTTY;
   }
 }
 

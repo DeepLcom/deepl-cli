@@ -94,8 +94,8 @@ Examples:
           throw new ValidationError('Cannot specify both --style and --tone. Use one or the other.');
         }
 
-        if (options.interactive && isNoInput()) {
-          throw new ValidationError('--interactive is not supported in non-interactive mode. Remove --no-input or omit --interactive.');
+        if (options.interactive && (isNoInput() || !process.stdin.isTTY)) {
+          throw new ValidationError('--interactive requires an interactive terminal. Run without --interactive in CI or non-TTY environments, or pipe input via stdin.');
         }
 
         if (options.backup && !options.fix) {

@@ -201,9 +201,12 @@ program
       }
     }
 
-    // Disable colors if output.color is false in config
+    // Disable colors if output.color is false in config, or if NO_COLOR is set
+    // (https://no-color.org). chalk auto-detects NO_COLOR but we set level=0
+    // explicitly so the signal is unambiguous across both chalk paths and the
+    // separate `isColorEnabled()` path in utils/formatters.ts.
     const colorEnabled = configService.getValue<boolean>('output.color');
-    if (colorEnabled === false) {
+    if (colorEnabled === false || 'NO_COLOR' in process.env) {
       chalk.level = 0;
     }
 

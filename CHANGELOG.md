@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **docs**: `docs/API.md` and `docs/SYNC.md` now document the `--format FORMAT` option on `deepl sync export` (previously undocumented even though the flag was registered in `src/cli/commands/sync/register-sync-export.ts`). Clarified that on `sync export` the format choice affects only the error envelope on stderr; the success output is always XLIFF 1.2.
 - **docs**: `docs/API.md` corrected the note on the `audit` subcommand rename — the previous wording said "Prior to the 1.0.0 release, this subcommand was named `glossary-report`", which implied 1.0.0 users had access to it. The prototype name `glossary-report` never shipped in any tagged release; now worded consistently with the 1.1.0 CHANGELOG entry.
+- **write**: `deepl write --interactive` now fails fast with a `ValidationError` when stdin is not a TTY (e.g., a CI job that passes `--interactive` without `--no-input`). Previously the process would hang indefinitely on an `@inquirer/prompts` `select` call that a non-TTY stream can never answer.
+- **translate**: `deepl translate --format table` now falls back to plain `[lang] text` output with a `WARN` line on stderr when stdout is not a TTY. Screen readers and log scrapers no longer have to parse `cli-table3`'s Unicode box-drawing characters; pipe `--format table > out.txt` produces parseable plain text instead of Unicode noise.
+- **output**: Spinners (`ora`) are now gated on `process.stderr.isTTY` at the `Logger.shouldShowSpinner()` chokepoint. CI and piped-stderr contexts no longer risk ANSI escape leaks into log files regardless of which callsite instantiates the spinner.
+- **color**: `NO_COLOR` is now explicitly honored in the CLI bootstrap by setting `chalk.level = 0` when the env var is present. `chalk` already auto-detects `NO_COLOR`, but the explicit hook keeps the two color-detection paths in the codebase (`chalk` and `isColorEnabled()` in `utils/formatters.ts`) unambiguously in sync if `chalk`'s auto-detection ever changes or is mocked in tests.
 
 ## [1.1.0] - 2026-04-23
 
