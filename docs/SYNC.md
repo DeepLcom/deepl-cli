@@ -273,6 +273,7 @@ In JSON output (`--format json`), the `strategy` field provides the breakdown:
 | `limits.max_entries_per_file` | `number` | No | `25000` | Per-file parser cap on extracted entry count. Files exceeding this are skipped with a warning. Hard ceiling: `100000`. Values above the ceiling fail at config load with `ConfigError` (exit 7). |
 | `limits.max_file_bytes` | `number` | No | `4194304` (4 MiB) | Per-file parser cap on on-disk size, checked via `fs.stat` before read. Files exceeding this are skipped with a warning. Hard ceiling: `10485760` (10 MiB). Values above the ceiling fail at config load with `ConfigError` (exit 7). |
 | `limits.max_depth` | `number` | No | `32` | Per-file parser cap on associative-array nesting depth. Protects against stack-overflow on adversarial input. Currently consumed by the Laravel PHP parser. Files exceeding this are skipped with a warning. Hard ceiling: `64`. Values above the ceiling fail at config load with `ConfigError` (exit 7). |
+| `limits.max_source_files` | `number` | No | `10000` | Per-bucket cap on how many source files a single `include` glob may match. Buckets exceeding this are **skipped entirely with a warning** — the assumption is that a glob which returned 10k+ files is picking up an unintended vendored tree. Narrow the `include` pattern or raise the cap. Hard ceiling: `1000000`. Values above the ceiling fail at config load with `ConfigError` (exit 7). |
 
 #### `tms`
 

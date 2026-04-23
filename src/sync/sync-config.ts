@@ -126,6 +126,7 @@ const KNOWN_SYNC_LIMITS_KEYS: readonly string[] = [
   'max_entries_per_file',
   'max_file_bytes',
   'max_depth',
+  'max_source_files',
 ];
 
 const KNOWN_TMS_KEYS: readonly string[] = [
@@ -412,7 +413,7 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
       ) {
         throw new ConfigError(
           'sync.limits must be an object mapping cap names to positive integers.',
-          'See docs/SYNC.md for valid keys: max_entries_per_file, max_file_bytes, max_depth.',
+          'See docs/SYNC.md for valid keys: max_entries_per_file, max_file_bytes, max_depth, max_source_files.',
         );
       }
       const limits = syncBlock['limits'] as Record<string, unknown>;

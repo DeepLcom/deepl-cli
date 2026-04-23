@@ -178,6 +178,40 @@ describe('walkBuckets', () => {
       expect(result[0]!.entries).toEqual([{ key: 'a', value: 'Hello' }]);
     });
 
+    it('skips entire bucket when glob returns more files than sync.limits.max_source_files', async () => {
+      mockFg.mockResolvedValue(Array.from({ length: 10 }, (_, i) => `/test/locales/en/${i}.json`) as never);
+
+      const config = makeConfig({
+        sync: {
+          concurrency: 5,
+          batch_size: 50,
+          limits: { max_source_files: 3 },
+        },
+      });
+      const result = await collect(walkBuckets(config, makeRegistry()));
+
+      expect(result).toHaveLength(0);
+      expect(mockStat).not.toHaveBeenCalled();
+      expect(mockReadFile).not.toHaveBeenCalled();
+    });
+
+    it('processes the bucket when file count equals max_source_files', async () => {
+      mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
+      mockStat.mockResolvedValue({ size: 100 } as never);
+      mockReadFile.mockResolvedValue('{"a":"Hello"}');
+
+      const config = makeConfig({
+        sync: {
+          concurrency: 5,
+          batch_size: 50,
+          limits: { max_source_files: 1 },
+        },
+      });
+      const result = await collect(walkBuckets(config, makeRegistry()));
+
+      expect(result).toHaveLength(1);
+    });
+
     it('skips files where a laravel_php parser depth cap is exceeded', async () => {
       mockFg.mockResolvedValue(['/test/lang/en.php'] as never);
       mockStat.mockResolvedValue({ size: 200 } as never);

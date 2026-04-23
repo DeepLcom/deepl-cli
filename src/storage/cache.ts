@@ -35,6 +35,16 @@ const DEFAULT_MAX_SIZE = 1024 * 1024 * 1024; // 1GB
 const DEFAULT_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
 const CLEANUP_INTERVAL = 60_000; // 60 seconds
 
+/**
+ * Current on-disk schema version for the SQLite cache. Stamped into
+ * `PRAGMA user_version` on fresh DBs and checked on every open. Bumping
+ * this number means "future callers will read a DB laid out differently."
+ * Pre-versioned databases (created before this field existed) report
+ * `user_version = 0` and are upgrade-stamped in place without data
+ * migration — the schema is backward-compatible.
+ */
+const CACHE_SCHEMA_VERSION = 1;
+
 export class CacheService {
   private static instance: CacheService | null = null;
   private static handlersRegistered: boolean = false;
@@ -59,12 +69,20 @@ export class CacheService {
     try {
       this.openDatabase(dbPath);
     } catch (error) {
-      Logger.warn(`Cache database corrupted, recreating: ${(error as Error).message}`);
+      // Corrupted DB: rename-aside rather than unlink, so the user keeps
+      // 30 days of cache history (and a forensic artifact) instead of
+      // losing both silently. Suffix with a timestamp so repeated
+      // corruption doesn't clobber earlier backups.
+      const suffix = `.corrupt-${Date.now()}`;
+      Logger.warn(
+        `Cache database corrupted, backing up and recreating: ${(error as Error).message}. ` +
+        `Previous contents preserved at ${path.basename(dbPath)}${suffix} (and -wal${suffix} / -shm${suffix} if present).`,
+      );
       try {
-        if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-        for (const suffix of ['-wal', '-shm']) {
-          const f = dbPath + suffix;
-          if (fs.existsSync(f)) fs.unlinkSync(f);
+        if (fs.existsSync(dbPath)) fs.renameSync(dbPath, dbPath + suffix);
+        for (const sidecar of ['-wal', '-shm']) {
+          const f = dbPath + sidecar;
+          if (fs.existsSync(f)) fs.renameSync(f, f + suffix);
         }
         this.openDatabase(dbPath);
       } catch {
@@ -117,6 +135,17 @@ export class CacheService {
   private initialize(): void {
     this.db.pragma('journal_mode = WAL');
 
+    // Schema version check: pre-versioned DBs report user_version = 0
+    // and are upgrade-stamped in place (current schema is compatible).
+    // Higher-than-current means the DB was written by a newer CLI
+    // version than this one — refuse rather than risk data loss.
+    const userVersion = this.db.pragma('user_version', { simple: true }) as number;
+    if (userVersion > CACHE_SCHEMA_VERSION) {
+      throw new ConfigError(
+        `Cache DB schema version ${userVersion} is newer than this CLI supports (${CACHE_SCHEMA_VERSION}). Upgrade the CLI, or delete the cache DB to start fresh.`,
+      );
+    }
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS cache (
         key TEXT PRIMARY KEY,
@@ -126,6 +155,10 @@ export class CacheService {
       );
       CREATE INDEX IF NOT EXISTS idx_timestamp ON cache(timestamp);
     `);
+
+    if (userVersion < CACHE_SCHEMA_VERSION) {
+      this.db.pragma(`user_version = ${CACHE_SCHEMA_VERSION}`);
+    }
 
     const row = this.db.prepare('SELECT COALESCE(SUM(size), 0) as total FROM cache').get() as { total: number };
     this.currentSize = row.total;

@@ -48,6 +48,14 @@ export interface SyncLimits {
   max_entries_per_file?: number;
   max_file_bytes?: number;
   max_depth?: number;
+  /**
+   * Maximum number of source files a single bucket's `include` glob may
+   * match before the bucket is skipped with a warning. Guards against a
+   * misconfigured `**\/*.json` that accidentally picks up a vendored tree.
+   * Default 10_000 keeps legitimate large-i18n projects working while
+   * flagging obvious cardinality explosions.
+   */
+  max_source_files?: number;
 }
 
 export interface SyncBehavior {
@@ -180,12 +188,14 @@ export const DEFAULT_SYNC_LIMITS: Required<SyncLimits> = {
   max_entries_per_file: 25_000,
   max_file_bytes: 4 * 1024 * 1024, // 4 MiB
   max_depth: 32,
+  max_source_files: 10_000,
 };
 
 export const HARD_MAX_SYNC_LIMITS: Required<SyncLimits> = {
   max_entries_per_file: 100_000,
   max_file_bytes: 10 * 1024 * 1024, // 10 MiB
   max_depth: 64,
+  max_source_files: 1_000_000,
 };
 
 export function resolveSyncLimits(config: { sync?: SyncBehavior }): Required<SyncLimits> {
@@ -195,5 +205,7 @@ export function resolveSyncLimits(config: { sync?: SyncBehavior }): Required<Syn
       user?.max_entries_per_file ?? DEFAULT_SYNC_LIMITS.max_entries_per_file,
     max_file_bytes: user?.max_file_bytes ?? DEFAULT_SYNC_LIMITS.max_file_bytes,
     max_depth: user?.max_depth ?? DEFAULT_SYNC_LIMITS.max_depth,
+    max_source_files:
+      user?.max_source_files ?? DEFAULT_SYNC_LIMITS.max_source_files,
   };
 }

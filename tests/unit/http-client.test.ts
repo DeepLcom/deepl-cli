@@ -105,7 +105,7 @@ describe('HttpClient', () => {
       expect(sleepSpy).toHaveBeenCalledWith(0);
     });
 
-    it('should use exponential backoff on 429 without Retry-After', async () => {
+    it('should use jittered exponential backoff on 429 without Retry-After', async () => {
       nock(baseUrl)
         .get('/v2/test')
         .reply(429, { message: 'Too many requests' });
@@ -117,7 +117,10 @@ describe('HttpClient', () => {
 
       expect(result).toEqual({ result: 'ok' });
       expect(sleepSpy).toHaveBeenCalledTimes(1);
-      expect(sleepSpy).toHaveBeenCalledWith(1000);
+      // Full jitter: attempt 0 → random in [0, INIT * 2^0] = [0, 1000]
+      const delay = sleepSpy.mock.calls[0][0] as number;
+      expect(delay).toBeGreaterThanOrEqual(0);
+      expect(delay).toBeLessThanOrEqual(1000);
     });
 
     it('should cap Retry-After at 60 seconds', async () => {
@@ -135,7 +138,7 @@ describe('HttpClient', () => {
       expect(sleepSpy).toHaveBeenCalledWith(60000);
     });
 
-    it('should fall back to exponential backoff on invalid Retry-After', async () => {
+    it('should fall back to jittered exponential backoff on invalid Retry-After', async () => {
       nock(baseUrl)
         .get('/v2/test')
         .reply(429, { message: 'Too many requests' }, { 'Retry-After': 'garbage' });
@@ -147,7 +150,9 @@ describe('HttpClient', () => {
 
       expect(result).toEqual({ result: 'ok' });
       expect(sleepSpy).toHaveBeenCalledTimes(1);
-      expect(sleepSpy).toHaveBeenCalledWith(1000);
+      const delay = sleepSpy.mock.calls[0][0] as number;
+      expect(delay).toBeGreaterThanOrEqual(0);
+      expect(delay).toBeLessThanOrEqual(1000);
     });
 
     it('should handle Retry-After as HTTP date format', async () => {
@@ -168,7 +173,7 @@ describe('HttpClient', () => {
       expect(delay).toBeLessThanOrEqual(11000);
     });
 
-    it('should use exponential backoff across multiple 429 retries without Retry-After', async () => {
+    it('should use jittered exponential backoff across multiple 429 retries without Retry-After', async () => {
       nock(baseUrl)
         .get('/v2/test')
         .reply(429, { message: 'Too many requests' });
@@ -186,9 +191,17 @@ describe('HttpClient', () => {
 
       expect(result).toEqual({ result: 'ok' });
       expect(sleepSpy).toHaveBeenCalledTimes(3);
-      expect(sleepSpy).toHaveBeenNthCalledWith(1, 1000);
-      expect(sleepSpy).toHaveBeenNthCalledWith(2, 2000);
-      expect(sleepSpy).toHaveBeenNthCalledWith(3, 4000);
+      // Full jitter: attempt n → random in [0, INIT * 2^n]. The caps
+      // grow exponentially; each call's delay must fall within its cap.
+      const delay1 = sleepSpy.mock.calls[0][0] as number;
+      const delay2 = sleepSpy.mock.calls[1][0] as number;
+      const delay3 = sleepSpy.mock.calls[2][0] as number;
+      expect(delay1).toBeGreaterThanOrEqual(0);
+      expect(delay1).toBeLessThanOrEqual(1000);
+      expect(delay2).toBeGreaterThanOrEqual(0);
+      expect(delay2).toBeLessThanOrEqual(2000);
+      expect(delay3).toBeGreaterThanOrEqual(0);
+      expect(delay3).toBeLessThanOrEqual(4000);
     });
 
     it('should throw RateLimitError after exhausting all retries on 429', async () => {
