@@ -957,12 +957,13 @@ Each target locale translates independently. If the API returns a transient erro
 | Code | Meaning |
 |------|---------|
 | 0 | Success -- all translations up to date |
-| 1 | Partial sync failure -- one or more locales failed, others succeeded |
+| 1 | General error -- unclassified failure (inspect stderr) |
 | 6 | Invalid input -- bad arguments or unsupported format |
 | 7 | Config error -- invalid or missing `.deepl-sync.yaml` |
 | 8 | Validation failed -- `deepl sync validate` found issues |
 | 10 | Sync drift detected -- `--frozen` found missing/outdated translations |
 | 11 | Sync conflict -- `sync resolve` could not auto-resolve lockfile conflicts |
+| 12 | Partial sync failure -- one or more locales failed, others succeeded; retry with `--locale <failed>` |
 
 See [API.md Exit Codes appendix](API.md#exit-codes) for detailed per-code descriptions, triggering commands, and shell-handling examples across every `deepl` command.
 

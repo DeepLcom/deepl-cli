@@ -13,8 +13,6 @@ import { Logger } from './logger.js';
 export const ExitCode = {
   Success: 0,
   GeneralError: 1,
-  /** Partial sync failure: one or more locales failed while others succeeded. */
-  PartialFailure: 1,
   AuthError: 2,
   RateLimitError: 3,
   QuotaError: 4,
@@ -28,6 +26,10 @@ export const ExitCode = {
   VoiceError: 9,
   SyncDrift: 10,
   SyncConflict: 11,
+  /** Partial sync failure: one or more locales failed while others succeeded.
+   *  Distinct from GeneralError (1) so CI scripts can branch on `$? -eq 12`
+   *  to retry only the failed locales without masking unclassified crashes. */
+  PartialFailure: 12,
 } as const;
 
 export type ExitCode = (typeof ExitCode)[keyof typeof ExitCode];
@@ -45,6 +47,7 @@ export const EXIT_CODE_DESCRIPTIONS: Record<number, string> = {
   9: 'Voice API error (unsupported plan or session failure)',
   10: 'Sync drift detected (translations out of date)',
   11: 'Sync lockfile conflict (auto-resolution incomplete)',
+  12: 'Partial sync failure (one or more locales failed)',
 };
 
 /**

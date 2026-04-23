@@ -105,10 +105,10 @@ async function handleSyncInit(
             suggestion:
               'Remove or rename the existing .deepl-sync.yaml, or edit it directly.',
           },
-          exitCode: 7,
+          exitCode: ExitCode.ConfigError,
         };
         process.stderr.write(JSON.stringify(envelope) + '\n');
-        process.exit(7);
+        process.exit(ExitCode.ConfigError);
       }
       Logger.warn(chalk.yellow('Config file .deepl-sync.yaml already exists.'));
       return;

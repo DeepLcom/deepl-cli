@@ -2853,7 +2853,7 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 | Code | Name           | Meaning                                                        | Retryable |
 | ---- | -------------- | -------------------------------------------------------------- | --------- |
 | 0    | Success        | Command completed successfully                                 | N/A       |
-| 1    | GeneralError / PartialFailure | Unclassified failure, or partial sync failure (some locales succeeded, some failed) | No |
+| 1    | GeneralError   | Unclassified failure (error escaped every typed handler and matched no classifier heuristic) | No |
 | 2    | AuthError      | Authentication failed or API key missing                       | No        |
 | 3    | RateLimitError | Rate limit exceeded (HTTP 429)                                 | Yes       |
 | 4    | QuotaError     | Monthly character quota exhausted (HTTP 456)                   | No        |
@@ -2864,6 +2864,7 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 | 9    | VoiceError     | Voice API unavailable or session failed                        | No        |
 | 10   | SyncDrift      | `sync --frozen` detected translations out of date              | No        |
 | 11   | SyncConflict   | `sync resolve` could not auto-resolve lockfile conflicts       | No        |
+| 12   | PartialFailure | `deepl sync` completed with at least one failed locale         | Yes (per-locale retry) |
 
 ### Code details
 
@@ -2871,15 +2872,11 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 
 Command completed without error. Every `deepl` subcommand uses this code on success. Do not rely on stdout being non-empty — successful commands may emit only a status line (e.g., `deepl cache clear`).
 
-#### 1 — GeneralError / PartialFailure
+#### 1 — GeneralError
 
-Two distinct cases share this code:
+Unclassified failure: emitted when an error escapes every typed handler and matches none of the message-classification heuristics in `src/utils/exit-codes.ts`. Any command can surface this. Treat it as "unknown failure — inspect stderr." Typically indicates an unexpected CLI bug or an error from a third-party dependency.
 
-1. **Unclassified failure** (`GeneralError`): emitted when an error escapes every typed handler and matches none of the message-classification heuristics in `src/utils/exit-codes.ts`. Any command can surface this. Treat it as "unknown failure — inspect stderr." Typically indicates an unexpected CLI bug or an error from a third-party dependency.
-
-2. **Partial sync failure** (`PartialFailure`): emitted by `deepl sync` when at least one locale failed and at least one locale succeeded. The successful locales' target files and lockfile entries are written; the failed locales' files are not touched. Re-running `deepl sync` (with or without `--locale`) will retry only the failed locales. Authentication failures (401/403) abort the entire run and surface as exit code 2 instead of 1.
-
-CI scripts should treat exit code 1 from `deepl sync` as partial failure and inspect the per-locale summary in stderr to determine which locales need attention.
+**CI branching.** Exit 1 now means exactly "unclassified failure." Partial sync failure has its own code — see [#12 — PartialFailure](#12--partialfailure). A CI script can safely treat exit 1 as "CLI crashed, investigate" without misreading a partial-locale outcome.
 
 #### 2 — AuthError
 
@@ -2956,9 +2953,9 @@ Remediation: confirm Pro/Enterprise plan, verify the session configuration, and 
 
 #### 10 — SyncDrift
 
-`deepl sync --frozen` (alias `--ci`) detected that lockfile-tracked translations are out of date with the source strings. Emitted only from `src/cli/commands/register-sync.ts` when the sync run completes and `result.driftDetected === true`. No other command returns this code.
+`deepl sync --frozen` (alias `--ci`) detected that lockfile-tracked translations are out of date with the source strings. Emitted only from `src/cli/commands/sync/register-sync-root.ts` when the sync run completes and `result.driftDetected === true`. No other command returns this code.
 
-Use this in CI to fail a pull request when a contributor edits source strings without running `deepl sync`. Note that `SyncDriftError` is defined in `src/utils/errors.ts` as an alias for this code, but the CLI currently exits directly via `process.exit(ExitCode.SyncDrift)` rather than throwing.
+Use this in CI to fail a pull request when a contributor edits source strings without running `deepl sync`. Exit is **soft** — `process.exitCode` is set so in-flight writes, auto-commit steps, and any `--watch` event loop drain cleanly before the process exits.
 
 Remediation: run `deepl sync` locally and commit the updated translations and lockfile.
 
@@ -2969,6 +2966,16 @@ Remediation: run `deepl sync` locally and commit the updated translations and lo
 Distinct from exit code 1 (GeneralError): a pipeline that runs `deepl sync resolve` in CI can now branch on `11` to route the lockfile to a human for manual merge without masking real CLI crashes under the same code.
 
 Remediation: open `.deepl-sync.lock`, resolve the remaining `<<<<<<<` / `=======` / `>>>>>>>` regions by hand, save, and run `deepl sync` to fill any gaps.
+
+#### 12 — PartialFailure
+
+`deepl sync` completed, but at least one locale failed while at least one other locale succeeded. The successful locales' target files and lockfile entries are written; the failed locales' files are not touched. Emitted only by `deepl sync` (the root command).
+
+Authentication failures (401/403) abort the entire run and surface as exit code 2 (`AuthError`) instead of 12. Network / rate-limit / quota failures bubble up as 5 / 3 / 4 respectively. Code 12 specifically means "the run proceeded far enough to attempt per-locale work, and the result was mixed."
+
+**Retry model.** Re-running `deepl sync` (optionally with `--locale <failed,comma,separated>`) will retry only the locales whose lockfile entries weren't written. This is the canonical CI recovery path: branch on `$? -eq 12`, inspect the per-locale error report, and re-run with the failed locales as the filter.
+
+The paired typed error is `SyncPartialFailureError` in `src/utils/errors.ts`; the JSON error envelope emits `code: "SyncPartialFailure"` to match the SyncConflict/SyncDrift naming convention.
 
 ### Classification heuristics (fallback)
 
