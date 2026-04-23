@@ -26,6 +26,8 @@ export function warnIgnoredOptions(mode: string, options: TranslateOptions, supp
     preserveFormatting: '--preserve-formatting',
     context: '--context',
     glossary: '--glossary',
+    translationMemory: '--translation-memory',
+    tmThreshold: '--tm-threshold',
     customInstruction: '--custom-instruction',
     styleId: '--style-id',
     outlineDetection: '--outline-detection',
@@ -56,7 +58,7 @@ export function validateLanguageCodes(langCodes: string[]): void {
   for (const lang of langCodes) {
     if (!VALID_LANGUAGES.has(lang)) {
       throw new ValidationError(
-        `Invalid target language code: "${lang}". Valid codes: ${Array.from(VALID_LANGUAGES).sort().join(', ')}`,
+        `Invalid target language code: "${lang}".`,
         'Run: deepl languages  to see all available languages'
       );
     }

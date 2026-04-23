@@ -2,6 +2,28 @@
 
 Common issues and solutions when using the DeepL CLI.
 
+## Table of Contents
+
+- [Authentication Errors (Exit Code 2)](#authentication-errors-exit-code-2)
+- [Setup Wizard Issues (`deepl init`)](#setup-wizard-issues-deepl-init)
+- [Quota Errors (Exit Code 4)](#quota-errors-exit-code-4)
+- [Rate Limiting (Exit Code 3)](#rate-limiting-exit-code-3)
+- [Network Errors (Exit Code 5)](#network-errors-exit-code-5)
+- [CheckFailed (Exit Code 8)](#checkfailed-exit-code-8)
+- [Voice API Errors (Exit Code 9)](#voice-api-errors-exit-code-9)
+- [Write API Issues](#write-api-issues)
+- [Configuration Errors (Exit Code 7)](#configuration-errors-exit-code-7)
+- [Input Validation Errors (Exit Code 6)](#input-validation-errors-exit-code-6)
+- [Cache Issues](#cache-issues)
+- [Document Translation Issues](#document-translation-issues)
+- [Glossary Issues](#glossary-issues)
+- [Exit Codes Reference](#exit-codes-reference)
+- [Environment Variables](#environment-variables)
+- [Getting More Help](#getting-more-help)
+- [Still Having Issues?](#still-having-issues)
+
+---
+
 ## Authentication Errors (Exit Code 2)
 
 ### "Authentication failed: Invalid API key"

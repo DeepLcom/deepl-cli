@@ -1,4 +1,5 @@
 export const MULTI_TARGET_CONCURRENCY = 5;
+export const PUSH_CONCURRENCY = 10;
 
 export async function mapWithConcurrency<T, R>(
   items: T[],
@@ -7,10 +8,16 @@ export async function mapWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results: R[] = [];
   let index = 0;
+  let aborted = false;
   async function worker() {
-    while (index < items.length) {
+    while (index < items.length && !aborted) {
       const i = index++;
-      results[i] = await fn(items[i] as T);
+      try {
+        results[i] = await fn(items[i] as T);
+      } catch (err) {
+        aborted = true;
+        throw err;
+      }
     }
   }
   await Promise.all(

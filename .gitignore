@@ -66,8 +66,15 @@ logs/
 *.db-wal
 *.db-shm
 
-# Claude Code local settings
-.claude/settings.local.json
+# Claude Code local tooling (settings, hooks, agent worktrees, session state)
+.claude/
+
+# Playwright MCP local state
+.playwright-mcp/
 
 # Beads issue tracking (local)
 .beads/
+issues.jsonl
+
+# QA harness
+qa/

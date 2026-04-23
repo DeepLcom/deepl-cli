@@ -3,6 +3,7 @@ import type { ConfigService } from '../../storage/config.js';
 import type { CacheService } from '../../storage/cache.js';
 import type { DeepLClientOptions } from '../../api/http-client.js';
 import type { GlossaryCommand } from './glossary.js';
+import type { TmCommand } from './tm.js';
 import type { AdminCommand } from './admin.js';
 import type { WriteCommand } from './write.js';
 import type { StyleRulesCommand } from './style-rules.js';
@@ -12,6 +13,7 @@ import type { WatchCommand } from './watch.js';
 import type { VoiceCommand } from './voice.js';
 import type { DetectCommand } from './detect.js';
 import type { LanguagesCommand } from './languages.js';
+import type { SyncCommand } from './sync-command.js';
 
 export type CreateDeepLClient = (overrideBaseUrl?: string) => Promise<DeepLClient>;
 export type GetApiKeyAndOptions = () => { apiKey: string; options: DeepLClientOptions };
@@ -32,6 +34,14 @@ export async function createGlossaryCommand(
   const { GlossaryCommand: GlossaryCmd } = await import('./glossary.js');
   const glossaryService = new GlossaryService(client);
   return new GlossaryCmd(glossaryService);
+}
+
+export async function createTmCommand(
+  createDeepLClient: CreateDeepLClient,
+): Promise<TmCommand> {
+  const client = await createDeepLClient();
+  const { TmCommand: TmCmd } = await import('./tm.js');
+  return new TmCmd(client);
 }
 
 export async function createAdminCommand(
@@ -137,4 +147,22 @@ export async function createVoiceCommand(
   const voiceClient = new VoiceClient(apiKey, options);
   const voiceService = new VoiceService(voiceClient);
   return new VoiceCmd(voiceService);
+}
+
+export async function createSyncCommand(
+  deps: Pick<ServiceDeps, 'createDeepLClient' | 'getConfigService' | 'getCacheService'>,
+): Promise<SyncCommand> {
+  const client = await deps.createDeepLClient();
+  const { TranslationService } = await import('../../services/translation.js');
+  const { GlossaryService } = await import('../../services/glossary.js');
+  const { SyncService } = await import('../../sync/sync-service.js');
+  const { SyncCommand: SyncCmd } = await import('./sync-command.js');
+  const { createDefaultRegistry } = await import('../../formats/index.js');
+
+  const configService = deps.getConfigService();
+  const translationService = new TranslationService(client, configService, await deps.getCacheService());
+  const glossaryService = new GlossaryService(client);
+  const formatRegistry = await createDefaultRegistry();
+  const syncService = new SyncService(translationService, glossaryService, formatRegistry);
+  return new SyncCmd(syncService);
 }

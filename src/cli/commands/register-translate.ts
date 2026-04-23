@@ -23,6 +23,23 @@ export function registerTranslate(
     .addOption(new Option('--formality <level>', 'Formality level (formal/informal are aliases for more/less)').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less', 'formal', 'informal']))
     .option('--context <text>', 'Additional context to improve translation quality')
     .option('--glossary <name-or-id>', 'Use glossary by name or ID')
+    .option(
+      '--translation-memory <name-or-uuid>',
+      'Use translation memory by name or UUID (forces quality_optimized model). Run "deepl tm list" to see available TMs.',
+    )
+    .option(
+      '--tm-threshold <n>',
+      'Minimum match score 0\u2013100 (default 75, requires --translation-memory)',
+      (raw: string) => {
+        if (!/^-?\d+$/.test(raw)) {
+          throw new ValidationError(
+            `--tm-threshold must be an integer, got: ${raw}`,
+            'Example: --tm-threshold 80',
+          );
+        }
+        return parseInt(raw, 10);
+      },
+    )
     .option('--custom-instruction <instruction>', 'Custom instruction for translation (repeatable, max 10, max 300 chars each)', (val: string, prev: string[]) => prev.concat([val]), [] as string[])
     .option('--style-id <uuid>', 'Style rule ID for translation (Pro API only, forces quality_optimized model)')
     .addOption(new Option('--model-type <type>', 'Model type').choices(['quality_optimized', 'prefer_quality_optimized', 'latency_optimized']))
@@ -87,6 +104,8 @@ Examples:
       pattern?: string;
       concurrency?: number;
       glossary?: string;
+      translationMemory?: string;
+      tmThreshold?: number;
       customInstruction?: string[];
       styleId?: string;
       enableBetaLanguages?: boolean;
@@ -106,6 +125,32 @@ Examples:
               'Use --to <lang>:   deepl translate "Hello" --to de\n  Set a default:     deepl init',
             );
           }
+        }
+
+        if (options.tmThreshold !== undefined && !options.translationMemory) {
+          throw new ValidationError(
+            '--tm-threshold requires --translation-memory',
+            'Example: --translation-memory my-tm --tm-threshold 80',
+          );
+        }
+        if (options.tmThreshold !== undefined) {
+          const n = options.tmThreshold;
+          if (n < 0 || n > 100) {
+            throw new ValidationError(
+              `--tm-threshold must be an integer between 0 and 100, got: ${n}`,
+              'Use a value between 0 and 100, or omit --tm-threshold to use the default (75).',
+            );
+          }
+        }
+        if (
+          options.translationMemory &&
+          options.modelType &&
+          options.modelType !== 'quality_optimized'
+        ) {
+          throw new ValidationError(
+            '--translation-memory requires quality_optimized model type',
+            'Remove --model-type or set --model-type quality_optimized',
+          );
         }
 
         if (options.dryRun) {
@@ -141,6 +186,11 @@ Examples:
           }
           if (options.glossary) {
             lines.push(chalk.yellow(`[dry-run] Glossary: ${options.glossary}`));
+          }
+          if (options.translationMemory) {
+            lines.push(chalk.yellow(`[dry-run] Translation memory: ${options.translationMemory}`));
+            lines.push(chalk.yellow(`[dry-run] Match threshold: ${options.tmThreshold ?? 75}`));
+            lines.push(chalk.yellow(`[dry-run] Model: quality_optimized (forced by --translation-memory)`));
           }
           if (options.formality) {
             lines.push(chalk.yellow(`[dry-run] Formality: ${options.formality}`));

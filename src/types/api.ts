@@ -13,6 +13,8 @@ export interface TranslationOptions {
   sourceLang?: Language;
   targetLang: Language;
   glossaryId?: string;
+  translationMemoryId?: string;
+  translationMemoryThreshold?: number;
   formality?: Formality;
   preserveFormatting?: boolean;
   preserveCode?: boolean;
@@ -29,6 +31,13 @@ export interface TranslationOptions {
   styleId?: string;
   tagHandlingVersion?: 'v1' | 'v2';
   enableBetaLanguages?: boolean;
+}
+
+export interface TranslationMemory {
+  translation_memory_id: string;
+  name: string;
+  source_language: string;
+  target_languages: string[];
 }
 
 export type WriteLanguage =

@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "error": {
+    "code": "SyncConflict",
+    "message": "Could not automatically resolve lock file conflicts. Manual resolution required.",
+    "suggestion": "Edit .deepl-sync.lock to resolve conflict markers manually, then run `deepl sync` to fill gaps."
+  },
+  "exitCode": 11
+}

@@ -15,6 +15,7 @@ import {
   DocumentStatus,
   GlossaryInfo,
   GlossaryLanguagePair,
+  TranslationMemory,
   StyleRule,
   StyleRuleDetailed,
   StyleRulesListOptions,
@@ -107,6 +108,10 @@ export class DeepLClient {
     type: 'source' | 'target'
   ): Promise<LanguageInfo[]> {
     return this.translationClient.getSupportedLanguages(type);
+  }
+
+  async listTranslationMemories(): Promise<TranslationMemory[]> {
+    return this.translationClient.listTranslationMemories();
   }
 
   async getGlossaryLanguages(): Promise<GlossaryLanguagePair[]> {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Application metadata -->
+    <string name="app_name">My App</string>
+    <string name="app_id" translatable="false">com.example.app</string>
+    <string name="welcome">Welcome to <b>My App</b></string>
+    <string name="escaped">It\'s a \"test\" with\nnewline</string>
+    <string name="cdata_value"><![CDATA[<html>bold & italic</html>]]></string>
+    <!-- User-facing strings -->
+    <string name="terms">Terms &amp; Conditions</string>
+</resources>

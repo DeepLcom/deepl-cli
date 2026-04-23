@@ -1,62 +1,80 @@
 /**
- * Exit Codes for CLI
- * Provides granular exit codes for better CI/CD integration
+ * CLI Exit Codes
+ *
+ * Canonical exit-code enum and error classifier. Lives in the utils/
+ * namespace alongside the errors module so that E2E tests and the
+ * `--format json` error-envelope schema can import these values without
+ * pulling `commander` (or any other registrar-layer module) into test-land.
  */
 
 import { DeepLCLIError } from './errors.js';
 import { Logger } from './logger.js';
 
-/**
- * Exit codes for different error types
- * Allows scripts to implement intelligent retry logic
- */
-export enum ExitCode {
-  Success = 0,
-  GeneralError = 1,
-  AuthError = 2,
-  RateLimitError = 3,
-  QuotaError = 4,
-  NetworkError = 5,
-  InvalidInput = 6,
-  ConfigError = 7,
-  CheckFailed = 8,
-  VoiceError = 9,
-}
+export const ExitCode = {
+  Success: 0,
+  GeneralError: 1,
+  /** Partial sync failure: one or more locales failed while others succeeded. */
+  PartialFailure: 1,
+  AuthError: 2,
+  RateLimitError: 3,
+  QuotaError: 4,
+  NetworkError: 5,
+  InvalidInput: 6,
+  /** Alias of {@link ExitCode.InvalidInput}; preferred spelling for typed
+   *  `ValidationError` throws that reach the top-level handler. */
+  ValidationError: 6,
+  ConfigError: 7,
+  CheckFailed: 8,
+  VoiceError: 9,
+  SyncDrift: 10,
+  SyncConflict: 11,
+} as const;
 
-/**
- * Exit code descriptions for help text
- */
-export const EXIT_CODE_DESCRIPTIONS: Record<ExitCode, string> = {
-  [ExitCode.Success]: 'Success',
-  [ExitCode.GeneralError]: 'General error',
-  [ExitCode.AuthError]: 'Authentication error (invalid API key)',
-  [ExitCode.RateLimitError]: 'Rate limit exceeded',
-  [ExitCode.QuotaError]: 'Quota exceeded',
-  [ExitCode.NetworkError]: 'Network error (timeout, connection refused)',
-  [ExitCode.InvalidInput]: 'Invalid input (missing arguments, unsupported format)',
-  [ExitCode.ConfigError]: 'Configuration error (invalid config file)',
-  [ExitCode.CheckFailed]: 'Check found issues (text needs improvement)',
-  [ExitCode.VoiceError]: 'Voice API error (unsupported plan or session failure)',
+export type ExitCode = (typeof ExitCode)[keyof typeof ExitCode];
+
+export const EXIT_CODE_DESCRIPTIONS: Record<number, string> = {
+  0: 'Success',
+  1: 'General error',
+  2: 'Authentication error (invalid API key)',
+  3: 'Rate limit exceeded',
+  4: 'Quota exceeded',
+  5: 'Network error (timeout, connection refused)',
+  6: 'Invalid input (missing arguments, unsupported format)',
+  7: 'Configuration error (invalid config file)',
+  8: 'Check found issues (text needs improvement)',
+  9: 'Voice API error (unsupported plan or session failure)',
+  10: 'Sync drift detected (translations out of date)',
+  11: 'Sync lockfile conflict (auto-resolution incomplete)',
 };
 
 /**
- * Determine exit code from error type or message.
- * Prefers instanceof checks on custom error classes; falls back to
- * string matching for errors thrown outside the HTTP client layer.
+ * Determine exit code from an error.
+ *
+ * Typed `DeepLCLIError` instances carry their own `exitCode`; untyped
+ * errors are classified by message against a curated substring list.
+ */
+export function exitCodeForError(error: unknown): ExitCode {
+  if (error instanceof DeepLCLIError) {
+    return error.exitCode as ExitCode;
+  }
+  if (error instanceof Error) {
+    return classifyByMessage(error.message);
+  }
+  return ExitCode.GeneralError;
+}
+
+/**
+ * Legacy alias kept for backwards compatibility with callers that import
+ * the old name. Prefer `exitCodeForError`.
  */
 export function getExitCodeFromError(error: Error): ExitCode {
-  if (error instanceof DeepLCLIError) {
-    return error.exitCode;
-  }
-
-  return classifyByMessage(error.message);
+  return exitCodeForError(error);
 }
 
 function classifyByMessage(rawMessage: string): ExitCode {
   Logger.verbose(`Untyped error reached fallback classifier: "${rawMessage.substring(0, 120)}"`);
   const message = rawMessage.toLowerCase();
 
-  // Authentication errors - specific multi-word phrases
   if (
     message.includes('authentication failed') ||
     message.includes('invalid api key') ||
@@ -66,7 +84,6 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.AuthError;
   }
 
-  // Rate limiting - specific phrases
   if (
     message.includes('rate limit exceeded') ||
     message.includes('too many requests') ||
@@ -75,7 +92,6 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.RateLimitError;
   }
 
-  // Quota exceeded - specific phrases
   if (
     message.includes('quota exceeded') ||
     message.includes('character limit reached') ||
@@ -84,7 +100,6 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.QuotaError;
   }
 
-  // Network errors - specific error codes and multi-word phrases
   if (
     message.includes('econnrefused') ||
     message.includes('enotfound') ||
@@ -102,7 +117,6 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.NetworkError;
   }
 
-  // Voice API errors - specific phrases
   if (
     message.includes('voice api') ||
     message.includes('voice session')
@@ -110,8 +124,8 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.VoiceError;
   }
 
-  // Configuration errors - specific phrases (checked before InvalidInput
-  // because config error messages may contain words like "invalid")
+  // Config errors checked before InvalidInput because config messages
+  // may contain words like "invalid".
   if (
     message.includes('config file') ||
     message.includes('config directory') ||
@@ -124,7 +138,6 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.ConfigError;
   }
 
-  // Invalid input - specific phrases indicating user input problems
   if (
     message.includes('cannot be empty') ||
     message.includes('file not found') ||
@@ -148,13 +161,9 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.InvalidInput;
   }
 
-  // Default to general error
   return ExitCode.GeneralError;
 }
 
-/**
- * Check if error is retryable
- */
 export function isRetryableError(exitCode: ExitCode): boolean {
   return (
     exitCode === ExitCode.RateLimitError ||

@@ -1,0 +1,14 @@
+/* Main screen title */
+"app.main.title" = "My Application";
+
+/* Navigation items */
+"nav.home" = "Home";
+"nav.settings" = "Settings";
+
+// Unicode test
+"unicode.smiley" = "\U263A";
+"unicode.alpha" = "\U0041\U0042\U0043";
+
+/* Key with special characters */
+"error.404.message" = "Page not found";
+"button.ok!" = "OK";

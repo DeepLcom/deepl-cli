@@ -28,13 +28,16 @@ import { registerWrite } from './commands/register-write.js';
 import { registerConfig } from './commands/register-config.js';
 import { registerCache } from './commands/register-cache.js';
 import { registerGlossary } from './commands/register-glossary.js';
+import { registerTm } from './commands/register-tm.js';
 import { registerHooks } from './commands/register-hooks.js';
+import { registerSync } from './commands/register-sync.js';
 import { registerStyleRules } from './commands/register-style-rules.js';
 import { registerAdmin } from './commands/register-admin.js';
 import { registerCompletion } from './commands/register-completion.js';
 import { registerVoice } from './commands/register-voice.js';
 import { registerInit } from './commands/register-init.js';
 import { registerDetect } from './commands/register-detect.js';
+import { registerDescribe } from './commands/register-describe.js';
 import { validateApiUrl } from '../utils/validate-url.js';
 import { resolveEndpoint } from '../utils/resolve-endpoint.js';
 
@@ -260,9 +263,11 @@ registerVoice(program, deps);
 
 program.commandsGroup('Resources:');
 registerGlossary(program, deps);
+registerTm(program, deps);
 
 program.commandsGroup('Workflow:');
 registerWatch(program, deps);
+registerSync(program, deps);
 registerHooks(program, deps);
 
 program.commandsGroup('Configuration:');
@@ -280,6 +285,8 @@ registerCompletion(program, deps);
 
 program.commandsGroup('Administration:');
 registerAdmin(program, deps);
+
+registerDescribe(program, deps);
 
 // Show Getting Started hint when no API key is configured
 const savedApiKey = configService.getValue<string>('auth.apiKey');
@@ -353,5 +360,16 @@ if (!process.argv.slice(2).length) {
   process.exit(0);
 }
 
-// Parse arguments
-program.parse(process.argv);
+// Parse arguments. Commander propagates non-CommanderError throws from option
+// coercers (e.g. --tm-threshold) uncaught, so route DeepLCLIError subclasses
+// through handleError here — otherwise pre-handler validation crashes with a
+// stack trace instead of the documented exit code.
+try {
+  await program.parseAsync(process.argv);
+} catch (error) {
+  if (error instanceof DeepLCLIError) {
+    handleError(error);
+  } else {
+    throw error;
+  }
+}

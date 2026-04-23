@@ -13,7 +13,7 @@ describe('CLI Workflow E2E', () => {
   const testConfig = createTestConfigDir('e2e-config');
   const testDir = testFiles.path;
   const testConfigDir = testConfig.path;
-  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path);
+  const { runCLI, runCLIAll, runCLIExpectError } = makeRunCLI(testConfig.path);
 
   // Cache help outputs to avoid redundant process spawns
   let mainHelp: string;
@@ -269,6 +269,17 @@ describe('CLI Workflow E2E', () => {
         expect(output).toMatch(/not found|does not exist|API key|auth/i);
       }
     });
+
+    it('routes pre-handler coercer throws through handleError (--tm-threshold 80abc -> exit 6, no stack)', () => {
+      expect.assertions(3);
+      const result = runCLIExpectError(
+        'deepl translate "Hi" --to de --tm-threshold 80abc',
+        { stdio: 'pipe' },
+      );
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('--tm-threshold must be an integer');
+      expect(result.output).not.toMatch(/\s+at\s+.+:\d+:\d+/);
+    });
   });
 
   describe('Auth Command Workflow', () => {
@@ -343,16 +354,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should require API key for glossary languages', () => {
-      // Clear API key first
-      try {
-        runCLI('deepl auth clear');
-      } catch {
-        // Ignore if already cleared
-      }
-
       expect.assertions(1);
       try {
-        runCLI('deepl glossary languages');
+        runCLI('deepl glossary languages', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout ?? error.message;
         expect(output).toMatch(/API key|auth/i);
@@ -362,8 +366,7 @@ describe('CLI Workflow E2E', () => {
     it('should not require any arguments', () => {
       expect.assertions(2);
       try {
-        // Will fail without API key but should not require arguments
-        runCLI('deepl glossary languages');
+        runCLI('deepl glossary languages', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         // Should fail on auth, not missing arguments
@@ -373,16 +376,9 @@ describe('CLI Workflow E2E', () => {
     });
 
     it('should exit with non-zero on authentication failure', () => {
-      // Ensure no API key is set
-      try {
-        runCLI('deepl auth clear');
-      } catch {
-        // Ignore if already cleared
-      }
-
       expect.assertions(1);
       try {
-        runCLI('deepl glossary languages');
+        runCLI('deepl glossary languages', { excludeApiKey: true });
       } catch (error: any) {
         // Non-zero exit code
         expect(error.status).toBeGreaterThan(0);
@@ -763,7 +759,7 @@ describe('CLI Workflow E2E', () => {
     it('should require API key for style-rules list', () => {
       expect.assertions(1);
       try {
-        runCLI('deepl style-rules list');
+        runCLI('deepl style-rules list', { excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth/i);

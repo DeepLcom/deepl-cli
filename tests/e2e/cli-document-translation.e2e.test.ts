@@ -121,16 +121,21 @@ describe('Document Translation E2E', () => {
     });
 
     it('should handle non-existent file error', () => {
-      // Note: CLI validates API key before file existence, so expect auth error or file error
+      // Note: CLI validates API key before file existence, so expect auth error or file error.
+      // The subprocess bypasses nock and hits the real DeepL Free API with
+      // the shared `test-key:fx` fixture key; depending on the server's
+      // current state for that key the failure class can be 401 (auth),
+      // 404/ENOENT (local file check), or 429 (rate limit). All three
+      // satisfy the intent of this test — the CLI exits with an error
+      // rather than crashing or silently succeeding.
       const result = runCLIExpectError(
         'translate /nonexistent/file.pdf --to es',
         'test-key:fx'
       );
 
       expect(result.status).toBeGreaterThan(0);
-      // Will fail with either auth error (checked first) or file not found error
       expect(result.output).toMatch(
-        /authentication|invalid.*key|file not found|does not exist|enoent|Document translation failed/i
+        /authentication|invalid.*key|file not found|does not exist|enoent|rate.?limit|too many requests|Document translation failed/i
       );
     });
 

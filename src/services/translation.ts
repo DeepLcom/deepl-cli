@@ -7,7 +7,7 @@ import * as crypto from 'crypto';
 import { DeepLClient, TranslationResult, isTranslationResult, UsageInfo, LanguageInfo } from '../api/deepl-client.js';
 import { ConfigService } from '../storage/config.js';
 import { CacheService } from '../storage/cache.js';
-import { TranslationOptions, Language } from '../types/index.js';
+import { TranslationOptions, Language, TranslationMemory } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
 import { ValidationError } from '../utils/errors.js';
@@ -156,7 +156,6 @@ export class TranslationService {
       return [];
     }
 
-    let totalBytes = 0;
     for (let i = 0; i < texts.length; i++) {
       const text = texts[i];
       if (!text) {
@@ -169,13 +168,6 @@ export class TranslationService {
           'Split the text into smaller chunks or use file translation for large documents.'
         );
       }
-      totalBytes += itemBytes;
-    }
-    if (totalBytes > MAX_TEXT_BYTES) {
-      throw new ValidationError(
-        `Batch text too large: ${totalBytes} bytes total exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
-        'Reduce the number of texts or split them into smaller batches.'
-      );
     }
 
     // Get config defaults
@@ -227,9 +219,9 @@ export class TranslationService {
     // Convert Set to Array for batch translation
     const textsToTranslate = Array.from(textsToTranslateSet);
 
-    // If all texts were cached, return cached results
+    // If all texts were cached, return results preserving positional correspondence
     if (textsToTranslate.length === 0) {
-      return results.filter((r): r is TranslationResult => r !== null);
+      return results as TranslationResult[];
     }
 
     // Use batch API to translate all non-cached texts in a single request
@@ -294,16 +286,15 @@ export class TranslationService {
       }
     }
 
-    // Filter out null results (these are actual failures, not cached successes)
-    const filteredResults = results.filter((r): r is TranslationResult => r !== null);
-
-    // Calculate actual failures (excluding cached successes)
-    const actualFailures = texts.length - filteredResults.length;
+    // Calculate actual failures
+    const actualFailures = results.filter(r => r === null).length;
     if (actualFailures > 0) {
       Logger.warn(`⚠️  Warning: ${actualFailures} of ${texts.length} translations failed`);
     }
 
-    return filteredResults;
+    // Return sparse array preserving positional correspondence with input texts.
+    // Callers must check for null/undefined at each index.
+    return results as TranslationResult[];
   }
 
   /**
@@ -336,6 +327,10 @@ export class TranslationService {
       },
       MULTI_TARGET_CONCURRENCY
     );
+  }
+
+  async listTranslationMemories(): Promise<TranslationMemory[]> {
+    return this.client.listTranslationMemories();
   }
 
   /**

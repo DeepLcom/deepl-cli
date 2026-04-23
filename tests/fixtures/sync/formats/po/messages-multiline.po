@@ -1,0 +1,18 @@
+# Multiline test
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+#: src/help.py:5
+msgid ""
+"This is a long message "
+"that spans multiple lines "
+"in the PO file."
+msgstr ""
+"Este es un mensaje largo "
+"que abarca múltiples líneas "
+"en el archivo PO."
+
+#: src/help.py:15
+msgid "Short message"
+msgstr "Mensaje corto"

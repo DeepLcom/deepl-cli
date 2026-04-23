@@ -6,21 +6,25 @@ DeepL CLI is a command-line interface for the DeepL API that integrates translat
 
 ### Current Status
 
-- **Version**: 1.0.0
-- **Tests**: 2757 tests passing (100% pass rate), ~91% coverage
+- **Version**: see `VERSION` file / `package.json`
+- **Tests**: see `npm test` output (target: all green; coverage thresholds enforced by jest config)
 - **Test mix**: ~70-75% unit, ~25-30% integration/e2e
-- **Next Milestone**: 1.0.0 (stable public API)
 
 ### Architecture
 
 ```
-CLI Commands (translate, write, watch, glossary, etc.)
+CLI Commands (translate, write, voice, sync, watch, glossary, tm, …)
            ↓
-Service Layer (Translation, Write, Batch, Watch, GitHooks, Cache, Glossary)
+Service Layer (Translation, Write, Voice, Batch, Watch, Glossary,
+               TranslationMemory, StyleRules, Admin, Document,
+               GitHooks, Usage, Detect, Languages)
+           ↓                         ↓
+Sync Engine (src/sync)        Format Parsers (src/formats — 11 i18n formats)
+           ↓                         ↓
+API Client (Translate, Write, Glossary, Document, Voice,
+            StyleRules, Admin, TMS)
            ↓
-API Client (DeepL API: /v2/translate, /v2/write, /v3/glossaries)
-           ↓
-Storage (SQLite Cache, Config Management)
+Storage (SQLite Cache, Config) + Static Data (src/data — language registry)
 ```
 
 ### Configuration
@@ -98,8 +102,11 @@ Use **Semantic Versioning** with **Conventional Commits**:
 src/
 ├── cli/              # CLI interface and commands
 ├── services/         # Business logic
+├── sync/             # Continuous localization engine (scan, diff, translate, write, lock)
+├── formats/          # i18n file format parsers (JSON, YAML, PO, XLIFF, Android XML, etc.)
 ├── api/              # DeepL API client
-├── storage/          # Data persistence
+├── storage/          # Data persistence (SQLite cache, config)
+├── data/             # Static data (language registry)
 ├── utils/            # Utility functions
 └── types/            # Type definitions
 ```

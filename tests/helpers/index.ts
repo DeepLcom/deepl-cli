@@ -22,6 +22,15 @@ export {
 } from './nock-setup';
 
 export {
+  assertErrorEnvelope,
+  assertInitSuccessEnvelope,
+  ERROR_ENVELOPE_SCHEMA,
+  INIT_SUCCESS_ENVELOPE_SCHEMA,
+  type SyncJsonErrorEnvelope,
+  type SyncInitJsonSuccessEnvelope,
+} from './assert-error-envelope';
+
+export {
   createMockDeepLClient,
   createMockConfigService,
   createMockCacheService,

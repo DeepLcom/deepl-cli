@@ -1,0 +1,8 @@
+version: 1
+source_locale: en
+target_locales:
+  - de
+buckets:
+  main:
+    include:
+      - "messages.json"

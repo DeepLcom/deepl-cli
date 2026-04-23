@@ -40,9 +40,21 @@ class LoggerClass {
     let result = value;
     result = result.replace(/([?&])token=[^&\s]*/gi, '$1token=[REDACTED]');
     result = result.replace(/DeepL-Auth-Key\s+\S+/gi, 'DeepL-Auth-Key [REDACTED]');
+    result = result.replace(
+      /Authorization:\s+(ApiKey|Bearer)\s+\S+/gi,
+      'Authorization: $1 [REDACTED]',
+    );
     const apiKey = process.env['DEEPL_API_KEY'];
     if (apiKey) {
       result = result.replaceAll(apiKey, '[REDACTED]');
+    }
+    const tmsApiKey = process.env['TMS_API_KEY'];
+    if (tmsApiKey) {
+      result = result.replaceAll(tmsApiKey, '[REDACTED]');
+    }
+    const tmsToken = process.env['TMS_TOKEN'];
+    if (tmsToken) {
+      result = result.replaceAll(tmsToken, '[REDACTED]');
     }
     return result;
   }

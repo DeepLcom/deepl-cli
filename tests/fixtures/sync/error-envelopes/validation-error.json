@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "error": {
+    "code": "ValidationError",
+    "message": "All four flags (--source-locale, --target-locales, --file-format, --path) are required when stdin is not a TTY.",
+    "suggestion": "Provide all four flags for non-interactive use (CI, piped shells), or run in an interactive terminal."
+  },
+  "exitCode": 6
+}

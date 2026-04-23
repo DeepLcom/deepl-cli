@@ -112,15 +112,18 @@ describe('translate-utils', () => {
       expect(() => validateLanguageCodes(['zzzz'])).toThrow(/Invalid target language code: "zzzz"/);
     });
 
-    it('should include valid codes list in the error message', () => {
+    it('should emit a concise message and point at `deepl languages` for the full list', () => {
       try {
         validateLanguageCodes(['invalid']);
         fail('Expected ValidationError');
       } catch (e) {
         expect(e).toBeInstanceOf(ValidationError);
-        expect((e as ValidationError).message).toContain('Valid codes:');
-        expect((e as ValidationError).message).toContain('en');
-        expect((e as ValidationError).message).toContain('de');
+        const err = e as ValidationError;
+        // The message should NOT dump the 100+ valid-codes list inline.
+        expect(err.message).not.toContain('Valid codes:');
+        expect(err.message.split('\n').length).toBeLessThan(5);
+        // The suggestion should still guide the user to `deepl languages`.
+        expect(err.suggestion).toContain('deepl languages');
       }
     });
 
@@ -344,6 +347,34 @@ describe('translate-utils', () => {
 
       expect(mockedLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining('--custom-instruction')
+      );
+    });
+
+    it('should warn on --translation-memory when mode does not support it', () => {
+      const options: TranslateOptions = {
+        to: 'de',
+        translationMemory: 'my-tm',
+      };
+      const supported = new Set<string>();
+
+      warnIgnoredOptions('document', options, supported);
+
+      expect(mockedLoggerWarn).toHaveBeenCalledWith(
+        expect.stringContaining('--translation-memory')
+      );
+    });
+
+    it('should warn on --tm-threshold when mode does not support it', () => {
+      const options: TranslateOptions = {
+        to: 'de',
+        tmThreshold: 80,
+      };
+      const supported = new Set<string>();
+
+      warnIgnoredOptions('directory', options, supported);
+
+      expect(mockedLoggerWarn).toHaveBeenCalledWith(
+        expect.stringContaining('--tm-threshold')
       );
     });
   });

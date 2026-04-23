@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "error": {
+    "code": "ConfigError",
+    "message": ".deepl-sync.yaml not found in current directory or any parent",
+    "suggestion": "Run `deepl sync init` to create one."
+  },
+  "exitCode": 7
+}

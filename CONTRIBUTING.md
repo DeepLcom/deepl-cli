@@ -195,6 +195,7 @@ Contributions must be licensed under the same license as the project:
 - [ ] `README.md` updated if user-facing feature changed
 - [ ] `docs/API.md` updated if command/flag added or changed
 - [ ] Example script added/updated in `examples/` for new features
+- [ ] Added new example script to `examples/run-all.sh` EXAMPLES array (for new CLI commands)
 
 ## Adding a New CLI Command
 
@@ -227,4 +228,4 @@ When filing a bug report, include:
 - [docs/API.md](./docs/API.md) -- Complete CLI command reference
 - [DeepL API Docs](https://www.deepl.com/docs-api) -- Official API documentation
 
-[issues]: https://github.com/kwey/deepl-cli/issues
+[issues]: https://github.com/DeepLcom/deepl-cli/issues
