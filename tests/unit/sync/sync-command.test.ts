@@ -953,6 +953,13 @@ describe('SyncCommand', () => {
       // signal to the real process emitter (listeners only react synchronously).
       const firstRun = command.run({ watch: true, debounce: 50 } as CliSyncOptions);
       await flushWatchSetup();
+      // Under heavy CI worker contention the fixed-round flush occasionally
+      // returns before watchAndSync has reached its process.on('SIGINT', ...)
+      // call. Loop with a hard ceiling so we fail loudly rather than with a
+      // misleading "Expected: 1, Received: 0".
+      for (let i = 0; i < 10 && process.listenerCount('SIGINT') === sigintBaseline; i++) {
+        await flushWatchSetup();
+      }
       expect(process.listenerCount('SIGINT')).toBe(sigintBaseline + 1);
       expect(process.listenerCount('SIGTERM')).toBe(sigtermBaseline + 1);
 
@@ -965,6 +972,9 @@ describe('SyncCommand', () => {
       // Second invocation should also add exactly one listener, then remove it.
       const secondRun = command.run({ watch: true, debounce: 50 } as CliSyncOptions);
       await flushWatchSetup();
+      for (let i = 0; i < 10 && process.listenerCount('SIGINT') === sigintBaseline; i++) {
+        await flushWatchSetup();
+      }
       expect(process.listenerCount('SIGINT')).toBe(sigintBaseline + 1);
       expect(process.listenerCount('SIGTERM')).toBe(sigtermBaseline + 1);
 
