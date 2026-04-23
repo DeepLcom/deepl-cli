@@ -1,4 +1,5 @@
 import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import { ValidationError } from '../utils/errors.js';
 
 const VERSION_RE = /<(?:\w+:)?xliff[^>]*version=["'](\d+\.\d+)["']/i;
 
@@ -13,13 +14,60 @@ const TARGET_RE = /<(\w+:)?target>([\s\S]*?)<\/(?:\w+:)?target>/i;
 const NOTE_RE = /<(?:\w+:)?note>([\s\S]*?)<\/(?:\w+:)?note>/i;
 const SEGMENT_RE = /<(?:\w+:)?segment>([\s\S]*?)<\/(?:\w+:)?segment>/i;
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+};
+
+const XML_ENTITY_RE = /&(?:(amp|lt|gt|quot|apos)|#(x[0-9a-fA-F]+|[0-9]+));/g;
+
+/**
+ * Decode XML entities in a single pass. Handles the five named entities
+ * plus decimal (`&#NN;`) and hex (`&#xNN;`) numeric character references.
+ *
+ * Single-pass is load-bearing: the previous chained `.replace()` impl
+ * double-decoded `&amp;lt;` (first pass `&amp;` → `&`, second pass
+ * `&lt;` → `<`), silently corrupting any payload that round-tripped
+ * literal entities through translation.
+ */
 function unescapeXml(value: string): string {
-  return value
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
+  return value.replace(XML_ENTITY_RE, (match, named: string | undefined, numeric: string | undefined) => {
+    if (named) return NAMED_ENTITIES[named] ?? match;
+    if (numeric) {
+      const code = numeric.startsWith('x') || numeric.startsWith('X')
+        ? parseInt(numeric.slice(1), 16)
+        : parseInt(numeric, 10);
+      return Number.isFinite(code) && code >= 0 && code <= 0x10FFFF
+        ? String.fromCodePoint(code)
+        : match;
+    }
+    return match;
+  });
+}
+
+const CDATA_IN_TRANSLATABLE_RE =
+  /<(?:\w+:)?(?:source|target)[^>]*>[\s\S]*?<!\[CDATA\[[\s\S]*?<\/(?:\w+:)?(?:source|target)>/i;
+
+/**
+ * Refuse XLIFF input that contains a CDATA section inside a `<source>` or
+ * `<target>` element. The regex-based extract/reconstruct pair cannot
+ * round-trip CDATA correctly — the `<` / `>` inside a CDATA body would
+ * round-trip asymmetrically through `escapeXml` — so silent data
+ * corruption is the alternative. Fail fast with an allowlist-style
+ * message, matching the posture of the Laravel PHP parser's heredoc /
+ * interpolation rejection.
+ */
+function assertNoCdataInTranslatable(content: string): void {
+  if (!content.includes('<![CDATA[')) return;
+  if (CDATA_IN_TRANSLATABLE_RE.test(content)) {
+    throw new ValidationError(
+      'XLIFF <source> / <target> elements containing CDATA sections are not supported.',
+      'Inline the literal text without the <![CDATA[...]]> wrapper, or preprocess the file to entity-escape CDATA content before syncing.',
+    );
+  }
 }
 
 function escapeXml(value: string): string {
@@ -40,6 +88,7 @@ export class XliffFormatParser implements FormatParser {
   readonly extensions = ['.xlf', '.xliff'];
 
   extract(content: string): ExtractedEntry[] {
+    assertNoCdataInTranslatable(content);
     const version = detectVersion(content);
     const entries: ExtractedEntry[] = [];
 
@@ -53,6 +102,7 @@ export class XliffFormatParser implements FormatParser {
   }
 
   reconstruct(content: string, entries: TranslatedEntry[]): string {
+    assertNoCdataInTranslatable(content);
     const version = detectVersion(content);
     const translations = new Map<string, string>();
     for (const entry of entries) {

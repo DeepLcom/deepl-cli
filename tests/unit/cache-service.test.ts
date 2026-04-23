@@ -76,6 +76,52 @@ describe('CacheService', () => {
       const result = db.pragma('journal_mode', { simple: true });
       expect(result).toBe('wal');
     });
+
+    it('should stamp user_version = 1 on a fresh database', () => {
+      const db = (cacheService as any).db;
+      const result = db.pragma('user_version', { simple: true });
+      expect(result).toBe(1);
+    });
+
+    it('should upgrade-stamp a pre-versioned (user_version=0) database in place', () => {
+      // Simulate a DB created before schema versioning: stamp 0, close,
+      // reopen via a new CacheService, verify it got stamped to 1 and
+      // existing data survived.
+      const db = (cacheService as any).db;
+      db.pragma('user_version = 0');
+      cacheService.set('preexisting', { text: 'survives' });
+      cacheService.close();
+
+      const reopened = new CacheService({ dbPath: testCachePath });
+      try {
+        const reopenedDb = (reopened as any).db;
+        expect(reopenedDb.pragma('user_version', { simple: true })).toBe(1);
+        expect(reopened.get('preexisting')).toEqual({ text: 'survives' });
+      } finally {
+        reopened.close();
+      }
+    });
+
+    it('should back up a corrupted database rather than unlinking it', () => {
+      // Write a non-SQLite file to the cache path. The constructor's
+      // openDatabase catch should rename it aside and recreate.
+      cacheService.close();
+      fs.rmSync(testCachePath, { force: true });
+      fs.writeFileSync(testCachePath, 'not a sqlite database');
+
+      const svc = new CacheService({ dbPath: testCachePath });
+      try {
+        // Fresh DB opened successfully at the original path.
+        expect((svc as any).db).toBeDefined();
+        // The corrupted original was renamed, not deleted.
+        const backups = fs
+          .readdirSync(testCacheDir)
+          .filter((f) => f.startsWith(path.basename(testCachePath) + '.corrupt-'));
+        expect(backups.length).toBeGreaterThan(0);
+      } finally {
+        svc.close();
+      }
+    });
   });
 
   describe('get()', () => {

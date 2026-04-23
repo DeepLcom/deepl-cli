@@ -673,6 +673,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 **Language:**
 
 - `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT`. Optional — omit to auto-detect the language and rephrase in the original language.
+- `--to LANG` - Long-only alias of `--lang`. Accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`; the short form `-t` is intentionally **not** bound here (it would collide with `deepl translate -t, --to`). Specifying both `--to` and `--lang` with different values exits with a `ValidationError`.
 
 **Style Options (mutually exclusive with tone):**
 
@@ -1069,7 +1070,7 @@ Scan, translate, and sync i18n resource files. The sync engine reads `.deepl-syn
 
 **Filtering:**
 
-- `--locale LANGS` - Sync only specific target locales (comma-separated)
+- `--locale LANGS` - Sync only specific target locales (comma-separated). **Note the split:** `sync --locale` is a *filter* over locales already declared in `.deepl-sync.yaml#target_locales` — it narrows which configured targets a run acts on. `deepl translate --to` is an *invocation-time specifier* — it names the target languages for a one-shot text translation. The sync engine owns the locale mapping via `.deepl-sync.yaml`; `translate` does not. A locale not in `target_locales` passed to `sync --locale` exits with a `ConfigError`; an unrecognized code passed to `translate --to` exits with `InvalidInput`.
 
 **Translation Quality:**
 
@@ -1257,7 +1258,7 @@ Analyze translation consistency and detect terminology inconsistencies across ta
 - `--format FORMAT` - Output format: `text` (default), `json`
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
 
-**Note:** Prior to the 1.0.0 release, this subcommand was named `glossary-report`. The old name is rejected with an error pointing at the new form; no alias is kept.
+**Note:** Prior to the 1.1.0 release, this subcommand was prototyped as `glossary-report`; it never shipped in a tagged release under that name. The old name is rejected with an error pointing at the new form; no alias is kept.
 
 **JSON output sample:**
 
@@ -1286,6 +1287,7 @@ Export source strings to XLIFF 1.2 for CAT tool handoff.
 - `--locale LANGS` - Filter by locale (comma-separated)
 - `--output PATH` - Write to file instead of stdout. Path must stay within the project root; intermediate directories are created automatically
 - `--overwrite` - Required to overwrite an existing `--output` file. Without it, an existing file causes a non-zero exit and no write occurs
+- `--format FORMAT` - Output format: `text` (default), `json`. Success output is always XLIFF 1.2 regardless of format; `json` affects the **error** envelope on stderr (matching other sync subcommands) so script consumers can parse failure shape uniformly
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
 
 **Examples:**
@@ -2852,7 +2854,7 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 | Code | Name           | Meaning                                                        | Retryable |
 | ---- | -------------- | -------------------------------------------------------------- | --------- |
 | 0    | Success        | Command completed successfully                                 | N/A       |
-| 1    | GeneralError / PartialFailure | Unclassified failure, or partial sync failure (some locales succeeded, some failed) | No |
+| 1    | GeneralError   | Unclassified failure (error escaped every typed handler and matched no classifier heuristic) | No |
 | 2    | AuthError      | Authentication failed or API key missing                       | No        |
 | 3    | RateLimitError | Rate limit exceeded (HTTP 429)                                 | Yes       |
 | 4    | QuotaError     | Monthly character quota exhausted (HTTP 456)                   | No        |
@@ -2863,6 +2865,7 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 | 9    | VoiceError     | Voice API unavailable or session failed                        | No        |
 | 10   | SyncDrift      | `sync --frozen` detected translations out of date              | No        |
 | 11   | SyncConflict   | `sync resolve` could not auto-resolve lockfile conflicts       | No        |
+| 12   | PartialFailure | `deepl sync` completed with at least one failed locale         | Yes (per-locale retry) |
 
 ### Code details
 
@@ -2870,15 +2873,11 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 
 Command completed without error. Every `deepl` subcommand uses this code on success. Do not rely on stdout being non-empty — successful commands may emit only a status line (e.g., `deepl cache clear`).
 
-#### 1 — GeneralError / PartialFailure
+#### 1 — GeneralError
 
-Two distinct cases share this code:
+Unclassified failure: emitted when an error escapes every typed handler and matches none of the message-classification heuristics in `src/utils/exit-codes.ts`. Any command can surface this. Treat it as "unknown failure — inspect stderr." Typically indicates an unexpected CLI bug or an error from a third-party dependency.
 
-1. **Unclassified failure** (`GeneralError`): emitted when an error escapes every typed handler and matches none of the message-classification heuristics in `src/utils/exit-codes.ts`. Any command can surface this. Treat it as "unknown failure — inspect stderr." Typically indicates an unexpected CLI bug or an error from a third-party dependency.
-
-2. **Partial sync failure** (`PartialFailure`): emitted by `deepl sync` when at least one locale failed and at least one locale succeeded. The successful locales' target files and lockfile entries are written; the failed locales' files are not touched. Re-running `deepl sync` (with or without `--locale`) will retry only the failed locales. Authentication failures (401/403) abort the entire run and surface as exit code 2 instead of 1.
-
-CI scripts should treat exit code 1 from `deepl sync` as partial failure and inspect the per-locale summary in stderr to determine which locales need attention.
+**CI branching.** Exit 1 now means exactly "unclassified failure." Partial sync failure has its own code — see [#12 — PartialFailure](#12--partialfailure). A CI script can safely treat exit 1 as "CLI crashed, investigate" without misreading a partial-locale outcome.
 
 #### 2 — AuthError
 
@@ -2955,9 +2954,9 @@ Remediation: confirm Pro/Enterprise plan, verify the session configuration, and 
 
 #### 10 — SyncDrift
 
-`deepl sync --frozen` (alias `--ci`) detected that lockfile-tracked translations are out of date with the source strings. Emitted only from `src/cli/commands/register-sync.ts` when the sync run completes and `result.driftDetected === true`. No other command returns this code.
+`deepl sync --frozen` (alias `--ci`) detected that lockfile-tracked translations are out of date with the source strings. Emitted only from `src/cli/commands/sync/register-sync-root.ts` when the sync run completes and `result.driftDetected === true`. No other command returns this code.
 
-Use this in CI to fail a pull request when a contributor edits source strings without running `deepl sync`. Note that `SyncDriftError` is defined in `src/utils/errors.ts` as an alias for this code, but the CLI currently exits directly via `process.exit(ExitCode.SyncDrift)` rather than throwing.
+Use this in CI to fail a pull request when a contributor edits source strings without running `deepl sync`. Exit is **soft** — `process.exitCode` is set so in-flight writes, auto-commit steps, and any `--watch` event loop drain cleanly before the process exits.
 
 Remediation: run `deepl sync` locally and commit the updated translations and lockfile.
 
@@ -2968,6 +2967,16 @@ Remediation: run `deepl sync` locally and commit the updated translations and lo
 Distinct from exit code 1 (GeneralError): a pipeline that runs `deepl sync resolve` in CI can now branch on `11` to route the lockfile to a human for manual merge without masking real CLI crashes under the same code.
 
 Remediation: open `.deepl-sync.lock`, resolve the remaining `<<<<<<<` / `=======` / `>>>>>>>` regions by hand, save, and run `deepl sync` to fill any gaps.
+
+#### 12 — PartialFailure
+
+`deepl sync` completed, but at least one locale failed while at least one other locale succeeded. The successful locales' target files and lockfile entries are written; the failed locales' files are not touched. Emitted only by `deepl sync` (the root command).
+
+Authentication failures (401/403) abort the entire run and surface as exit code 2 (`AuthError`) instead of 12. Network / rate-limit / quota failures bubble up as 5 / 3 / 4 respectively. Code 12 specifically means "the run proceeded far enough to attempt per-locale work, and the result was mixed."
+
+**Retry model.** Re-running `deepl sync` (optionally with `--locale <failed,comma,separated>`) will retry only the locales whose lockfile entries weren't written. This is the canonical CI recovery path: branch on `$? -eq 12`, inspect the per-locale error report, and re-run with the failed locales as the filter.
+
+The paired typed error is `SyncPartialFailureError` in `src/utils/errors.ts`; the JSON error envelope emits `code: "SyncPartialFailure"` to match the SyncConflict/SyncDrift naming convention.
 
 ### Classification heuristics (fallback)
 

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as YAML from 'yaml';
 import fg from 'fast-glob';
 import { SYNC_CONFIG_FILENAME } from './sync-config.js';
+import { safeReadFileSync } from '../utils/safe-read-file.js';
 import { createDefaultRegistry, type FormatRegistry } from '../formats/index.js';
 
 export interface DetectedProject {
@@ -236,7 +237,10 @@ const PACKAGE_JSON_HINTS: Record<string, string> = {
 export function detectFromPackageJson(rootDir: string): string | undefined {
   try {
     const pkgPath = path.join(rootDir, 'package.json');
-    const content = fs.readFileSync(pkgPath, 'utf-8');
+    // SECURITY: reject symlinks. A hostile repo's package.json -> arbitrary
+    // file would be JSON-parsed and the CLI would act on whatever dependency
+    // hints it found there.
+    const content = safeReadFileSync(pkgPath, 'utf-8');
     const pkg = JSON.parse(content) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
     const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
     for (const [dep, format] of Object.entries(PACKAGE_JSON_HINTS)) {
@@ -268,14 +272,17 @@ export async function detectI18nFiles(rootDir: string): Promise<DetectedProject[
 
       try {
         const fullPath = path.join(rootDir, firstMatch);
-        const content = fs.readFileSync(fullPath, 'utf-8');
+        // SECURITY: reject symlinks. The first-match read is best-effort key
+        // counting; a symlink target would give misleading counts and could
+        // expose unrelated file content in extractor error messages.
+        const content = safeReadFileSync(fullPath, 'utf-8');
         registry ??= await createDefaultRegistry();
         const parser = registry.getParser(path.extname(firstMatch));
         if (parser) {
           keyCount = parser.extract(content).length;
         }
       } catch {
-        // Count remains 0 on parse failure
+        // Count remains 0 on parse failure or symlink rejection.
       }
 
       const dir = path.dirname(firstMatch);

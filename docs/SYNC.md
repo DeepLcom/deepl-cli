@@ -273,6 +273,7 @@ In JSON output (`--format json`), the `strategy` field provides the breakdown:
 | `limits.max_entries_per_file` | `number` | No | `25000` | Per-file parser cap on extracted entry count. Files exceeding this are skipped with a warning. Hard ceiling: `100000`. Values above the ceiling fail at config load with `ConfigError` (exit 7). |
 | `limits.max_file_bytes` | `number` | No | `4194304` (4 MiB) | Per-file parser cap on on-disk size, checked via `fs.stat` before read. Files exceeding this are skipped with a warning. Hard ceiling: `10485760` (10 MiB). Values above the ceiling fail at config load with `ConfigError` (exit 7). |
 | `limits.max_depth` | `number` | No | `32` | Per-file parser cap on associative-array nesting depth. Protects against stack-overflow on adversarial input. Currently consumed by the Laravel PHP parser. Files exceeding this are skipped with a warning. Hard ceiling: `64`. Values above the ceiling fail at config load with `ConfigError` (exit 7). |
+| `limits.max_source_files` | `number` | No | `10000` | Per-bucket cap on how many source files a single `include` glob may match. Buckets exceeding this are **skipped entirely with a warning** — the assumption is that a glob which returned 10k+ files is picking up an unintended vendored tree. Narrow the `include` pattern or raise the cap. Hard ceiling: `1000000`. Values above the ceiling fail at config load with `ConfigError` (exit 7). |
 
 #### `tms`
 
@@ -642,6 +643,7 @@ deepl sync export [OPTIONS]
 | `--locale <langs>` | Export for specific locales only |
 | `--output <path>` | Write to file instead of stdout |
 | `--overwrite` | Overwrite `--output` if it already exists (default: refuse to clobber) |
+| `--format <fmt>` | Output format: `text` (default), `json`. Success output is always XLIFF 1.2; `json` affects the **error** envelope on stderr so script consumers can parse failure shape uniformly with other sync subcommands |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
 
 Without `--overwrite`, `deepl sync export --output` refuses to write over an existing file and exits 6 (ValidationError). Pass `--overwrite` to re-export:
@@ -956,12 +958,13 @@ Each target locale translates independently. If the API returns a transient erro
 | Code | Meaning |
 |------|---------|
 | 0 | Success -- all translations up to date |
-| 1 | Partial sync failure -- one or more locales failed, others succeeded |
+| 1 | General error -- unclassified failure (inspect stderr) |
 | 6 | Invalid input -- bad arguments or unsupported format |
 | 7 | Config error -- invalid or missing `.deepl-sync.yaml` |
 | 8 | Validation failed -- `deepl sync validate` found issues |
 | 10 | Sync drift detected -- `--frozen` found missing/outdated translations |
 | 11 | Sync conflict -- `sync resolve` could not auto-resolve lockfile conflicts |
+| 12 | Partial sync failure -- one or more locales failed, others succeeded; retry with `--locale <failed>` |
 
 See [API.md Exit Codes appendix](API.md#exit-codes) for detailed per-code descriptions, triggering commands, and shell-handling examples across every `deepl` command.
 

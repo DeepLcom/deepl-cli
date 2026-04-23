@@ -58,6 +58,20 @@ const RETRY_INITIAL_DELAY_MS = 1000;
 const RETRY_MAX_DELAY_MS = 10000;
 const RETRY_AFTER_MAX_SECONDS = 60;
 
+/**
+ * Compute a retry delay for attempt `n` with full jitter: a uniform
+ * random value in `[0, min(INIT * 2^n, MAX)]`. Full jitter is the AWS-
+ * recommended variant for retry-storm dampening: it removes the fixed
+ * lower bound of "equal jitter" entirely, so concurrent clients that
+ * all 429 simultaneously see maximum decorrelation on the next attempt.
+ * Exported for unit testing; the caller pulls the randomized value
+ * and passes it straight to `sleep()`.
+ */
+export function computeBackoffWithJitter(attempt: number): number {
+  const cap = Math.min(RETRY_INITIAL_DELAY_MS * 2 ** attempt, RETRY_MAX_DELAY_MS);
+  return Math.floor(Math.random() * cap);
+}
+
 export class HttpClient {
   protected client: AxiosInstance;
   protected maxRetries: number;
@@ -145,6 +159,20 @@ export class HttpClient {
     const proxyConfig = options.proxy ?? HttpClient.parseProxyFromEnv();
 
     if (proxyConfig) {
+      // SECURITY: a plain-http proxy sitting in front of an https: API
+      // endpoint is a MITM footgun. axios tunnels via CONNECT so TLS is
+      // nominally end-to-end, but a misconfigured or compromised proxy
+      // env var routes every DeepL call — including the Authorization
+      // header — through attacker infrastructure. Warn loud at startup;
+      // don't refuse the connection (users with legitimate corporate
+      // http-only proxies need the escape hatch).
+      if (proxyConfig.protocol === 'http' && baseURL.startsWith('https:')) {
+        Logger.warn(
+          `Warning: routing HTTPS traffic to ${baseURL} via HTTP proxy ${proxyConfig.host}:${proxyConfig.port}. ` +
+          `TLS is tunneled end-to-end via CONNECT, but a malicious proxy that terminates TLS would see the Authorization header. ` +
+          `Set HTTPS_PROXY to an https:// URL if possible, or unset it if the proxy isn't required.`,
+        );
+      }
       axiosConfig['proxy'] = {
         protocol: proxyConfig.protocol,
         host: proxyConfig.host,
@@ -288,12 +316,15 @@ export class HttpClient {
             const retryAfterDelay = this.parseRetryAfter(
               error.response?.headers?.['retry-after'] as string | undefined
             );
+            // Respect Retry-After verbatim when present; otherwise use
+            // backoff with full jitter. Jitter prevents concurrent sync
+            // buckets that all 429 at the same moment from forming a
+            // thundering herd on the next attempt.
             const delay =
-              retryAfterDelay ??
-              Math.min(
-                RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt),
-                RETRY_MAX_DELAY_MS
-              );
+              retryAfterDelay ?? computeBackoffWithJitter(attempt);
+            Logger.verbose(
+              `[verbose] HTTP ${method} ${path} retry ${attempt + 1}/${this.maxRetries} in ${delay}ms (status 429${retryAfterDelay !== null && retryAfterDelay !== undefined ? ', Retry-After' : ', jitter backoff'})`
+            );
             await this.sleep(delay);
             continue;
           }
@@ -303,9 +334,10 @@ export class HttpClient {
         }
 
         if (attempt < this.maxRetries) {
-          const delay = Math.min(
-            RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt),
-            RETRY_MAX_DELAY_MS
+          const delay = computeBackoffWithJitter(attempt);
+          const status = this.isAxiosError(error) ? error.response?.status : undefined;
+          Logger.verbose(
+            `[verbose] HTTP ${method} ${path} retry ${attempt + 1}/${this.maxRetries} in ${delay}ms (${status ? `status ${status}` : 'network error'}, jitter backoff)`
           );
           await this.sleep(delay);
         }

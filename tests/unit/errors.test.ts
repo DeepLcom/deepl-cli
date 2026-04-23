@@ -8,6 +8,7 @@ import {
   DeepLCLIError,
   SyncConflictError,
   SyncDriftError,
+  SyncPartialFailureError,
 } from '../../src/utils/errors';
 import { ExitCode, exitCodeForError } from '../../src/utils/exit-codes';
 
@@ -51,5 +52,40 @@ describe('SyncDriftError (regression guard after taxonomy additions)', () => {
     const err = new SyncDriftError('drift');
     expect(err.exitCode).toBe(ExitCode.SyncDrift);
     expect(err.exitCode).toBe(10);
+  });
+});
+
+describe('SyncPartialFailureError', () => {
+  it('carries the PartialFailure exit code (12)', () => {
+    const err = new SyncPartialFailureError('some locales failed');
+    expect(err.exitCode).toBe(ExitCode.PartialFailure);
+    expect(err.exitCode).toBe(12);
+  });
+
+  it('is a DeepLCLIError (instanceof)', () => {
+    const err = new SyncPartialFailureError('some locales failed');
+    expect(err).toBeInstanceOf(DeepLCLIError);
+    expect(err).toBeInstanceOf(Error);
+  });
+
+  it('name is "SyncPartialFailure" so the JSON envelope stays stable', () => {
+    const err = new SyncPartialFailureError('some locales failed');
+    expect(err.name).toBe('SyncPartialFailure');
+  });
+
+  it('exposes the custom suggestion when provided', () => {
+    const err = new SyncPartialFailureError('some locales failed', 'do the thing');
+    expect(err.suggestion).toBe('do the thing');
+  });
+
+  it('falls back to a default suggestion that names --locale retry', () => {
+    const err = new SyncPartialFailureError('some locales failed');
+    expect(err.suggestion).toMatch(/--locale/);
+    expect(err.suggestion).toMatch(/deepl sync/);
+  });
+
+  it('is classified by exitCodeForError as PartialFailure', () => {
+    const err = new SyncPartialFailureError('some locales failed');
+    expect(exitCodeForError(err)).toBe(ExitCode.PartialFailure);
   });
 });

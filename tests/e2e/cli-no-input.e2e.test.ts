@@ -44,7 +44,7 @@ describe('--no-input E2E', () => {
         execSync('deepl --no-input write "test" --interactive', { encoding: 'utf-8', stdio: 'pipe' });
       } catch (error: any) {
         expect(error.status).toBe(6);
-        expect(error.stderr.toString()).toContain('not supported in non-interactive mode');
+        expect(error.stderr.toString()).toContain('requires an interactive terminal');
       }
     });
   });

@@ -409,14 +409,52 @@ describe('TextTranslationHandler', () => {
       });
 
       it('should return table for format=table with multi-target', async () => {
-        mocks.translationService.translateToMultiple.mockResolvedValue([
-          { targetLang: 'de' as any, text: 'Hallo' },
-          { targetLang: 'fr' as any, text: 'Bonjour' },
-        ]);
+        const originalIsTTY = process.stdout.isTTY;
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: true,
+          configurable: true,
+          writable: true,
+        });
+        try {
+          mocks.translationService.translateToMultiple.mockResolvedValue([
+            { targetLang: 'de' as any, text: 'Hallo' },
+            { targetLang: 'fr' as any, text: 'Bonjour' },
+          ]);
 
-        const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
-        expect(result).toContain('DE');
-        expect(result).toContain('FR');
+          const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
+          expect(result).toContain('DE');
+          expect(result).toContain('FR');
+        } finally {
+          Object.defineProperty(process.stdout, 'isTTY', {
+            value: originalIsTTY,
+            configurable: true,
+            writable: true,
+          });
+        }
+      });
+
+      it('should fall back to plain text for format=table when stdout is not a TTY', async () => {
+        const originalIsTTY = process.stdout.isTTY;
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: false,
+          configurable: true,
+          writable: true,
+        });
+        try {
+          mocks.translationService.translateToMultiple.mockResolvedValue([
+            { targetLang: 'de' as any, text: 'Hallo' },
+            { targetLang: 'fr' as any, text: 'Bonjour' },
+          ]);
+
+          const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
+          expect(result).toBe('[de] Hallo\n[fr] Bonjour');
+        } finally {
+          Object.defineProperty(process.stdout, 'isTTY', {
+            value: originalIsTTY,
+            configurable: true,
+            writable: true,
+          });
+        }
       });
 
       it('should append billed characters metadata when present', async () => {

@@ -2501,21 +2501,35 @@ describe('TranslateCommand', () => {
       expect(parsed.translations[1].text).toBe('Bonjour');
     });
 
-    it('should return table format for multi-target translation', async () => {
-      mockTranslationService.translateToMultiple.mockResolvedValue([
-        { targetLang: 'es' as any, text: 'Hola' },
-        { targetLang: 'fr' as any, text: 'Bonjour' },
-      ]);
-
-      const result = await translateCommand.translateText('Hello', {
-        to: 'es,fr',
-        format: 'table',
+    it('should return table format for multi-target translation when stdout is a TTY', async () => {
+      const originalIsTTY = process.stdout.isTTY;
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        configurable: true,
+        writable: true,
       });
+      try {
+        mockTranslationService.translateToMultiple.mockResolvedValue([
+          { targetLang: 'es' as any, text: 'Hola' },
+          { targetLang: 'fr' as any, text: 'Bonjour' },
+        ]);
 
-      expect(result).toContain('ES');
-      expect(result).toContain('FR');
-      expect(result).toContain('Hola');
-      expect(result).toContain('Bonjour');
+        const result = await translateCommand.translateText('Hello', {
+          to: 'es,fr',
+          format: 'table',
+        });
+
+        expect(result).toContain('ES');
+        expect(result).toContain('FR');
+        expect(result).toContain('Hola');
+        expect(result).toContain('Bonjour');
+      } finally {
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: originalIsTTY,
+          configurable: true,
+          writable: true,
+        });
+      }
     });
   });
 

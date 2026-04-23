@@ -144,7 +144,11 @@ async function handleSyncRoot(
     const syncCommand = await createSyncCommand(deps);
     const result = await syncCommand.run(options as Parameters<typeof syncCommand.run>[0]);
     if (result.driftDetected) {
-      process.exit(ExitCode.SyncDrift);
+      // Soft exit — set exitCode and return so in-flight writes / auto-commit
+      // steps / the --watch event loop drain cleanly instead of being killed
+      // mid-cycle. docs/API.md:2939 has promised this shape since 1.1.0.
+      process.exitCode = ExitCode.SyncDrift;
+      return;
     }
   } catch (error) {
     if (options['format'] === 'json') {

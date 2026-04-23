@@ -128,6 +128,14 @@ export async function* walkBuckets(
       Logger.warn(`Bucket "${bucket}": glob pattern matched no files (include: ${bucketConfig.include.join(', ')})`);
     }
 
+    if (sourceFiles.length > limits.max_source_files) {
+      Logger.warn(
+        `Skipping bucket "${bucket}": glob matched ${sourceFiles.length} files, exceeding sync.limits.max_source_files (${limits.max_source_files}). ` +
+        `Narrow the include pattern or raise the cap in .deepl-sync.yaml.`,
+      );
+      continue;
+    }
+
     const isMultiLocale = !!parser.multiLocale;
 
     for (const sourceFile of sourceFiles) {

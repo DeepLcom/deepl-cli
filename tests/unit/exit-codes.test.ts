@@ -19,6 +19,18 @@ describe('ExitCode', () => {
       expect(ExitCode.InvalidInput).toBe(6);
       expect(ExitCode.ConfigError).toBe(7);
       expect(ExitCode.CheckFailed).toBe(8);
+      expect(ExitCode.VoiceError).toBe(9);
+      expect(ExitCode.SyncDrift).toBe(10);
+      expect(ExitCode.SyncConflict).toBe(11);
+      expect(ExitCode.PartialFailure).toBe(12);
+    });
+
+    it('PartialFailure is distinct from GeneralError', () => {
+      // Regression guard: a prior version aliased PartialFailure to 1
+      // (same as GeneralError), which prevented CI scripts from telling
+      // "some locales failed" apart from "CLI crashed". Exit 12 was chosen
+      // to keep a gap below the Linux signal-exit range (128+signal).
+      expect(ExitCode.PartialFailure).not.toBe(ExitCode.GeneralError);
     });
   });
 

@@ -82,3 +82,18 @@ export class SyncConflictError extends DeepLCLIError {
     this.name = 'SyncConflict';
   }
 }
+
+export class SyncPartialFailureError extends DeepLCLIError {
+  readonly exitCode = 12;
+  constructor(message: string, suggestion?: string) {
+    super(
+      message,
+      suggestion ??
+        'Inspect the per-locale error report in the sync output, then re-run `deepl sync --locale <failed>` to retry just the failed locales.',
+    );
+    // Match the SyncConflictError envelope-naming pattern so the JSON
+    // error envelope emits `code: "SyncPartialFailure"` rather than
+    // `SyncPartialFailureError`.
+    this.name = 'SyncPartialFailure';
+  }
+}

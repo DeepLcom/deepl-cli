@@ -124,6 +124,45 @@ describe('registerWrite', () => {
       );
     });
 
+    it('should accept --to as a long-only alias of --lang', async () => {
+      mockWriteCommand.improve.mockResolvedValue('ok');
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'de']);
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ lang: 'de' }),
+      );
+    });
+
+    it('should accept --to and --lang when they carry the same value', async () => {
+      mockWriteCommand.improve.mockResolvedValue('ok');
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'de', '--lang', 'de']);
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ lang: 'de' }),
+      );
+      expect(handleError).not.toHaveBeenCalled();
+    });
+
+    it('should reject --to and --lang when they carry different values', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'de', '--lang', 'fr']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Cannot specify both --to and --lang with different values'),
+        }),
+      );
+    });
+
+    it('should NOT bind -t to --to on write (reserved for translate)', async () => {
+      // write does not own -t; commander should leave it unparsed or reject it,
+      // not treat it as an alias for --to. If this test starts passing with
+      // lang='en', it means we accidentally bound -t here.
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '-t', 'en']).catch(() => undefined);
+      expect(mockWriteCommand.improve).not.toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ lang: 'en' }),
+      );
+    });
+
     it('should accept --tone as long flag only', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
       await program.parseAsync(['node', 'test', 'write', 'Hello', '--tone', 'friendly']);
@@ -317,6 +356,24 @@ describe('registerWrite', () => {
   });
 
   describe('--interactive mode', () => {
+    const originalStdinIsTTY = process.stdin.isTTY;
+
+    beforeEach(() => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: true,
+        configurable: true,
+        writable: true,
+      });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: originalStdinIsTTY,
+        configurable: true,
+        writable: true,
+      });
+    });
+
     it('should run interactive mode for text', async () => {
       mockWriteCommand.improveInteractive.mockResolvedValue('selected text');
       await program.parseAsync(['node', 'test', 'write', 'some text', '-i']);
@@ -345,6 +402,21 @@ describe('registerWrite', () => {
       mockWriteCommand.improveFileInteractive.mockResolvedValue({ selected: 'improved' });
       await program.parseAsync(['node', 'test', 'write', 'file.txt', '-i', '--in-place']);
       expect(mockWriteFile).toHaveBeenCalledWith('file.txt', 'improved', 'utf-8');
+    });
+
+    it('should reject --interactive when stdin is not a TTY', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value: false,
+        configurable: true,
+        writable: true,
+      });
+      await program.parseAsync(['node', 'test', 'write', 'some text', '-i']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('--interactive requires an interactive terminal'),
+        }),
+      );
+      expect(mockWriteCommand.improveInteractive).not.toHaveBeenCalled();
     });
   });
 

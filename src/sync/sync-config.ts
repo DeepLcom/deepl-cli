@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'yaml';
 import { ConfigError } from '../utils/errors.js';
+import { safeReadFileSync } from '../utils/safe-read-file.js';
 import { sanitizeForTerminal } from '../utils/control-chars.js';
 import type { SyncConfig, SyncBucketConfig, SyncTranslationSettings, SyncValidationSettings, SyncBehavior, SyncTmsConfig } from './types.js';
 import { HARD_MAX_SYNC_LIMITS } from './types.js';
@@ -126,6 +127,7 @@ const KNOWN_SYNC_LIMITS_KEYS: readonly string[] = [
   'max_entries_per_file',
   'max_file_bytes',
   'max_depth',
+  'max_source_files',
 ];
 
 const KNOWN_TMS_KEYS: readonly string[] = [
@@ -412,7 +414,7 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
       ) {
         throw new ConfigError(
           'sync.limits must be an object mapping cap names to positive integers.',
-          'See docs/SYNC.md for valid keys: max_entries_per_file, max_file_bytes, max_depth.',
+          'See docs/SYNC.md for valid keys: max_entries_per_file, max_file_bytes, max_depth, max_source_files.',
         );
       }
       const limits = syncBlock['limits'] as Record<string, unknown>;
@@ -563,7 +565,10 @@ export async function loadSyncConfig(
     configPath = found;
   }
 
-  const content = fs.readFileSync(configPath, 'utf-8');
+  // SECURITY: reject symlinks (a hostile .deepl-sync.yaml -> ~/.ssh/id_rsa
+  // would otherwise be YAML-parsed and surfaced verbatim in ConfigError
+  // messages on stderr).
+  const content = safeReadFileSync(configPath, 'utf-8');
   let parsed: unknown;
   try {
     parsed = YAML.parse(content);
