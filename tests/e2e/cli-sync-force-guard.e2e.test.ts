@@ -168,10 +168,13 @@ describe('deepl sync --force billing defense', () => {
 
   describe('non-TTY stdin (piped) without --yes', () => {
     it('proceeds without prompting when stdin is not a TTY', () => {
-      // spawnSync with input= sets stdin to a pipe, so isTTY is false
+      // spawnSync with input= sets stdin to a pipe, so isTTY is false.
+      // CI is stripped so the CI-guard branch does not pre-empt the TTY branch
+      // this test is designed to exercise (GitHub Actions / GitLab CI set CI=true).
+      const { CI: _ci, ...baseEnv } = process.env;
       const result = run(['--force', '--dry-run'], {
         cwd: tmpDir,
-        env: { ...process.env, DEEPL_CONFIG_DIR: path.join(tmpDir, 'config'), NO_COLOR: '1' },
+        env: { ...baseEnv, DEEPL_CONFIG_DIR: path.join(tmpDir, 'config'), NO_COLOR: '1' },
         input: 'y\n',
       });
 

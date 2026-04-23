@@ -95,8 +95,13 @@ describe('CLI Sync E2E', () => {
   }
 
   function buildEnv(): Record<string, string | undefined> {
+    // Strip CI so the --force billing guard (register-sync-root.ts) does not
+    // fire its CI-without-yes branch when these tests run under GitHub Actions
+    // / GitLab CI. Individual tests that exercise CI semantics set CI=true
+    // explicitly.
+    const { CI: _ci, ...rest } = process.env;
     return {
-      ...process.env,
+      ...rest,
       DEEPL_CONFIG_DIR: testConfig.path,
       NO_COLOR: '1',
     };
