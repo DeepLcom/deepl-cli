@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **write**: `deepl write --to <language>` is now accepted as a long-only alias of `--lang`. The alias exists so users can reach for `--to` uniformly across `deepl translate` and `deepl write` — the single most common vocabulary split flagged in cross-command usage. `--lang` / `-l` remain fully supported; nothing deprecated. The short form `-t` is intentionally **not** bound on `write` (it would collide with `deepl translate -t, --to`). Passing both `--to` and `--lang` with different values exits with a `ValidationError`; passing the same value works fine.
+- **docs**: `docs/API.md` gained a one-paragraph callout distinguishing `deepl sync --locale` (filter over locales already configured in `.deepl-sync.yaml#target_locales`) from `deepl translate --to` (invocation-time target-language specifier). The split is semantic — sync owns its locale mapping via config; translate does not — and documenting the distinction is the right fix rather than forcing one to compromise for surface symmetry.
+
 ### Changed
 
 - **sync exit codes**: `deepl sync` partial-failure (one or more locales failed while others succeeded) now exits **12** instead of 1. Exit 1 now means strictly "unclassified CLI failure." A prior version aliased `ExitCode.PartialFailure` to `GeneralError` (both `1`), which prevented CI scripts from telling a partial sync outcome from a CLI crash. With this change, CI can safely branch on `$? -eq 12` and retry only the failed locales via `deepl sync --locale <failed,comma,separated>`. The paired typed error class `SyncPartialFailureError` (exit 12, envelope `code: "SyncPartialFailure"`) is added to `src/utils/errors.ts`, mirroring `SyncDriftError` (10) and `SyncConflictError` (11). Migration: any CI script that branched on `$? -eq 1` to detect partial sync failure should switch to `$? -eq 12`; a generic `$? -ne 0` check continues to work unchanged.

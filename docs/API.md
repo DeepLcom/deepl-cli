@@ -673,6 +673,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 **Language:**
 
 - `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT`. Optional — omit to auto-detect the language and rephrase in the original language.
+- `--to LANG` - Long-only alias of `--lang`. Accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`; the short form `-t` is intentionally **not** bound here (it would collide with `deepl translate -t, --to`). Specifying both `--to` and `--lang` with different values exits with a `ValidationError`.
 
 **Style Options (mutually exclusive with tone):**
 
@@ -1069,7 +1070,7 @@ Scan, translate, and sync i18n resource files. The sync engine reads `.deepl-syn
 
 **Filtering:**
 
-- `--locale LANGS` - Sync only specific target locales (comma-separated)
+- `--locale LANGS` - Sync only specific target locales (comma-separated). **Note the split:** `sync --locale` is a *filter* over locales already declared in `.deepl-sync.yaml#target_locales` — it narrows which configured targets a run acts on. `deepl translate --to` is an *invocation-time specifier* — it names the target languages for a one-shot text translation. The sync engine owns the locale mapping via `.deepl-sync.yaml`; `translate` does not. A locale not in `target_locales` passed to `sync --locale` exits with a `ConfigError`; an unrecognized code passed to `translate --to` exits with `InvalidInput`.
 
 **Translation Quality:**
 

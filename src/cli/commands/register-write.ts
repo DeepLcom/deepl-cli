@@ -21,6 +21,7 @@ export function registerWrite(
     .argument('[text]', 'Text to improve, file path, or read from stdin')
     .optionsGroup('Core Options:')
     .option('-l, --lang <language>', 'Target language: de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT (auto-detect if omitted)')
+    .option('--to <language>', 'Alias of --lang — accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`.')
     .option('--style <style>', 'Writing style: default, simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
     .option('--tone <tone>', 'Tone: default, enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
     .optionsGroup('Output Modes:')
@@ -40,6 +41,7 @@ export function registerWrite(
     .addHelpText('after', `
 Examples:
   $ deepl write "Their going to the store" --lang en-US
+  $ deepl write "Their going to the store" --to en-US      (--to is an alias of --lang)
   $ deepl write report.txt --check
   $ deepl write essay.md --fix --backup
   $ deepl write "Make this formal" --style business --lang en
@@ -52,6 +54,7 @@ Examples:
 `)
     .action(async (text: string | undefined, options: {
       lang?: string;
+      to?: string;
       style?: string;
       tone?: string;
       alternatives?: boolean;
@@ -66,6 +69,15 @@ Examples:
       cache?: boolean;
     }) => {
       try {
+        if (options.to !== undefined && options.lang !== undefined && options.to !== options.lang) {
+          throw new ValidationError(
+            'Cannot specify both --to and --lang with different values. --to is an alias of --lang; pick one.',
+          );
+        }
+        if (options.to !== undefined && options.lang === undefined) {
+          options.lang = options.to;
+        }
+
         if (!text) {
           const { readStdin } = await import('../../utils/read-stdin.js');
           const stdinText = await readStdin();
