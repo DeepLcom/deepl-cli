@@ -1257,7 +1257,7 @@ Analyze translation consistency and detect terminology inconsistencies across ta
 - `--format FORMAT` - Output format: `text` (default), `json`
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
 
-**Note:** Prior to the 1.0.0 release, this subcommand was named `glossary-report`. The old name is rejected with an error pointing at the new form; no alias is kept.
+**Note:** Prior to the 1.1.0 release, this subcommand was prototyped as `glossary-report`; it never shipped in a tagged release under that name. The old name is rejected with an error pointing at the new form; no alias is kept.
 
 **JSON output sample:**
 
@@ -1286,6 +1286,7 @@ Export source strings to XLIFF 1.2 for CAT tool handoff.
 - `--locale LANGS` - Filter by locale (comma-separated)
 - `--output PATH` - Write to file instead of stdout. Path must stay within the project root; intermediate directories are created automatically
 - `--overwrite` - Required to overwrite an existing `--output` file. Without it, an existing file causes a non-zero exit and no write occurs
+- `--format FORMAT` - Output format: `text` (default), `json`. Success output is always XLIFF 1.2 regardless of format; `json` affects the **error** envelope on stderr (matching other sync subcommands) so script consumers can parse failure shape uniformly
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
 
 **Examples:**

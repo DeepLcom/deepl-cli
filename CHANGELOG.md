@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **docs**: `docs/API.md` and `docs/SYNC.md` now document the `--format FORMAT` option on `deepl sync export` (previously undocumented even though the flag was registered in `src/cli/commands/sync/register-sync-export.ts`). Clarified that on `sync export` the format choice affects only the error envelope on stderr; the success output is always XLIFF 1.2.
+- **docs**: `docs/API.md` corrected the note on the `audit` subcommand rename — the previous wording said "Prior to the 1.0.0 release, this subcommand was named `glossary-report`", which implied 1.0.0 users had access to it. The prototype name `glossary-report` never shipped in any tagged release; now worded consistently with the 1.1.0 CHANGELOG entry.
+
 ## [1.1.0] - 2026-04-23
 
 ### Added

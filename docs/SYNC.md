@@ -642,6 +642,7 @@ deepl sync export [OPTIONS]
 | `--locale <langs>` | Export for specific locales only |
 | `--output <path>` | Write to file instead of stdout |
 | `--overwrite` | Overwrite `--output` if it already exists (default: refuse to clobber) |
+| `--format <fmt>` | Output format: `text` (default), `json`. Success output is always XLIFF 1.2; `json` affects the **error** envelope on stderr so script consumers can parse failure shape uniformly with other sync subcommands |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
 
 Without `--overwrite`, `deepl sync export --output` refuses to write over an existing file and exits 6 (ValidationError). Pass `--overwrite` to re-export:
