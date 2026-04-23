@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **sync**: `.deepl-sync.yaml` and auto-detect-path reads (`package.json`, the first-match i18n file for key counting) now route through `safeReadFileSync`, which rejects symbolic links with a `ValidationError`. A hostile repo could previously ship a `.deepl-sync.yaml` symlinked to `~/.ssh/id_rsa` (or another dotfile outside the project root) and surface the target's contents in YAML parser errors on stderr. Affected sites: `src/sync/sync-config.ts:566`, `src/sync/sync-init.ts:239`, `src/sync/sync-init.ts:271`. Runtime file reads during `deepl sync` itself are unchanged — the bucket walker already refuses symlinks via `fast-glob`'s `followSymbolicLinks: false`.
+
 ### Added
 
 - **write**: `deepl write --to <language>` is now accepted as a long-only alias of `--lang`. The alias exists so users can reach for `--to` uniformly across `deepl translate` and `deepl write` — the single most common vocabulary split flagged in cross-command usage. `--lang` / `-l` remain fully supported; nothing deprecated. The short form `-t` is intentionally **not** bound on `write` (it would collide with `deepl translate -t, --to`). Passing both `--to` and `--lang` with different values exits with a `ValidationError`; passing the same value works fine.
@@ -32,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **output**: Spinners (`ora`) are now gated on `process.stderr.isTTY` at the `Logger.shouldShowSpinner()` chokepoint. CI and piped-stderr contexts no longer risk ANSI escape leaks into log files regardless of which callsite instantiates the spinner.
 - **color**: `NO_COLOR` is now explicitly honored in the CLI bootstrap by setting `chalk.level = 0` when the env var is present. `chalk` already auto-detects `NO_COLOR`, but the explicit hook keeps the two color-detection paths in the codebase (`chalk` and `isColorEnabled()` in `utils/formatters.ts`) unambiguously in sync if `chalk`'s auto-detection ever changes or is mocked in tests.
 - **sync init**: a bare `process.exit(7)` literal in `register-sync-init.ts`'s JSON-output path now goes through `ExitCode.ConfigError` so future exit-code renumbering can't desync the hard-coded value from the rest of the codebase.
+- **xliff**: the chained-`.replace()` XML entity decoder double-decoded entities. `&amp;lt;` (the literal 5-character string "`&lt;`") was silently collapsed to "`<`" because the decoder ran `&amp;` → `&` on the first pass and then `&lt;` → `<` on the second. Replaced with a single-pass regex that handles the five named entities plus decimal (`&#NN;`) and hex (`&#xNN;`) numeric character references, retiring both bugs in one stroke. Round-tripping literal entities through translation now preserves them byte-for-byte.
+- **xliff**: CDATA sections inside `<source>` / `<target>` elements were silently malformed on round-trip — `<` / `>` bytes inside a CDATA body round-tripped asymmetrically through the escape pass. The parser now rejects CDATA inside translatable elements with a `ValidationError` at extract time, matching the allowlist posture of the Laravel PHP parser's heredoc / interpolation rejection. CDATA in non-translatable positions (e.g., `<note>`) is still accepted.
 
 ## [1.1.0] - 2026-04-23
 

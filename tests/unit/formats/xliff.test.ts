@@ -313,4 +313,73 @@ describe('xliff parser', () => {
       expect(result).toContain('<target>Pay $1 now $&amp; later</target>');
     });
   });
+
+  describe('entity decoding — single-pass + numeric char refs', () => {
+    it('decodes decimal numeric character references (&#NN;)', () => {
+      const xliff = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2"><file source-language="en"><body>
+<trans-unit id="price"><source>Price: &#36;10</source></trans-unit>
+</body></file></xliff>`;
+      const entries = parser.extract(xliff);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]!.value).toBe('Price: $10');
+    });
+
+    it('decodes hex numeric character references (&#xNN;)', () => {
+      const xliff = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2"><file source-language="en"><body>
+<trans-unit id="smile"><source>&#x2665; unicode</source></trans-unit>
+</body></file></xliff>`;
+      const entries = parser.extract(xliff);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]!.value).toBe('♥ unicode');
+    });
+
+    it('decodes doubly-escaped entities in a single pass (no double-decode)', () => {
+      // `&amp;lt;` represents the literal 5-character string "&lt;".
+      // A chained-replace decoder would produce "<" instead. Single-pass
+      // keeps the intended literal intact.
+      const xliff = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2"><file source-language="en"><body>
+<trans-unit id="literal"><source>&amp;lt;</source></trans-unit>
+</body></file></xliff>`;
+      const entries = parser.extract(xliff);
+      expect(entries[0]!.value).toBe('&lt;');
+    });
+
+    it('leaves unknown named entities verbatim', () => {
+      const xliff = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2"><file source-language="en"><body>
+<trans-unit id="copy"><source>&copy; 2026</source></trans-unit>
+</body></file></xliff>`;
+      const entries = parser.extract(xliff);
+      expect(entries[0]!.value).toBe('&copy; 2026');
+    });
+  });
+
+  describe('CDATA allowlist', () => {
+    it('rejects CDATA inside <source> with ValidationError', () => {
+      const xliff = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2"><file source-language="en"><body>
+<trans-unit id="a"><source><![CDATA[<b>bold</b>]]></source></trans-unit>
+</body></file></xliff>`;
+      expect(() => parser.extract(xliff)).toThrow(/<source> \/ <target> elements containing CDATA/);
+    });
+
+    it('rejects CDATA inside <target> with ValidationError', () => {
+      const xliff = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2"><file source-language="en" target-language="de"><body>
+<trans-unit id="a"><source>Hello</source><target><![CDATA[<b>Hallo</b>]]></target></trans-unit>
+</body></file></xliff>`;
+      expect(() => parser.extract(xliff)).toThrow(/<source> \/ <target> elements containing CDATA/);
+    });
+
+    it('accepts CDATA elsewhere (e.g. <note>)', () => {
+      const xliff = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2"><file source-language="en"><body>
+<trans-unit id="a"><note><![CDATA[translator comment with <markup>]]></note><source>Hello</source></trans-unit>
+</body></file></xliff>`;
+      expect(() => parser.extract(xliff)).not.toThrow();
+    });
+  });
 });

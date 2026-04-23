@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'yaml';
 import { ConfigError } from '../utils/errors.js';
+import { safeReadFileSync } from '../utils/safe-read-file.js';
 import { sanitizeForTerminal } from '../utils/control-chars.js';
 import type { SyncConfig, SyncBucketConfig, SyncTranslationSettings, SyncValidationSettings, SyncBehavior, SyncTmsConfig } from './types.js';
 import { HARD_MAX_SYNC_LIMITS } from './types.js';
@@ -564,7 +565,10 @@ export async function loadSyncConfig(
     configPath = found;
   }
 
-  const content = fs.readFileSync(configPath, 'utf-8');
+  // SECURITY: reject symlinks (a hostile .deepl-sync.yaml -> ~/.ssh/id_rsa
+  // would otherwise be YAML-parsed and surfaced verbatim in ConfigError
+  // messages on stderr).
+  const content = safeReadFileSync(configPath, 'utf-8');
   let parsed: unknown;
   try {
     parsed = YAML.parse(content);
