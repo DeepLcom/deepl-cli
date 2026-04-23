@@ -1076,6 +1076,14 @@ describe('SyncCommand', () => {
 
         const runPromise = command.run({ watch: true, debounce: 50 } as CliSyncOptions);
         await flushWatchSetup();
+        // Under CI worker contention the fixed-round flush occasionally
+        // returns before watcher.on('change', ...) has registered. Loop
+        // flushWatchSetup with a hard ceiling so we fail loudly rather than
+        // with the misleading "handlers[0] is not a function".
+        for (let i = 0; i < 10 && handlers.length === 0; i++) {
+          await flushWatchSetup();
+        }
+        expect(handlers.length).toBeGreaterThan(0);
 
         const initialLoads = mockLoadSyncConfig.mock.calls.length;
 
