@@ -1,0 +1,8 @@
+/* Greeting shown on home screen */
+"greeting" = "Hello";
+
+/* Farewell message */
+"farewell" = "Goodbye";
+
+/* Welcome message for new users */
+"welcome_message" = "Welcome to our app";

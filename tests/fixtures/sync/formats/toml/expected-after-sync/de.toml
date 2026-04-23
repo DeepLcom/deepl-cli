@@ -1,0 +1,6 @@
+greeting = "Hallo"
+farewell = "Auf Wiedersehen"
+
+[nav]
+home = "Startseite"
+settings = "Einstellungen"

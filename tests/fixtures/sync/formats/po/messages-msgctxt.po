@@ -1,0 +1,19 @@
+# Message context test
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+#: src/menu.py:5
+msgctxt "menu"
+msgid "File"
+msgstr "Archivo"
+
+#: src/menu.py:10
+msgctxt "menu"
+msgid "Open"
+msgstr "Abrir"
+
+#: src/dialog.py:5
+msgctxt "dialog"
+msgid "Open"
+msgstr "Abrir archivo"

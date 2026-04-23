@@ -332,16 +332,17 @@ describe('TranslationService', () => {
         targetLang: 'es',
       });
 
-      // Should have 50 successful translations from second batch
-      expect(results).toHaveLength(50);
+      // Should return full array preserving positional correspondence
+      expect(results).toHaveLength(100);
 
-      // CRITICAL: Verify correct mapping
-      // Bug would map second batch results to first batch indices
-      // Correct: second batch results should map to second batch indices
-
-      // Check that we got translations for batch2, not batch1
+      // First batch failed — indices 0-49 should be null
       for (let i = 0; i < 50; i++) {
-        expect(results[i]?.text).toBe(`Text${i + 50}_translated`);
+        expect(results[i]).toBeNull();
+      }
+
+      // Second batch succeeded — indices 50-99 have correct translations
+      for (let i = 50; i < 100; i++) {
+        expect(results[i]?.text).toBe(`Text${i}_translated`);
       }
 
       // Verify cache was populated with correct mappings
@@ -371,12 +372,17 @@ describe('TranslationService', () => {
         targetLang: 'es',
       });
 
-      // Should return 50 successful translations from first batch
-      expect(results).toHaveLength(50);
+      // Should return full array preserving positional correspondence
+      expect(results).toHaveLength(100);
 
-      // Verify correct translations for first batch
+      // Verify correct translations for first batch (indices 0-49)
       for (let i = 0; i < 50; i++) {
         expect(results[i]?.text).toBe(`Text${i}_translated`);
+      }
+
+      // Second batch failed — indices 50-99 should be null/undefined
+      for (let i = 50; i < 100; i++) {
+        expect(results[i]).toBeNull();
       }
     });
 
@@ -883,15 +889,28 @@ describe('TranslationService', () => {
       ).rejects.toThrow('Text at index 1 too large');
     });
 
-    it('should reject batch when aggregate size exceeds limit', async () => {
-      // Each text is within the per-item limit but total exceeds the limit
+    it('should accept batch with large aggregate size — chunking handles splitting', async () => {
+      // Each text is within the per-item limit; total exceeds 128KB but chunking handles it
       const halfLimit = Math.floor(MAX_TEXT_BYTES / 2) + 1;
       const text1 = 'a'.repeat(halfLimit);
       const text2 = 'b'.repeat(halfLimit);
 
-      await expect(
-        translationService.translateBatch([text1, text2], { targetLang: 'es' })
-      ).rejects.toThrow('Batch text too large');
+      // Supply an explicit result so the assertion proves translation actually happened
+      // rather than relying on a vacuous default.
+      mockDeepLClient.translateBatch.mockResolvedValue([
+        { text: 'A-translated' },
+        { text: 'B-translated' },
+      ]);
+
+      const results = await translationService.translateBatch(
+        [text1, text2],
+        { targetLang: 'es' },
+      );
+
+      expect(results).toHaveLength(2);
+      expect(results[0]?.text).toBe('A-translated');
+      expect(results[1]?.text).toBe('B-translated');
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalled();
     });
 
     it('should accept batch within the aggregate byte limit', async () => {

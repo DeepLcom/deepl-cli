@@ -5,6 +5,7 @@
 
 import { GlossaryService } from '../../src/services/glossary';
 import { DeepLClient } from '../../src/api/deepl-client';
+import { ConfigError } from '../../src/utils/errors';
 import { createMockDeepLClient } from '../helpers/mock-factories';
 
 // Mock DeepLClient
@@ -315,6 +316,243 @@ describe('GlossaryService', () => {
 
       expect(result).toBe(uppercaseUuid);
       expect(mockDeepLClient.listGlossaries).not.toHaveBeenCalled();
+    });
+
+    it('should emit a verbose log with resolved glossary name -> UUID after name lookup', async () => {
+      mockDeepLClient.listGlossaries.mockResolvedValue([
+        {
+          glossary_id: 'resolved-glossary-id',
+          name: 'tech-terms',
+          source_lang: 'en',
+          target_langs: ['es'],
+          dictionaries: [{ source_lang: 'en', target_lang: 'es', entry_count: 1 }],
+          creation_time: '2024-01-01T00:00:00Z',
+        },
+      ]);
+      const { Logger } = jest.requireActual('../../src/utils/logger');
+      const spy = jest.spyOn(Logger, 'verbose').mockImplementation(() => {});
+
+      await glossaryService.resolveGlossaryId('tech-terms');
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining('Resolved glossary "tech-terms" -> resolved-glossary-id')
+      );
+      spy.mockRestore();
+    });
+
+    describe('session-scoped cache', () => {
+      const TECH_TERMS = {
+        glossary_id: 'resolved-glossary-id',
+        name: 'tech-terms',
+        source_lang: 'en' as const,
+        target_langs: ['es' as const],
+        dictionaries: [{ source_lang: 'en' as const, target_lang: 'es' as const, entry_count: 1 }],
+        creation_time: '2024-01-01T00:00:00Z',
+      };
+
+      it('calls listGlossaries exactly once across repeat resolutions of the same name', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([TECH_TERMS]);
+
+        const first = await glossaryService.resolveGlossaryId('tech-terms');
+        const second = await glossaryService.resolveGlossaryId('tech-terms');
+        const third = await glossaryService.resolveGlossaryId('tech-terms');
+
+        expect(first).toBe('resolved-glossary-id');
+        expect(second).toBe('resolved-glossary-id');
+        expect(third).toBe('resolved-glossary-id');
+        expect(mockDeepLClient.listGlossaries).toHaveBeenCalledTimes(1);
+      });
+
+      it('emits a cache-hit verbose log on repeat resolutions', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([TECH_TERMS]);
+        const { Logger } = jest.requireActual('../../src/utils/logger');
+        const spy = jest.spyOn(Logger, 'verbose').mockImplementation(() => {});
+
+        await glossaryService.resolveGlossaryId('tech-terms');
+        spy.mockClear();
+        await glossaryService.resolveGlossaryId('tech-terms');
+
+        expect(spy).toHaveBeenCalledWith(
+          expect.stringContaining('Glossary cache hit: "tech-terms" -> resolved-glossary-id'),
+        );
+        spy.mockRestore();
+      });
+
+      it('invalidates the cache on createGlossary so a stale name→id does not linger', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([TECH_TERMS]);
+        mockDeepLClient.createGlossary.mockResolvedValue({
+          ...TECH_TERMS,
+          glossary_id: 'new-glossary-id',
+        });
+
+        await glossaryService.resolveGlossaryId('tech-terms');
+        await glossaryService.createGlossary('other', 'en', ['es'], { a: 'b' });
+        await glossaryService.resolveGlossaryId('tech-terms');
+
+        expect(mockDeepLClient.listGlossaries).toHaveBeenCalledTimes(2);
+      });
+
+      it('invalidates the cache on deleteGlossary', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([TECH_TERMS]);
+        mockDeepLClient.deleteGlossary.mockResolvedValue(undefined);
+
+        await glossaryService.resolveGlossaryId('tech-terms');
+        await glossaryService.deleteGlossary('resolved-glossary-id');
+        await glossaryService.resolveGlossaryId('tech-terms');
+
+        expect(mockDeepLClient.listGlossaries).toHaveBeenCalledTimes(2);
+      });
+
+      it('UUID fast-path does not populate or consult the cache', async () => {
+        const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+        await glossaryService.resolveGlossaryId(uuid);
+        await glossaryService.resolveGlossaryId(uuid);
+
+        expect(mockDeepLClient.listGlossaries).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('shared list cache', () => {
+      const TECH_TERMS = {
+        glossary_id: 'resolved-glossary-id',
+        name: 'tech-terms',
+        source_lang: 'en' as const,
+        target_langs: ['es' as const],
+        dictionaries: [{ source_lang: 'en' as const, target_lang: 'es' as const, entry_count: 1 }],
+        creation_time: '2024-01-01T00:00:00Z',
+      };
+
+      it('getGlossaryByName consults the session list cache so N successive lookups issue 1 list call', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([TECH_TERMS]);
+
+        const first = await glossaryService.getGlossaryByName('tech-terms');
+        const second = await glossaryService.getGlossaryByName('tech-terms');
+        const third = await glossaryService.getGlossaryByName('tech-terms');
+
+        expect(first?.glossary_id).toBe('resolved-glossary-id');
+        expect(second?.glossary_id).toBe('resolved-glossary-id');
+        expect(third?.glossary_id).toBe('resolved-glossary-id');
+        expect(mockDeepLClient.listGlossaries).toHaveBeenCalledTimes(1);
+      });
+
+      it('resolveGlossaryId and getGlossaryByName share the list cache (one call total)', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([TECH_TERMS]);
+
+        await glossaryService.resolveGlossaryId('tech-terms');
+        const resolved = await glossaryService.getGlossaryByName('tech-terms');
+
+        expect(resolved?.glossary_id).toBe('resolved-glossary-id');
+        expect(mockDeepLClient.listGlossaries).toHaveBeenCalledTimes(1);
+      });
+
+      it('list cache expires after the TTL window, forcing a fresh list call', async () => {
+        jest.useFakeTimers();
+        try {
+          mockDeepLClient.listGlossaries.mockResolvedValue([TECH_TERMS]);
+
+          await glossaryService.getGlossaryByName('tech-terms');
+          jest.advanceTimersByTime(61_000);
+          await glossaryService.getGlossaryByName('tech-terms');
+
+          expect(mockDeepLClient.listGlossaries).toHaveBeenCalledTimes(2);
+        } finally {
+          jest.useRealTimers();
+        }
+      });
+
+      it('createGlossary invalidates the list cache so getGlossaryByName re-fetches', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([TECH_TERMS]);
+        mockDeepLClient.createGlossary.mockResolvedValue({
+          ...TECH_TERMS,
+          glossary_id: 'fresh-id',
+          name: 'brand-new',
+        });
+
+        await glossaryService.getGlossaryByName('tech-terms');
+        await glossaryService.createGlossary('brand-new', 'en', ['es'], { a: 'b' });
+        await glossaryService.getGlossaryByName('tech-terms');
+
+        expect(mockDeepLClient.listGlossaries).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('API-returned name trust boundary', () => {
+      const cleanGlossary = {
+        glossary_id: 'clean-id',
+        name: 'prod-gloss',
+        source_lang: 'en' as const,
+        target_langs: ['es' as const],
+        dictionaries: [{ source_lang: 'en' as const, target_lang: 'es' as const, entry_count: 1 }],
+        creation_time: '2024-01-01T00:00:00Z',
+      };
+
+      it('treats a glossary whose name contains a zero-width space as non-existent (silent skip)', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([
+          { ...cleanGlossary, glossary_id: 'poisoned-id', name: 'prod-gloss\u200B' },
+        ]);
+
+        await expect(
+          glossaryService.resolveGlossaryId('prod-gloss\u200B'),
+        ).rejects.toThrow(/not found/);
+      });
+
+      it('treats a glossary whose name contains an ASCII control char as non-existent (silent skip)', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([
+          { ...cleanGlossary, glossary_id: 'poisoned-id', name: 'prod-gloss\x00' },
+        ]);
+
+        await expect(
+          glossaryService.resolveGlossaryId('prod-gloss\x00'),
+        ).rejects.toThrow(/not found/);
+      });
+
+      it('throws ConfigError with a UUID-disambiguation hint when two glossaries share the same name', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([
+          { ...cleanGlossary, glossary_id: 'first-id', name: 'shared' },
+          { ...cleanGlossary, glossary_id: 'second-id', name: 'shared' },
+        ]);
+
+        let thrown: unknown;
+        try {
+          await glossaryService.resolveGlossaryId('shared');
+        } catch (err) {
+          thrown = err;
+        }
+
+        expect(thrown).toBeInstanceOf(ConfigError);
+        const err = thrown as ConfigError;
+        expect(err.message).toMatch(/Multiple glossaries share the name/);
+        expect(err.suggestion).toMatch(/UUID/);
+      });
+
+      it('does not echo raw control chars from the caller input into the error message', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([]);
+        const dirty = 'bad\x07name';
+
+        let thrown: unknown;
+        try {
+          await glossaryService.resolveGlossaryId(dirty);
+        } catch (err) {
+          thrown = err;
+        }
+
+        expect(thrown).toBeInstanceOf(ConfigError);
+        const err = thrown as ConfigError;
+        expect(err.message).not.toContain('\x07');
+        expect(err.message).toContain('badname');
+      });
+
+      it('legit unambiguous name still resolves even when a filtered sibling exists', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([
+          { ...cleanGlossary, glossary_id: 'legit-id', name: 'prod-gloss' },
+          { ...cleanGlossary, glossary_id: 'poisoned-id', name: 'prod-gloss\x00' },
+        ]);
+
+        const resolved = await glossaryService.resolveGlossaryId('prod-gloss');
+
+        expect(resolved).toBe('legit-id');
+      });
     });
   });
 

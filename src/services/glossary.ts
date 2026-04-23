@@ -8,11 +8,40 @@ import { GlossaryInfo, GlossaryLanguagePair, Language, isMultilingual } from '..
 import { Logger } from '../utils/logger.js';
 import { ValidationError, ConfigError } from '../utils/errors.js';
 
+function sanitizeForError(input: string): string {
+  // eslint-disable-next-line no-control-regex -- intentional: strip control chars before interpolating untrusted input into errors
+  return input.replace(/[\x00-\x1f\x7f]/g, '').slice(0, 80);
+}
+
+function hasSuspiciousChars(name: string): boolean {
+  // eslint-disable-next-line no-control-regex -- intentional: checking for control chars in untrusted API-returned strings
+  return /[\x00-\x1f\x7f\u200B-\u200D\uFEFF]/.test(name);
+}
+
+const LIST_CACHE_TTL_MS = 60_000;
+
 export class GlossaryService {
   private client: DeepLClient;
+  private resolutionCache = new Map<string, string>();
+  private listCache?: { at: number; list: GlossaryInfo[] };
 
   constructor(client: DeepLClient) {
     this.client = client;
+  }
+
+  private invalidateResolutionCache(): void {
+    this.resolutionCache.clear();
+    this.listCache = undefined;
+  }
+
+  private async getCachedGlossaryList(): Promise<GlossaryInfo[]> {
+    const now = Date.now();
+    if (this.listCache && now - this.listCache.at < LIST_CACHE_TTL_MS) {
+      return this.listCache.list;
+    }
+    const list = await this.client.listGlossaries();
+    this.listCache = { at: now, list };
+    return list;
   }
 
   /**
@@ -41,7 +70,9 @@ export class GlossaryService {
     const tsv = GlossaryService.entriesToTSV(entries);
 
     // Create glossary via API
-    return this.client.createGlossary(name, sourceLang, targetLangs, tsv);
+    const result = await this.client.createGlossary(name, sourceLang, targetLangs, tsv);
+    this.invalidateResolutionCache();
+    return result;
   }
 
   /**
@@ -65,7 +96,9 @@ export class GlossaryService {
       throw new ValidationError('Glossary entries cannot be empty');
     }
 
-    return this.client.createGlossary(name, sourceLang, targetLangs, tsv);
+    const result = await this.client.createGlossary(name, sourceLang, targetLangs, tsv);
+    this.invalidateResolutionCache();
+    return result;
   }
 
   /**
@@ -86,7 +119,7 @@ export class GlossaryService {
    * Get glossary by name
    */
   async getGlossaryByName(name: string): Promise<GlossaryInfo | null> {
-    const glossaries = await this.listGlossaries();
+    const glossaries = await this.getCachedGlossaryList();
     return glossaries.find(g => g.name === name) ?? null;
   }
 
@@ -98,18 +131,35 @@ export class GlossaryService {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nameOrId)) {
       return nameOrId;
     }
-    const glossary = await this.getGlossaryByName(nameOrId);
-    if (!glossary) {
-      throw new ConfigError(`Glossary "${nameOrId}" not found`);
+    const cached = this.resolutionCache.get(nameOrId);
+    if (cached !== undefined) {
+      Logger.verbose(`[verbose] Glossary cache hit: "${nameOrId}" -> ${cached}`);
+      return cached;
     }
-    return glossary.glossary_id;
+    const glossaries = await this.getCachedGlossaryList();
+    const candidates = glossaries.filter(g => !hasSuspiciousChars(g.name));
+    const matches = candidates.filter(g => g.name === nameOrId);
+    if (matches.length > 1) {
+      throw new ConfigError(
+        `Multiple glossaries share the name "${sanitizeForError(nameOrId)}"`,
+        'Pass the UUID directly to disambiguate.',
+      );
+    }
+    const match = matches[0];
+    if (!match) {
+      throw new ConfigError(`Glossary "${sanitizeForError(nameOrId)}" not found`);
+    }
+    this.resolutionCache.set(nameOrId, match.glossary_id);
+    Logger.verbose(`[verbose] Resolved glossary "${nameOrId}" -> ${match.glossary_id}`);
+    return match.glossary_id;
   }
 
   /**
    * Delete a glossary
    */
   async deleteGlossary(glossaryId: string): Promise<void> {
-    return this.client.deleteGlossary(glossaryId);
+    await this.client.deleteGlossary(glossaryId);
+    this.invalidateResolutionCache();
   }
 
   /**
@@ -268,6 +318,9 @@ export class GlossaryService {
     }
 
     await this.client.updateGlossary(glossaryId, updates);
+    if (options.name) {
+      this.invalidateResolutionCache();
+    }
   }
 
   /**

@@ -1,0 +1,26 @@
+{
+  "@@locale": "en",
+  "@@last_modified": "2024-01-15T10:30:00.000Z",
+  "greeting": "Hello",
+  "@greeting": {
+    "description": "Shown on home screen",
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "farewell": "Goodbye",
+  "@farewell": {
+    "description": "Shown when user leaves"
+  },
+  "welcomeMessage": "Welcome to our app",
+  "@welcomeMessage": {
+    "description": "Welcome banner text",
+    "placeholders": {
+      "appName": {
+        "type": "String"
+      }
+    }
+  }
+}

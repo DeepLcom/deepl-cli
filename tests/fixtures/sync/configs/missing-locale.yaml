@@ -1,0 +1,7 @@
+version: 1
+target_locales:
+  - de
+buckets:
+  json:
+    include:
+      - "locales/en.json"

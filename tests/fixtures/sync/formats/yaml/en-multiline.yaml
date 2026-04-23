@@ -1,0 +1,7 @@
+description: |
+  This is a long description
+  that spans multiple lines.
+summary: >
+  This is a folded
+  block scalar.
+title: Short title

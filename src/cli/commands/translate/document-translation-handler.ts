@@ -3,7 +3,8 @@ import { Logger } from '../../../utils/logger.js';
 import { ValidationError } from '../../../utils/errors.js';
 import type { DocumentTranslationOptions } from '../../../types/api.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
-import { warnIgnoredOptions, validateLanguageCodes, buildTranslationOptions } from './translate-utils.js';
+import { warnIgnoredOptions, validateLanguageCodes } from './translate-utils.js';
+import { buildBaseTranslationOptions } from './translation-options-factory.js';
 
 export class DocumentTranslationHandler {
   constructor(public ctx: HandlerContext) {}
@@ -22,7 +23,7 @@ export class DocumentTranslationHandler {
 
     const outputPath = options.output!;
 
-    const translationOptions = buildTranslationOptions(options);
+    const translationOptions = buildBaseTranslationOptions(options);
 
     if (options.outputFormat) {
       translationOptions.outputFormat = options.outputFormat;

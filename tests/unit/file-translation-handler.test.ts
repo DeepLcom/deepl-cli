@@ -150,6 +150,98 @@ describe('FileTranslationHandler', () => {
       expect(result).toContain('2 languages');
     });
 
+    describe('multi-target glossary + translation memory', () => {
+      const TM_UUID = '11111111-2222-3333-4444-555555555555';
+
+      beforeEach(() => {
+        mocks.fileTranslationService.translateFileToMultiple.mockResolvedValue([
+          { targetLang: 'de' as any, text: 'Hallo', outputPath: '/tmp/out/file.de.txt' },
+          { targetLang: 'fr' as any, text: 'Bonjour', outputPath: '/tmp/out/file.fr.txt' },
+        ]);
+      });
+
+      it('throws ValidationError for --glossary without --from in multi-target', async () => {
+        const err = await handler
+          .translateFile('/tmp/file.txt', defaultOptions({ to: 'de,fr', output: '/tmp/out', glossary: 'my-glossary' }))
+          .catch(e => e);
+        expect(err).toBeInstanceOf(ValidationError);
+        expect((err as Error).message).toContain('Source language (--from) is required');
+      });
+
+      it('throws ValidationError for --translation-memory without --from in multi-target', async () => {
+        const err = await handler
+          .translateFile('/tmp/file.txt', defaultOptions({ to: 'de,fr', output: '/tmp/out', translationMemory: 'my-tm' }))
+          .catch(e => e);
+        expect(err).toBeInstanceOf(ValidationError);
+        expect((err as ValidationError).exitCode).toBe(6);
+        expect((err as Error).message).toContain('--from is required when using --translation-memory');
+      });
+
+      it('throws ValidationError for multi-target TM + latency_optimized model', async () => {
+        const err = await handler
+          .translateFile('/tmp/file.txt', defaultOptions({
+            to: 'de,fr', output: '/tmp/out',
+            from: 'en', translationMemory: 'my-tm', modelType: 'latency_optimized',
+          }))
+          .catch(e => e);
+        expect(err).toBeInstanceOf(ValidationError);
+        expect((err as Error).message).toContain('requires quality_optimized model type');
+      });
+
+      it('resolves glossary name to ID and passes it to translateFileToMultiple', async () => {
+        mocks.glossaryService.resolveGlossaryId.mockResolvedValue('glossary-abc-123');
+
+        await handler.translateFile('/tmp/file.txt', defaultOptions({
+          to: 'de,fr', output: '/tmp/out',
+          from: 'en', glossary: 'my-glossary',
+        }));
+
+        expect(mocks.glossaryService.resolveGlossaryId).toHaveBeenCalledTimes(1);
+        expect(mocks.glossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+        const call = mocks.fileTranslationService.translateFileToMultiple.mock.calls[0]!;
+        expect(call[2]).toEqual(expect.objectContaining({ glossaryId: 'glossary-abc-123' }));
+      });
+
+      it('TM UUID fast-path in multi-target: passes UUID through, skips listTranslationMemories, sets quality_optimized', async () => {
+        await handler.translateFile('/tmp/file.txt', defaultOptions({
+          to: 'de,fr', output: '/tmp/out',
+          from: 'en', translationMemory: TM_UUID,
+        }));
+
+        expect(mocks.translationService.listTranslationMemories).not.toHaveBeenCalled();
+        const call = mocks.fileTranslationService.translateFileToMultiple.mock.calls[0]!;
+        expect(call[2]).toEqual(expect.objectContaining({
+          translationMemoryId: TM_UUID,
+          modelType: 'quality_optimized',
+        }));
+      });
+
+      it('TM UUID + --tm-threshold passes through as translationMemoryThreshold in multi-target', async () => {
+        await handler.translateFile('/tmp/file.txt', defaultOptions({
+          to: 'de,fr', output: '/tmp/out',
+          from: 'en', translationMemory: TM_UUID, tmThreshold: 85,
+        }));
+
+        const call = mocks.fileTranslationService.translateFileToMultiple.mock.calls[0]!;
+        expect(call[2]).toEqual(expect.objectContaining({ translationMemoryThreshold: 85 }));
+      });
+
+      it('TM name resolution in multi-target: surfaces clean pair-check error when TM target_lang does not match all requested targets', async () => {
+        mocks.translationService.listTranslationMemories.mockResolvedValue([
+          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        ]);
+
+        const err = await handler
+          .translateFile('/tmp/file.txt', defaultOptions({
+            to: 'de,fr', output: '/tmp/out',
+            from: 'en', translationMemory: 'my-tm',
+          }))
+          .catch(e => e);
+        expect((err as Error).message).toContain('does not support the requested language pair');
+        expect(mocks.fileTranslationService.translateFileToMultiple).not.toHaveBeenCalled();
+      });
+    });
+
     it('should use text translation for small text-based files', async () => {
       mockedIsTextBasedFile.mockReturnValue(true);
       mockedGetFileSize.mockReturnValue(50);
@@ -251,6 +343,123 @@ describe('FileTranslationHandler', () => {
         expect.objectContaining({ preserveCode: undefined })
       );
       expect(result).toContain('Translated');
+    });
+
+    describe('--translation-memory', () => {
+      const TM_UUID = '11111111-2222-3333-4444-555555555555';
+
+      beforeEach(() => {
+        mockedIsTextBasedFile.mockReturnValue(true);
+        mockedGetFileSize.mockReturnValue(50);
+      });
+
+      it('throws ValidationError (exit 6) when --translation-memory used without --from', async () => {
+        const err = await handler
+          .translateFile('/tmp/file.txt', defaultOptions({ translationMemory: 'my-tm' }))
+          .catch(e => e);
+        expect(err).toBeInstanceOf(ValidationError);
+        expect((err as ValidationError).exitCode).toBe(6);
+        expect((err as Error).message).toContain('--from is required when using --translation-memory');
+      });
+
+      it('throws ValidationError (exit 6) when combined with latency_optimized', async () => {
+        const err = await handler
+          .translateFile('/tmp/file.txt', defaultOptions({
+            from: 'en', translationMemory: 'my-tm', modelType: 'latency_optimized',
+          }))
+          .catch(e => e);
+        expect(err).toBeInstanceOf(ValidationError);
+        expect((err as ValidationError).exitCode).toBe(6);
+        expect((err as Error).message).toContain('requires quality_optimized model type');
+      });
+
+      it('resolves TM name and passes resolved UUID to translate() for small text files', async () => {
+        mocks.translationService.listTranslationMemories.mockResolvedValue([
+          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        ]);
+
+        await handler.translateFile('/tmp/file.txt', defaultOptions({
+          from: 'en', translationMemory: 'my-tm',
+        }));
+
+        expect(mocks.translationService.listTranslationMemories).toHaveBeenCalledTimes(1);
+        expect(mocks.translationService.translate).toHaveBeenCalledWith(
+          'file content',
+          expect.objectContaining({
+            targetLang: 'de',
+            translationMemoryId: TM_UUID,
+            modelType: 'quality_optimized',
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('resolves TM name and passes resolved UUID to fileTranslationService.translateFile for structured files', async () => {
+        mockedIsStructuredFile.mockReturnValue(true);
+        mocks.translationService.listTranslationMemories.mockResolvedValue([
+          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        ]);
+
+        await handler.translateFile('/tmp/file.json', defaultOptions({
+          from: 'en', translationMemory: 'my-tm',
+        }));
+
+        expect(mocks.translationService.listTranslationMemories).toHaveBeenCalledTimes(1);
+        expect(mocks.fileTranslationService.translateFile).toHaveBeenCalledWith(
+          '/tmp/file.json',
+          '/tmp/output.txt',
+          expect.objectContaining({
+            translationMemoryId: TM_UUID,
+            modelType: 'quality_optimized',
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('passes --tm-threshold through as translationMemoryThreshold', async () => {
+        mocks.translationService.listTranslationMemories.mockResolvedValue([
+          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        ]);
+
+        await handler.translateFile('/tmp/file.txt', defaultOptions({
+          from: 'en', translationMemory: 'my-tm', tmThreshold: 85,
+        }));
+
+        expect(mocks.translationService.translate).toHaveBeenCalledWith(
+          'file content',
+          expect.objectContaining({ translationMemoryThreshold: 85 }),
+          expect.any(Object)
+        );
+      });
+
+      it('UUID fast-path: does NOT call listTranslationMemories when a UUID is passed', async () => {
+        await handler.translateFile('/tmp/file.txt', defaultOptions({
+          from: 'en', translationMemory: TM_UUID,
+        }));
+
+        expect(mocks.translationService.listTranslationMemories).not.toHaveBeenCalled();
+        expect(mocks.translationService.translate).toHaveBeenCalledWith(
+          'file content',
+          expect.objectContaining({ translationMemoryId: TM_UUID }),
+          expect.any(Object)
+        );
+      });
+
+      it('forces modelType=quality_optimized when --translation-memory set and no --model-type given', async () => {
+        mocks.translationService.listTranslationMemories.mockResolvedValue([
+          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        ]);
+
+        await handler.translateFile('/tmp/file.txt', defaultOptions({
+          from: 'en', translationMemory: 'my-tm',
+        }));
+
+        expect(mocks.translationService.translate).toHaveBeenCalledWith(
+          'file content',
+          expect.objectContaining({ modelType: 'quality_optimized' }),
+          expect.any(Object)
+        );
+      });
     });
   });
 });

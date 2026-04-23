@@ -1,0 +1,21 @@
+{
+  "@@locale": "en",
+  "itemCount": "{count, plural, =0{No items} one{{count} item} other{{count} items}}",
+  "@itemCount": {
+    "description": "Cart item count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messageCount": "{count, plural, one{1 message} other{{count} messages}}",
+  "@messageCount": {
+    "description": "Number of unread messages",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

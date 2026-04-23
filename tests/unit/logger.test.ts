@@ -384,4 +384,127 @@ describe('Logger', () => {
       expect(Logger.shouldShowSpinner()).toBe(false);
     });
   });
+
+  describe('TMS credential sanitization', () => {
+    let originalTmsApiKey: string | undefined;
+    let originalTmsToken: string | undefined;
+
+    beforeEach(() => {
+      originalTmsApiKey = process.env['TMS_API_KEY'];
+      originalTmsToken = process.env['TMS_TOKEN'];
+      delete process.env['TMS_API_KEY'];
+      delete process.env['TMS_TOKEN'];
+    });
+
+    afterEach(() => {
+      if (originalTmsApiKey === undefined) {
+        delete process.env['TMS_API_KEY'];
+      } else {
+        process.env['TMS_API_KEY'] = originalTmsApiKey;
+      }
+      if (originalTmsToken === undefined) {
+        delete process.env['TMS_TOKEN'];
+      } else {
+        process.env['TMS_TOKEN'] = originalTmsToken;
+      }
+    });
+
+    it('should redact TMS_API_KEY env value when set', () => {
+      process.env['TMS_API_KEY'] = 'test-tms-api-key-12345';
+      Logger.info('TMS call used key test-tms-api-key-12345 successfully');
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as string;
+      expect(logged).not.toContain('test-tms-api-key-12345');
+      expect(logged).toMatch(/\[REDACTED\]/);
+      expect(logged).toBe('TMS call used key [REDACTED] successfully');
+    });
+
+    it('should redact TMS_TOKEN env value when set', () => {
+      process.env['TMS_TOKEN'] = 'test-tms-token-67890';
+      Logger.info('TMS token test-tms-token-67890 refreshed');
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as string;
+      expect(logged).not.toContain('test-tms-token-67890');
+      expect(logged).toMatch(/\[REDACTED\]/);
+      expect(logged).toBe('TMS token [REDACTED] refreshed');
+    });
+
+    it('should not redact when TMS_API_KEY is not set', () => {
+      Logger.info('Generic message without any TMS values');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Generic message without any TMS values',
+      );
+    });
+
+    it('should not redact when TMS_TOKEN is not set', () => {
+      Logger.info('Another generic message');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Another generic message');
+    });
+
+    it('should redact Authorization: ApiKey header values', () => {
+      Logger.info('req headers: Authorization: ApiKey secret-value-xyz');
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as string;
+      expect(logged).not.toContain('secret-value-xyz');
+      expect(logged).toMatch(/\[REDACTED\]/);
+      expect(logged).toBe('req headers: Authorization: ApiKey [REDACTED]');
+    });
+
+    it('should redact Authorization: Bearer header values', () => {
+      Logger.info('req headers: Authorization: Bearer jwt.xyz.abc');
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as string;
+      expect(logged).not.toContain('jwt.xyz.abc');
+      expect(logged).toMatch(/\[REDACTED\]/);
+      expect(logged).toBe('req headers: Authorization: Bearer [REDACTED]');
+    });
+
+    it('should redact Authorization: ApiKey case-insensitively', () => {
+      Logger.info('authorization: apikey leaked-secret');
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as string;
+      expect(logged).not.toContain('leaked-secret');
+      expect(logged).toMatch(/\[REDACTED\]/);
+    });
+
+    it('should redact Authorization header even when TMS env vars are not set', () => {
+      Logger.info('Authorization: Bearer rotated-jwt-token');
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as string;
+      expect(logged).not.toContain('rotated-jwt-token');
+      expect(logged).toMatch(/\[REDACTED\]/);
+    });
+
+    it('should pass non-string values through unchanged', () => {
+      process.env['TMS_API_KEY'] = 'test-tms-api-key-12345';
+      process.env['TMS_TOKEN'] = 'test-tms-token-67890';
+      const obj = { token: 'test-tms-token-67890' };
+      Logger.info(obj, 42, null, undefined);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(obj, 42, null, undefined);
+    });
+
+    it('should redact multiple distinct credentials in the same log line', () => {
+      const originalDeeplKey = process.env['DEEPL_API_KEY'];
+      process.env['DEEPL_API_KEY'] = 'deepl-key-abc:fx';
+      process.env['TMS_API_KEY'] = 'test-tms-api-key-12345';
+      process.env['TMS_TOKEN'] = 'test-tms-token-67890';
+      try {
+        Logger.info(
+          'deepl=deepl-key-abc:fx tmsKey=test-tms-api-key-12345 tmsTok=test-tms-token-67890 url?token=qp-secret DeepL-Auth-Key deepl-key-abc:fx Authorization: Bearer jwt.abc',
+        );
+        const logged = consoleErrorSpy.mock.calls[0]?.[0] as string;
+        expect(logged).not.toContain('deepl-key-abc:fx');
+        expect(logged).not.toContain('test-tms-api-key-12345');
+        expect(logged).not.toContain('test-tms-token-67890');
+        expect(logged).not.toContain('qp-secret');
+        expect(logged).not.toContain('jwt.abc');
+        expect(logged).toMatch(/deepl=\[REDACTED\]/);
+        expect(logged).toMatch(/tmsKey=\[REDACTED\]/);
+        expect(logged).toMatch(/tmsTok=\[REDACTED\]/);
+        expect(logged).toMatch(/\?token=\[REDACTED\]/);
+        expect(logged).toMatch(/DeepL-Auth-Key \[REDACTED\]/);
+        expect(logged).toMatch(/Authorization: Bearer \[REDACTED\]/);
+      } finally {
+        if (originalDeeplKey === undefined) {
+          delete process.env['DEEPL_API_KEY'];
+        } else {
+          process.env['DEEPL_API_KEY'] = originalDeeplKey;
+        }
+      }
+    });
+  });
 });

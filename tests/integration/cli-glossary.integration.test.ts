@@ -44,7 +44,7 @@ describe('Glossary CLI Integration', () => {
 
       expect.assertions(1);
       try {
-        runCLI('deepl glossary list', { stdio: 'pipe' });
+        runCLI('deepl glossary list', { stdio: 'pipe', excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         // Should indicate API key is required

@@ -317,7 +317,15 @@ export class HttpClient {
       : new NetworkError('Request failed after retries');
   }
 
-  protected handleError(error: unknown): Error {
+  protected handleError(error: unknown, context?: string): Error {
+    const result = this.classifyError(error);
+    if (context) {
+      result.message = `${result.message} [${context}]`;
+    }
+    return result;
+  }
+
+  private classifyError(error: unknown): Error {
     const traceIdSuffix = this._lastTraceId
       ? ` (Trace ID: ${this._lastTraceId})`
       : '';

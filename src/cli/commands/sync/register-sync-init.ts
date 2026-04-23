@@ -1,0 +1,219 @@
+import { Command, Option } from 'commander';
+import chalk from 'chalk';
+import { Logger } from '../../../utils/logger.js';
+import { ValidationError, ConfigError } from '../../../utils/errors.js';
+import { SUPPORTED_FORMAT_KEYS } from '../../../formats/index.js';
+import type { ServiceDeps } from '../service-factory.js';
+import {
+  emitJsonErrorAndExit,
+  emitJsonInitSuccessAndExit,
+  resolveFormat,
+} from './sync-options.js';
+import { ExitCode } from '../../../utils/exit-codes.js';
+
+const SOURCE_LANG_DEPRECATION_WARNING =
+  '[deprecated] --source-lang is renamed to --source-locale and will be removed in the next major release. Please update your scripts.\n';
+const TARGET_LANGS_DEPRECATION_WARNING =
+  '[deprecated] --target-langs is renamed to --target-locales and will be removed in the next major release. Please update your scripts.\n';
+
+interface InitOptions {
+  sourceLocale?: string;
+  targetLocales?: string;
+  sourceLang?: string;
+  targetLangs?: string;
+  fileFormat?: string;
+  path?: string;
+  syncConfig?: string;
+  format?: string;
+}
+
+
+export function registerSyncInit(
+  parent: Command,
+  deps: Pick<ServiceDeps, 'handleError'>,
+): Command {
+  return parent
+    .command('init')
+    .description('Initialize .deepl-sync.yaml configuration')
+    .option('--source-locale <code>', 'Source locale')
+    .option('--target-locales <codes>', 'Target locales (comma-separated)')
+    .addOption(new Option('--source-lang <code>').hideHelp())
+    .addOption(new Option('--target-langs <codes>').hideHelp())
+    .addOption(
+      new Option('--file-format <type>', 'File format').choices([...SUPPORTED_FORMAT_KEYS]),
+    )
+    .option('--path <pattern>', 'Source file pattern')
+    .addOption(
+      new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'),
+    )
+    .option('--sync-config <path>', 'Path to .deepl-sync.yaml')
+    .action((options: InitOptions, command: Command) => handleSyncInit(options, command, deps));
+}
+
+function applyDeprecationAliases(options: InitOptions): void {
+  if (options.sourceLang !== undefined && options.sourceLocale === undefined) {
+    options.sourceLocale = options.sourceLang;
+    process.stderr.write(SOURCE_LANG_DEPRECATION_WARNING);
+  }
+  if (options.targetLangs !== undefined && options.targetLocales === undefined) {
+    options.targetLocales = options.targetLangs;
+    process.stderr.write(TARGET_LANGS_DEPRECATION_WARNING);
+  }
+}
+
+interface InitSuccessPayload {
+  configPath: string;
+  sourceLocale: string;
+  targetLocales: string[];
+  keys?: number;
+}
+
+function emitInitSuccess(
+  format: string | undefined,
+  payload: InitSuccessPayload,
+): void {
+  if (format === 'json') {
+    emitJsonInitSuccessAndExit(payload);
+  }
+  Logger.info(chalk.green(`Created ${payload.configPath}`));
+}
+
+async function handleSyncInit(
+  options: InitOptions,
+  command: Command,
+  deps: Pick<ServiceDeps, 'handleError'>,
+): Promise<void> {
+  const { handleError } = deps;
+  options.format = resolveFormat(options, command);
+  try {
+    applyDeprecationAliases(options);
+
+    const { configExists, detectI18nFiles, generateSyncConfig, writeSyncConfig } =
+      await import('../../../sync/sync-init.js');
+
+    const cwd = process.cwd();
+
+    if (configExists(cwd)) {
+      if (options.format === 'json') {
+        // Already-present config is not an error per se, but scripted
+        // bootstrap flows need a non-ok envelope to branch on.
+        const envelope = {
+          ok: false,
+          error: {
+            code: 'ConfigError',
+            message: 'Config file .deepl-sync.yaml already exists.',
+            suggestion:
+              'Remove or rename the existing .deepl-sync.yaml, or edit it directly.',
+          },
+          exitCode: 7,
+        };
+        process.stderr.write(JSON.stringify(envelope) + '\n');
+        process.exit(7);
+      }
+      Logger.warn(chalk.yellow('Config file .deepl-sync.yaml already exists.'));
+      return;
+    }
+
+    if (options.sourceLocale && options.targetLocales && options.fileFormat && options.path) {
+      const { validateSyncInitFlags } = await import(
+        '../../../sync/sync-init-validate.js'
+      );
+      const validated = validateSyncInitFlags({
+        sourceLocale: options.sourceLocale,
+        targetLocales: options.targetLocales,
+        filePath: options.path,
+        cwd,
+      });
+      for (const warning of validated.warnings) {
+        Logger.warn(chalk.yellow(warning));
+      }
+      const content = generateSyncConfig({
+        sourceLocale: validated.sourceLocale,
+        targetLocales: validated.targetLocales,
+        format: options.fileFormat,
+        pattern: options.path,
+      });
+      const configPath = await writeSyncConfig(cwd, content);
+      emitInitSuccess(options.format, {
+        configPath,
+        sourceLocale: validated.sourceLocale,
+        targetLocales: validated.targetLocales,
+      });
+      return;
+    }
+
+    const partialFlags = [
+      options.sourceLocale && '--source-locale',
+      options.targetLocales && '--target-locales',
+      options.fileFormat && '--file-format',
+      options.path && '--path',
+    ].filter(Boolean) as string[];
+    if (partialFlags.length > 0) {
+      Logger.warn(
+        `Partial flags provided (${partialFlags.join(', ')}); all of --source-locale, --target-locales, --file-format, and --path are required for non-interactive mode. Falling back to detection.`,
+      );
+    }
+
+    const detected = await detectI18nFiles(cwd);
+    if (detected.length === 0) {
+      const noFilesError = new ConfigError(
+        'No i18n files detected. No config created. Re-run with all four flags: --source-locale <locale> --target-locales <list> --file-format <format> --path <glob>',
+        'Re-run with --source-locale <locale> --target-locales <list> --file-format <format> --path <glob>',
+      );
+      if (options.format === 'json') {
+        emitJsonErrorAndExit(noFilesError);
+      }
+      Logger.info(noFilesError.message);
+      process.exit(ExitCode.ConfigError);
+    }
+
+    if (!process.stdin.isTTY) {
+      throw new ValidationError(
+        'All four flags (--source-locale, --target-locales, --file-format, --path) are required when stdin is not a TTY.',
+        'Provide all four flags for non-interactive use (CI, piped shells), or run in an interactive terminal.',
+      );
+    }
+
+    const project = detected[0]!;
+    Logger.info(`Detected ${project.format} project (${project.keyCount} keys)`);
+
+    const { input, checkbox } = await import('@inquirer/prompts');
+    const { buildTargetLocaleChoices } = await import(
+      '../../../sync/sync-init-validate.js'
+    );
+    const sourceLocale =
+      options.sourceLocale ??
+      (await input({
+        message: 'Source locale:',
+        default: project.sourceLocale,
+      }));
+
+    const targetLocales = options.targetLocales
+      ? options.targetLocales.split(',').map((l) => l.trim())
+      : await checkbox({
+          message: 'Target locales:',
+          choices: buildTargetLocaleChoices(),
+          pageSize: 15,
+        });
+
+    const content = generateSyncConfig({
+      sourceLocale,
+      targetLocales,
+      format: options.fileFormat ?? project.format,
+      pattern: options.path ?? project.pattern,
+      targetPathPattern: options.path ? undefined : project.targetPathPattern,
+    });
+    const configPath = await writeSyncConfig(cwd, content);
+    emitInitSuccess(options.format, {
+      configPath,
+      sourceLocale,
+      targetLocales,
+      keys: project.keyCount,
+    });
+  } catch (error) {
+    if (options.format === 'json') {
+      emitJsonErrorAndExit(error);
+    }
+    handleError(error as Error);
+  }
+}

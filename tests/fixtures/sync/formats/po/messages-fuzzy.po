@@ -1,0 +1,18 @@
+# Fuzzy flag test
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+#: src/app.py:12
+msgid "Hello"
+msgstr "Hola"
+
+#: src/app.py:15
+#, fuzzy
+msgid "Goodbye"
+msgstr "Adiós"
+
+#: src/app.py:20
+#, fuzzy, python-format
+msgid "Welcome %s"
+msgstr "Bienvenido %s"

@@ -1,0 +1,55 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "greeting": {
+      "comment": "Welcome message",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hello"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hallo"
+          }
+        }
+      }
+    },
+    "farewell": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goodbye"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf Wiedersehen"
+          }
+        }
+      }
+    },
+    "welcome": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Willkommen"
+          }
+        }
+      }
+    }
+  }
+}

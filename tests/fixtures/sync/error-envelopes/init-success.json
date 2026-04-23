@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "created": {
+    "configPath": "/absolute/path/to/.deepl-sync.yaml",
+    "sourceLocale": "en",
+    "targetLocales": ["de", "fr"],
+    "keys": 128
+  }
+}
