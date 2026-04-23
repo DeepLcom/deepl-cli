@@ -195,6 +195,41 @@ describe('Logger', () => {
       );
     });
 
+    it('should redact X-Api-Key header values', () => {
+      Logger.verbose('Headers: X-Api-Key: abcd-1234-efgh');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Headers: X-Api-Key: [REDACTED]'
+      );
+    });
+
+    it('should redact X-Auth-Token header values', () => {
+      Logger.verbose('Headers: X-Auth-Token: deadbeef-1234');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Headers: X-Auth-Token: [REDACTED]'
+      );
+    });
+
+    it('should redact X-Api-Key case-insensitively', () => {
+      Logger.verbose('x-api-key: MY-SECRET');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'X-Api-Key: [REDACTED]'
+      );
+    });
+
+    it('should redact ?api_key= query parameter from URLs', () => {
+      Logger.verbose('https://tms.example.com/projects?api_key=abc123&format=json');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'https://tms.example.com/projects?api_key=[REDACTED]&format=json'
+      );
+    });
+
+    it('should redact ?apikey= (no underscore or hyphen) query parameter from URLs', () => {
+      Logger.verbose('https://tms.example.com/projects?apikey=abc123');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'https://tms.example.com/projects?api_key=[REDACTED]'
+      );
+    });
+
     it('should redact DEEPL_API_KEY env var value from strings', () => {
       const originalKey = process.env['DEEPL_API_KEY'];
       process.env['DEEPL_API_KEY'] = 'test-secret-key-123:fx';

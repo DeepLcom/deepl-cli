@@ -159,6 +159,20 @@ export class HttpClient {
     const proxyConfig = options.proxy ?? HttpClient.parseProxyFromEnv();
 
     if (proxyConfig) {
+      // SECURITY: a plain-http proxy sitting in front of an https: API
+      // endpoint is a MITM footgun. axios tunnels via CONNECT so TLS is
+      // nominally end-to-end, but a misconfigured or compromised proxy
+      // env var routes every DeepL call — including the Authorization
+      // header — through attacker infrastructure. Warn loud at startup;
+      // don't refuse the connection (users with legitimate corporate
+      // http-only proxies need the escape hatch).
+      if (proxyConfig.protocol === 'http' && baseURL.startsWith('https:')) {
+        Logger.warn(
+          `Warning: routing HTTPS traffic to ${baseURL} via HTTP proxy ${proxyConfig.host}:${proxyConfig.port}. ` +
+          `TLS is tunneled end-to-end via CONNECT, but a malicious proxy that terminates TLS would see the Authorization header. ` +
+          `Set HTTPS_PROXY to an https:// URL if possible, or unset it if the proxy isn't required.`,
+        );
+      }
       axiosConfig['proxy'] = {
         protocol: proxyConfig.protocol,
         host: proxyConfig.host,
