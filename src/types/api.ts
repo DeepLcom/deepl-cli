@@ -181,6 +181,17 @@ export interface UpdateStyleRuleOptions {
   customInstructions?: CustomInstruction[];
 }
 
+export interface CreateCustomInstructionOptions {
+  label: string;
+  prompt: string;
+  sourceLanguage?: string;
+}
+
+export interface UpdateCustomInstructionOptions {
+  prompt?: string;
+  sourceLanguage?: string;
+}
+
 // Admin API Types
 
 export interface AdminApiKey {

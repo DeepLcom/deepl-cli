@@ -5,7 +5,24 @@ import {
   StyleRulesListOptions,
   CreateStyleRuleOptions,
   UpdateStyleRuleOptions,
+  CustomInstruction,
+  CreateCustomInstructionOptions,
+  UpdateCustomInstructionOptions,
 } from '../types/index.js';
+
+interface CustomInstructionWireShape {
+  label: string;
+  prompt: string;
+  source_language?: string;
+}
+
+function mapCustomInstruction(wire: CustomInstructionWireShape): CustomInstruction {
+  return {
+    label: wire.label,
+    prompt: wire.prompt,
+    ...(wire.source_language !== undefined && { sourceLanguage: wire.source_language }),
+  };
+}
 
 interface StyleRuleWireShape {
   style_id: string;
@@ -184,5 +201,59 @@ export class StyleRulesClient extends HttpClient {
       { configured_rules: rules },
     );
     return mapStyleRuleDetailed(wire);
+  }
+
+  async createCustomInstruction(
+    styleId: string,
+    options: CreateCustomInstructionOptions,
+  ): Promise<CustomInstruction> {
+    const body: Record<string, unknown> = {
+      label: options.label,
+      prompt: options.prompt,
+    };
+    if (options.sourceLanguage !== undefined) {
+      body['source_language'] = options.sourceLanguage;
+    }
+    const wire = await this.makeJsonRequest<CustomInstructionWireShape>(
+      'POST',
+      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions`,
+      body,
+    );
+    return mapCustomInstruction(wire);
+  }
+
+  async getCustomInstruction(styleId: string, label: string): Promise<CustomInstruction> {
+    const wire = await this.makeJsonRequest<CustomInstructionWireShape>(
+      'GET',
+      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions/${encodeURIComponent(label)}`,
+    );
+    return mapCustomInstruction(wire);
+  }
+
+  async updateCustomInstruction(
+    styleId: string,
+    label: string,
+    options: UpdateCustomInstructionOptions,
+  ): Promise<CustomInstruction> {
+    const body: Record<string, unknown> = {};
+    if (options.prompt !== undefined) {
+      body['prompt'] = options.prompt;
+    }
+    if (options.sourceLanguage !== undefined) {
+      body['source_language'] = options.sourceLanguage;
+    }
+    const wire = await this.makeJsonRequest<CustomInstructionWireShape>(
+      'PUT',
+      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions/${encodeURIComponent(label)}`,
+      body,
+    );
+    return mapCustomInstruction(wire);
+  }
+
+  async deleteCustomInstruction(styleId: string, label: string): Promise<void> {
+    await this.makeJsonRequest<void>(
+      'DELETE',
+      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions/${encodeURIComponent(label)}`,
+    );
   }
 }

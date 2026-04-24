@@ -366,6 +366,168 @@ describe('StyleRulesClient', () => {
     });
   });
 
+  describe('createCustomInstruction()', () => {
+    it('should POST to /v3/style_rules/:id/custom_instructions with label+prompt and return mapped instruction', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { label: 'tone', prompt: 'Be formal' },
+        status: 200, headers: {},
+      });
+
+      const result = await client.createCustomInstruction('sr-1', { label: 'tone', prompt: 'Be formal' });
+
+      expect(result).toEqual({ label: 'tone', prompt: 'Be formal' });
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: '/v3/style_rules/sr-1/custom_instructions',
+          data: { label: 'tone', prompt: 'Be formal' },
+        }),
+      );
+    });
+
+    it('should serialize sourceLanguage as source_language on the wire', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { label: 'L', prompt: 'P', source_language: 'en' },
+        status: 200, headers: {},
+      });
+
+      const result = await client.createCustomInstruction('sr-1', {
+        label: 'L', prompt: 'P', sourceLanguage: 'en',
+      });
+
+      expect(result.sourceLanguage).toBe('en');
+      const call = mockAxiosInstance.request.mock.calls[0][0];
+      expect(call.data).toEqual({ label: 'L', prompt: 'P', source_language: 'en' });
+    });
+
+    it('should propagate 400 error', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 400, data: { message: 'Duplicate label' }, headers: {} },
+        message: 'Bad request',
+      };
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        client.createCustomInstruction('sr-1', { label: 'L', prompt: 'P' })
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('getCustomInstruction()', () => {
+    it('should GET /v3/style_rules/:id/custom_instructions/:label', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { label: 'tone', prompt: 'Be formal', source_language: 'en' },
+        status: 200, headers: {},
+      });
+
+      const result = await client.getCustomInstruction('sr-1', 'tone');
+
+      expect(result).toEqual({ label: 'tone', prompt: 'Be formal', sourceLanguage: 'en' });
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'GET',
+          url: '/v3/style_rules/sr-1/custom_instructions/tone',
+        }),
+      );
+    });
+
+    it('should URL-encode both path components', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { label: 'has space', prompt: 'P' },
+        status: 200, headers: {},
+      });
+      await client.getCustomInstruction('sr id', 'has space');
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({ url: '/v3/style_rules/sr%20id/custom_instructions/has%20space' }),
+      );
+    });
+
+    it('should propagate 404 error', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 404, data: { message: 'Not found' }, headers: {} },
+        message: 'Not found',
+      };
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(client.getCustomInstruction('sr-1', 'missing')).rejects.toThrow();
+    });
+  });
+
+  describe('updateCustomInstruction()', () => {
+    it('should PUT /v3/style_rules/:id/custom_instructions/:label with partial body', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { label: 'tone', prompt: 'Be friendlier' },
+        status: 200, headers: {},
+      });
+
+      const result = await client.updateCustomInstruction('sr-1', 'tone', { prompt: 'Be friendlier' });
+
+      expect(result.prompt).toBe('Be friendlier');
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'PUT',
+          url: '/v3/style_rules/sr-1/custom_instructions/tone',
+          data: { prompt: 'Be friendlier' },
+        }),
+      );
+    });
+
+    it('should omit fields not passed', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { label: 'tone', prompt: 'x' }, status: 200, headers: {},
+      });
+      await client.updateCustomInstruction('sr-1', 'tone', {});
+      const call = mockAxiosInstance.request.mock.calls[0][0];
+      expect(call.data).toEqual({});
+    });
+
+    it('should propagate 404 error', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 404, data: { message: 'Not found' }, headers: {} },
+        message: 'Not found',
+      };
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        client.updateCustomInstruction('sr-1', 'missing', { prompt: 'X' })
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('deleteCustomInstruction()', () => {
+    it('should DELETE /v3/style_rules/:id/custom_instructions/:label and resolve void', async () => {
+      mockAxiosInstance.request.mockResolvedValue({ data: undefined, status: 204, headers: {} });
+
+      const result = await client.deleteCustomInstruction('sr-1', 'tone');
+
+      expect(result).toBeUndefined();
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'DELETE',
+          url: '/v3/style_rules/sr-1/custom_instructions/tone',
+        }),
+      );
+    });
+
+    it('should propagate 404 error', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 404, data: { message: 'Not found' }, headers: {} },
+        message: 'Not found',
+      };
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(client.deleteCustomInstruction('sr-1', 'missing')).rejects.toThrow();
+    });
+  });
+
   describe('replaceConfiguredRules()', () => {
     it('should PUT /v3/style_rules/:id/configured_rules with rules array', async () => {
       mockAxiosInstance.request.mockResolvedValue({
