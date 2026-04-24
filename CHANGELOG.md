@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **write**: Japanese (`ja`), Korean (`ko`), and Simplified Chinese (`zh`, `zh-Hans`) are now accepted target languages for `deepl write`.
+- **write**: `--tone` and `--style` now apply to Spanish (`es`), Italian (`it`), French (`fr`), and Portuguese (`pt`, `pt-BR`, `pt-PT`) in addition to the previously supported locales. The full value lists on `--tone` and `--style` are unchanged — the same 9 styles and 9 tones are accepted, and the mutual-exclusion rule between `--style` and `--tone` is unchanged. See `docs/API.md` for supported target-language / style / tone combinations.
+- **write**: 4xx responses from the Write API that arrive while `--style` or `--tone` is set now carry an explicit recovery hint pointing at `docs/API.md` for supported target-language / style / tone combinations.
+- **style-rules**: Full CRUD — `deepl style-rules create|show|update|delete` alongside the existing `list`. `create` requires `--name` and `--language`. `update` accepts `--name` for a rename and `--rules` for replacing configured rules (PUT `/configured_rules`); at least one is required. `delete` supports `-y`/`--yes`, `--dry-run`, and a TTY confirmation prompt. All new subcommands support `--format text|json`. Text-format output sanitizes control characters from rule names and instruction text.
+- **style-rules**: Custom instructions management — `deepl style-rules instructions <style-rule-id>` (list, synthesized from the detailed `show` response), plus `add-instruction`, `update-instruction`, and `remove-instruction` subcommands. Each mutating command takes the style-rule id and the instruction label as positional arguments. `remove-instruction` ships `-y`/`--yes`, `--dry-run`, and a TTY confirmation prompt (custom instructions are user-authored text and deserve confirmation before deletion).
+- **examples**: `examples/35-style-rules-crud.sh` — end-to-end style-rules workflow (create → show → update rules → add custom instruction → update instruction → remove instruction → delete rule).
+- **examples**: `examples/36-write-extended-languages.sh` — `deepl write` with Japanese, Korean, and Simplified Chinese targets and tone / style applied to Spanish, Italian, French, and Portuguese variants.
+
 ## [1.1.0] - 2026-04-23
 
 ### Added

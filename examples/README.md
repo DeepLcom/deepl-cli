@@ -22,6 +22,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 
 **Write:**
 - [Writing Enhancement](./13-write.sh) - Using DeepL Write API for grammar, style, and tone improvement
+- [Write — Extended Languages](./36-write-extended-languages.sh) - JA/KO/ZH targets and tone/style on ES/IT/FR/PT variants
 
 **Voice:**
 - [Voice Translation](./14-voice.sh) - Real-time speech translation via the Voice API
@@ -47,6 +48,7 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Custom Config Files](./20-custom-config-files.sh) - Using multiple configuration files for different projects
 - [Cache Management](./21-cache.sh) - Working with the translation cache
 - [Style Rules](./22-style-rules.sh) - Listing and using pre-configured style rules for consistent translations
+- [Style Rules — CRUD](./35-style-rules-crud.sh) - End-to-end style-rules lifecycle: create, update rules, manage custom instructions, delete
 
 ### Information
 
