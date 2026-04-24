@@ -312,6 +312,45 @@ describe('Write Command Integration', () => {
     });
   });
 
+  describe('improve() - Styles and Tones on Romance language variants', () => {
+    it.each([
+      { lang: 'es', field: 'writing_style' as const, value: 'business' },
+      { lang: 'it', field: 'writing_style' as const, value: 'casual' },
+      { lang: 'fr', field: 'writing_style' as const, value: 'academic' },
+      { lang: 'pt', field: 'writing_style' as const, value: 'simple' },
+      { lang: 'pt-BR', field: 'writing_style' as const, value: 'business' },
+      { lang: 'pt-PT', field: 'writing_style' as const, value: 'casual' },
+      { lang: 'es', field: 'tone' as const, value: 'friendly' },
+      { lang: 'it', field: 'tone' as const, value: 'confident' },
+      { lang: 'fr', field: 'tone' as const, value: 'diplomatic' },
+      { lang: 'pt', field: 'tone' as const, value: 'enthusiastic' },
+      { lang: 'pt-BR', field: 'tone' as const, value: 'friendly' },
+      { lang: 'pt-PT', field: 'tone' as const, value: 'confident' },
+    ])('should send $field=$value with target_lang=$lang', async ({ lang, field, value }) => {
+      const targetLang = lang as WriteLanguage;
+      const scope = nock(FREE_API_URL)
+        .post('/v2/write/rephrase', (body) => {
+          expect(body.target_lang).toBe(targetLang);
+          expect(body[field]).toBe(value);
+          return true;
+        })
+        .reply(200, {
+          improvements: [{ text: 'improved', target_language: targetLang }],
+        });
+
+      const improveOptions: { targetLang: WriteLanguage; writingStyle?: WritingStyle; tone?: WriteTone } = { targetLang };
+      if (field === 'writing_style') {
+        improveOptions.writingStyle = value as WritingStyle;
+      } else {
+        improveOptions.tone = value as WriteTone;
+      }
+      const result = await writeService.improve('source text', improveOptions);
+
+      expect(result[0]?.text).toBe('improved');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
   describe('improve() - Error Handling', () => {
     it('should throw error for empty text', async () => {
       await expect(writeService.improve('', { targetLang: 'en-US' })).rejects.toThrow(
