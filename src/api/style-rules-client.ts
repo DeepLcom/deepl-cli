@@ -1,5 +1,49 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { StyleRule, StyleRuleDetailed, StyleRulesListOptions } from '../types/index.js';
+import {
+  StyleRule,
+  StyleRuleDetailed,
+  StyleRulesListOptions,
+  CreateStyleRuleOptions,
+  UpdateStyleRuleOptions,
+} from '../types/index.js';
+
+interface StyleRuleWireShape {
+  style_id: string;
+  name: string;
+  language: string;
+  version: number;
+  creation_time: string;
+  updated_time: string;
+  configured_rules?: string[];
+  custom_instructions?: Array<{
+    label: string;
+    prompt: string;
+    source_language?: string;
+  }>;
+}
+
+function mapStyleRule(wire: StyleRuleWireShape): StyleRule {
+  return {
+    styleId: wire.style_id,
+    name: wire.name,
+    language: wire.language,
+    version: wire.version,
+    creationTime: wire.creation_time,
+    updatedTime: wire.updated_time,
+  };
+}
+
+function mapStyleRuleDetailed(wire: StyleRuleWireShape): StyleRuleDetailed {
+  return {
+    ...mapStyleRule(wire),
+    configuredRules: wire.configured_rules ?? [],
+    customInstructions: (wire.custom_instructions ?? []).map(ci => ({
+      label: ci.label,
+      prompt: ci.prompt,
+      ...(ci.source_language && { sourceLanguage: ci.source_language }),
+    })),
+  };
+}
 
 export class StyleRulesClient extends HttpClient {
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
@@ -64,5 +108,81 @@ export class StyleRulesClient extends HttpClient {
 
       return base;
     });
+  }
+
+  async createStyleRule(options: CreateStyleRuleOptions): Promise<StyleRule> {
+    const body: Record<string, unknown> = {
+      name: options.name,
+      language: options.language,
+    };
+    if (options.configuredRules !== undefined) {
+      body['configured_rules'] = options.configuredRules;
+    }
+    if (options.customInstructions !== undefined) {
+      body['custom_instructions'] = options.customInstructions.map(ci => ({
+        label: ci.label,
+        prompt: ci.prompt,
+        ...(ci.sourceLanguage && { source_language: ci.sourceLanguage }),
+      }));
+    }
+    const wire = await this.makeJsonRequest<StyleRuleWireShape>(
+      'POST',
+      '/v3/style_rules',
+      body,
+    );
+    return mapStyleRule(wire);
+  }
+
+  async getStyleRule(styleId: string, detailed = false): Promise<StyleRule | StyleRuleDetailed> {
+    const params: Record<string, string | number | boolean> = {};
+    if (detailed) {
+      params['detailed'] = true;
+    }
+    const wire = await this.makeJsonRequest<StyleRuleWireShape>(
+      'GET',
+      `/v3/style_rules/${encodeURIComponent(styleId)}`,
+      undefined,
+      params,
+    );
+    return detailed ? mapStyleRuleDetailed(wire) : mapStyleRule(wire);
+  }
+
+  async updateStyleRule(styleId: string, options: UpdateStyleRuleOptions): Promise<StyleRule> {
+    const body: Record<string, unknown> = {};
+    if (options.name !== undefined) {
+      body['name'] = options.name;
+    }
+    if (options.configuredRules !== undefined) {
+      body['configured_rules'] = options.configuredRules;
+    }
+    if (options.customInstructions !== undefined) {
+      body['custom_instructions'] = options.customInstructions.map(ci => ({
+        label: ci.label,
+        prompt: ci.prompt,
+        ...(ci.sourceLanguage && { source_language: ci.sourceLanguage }),
+      }));
+    }
+    const wire = await this.makeJsonRequest<StyleRuleWireShape>(
+      'PATCH',
+      `/v3/style_rules/${encodeURIComponent(styleId)}`,
+      body,
+    );
+    return mapStyleRule(wire);
+  }
+
+  async deleteStyleRule(styleId: string): Promise<void> {
+    await this.makeJsonRequest<void>(
+      'DELETE',
+      `/v3/style_rules/${encodeURIComponent(styleId)}`,
+    );
+  }
+
+  async replaceConfiguredRules(styleId: string, rules: string[]): Promise<StyleRuleDetailed> {
+    const wire = await this.makeJsonRequest<StyleRuleWireShape>(
+      'PUT',
+      `/v3/style_rules/${encodeURIComponent(styleId)}/configured_rules`,
+      { configured_rules: rules },
+    );
+    return mapStyleRuleDetailed(wire);
   }
 }

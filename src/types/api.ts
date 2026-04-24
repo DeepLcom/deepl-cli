@@ -168,6 +168,19 @@ export interface StyleRulesListOptions {
   pageSize?: number;
 }
 
+export interface CreateStyleRuleOptions {
+  name: string;
+  language: string;
+  configuredRules?: string[];
+  customInstructions?: CustomInstruction[];
+}
+
+export interface UpdateStyleRuleOptions {
+  name?: string;
+  configuredRules?: string[];
+  customInstructions?: CustomInstruction[];
+}
+
 // Admin API Types
 
 export interface AdminApiKey {
