@@ -91,4 +91,32 @@ describe('StyleRulesService', () => {
     await service.replaceConfiguredRules('sr-1', ['r1', 'r2']);
     expect(mockClient.replaceConfiguredRules).toHaveBeenCalledWith('sr-1', ['r1', 'r2']);
   });
+
+  it('should delegate createCustomInstruction to client', async () => {
+    const mockClient = createMockDeepLClient();
+    const service = new StyleRulesService(mockClient);
+    await service.createCustomInstruction('sr-1', { label: 'L', prompt: 'P' });
+    expect(mockClient.createCustomInstruction).toHaveBeenCalledWith('sr-1', { label: 'L', prompt: 'P' });
+  });
+
+  it('should delegate getCustomInstruction to client', async () => {
+    const mockClient = createMockDeepLClient();
+    const service = new StyleRulesService(mockClient);
+    await service.getCustomInstruction('sr-1', 'tone');
+    expect(mockClient.getCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone');
+  });
+
+  it('should delegate updateCustomInstruction to client', async () => {
+    const mockClient = createMockDeepLClient();
+    const service = new StyleRulesService(mockClient);
+    await service.updateCustomInstruction('sr-1', 'tone', { prompt: 'New' });
+    expect(mockClient.updateCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone', { prompt: 'New' });
+  });
+
+  it('should delegate deleteCustomInstruction to client', async () => {
+    const mockClient = createMockDeepLClient();
+    const service = new StyleRulesService(mockClient);
+    await service.deleteCustomInstruction('sr-1', 'tone');
+    expect(mockClient.deleteCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone');
+  });
 });

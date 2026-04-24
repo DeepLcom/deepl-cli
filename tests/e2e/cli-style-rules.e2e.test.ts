@@ -73,4 +73,40 @@ describe('Style Rules Command E2E', () => {
       expect(output).toContain('--dry-run');
     });
   });
+
+  describe('style-rules instructions --help', () => {
+    it('should show instructions subcommand', () => {
+      const output = runCLI('style-rules instructions --help');
+      expect(output).toContain('--format');
+      expect(output).toMatch(/<style-id>|style-id/);
+    });
+  });
+
+  describe('style-rules add-instruction --help', () => {
+    it('should show add-instruction subcommand', () => {
+      const output = runCLI('style-rules add-instruction --help');
+      expect(output).toMatch(/<style-id>|style-id/);
+      expect(output).toMatch(/<label>|label/);
+      expect(output).toMatch(/<prompt>|prompt/);
+      expect(output).toContain('--source-language');
+    });
+  });
+
+  describe('style-rules update-instruction --help', () => {
+    it('should show update-instruction subcommand', () => {
+      const output = runCLI('style-rules update-instruction --help');
+      expect(output).toMatch(/<style-id>|style-id/);
+      expect(output).toMatch(/<label>|label/);
+      expect(output).toMatch(/<prompt>|prompt/);
+      expect(output).toContain('--source-language');
+    });
+  });
+
+  describe('style-rules remove-instruction --help', () => {
+    it('should show remove-instruction subcommand', () => {
+      const output = runCLI('style-rules remove-instruction --help');
+      expect(output).toContain('--yes');
+      expect(output).toContain('--dry-run');
+    });
+  });
 });

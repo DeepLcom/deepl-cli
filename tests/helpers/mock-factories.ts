@@ -95,6 +95,10 @@ function deepLClientDefaults(): MockShape<DeepLClient> {
       creationTime: 'c', updatedTime: 'u',
       configuredRules: [], customInstructions: [],
     }),
+    createCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),
+    getCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),
+    updateCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),
+    deleteCustomInstruction: jest.fn().mockResolvedValue(undefined),
     listApiKeys: jest.fn().mockResolvedValue([]),
     createApiKey: jest.fn().mockResolvedValue({ keyId: '', label: '', creationTime: '', isDeactivated: false }),
     deactivateApiKey: jest.fn().mockResolvedValue(undefined),
@@ -372,6 +376,10 @@ function styleRulesServiceDefaults(): MockShape<StyleRulesService> {
       creationTime: 'c', updatedTime: 'u',
       configuredRules: [], customInstructions: [],
     }),
+    createCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),
+    getCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),
+    updateCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),
+    deleteCustomInstruction: jest.fn().mockResolvedValue(undefined),
   };
 }
 

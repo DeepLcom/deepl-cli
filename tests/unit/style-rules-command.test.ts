@@ -278,6 +278,98 @@ describe('StyleRulesCommand', () => {
     });
   });
 
+  describe('listInstructions', () => {
+    it('should call service.getStyleRule with detailed=true and return the nested array', async () => {
+      mockService.getStyleRule.mockResolvedValue({
+        styleId: 'sr-1', name: 'X', language: 'en', version: 1,
+        creationTime: 'c', updatedTime: 'u',
+        configuredRules: [],
+        customInstructions: [
+          { label: 'tone', prompt: 'Be formal' },
+          { label: 'register', prompt: 'Use first person' },
+        ],
+      });
+
+      const result = await command.listInstructions('sr-1');
+      expect(mockService.getStyleRule).toHaveBeenCalledWith('sr-1', true);
+      expect(result).toHaveLength(2);
+      expect(result[0]?.label).toBe('tone');
+    });
+
+    it('should return empty array when rule has no customInstructions field', async () => {
+      mockService.getStyleRule.mockResolvedValue({
+        styleId: 'sr-1', name: 'X', language: 'en', version: 1,
+        creationTime: 'c', updatedTime: 'u',
+      });
+
+      const result = await command.listInstructions('sr-1');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('addInstruction', () => {
+    it('should proxy to service.createCustomInstruction', async () => {
+      await command.addInstruction('sr-1', { label: 'L', prompt: 'P' });
+      expect(mockService.createCustomInstruction).toHaveBeenCalledWith('sr-1', { label: 'L', prompt: 'P' });
+    });
+  });
+
+  describe('updateInstruction', () => {
+    it('should proxy to service.updateCustomInstruction', async () => {
+      await command.updateInstruction('sr-1', 'tone', { prompt: 'New text' });
+      expect(mockService.updateCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone', { prompt: 'New text' });
+    });
+  });
+
+  describe('removeInstruction', () => {
+    it('should proxy to service.deleteCustomInstruction', async () => {
+      await command.removeInstruction('sr-1', 'tone');
+      expect(mockService.deleteCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone');
+    });
+  });
+
+  describe('formatCustomInstruction / formatCustomInstructionsList / formatCustomInstructionJson', () => {
+    it('should render a single instruction in text', () => {
+      const result = command.formatCustomInstruction({ label: 'tone', prompt: 'Be formal' });
+      expect(result).toContain('tone');
+      expect(result).toContain('Be formal');
+    });
+
+    it('should append source-language suffix when present', () => {
+      const result = command.formatCustomInstruction({
+        label: 'tone', prompt: 'Be formal', sourceLanguage: 'en',
+      });
+      expect(result).toContain('[en]');
+    });
+
+    it('should render empty list as a friendly message', () => {
+      expect(command.formatCustomInstructionsList([])).toBe('No custom instructions found.');
+    });
+
+    it('should render a list of instructions', () => {
+      const result = command.formatCustomInstructionsList([
+        { label: 'a', prompt: 'A' },
+        { label: 'b', prompt: 'B' },
+      ]);
+      expect(result).toContain('Found 2 custom instruction(s)');
+      expect(result).toContain('a');
+      expect(result).toContain('b');
+    });
+
+    it('should sanitize ANSI escapes in label and prompt', () => {
+      const result = command.formatCustomInstruction({
+        label: 'evil\u001b[31m',
+        prompt: 'also\u001b[0m',
+      });
+      expect(result.indexOf('\u001b')).toBe(-1);
+    });
+
+    it('should emit valid JSON preserving raw strings', () => {
+      const json = command.formatCustomInstructionJson([{ label: 'L', prompt: 'P' }]);
+      expect(JSON.parse(json)).toEqual([{ label: 'L', prompt: 'P' }]);
+    });
+  });
+
   describe('formatStyleRuleJson', () => {
     it('should emit valid JSON with raw name preserved', () => {
       const rule: StyleRule = {

@@ -10,6 +10,9 @@ import {
   StyleRulesListOptions,
   CreateStyleRuleOptions,
   UpdateStyleRuleOptions,
+  CustomInstruction,
+  CreateCustomInstructionOptions,
+  UpdateCustomInstructionOptions,
 } from '../../types/index.js';
 import { sanitizeForTerminal } from '../../utils/control-chars.js';
 
@@ -123,5 +126,53 @@ export class StyleRulesCommand {
   /** Serialize a single style rule as pretty-printed JSON. */
   formatStyleRuleJson(rule: StyleRule | StyleRuleDetailed): string {
     return JSON.stringify(rule, null, 2);
+  }
+
+  async listInstructions(styleId: string): Promise<CustomInstruction[]> {
+    const rule = await this.service.getStyleRule(styleId, true);
+    return 'customInstructions' in rule ? rule.customInstructions : [];
+  }
+
+  async addInstruction(
+    styleId: string,
+    options: CreateCustomInstructionOptions,
+  ): Promise<CustomInstruction> {
+    return this.service.createCustomInstruction(styleId, options);
+  }
+
+  async updateInstruction(
+    styleId: string,
+    label: string,
+    options: UpdateCustomInstructionOptions,
+  ): Promise<CustomInstruction> {
+    return this.service.updateCustomInstruction(styleId, label, options);
+  }
+
+  async removeInstruction(styleId: string, label: string): Promise<void> {
+    return this.service.deleteCustomInstruction(styleId, label);
+  }
+
+  /** Format a single custom instruction for human-readable terminal output. */
+  formatCustomInstruction(instruction: CustomInstruction): string {
+    const langSuffix = instruction.sourceLanguage ? ` [${instruction.sourceLanguage}]` : '';
+    return `  ${sanitizeForTerminal(instruction.label)}${langSuffix}\n    ${sanitizeForTerminal(instruction.prompt)}`;
+  }
+
+  /** Format a list of custom instructions for human-readable terminal output. */
+  formatCustomInstructionsList(instructions: CustomInstruction[]): string {
+    if (instructions.length === 0) {
+      return 'No custom instructions found.';
+    }
+    const lines: string[] = [`Found ${instructions.length} custom instruction(s):`, ''];
+    for (const instruction of instructions) {
+      lines.push(this.formatCustomInstruction(instruction));
+      lines.push('');
+    }
+    return lines.join('\n').trimEnd();
+  }
+
+  /** Serialize a custom instruction or list as pretty-printed JSON. */
+  formatCustomInstructionJson(data: CustomInstruction | CustomInstruction[]): string {
+    return JSON.stringify(data, null, 2);
   }
 }

@@ -5,6 +5,9 @@ import {
   StyleRulesListOptions,
   CreateStyleRuleOptions,
   UpdateStyleRuleOptions,
+  CustomInstruction,
+  CreateCustomInstructionOptions,
+  UpdateCustomInstructionOptions,
 } from '../types/index.js';
 
 export class StyleRulesService {
@@ -36,5 +39,28 @@ export class StyleRulesService {
 
   async replaceConfiguredRules(styleId: string, rules: string[]): Promise<StyleRuleDetailed> {
     return this.client.replaceConfiguredRules(styleId, rules);
+  }
+
+  async createCustomInstruction(
+    styleId: string,
+    options: CreateCustomInstructionOptions,
+  ): Promise<CustomInstruction> {
+    return this.client.createCustomInstruction(styleId, options);
+  }
+
+  async getCustomInstruction(styleId: string, label: string): Promise<CustomInstruction> {
+    return this.client.getCustomInstruction(styleId, label);
+  }
+
+  async updateCustomInstruction(
+    styleId: string,
+    label: string,
+    options: UpdateCustomInstructionOptions,
+  ): Promise<CustomInstruction> {
+    return this.client.updateCustomInstruction(styleId, label, options);
+  }
+
+  async deleteCustomInstruction(styleId: string, label: string): Promise<void> {
+    return this.client.deleteCustomInstruction(styleId, label);
   }
 }

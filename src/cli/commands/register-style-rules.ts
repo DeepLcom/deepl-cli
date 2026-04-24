@@ -2,6 +2,7 @@ import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
+import type { CreateCustomInstructionOptions, UpdateCustomInstructionOptions } from '../../types/index.js';
 import { createStyleRulesCommand, type CreateDeepLClient } from './service-factory.js';
 
 function parseRulesArg(input: string): string[] {
@@ -44,6 +45,10 @@ Examples:
   $ deepl style-rules update sr-abc123 --name "Renamed"
   $ deepl style-rules update sr-abc123 --rules rule_a,rule_b
   $ deepl style-rules delete sr-abc123 --yes
+  $ deepl style-rules instructions sr-abc123
+  $ deepl style-rules add-instruction sr-abc123 tone "Be formal"
+  $ deepl style-rules update-instruction sr-abc123 tone "Be friendlier"
+  $ deepl style-rules remove-instruction sr-abc123 tone --yes
 `)
     .addCommand(
       new Command('list')
@@ -197,6 +202,125 @@ Examples:
             const styleRulesCommand = await createStyleRulesCommand(createDeepLClient);
             await styleRulesCommand.delete(id);
             Logger.success(chalk.green(`\u2713 Style rule deleted: ${id}`));
+          } catch (error) {
+            handleError(error);
+          }
+        })
+    )
+    .addCommand(
+      new Command('instructions')
+        .description('List custom instructions for a style rule')
+        .argument('<style-id>', 'Style rule ID')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
+        .action(async (styleId: string, options: { format?: string }) => {
+          try {
+            const styleRulesCommand = await createStyleRulesCommand(createDeepLClient);
+            const instructions = await styleRulesCommand.listInstructions(styleId);
+            if (options.format === 'json') {
+              Logger.output(styleRulesCommand.formatCustomInstructionJson(instructions));
+            } else {
+              Logger.output(styleRulesCommand.formatCustomInstructionsList(instructions));
+            }
+          } catch (error) {
+            handleError(error);
+          }
+        })
+    )
+    .addCommand(
+      new Command('add-instruction')
+        .description('Add a custom instruction to a style rule')
+        .argument('<style-id>', 'Style rule ID')
+        .argument('<label>', 'Instruction label (unique within the style rule)')
+        .argument('<prompt>', 'Instruction prompt text')
+        .option('--source-language <lang>', 'Source language code (optional)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
+        .action(async (
+          styleId: string,
+          label: string,
+          prompt: string,
+          options: { sourceLanguage?: string; format?: string },
+        ) => {
+          try {
+            const styleRulesCommand = await createStyleRulesCommand(createDeepLClient);
+            const createOpts: CreateCustomInstructionOptions = { label, prompt };
+            if (options.sourceLanguage !== undefined) {
+              createOpts.sourceLanguage = options.sourceLanguage;
+            }
+            const instruction = await styleRulesCommand.addInstruction(styleId, createOpts);
+            if (options.format === 'json') {
+              Logger.output(styleRulesCommand.formatCustomInstructionJson(instruction));
+            } else {
+              Logger.success(chalk.green(`\u2713 Instruction added: ${instruction.label}`));
+              Logger.output(styleRulesCommand.formatCustomInstruction(instruction));
+            }
+          } catch (error) {
+            handleError(error);
+          }
+        })
+    )
+    .addCommand(
+      new Command('update-instruction')
+        .description('Update a custom instruction on a style rule')
+        .argument('<style-id>', 'Style rule ID')
+        .argument('<label>', 'Instruction label')
+        .argument('<prompt>', 'New instruction prompt text')
+        .option('--source-language <lang>', 'Source language code (optional)')
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
+        .action(async (
+          styleId: string,
+          label: string,
+          prompt: string,
+          options: { sourceLanguage?: string; format?: string },
+        ) => {
+          try {
+            const styleRulesCommand = await createStyleRulesCommand(createDeepLClient);
+            const updateOpts: UpdateCustomInstructionOptions = { prompt };
+            if (options.sourceLanguage !== undefined) {
+              updateOpts.sourceLanguage = options.sourceLanguage;
+            }
+            const instruction = await styleRulesCommand.updateInstruction(styleId, label, updateOpts);
+            if (options.format === 'json') {
+              Logger.output(styleRulesCommand.formatCustomInstructionJson(instruction));
+            } else {
+              Logger.success(chalk.green(`\u2713 Instruction updated: ${instruction.label}`));
+              Logger.output(styleRulesCommand.formatCustomInstruction(instruction));
+            }
+          } catch (error) {
+            handleError(error);
+          }
+        })
+    )
+    .addCommand(
+      new Command('remove-instruction')
+        .description('Remove a custom instruction from a style rule')
+        .argument('<style-id>', 'Style rule ID')
+        .argument('<label>', 'Instruction label')
+        .option('-y, --yes', 'Skip confirmation prompt')
+        .option('--dry-run', 'Show what would be removed without performing the operation')
+        .action(async (
+          styleId: string,
+          label: string,
+          options: { yes?: boolean; dryRun?: boolean },
+        ) => {
+          try {
+            if (options.dryRun) {
+              Logger.output(chalk.yellow(`[dry-run] No removals will be performed.`));
+              Logger.output(chalk.yellow(`[dry-run] Would remove instruction "${label}" from style rule "${styleId}"`));
+              return;
+            }
+
+            if (!options.yes) {
+              const { confirm } = await import('../../utils/confirm.js');
+              const confirmed = await confirm({ message: `Remove instruction "${label}" from style rule "${styleId}"?` });
+              if (!confirmed) {
+                Logger.info('Aborted.');
+                return;
+              }
+            }
+
+            const styleRulesCommand = await createStyleRulesCommand(createDeepLClient);
+            await styleRulesCommand.removeInstruction(styleId, label);
+            Logger.success(chalk.green(`\u2713 Instruction removed: ${label}`));
           } catch (error) {
             handleError(error);
           }

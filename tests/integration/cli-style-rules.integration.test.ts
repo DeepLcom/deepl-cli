@@ -202,6 +202,72 @@ describe('Style Rules CLI Integration', () => {
       expect(output).toContain('[dry-run]');
       expect(output).toContain('sr-1');
     });
+
+    it('should accept instructions subcommand with positional style-id', () => {
+      try {
+        runCLI('deepl style-rules instructions sr-1', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should require style-id argument on instructions', () => {
+      expect.assertions(1);
+      try {
+        runCLI('deepl style-rules instructions', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).toMatch(/missing.*argument|style-id.*required/i);
+      }
+    });
+
+    it('should accept add-instruction with three positional args', () => {
+      try {
+        runCLI('deepl style-rules add-instruction sr-1 tone "Be formal"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should require all three args on add-instruction', () => {
+      expect.assertions(1);
+      try {
+        runCLI('deepl style-rules add-instruction sr-1 tone', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).toMatch(/missing.*argument|prompt.*required/i);
+      }
+    });
+
+    it('should accept update-instruction with three positional args', () => {
+      try {
+        runCLI('deepl style-rules update-instruction sr-1 tone "Be friendlier"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should accept remove-instruction --dry-run without running', () => {
+      const output = runCLI('deepl style-rules remove-instruction sr-1 tone --dry-run');
+      expect(output).toContain('[dry-run]');
+      expect(output).toContain('tone');
+      expect(output).toContain('sr-1');
+    });
+
+    it('should accept --source-language on add-instruction', () => {
+      try {
+        runCLI('deepl style-rules add-instruction sr-1 tone "Be formal" --source-language en', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).not.toMatch(/unknown.*option.*source-language/i);
+      }
+    });
   });
 
   describe('command structure', () => {
@@ -795,6 +861,64 @@ describe('Style Rules API Integration', () => {
 
       await expect(styleRulesCommand.show('sr-new')).rejects.toThrow();
       expect(showScope.isDone()).toBe(true);
+    });
+
+    it('custom-instructions round-trip: create then get returns same shape', async () => {
+      const createScope = nock(FREE_API_URL)
+        .post('/v3/style_rules/sr-new/custom_instructions', (body) => {
+          expect(body.label).toBe('tone');
+          expect(body.prompt).toBe('Be formal');
+          return true;
+        })
+        .reply(200, { label: 'tone', prompt: 'Be formal' });
+
+      const created = await styleRulesCommand.addInstruction('sr-new', {
+        label: 'tone', prompt: 'Be formal',
+      });
+      expect(created).toEqual({ label: 'tone', prompt: 'Be formal' });
+      expect(createScope.isDone()).toBe(true);
+    });
+
+    it('custom-instructions list synthesizes from detailed getStyleRule', async () => {
+      const scope = nock(FREE_API_URL)
+        .get('/v3/style_rules/sr-new')
+        .query({ detailed: true })
+        .reply(200, {
+          ...styleRuleWire,
+          configured_rules: [],
+          custom_instructions: [
+            { label: 'tone', prompt: 'Be formal' },
+            { label: 'register', prompt: 'First person', source_language: 'en' },
+          ],
+        });
+
+      const result = await styleRulesCommand.listInstructions('sr-new');
+      expect(result).toHaveLength(2);
+      expect(result[1]?.sourceLanguage).toBe('en');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('custom-instructions update then delete: 404 on subsequent get', async () => {
+      const updateScope = nock(FREE_API_URL)
+        .put('/v3/style_rules/sr-new/custom_instructions/tone', (body) => {
+          expect(body.prompt).toBe('Be friendlier');
+          return true;
+        })
+        .reply(200, { label: 'tone', prompt: 'Be friendlier' });
+
+      const updated = await styleRulesCommand.updateInstruction('sr-new', 'tone', {
+        prompt: 'Be friendlier',
+      });
+      expect(updated.prompt).toBe('Be friendlier');
+      expect(updateScope.isDone()).toBe(true);
+
+      const deleteScope = nock(FREE_API_URL)
+        .delete('/v3/style_rules/sr-new/custom_instructions/tone')
+        .reply(204);
+
+      await expect(styleRulesCommand.removeInstruction('sr-new', 'tone'))
+        .resolves.toBeUndefined();
+      expect(deleteScope.isDone()).toBe(true);
     });
 
     it('replaceConfiguredRules: PUT returns updated detailed rule', async () => {
