@@ -77,6 +77,24 @@ function deepLClientDefaults(): MockShape<DeepLClient> {
     downloadDocument: jest.fn().mockResolvedValue(Buffer.alloc(0)),
     improveText: jest.fn().mockResolvedValue([]),
     getStyleRules: jest.fn().mockResolvedValue([]),
+    createStyleRule: jest.fn().mockResolvedValue({
+      styleId: 'mock-id', name: 'mock', language: 'en', version: 1,
+      creationTime: 'c', updatedTime: 'u',
+    }),
+    getStyleRule: jest.fn().mockResolvedValue({
+      styleId: 'mock-id', name: 'mock', language: 'en', version: 1,
+      creationTime: 'c', updatedTime: 'u',
+    }),
+    updateStyleRule: jest.fn().mockResolvedValue({
+      styleId: 'mock-id', name: 'mock', language: 'en', version: 2,
+      creationTime: 'c', updatedTime: 'u',
+    }),
+    deleteStyleRule: jest.fn().mockResolvedValue(undefined),
+    replaceConfiguredRules: jest.fn().mockResolvedValue({
+      styleId: 'mock-id', name: 'mock', language: 'en', version: 2,
+      creationTime: 'c', updatedTime: 'u',
+      configuredRules: [], customInstructions: [],
+    }),
     listApiKeys: jest.fn().mockResolvedValue([]),
     createApiKey: jest.fn().mockResolvedValue({ keyId: '', label: '', creationTime: '', isDeactivated: false }),
     deactivateApiKey: jest.fn().mockResolvedValue(undefined),
@@ -336,6 +354,24 @@ export function createMockUsageService(
 function styleRulesServiceDefaults(): MockShape<StyleRulesService> {
   return {
     getStyleRules: jest.fn().mockResolvedValue([]),
+    createStyleRule: jest.fn().mockResolvedValue({
+      styleId: 'mock-id', name: 'mock', language: 'en', version: 1,
+      creationTime: 'c', updatedTime: 'u',
+    }),
+    getStyleRule: jest.fn().mockResolvedValue({
+      styleId: 'mock-id', name: 'mock', language: 'en', version: 1,
+      creationTime: 'c', updatedTime: 'u',
+    }),
+    updateStyleRule: jest.fn().mockResolvedValue({
+      styleId: 'mock-id', name: 'mock', language: 'en', version: 2,
+      creationTime: 'c', updatedTime: 'u',
+    }),
+    deleteStyleRule: jest.fn().mockResolvedValue(undefined),
+    replaceConfiguredRules: jest.fn().mockResolvedValue({
+      styleId: 'mock-id', name: 'mock', language: 'en', version: 2,
+      creationTime: 'c', updatedTime: 'u',
+      configuredRules: [], customInstructions: [],
+    }),
   };
 }
 

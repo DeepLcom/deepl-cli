@@ -172,5 +172,129 @@ describe('StyleRulesCommand', () => {
       const result = command.formatStyleRulesJson([]);
       expect(JSON.parse(result)).toEqual([]);
     });
+
+    it('should sanitize ANSI escapes in rule name when formatting list text', () => {
+      const evil: StyleRule[] = [{
+        styleId: 'sr-1',
+        name: 'Evil\u001b[31mred',
+        language: 'en',
+        version: 1,
+        creationTime: 'c',
+        updatedTime: 'u',
+      }];
+      const result = command.formatStyleRulesList(evil);
+      expect(result).not.toContain('\u001b[31m');
+    });
+  });
+
+  describe('create', () => {
+    it('should proxy to service.createStyleRule', async () => {
+      await command.create({ name: 'X', language: 'en' });
+      expect(mockService.createStyleRule).toHaveBeenCalledWith({ name: 'X', language: 'en' });
+    });
+  });
+
+  describe('show', () => {
+    it('should proxy to service.getStyleRule with detailed=false by default', async () => {
+      await command.show('sr-1');
+      expect(mockService.getStyleRule).toHaveBeenCalledWith('sr-1', false);
+    });
+
+    it('should pass detailed=true when requested', async () => {
+      await command.show('sr-1', true);
+      expect(mockService.getStyleRule).toHaveBeenCalledWith('sr-1', true);
+    });
+  });
+
+  describe('update', () => {
+    it('should proxy to service.updateStyleRule', async () => {
+      await command.update('sr-1', { name: 'Renamed' });
+      expect(mockService.updateStyleRule).toHaveBeenCalledWith('sr-1', { name: 'Renamed' });
+    });
+  });
+
+  describe('delete', () => {
+    it('should proxy to service.deleteStyleRule', async () => {
+      await command.delete('sr-1');
+      expect(mockService.deleteStyleRule).toHaveBeenCalledWith('sr-1');
+    });
+  });
+
+  describe('replaceRules', () => {
+    it('should proxy to service.replaceConfiguredRules', async () => {
+      await command.replaceRules('sr-1', ['r1', 'r2']);
+      expect(mockService.replaceConfiguredRules).toHaveBeenCalledWith('sr-1', ['r1', 'r2']);
+    });
+  });
+
+  describe('formatStyleRule', () => {
+    const baseRule: StyleRule = {
+      styleId: 'sr-1',
+      name: 'My Style',
+      language: 'en',
+      version: 1,
+      creationTime: '2024-01-01T00:00:00Z',
+      updatedTime: '2024-01-02T00:00:00Z',
+    };
+
+    it('should render a basic rule in text', () => {
+      const result = command.formatStyleRule(baseRule);
+      expect(result).toContain('My Style');
+      expect(result).toContain('ID:       sr-1');
+      expect(result).toContain('Language: en');
+      expect(result).toContain('Version:  1');
+    });
+
+    it('should include configuredRules and customInstructions when detailed', () => {
+      const detailed: StyleRuleDetailed = {
+        ...baseRule,
+        configuredRules: ['rule_a', 'rule_b'],
+        customInstructions: [
+          { label: 'L', prompt: 'P' },
+          { label: 'M', prompt: 'Q', sourceLanguage: 'de' },
+        ],
+      };
+      const result = command.formatStyleRule(detailed);
+      expect(result).toContain('rule_a, rule_b');
+      expect(result).toContain('- L: P');
+      expect(result).toContain('- M: Q [de]');
+    });
+
+    it('should sanitize ANSI escapes in rule name', () => {
+      const evil: StyleRule = { ...baseRule, name: 'Evil\u001b[31mred' };
+      const result = command.formatStyleRule(evil);
+      expect(result).not.toContain('\u001b[31m');
+    });
+
+    it('should sanitize ANSI escapes in custom instruction text', () => {
+      const evil: StyleRuleDetailed = {
+        ...baseRule,
+        configuredRules: [],
+        customInstructions: [{ label: 'L\u001b[31m', prompt: 'P\u001b[0m' }],
+      };
+      const result = command.formatStyleRule(evil);
+      expect(result).not.toContain('\u001b[31m');
+      expect(result).not.toContain('\u001b[0m');
+    });
+  });
+
+  describe('formatStyleRuleJson', () => {
+    it('should emit valid JSON with raw name preserved', () => {
+      const rule: StyleRule = {
+        styleId: 'sr-1',
+        name: 'Raw\u001b[31mname',
+        language: 'en',
+        version: 1,
+        creationTime: 'c',
+        updatedTime: 'u',
+      };
+      const result = command.formatStyleRuleJson(rule);
+      const parsed = JSON.parse(result);
+      expect(parsed.styleId).toBe('sr-1');
+      // JSON path preserves the raw string; JSON.stringify escapes the control byte to \u001b
+      expect(parsed.name).toBe('Raw\u001b[31mname');
+      // but the emitted JSON source never contains the raw control byte
+      expect(result.indexOf('\u001b')).toBe(-1);
+    });
   });
 });

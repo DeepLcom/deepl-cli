@@ -137,6 +137,71 @@ describe('Style Rules CLI Integration', () => {
         expect(output).toMatch(/API key|auth/i);
       }
     });
+
+    it('should accept create subcommand with required flags', () => {
+      try {
+        runCLI('deepl style-rules create --name Foo --language en', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should require --name and --language on create', () => {
+      expect.assertions(1);
+      try {
+        runCLI('deepl style-rules create', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).toMatch(/required.*(--name|--language)/i);
+      }
+    });
+
+    it('should accept show subcommand with positional id', () => {
+      try {
+        runCLI('deepl style-rules show sr-1', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should require id argument on show', () => {
+      expect.assertions(1);
+      try {
+        runCLI('deepl style-rules show', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).toMatch(/missing.*argument|id.*required/i);
+      }
+    });
+
+    it('should accept update subcommand with --name', () => {
+      try {
+        runCLI('deepl style-rules update sr-1 --name "New"', { stdio: 'pipe' });
+      } catch (error: any) {
+        const output = error.stderr ?? error.stdout;
+        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/API key|auth/i);
+      }
+    });
+
+    it('should require --name or --rules on update (exit 6)', () => {
+      expect.assertions(1);
+      try {
+        runCLI('deepl style-rules update sr-1', { stdio: 'pipe' });
+      } catch (error: any) {
+        expect(error.status).toBe(6);
+      }
+    });
+
+    it('should accept delete --dry-run without running the deletion', () => {
+      const output = runCLI('deepl style-rules delete sr-1 --dry-run');
+      expect(output).toContain('[dry-run]');
+      expect(output).toContain('sr-1');
+    });
   });
 
   describe('command structure', () => {
@@ -658,6 +723,97 @@ describe('Style Rules API Integration', () => {
         .replyWithError('Connection refused');
 
       await expect(noRetryCommand.list()).rejects.toThrow();
+    });
+  });
+
+  describe('CRUD invariants', () => {
+    const styleRuleWire = {
+      style_id: 'sr-new',
+      name: 'Corporate',
+      language: 'en',
+      version: 1,
+      creation_time: '2026-04-24T00:00:00Z',
+      updated_time: '2026-04-24T00:00:00Z',
+    };
+
+    it('invariant 1: create returns an id that show can retrieve (round-trip)', async () => {
+      const createScope = nock(FREE_API_URL)
+        .post('/v3/style_rules', (body) => {
+          expect(body.name).toBe('Corporate');
+          expect(body.language).toBe('en');
+          return true;
+        })
+        .reply(200, styleRuleWire);
+
+      const created = await styleRulesCommand.create({ name: 'Corporate', language: 'en' });
+      expect(created.styleId).toBe('sr-new');
+      expect(createScope.isDone()).toBe(true);
+
+      const showScope = nock(FREE_API_URL)
+        .get(`/v3/style_rules/${created.styleId}`)
+        .reply(200, styleRuleWire);
+
+      const shown = await styleRulesCommand.show(created.styleId);
+      expect(shown.styleId).toBe(created.styleId);
+      expect(shown.name).toBe(created.name);
+      expect(showScope.isDone()).toBe(true);
+    });
+
+    it('invariant 2: update → show reflects the patched fields', async () => {
+      const updateScope = nock(FREE_API_URL)
+        .patch('/v3/style_rules/sr-new', (body) => {
+          expect(body.name).toBe('Renamed');
+          return true;
+        })
+        .reply(200, { ...styleRuleWire, name: 'Renamed', version: 2 });
+
+      const updated = await styleRulesCommand.update('sr-new', { name: 'Renamed' });
+      expect(updated.name).toBe('Renamed');
+      expect(updated.version).toBe(2);
+      expect(updateScope.isDone()).toBe(true);
+
+      const showScope = nock(FREE_API_URL)
+        .get('/v3/style_rules/sr-new')
+        .reply(200, { ...styleRuleWire, name: 'Renamed', version: 2 });
+
+      const shown = await styleRulesCommand.show('sr-new');
+      expect(shown.name).toBe('Renamed');
+      expect(showScope.isDone()).toBe(true);
+    });
+
+    it('invariant 3: delete followed by show returns 404', async () => {
+      const deleteScope = nock(FREE_API_URL)
+        .delete('/v3/style_rules/sr-new')
+        .reply(204);
+
+      await expect(styleRulesCommand.delete('sr-new')).resolves.toBeUndefined();
+      expect(deleteScope.isDone()).toBe(true);
+
+      const showScope = nock(FREE_API_URL)
+        .get('/v3/style_rules/sr-new')
+        .reply(404, { message: 'Style rule not found' });
+
+      await expect(styleRulesCommand.show('sr-new')).rejects.toThrow();
+      expect(showScope.isDone()).toBe(true);
+    });
+
+    it('replaceConfiguredRules: PUT returns updated detailed rule', async () => {
+      const scope = nock(FREE_API_URL)
+        .put('/v3/style_rules/sr-new/configured_rules', (body) => {
+          expect(body.configured_rules).toEqual(['rule_a', 'rule_b']);
+          return true;
+        })
+        .reply(200, {
+          ...styleRuleWire,
+          version: 3,
+          configured_rules: ['rule_a', 'rule_b'],
+          custom_instructions: [],
+        });
+
+      const result = await styleRulesCommand.replaceRules('sr-new', ['rule_a', 'rule_b']);
+      expect(result.configuredRules).toEqual(['rule_a', 'rule_b']);
+      expect(result.version).toBe(3);
+      expect(scope.isDone()).toBe(true);
     });
   });
 });

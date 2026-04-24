@@ -19,6 +19,8 @@ import {
   StyleRule,
   StyleRuleDetailed,
   StyleRulesListOptions,
+  CreateStyleRuleOptions,
+  UpdateStyleRuleOptions,
   AdminApiKey,
   AdminUsageOptions,
   AdminUsageReport,
@@ -218,6 +220,26 @@ export class DeepLClient {
     options: StyleRulesListOptions = {}
   ): Promise<(StyleRule | StyleRuleDetailed)[]> {
     return this.styleRulesClient.getStyleRules(options);
+  }
+
+  async createStyleRule(options: CreateStyleRuleOptions): Promise<StyleRule> {
+    return this.styleRulesClient.createStyleRule(options);
+  }
+
+  async getStyleRule(styleId: string, detailed = false): Promise<StyleRule | StyleRuleDetailed> {
+    return this.styleRulesClient.getStyleRule(styleId, detailed);
+  }
+
+  async updateStyleRule(styleId: string, options: UpdateStyleRuleOptions): Promise<StyleRule> {
+    return this.styleRulesClient.updateStyleRule(styleId, options);
+  }
+
+  async deleteStyleRule(styleId: string): Promise<void> {
+    return this.styleRulesClient.deleteStyleRule(styleId);
+  }
+
+  async replaceConfiguredRules(styleId: string, rules: string[]): Promise<StyleRuleDetailed> {
+    return this.styleRulesClient.replaceConfiguredRules(styleId, rules);
   }
 
   async listApiKeys(): Promise<AdminApiKey[]> {

@@ -38,4 +38,39 @@ describe('Style Rules Command E2E', () => {
       expect(output).toContain('--format');
     });
   });
+
+  describe('style-rules create --help', () => {
+    it('should show create subcommand options', () => {
+      const output = runCLI('style-rules create --help');
+      expect(output).toContain('--name');
+      expect(output).toContain('--language');
+      expect(output).toContain('--rules');
+      expect(output).toContain('--format');
+    });
+  });
+
+  describe('style-rules show --help', () => {
+    it('should show show subcommand options', () => {
+      const output = runCLI('style-rules show --help');
+      expect(output).toContain('--detailed');
+      expect(output).toContain('--format');
+      expect(output).toMatch(/<id>|id/);
+    });
+  });
+
+  describe('style-rules update --help', () => {
+    it('should show update subcommand options', () => {
+      const output = runCLI('style-rules update --help');
+      expect(output).toContain('--name');
+      expect(output).toContain('--rules');
+    });
+  });
+
+  describe('style-rules delete --help', () => {
+    it('should show delete subcommand options', () => {
+      const output = runCLI('style-rules delete --help');
+      expect(output).toContain('--yes');
+      expect(output).toContain('--dry-run');
+    });
+  });
 });
