@@ -140,7 +140,7 @@ describe('Style Rules CLI Integration', () => {
 
     it('should accept create subcommand with required flags', () => {
       try {
-        runCLI('deepl style-rules create --name Foo --language en', { stdio: 'pipe' });
+        runCLI('deepl style-rules create --name Foo --language en', { stdio: 'pipe', excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -160,7 +160,7 @@ describe('Style Rules CLI Integration', () => {
 
     it('should accept show subcommand with positional id', () => {
       try {
-        runCLI('deepl style-rules show sr-1', { stdio: 'pipe' });
+        runCLI('deepl style-rules show sr-1', { stdio: 'pipe', excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -180,7 +180,7 @@ describe('Style Rules CLI Integration', () => {
 
     it('should accept update subcommand with --name', () => {
       try {
-        runCLI('deepl style-rules update sr-1 --name "New"', { stdio: 'pipe' });
+        runCLI('deepl style-rules update sr-1 --name "New"', { stdio: 'pipe', excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -205,7 +205,7 @@ describe('Style Rules CLI Integration', () => {
 
     it('should accept instructions subcommand with positional style-id', () => {
       try {
-        runCLI('deepl style-rules instructions sr-1', { stdio: 'pipe' });
+        runCLI('deepl style-rules instructions sr-1', { stdio: 'pipe', excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -225,7 +225,7 @@ describe('Style Rules CLI Integration', () => {
 
     it('should accept add-instruction with three positional args', () => {
       try {
-        runCLI('deepl style-rules add-instruction sr-1 tone "Be formal"', { stdio: 'pipe' });
+        runCLI('deepl style-rules add-instruction sr-1 tone "Be formal"', { stdio: 'pipe', excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -245,7 +245,7 @@ describe('Style Rules CLI Integration', () => {
 
     it('should accept update-instruction with three positional args', () => {
       try {
-        runCLI('deepl style-rules update-instruction sr-1 tone "Be friendlier"', { stdio: 'pipe' });
+        runCLI('deepl style-rules update-instruction sr-1 tone "Be friendlier"', { stdio: 'pipe', excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option/i);
@@ -262,7 +262,7 @@ describe('Style Rules CLI Integration', () => {
 
     it('should accept --source-language on add-instruction', () => {
       try {
-        runCLI('deepl style-rules add-instruction sr-1 tone "Be formal" --source-language en', { stdio: 'pipe' });
+        runCLI('deepl style-rules add-instruction sr-1 tone "Be formal" --source-language en', { stdio: 'pipe', excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).not.toMatch(/unknown.*option.*source-language/i);
