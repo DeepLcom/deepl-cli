@@ -264,6 +264,34 @@ describe('Write Command Integration', () => {
         output: 'I should like to purchase this item',
         expectedExact: undefined,
       },
+      {
+        lang: 'ja',
+        label: 'Japanese',
+        input: 'これを買いたい',
+        output: 'これを購入したいです',
+        expectedExact: undefined,
+      },
+      {
+        lang: 'ko',
+        label: 'Korean',
+        input: '이것을 사고 싶어요',
+        output: '이것을 구매하고 싶습니다',
+        expectedExact: undefined,
+      },
+      {
+        lang: 'zh',
+        label: 'Chinese',
+        input: '我想买这个',
+        output: '我希望购买这个',
+        expectedExact: undefined,
+      },
+      {
+        lang: 'zh-Hans',
+        label: 'Simplified Chinese',
+        input: '我要买这个',
+        output: '我想购买这个',
+        expectedExact: undefined,
+      },
     ])('should improve $label text', async ({ lang, input, output, expectedExact }) => {
       const targetLang = lang as WriteLanguage;
       const scope = nock(FREE_API_URL)

@@ -48,9 +48,13 @@ export type WriteLanguage =
   | 'es'
   | 'fr'
   | 'it'
+  | 'ja'
+  | 'ko'
   | 'pt'
   | 'pt-BR'
-  | 'pt-PT';
+  | 'pt-PT'
+  | 'zh'
+  | 'zh-Hans';
 
 export type WritingStyle =
   | 'default'

@@ -9,7 +9,7 @@ import { isNoInput } from '../../utils/confirm.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
-const WRITE_LANGUAGES = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt', 'pt-BR', 'pt-PT'] as const;
+const WRITE_LANGUAGES = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'ja', 'ko', 'pt', 'pt-BR', 'pt-PT', 'zh', 'zh-Hans'] as const;
 const WRITE_STYLES = ['default', 'simple', 'business', 'academic', 'casual', 'prefer_simple', 'prefer_business', 'prefer_academic', 'prefer_casual'] as const;
 const WRITE_TONES = ['default', 'enthusiastic', 'friendly', 'confident', 'diplomatic', 'prefer_enthusiastic', 'prefer_friendly', 'prefer_confident', 'prefer_diplomatic'] as const;
 
