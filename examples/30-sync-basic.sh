@@ -128,10 +128,14 @@ echo
 
 # Example 11: Export source strings to XLIFF
 echo "11. Export source strings to XLIFF for CAT tool handoff"
-deepl sync export --output "$PROJECT_DIR/handoff.xlf"
+# `--output` is resolved relative to the sync project root. Use a relative
+# path here to sidestep macOS symlink mismatches (/tmp → /private/tmp), which
+# would otherwise make an absolute /tmp/... path appear to escape the
+# /private/tmp/... project root that loadSyncConfig sees.
+deepl sync export --output handoff.xlf
 echo "   Wrote $PROJECT_DIR/handoff.xlf"
 # Re-running requires --overwrite:
-#   deepl sync export --output "$PROJECT_DIR/handoff.xlf" --overwrite
+#   deepl sync export --output handoff.xlf --overwrite
 echo
 
 echo "=== Sync Features ==="
