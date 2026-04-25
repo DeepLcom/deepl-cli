@@ -26,15 +26,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# NOTE: under `set -e`, `((PASS++))` exits with status 1 when PASS is 0
+# (post-increment evaluates to the OLD value, which arithmetic context
+# treats as failure). Use plain assignment to always return 0.
 assert() {
   local desc="$1"
   shift
   if "$@" >/dev/null 2>&1; then
     echo "  ✓ $desc"
-    ((PASS++))
+    PASS=$((PASS + 1))
   else
     echo "  ✗ FAIL: $desc"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
   fi
 }
 
@@ -48,10 +51,10 @@ assert_exit_code() {
   "$@" >/dev/null 2>&1 || actual=$?
   if [ "$actual" -eq "$expected" ]; then
     echo "  ✓ $desc (exit $actual)"
-    ((PASS++))
+    PASS=$((PASS + 1))
   else
     echo "  ✗ FAIL: $desc (expected exit $expected, got $actual)"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
   fi
 }
 
@@ -206,8 +209,14 @@ deepl sync status 2>&1 | head -10
 assert_exit_code "status exits 0" 0 deepl sync status
 
 STATUS_JSON=$(deepl sync status --format json 2>&1)
-assert "status JSON is valid" echo "$STATUS_JSON" | python3 -c "import sys,json; json.load(sys.stdin)"
-assert "status shows source locale" echo "$STATUS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['sourceLocale']=='en'"
+# Wrap pipelines inside helper functions so the assert helper runs them
+# atomically. Otherwise `assert "desc" echo $X | python3 ...` parses the
+# pipe at the assert call level — assert sees only `echo $X` (always 0)
+# and python receives assert's own "✓ desc\n" stdout instead of the JSON.
+_check_status_json_valid() { printf '%s\n' "$STATUS_JSON" | python3 -c "import sys,json; json.load(sys.stdin)"; }
+_check_status_source_en() { printf '%s\n' "$STATUS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['sourceLocale']=='en'"; }
+assert "status JSON is valid" _check_status_json_valid
+assert "status shows source locale" _check_status_source_en
 
 assert_exit_code "validate exits 0" 0 deepl sync validate
 echo
@@ -225,8 +234,8 @@ echo
 # ── Phase 7: PO Plurals ─────────────────────────────────────────────
 echo "Phase 7: PO Format with Plurals"
 
-mkdir -p locales/po
-cat > locales/po/messages.po << 'POEOF'
+mkdir -p locales/en/po
+cat > locales/en/po/messages.po << 'POEOF'
 # English translations
 msgid ""
 msgstr ""
@@ -258,11 +267,11 @@ buckets:
       - "locales/en.yaml"
   po:
     include:
-      - "locales/po/messages.po"
+      - "locales/en/po/messages.po"
 EOF
 
 deepl sync 2>&1 | head -10
-assert_file_exists "de PO target created" locales/po/de/messages.po || assert_file_exists "de PO (alt path)" "locales/de/po/messages.po" || true
+assert_file_exists "de PO target created" locales/de/po/messages.po
 echo
 
 # ── Phase 8: Android XML ────────────────────────────────────────────
@@ -300,9 +309,10 @@ buckets:
   yaml:
     include:
       - "locales/en.yaml"
-  xml:
+  android_xml:
     include:
       - "locales/values/strings.xml"
+    target_path_pattern: "locales/values-{locale}/strings.xml"
 EOF
 
 deepl sync 2>&1 | head -10
