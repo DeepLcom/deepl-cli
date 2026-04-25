@@ -227,8 +227,8 @@ echo "Phase 6: Force + Locale Filter"
 deepl sync --force --yes --locale de 2>&1 | head -10
 assert_exit_code "force+locale exits 0" 0 deepl sync --force --yes --locale de
 
-deepl sync --dry-run --force 2>&1 | head -10
-assert_exit_code "dry-run+force exits 0" 0 deepl sync --dry-run --force
+deepl sync --dry-run --force --yes 2>&1 | head -10
+assert_exit_code "dry-run+force exits 0" 0 deepl sync --dry-run --force --yes
 echo
 
 # ── Phase 7: PO Plurals ─────────────────────────────────────────────
