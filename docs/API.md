@@ -2010,7 +2010,7 @@ Show cache statistics (status, entries count, size, percentage used).
 
 **Options:**
 
-- `--format <format>` - Output format: `text`, `json`, `table` (default: `text`)
+- `--format <format>` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 ##### `clear`
 
@@ -2149,7 +2149,7 @@ Display your DeepL API character usage and remaining quota. Helps you monitor co
 
 #### Options
 
-- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 #### Examples
 
@@ -2225,7 +2225,7 @@ You can filter to show only source languages, only target languages, or both (de
 
 - `--source, -s` - Show only source languages
 - `--target` - Show only target languages
-- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 #### Examples
 

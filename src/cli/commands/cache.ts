@@ -3,8 +3,10 @@
  * Manages translation cache
  */
 
+import Table from 'cli-table3';
 import { CacheService } from '../../storage/cache.js';
 import { ConfigService } from '../../storage/config.js';
+import { isColorEnabled } from '../../utils/formatters.js';
 
 interface CacheStats {
   entries: number;
@@ -73,5 +75,32 @@ export class CacheCommand {
       `Entries: ${stats.entries}`,
       `Size: ${totalSizeMB} MB / ${maxSizeMB} MB (${percentUsed}% used)`,
     ].join('\n');
+  }
+
+  /** Format cache statistics as a cli-table3 table. */
+  formatStatsTable(stats: CacheStats): string {
+    const totalSizeMB = (stats.totalSize / (1024 * 1024)).toFixed(2);
+    const maxSizeMB = (stats.maxSize / (1024 * 1024)).toFixed(2);
+    const percentUsed = stats.maxSize > 0
+      ? ((stats.totalSize / stats.maxSize) * 100).toFixed(1)
+      : '0.0';
+    const colorDisabled = !isColorEnabled();
+
+    const table = new Table({
+      head: ['Metric', 'Value'],
+      colWidths: [16, 28],
+      wordWrap: true,
+      ...(colorDisabled && { style: { head: [], border: [] } }),
+    });
+
+    table.push(
+      ['Status', stats.enabled ? 'enabled' : 'disabled'],
+      ['Entries', String(stats.entries)],
+      ['Used', `${totalSizeMB} MB`],
+      ['Limit', `${maxSizeMB} MB`],
+      ['Usage', `${percentUsed}%`],
+    );
+
+    return table.toString();
   }
 }
