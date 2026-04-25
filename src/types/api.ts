@@ -157,8 +157,16 @@ export interface CustomInstruction {
   sourceLanguage?: string;
 }
 
+/**
+ * Configured rules for a style rule list. The DeepL API models this as a
+ * two-level dictionary: category → setting → value. Example for fr-CA:
+ *   { "punctuation": { "quotation_mark": "use_guillemets" } }
+ * Empty rules are represented as `{}`.
+ */
+export type ConfiguredRules = Record<string, Record<string, string>>;
+
 export interface StyleRuleDetailed extends StyleRule {
-  configuredRules: string[];
+  configuredRules: ConfiguredRules;
   customInstructions: CustomInstruction[];
 }
 
@@ -171,13 +179,13 @@ export interface StyleRulesListOptions {
 export interface CreateStyleRuleOptions {
   name: string;
   language: string;
-  configuredRules?: string[];
+  configuredRules?: ConfiguredRules;
   customInstructions?: CustomInstruction[];
 }
 
 export interface UpdateStyleRuleOptions {
   name?: string;
-  configuredRules?: string[];
+  configuredRules?: ConfiguredRules;
   customInstructions?: CustomInstruction[];
 }
 

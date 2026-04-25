@@ -6,6 +6,7 @@ import {
   CreateStyleRuleOptions,
   UpdateStyleRuleOptions,
   CustomInstruction,
+  ConfiguredRules,
   CreateCustomInstructionOptions,
   UpdateCustomInstructionOptions,
 } from '../types/index.js';
@@ -31,7 +32,7 @@ interface StyleRuleWireShape {
   version: number;
   creation_time: string;
   updated_time: string;
-  configured_rules?: string[];
+  configured_rules?: ConfiguredRules;
   custom_instructions?: Array<{
     label: string;
     prompt: string;
@@ -53,12 +54,8 @@ function mapStyleRule(wire: StyleRuleWireShape): StyleRule {
 function mapStyleRuleDetailed(wire: StyleRuleWireShape): StyleRuleDetailed {
   return {
     ...mapStyleRule(wire),
-    configuredRules: wire.configured_rules ?? [],
-    customInstructions: (wire.custom_instructions ?? []).map(ci => ({
-      label: ci.label,
-      prompt: ci.prompt,
-      ...(ci.source_language && { sourceLanguage: ci.source_language }),
-    })),
+    configuredRules: wire.configured_rules ?? {},
+    customInstructions: (wire.custom_instructions ?? []).map(mapCustomInstruction),
   };
 }
 
@@ -85,46 +82,12 @@ export class StyleRulesClient extends HttpClient {
     }
 
     const response = await this.makeJsonRequest<{
-      style_rules: Array<{
-        style_id: string;
-        name: string;
-        language: string;
-        version: number;
-        creation_time: string;
-        updated_time: string;
-        configured_rules?: string[];
-        custom_instructions?: Array<{
-          label: string;
-          prompt: string;
-          source_language?: string;
-        }>;
-      }>;
+      style_rules: StyleRuleWireShape[];
     }>('GET', '/v3/style_rules', params);
 
-    return response.style_rules.map((rule) => {
-      const base: StyleRule = {
-        styleId: rule.style_id,
-        name: rule.name,
-        language: rule.language,
-        version: rule.version,
-        creationTime: rule.creation_time,
-        updatedTime: rule.updated_time,
-      };
-
-      if (options.detailed && rule.configured_rules && rule.custom_instructions) {
-        return {
-          ...base,
-          configuredRules: rule.configured_rules,
-          customInstructions: rule.custom_instructions.map(ci => ({
-            label: ci.label,
-            prompt: ci.prompt,
-            ...(ci.source_language && { sourceLanguage: ci.source_language }),
-          })),
-        } as StyleRuleDetailed;
-      }
-
-      return base;
-    });
+    return response.style_rules.map((rule) =>
+      options.detailed ? mapStyleRuleDetailed(rule) : mapStyleRule(rule),
+    );
   }
 
   async createStyleRule(options: CreateStyleRuleOptions): Promise<StyleRule> {
@@ -194,11 +157,14 @@ export class StyleRulesClient extends HttpClient {
     );
   }
 
-  async replaceConfiguredRules(styleId: string, rules: string[]): Promise<StyleRuleDetailed> {
+  async replaceConfiguredRules(styleId: string, rules: ConfiguredRules): Promise<StyleRuleDetailed> {
+    // The PUT endpoint at /configured_rules takes the rules dict as the entire body
+    // (no `configured_rules` outer wrapper). The wrapper is only used on POST /v3/style_rules
+    // and PATCH /v3/style_rules/{id} where the body has multiple top-level fields.
     const wire = await this.makeJsonRequest<StyleRuleWireShape>(
       'PUT',
       `/v3/style_rules/${encodeURIComponent(styleId)}/configured_rules`,
-      { configured_rules: rules },
+      rules as unknown as Record<string, unknown>,
     );
     return mapStyleRuleDetailed(wire);
   }

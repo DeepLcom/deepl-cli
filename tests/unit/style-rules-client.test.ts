@@ -92,7 +92,10 @@ describe('StyleRulesClient', () => {
               version: 2,
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-06-01T00:00:00Z',
-              configured_rules: ['rule_a', 'rule_b'],
+              configured_rules: {
+                punctuation: { quotation_mark: 'use_guillemets' },
+                spelling_and_grammar: { accents: 'preserve' },
+              },
               custom_instructions: [
                 { label: 'Instruction 1', prompt: 'Use formal tone' },
                 { label: 'Instruction 2', prompt: 'Short sentences', source_language: 'en' },
@@ -109,7 +112,10 @@ describe('StyleRulesClient', () => {
       expect(result).toHaveLength(1);
       const detailed = result[0] as any;
       expect(detailed.styleId).toBe('sr-2');
-      expect(detailed.configuredRules).toEqual(['rule_a', 'rule_b']);
+      expect(detailed.configuredRules).toEqual({
+        punctuation: { quotation_mark: 'use_guillemets' },
+        spelling_and_grammar: { accents: 'preserve' },
+      });
       expect(detailed.customInstructions).toHaveLength(2);
       expect(detailed.customInstructions[0].label).toBe('Instruction 1');
       expect(detailed.customInstructions[1].sourceLanguage).toBe('en');
@@ -260,14 +266,16 @@ describe('StyleRulesClient', () => {
         data: {
           style_id: 'sr-2', name: 'Two', language: 'de', version: 3,
           creation_time: 'c', updated_time: 'u',
-          configured_rules: ['r1'],
+          configured_rules: { punctuation: { quotation_mark: 'use_guillemets' } },
           custom_instructions: [{ label: 'L', prompt: 'P' }],
         },
         status: 200, headers: {},
       });
 
       const result = await client.getStyleRule('sr-2', true);
-      expect((result as StyleRuleDetailed).configuredRules).toEqual(['r1']);
+      expect((result as StyleRuleDetailed).configuredRules).toEqual({
+        punctuation: { quotation_mark: 'use_guillemets' },
+      });
       expect((result as StyleRuleDetailed).customInstructions).toEqual([{ label: 'L', prompt: 'P' }]);
     });
 
@@ -529,40 +537,47 @@ describe('StyleRulesClient', () => {
   });
 
   describe('replaceConfiguredRules()', () => {
-    it('should PUT /v3/style_rules/:id/configured_rules with rules array', async () => {
+    it('should PUT /v3/style_rules/:id/configured_rules with the rules dictionary', async () => {
+      const rules = {
+        punctuation: { quotation_mark: 'use_guillemets' },
+        spelling_and_grammar: { accents: 'preserve' },
+      };
       mockAxiosInstance.request.mockResolvedValue({
         data: {
           style_id: 'sr-1', name: 'X', language: 'en', version: 3,
           creation_time: 'c', updated_time: 'u3',
-          configured_rules: ['rule_a', 'rule_b'],
+          configured_rules: rules,
           custom_instructions: [],
         },
         status: 200, headers: {},
       });
 
-      const result = await client.replaceConfiguredRules('sr-1', ['rule_a', 'rule_b']);
+      const result = await client.replaceConfiguredRules('sr-1', rules);
 
-      expect(result.configuredRules).toEqual(['rule_a', 'rule_b']);
+      expect(result.configuredRules).toEqual(rules);
       expect(result.version).toBe(3);
+      // Body is the rules dict directly — no `configured_rules` outer wrapper.
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
         expect.objectContaining({
           method: 'PUT',
           url: '/v3/style_rules/sr-1/configured_rules',
-          data: { configured_rules: ['rule_a', 'rule_b'] },
+          data: rules,
         }),
       );
     });
 
-    it('should propagate 400 error for invalid rule ids', async () => {
+    it('should propagate 400 error for invalid rules', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 400, data: { message: 'Invalid rule id' }, headers: {} },
+        response: { status: 400, data: { message: 'Invalid rule' }, headers: {} },
         message: 'Bad request',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-      await expect(client.replaceConfiguredRules('sr-1', ['bogus'])).rejects.toThrow();
+      await expect(
+        client.replaceConfiguredRules('sr-1', { bogus: { x: 'y' } }),
+      ).rejects.toThrow();
     });
   });
 });

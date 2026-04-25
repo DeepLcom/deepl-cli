@@ -86,7 +86,10 @@ describe('StyleRulesCommand', () => {
           version: 2,
           creationTime: '2024-01-01T00:00:00Z',
           updatedTime: '2024-01-02T00:00:00Z',
-          configuredRules: ['rule1', 'rule2'],
+          configuredRules: {
+            punctuation: { quotation_mark: 'use_guillemets' },
+            spelling_and_grammar: { accents: 'preserve' },
+          },
           customInstructions: [
             { label: 'Formality', prompt: 'Keep it formal' },
             { label: 'Tone', prompt: 'Use friendly tone', sourceLanguage: 'en' },
@@ -96,7 +99,8 @@ describe('StyleRulesCommand', () => {
 
       const result = command.formatStyleRulesList(rules);
       expect(result).toContain('Detailed Style');
-      expect(result).toContain('rule1, rule2');
+      expect(result).toContain('punctuation:');
+      expect(result).toContain('quotation_mark: use_guillemets');
       expect(result).toContain('Formality: Keep it formal');
       expect(result).toContain('Tone: Use friendly tone [en]');
     });
@@ -110,7 +114,7 @@ describe('StyleRulesCommand', () => {
           version: 1,
           creationTime: '2024-01-01T00:00:00Z',
           updatedTime: '2024-01-02T00:00:00Z',
-          configuredRules: [],
+          configuredRules: {},
           customInstructions: [
             { label: 'Brevity', prompt: 'Keep sentences short' },
           ],
@@ -222,8 +226,9 @@ describe('StyleRulesCommand', () => {
 
   describe('replaceRules', () => {
     it('should proxy to service.replaceConfiguredRules', async () => {
-      await command.replaceRules('sr-1', ['r1', 'r2']);
-      expect(mockService.replaceConfiguredRules).toHaveBeenCalledWith('sr-1', ['r1', 'r2']);
+      const rules = { punctuation: { quotation_mark: 'use_guillemets' } };
+      await command.replaceRules('sr-1', rules);
+      expect(mockService.replaceConfiguredRules).toHaveBeenCalledWith('sr-1', rules);
     });
   });
 
@@ -248,14 +253,19 @@ describe('StyleRulesCommand', () => {
     it('should include configuredRules and customInstructions when detailed', () => {
       const detailed: StyleRuleDetailed = {
         ...baseRule,
-        configuredRules: ['rule_a', 'rule_b'],
+        configuredRules: {
+          punctuation: { quotation_mark: 'use_guillemets' },
+          spelling_and_grammar: { accents: 'preserve' },
+        },
         customInstructions: [
           { label: 'L', prompt: 'P' },
           { label: 'M', prompt: 'Q', sourceLanguage: 'de' },
         ],
       };
       const result = command.formatStyleRule(detailed);
-      expect(result).toContain('rule_a, rule_b');
+      expect(result).toContain('punctuation:');
+      expect(result).toContain('quotation_mark: use_guillemets');
+      expect(result).toContain('spelling_and_grammar:');
       expect(result).toContain('- L: P');
       expect(result).toContain('- M: Q [de]');
     });
@@ -269,12 +279,24 @@ describe('StyleRulesCommand', () => {
     it('should sanitize ANSI escapes in custom instruction text', () => {
       const evil: StyleRuleDetailed = {
         ...baseRule,
-        configuredRules: [],
+        configuredRules: {},
         customInstructions: [{ label: 'L\u001b[31m', prompt: 'P\u001b[0m' }],
       };
       const result = command.formatStyleRule(evil);
       expect(result).not.toContain('\u001b[31m');
       expect(result).not.toContain('\u001b[0m');
+    });
+
+    it('should sanitize ANSI escapes in configured-rules keys and values', () => {
+      const evil: StyleRuleDetailed = {
+        ...baseRule,
+        configuredRules: { 'cat\u001b[31m': { 'key\u001b[32m': 'val\u001b[0m' } },
+        customInstructions: [],
+      };
+      const result = command.formatStyleRule(evil);
+      expect(result).not.toContain('\u001b');
+      expect(result).toContain('cat?[31m');
+      expect(result).toContain('key?[32m: val?[0m');
     });
   });
 
@@ -283,7 +305,7 @@ describe('StyleRulesCommand', () => {
       mockService.getStyleRule.mockResolvedValue({
         styleId: 'sr-1', name: 'X', language: 'en', version: 1,
         creationTime: 'c', updatedTime: 'u',
-        configuredRules: [],
+        configuredRules: {},
         customInstructions: [
           { label: 'tone', prompt: 'Be formal' },
           { label: 'register', prompt: 'Use first person' },
@@ -387,6 +409,91 @@ describe('StyleRulesCommand', () => {
       expect(parsed.name).toBe('Raw\u001b[31mname');
       // but the emitted JSON source never contains the raw control byte
       expect(result.indexOf('\u001b')).toBe(-1);
+    });
+  });
+
+  describe('formatStyleRulesTable', () => {
+    const baseRule: StyleRule = {
+      styleId: 'sr-1',
+      name: 'Corporate',
+      language: 'en',
+      version: 3,
+      creationTime: '2026-01-01T00:00:00Z',
+      updatedTime: '2026-04-01T00:00:00Z',
+    };
+
+    it('should return empty-state message when no rules', () => {
+      expect(command.formatStyleRulesTable([])).toBe('No style rules found.');
+    });
+
+    it('should include rule data in table body', () => {
+      const result = command.formatStyleRulesTable([baseRule]);
+      expect(result).toContain('Corporate');
+      expect(result).toContain('sr-1');
+      expect(result).toContain('en');
+      expect(result).toContain('3');
+      expect(result).toContain('2026-04-01');
+    });
+
+    it('should include Rules and Instructions count columns when any row is detailed', () => {
+      const detailed: StyleRuleDetailed = {
+        ...baseRule,
+        // 2 leaf settings across 1 category — Rules count = 2
+        configuredRules: { punctuation: { quotation_mark: 'use_guillemets', spacing: 'tight' } },
+        customInstructions: [{ label: 'tone', prompt: 'formal' }],
+      };
+      const result = command.formatStyleRulesTable([detailed]);
+      expect(result).toContain('Rules');
+      expect(result).toContain('Instructions');
+      // leaf count = 2 (Rules), instruction count = 1
+      expect(result).toMatch(/\b2\b/);
+      expect(result).toMatch(/\b1\b/);
+    });
+
+    it('should sanitize ANSI escapes in rule name', () => {
+      const evil: StyleRule = { ...baseRule, name: 'Evil\u001b[31mred' };
+      const result = command.formatStyleRulesTable([evil]);
+      // Raw user-authored ESC byte must not survive — sanitizer replaces it with '?'.
+      // (cli-table3 may emit its own ANSI for border color, which is fine: those escapes
+      // are under our control, not user input.)
+      expect(result).not.toContain('Evil\u001b');
+      expect(result).toContain('Evil?[31mred');
+    });
+  });
+
+  describe('formatCustomInstructionsTable', () => {
+    it('should return empty-state message when no instructions', () => {
+      expect(command.formatCustomInstructionsTable([])).toBe('No custom instructions found.');
+    });
+
+    it('should include label, prompt, and source columns', () => {
+      const result = command.formatCustomInstructionsTable([
+        { label: 'tone', prompt: 'Be formal', sourceLanguage: 'en' },
+      ]);
+      expect(result).toContain('Label');
+      expect(result).toContain('Prompt');
+      expect(result).toContain('Source');
+      expect(result).toContain('tone');
+      expect(result).toContain('Be formal');
+      expect(result).toContain('en');
+    });
+
+    it('should render em-dash placeholder when sourceLanguage absent', () => {
+      const result = command.formatCustomInstructionsTable([
+        { label: 'register', prompt: 'Use first person' },
+      ]);
+      expect(result).toContain('—');
+    });
+
+    it('should sanitize ANSI escapes in label and prompt', () => {
+      const result = command.formatCustomInstructionsTable([
+        { label: 'evil\u001b[31m', prompt: 'also\u001b[0m' },
+      ]);
+      // Raw user-authored ESC byte must not survive in either field.
+      expect(result).not.toContain('evil\u001b');
+      expect(result).not.toContain('also\u001b');
+      expect(result).toContain('evil?[31m');
+      expect(result).toContain('also?[0m');
     });
   });
 });

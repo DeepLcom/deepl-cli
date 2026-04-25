@@ -93,7 +93,7 @@ function deepLClientDefaults(): MockShape<DeepLClient> {
     replaceConfiguredRules: jest.fn().mockResolvedValue({
       styleId: 'mock-id', name: 'mock', language: 'en', version: 2,
       creationTime: 'c', updatedTime: 'u',
-      configuredRules: [], customInstructions: [],
+      configuredRules: {}, customInstructions: [],
     }),
     createCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),
     getCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),
@@ -374,7 +374,7 @@ function styleRulesServiceDefaults(): MockShape<StyleRulesService> {
     replaceConfiguredRules: jest.fn().mockResolvedValue({
       styleId: 'mock-id', name: 'mock', language: 'en', version: 2,
       creationTime: 'c', updatedTime: 'u',
-      configuredRules: [], customInstructions: [],
+      configuredRules: {}, customInstructions: [],
     }),
     createCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),
     getCustomInstruction: jest.fn().mockResolvedValue({ label: 'mock', prompt: 'mock' }),

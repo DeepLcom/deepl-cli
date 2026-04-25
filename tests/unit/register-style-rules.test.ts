@@ -12,6 +12,7 @@ jest.mock('../../src/utils/logger', () => ({
     success: jest.fn(),
     output: jest.fn(),
     info: jest.fn(),
+    warn: jest.fn(),
     error: jest.fn(),
   },
 }));
@@ -42,7 +43,7 @@ const SAMPLE_RULE = {
 
 const SAMPLE_DETAILED = {
   ...SAMPLE_RULE,
-  configuredRules: ['rule_a'],
+  configuredRules: { punctuation: { quotation_mark: 'use_guillemets' } },
   customInstructions: [{ label: 'tone', prompt: 'Be formal' }],
 };
 
@@ -71,12 +72,24 @@ function makeMockStyleRulesCmd() {
     removeInstruction: jest.fn().mockResolvedValue(undefined),
     formatStyleRulesList: jest.fn().mockReturnValue('rules-list-text'),
     formatStyleRulesJson: jest.fn().mockReturnValue('[]'),
+    formatStyleRulesTable: jest.fn().mockReturnValue('rules-list-table'),
     formatStyleRule: jest.fn().mockReturnValue('rule-text'),
     formatStyleRuleJson: jest.fn().mockReturnValue('{}'),
     formatCustomInstruction: jest.fn().mockReturnValue('instruction-text'),
     formatCustomInstructionsList: jest.fn().mockReturnValue('instructions-list-text'),
+    formatCustomInstructionsTable: jest.fn().mockReturnValue('instructions-list-table'),
     formatCustomInstructionJson: jest.fn().mockReturnValue('{}'),
   };
+}
+
+async function withTTY<T>(value: boolean, fn: () => Promise<T> | T): Promise<T> {
+  const original = process.stdout.isTTY;
+  Object.defineProperty(process.stdout, 'isTTY', { value, configurable: true, writable: true });
+  try {
+    return await fn();
+  } finally {
+    Object.defineProperty(process.stdout, 'isTTY', { value: original, configurable: true, writable: true });
+  }
 }
 
 describe('registerStyleRules', () => {
@@ -116,6 +129,36 @@ describe('registerStyleRules', () => {
       ).rejects.toThrow('boom');
       expect(handleError).toHaveBeenCalled();
     });
+
+    it('should render cli-table3 output when --format table and stdout is a TTY', async () => {
+      const mock = makeMockStyleRulesCmd();
+      mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await withTTY(true, async () => {
+        await program.parseAsync(['node', 'test', 'style-rules', 'list', '--format', 'table']);
+      });
+
+      expect(mock.formatStyleRulesTable).toHaveBeenCalledWith([SAMPLE_RULE]);
+      expect(mock.formatStyleRulesList).not.toHaveBeenCalled();
+      expect(Logger.output).toHaveBeenCalledWith('rules-list-table');
+      expect(Logger.warn).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to plain text with a warn when --format table in non-TTY', async () => {
+      const mock = makeMockStyleRulesCmd();
+      mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await withTTY(false, async () => {
+        await program.parseAsync(['node', 'test', 'style-rules', 'list', '--format', 'table']);
+      });
+
+      expect(mock.formatStyleRulesTable).not.toHaveBeenCalled();
+      expect(mock.formatStyleRulesList).toHaveBeenCalledWith([SAMPLE_RULE]);
+      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+      expect(Logger.output).toHaveBeenCalledWith('rules-list-text');
+    });
   });
 
   describe('style-rules create', () => {
@@ -130,35 +173,20 @@ describe('registerStyleRules', () => {
       expect(Logger.success).toHaveBeenCalled();
     });
 
-    it('should parse --rules as comma-separated list', async () => {
+    it('should parse --rules as a JSON object of category → settings', async () => {
       const mock = makeMockStyleRulesCmd();
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
       await program.parseAsync([
         'node', 'test', 'style-rules', 'create',
-        '--name', 'X', '--language', 'en', '--rules', 'a,b,c',
+        '--name', 'X', '--language', 'en',
+        '--rules', '{"punctuation":{"quotation_mark":"use_guillemets"}}',
       ]);
 
       expect(mock.create).toHaveBeenCalledWith({
         name: 'X', language: 'en',
-        configuredRules: ['a', 'b', 'c'],
-      });
-    });
-
-    it('should parse --rules as JSON array', async () => {
-      const mock = makeMockStyleRulesCmd();
-      mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
-      const { program } = makeProgram();
-
-      await program.parseAsync([
-        'node', 'test', 'style-rules', 'create',
-        '--name', 'X', '--language', 'en', '--rules', '["a","b"]',
-      ]);
-
-      expect(mock.create).toHaveBeenCalledWith({
-        name: 'X', language: 'en',
-        configuredRules: ['a', 'b'],
+        configuredRules: { punctuation: { quotation_mark: 'use_guillemets' } },
       });
     });
 
@@ -170,13 +198,13 @@ describe('registerStyleRules', () => {
       await expect(
         program.parseAsync([
           'node', 'test', 'style-rules', 'create',
-          '--name', 'X', '--language', 'en', '--rules', '[garbage',
+          '--name', 'X', '--language', 'en', '--rules', '{garbage',
         ])
       ).rejects.toThrow();
       expect(handleError).toHaveBeenCalled();
     });
 
-    it('should reject --rules JSON that is not an array of strings', async () => {
+    it('should reject --rules that is not a JSON object', async () => {
       const mock = makeMockStyleRulesCmd();
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program, handleError } = makeProgram();
@@ -184,10 +212,44 @@ describe('registerStyleRules', () => {
       await expect(
         program.parseAsync([
           'node', 'test', 'style-rules', 'create',
-          '--name', 'X', '--language', 'en', '--rules', '[1,2]',
+          '--name', 'X', '--language', 'en', '--rules', '["rule_a"]',
         ])
       ).rejects.toThrow();
-      expect(handleError).toHaveBeenCalled();
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('JSON object of category') }),
+      );
+    });
+
+    it('should reject --rules whose category does not map to an object', async () => {
+      const mock = makeMockStyleRulesCmd();
+      mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
+      const { program, handleError } = makeProgram();
+
+      await expect(
+        program.parseAsync([
+          'node', 'test', 'style-rules', 'create',
+          '--name', 'X', '--language', 'en', '--rules', '{"punctuation":"wrong"}',
+        ])
+      ).rejects.toThrow();
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('category "punctuation"') }),
+      );
+    });
+
+    it('should reject --rules whose leaf value is not a string', async () => {
+      const mock = makeMockStyleRulesCmd();
+      mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
+      const { program, handleError } = makeProgram();
+
+      await expect(
+        program.parseAsync([
+          'node', 'test', 'style-rules', 'create',
+          '--name', 'X', '--language', 'en', '--rules', '{"x":{"y":42}}',
+        ])
+      ).rejects.toThrow();
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('"x.y"') }),
+      );
     });
 
     it('should output JSON when --format json', async () => {
@@ -265,10 +327,15 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'update', 'sr-1', '--rules', 'a,b']);
+      await program.parseAsync([
+        'node', 'test', 'style-rules', 'update', 'sr-1',
+        '--rules', '{"punctuation":{"quotation_mark":"use_guillemets"}}',
+      ]);
 
       expect(mock.update).not.toHaveBeenCalled();
-      expect(mock.replaceRules).toHaveBeenCalledWith('sr-1', ['a', 'b']);
+      expect(mock.replaceRules).toHaveBeenCalledWith('sr-1', {
+        punctuation: { quotation_mark: 'use_guillemets' },
+      });
     });
 
     it('should run both PATCH and PUT when name and rules passed', async () => {
@@ -278,11 +345,11 @@ describe('registerStyleRules', () => {
 
       await program.parseAsync([
         'node', 'test', 'style-rules', 'update', 'sr-1',
-        '--name', 'New', '--rules', 'a',
+        '--name', 'New', '--rules', '{"x":{"y":"z"}}',
       ]);
 
       expect(mock.update).toHaveBeenCalledWith('sr-1', { name: 'New' });
-      expect(mock.replaceRules).toHaveBeenCalledWith('sr-1', ['a']);
+      expect(mock.replaceRules).toHaveBeenCalledWith('sr-1', { x: { y: 'z' } });
     });
 
     it('should reject when neither --name nor --rules provided', async () => {
@@ -381,6 +448,36 @@ describe('registerStyleRules', () => {
       await program.parseAsync(['node', 'test', 'style-rules', 'instructions', 'sr-1', '--format', 'json']);
 
       expect(mock.formatCustomInstructionJson).toHaveBeenCalled();
+    });
+
+    it('should render cli-table3 output when --format table and stdout is a TTY', async () => {
+      const mock = makeMockStyleRulesCmd();
+      mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await withTTY(true, async () => {
+        await program.parseAsync(['node', 'test', 'style-rules', 'instructions', 'sr-1', '--format', 'table']);
+      });
+
+      expect(mock.formatCustomInstructionsTable).toHaveBeenCalled();
+      expect(mock.formatCustomInstructionsList).not.toHaveBeenCalled();
+      expect(Logger.output).toHaveBeenCalledWith('instructions-list-table');
+      expect(Logger.warn).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to plain text with a warn when --format table in non-TTY', async () => {
+      const mock = makeMockStyleRulesCmd();
+      mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
+      const { program } = makeProgram();
+
+      await withTTY(false, async () => {
+        await program.parseAsync(['node', 'test', 'style-rules', 'instructions', 'sr-1', '--format', 'table']);
+      });
+
+      expect(mock.formatCustomInstructionsTable).not.toHaveBeenCalled();
+      expect(mock.formatCustomInstructionsList).toHaveBeenCalled();
+      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+      expect(Logger.output).toHaveBeenCalledWith('instructions-list-text');
     });
 
     it('should propagate errors via handleError', async () => {

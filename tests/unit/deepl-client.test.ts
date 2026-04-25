@@ -2027,7 +2027,7 @@ describe('DeepLClient', () => {
               version: 1,
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-01-02T00:00:00Z',
-              configured_rules: ['rule1', 'rule2'],
+              configured_rules: { punctuation: { quotation_mark: 'use_guillemets' } },
               custom_instructions: [
                 { label: 'Instruction 1', prompt: 'Do this', source_language: 'en' },
               ],
@@ -2039,7 +2039,7 @@ describe('DeepLClient', () => {
 
       expect(rules).toHaveLength(1);
       const detailed = rules[0] as any;
-      expect(detailed.configuredRules).toEqual(['rule1', 'rule2']);
+      expect(detailed.configuredRules).toEqual({ punctuation: { quotation_mark: 'use_guillemets' } });
       expect(detailed.customInstructions).toEqual([
         { label: 'Instruction 1', prompt: 'Do this', sourceLanguage: 'en' },
       ]);

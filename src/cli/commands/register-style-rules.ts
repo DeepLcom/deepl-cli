@@ -2,24 +2,48 @@ import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
-import type { CreateCustomInstructionOptions, UpdateCustomInstructionOptions } from '../../types/index.js';
+import type { ConfiguredRules, CreateCustomInstructionOptions, UpdateCustomInstructionOptions } from '../../types/index.js';
 import { createStyleRulesCommand, type CreateDeepLClient } from './service-factory.js';
 
-function parseRulesArg(input: string): string[] {
+/**
+ * Parse `--rules` into the configured-rules dictionary the API expects:
+ * a two-level object of category → setting → value.
+ * Example: `--rules '{"punctuation":{"quotation_mark":"use_guillemets"}}'`
+ */
+function parseRulesArg(input: string): ConfiguredRules {
   const trimmed = input.trim();
-  if (trimmed.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(trimmed) as unknown;
-      if (!Array.isArray(parsed) || !parsed.every(r => typeof r === 'string')) {
-        throw new ValidationError('--rules JSON must be an array of strings');
-      }
-      return parsed;
-    } catch (error) {
-      if (error instanceof ValidationError) throw error;
-      throw new ValidationError(`--rules JSON is malformed: ${(error as Error).message}`);
-    }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch (error) {
+    throw new ValidationError(`--rules JSON is malformed: ${(error as Error).message}`);
   }
-  return trimmed.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new ValidationError(
+      '--rules must be a JSON object of category → settings, e.g. \'{"punctuation":{"quotation_mark":"use_guillemets"}}\'',
+    );
+  }
+
+  const result: ConfiguredRules = {};
+  for (const [category, settings] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof settings !== 'object' || settings === null || Array.isArray(settings)) {
+      throw new ValidationError(
+        `--rules category "${category}" must map to an object of setting → value`,
+      );
+    }
+    const inner: Record<string, string> = {};
+    for (const [key, value] of Object.entries(settings as Record<string, unknown>)) {
+      if (typeof value !== 'string') {
+        throw new ValidationError(
+          `--rules setting "${category}.${key}" must be a string`,
+        );
+      }
+      inner[key] = value;
+    }
+    result[category] = inner;
+  }
+  return result;
 }
 
 export function registerStyleRules(
@@ -39,11 +63,12 @@ Examples:
   $ deepl style-rules list
   $ deepl style-rules list --detailed
   $ deepl style-rules list --format json
+  $ deepl style-rules list --format table
   $ deepl style-rules list --page 2 --page-size 10
   $ deepl style-rules create --name "Corporate" --language en
   $ deepl style-rules show sr-abc123 --detailed
   $ deepl style-rules update sr-abc123 --name "Renamed"
-  $ deepl style-rules update sr-abc123 --rules rule_a,rule_b
+  $ deepl style-rules update sr-abc123 --rules '{"punctuation":{"quotation_mark":"use_guillemets"}}'
   $ deepl style-rules delete sr-abc123 --yes
   $ deepl style-rules instructions sr-abc123
   $ deepl style-rules add-instruction sr-abc123 tone "Be formal"
@@ -56,7 +81,7 @@ Examples:
         .option('--detailed', 'Show detailed information including configured rules and custom instructions')
         .option('--page <number>', 'Page number for pagination', parseInt)
         .option('--page-size <number>', 'Number of results per page (1-25)', parseInt)
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('text'))
         .action(async (options: {
           detailed?: boolean;
           page?: number;
@@ -74,6 +99,13 @@ Examples:
 
             if (options.format === 'json') {
               Logger.output(styleRulesCommand.formatStyleRulesJson(rules));
+            } else if (options.format === 'table') {
+              if (!process.stdout.isTTY) {
+                Logger.warn('--format table is not supported in non-TTY output; falling back to plain text');
+                Logger.output(styleRulesCommand.formatStyleRulesList(rules));
+              } else {
+                Logger.output(styleRulesCommand.formatStyleRulesTable(rules));
+              }
             } else {
               Logger.output(styleRulesCommand.formatStyleRulesList(rules));
             }
@@ -87,7 +119,7 @@ Examples:
         .description('Create a new style rule list')
         .requiredOption('--name <name>', 'Style rule list name')
         .requiredOption('--language <lang>', 'Target language (e.g. en, de, es)')
-        .option('--rules <rules>', 'Configured rule ids (comma-separated or JSON array)')
+        .option('--rules <json>', 'Configured rules as a JSON object of category → settings (e.g. \'{"punctuation":{"quotation_mark":"use_guillemets"}}\')')
         .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (options: {
           name: string;
@@ -98,7 +130,7 @@ Examples:
           try {
             const styleRulesCommand = await createStyleRulesCommand(createDeepLClient);
 
-            const createOpts: { name: string; language: string; configuredRules?: string[] } = {
+            const createOpts: { name: string; language: string; configuredRules?: ConfiguredRules } = {
               name: options.name,
               language: options.language,
             };
@@ -144,7 +176,7 @@ Examples:
         .description('Update a style rule list (rename and/or replace configured rules)')
         .argument('<id>', 'Style rule ID')
         .option('--name <name>', 'New name')
-        .option('--rules <rules>', 'Replace configured rule ids (comma-separated or JSON array)')
+        .option('--rules <json>', 'Replace configured rules with a JSON object of category → settings')
         .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
         .action(async (id: string, options: { name?: string; rules?: string; format?: string }) => {
           try {
@@ -211,13 +243,20 @@ Examples:
       new Command('instructions')
         .description('List custom instructions for a style rule')
         .argument('<style-id>', 'Style rule ID')
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
+        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('text'))
         .action(async (styleId: string, options: { format?: string }) => {
           try {
             const styleRulesCommand = await createStyleRulesCommand(createDeepLClient);
             const instructions = await styleRulesCommand.listInstructions(styleId);
             if (options.format === 'json') {
               Logger.output(styleRulesCommand.formatCustomInstructionJson(instructions));
+            } else if (options.format === 'table') {
+              if (!process.stdout.isTTY) {
+                Logger.warn('--format table is not supported in non-TTY output; falling back to plain text');
+                Logger.output(styleRulesCommand.formatCustomInstructionsList(instructions));
+              } else {
+                Logger.output(styleRulesCommand.formatCustomInstructionsTable(instructions));
+              }
             } else {
               Logger.output(styleRulesCommand.formatCustomInstructionsList(instructions));
             }

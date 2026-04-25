@@ -2491,7 +2491,7 @@ List all available style rules.
 - `--detailed` - Show detailed information including configured rules and custom instructions
 - `--page NUMBER` - Page number for pagination
 - `--page-size NUMBER` - Number of results per page (1-25)
-- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 **Examples:**
 
@@ -2499,6 +2499,7 @@ List all available style rules.
 deepl style-rules list
 deepl style-rules list --detailed
 deepl style-rules list --format json
+deepl style-rules list --format table
 deepl style-rules list --page 1 --page-size 10
 ```
 
@@ -2510,16 +2511,34 @@ Create a new style rule list.
 
 - `--name NAME` - Style rule name (required)
 - `--language LANG` - Target language (required)
-- `--rules RULES` - Configured rule ids, comma-separated or JSON array (optional)
+- `--rules JSON` - Configured rules as a JSON object of category → settings (optional). The DeepL API models configured rules as a two-level dictionary; arrays are not accepted. See "Configured rules shape" below.
 - `--format FORMAT` - Output format: `text`, `json` (default: `text`)
 
 **Examples:**
 
 ```bash
 deepl style-rules create --name "Corporate" --language en
-deepl style-rules create --name "Formal DE" --language de --rules rule_a,rule_b
-deepl style-rules create --name "Legal" --language en --rules '["rule_a","rule_b"]'
+deepl style-rules create --name "Québécois" --language fr \
+  --rules '{"punctuation":{"quotation_mark":"use_guillemets"}}'
 ```
+
+**Configured rules shape:**
+
+The DeepL API expects `configured_rules` as a nested object — a category name maps to a settings object, and each setting maps to a string value. Empty rules are `{}`. Example for fr-CA:
+
+```json
+{
+  "punctuation": {
+    "quotation_mark": "use_guillemets",
+    "spacing_and_punctuation": "do_not_use_space"
+  },
+  "spelling_and_grammar": {
+    "accents_and_cedillas": "use_even_on_capital_letters"
+  }
+}
+```
+
+The available categories, settings, and accepted values are defined by the DeepL API; consult DeepL's API documentation for the current rule schema.
 
 ##### `show`
 
@@ -2552,15 +2571,15 @@ Update a style rule — rename and/or replace configured rules. At least one of 
 **Options:**
 
 - `--name NAME` - New name
-- `--rules RULES` - Replace configured rule ids, comma-separated or JSON array
+- `--rules JSON` - Replace configured rules with a JSON object of category → settings (see "Configured rules shape" under `create`)
 - `--format FORMAT` - Output format: `text`, `json` (default: `text`)
 
 **Examples:**
 
 ```bash
 deepl style-rules update sr-abc123 --name "Renamed"
-deepl style-rules update sr-abc123 --rules rule_a,rule_b
-deepl style-rules update sr-abc123 --name "New" --rules '["rule_a"]'
+deepl style-rules update sr-abc123 --rules '{"punctuation":{"quotation_mark":"use_guillemets"}}'
+deepl style-rules update sr-abc123 --name "New" --rules '{"spelling_and_grammar":{"accents_and_cedillas":"use_even_on_capital_letters"}}'
 ```
 
 ##### `delete`
@@ -2594,13 +2613,14 @@ List custom instructions attached to a style rule. Synthesized from the detailed
 
 **Options:**
 
-- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 **Examples:**
 
 ```bash
 deepl style-rules instructions sr-abc123
 deepl style-rules instructions sr-abc123 --format json
+deepl style-rules instructions sr-abc123 --format table
 ```
 
 ##### `add-instruction`

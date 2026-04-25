@@ -6,6 +6,7 @@ import {
   CreateStyleRuleOptions,
   UpdateStyleRuleOptions,
   CustomInstruction,
+  ConfiguredRules,
   CreateCustomInstructionOptions,
   UpdateCustomInstructionOptions,
 } from '../types/index.js';
@@ -37,7 +38,7 @@ export class StyleRulesService {
     return this.client.deleteStyleRule(styleId);
   }
 
-  async replaceConfiguredRules(styleId: string, rules: string[]): Promise<StyleRuleDetailed> {
+  async replaceConfiguredRules(styleId: string, rules: ConfiguredRules): Promise<StyleRuleDetailed> {
     return this.client.replaceConfiguredRules(styleId, rules);
   }
 

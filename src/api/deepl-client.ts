@@ -22,6 +22,7 @@ import {
   CreateStyleRuleOptions,
   UpdateStyleRuleOptions,
   CustomInstruction,
+  ConfiguredRules,
   CreateCustomInstructionOptions,
   UpdateCustomInstructionOptions,
   AdminApiKey,
@@ -241,7 +242,7 @@ export class DeepLClient {
     return this.styleRulesClient.deleteStyleRule(styleId);
   }
 
-  async replaceConfiguredRules(styleId: string, rules: string[]): Promise<StyleRuleDetailed> {
+  async replaceConfiguredRules(styleId: string, rules: ConfiguredRules): Promise<StyleRuleDetailed> {
     return this.styleRulesClient.replaceConfiguredRules(styleId, rules);
   }
 

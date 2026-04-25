@@ -32,11 +32,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# 1. Create a style rule
+# 1. Create a style rule (French so the punctuation rule below applies)
 echo "1. Creating a new style rule"
-CREATE_OUTPUT=$(deepl style-rules create --name "Example Corporate" --language en --format json 2>&1)
+CREATE_OUTPUT=$(deepl style-rules create --name "Example Corporate" --language fr --format json 2>&1)
 echo "${CREATE_OUTPUT}"
-STYLE_ID=$(echo "${CREATE_OUTPUT}" | grep -o '"styleId"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+if command -v jq &>/dev/null; then
+  STYLE_ID=$(echo "${CREATE_OUTPUT}" | jq -r '.styleId // empty' 2>/dev/null || true)
+else
+  echo "(jq not installed — install jq to capture the style id and run the full demo)"
+  exit 0
+fi
 if [[ -z "${STYLE_ID}" ]]; then
   echo "(Skipping remainder — no style id captured; likely a Pro-only error)"
   exit 0
@@ -49,9 +54,9 @@ echo "2. Showing the rule (detailed)"
 deepl style-rules show "${STYLE_ID}" --detailed
 echo
 
-# 3. Replace configured rules
+# 3. Replace configured rules (--rules takes a JSON object: category → settings)
 echo "3. Replacing configured rules"
-deepl style-rules update "${STYLE_ID}" --rules "rule_a,rule_b"
+deepl style-rules update "${STYLE_ID}" --rules '{"punctuation":{"quotation_mark":"use_guillemets"}}'
 echo
 
 # 4. Add a custom instruction

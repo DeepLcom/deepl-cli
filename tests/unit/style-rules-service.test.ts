@@ -88,8 +88,9 @@ describe('StyleRulesService', () => {
   it('should delegate replaceConfiguredRules to client', async () => {
     const mockClient = createMockDeepLClient();
     const service = new StyleRulesService(mockClient);
-    await service.replaceConfiguredRules('sr-1', ['r1', 'r2']);
-    expect(mockClient.replaceConfiguredRules).toHaveBeenCalledWith('sr-1', ['r1', 'r2']);
+    const rules = { punctuation: { quotation_mark: 'use_guillemets' } };
+    await service.replaceConfiguredRules('sr-1', rules);
+    expect(mockClient.replaceConfiguredRules).toHaveBeenCalledWith('sr-1', rules);
   });
 
   it('should delegate createCustomInstruction to client', async () => {

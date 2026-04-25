@@ -427,7 +427,10 @@ describe('Style Rules API Integration', () => {
               version: 1,
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-01-02T00:00:00Z',
-              configured_rules: ['no_passive_voice', 'short_sentences'],
+              configured_rules: {
+                voice: { passive: 'avoid' },
+                length: { max_sentence_words: '20' },
+              },
               custom_instructions: [
                 { label: 'Voice', prompt: 'Use active voice' },
                 { label: 'Length', prompt: 'Keep sentences under 20 words' },
@@ -440,10 +443,10 @@ describe('Style Rules API Integration', () => {
 
       expect(rules).toHaveLength(1);
       const rule = rules[0] as any;
-      expect(rule.configuredRules).toEqual([
-        'no_passive_voice',
-        'short_sentences',
-      ]);
+      expect(rule.configuredRules).toEqual({
+        voice: { passive: 'avoid' },
+        length: { max_sentence_words: '20' },
+      });
       expect(rule.customInstructions).toEqual([
         { label: 'Voice', prompt: 'Use active voice' },
         { label: 'Length', prompt: 'Keep sentences under 20 words' },
@@ -464,7 +467,9 @@ describe('Style Rules API Integration', () => {
               version: 1,
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-01-02T00:00:00Z',
-              configured_rules: ['rule_a', 'rule_b'],
+              configured_rules: {
+                punctuation: { quotation_mark: 'use_guillemets' },
+              },
               custom_instructions: [
                 { label: 'Instruction one', prompt: 'Do this' },
                 { label: 'Instruction two', prompt: 'Do that' },
@@ -476,7 +481,8 @@ describe('Style Rules API Integration', () => {
       const rules = await styleRulesCommand.list({ detailed: true });
       const output = styleRulesCommand.formatStyleRulesList(rules);
 
-      expect(output).toContain('rule_a, rule_b');
+      expect(output).toContain('punctuation');
+      expect(output).toContain('quotation_mark: use_guillemets');
       expect(output).toContain('Instruction one');
       expect(output).toContain('Instruction two');
     });
@@ -542,7 +548,7 @@ describe('Style Rules API Integration', () => {
               version: 3,
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-01-02T00:00:00Z',
-              configured_rules: ['concise'],
+              configured_rules: { brevity: { max_words: '20' } },
               custom_instructions: [{ label: 'Brevity', prompt: 'Be brief' }],
             },
           ],
@@ -557,7 +563,7 @@ describe('Style Rules API Integration', () => {
       expect(rules).toHaveLength(1);
       const rule = rules[0] as any;
       expect(rule.language).toBe('fr');
-      expect(rule.configuredRules).toEqual(['concise']);
+      expect(rule.configuredRules).toEqual({ brevity: { max_words: '20' } });
       expect(scope.isDone()).toBe(true);
     });
   });
@@ -699,7 +705,10 @@ describe('Style Rules API Integration', () => {
               version: 2,
               creation_time: '2024-03-01T00:00:00Z',
               updated_time: '2024-03-10T00:00:00Z',
-              configured_rules: ['formal_tone', 'no_contractions'],
+              configured_rules: {
+                tone: { formality: 'formal' },
+                grammar: { contractions: 'forbidden' },
+              },
               custom_instructions: [
                 { label: 'Formality', prompt: 'Always use formal language' },
               ],
@@ -711,7 +720,10 @@ describe('Style Rules API Integration', () => {
       const rule = rules[0] as any;
 
       expect(rule.styleId).toBe('test-id-002');
-      expect(rule.configuredRules).toEqual(['formal_tone', 'no_contractions']);
+      expect(rule.configuredRules).toEqual({
+        tone: { formality: 'formal' },
+        grammar: { contractions: 'forbidden' },
+      });
       expect(rule.customInstructions).toEqual([
         { label: 'Formality', prompt: 'Always use formal language' },
       ]);
@@ -885,7 +897,7 @@ describe('Style Rules API Integration', () => {
         .query({ detailed: true })
         .reply(200, {
           ...styleRuleWire,
-          configured_rules: [],
+          configured_rules: {},
           custom_instructions: [
             { label: 'tone', prompt: 'Be formal' },
             { label: 'register', prompt: 'First person', source_language: 'en' },
@@ -922,20 +934,25 @@ describe('Style Rules API Integration', () => {
     });
 
     it('replaceConfiguredRules: PUT returns updated detailed rule', async () => {
+      const rules = {
+        punctuation: { quotation_mark: 'use_guillemets' },
+        spelling_and_grammar: { accents: 'preserve' },
+      };
       const scope = nock(FREE_API_URL)
         .put('/v3/style_rules/sr-new/configured_rules', (body) => {
-          expect(body.configured_rules).toEqual(['rule_a', 'rule_b']);
+          // Body is the rules dict directly — no `configured_rules` outer wrapper.
+          expect(body).toEqual(rules);
           return true;
         })
         .reply(200, {
           ...styleRuleWire,
           version: 3,
-          configured_rules: ['rule_a', 'rule_b'],
+          configured_rules: rules,
           custom_instructions: [],
         });
 
-      const result = await styleRulesCommand.replaceRules('sr-new', ['rule_a', 'rule_b']);
-      expect(result.configuredRules).toEqual(['rule_a', 'rule_b']);
+      const result = await styleRulesCommand.replaceRules('sr-new', rules);
+      expect(result.configuredRules).toEqual(rules);
       expect(result.version).toBe(3);
       expect(scope.isDone()).toBe(true);
     });
