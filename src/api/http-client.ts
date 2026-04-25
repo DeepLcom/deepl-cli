@@ -12,6 +12,7 @@ import {
 } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 import { errorMessage } from '../utils/error-message.js';
+import { sanitizeForTerminal } from '../utils/control-chars.js';
 import { VERSION } from '../version.js';
 
 export const USER_AGENT = `deepl-cli/${VERSION} node/${process.versions.node}`;
@@ -367,7 +368,13 @@ export class HttpClient {
       const responseData = error.response?.data as
         | { message?: string }
         | undefined;
-      const message = responseData?.message ?? error.message;
+      // Sanitize the server-returned message before any interpolation into
+      // user-facing error strings. Defense-in-depth against a malicious or
+      // buggy server scribbling ANSI escape codes / control chars on the
+      // user's terminal. Mirrors the TMS-client hardening (sync-pagq.7).
+      // Coalesce to '' before sanitizing — some axios error shapes have no
+      // `.message` field, and sanitizeForTerminal expects a string.
+      const message = sanitizeForTerminal(responseData?.message ?? error.message ?? '');
 
       switch (status) {
         case 403:

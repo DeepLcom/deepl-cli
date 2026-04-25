@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **sync**: `deepl sync export --output <path>` (and other sync surfaces that call `assertPathWithinRoot`) no longer reject valid output paths under a project root that contains a symlink in its ancestor chain. The containment check now resolves both sides through `fs.realpath` before comparing, so a project under macOS `/tmp` (a symlink to `/private/tmp`) — or any other symlinked directory — works regardless of which form the user types or the engine captures. Symlink-based escape attempts (a symlink inside the project pointing outside) are now also rejected as a defense-in-depth bonus.
 
+### Security
+
+- **api**: Server-returned error messages are now passed through `sanitizeForTerminal` before being interpolated into the user-facing `API error: …` and `Server error (5xx): …` strings emitted from `src/api/http-client.ts`. Defense-in-depth against a buggy or malicious server scribbling ANSI escape codes or other terminal control characters on the user's terminal via the error path. Mirrors the existing TMS-client hardening; no change to error-message wording when the server payload is well-formed.
+
 ## [1.1.0] - 2026-04-23
 
 ### Added
