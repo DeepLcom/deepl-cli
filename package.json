@@ -1,6 +1,6 @@
 {
   "name": "deepl-cli",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Next-generation CLI for DeepL translation and writing enhancement",
   "type": "module",
   "main": "dist/index.js",
