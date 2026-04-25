@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **examples**: `examples/35-style-rules-crud.sh` — end-to-end style-rules workflow (create → show → update rules → add custom instruction → update instruction → remove instruction → delete rule).
 - **examples**: `examples/36-write-extended-languages.sh` — `deepl write` with Japanese, Korean, and Simplified Chinese targets and tone / style applied to Spanish, Italian, French, and Portuguese variants.
 
+### Fixed
+
+- **sync**: `deepl sync export --output <path>` (and other sync surfaces that call `assertPathWithinRoot`) no longer reject valid output paths under a project root that contains a symlink in its ancestor chain. The containment check now resolves both sides through `fs.realpath` before comparing, so a project under macOS `/tmp` (a symlink to `/private/tmp`) — or any other symlinked directory — works regardless of which form the user types or the engine captures. Symlink-based escape attempts (a symlink inside the project pointing outside) are now also rejected as a defense-in-depth bonus.
+
 ## [1.1.0] - 2026-04-23
 
 ### Added
