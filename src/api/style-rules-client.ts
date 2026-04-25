@@ -10,8 +10,10 @@ import {
   CreateCustomInstructionOptions,
   UpdateCustomInstructionOptions,
 } from '../types/index.js';
+import { ValidationError } from '../utils/errors.js';
 
 interface CustomInstructionWireShape {
+  id?: string;
   label: string;
   prompt: string;
   source_language?: string;
@@ -19,6 +21,7 @@ interface CustomInstructionWireShape {
 
 function mapCustomInstruction(wire: CustomInstructionWireShape): CustomInstruction {
   return {
+    ...(wire.id !== undefined && { id: wire.id }),
     label: wire.label,
     prompt: wire.prompt,
     ...(wire.source_language !== undefined && { sourceLanguage: wire.source_language }),
@@ -33,11 +36,7 @@ interface StyleRuleWireShape {
   creation_time: string;
   updated_time: string;
   configured_rules?: ConfiguredRules;
-  custom_instructions?: Array<{
-    label: string;
-    prompt: string;
-    source_language?: string;
-  }>;
+  custom_instructions?: CustomInstructionWireShape[];
 }
 
 function mapStyleRule(wire: StyleRuleWireShape): StyleRule {
@@ -188,10 +187,29 @@ export class StyleRulesClient extends HttpClient {
     return mapCustomInstruction(wire);
   }
 
+  /**
+   * Resolve a custom-instruction's server-assigned id from its user-facing label.
+   * The DeepL API's per-instruction endpoints (`GET`/`PUT`/`DELETE`
+   * `/custom_instructions/{instruction_id}`) take the UUID, but users address
+   * instructions by label. This helper does the lookup via a detailed
+   * `getStyleRule`. Throws ValidationError if no instruction with that label exists.
+   */
+  private async resolveInstructionId(styleId: string, label: string): Promise<string> {
+    const detailed = await this.getStyleRule(styleId, true) as StyleRuleDetailed;
+    const found = detailed.customInstructions.find(ci => ci.label === label);
+    if (!found?.id) {
+      throw new ValidationError(
+        `No custom instruction with label "${label}" found on style rule ${styleId}.`,
+      );
+    }
+    return found.id;
+  }
+
   async getCustomInstruction(styleId: string, label: string): Promise<CustomInstruction> {
+    const instructionId = await this.resolveInstructionId(styleId, label);
     const wire = await this.makeJsonRequest<CustomInstructionWireShape>(
       'GET',
-      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions/${encodeURIComponent(label)}`,
+      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions/${encodeURIComponent(instructionId)}`,
     );
     return mapCustomInstruction(wire);
   }
@@ -201,7 +219,9 @@ export class StyleRulesClient extends HttpClient {
     label: string,
     options: UpdateCustomInstructionOptions,
   ): Promise<CustomInstruction> {
-    const body: Record<string, unknown> = {};
+    const instructionId = await this.resolveInstructionId(styleId, label);
+    // The PUT body requires `label` even though `instruction_id` appears in the URL path.
+    const body: Record<string, unknown> = { label };
     if (options.prompt !== undefined) {
       body['prompt'] = options.prompt;
     }
@@ -210,16 +230,17 @@ export class StyleRulesClient extends HttpClient {
     }
     const wire = await this.makeJsonRequest<CustomInstructionWireShape>(
       'PUT',
-      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions/${encodeURIComponent(label)}`,
+      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions/${encodeURIComponent(instructionId)}`,
       body,
     );
     return mapCustomInstruction(wire);
   }
 
   async deleteCustomInstruction(styleId: string, label: string): Promise<void> {
+    const instructionId = await this.resolveInstructionId(styleId, label);
     await this.makeJsonRequest<void>(
       'DELETE',
-      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions/${encodeURIComponent(label)}`,
+      `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions/${encodeURIComponent(instructionId)}`,
     );
   }
 }

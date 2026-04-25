@@ -910,26 +910,49 @@ describe('Style Rules API Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('custom-instructions update then delete: 404 on subsequent get', async () => {
+    it('custom-instructions update then delete: lookup-then-act flow', async () => {
+      const instructionId = 'inst-uuid-1';
+
+      // 1. update: GET (lookup) + PUT
+      const lookupForUpdate = nock(FREE_API_URL)
+        .get('/v3/style_rules/sr-new')
+        .query({ detailed: true })
+        .reply(200, {
+          ...styleRuleWire,
+          configured_rules: {},
+          custom_instructions: [{ id: instructionId, label: 'tone', prompt: 'old' }],
+        });
       const updateScope = nock(FREE_API_URL)
-        .put('/v3/style_rules/sr-new/custom_instructions/tone', (body) => {
+        .put(`/v3/style_rules/sr-new/custom_instructions/${instructionId}`, (body) => {
+          expect(body.label).toBe('tone');
           expect(body.prompt).toBe('Be friendlier');
           return true;
         })
-        .reply(200, { label: 'tone', prompt: 'Be friendlier' });
+        .reply(200, { id: instructionId, label: 'tone', prompt: 'Be friendlier' });
 
       const updated = await styleRulesCommand.updateInstruction('sr-new', 'tone', {
         prompt: 'Be friendlier',
       });
       expect(updated.prompt).toBe('Be friendlier');
+      expect(lookupForUpdate.isDone()).toBe(true);
       expect(updateScope.isDone()).toBe(true);
 
+      // 2. delete: GET (lookup) + DELETE
+      const lookupForDelete = nock(FREE_API_URL)
+        .get('/v3/style_rules/sr-new')
+        .query({ detailed: true })
+        .reply(200, {
+          ...styleRuleWire,
+          configured_rules: {},
+          custom_instructions: [{ id: instructionId, label: 'tone', prompt: 'Be friendlier' }],
+        });
       const deleteScope = nock(FREE_API_URL)
-        .delete('/v3/style_rules/sr-new/custom_instructions/tone')
+        .delete(`/v3/style_rules/sr-new/custom_instructions/${instructionId}`)
         .reply(204);
 
       await expect(styleRulesCommand.removeInstruction('sr-new', 'tone'))
         .resolves.toBeUndefined();
+      expect(lookupForDelete.isDone()).toBe(true);
       expect(deleteScope.isDone()).toBe(true);
     });
 

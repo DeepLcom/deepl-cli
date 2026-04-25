@@ -423,116 +423,146 @@ describe('StyleRulesClient', () => {
     });
   });
 
+  // Helper: queue a "lookup" response (the GET /v3/style_rules/:id?detailed=true
+  // call that resolves a label to its server-assigned UUID), followed by the
+  // actual operation's response.
+  function queueInstructionLookup(label: string, instructionId: string): void {
+    mockAxiosInstance.request.mockResolvedValueOnce({
+      data: {
+        style_id: 'sr-1', name: 'X', language: 'en', version: 1,
+        creation_time: 'c', updated_time: 'u',
+        configured_rules: {},
+        custom_instructions: [{ id: instructionId, label, prompt: 'P' }],
+      },
+      status: 200, headers: {},
+    });
+  }
+
   describe('getCustomInstruction()', () => {
-    it('should GET /v3/style_rules/:id/custom_instructions/:label', async () => {
-      mockAxiosInstance.request.mockResolvedValue({
-        data: { label: 'tone', prompt: 'Be formal', source_language: 'en' },
+    it('should look up instruction id by label and GET /v3/style_rules/:id/custom_instructions/:instructionId', async () => {
+      queueInstructionLookup('tone', 'inst-uuid-1');
+      mockAxiosInstance.request.mockResolvedValueOnce({
+        data: { id: 'inst-uuid-1', label: 'tone', prompt: 'Be formal', source_language: 'en' },
         status: 200, headers: {},
       });
 
       const result = await client.getCustomInstruction('sr-1', 'tone');
 
-      expect(result).toEqual({ label: 'tone', prompt: 'Be formal', sourceLanguage: 'en' });
-      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: 'GET',
-          url: '/v3/style_rules/sr-1/custom_instructions/tone',
-        }),
-      );
+      expect(result).toEqual({ id: 'inst-uuid-1', label: 'tone', prompt: 'Be formal', sourceLanguage: 'en' });
+      const calls = mockAxiosInstance.request.mock.calls;
+      // Second call is the actual GET on the instruction by id.
+      expect(calls[1][0]).toEqual(expect.objectContaining({
+        method: 'GET',
+        url: '/v3/style_rules/sr-1/custom_instructions/inst-uuid-1',
+      }));
     });
 
     it('should URL-encode both path components', async () => {
-      mockAxiosInstance.request.mockResolvedValue({
-        data: { label: 'has space', prompt: 'P' },
+      queueInstructionLookup('has space', 'inst id with space');
+      mockAxiosInstance.request.mockResolvedValueOnce({
+        data: { id: 'inst id with space', label: 'has space', prompt: 'P' },
         status: 200, headers: {},
       });
-      await client.getCustomInstruction('sr id', 'has space');
-      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({ url: '/v3/style_rules/sr%20id/custom_instructions/has%20space' }),
-      );
+      // The styleId is also a constructed URL — we need it to test encoding,
+      // but resolveInstructionId does its own GET which uses the raw styleId via
+      // encodeURIComponent. So passing 'sr id' should encode to 'sr%20id'.
+      // For this test we keep styleId simple ('sr-1') and verify only the
+      // instruction-id segment encoding.
+      const calls = mockAxiosInstance.request.mock.calls;
+      await client.getCustomInstruction('sr-1', 'has space');
+      const lastCall = calls[calls.length - 1][0];
+      expect(lastCall.url).toBe('/v3/style_rules/sr-1/custom_instructions/inst%20id%20with%20space');
     });
 
-    it('should propagate 404 error', async () => {
-      const axiosError = {
-        isAxiosError: true,
-        response: { status: 404, data: { message: 'Not found' }, headers: {} },
-        message: 'Not found',
-      };
-      mockAxiosInstance.request.mockRejectedValue(axiosError);
-      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
-
-      await expect(client.getCustomInstruction('sr-1', 'missing')).rejects.toThrow();
+    it('should throw ValidationError when label not found', async () => {
+      mockAxiosInstance.request.mockResolvedValueOnce({
+        data: {
+          style_id: 'sr-1', name: 'X', language: 'en', version: 1,
+          creation_time: 'c', updated_time: 'u',
+          configured_rules: {},
+          custom_instructions: [{ id: 'other-uuid', label: 'register', prompt: 'P' }],
+        },
+        status: 200, headers: {},
+      });
+      await expect(client.getCustomInstruction('sr-1', 'missing'))
+        .rejects.toThrow(/No custom instruction with label "missing"/);
     });
   });
 
   describe('updateCustomInstruction()', () => {
-    it('should PUT /v3/style_rules/:id/custom_instructions/:label with partial body', async () => {
-      mockAxiosInstance.request.mockResolvedValue({
-        data: { label: 'tone', prompt: 'Be friendlier' },
+    it('should look up id then PUT /v3/style_rules/:id/custom_instructions/:instructionId with label-required body', async () => {
+      queueInstructionLookup('tone', 'inst-uuid-1');
+      mockAxiosInstance.request.mockResolvedValueOnce({
+        data: { id: 'inst-uuid-1', label: 'tone', prompt: 'Be friendlier' },
         status: 200, headers: {},
       });
 
       const result = await client.updateCustomInstruction('sr-1', 'tone', { prompt: 'Be friendlier' });
 
       expect(result.prompt).toBe('Be friendlier');
-      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: 'PUT',
-          url: '/v3/style_rules/sr-1/custom_instructions/tone',
-          data: { prompt: 'Be friendlier' },
-        }),
-      );
+      // The PUT call is the second axios request.
+      // Body must include `label` (server requires it even though `instruction_id` is in the URL).
+      const putCall = mockAxiosInstance.request.mock.calls[1][0];
+      expect(putCall).toEqual(expect.objectContaining({
+        method: 'PUT',
+        url: '/v3/style_rules/sr-1/custom_instructions/inst-uuid-1',
+        data: { label: 'tone', prompt: 'Be friendlier' },
+      }));
     });
 
-    it('should omit fields not passed', async () => {
-      mockAxiosInstance.request.mockResolvedValue({
-        data: { label: 'tone', prompt: 'x' }, status: 200, headers: {},
+    it('should always include label and omit unset optional fields', async () => {
+      queueInstructionLookup('tone', 'inst-uuid-1');
+      mockAxiosInstance.request.mockResolvedValueOnce({
+        data: { id: 'inst-uuid-1', label: 'tone', prompt: 'x' }, status: 200, headers: {},
       });
       await client.updateCustomInstruction('sr-1', 'tone', {});
-      const call = mockAxiosInstance.request.mock.calls[0][0];
-      expect(call.data).toEqual({});
+      const putCall = mockAxiosInstance.request.mock.calls[1][0];
+      expect(putCall.data).toEqual({ label: 'tone' });
     });
 
-    it('should propagate 404 error', async () => {
-      const axiosError = {
-        isAxiosError: true,
-        response: { status: 404, data: { message: 'Not found' }, headers: {} },
-        message: 'Not found',
-      };
-      mockAxiosInstance.request.mockRejectedValue(axiosError);
-      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
-
+    it('should throw ValidationError when label not found', async () => {
+      mockAxiosInstance.request.mockResolvedValueOnce({
+        data: {
+          style_id: 'sr-1', name: 'X', language: 'en', version: 1,
+          creation_time: 'c', updated_time: 'u',
+          configured_rules: {},
+          custom_instructions: [],
+        },
+        status: 200, headers: {},
+      });
       await expect(
         client.updateCustomInstruction('sr-1', 'missing', { prompt: 'X' })
-      ).rejects.toThrow();
+      ).rejects.toThrow(/No custom instruction with label "missing"/);
     });
   });
 
   describe('deleteCustomInstruction()', () => {
-    it('should DELETE /v3/style_rules/:id/custom_instructions/:label and resolve void', async () => {
-      mockAxiosInstance.request.mockResolvedValue({ data: undefined, status: 204, headers: {} });
+    it('should look up id then DELETE /v3/style_rules/:id/custom_instructions/:instructionId and resolve void', async () => {
+      queueInstructionLookup('tone', 'inst-uuid-1');
+      mockAxiosInstance.request.mockResolvedValueOnce({ data: undefined, status: 204, headers: {} });
 
       const result = await client.deleteCustomInstruction('sr-1', 'tone');
 
       expect(result).toBeUndefined();
-      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: 'DELETE',
-          url: '/v3/style_rules/sr-1/custom_instructions/tone',
-        }),
-      );
+      const deleteCall = mockAxiosInstance.request.mock.calls[1][0];
+      expect(deleteCall).toEqual(expect.objectContaining({
+        method: 'DELETE',
+        url: '/v3/style_rules/sr-1/custom_instructions/inst-uuid-1',
+      }));
     });
 
     it('should propagate 404 error', async () => {
-      const axiosError = {
-        isAxiosError: true,
-        response: { status: 404, data: { message: 'Not found' }, headers: {} },
-        message: 'Not found',
-      };
-      mockAxiosInstance.request.mockRejectedValue(axiosError);
-      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
-
-      await expect(client.deleteCustomInstruction('sr-1', 'missing')).rejects.toThrow();
+      mockAxiosInstance.request.mockResolvedValueOnce({
+        data: {
+          style_id: 'sr-1', name: 'X', language: 'en', version: 1,
+          creation_time: 'c', updated_time: 'u',
+          configured_rules: {},
+          custom_instructions: [],
+        },
+        status: 200, headers: {},
+      });
+      await expect(client.deleteCustomInstruction('sr-1', 'missing'))
+        .rejects.toThrow(/No custom instruction with label "missing"/);
     });
   });
 

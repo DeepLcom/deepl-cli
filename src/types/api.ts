@@ -152,6 +152,8 @@ export interface StyleRule {
 }
 
 export interface CustomInstruction {
+  /** Server-assigned UUID. Present on responses; not sent on create. Used as the URL path segment for get/update/delete. */
+  id?: string;
   label: string;
   prompt: string;
   sourceLanguage?: string;
