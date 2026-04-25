@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import type { ExtractedEntry, FormatRegistry, FormatParser, TranslatedEntry } from '../formats/index.js';
 import { ValidationError } from '../utils/errors.js';
 import { sanitizeForTerminal } from '../utils/control-chars.js';
@@ -70,12 +71,51 @@ export function resolveTargetPath(
 }
 
 /**
+ * Resolve `absPath` to its symlink-followed real path.
+ *
+ * `path.resolve` performs lexical normalization only — it does not follow
+ * symlinks — so two paths that point at the same inode via different
+ * symlink chains (e.g. `/tmp` vs `/private/tmp` on macOS) compare as
+ * different strings. `fs.realpathSync` follows symlinks, but only works
+ * for paths that already exist on disk; output paths typically don't.
+ *
+ * This helper handles the output-path case by walking up to the closest
+ * existing ancestor, realpath'ing that, and re-appending the unresolved
+ * tail. If no ancestor exists (rare — implies a path on a missing volume)
+ * it falls back to the lexically-resolved path.
+ */
+function realpathOrAncestor(absPath: string): string {
+  let current = path.resolve(absPath);
+  const tail: string[] = [];
+  while (true) {
+    try {
+      const real = fs.realpathSync(current);
+      return tail.length > 0 ? path.join(real, ...tail) : real;
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) {
+        return path.resolve(absPath);
+      }
+      tail.unshift(path.basename(current));
+      current = parent;
+    }
+  }
+}
+
+/**
  * Verify that an absolute path stays within the project root.
  * Throws ValidationError if path escapes.
+ *
+ * Both sides are resolved through `realpathOrAncestor` so symlinks are
+ * followed before the containment check. Without that, a project rooted
+ * under a symlinked directory (the common macOS case where `/tmp` is a
+ * symlink to `/private/tmp`) would reject paths the user typed in their
+ * unresolved form. Symlink-based escapes (a symlink inside the project
+ * pointing outside) are now also caught.
  */
 export function assertPathWithinRoot(absPath: string, projectRoot: string): void {
-  const resolvedRoot = path.resolve(projectRoot);
-  const resolvedPath = path.resolve(absPath);
+  const resolvedRoot = realpathOrAncestor(projectRoot);
+  const resolvedPath = realpathOrAncestor(absPath);
   if (!resolvedPath.startsWith(resolvedRoot + path.sep) && resolvedPath !== resolvedRoot) {
     throw new ValidationError(`Target path escapes project root: ${sanitizeForTerminal(absPath)}`);
   }
