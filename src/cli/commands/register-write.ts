@@ -9,6 +9,10 @@ import { isNoInput } from '../../utils/confirm.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
+const WRITE_LANGUAGES = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'ja', 'ko', 'pt', 'pt-BR', 'pt-PT', 'zh', 'zh-Hans'] as const;
+const WRITE_STYLES = ['default', 'simple', 'business', 'academic', 'casual', 'prefer_simple', 'prefer_business', 'prefer_academic', 'prefer_casual'] as const;
+const WRITE_TONES = ['default', 'enthusiastic', 'friendly', 'confident', 'diplomatic', 'prefer_enthusiastic', 'prefer_friendly', 'prefer_confident', 'prefer_diplomatic'] as const;
+
 export function registerWrite(
   program: Command,
   deps: Pick<ServiceDeps, 'createDeepLClient' | 'getConfigService' | 'getCacheService' | 'handleError'>,
@@ -20,10 +24,10 @@ export function registerWrite(
     .description('Improve text using DeepL Write API (grammar, style, tone)')
     .argument('[text]', 'Text to improve, file path, or read from stdin')
     .optionsGroup('Core Options:')
-    .option('-l, --lang <language>', 'Target language: de, en, en-GB, en-US, es, fr, it, pt, pt-BR, pt-PT (auto-detect if omitted)')
+    .option('-l, --lang <language>', `Target language: ${WRITE_LANGUAGES.join(', ')} (auto-detect if omitted)`)
     .option('--to <language>', 'Alias of --lang — accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`.')
-    .option('--style <style>', 'Writing style: default, simple, business, academic, casual, prefer_simple, prefer_business, prefer_academic, prefer_casual')
-    .option('--tone <tone>', 'Tone: default, enthusiastic, friendly, confident, diplomatic, prefer_enthusiastic, prefer_friendly, prefer_confident, prefer_diplomatic')
+    .option('--style <style>', `Writing style: ${WRITE_STYLES.join(', ')}`)
+    .option('--tone <tone>', `Tone: ${WRITE_TONES.join(', ')}`)
     .optionsGroup('Output Modes:')
     .option('-a, --alternatives', 'Show all alternative improvements')
     .option('-o, --output <file>', 'Write improved text to file')
@@ -87,19 +91,16 @@ Examples:
           text = stdinText;
         }
 
-        const validLanguages = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'pt', 'pt-BR', 'pt-PT'];
-        if (options.lang && !validLanguages.includes(options.lang)) {
-          throw new ValidationError(`Invalid language code: ${options.lang}. Valid options: ${validLanguages.join(', ')}`);
+        if (options.lang && !(WRITE_LANGUAGES as readonly string[]).includes(options.lang)) {
+          throw new ValidationError(`Invalid language code: ${options.lang}. Valid options: ${WRITE_LANGUAGES.join(', ')}`);
         }
 
-        const validStyles = ['default', 'simple', 'business', 'academic', 'casual', 'prefer_simple', 'prefer_business', 'prefer_academic', 'prefer_casual'];
-        if (options.style && !validStyles.includes(options.style)) {
-          throw new ValidationError(`Invalid writing style: ${options.style}. Valid options: ${validStyles.join(', ')}`);
+        if (options.style && !(WRITE_STYLES as readonly string[]).includes(options.style)) {
+          throw new ValidationError(`Invalid writing style: ${options.style}. Valid options: ${WRITE_STYLES.join(', ')}`);
         }
 
-        const validTones = ['default', 'enthusiastic', 'friendly', 'confident', 'diplomatic', 'prefer_enthusiastic', 'prefer_friendly', 'prefer_confident', 'prefer_diplomatic'];
-        if (options.tone && !validTones.includes(options.tone)) {
-          throw new ValidationError(`Invalid tone: ${options.tone}. Valid options: ${validTones.join(', ')}`);
+        if (options.tone && !(WRITE_TONES as readonly string[]).includes(options.tone)) {
+          throw new ValidationError(`Invalid tone: ${options.tone}. Valid options: ${WRITE_TONES.join(', ')}`);
         }
 
         if (options.style && options.tone) {

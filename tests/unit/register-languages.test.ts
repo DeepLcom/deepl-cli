@@ -30,7 +30,19 @@ const mockLanguagesCommandInstance = {
   getTargetLanguages: jest.fn(),
   formatLanguages: jest.fn(),
   formatAllLanguages: jest.fn(),
+  formatLanguagesTable: jest.fn().mockReturnValue('languages-table'),
+  formatAllLanguagesTable: jest.fn().mockReturnValue('all-languages-table'),
 };
+
+async function withTTY<T>(value: boolean, fn: () => Promise<T> | T): Promise<T> {
+  const original = process.stdout.isTTY;
+  Object.defineProperty(process.stdout, 'isTTY', { value, configurable: true, writable: true });
+  try {
+    return await fn();
+  } finally {
+    Object.defineProperty(process.stdout, 'isTTY', { value: original, configurable: true, writable: true });
+  }
+}
 
 jest.mock('../../src/cli/commands/languages', () => ({
   LanguagesCommand: jest.fn().mockImplementation(() => mockLanguagesCommandInstance),
@@ -133,6 +145,53 @@ describe('registerLanguages', () => {
       await program.parseAsync(['node', 'test', 'languages', '--format', 'json']);
       const expected = JSON.stringify({ source: sources, target: targets }, null, 2);
       expect(Logger.output).toHaveBeenCalledWith(expected);
+    });
+
+    it('should render cli-table3 output for all languages when --format table and stdout is a TTY', async () => {
+      const sources = [{ language: 'en', name: 'English' }];
+      const targets = [{ language: 'de', name: 'German' }];
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
+      mockLanguagesCommandInstance.formatAllLanguagesTable.mockReturnValue('all-languages-table');
+
+      await withTTY(true, async () => {
+        await program.parseAsync(['node', 'test', 'languages', '--format', 'table']);
+      });
+
+      expect(mockLanguagesCommandInstance.formatAllLanguagesTable).toHaveBeenCalledWith(sources, targets);
+      expect(mockLanguagesCommandInstance.formatAllLanguages).not.toHaveBeenCalled();
+      expect(Logger.output).toHaveBeenCalledWith('all-languages-table');
+      expect(Logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+    });
+
+    it('should render the source-only table when --format table --source on a TTY', async () => {
+      const sources = [{ language: 'en', name: 'English' }];
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
+      mockLanguagesCommandInstance.formatLanguagesTable.mockReturnValue('languages-table');
+
+      await withTTY(true, async () => {
+        await program.parseAsync(['node', 'test', 'languages', '--source', '--format', 'table']);
+      });
+
+      expect(mockLanguagesCommandInstance.formatLanguagesTable).toHaveBeenCalledWith(sources, 'source');
+      expect(mockLanguagesCommandInstance.formatLanguages).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to plain text with a warn when --format table in non-TTY', async () => {
+      const sources = [{ language: 'en', name: 'English' }];
+      const targets = [{ language: 'de', name: 'German' }];
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
+      mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue('plain text');
+
+      await withTTY(false, async () => {
+        await program.parseAsync(['node', 'test', 'languages', '--format', 'table']);
+      });
+
+      expect(mockLanguagesCommandInstance.formatAllLanguagesTable).not.toHaveBeenCalled();
+      expect(mockLanguagesCommandInstance.formatAllLanguages).toHaveBeenCalledWith(sources, targets);
+      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+      expect(Logger.output).toHaveBeenCalledWith('plain text');
     });
   });
 

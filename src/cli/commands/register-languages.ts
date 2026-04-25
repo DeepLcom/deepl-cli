@@ -26,6 +26,7 @@ Examples:
   $ deepl languages --source
   $ deepl languages --target
   $ deepl languages --format json
+  $ deepl languages --format table
 `)
     .action(async (options: { source?: boolean; target?: boolean; format?: string }) => {
       try {
@@ -57,25 +58,37 @@ Examples:
             ]);
             Logger.output(JSON.stringify({ source: sourceLanguages, target: targetLanguages }, null, 2));
           }
-        } else {
-          let output: string;
-
-          if (options.source && !options.target) {
-            const sourceLanguages = await languagesCommand.getSourceLanguages();
-            output = languagesCommand.formatLanguages(sourceLanguages, 'source');
-          } else if (options.target && !options.source) {
-            const targetLanguages = await languagesCommand.getTargetLanguages();
-            output = languagesCommand.formatLanguages(targetLanguages, 'target');
-          } else {
-            const [sourceLanguages, targetLanguages] = await Promise.all([
-              languagesCommand.getSourceLanguages(),
-              languagesCommand.getTargetLanguages(),
-            ]);
-            output = languagesCommand.formatAllLanguages(sourceLanguages, targetLanguages);
-          }
-
-          Logger.output(output);
+          return;
         }
+
+        const useTable = options.format === 'table';
+        if (useTable && !process.stdout.isTTY) {
+          Logger.warn('--format table is not supported in non-TTY output; falling back to plain text');
+        }
+        const wantTable = useTable && process.stdout.isTTY;
+
+        let output: string;
+        if (options.source && !options.target) {
+          const sourceLanguages = await languagesCommand.getSourceLanguages();
+          output = wantTable
+            ? languagesCommand.formatLanguagesTable(sourceLanguages, 'source')
+            : languagesCommand.formatLanguages(sourceLanguages, 'source');
+        } else if (options.target && !options.source) {
+          const targetLanguages = await languagesCommand.getTargetLanguages();
+          output = wantTable
+            ? languagesCommand.formatLanguagesTable(targetLanguages, 'target')
+            : languagesCommand.formatLanguages(targetLanguages, 'target');
+        } else {
+          const [sourceLanguages, targetLanguages] = await Promise.all([
+            languagesCommand.getSourceLanguages(),
+            languagesCommand.getTargetLanguages(),
+          ]);
+          output = wantTable
+            ? languagesCommand.formatAllLanguagesTable(sourceLanguages, targetLanguages)
+            : languagesCommand.formatAllLanguages(sourceLanguages, targetLanguages);
+        }
+
+        Logger.output(output);
       } catch (error) {
         handleError(error);
       }

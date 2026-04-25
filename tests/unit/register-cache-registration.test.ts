@@ -28,10 +28,21 @@ jest.mock('../../src/utils/logger', () => ({
 const mockCacheCommandInstance = {
   stats: jest.fn(),
   formatStats: jest.fn(),
+  formatStatsTable: jest.fn().mockReturnValue('stats-table'),
   clear: jest.fn(),
   enable: jest.fn(),
   disable: jest.fn(),
 };
+
+async function withTTY<T>(value: boolean, fn: () => Promise<T> | T): Promise<T> {
+  const original = process.stdout.isTTY;
+  Object.defineProperty(process.stdout, 'isTTY', { value, configurable: true, writable: true });
+  try {
+    return await fn();
+  } finally {
+    Object.defineProperty(process.stdout, 'isTTY', { value: original, configurable: true, writable: true });
+  }
+}
 
 jest.mock('../../src/cli/commands/cache', () => ({
   CacheCommand: jest.fn().mockImplementation(() => mockCacheCommandInstance),
@@ -95,6 +106,36 @@ describe('registerCache', () => {
       await program.parseAsync(['node', 'test', 'cache', 'stats', '--format', 'json']);
       expect(Logger.output).toHaveBeenCalledWith(JSON.stringify(stats, null, 2));
       expect(mockCacheCommandInstance.formatStats).not.toHaveBeenCalled();
+    });
+
+    it('should render cli-table3 output when --format table and stdout is a TTY', async () => {
+      const stats = { entries: 10, totalSize: 5000, maxSize: 1048576, enabled: true };
+      mockCacheCommandInstance.stats.mockResolvedValue(stats);
+      mockCacheCommandInstance.formatStatsTable.mockReturnValue('stats-table');
+
+      await withTTY(true, async () => {
+        await program.parseAsync(['node', 'test', 'cache', 'stats', '--format', 'table']);
+      });
+
+      expect(mockCacheCommandInstance.formatStatsTable).toHaveBeenCalledWith(stats);
+      expect(mockCacheCommandInstance.formatStats).not.toHaveBeenCalled();
+      expect(Logger.output).toHaveBeenCalledWith('stats-table');
+      expect(Logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+    });
+
+    it('should fall back to plain text with a warn when --format table in non-TTY', async () => {
+      const stats = { entries: 10, totalSize: 5000, maxSize: 1048576, enabled: true };
+      mockCacheCommandInstance.stats.mockResolvedValue(stats);
+      mockCacheCommandInstance.formatStats.mockReturnValue('plain stats');
+
+      await withTTY(false, async () => {
+        await program.parseAsync(['node', 'test', 'cache', 'stats', '--format', 'table']);
+      });
+
+      expect(mockCacheCommandInstance.formatStatsTable).not.toHaveBeenCalled();
+      expect(mockCacheCommandInstance.formatStats).toHaveBeenCalledWith(stats);
+      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+      expect(Logger.output).toHaveBeenCalledWith('plain stats');
     });
   });
 

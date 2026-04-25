@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import {
   resolveTargetPath,
   assertPathWithinRoot,
@@ -135,6 +138,65 @@ describe('assertPathWithinRoot()', () => {
       expect(msg).not.toContain('\x1b');
       expect(msg).toContain('?');
     }
+  });
+
+  describe('symlink resolution', () => {
+    let realRoot: string;
+    let symlinkedRoot: string;
+
+    beforeAll(() => {
+      // Create a real directory and a symlink pointing at it. The macOS /tmp
+      // → /private/tmp case is the canonical example; this test reproduces
+      // that shape portably under os.tmpdir().
+      realRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kxri-real-'));
+      symlinkedRoot = path.join(os.tmpdir(), `kxri-link-${process.pid}-${Date.now()}`);
+      fs.symlinkSync(realRoot, symlinkedRoot);
+    });
+
+    afterAll(() => {
+      try { fs.unlinkSync(symlinkedRoot); } catch { /* may not exist */ }
+      try { fs.rmSync(realRoot, { recursive: true, force: true }); } catch { /* best effort */ }
+    });
+
+    it('accepts a path under the realpath when projectRoot is the symlink', () => {
+      // projectRoot typed as the symlink, output path under the real form
+      // → must pass: both resolve through realpath to the same inode.
+      const outputViaReal = path.join(realRoot, 'out.xlf');
+      expect(() => assertPathWithinRoot(outputViaReal, symlinkedRoot)).not.toThrow();
+    });
+
+    it('accepts a path under the symlink when projectRoot is the realpath', () => {
+      // The reverse macOS case: loadSyncConfig captures the resolved root
+      // (/private/tmp/foo) but the user types --output via the symlink form
+      // (/tmp/foo/out.xlf). Both forms must resolve identically.
+      const outputViaSymlink = path.join(symlinkedRoot, 'out.xlf');
+      expect(() => assertPathWithinRoot(outputViaSymlink, realRoot)).not.toThrow();
+    });
+
+    it('rejects a symlink inside the project that points outside', () => {
+      // Defense-in-depth: symlink-based escapes are now caught by realpath
+      // resolution. A symlink inside the project pointing at a sibling
+      // path must be rejected.
+      const escapeTarget = fs.mkdtempSync(path.join(os.tmpdir(), 'kxri-escape-'));
+      const escapeLink = path.join(realRoot, 'escape');
+      fs.symlinkSync(escapeTarget, escapeLink);
+      try {
+        expect(() =>
+          assertPathWithinRoot(path.join(escapeLink, 'leak.xlf'), realRoot),
+        ).toThrow(ValidationError);
+      } finally {
+        fs.unlinkSync(escapeLink);
+        fs.rmSync(escapeTarget, { recursive: true, force: true });
+      }
+    });
+
+    it('accepts a non-existent path under an existing root (output-path case)', () => {
+      // Output paths typically do not exist when assertPathWithinRoot runs.
+      // The helper walks up to the closest existing ancestor and resolves
+      // through that, then re-appends the unresolved tail.
+      const futureOutput = path.join(realRoot, 'subdir', 'will-not-exist.xlf');
+      expect(() => assertPathWithinRoot(futureOutput, realRoot)).not.toThrow();
+    });
   });
 });
 

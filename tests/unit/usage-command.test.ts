@@ -388,4 +388,65 @@ describe('UsageCommand', () => {
       expect(formatted).toContain('Product Breakdown:');
     });
   });
+
+  describe('formatUsageTable', () => {
+    it('should render Resource/Used/Limit/Usage columns with the Characters row', () => {
+      const result = usageCommand.formatUsageTable({
+        characterCount: 250000,
+        characterLimit: 500000,
+      });
+      expect(result).toContain('Resource');
+      expect(result).toContain('Used');
+      expect(result).toContain('Limit');
+      expect(result).toContain('Usage');
+      expect(result).toContain('Characters');
+      expect(result).toContain('250,000');
+      expect(result).toContain('500,000');
+      expect(result).toContain('50.0%');
+    });
+
+    it('should report unlimited when characterLimit is zero', () => {
+      const result = usageCommand.formatUsageTable({
+        characterCount: 100,
+        characterLimit: 0,
+      });
+      expect(result).toContain('unlimited');
+      expect(result).toContain('—'); // pct() returns em-dash when limit=0
+    });
+
+    it('should add API key, account-unit, and STT rows when those fields are present', () => {
+      const result = usageCommand.formatUsageTable({
+        characterCount: 100,
+        characterLimit: 500,
+        accountUnitCount: 5,
+        accountUnitLimit: 10,
+        apiKeyUnitCount: 2,
+        apiKeyUnitLimit: 4,
+        speechToTextMillisecondsCount: 60000,
+        speechToTextMillisecondsLimit: 600000,
+      });
+      expect(result).toContain('Account units');
+      expect(result).toContain('API key units');
+      expect(result).toContain('Speech-to-text');
+    });
+
+    it('should append a Product Breakdown table when products are present', () => {
+      const result = usageCommand.formatUsageTable({
+        characterCount: 1000,
+        characterLimit: 10000,
+        products: [
+          { productType: 'translate', characterCount: 900, apiKeyCharacterCount: 800 },
+          {
+            productType: 'speech_to_text',
+            characterCount: 120000,
+            apiKeyCharacterCount: 120000,
+            billingUnit: 'milliseconds',
+          },
+        ],
+      });
+      expect(result).toContain('Product Breakdown:');
+      expect(result).toContain('translate');
+      expect(result).toContain('speech_to_text');
+    });
+  });
 });

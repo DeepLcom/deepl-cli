@@ -1,6 +1,6 @@
 {
   "name": "deepl-cli",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Next-generation CLI for DeepL translation and writing enhancement",
   "type": "module",
   "main": "dist/index.js",
@@ -31,6 +31,7 @@
     "test:unit": "jest tests/unit",
     "test:integration": "jest tests/integration",
     "test:e2e": "jest tests/e2e",
+    "test:debug": "jest --runInBand --detectOpenHandles --forceExit=false",
     "examples": "bash examples/run-all.sh",
     "examples:fast": "bash examples/run-all.sh --fast",
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",

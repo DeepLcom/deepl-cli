@@ -650,6 +650,40 @@ describe('DeepLClient', () => {
       }
     });
 
+    // Defense-in-depth: a malicious or buggy server could return a JSON body
+    // whose `message` field contains ANSI escape sequences or other terminal
+    // control characters. The HTTP client interpolates that field into
+    // user-facing error strings (`API error: ${message}`, `Server error
+    // (${status}): ${message}`); without sanitization, those bytes would
+    // print verbatim to the user's terminal. Mirrors the TMS-client guard at
+    // tests/unit/sync/tms-client.test.ts:253.
+    it('should strip ANSI escape sequences from a 4xx server message before interpolating into the thrown error', async () => {
+      const maliciousBody = { message: '\x1b[2J\x1b[0;0HCredentials stolen' };
+      nock(baseUrl).post('/v2/translate').reply(400, maliciousBody);
+
+      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
+        expect.objectContaining({ message: expect.not.stringContaining('\x1b') }),
+      );
+    });
+
+    it('should strip ANSI escape sequences from a 5xx server message before interpolating into the thrown error', async () => {
+      const maliciousBody = { message: '\x1b[31mInternal failure\x1b[0m' };
+      nock(baseUrl).post('/v2/translate').times(4).reply(500, maliciousBody);
+
+      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
+        expect.objectContaining({ message: expect.not.stringContaining('\x1b') }),
+      );
+    });
+
+    it('should strip bidi override codepoints from a server message', async () => {
+      const maliciousBody = { message: 'OK\u202EStolen' };
+      nock(baseUrl).post('/v2/translate').reply(400, maliciousBody);
+
+      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
+        expect.objectContaining({ message: expect.not.stringContaining('\u202E') }),
+      );
+    });
+
     it('should throw classified QuotaError for 456, not raw AxiosError', async () => {
       nock(baseUrl)
         .post('/v2/translate')
@@ -2027,7 +2061,7 @@ describe('DeepLClient', () => {
               version: 1,
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-01-02T00:00:00Z',
-              configured_rules: ['rule1', 'rule2'],
+              configured_rules: { punctuation: { quotation_mark: 'use_guillemets' } },
               custom_instructions: [
                 { label: 'Instruction 1', prompt: 'Do this', source_language: 'en' },
               ],
@@ -2039,7 +2073,7 @@ describe('DeepLClient', () => {
 
       expect(rules).toHaveLength(1);
       const detailed = rules[0] as any;
-      expect(detailed.configuredRules).toEqual(['rule1', 'rule2']);
+      expect(detailed.configuredRules).toEqual({ punctuation: { quotation_mark: 'use_guillemets' } });
       expect(detailed.customInstructions).toEqual([
         { label: 'Instruction 1', prompt: 'Do this', sourceLanguage: 'en' },
       ]);
