@@ -51,6 +51,27 @@ echo
 # BASIC GLOSSARY OPERATIONS
 # ═══════════════════════════════════════════════════════
 
+# Idempotent setup: previously-aborted runs may have left glossaries with
+# these demo names on the server (the script renames tech-terms-demo →
+# tech-terms-renamed → tech-final, so any of those three may be lingering),
+# and multiple aborted runs can leave duplicates of the same name. Delete
+# every matching glossary by UUID via the JSON listing so the run starts
+# from a clean slate.
+echo "0. Pre-run cleanup of any leftover demo glossaries"
+if command -v jq &>/dev/null; then
+  DEMO_NAMES='tech-terms-demo tech-terms-renamed tech-final business-terms-demo multi-demo'
+  for name in $DEMO_NAMES; do
+    deepl glossary list --format json 2>/dev/null \
+      | jq -r --arg n "$name" '.[] | select(.name == $n) | .glossary_id' 2>/dev/null \
+      | while read -r id; do
+        [[ -n "$id" ]] && deepl glossary delete "$id" --yes 2>/dev/null || true
+      done
+  done
+else
+  echo "   (jq not installed — skipping pre-run cleanup; install jq for full idempotency)"
+fi
+echo
+
 # Example 1: Create a glossary
 echo "1. Create tech glossary (EN → DE)"
 deepl glossary create tech-terms-demo en de "$SAMPLE_DIR/tech-glossary.tsv"
