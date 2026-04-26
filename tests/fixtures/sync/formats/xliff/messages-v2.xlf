@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="de">
+  <file id="f1">
+    <unit id="greeting">
+      <segment>
+        <source>Hello</source>
+        <target>Hallo</target>
+      </segment>
+    </unit>
+    <unit id="farewell">
+      <notes>
+        <note>Farewell message</note>
+      </notes>
+      <segment>
+        <source>Goodbye</source>
+        <target>Auf Wiedersehen</target>
+      </segment>
+    </unit>
+  </file>
+</xliff>

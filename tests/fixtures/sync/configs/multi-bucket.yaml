@@ -1,0 +1,14 @@
+version: 1
+source_locale: en
+target_locales:
+  - de
+  - fr
+  - es
+buckets:
+  json:
+    include:
+      - "locales/*.json"
+  yaml:
+    include:
+      - "config/*.yaml"
+      - "i18n/*.yml"

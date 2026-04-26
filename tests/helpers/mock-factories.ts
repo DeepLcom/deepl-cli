@@ -35,14 +35,32 @@ type MockShape<T> = {
 };
 
 // ---------------------------------------------------------------------------
+// Unconfigured-mock guard: critical methods default to throwing so that tests
+// which never supply explicit behavior do not silently pass against empty
+// strings / empty arrays. Callers override on a per-test basis with
+// `.mockResolvedValue(...)` or by passing the method in the factory overrides.
+// ---------------------------------------------------------------------------
+function unconfiguredAsync(methodName: string): jest.Mock {
+  return jest.fn().mockImplementation(() => {
+    return Promise.reject(
+      new Error(
+        `mock: ${methodName} was called without an explicit override. ` +
+          `Supply a mockResolvedValue or factory override so the assertion is non-vacuous.`,
+      ),
+    );
+  });
+}
+
+// ---------------------------------------------------------------------------
 // DeepLClient
 // ---------------------------------------------------------------------------
 function deepLClientDefaults(): MockShape<DeepLClient> {
   return {
-    translate: jest.fn().mockResolvedValue({ text: '', detectedSourceLang: undefined }),
-    translateBatch: jest.fn().mockResolvedValue([]),
+    translate: unconfiguredAsync('DeepLClient.translate'),
+    translateBatch: unconfiguredAsync('DeepLClient.translateBatch'),
     getUsage: jest.fn().mockResolvedValue({ character: { count: 0, limit: 0 } }),
     getSupportedLanguages: jest.fn().mockResolvedValue([]),
+    listTranslationMemories: jest.fn().mockResolvedValue([]),
     getGlossaryLanguages: jest.fn().mockResolvedValue([]),
     createGlossary: jest.fn().mockResolvedValue(null),
     listGlossaries: jest.fn().mockResolvedValue([]),
@@ -124,9 +142,10 @@ export function createMockCacheService(
 // ---------------------------------------------------------------------------
 function translationServiceDefaults(): MockShape<TranslationService> {
   return {
-    translate: jest.fn().mockResolvedValue({ text: '', detectedSourceLang: undefined }),
-    translateBatch: jest.fn().mockResolvedValue([]),
-    translateToMultiple: jest.fn().mockResolvedValue([]),
+    translate: unconfiguredAsync('TranslationService.translate'),
+    translateBatch: unconfiguredAsync('TranslationService.translateBatch'),
+    translateToMultiple: unconfiguredAsync('TranslationService.translateToMultiple'),
+    listTranslationMemories: jest.fn().mockResolvedValue([]),
     getUsage: jest.fn().mockResolvedValue({ character: { count: 0, limit: 0 } }),
     getSupportedLanguages: jest.fn().mockResolvedValue([]),
   };
@@ -191,7 +210,7 @@ export function createMockDocumentTranslationService(
 function fileTranslationServiceDefaults(): MockShape<FileTranslationService> {
   return {
     translateFile: jest.fn().mockResolvedValue(undefined),
-    translateFileToMultiple: jest.fn().mockResolvedValue([]),
+    translateFileToMultiple: unconfiguredAsync('FileTranslationService.translateFileToMultiple'),
     getSupportedFileTypes: jest.fn().mockReturnValue(['.txt', '.md', '.json', '.yaml', '.yml']),
     isSupportedFile: jest.fn().mockReturnValue(true),
   };
@@ -227,8 +246,8 @@ export function createMockWatchService(
 // ---------------------------------------------------------------------------
 function writeServiceDefaults(): MockShape<WriteService> {
   return {
-    improve: jest.fn().mockResolvedValue([]),
-    getBestImprovement: jest.fn().mockResolvedValue(null),
+    improve: unconfiguredAsync('WriteService.improve'),
+    getBestImprovement: unconfiguredAsync('WriteService.getBestImprovement'),
   };
 }
 

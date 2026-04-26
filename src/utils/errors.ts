@@ -60,3 +60,40 @@ export class VoiceError extends DeepLCLIError {
     super(message, suggestion ?? 'The Voice API requires a DeepL Pro or Enterprise plan. Visit https://www.deepl.com/pro to upgrade.');
   }
 }
+
+export class SyncDriftError extends DeepLCLIError {
+  readonly exitCode = 10;
+  constructor(message: string, suggestion?: string) {
+    super(message, suggestion ?? 'Run: deepl sync to update translations');
+  }
+}
+
+export class SyncConflictError extends DeepLCLIError {
+  readonly exitCode = 11;
+  constructor(message: string, suggestion?: string) {
+    super(
+      message,
+      suggestion ??
+        'Edit .deepl-sync.lock to resolve conflict markers manually, then run `deepl sync` to fill gaps.',
+    );
+    // Preserve the existing JSON error-envelope code "SyncConflict" (the
+    // class-name-based default would emit "SyncConflictError" and break the
+    // envelope schema tests). The envelope serializer reads `err.name`.
+    this.name = 'SyncConflict';
+  }
+}
+
+export class SyncPartialFailureError extends DeepLCLIError {
+  readonly exitCode = 12;
+  constructor(message: string, suggestion?: string) {
+    super(
+      message,
+      suggestion ??
+        'Inspect the per-locale error report in the sync output, then re-run `deepl sync --locale <failed>` to retry just the failed locales.',
+    );
+    // Match the SyncConflictError envelope-naming pattern so the JSON
+    // error envelope emits `code: "SyncPartialFailure"` rather than
+    // `SyncPartialFailureError`.
+    this.name = 'SyncPartialFailure';
+  }
+}

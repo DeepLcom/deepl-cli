@@ -8,13 +8,12 @@ import { safeReadFileSync } from '../../../utils/safe-read-file.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
 import {
   validateLanguageCodes,
-  buildTranslationOptions,
-  resolveGlossaryId,
   isTextBasedFile,
   isStructuredFile,
   getFileSize,
   SAFE_TEXT_SIZE_LIMIT,
 } from './translate-utils.js';
+import { buildBaseTranslationOptions, applySharedTmAndGlossary } from './translation-options-factory.js';
 import type { DocumentTranslationHandler } from './document-translation-handler.js';
 
 export class FileTranslationHandler {
@@ -37,10 +36,38 @@ export class FileTranslationHandler {
 
       const validTargetLangs = targetLangs as Language[];
 
+      if (options.glossary && !options.from) {
+        throw new ValidationError(
+          'Source language (--from) is required when using a glossary',
+          'Example: deepl translate --from en --to en,fr,es --glossary my-glossary file.txt'
+        );
+      }
+
+      if (options.translationMemory) {
+        if (!options.from) {
+          throw new ValidationError(
+            '--from is required when using --translation-memory',
+            'Example: deepl translate --from en --to en,fr,es --translation-memory my-tm file.txt'
+          );
+        }
+        if (options.modelType && options.modelType !== 'quality_optimized') {
+          throw new ValidationError(
+            '--translation-memory requires quality_optimized model type',
+            'Remove --model-type or set --model-type quality_optimized'
+          );
+        }
+      }
+
       const translationOptions = {
-        ...buildTranslationOptions(options),
+        ...buildBaseTranslationOptions(options),
         outputDir: options.output,
       };
+
+      await applySharedTmAndGlossary(translationOptions, options, {
+        glossaryService: this.ctx.glossaryService,
+        translationService: this.ctx.translationService,
+        targets: validTargetLangs,
+      });
 
       const results = await this.ctx.fileTranslationService.translateFileToMultiple(
         filePath,
@@ -81,7 +108,7 @@ export class FileTranslationHandler {
 
     validateLanguageCodes([options.to]);
 
-    const translationOptions = buildTranslationOptions(options);
+    const translationOptions = buildBaseTranslationOptions(options);
 
     await this.ctx.fileTranslationService.translateFile(
       filePath,
@@ -103,16 +130,35 @@ export class FileTranslationHandler {
       );
     }
 
+    if (options.translationMemory) {
+      if (!options.from) {
+        throw new ValidationError(
+          '--from is required when using --translation-memory',
+          'Example: deepl translate --from en --to de --translation-memory my-tm file.txt'
+        );
+      }
+      if (options.modelType && options.modelType !== 'quality_optimized') {
+        throw new ValidationError(
+          '--translation-memory requires quality_optimized model type',
+          'Remove --model-type or set --model-type quality_optimized'
+        );
+      }
+    }
+
+    const tmCache = new Map<string, string>();
+
     if (isStructuredFile(filePath)) {
       if (options.output === '-') {
         throw new ValidationError('Cannot stream structured file (JSON/YAML) translation to stdout. Use --output <file> instead.');
       }
 
-      const translationOptions = buildTranslationOptions(options);
-
-      if (options.glossary) {
-        translationOptions.glossaryId = await resolveGlossaryId(this.ctx.glossaryService, options.glossary);
-      }
+      const translationOptions = buildBaseTranslationOptions(options);
+      await applySharedTmAndGlossary(translationOptions, options, {
+        glossaryService: this.ctx.glossaryService,
+        translationService: this.ctx.translationService,
+        targets: [options.to as Language],
+        tmCache,
+      });
 
       await this.ctx.fileTranslationService.translateFile(
         filePath,
@@ -126,11 +172,13 @@ export class FileTranslationHandler {
 
     const content = safeReadFileSync(filePath, 'utf-8');
 
-    const translationOptions = buildTranslationOptions(options);
-
-    if (options.glossary) {
-      translationOptions.glossaryId = await resolveGlossaryId(this.ctx.glossaryService, options.glossary);
-    }
+    const translationOptions = buildBaseTranslationOptions(options);
+    await applySharedTmAndGlossary(translationOptions, options, {
+      glossaryService: this.ctx.glossaryService,
+      translationService: this.ctx.translationService,
+      targets: [options.to as Language],
+      tmCache,
+    });
 
     const result = await this.ctx.translationService.translate(
       content,

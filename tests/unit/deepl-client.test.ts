@@ -6,6 +6,7 @@
 import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client';
 import { HttpClient, USER_AGENT } from '../../src/api/http-client';
+import { Logger } from '../../src/utils/logger';
 
 describe('DeepLClient', () => {
   let client: DeepLClient;
@@ -1060,6 +1061,45 @@ describe('DeepLClient', () => {
       const proxyClient = new DeepLClient(apiKey);
       expect(proxyClient).toBeInstanceOf(DeepLClient);
       delete process.env['HTTPS_PROXY'];
+    });
+
+    it('should warn when an HTTP proxy fronts an HTTPS API endpoint', () => {
+      // The warning fires in HttpClient's constructor, not DeepLClient's
+      // (DeepLClient lazy-builds sub-clients on first access). Assert
+      // via HttpClient directly.
+      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation();
+      try {
+        new HttpClient(apiKey, {
+          proxy: {
+            protocol: 'http',
+            host: 'proxy.example.com',
+            port: 8080,
+          },
+        });
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/routing HTTPS traffic.*via HTTP proxy/i),
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('should NOT warn when HTTPS proxy fronts an HTTPS API endpoint', () => {
+      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation();
+      try {
+        new HttpClient(apiKey, {
+          proxy: {
+            protocol: 'https',
+            host: 'proxy.example.com',
+            port: 8443,
+          },
+        });
+        expect(warnSpy).not.toHaveBeenCalledWith(
+          expect.stringMatching(/routing HTTPS traffic.*via HTTP proxy/i),
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
 
     // Issue #2: Invalid proxy URL should throw error, not continue silently

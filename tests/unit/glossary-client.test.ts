@@ -192,6 +192,24 @@ describe('GlossaryClient', () => {
 
       expect(result).toEqual([]);
     });
+
+    it('suffixes thrown errors with the [listGlossaries] method context', async () => {
+      const axiosError = Object.assign(new Error('Request failed'), {
+        isAxiosError: true,
+        response: { status: 403, data: { message: 'Invalid API key' }, headers: {} },
+        config: {},
+      });
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+
+      let thrown: unknown;
+      try {
+        await client.listGlossaries();
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toMatch(/\[listGlossaries\]$/);
+    });
   });
 
   describe('getGlossary()', () => {

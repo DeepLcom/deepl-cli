@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
-**Version**: 1.0.0
-**Last Updated**: February 17, 2026
+**Version**: 1.1.0
+**Last Updated**: April 23, 2026
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -17,8 +17,10 @@ Complete reference for all DeepL CLI commands, options, and configuration.
     - [voice](#voice)
   - Resources
     - [glossary](#glossary)
+    - [tm](#tm)
   - Workflow
     - [watch](#watch)
+    - [sync](#sync)
     - [hooks](#hooks)
   - Configuration
     - [init](#init)
@@ -34,8 +36,8 @@ Complete reference for all DeepL CLI commands, options, and configuration.
   - Administration
     - [admin](#admin)
 - [Configuration](#configuration)
-- [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
+- [Exit Codes](#exit-codes)
 
 ---
 
@@ -174,8 +176,8 @@ Commands are organized into six groups, matching the `deepl --help` output:
 | Group              | Commands                                         | Description                                                               |
 | ------------------ | ------------------------------------------------ | ------------------------------------------------------------------------- |
 | **Core Commands**  | `translate`, `write`, `voice`                    | Translation, writing enhancement, and speech translation                  |
-| **Resources**      | `glossary`                                       | Manage translation glossaries                                             |
-| **Workflow**       | `watch`, `hooks`                                 | File watching and git hook automation                                     |
+| **Resources**      | `glossary`, `tm`                                 | Manage translation glossaries and translation memory                      |
+| **Workflow**       | `watch`, `sync`, `hooks`                         | File watching, project sync, and git hook automation                      |
 | **Configuration**  | `init`, `auth`, `config`, `cache`, `style-rules` | Setup wizard, authentication, settings, caching, and style rules          |
 | **Information**    | `usage`, `languages`, `detect`, `completion`     | API usage, supported languages, language detection, and shell completions |
 | **Administration** | `admin`                                          | Organization key management and usage analytics                           |
@@ -237,6 +239,8 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
 - `--tag-handling-version VERSION` - Tag handling version: `v1`, `v2`. v2 improves XML/HTML structure handling (requires `--tag-handling`)
 - `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
+- `--translation-memory NAME-OR-UUID` - Use translation memory by name or UUID (forces `quality_optimized` model). Requires `--from` because TMs are pinned to a specific source→target language pair. Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
+- `--tm-threshold N` - Minimum match score 0–100 (default 75, requires `--translation-memory`). Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--custom-instruction INSTRUCTION` - Custom instruction for translation (repeatable, max 10, max 300 chars each). Forces `quality_optimized` model. Cannot be used with `latency_optimized`.
 - `--style-id UUID` - Style rule ID for translation (Pro API only). Forces `quality_optimized` model. Cannot be used with `latency_optimized`. Use `deepl style-rules list` to see available IDs.
 - `--enable-beta-languages` - Include beta languages that are not yet stable (forward-compatibility with new DeepL languages)
@@ -448,8 +452,6 @@ deepl translate "Bank" --to es --context "Financial institution"
 deepl translate app.json --to es --context "E-commerce checkout flow"
 ```
 
-**Note:** The `--context` feature may not be supported by all DeepL API tiers. Check your API plan for context support availability.
-
 **Formality levels:**
 
 ```bash
@@ -526,6 +528,37 @@ deepl translate "API documentation" --to es --glossary tech-terms
 
 # Use glossary by ID
 deepl translate README.md --to fr --glossary abc-123-def-456 --output README.fr.md
+```
+
+**Translation memory usage:**
+
+Translation memories (TMs) are pinned to a source→target language pair, so `--from` is required. Passing `--translation-memory` forces `quality_optimized` model type; combining it with `--model-type latency_optimized` (or `prefer_quality_optimized`) exits 6 (ValidationError). TM files are authored and uploaded via the DeepL web UI; this CLI resolves the name-or-UUID against `GET /v3/translation_memories` and caches the resolution per run.
+
+```bash
+# Use translation memory by name (requires --from for pair resolution)
+deepl translate "Welcome to our product." --from en --to de --translation-memory my-tm
+
+# Use translation memory by UUID with a custom threshold
+deepl translate "Welcome to our product." --from en --to de \
+  --translation-memory 3f2504e0-4f89-41d3-9a0c-0305e82c3301 --tm-threshold 80
+
+# Combine glossary and translation memory on a single call
+deepl translate "Welcome to our product." --from en --to de \
+  --glossary tech-terms --translation-memory my-tm --tm-threshold 85
+```
+
+**Multi-target file translation with glossary / TM:**
+
+Both `--glossary` and `--translation-memory` apply to multi-target file translation (e.g. `--to en,fr,es`) and in that mode `--from` is required. Glossary name resolution works transparently across all target languages. Translation memory name resolution, however, requires a single TM that covers every requested target language pair — because each TM in DeepL is scoped to one source→target pair, using a TM name with differing multi-targets surfaces a `ConfigError` (exit 7). For multi-target TM use, pass the TM UUID directly.
+
+```bash
+# Glossary across multiple targets (name resolution works for all targets)
+deepl translate README.md --from en --to fr,es,it --glossary tech-terms --output ./out
+
+# Translation memory across multiple targets: pass a UUID to avoid the
+# single-pair name-resolution constraint
+deepl translate README.md --from en --to fr,es,it --output ./out \
+  --translation-memory 3f2504e0-4f89-41d3-9a0c-0305e82c3301
 ```
 
 **Cache control:**
@@ -640,6 +673,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 **Language:**
 
 - `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT`. Optional — omit to auto-detect the language and rephrase in the original language.
+- `--to LANG` - Long-only alias of `--lang`. Accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`; the short form `-t` is intentionally **not** bound here (it would collide with `deepl translate -t, --to`). Specifying both `--to` and `--lang` with different values exits with a `ValidationError`.
 
 **Style Options (mutually exclusive with tone):**
 
@@ -983,6 +1017,402 @@ deepl watch docs/ --to de,ja --git-staged --auto-commit
 ```
 
 > **Note:** `--git-staged` takes a one-time snapshot of staged files at startup. Files staged after the watcher starts are not included. Requires a git repository — exits with an error otherwise.
+
+---
+
+### sync
+
+Continuous localization engine for i18n file translation.
+
+#### Synopsis
+
+```bash
+deepl sync [OPTIONS]
+deepl sync init [OPTIONS]
+deepl sync status [OPTIONS]
+deepl sync validate [OPTIONS]
+deepl sync audit [OPTIONS]
+deepl sync export [OPTIONS]
+deepl sync resolve [OPTIONS]
+deepl sync push [OPTIONS]
+deepl sync pull [OPTIONS]
+```
+
+#### Description
+
+Scan, translate, and sync i18n resource files. The sync engine reads `.deepl-sync.yaml` for project configuration, diffs source strings against `.deepl-sync.lock` to detect changes, translates only new and modified strings via the DeepL API, and writes properly formatted target files.
+
+**Supported formats:** JSON, YAML, TOML, Gettext PO, Android XML, iOS Strings, Xcode String Catalog (.xcstrings), ARB, XLIFF, Java Properties, Laravel PHP arrays (.php).
+
+**Behavior:**
+
+- Reads configuration from `.deepl-sync.yaml` in the current directory
+- Tracks translation state in `.deepl-sync.lock` for incremental sync
+- Preserves format-specific structure (indentation, comments, metadata)
+- Displays per-locale progress as each translation completes
+- Exits with code [10](#exit-codes) when `--frozen` detects translation drift
+- Bounds `context.scan_paths` at `sync.max_scan_files` files (default 50,000) to prevent a misconfigured glob from wedging the CLI on huge source trees. Exceeding the cap throws a `ValidationError` with a suggestion to narrow the pattern or raise the cap; see [docs/SYNC.md](SYNC.md#sync).
+
+#### Options
+
+**Sync Mode:**
+
+- `--dry-run` - Preview changes without translating
+- `--frozen` - Fail (exit 10) if translations are missing or outdated; no API calls
+- `--ci` - Alias for `--frozen`
+- `--force` - Re-translate all strings, ignoring the lockfile. **WARNING:** also bypasses the `sync.max_characters` cost-cap preflight in `.deepl-sync.yaml`, so a forced run can re-bill every translated key and incur unexpected API costs. Run `deepl sync --dry-run` first to see the character estimate before forcing.
+
+  **Billing safety guards:**
+
+  - `--watch --force` is rejected at startup with a `ValidationError` (exit 6) to prevent unbounded billing from a forced re-translation on every file save.
+  - In an interactive terminal, `--force` prompts for confirmation before bypassing the cost cap. Pass `--yes` (`-y`) to skip the prompt in scripts.
+  - In CI environments (`CI=true`), `--force` requires an explicit `--yes`; otherwise the process exits 6 with an actionable hint naming the missing flag.
+
+**Filtering:**
+
+- `--locale LANGS` - Sync only specific target locales (comma-separated). **Note the split:** `sync --locale` is a *filter* over locales already declared in `.deepl-sync.yaml#target_locales` — it narrows which configured targets a run acts on. `deepl translate --to` is an *invocation-time specifier* — it names the target languages for a one-shot text translation. The sync engine owns the locale mapping via `.deepl-sync.yaml`; `translate` does not. A locale not in `target_locales` passed to `sync --locale` exits with a `ConfigError`; an unrecognized code passed to `translate --to` exits with `InvalidInput`.
+
+**Translation Quality:**
+
+- `--formality LEVEL` - Override formality: `default`, `more`, `less`, `prefer_more`, `prefer_less`, `formal`, `informal`
+- `--model-type TYPE` - Override model type: `quality_optimized`, `prefer_quality_optimized`, `latency_optimized`
+- `--glossary NAME-OR-ID` - Override glossary name or ID
+- `--scan-context` / `--no-scan-context` - Enable or disable source-code context scanning. Matches both string literal and template literal `t()` calls. When enabled, key paths are parsed into natural-language context descriptions, and HTML element types are detected from surrounding source code. Element types feed into `instruction_templates` (configured in `.deepl-sync.yaml`) for auto-generated `custom_instructions`. **Scope:** these flags override `context.enabled` in `.deepl-sync.yaml` only; all other `context.*` settings (`include`, `exclude`, `max_files`, etc.) continue to apply when scanning is enabled. **Note:** bare `--context` / `--no-context` on `deepl sync` is rejected with a ValidationError (exit 6) — the string-valued `--context "<text>"` flag only applies to `deepl translate`; sync's boolean toggle was renamed to `--scan-context` to avoid the collision.
+
+**Note:** `deepl sync` deliberately exposes no `--translation-memory` / `--tm-threshold` CLI override; configure translation memory via `translation.translation_memory` (and optional `translation.translation_memory_threshold`) in `.deepl-sync.yaml`, with per-locale overrides under `translation.locale_overrides`.
+
+**Performance:**
+
+- `--concurrency NUM` - Max parallel locale translations (default: 5)
+- `--batch` - Force plain batch mode (fastest, no context or instructions). All keys in batch API calls.
+- `--no-batch` - Force per-key mode (slowest, individual context per key). Default: section-batched context (~3.4x faster than per-key while preserving disambiguation context).
+
+**Git:**
+
+- `--auto-commit` - Auto-commit translated files after sync (requires git)
+
+**Review:**
+
+- `--flag-for-review` - Mark translations as `machine_translated` in lock file for human review
+
+**Watch:**
+
+- `--watch` - Watch source files and auto-sync on changes
+- `--debounce MS` - Debounce delay for watch mode (default: 500ms)
+
+**Output:**
+
+- `--format FORMAT` - Output format: `text` (default), `json`
+
+**Config:**
+
+- `--sync-config PATH` - Path to `.deepl-sync.yaml` (default: auto-detect)
+
+#### Subcommands
+
+##### `init`
+
+Interactive setup wizard that creates `.deepl-sync.yaml` by scanning the project for i18n files.
+
+**Auto-detected project types:** i18next / react-intl / vue-i18n / next-intl (JSON under `locales/` or `i18n/`), Rails (`config/locales/en.yml`), generic YAML i18n, Django / generic gettext (`locale/*/LC_MESSAGES/*.po`), Android (`res/values/strings.xml`), iOS / macOS (`*.lproj/Localizable.strings`), Xcode String Catalog (`Localizable.xcstrings` / `*.xcstrings`), Flutter (`pubspec.yaml` + `l10n/app_en.arb` or `*_en.arb`), Angular / CAT tools (XLIFF under `src/locale/` or root), go-i18n (`locales/en.toml` or `i18n/en.toml`), Java / Spring (`src/main/resources/messages_en.properties`), and Laravel (`composer.json` + `lang/en/*.php` or `resources/lang/en/*.php`). Detection is filesystem-only — no package manifests are parsed. See [docs/SYNC.md](./SYNC.md#deepl-sync-init) for the full detection matrix. Layouts outside these conventions need the four flags above.
+
+**Options:**
+
+- `--source-locale CODE` - Source locale code
+- `--target-locales CODES` - Target locales (comma-separated)
+- `--file-format TYPE` - File format: `json`, `yaml`, `toml`, `po`, `android_xml`, `ios_strings`, `xcstrings`, `arb`, `xliff`, `properties`, `laravel_php`
+- `--path GLOB` - Source file path or glob pattern
+- `--sync-config PATH` - Path to `.deepl-sync.yaml`
+
+`--source-lang` and `--target-langs` are accepted as deprecated aliases for one minor release and emit a stderr warning; they will be removed in the next major release. `deepl translate --target-lang` is unchanged — it operates on strings and stays aligned with the DeepL API's wire name.
+
+**Examples:**
+
+```bash
+# Interactive auto-detection
+deepl sync init
+
+# Non-interactive
+deepl sync init --source-locale en --target-locales de,fr,es --file-format json --path "locales/en.json"
+```
+
+##### `status`
+
+Show translation coverage for all target locales.
+
+**Options:**
+
+- `--locale LANGS` - Show status for specific locales only
+- `--format FORMAT` - Output format: `text` (default), `json`
+- `--sync-config PATH` - Path to `.deepl-sync.yaml`
+
+**JSON output contract (stable across 1.x):**
+
+```json
+{
+  "sourceLocale": "en",
+  "totalKeys": 142,
+  "skippedKeys": 1,
+  "locales": [
+    { "locale": "de", "complete": 140, "missing": 2, "outdated": 0, "coverage": 98 }
+  ]
+}
+```
+
+`skippedKeys` counts entries the parser tagged as untranslatable and excluded from the translation batch — currently only Laravel pipe-pluralization values (`|{n}`, `|[n,m]`, `|[n,*]`). Included in `totalKeys`.
+
+**stdout/stderr split (stable contract):** The success JSON payload is written to **stdout**, so `deepl sync status --format json > status.json` produces a parseable file. Diagnostic/progress logs stay on **stderr**. The same stdout/stderr split applies to `deepl sync --format json`, `deepl sync validate --format json`, and `deepl sync audit --format json`.
+
+**Error envelope (shared across every `sync` subcommand):** On failure, `--format json` emits the following JSON envelope to **stderr** and exits with the typed exit code:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "ConfigError",
+    "message": ".deepl-sync.yaml not found in current directory or any parent",
+    "suggestion": "Run `deepl sync init` to create one."
+  },
+  "exitCode": 7
+}
+```
+
+The `error.code` field matches the error class name (`ConfigError`, `ValidationError`, `SyncConflict`, `AuthError`, etc.). `error.suggestion` is present when the underlying `DeepLCLIError` carries one. `exitCode` matches the process exit code, so a caller can branch on either field. The envelope shape is identical for `deepl sync`, `sync push`, `sync pull`, `sync resolve`, `sync export`, `sync validate`, `sync audit`, `sync init`, and `sync status`.
+
+**`sync init --format json` success envelope:** For scripted project bootstrap, `deepl sync init --format json` emits a success envelope on **stdout** instead of the plain text confirmation:
+
+```json
+{
+  "ok": true,
+  "created": {
+    "configPath": "/absolute/path/.deepl-sync.yaml",
+    "sourceLocale": "en",
+    "targetLocales": ["de", "fr"],
+    "keys": 128
+  }
+}
+```
+
+**Casing convention:** CLI JSON output uses `camelCase`; the on-disk `.deepl-sync.lock` and `.deepl-sync.yaml` use `snake_case`. The two are deliberately kept separate — JSON output is a consumer contract; the files are authored configuration.
+
+**Examples:**
+
+```bash
+deepl sync status
+
+# JSON output
+deepl sync status --format json
+```
+
+**Sample output:**
+
+```
+Source: en (142 keys)
+
+  de  [###################.]  98%  (2 missing, 0 outdated)
+  fr  [####################]  100%  (0 missing, 0 outdated)
+  es  [###################.]  97%  (4 missing, 0 outdated)
+  ja  [##################..]  91%  (12 missing, 0 outdated)
+```
+
+##### `validate`
+
+Check translations for placeholder integrity and format consistency.
+
+**Options:**
+
+- `--locale LANGS` - Validate specific locales only
+- `--format FORMAT` - Output format: `text` (default), `json`
+- `--sync-config PATH` - Path to `.deepl-sync.yaml`
+
+**Examples:**
+
+```bash
+deepl sync validate
+
+# Validate only German
+deepl sync validate --locale de
+```
+
+**Sample output:**
+
+```
+Validation Results:
+
+  de:
+    ✓ 138/140 strings valid
+    ✗ 2 issues found:
+      - messages.welcome: placeholder {name} missing in translation
+      - errors.count: format specifier %d replaced with %s
+
+  fr:
+    ✓ 142/142 strings valid
+```
+
+##### `audit`
+
+Analyze translation consistency and detect terminology inconsistencies across target locales. "Audit" here means translation-consistency audit (detecting term divergence across locales), not security audit in the `npm audit` sense.
+
+**Options:**
+
+- `--format FORMAT` - Output format: `text` (default), `json`
+- `--sync-config PATH` - Path to `.deepl-sync.yaml`
+
+**Note:** Prior to the 1.1.0 release, this subcommand was prototyped as `glossary-report`; it never shipped in a tagged release under that name. The old name is rejected with an error pointing at the new form; no alias is kept.
+
+**JSON output sample:**
+
+```json
+{
+  "totalTerms": 1,
+  "inconsistencies": [
+    {
+      "sourceText": "Dashboard",
+      "locale": "de",
+      "translations": ["Armaturenbrett", "Dashboard"],
+      "files": ["locales/en/common.json", "locales/en/admin.json"]
+    }
+  ]
+}
+```
+
+The `translations` array contains the actual translated strings read from target files. If a target file is missing, the content hash falls back in its place.
+
+##### `export`
+
+Export source strings to XLIFF 1.2 for CAT tool handoff.
+
+**Options:**
+
+- `--locale LANGS` - Filter by locale (comma-separated)
+- `--output PATH` - Write to file instead of stdout. Path must stay within the project root; intermediate directories are created automatically
+- `--overwrite` - Required to overwrite an existing `--output` file. Without it, an existing file causes a non-zero exit and no write occurs
+- `--format FORMAT` - Output format: `text` (default), `json`. Success output is always XLIFF 1.2 regardless of format; `json` affects the **error** envelope on stderr (matching other sync subcommands) so script consumers can parse failure shape uniformly
+- `--sync-config PATH` - Path to `.deepl-sync.yaml`
+
+**Examples:**
+
+```bash
+# Print XLIFF to stdout (pipe to CAT tool, clipboard, etc.)
+deepl sync export
+
+# Write to a file (creates reports/ if needed)
+deepl sync export --output reports/handoff.xlf
+
+# Overwrite an existing file
+deepl sync export --output reports/handoff.xlf --overwrite
+
+# Rejected: path escapes the project root
+deepl sync export --output ../elsewhere.xlf
+```
+
+##### `resolve`
+
+Resolve git merge conflicts in `.deepl-sync.lock`.
+
+**Options:**
+
+- `--format FORMAT` - Output format: `text` (default), `json`
+- `--dry-run` - Preview conflict decisions without writing the lockfile
+- `--sync-config PATH` - Path to `.deepl-sync.yaml`
+
+**JSON success envelope (stable across 1.x):** `{ "ok": true, "resolved": <n>, "decisions": [...] }`
+
+##### `push`
+
+Push local translations to a TMS for human review.
+
+**Options:**
+
+- `--locale LANGS` - Push specific locales only
+- `--format FORMAT` - Output format: `text` (default), `json`
+- `--sync-config PATH` - Path to `.deepl-sync.yaml`
+
+**Requires TMS integration.** Add a `tms:` block to `.deepl-sync.yaml` (at minimum `enabled: true`, `server`, `project_id`) and supply credentials via the `TMS_API_KEY` or `TMS_TOKEN` environment variable. Running `push` without a configured `tms:` block exits 7 (ConfigError). See [docs/SYNC.md#tms-rest-contract](./SYNC.md#tms-rest-contract) for the full field reference and REST contract.
+
+**JSON success envelope (stable across 1.x):** `{ "ok": true, "pushed": <n>, "skipped": [...] }`
+
+##### `pull`
+
+Pull approved translations from a TMS back into local files.
+
+**Options:**
+
+- `--locale LANGS` - Pull specific locales only
+- `--format FORMAT` - Output format: `text` (default), `json`
+- `--sync-config PATH` - Path to `.deepl-sync.yaml`
+
+**Requires TMS integration.** Add a `tms:` block to `.deepl-sync.yaml` (at minimum `enabled: true`, `server`, `project_id`) and supply credentials via the `TMS_API_KEY` or `TMS_TOKEN` environment variable. Running `pull` without a configured `tms:` block exits 7 (ConfigError). See [docs/SYNC.md#tms-rest-contract](./SYNC.md#tms-rest-contract) for the full field reference and REST contract.
+
+**JSON success envelope (stable across 1.x):** `{ "ok": true, "pulled": <n>, "skipped": [...] }`
+
+#### Examples
+
+**Basic sync:**
+
+```bash
+# Sync all configured locales
+deepl sync
+
+# Preview what would be translated
+deepl sync --dry-run
+```
+
+**CI/CD (frozen mode):**
+
+```bash
+# Fail if translations are out of date (exit code 10)
+deepl sync --frozen
+```
+
+**Locale filtering:**
+
+```bash
+# Sync only German and French
+deepl sync --locale de,fr
+```
+
+**Force re-translation:**
+
+```bash
+# Re-translate everything, ignoring the lockfile
+deepl sync --force
+```
+
+**JSON output for scripting:**
+
+```bash
+deepl sync --format json
+deepl sync status --format json
+```
+
+**`deepl sync --format json` output contract (stable across 1.x):**
+
+The success payload is written to **stdout** as a single JSON object. The following fields are guaranteed stable and will not be renamed or removed in any 1.x release:
+
+| Field | Type | Description |
+|---|---|---|
+| `ok` | `boolean` | `true` if the sync completed without errors |
+| `totalKeys` | `number` | Total translation keys discovered across all source files |
+| `translated` | `number` | Keys translated during this run (summed across all locales) |
+| `skipped` | `number` | Keys skipped (already up-to-date, summed across all locales) |
+| `failed` | `number` | Keys that could not be translated (summed across all locales) |
+| `targetLocaleCount` | `number` | Number of target locales processed |
+| `estimatedCharacters` | `number` | Characters estimated for billing this run |
+| `estimatedCost` | `string \| undefined` | Human-readable cost estimate at Pro rate (e.g. `~$0.05`), omitted when zero |
+| `rateAssumption` | `"pro"` | Always `"pro"` — cost estimate uses the DeepL Pro per-character rate |
+| `dryRun` | `boolean` | `true` when `--dry-run` was passed; no translations were written |
+| `perLocale` | `Array<{locale, translated, skipped, failed}>` | Per-locale breakdown; each entry aggregates all files for that locale |
+
+No other fields appear in the output. Fields not listed above are internal and may change without notice.
+
+#### Notes
+
+- The `--frozen` flag makes no API calls. It compares the lockfile against source files and exits with code 10 if any translations are missing or outdated. This is the recommended mode for CI/CD pipelines.
+- The lockfile (`.deepl-sync.lock`) should be committed to version control. It enables incremental sync by tracking content hashes.
+- The `push` and `pull` subcommands require a TMS that implements the REST contract documented in [docs/SYNC.md](./SYNC.md#tms-rest-contract). All other commands work with the standard DeepL Translation API.
+- By default, keys with extracted context are grouped by i18n section and translated in section batches. Use `--no-batch` to force individual per-key context translation. Use `--batch` to force all keys into plain batch calls (no context).
+- See [docs/SYNC.md](./SYNC.md) for the complete sync guide including configuration schema, CI/CD recipes, and troubleshooting.
 
 ---
 
@@ -1502,6 +1932,53 @@ deepl glossary delete-dictionary abc-123-def-456 fr
 - **Multilingual glossaries only**: This command only works with multilingual glossaries that have multiple target languages. For single-target glossaries, use `deepl glossary delete` to remove the entire glossary.
 - **Preserves glossary**: Unlike `glossary delete`, this command preserves the glossary and only removes one language pair.
 - **Cannot delete last dictionary**: If the glossary would have zero dictionaries after deletion, the command fails. Use `glossary delete` to remove the entire glossary instead.
+
+---
+
+### tm
+
+Manage translation memories. TM files are authored and uploaded via the DeepL web UI; this command surfaces the account's TMs so you can copy a name or UUID into a translate or sync invocation without leaving the terminal.
+
+#### Synopsis
+
+```bash
+deepl tm list [options]
+```
+
+#### Subcommands
+
+##### `list`
+
+List all translation memories on the account.
+
+**Options:**
+
+- `--format <format>` - Output format: `text`, `json` (default: `text`)
+
+**Output Format (text):**
+
+- Per-TM: `name (source → target[, target...])` — e.g. `brand-terms (EN → DE, FR, JA)`. Control chars and zero-width codepoints are stripped from the rendered name to prevent a malicious API-returned name from corrupting the terminal via ANSI escape sequences.
+- Empty list: `No translation memories found`
+
+**Output Format (JSON):**
+
+Raw `TranslationMemory[]` as returned by `GET /v3/translation_memories` — fields: `translation_memory_id`, `name`, `source_language`, `target_languages` (array).
+
+**Example:**
+
+```bash
+deepl tm list
+# brand-terms (EN → DE, FR, JA)
+# legal-phrases (EN → FR)
+
+deepl tm list --format json | jq '.[] | select(.name == "brand-terms") | .translation_memory_id'
+# "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+```
+
+**Related:**
+
+- `deepl translate --translation-memory <name-or-uuid>` — use a listed TM on a single translate call.
+- `.deepl-sync.yaml` `translation.translation_memory` — configure a TM for a sync run (see [sync](#sync)).
 
 ---
 
@@ -2267,96 +2744,6 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 
 ---
 
-## Exit Codes
-
-The CLI uses semantic exit codes to enable intelligent error handling in scripts and CI/CD pipelines.
-
-| Code | Meaning              | Description                                                    | Retryable |
-| ---- | -------------------- | -------------------------------------------------------------- | --------- |
-| 0    | Success              | Operation completed successfully                               | N/A       |
-| 1    | General Error        | Unclassified error                                             | No        |
-| 2    | Authentication Error | Invalid or missing API key                                     | No        |
-| 3    | Rate Limit Error     | Too many requests (HTTP 429)                                   | Yes       |
-| 4    | Quota Exceeded       | Character limit reached (HTTP 456)                             | No        |
-| 5    | Network Error        | Connection timeout, refused, or service unavailable (HTTP 503) | Yes       |
-| 6    | Invalid Input        | Missing arguments, unsupported format, or validation error     | No        |
-| 7    | Configuration Error  | Invalid configuration file or settings                         | No        |
-| 8    | Check Failed         | Text needs improvement (`deepl write --check`)                 | No        |
-| 9    | Voice Error          | Voice API error (unsupported plan or session failure)          | No        |
-
-**Special Cases:**
-
-- `deepl write --check`: Exits with 0 if no changes needed, 8 (CheckFailed) if improvements suggested
-
-**Exit Code Classification:**
-
-The CLI automatically classifies errors based on error messages and HTTP status codes:
-
-- **Authentication (2)**: "authentication failed", "invalid api key", "api key not set"
-- **Rate Limit (3)**: "rate limit exceeded", "too many requests", HTTP 429. The CLI respects the `Retry-After` header when present, falling back to exponential backoff when absent
-- **Quota (4)**: "quota exceeded", "character limit reached", HTTP 456
-- **Network (5)**: "econnrefused", "enotfound", "econnreset", "etimedout", "socket hang up", "network error", "network timeout", "connection refused", "connection reset", "connection timed out", "service temporarily unavailable", HTTP 503
-- **Invalid Input (6)**: "cannot be empty", "not found", "unsupported", "not supported", "invalid", "is required", "expected", "cannot specify both"
-- **Configuration (7)**: "config file", "config directory", "configuration file", "configuration error", "failed to load config", "failed to save config", "failed to read config"
-
-**Trace IDs for Debugging:**
-
-API error messages include the DeepL `X-Trace-ID` header when available. This trace ID is useful for debugging and when contacting DeepL support:
-
-```bash
-deepl translate "Hello" --to es
-# Error: Authentication failed: Invalid API key (Trace ID: abc123-def456-ghi789)
-```
-
-The trace ID is also accessible programmatically via `DeepLClient.lastTraceId` after any API call.
-
-**CI/CD Integration:**
-
-Use exit codes to implement intelligent retry logic in scripts:
-
-```bash
-#!/bin/bash
-# Retry on rate limit or network errors only
-
-deepl translate "Hello" --to es
-EXIT_CODE=$?
-
-case $EXIT_CODE in
-  0)
-    echo "Success"
-    ;;
-  3|5)
-    echo "Retryable error (code $EXIT_CODE), retrying in 5 seconds..."
-    sleep 5
-    deepl translate "Hello" --to es
-    ;;
-  *)
-    echo "Non-retryable error (code $EXIT_CODE)"
-    exit $EXIT_CODE
-    ;;
-esac
-```
-
-**Checking Exit Codes:**
-
-```bash
-# Check if translation succeeded
-if deepl translate "Hello" --to es; then
-  echo "Translation succeeded"
-else
-  EXIT_CODE=$?
-  echo "Translation failed with exit code: $EXIT_CODE"
-fi
-
-# Handle specific errors
-deepl translate "Hello" --to invalid
-if [ $? -eq 6 ]; then
-  echo "Invalid input provided"
-fi
-```
-
----
-
 ## Environment Variables
 
 ### `DEEPL_API_KEY`
@@ -2416,6 +2803,236 @@ When set to `dumb`, disables colored output and progress spinners. This is autom
 export TERM=dumb
 ```
 
+### `HTTP_PROXY`
+
+Route outbound DeepL API requests through an HTTP proxy. Accepts a full URL including optional `username:password@` credentials. Also recognized as lowercase `http_proxy`.
+
+```bash
+export HTTP_PROXY="http://proxy.example.com:3128"
+```
+
+### `HTTPS_PROXY`
+
+Route outbound DeepL API requests through an HTTPS proxy. Takes precedence over `HTTP_PROXY` when both are set. Also recognized as lowercase `https_proxy`.
+
+```bash
+export HTTPS_PROXY="http://proxy.example.com:3128"
+```
+
+### `TMS_API_KEY`
+
+API key used by `deepl sync push` and `deepl sync pull` to authenticate against the external translation management system configured under `tms.server` in `.deepl-sync.yaml`. See [docs/SYNC.md](SYNC.md) for setup details.
+
+```bash
+export TMS_API_KEY="your-tms-api-key"
+```
+
+### `TMS_TOKEN`
+
+Bearer token alternative to `TMS_API_KEY`. Used by `deepl sync push` and `deepl sync pull` when the configured TMS server expects token-based auth. See [docs/SYNC.md](SYNC.md) for setup details.
+
+```bash
+export TMS_TOKEN="your-tms-token"
+```
+
+---
+
+## Exit Codes
+
+Every `deepl` command returns a specific exit code so CI/CD pipelines and shell scripts can react programmatically to failure modes. This appendix is the single source of truth for every code the CLI emits; per-command sections above surface exit codes inline where a flag has a code-specific contract (for example, `sync --frozen` exits 10 on drift).
+
+Exit codes come from three paths:
+
+1. **Typed errors** thrown in services, API clients, and commands subclass `DeepLCLIError`, each carrying a fixed `exitCode`. The CLI's top-level `handleError` uses that value directly.
+2. **HTTP responses** from the DeepL API are mapped to typed errors inside the HTTP client (401 → `AuthError`, 429 → `RateLimitError`, 456 → `QuotaError`, 503 → `NetworkError`).
+3. **Untyped errors** (plain `Error` instances that escape service boundaries) are classified by message against a curated list of substrings. When nothing matches, the CLI returns `1` (general error).
+
+Retryable codes are `3` (rate limit) and `5` (network); everything else should be treated as fatal by calling scripts.
+
+### Quick reference
+
+| Code | Name           | Meaning                                                        | Retryable |
+| ---- | -------------- | -------------------------------------------------------------- | --------- |
+| 0    | Success        | Command completed successfully                                 | N/A       |
+| 1    | GeneralError   | Unclassified failure (error escaped every typed handler and matched no classifier heuristic) | No |
+| 2    | AuthError      | Authentication failed or API key missing                       | No        |
+| 3    | RateLimitError | Rate limit exceeded (HTTP 429)                                 | Yes       |
+| 4    | QuotaError     | Monthly character quota exhausted (HTTP 456)                   | No        |
+| 5    | NetworkError   | Connection timeout, refused, reset, or 503 Service Unavailable | Yes       |
+| 6    | InvalidInput   | Missing or malformed arguments, unsupported format             | No        |
+| 7    | ConfigError    | Configuration file or value invalid                            | No        |
+| 8    | CheckFailed    | A check-style command found actionable issues                  | No        |
+| 9    | VoiceError     | Voice API unavailable or session failed                        | No        |
+| 10   | SyncDrift      | `sync --frozen` detected translations out of date              | No        |
+| 11   | SyncConflict   | `sync resolve` could not auto-resolve lockfile conflicts       | No        |
+| 12   | PartialFailure | `deepl sync` completed with at least one failed locale         | Yes (per-locale retry) |
+
+### Code details
+
+#### 0 — Success
+
+Command completed without error. Every `deepl` subcommand uses this code on success. Do not rely on stdout being non-empty — successful commands may emit only a status line (e.g., `deepl cache clear`).
+
+#### 1 — GeneralError
+
+Unclassified failure: emitted when an error escapes every typed handler and matches none of the message-classification heuristics in `src/utils/exit-codes.ts`. Any command can surface this. Treat it as "unknown failure — inspect stderr." Typically indicates an unexpected CLI bug or an error from a third-party dependency.
+
+**CI branching.** Exit 1 now means exactly "unclassified failure." Partial sync failure has its own code — see [#12 — PartialFailure](#12--partialfailure). A CI script can safely treat exit 1 as "CLI crashed, investigate" without misreading a partial-locale outcome.
+
+#### 2 — AuthError
+
+Authentication failed or no API key is available. Emitted by:
+
+- `deepl auth set-key`, `deepl auth test` when the key cannot be validated
+- Every command that touches the API (`translate`, `write`, `voice`, `glossary`, `usage`, `sync`, `tm list`, `admin`, etc.) when `DEEPL_API_KEY` is unset and no key is in the config file
+- HTTP 401/403 responses from the DeepL API
+
+Remediation: run `deepl init` or `deepl auth set-key <your-api-key>`, or export `DEEPL_API_KEY`.
+
+#### 3 — RateLimitError
+
+Too many requests in too short a window. Emitted when the DeepL API returns HTTP 429 from any endpoint (`/v2/translate`, `/v2/write`, `/v3/glossaries`, `/v3/translation_memories`, document upload/download, voice session). The CLI honors the `Retry-After` header when the server sends one, otherwise it falls back to exponential backoff for in-process retries. When all internal retries are exhausted, this code is returned to the caller.
+
+Remediation: wait and retry, or lower concurrency with `--concurrency` (batch translation, `sync`).
+
+#### 4 — QuotaError
+
+Monthly character quota has been exhausted (HTTP 456). Emitted by any command that consumes characters: `translate`, `write`, `voice`, and `sync`. Unlike rate limits, quota is not retryable within the billing window.
+
+Remediation: run `deepl usage` to see remaining characters, or upgrade the plan at <https://www.deepl.com/pro>.
+
+#### 5 — NetworkError
+
+Connection-layer failure or transient server outage. Covers TCP errors (`ECONNREFUSED`, `ENOTFOUND`, `ECONNRESET`, `ETIMEDOUT`, socket hang up), timeouts, proxy misconfigurations, and HTTP 503 responses. Also emitted for malformed or empty API responses thrown from `src/api/translation-client.ts` and `src/api/write-client.ts`, and from document/structured-file translation when the polling response is unparseable.
+
+Remediation: check connectivity and `HTTPS_PROXY` / `HTTP_PROXY` env vars, then retry.
+
+#### 6 — InvalidInput
+
+User-supplied input was rejected by client-side validation before any API call. This is the most commonly emitted non-zero code. Sites include:
+
+- `translate`: empty text, missing `--to`, unsupported file format, invalid `--tm-threshold` range, `--tm-threshold` without `--translation-memory`, `--translation-memory` without `--from`, mutually exclusive flags
+- `write`: empty text, `--style` and `--tone` used together, `--fix` without a file path, unsupported language for the Write API
+- `voice`: missing target languages, unsupported plan (pre-flight check), invalid session parameters
+- `glossary`: missing name/entries, entry not found on delete
+- `sync`: `--frozen` combined with `--force`, missing `.deepl-sync.yaml` (before `ConfigError` hands off)
+- `hooks`, `watch`, `detect`, `admin`, `init`, `completion`, `cache`: argument parsing, unknown subcommand, bad path, bad size
+
+Remediation: re-read the command's `--help` and the relevant section of this API reference.
+
+#### 7 — ConfigError
+
+The configuration file or a configuration value is invalid. Emitted by:
+
+- `deepl config set` with a key that is not in the schema, or a value that fails validation (invalid language code, invalid formality, invalid output format, non-positive cache size, non-HTTPS `baseUrl`, path-traversal attempts)
+- `deepl config get/unset` with a malformed key
+- Any command that loads the config file when the file fails to parse, is missing a required field, or specifies an unsupported version
+- `sync` when `.deepl-sync.yaml` is missing required fields, has invalid locales, or declares an unsupported version
+- `sync push` / `sync pull` when the remote TMS returns 401/403 (surfaced as `ConfigError` with a hint to check `TMS_API_KEY` / `TMS_TOKEN` and the relevant YAML fields)
+- `glossary` when a named glossary cannot be resolved
+
+Remediation: run `deepl config get` to inspect the current config, or edit the file directly and re-run.
+
+#### 8 — CheckFailed
+
+A check-style command ran successfully but found actionable issues. Exit is *soft* — `process.exitCode` is set so cleanup still runs. Emitted by:
+
+- `deepl write --check <text|file>` when the Write API would suggest changes (`needsImprovement === true`)
+- `deepl sync validate` when validation surfaces one or more `error`-severity issues (missing placeholders, format-string mismatches, unbalanced HTML tags)
+
+This code is specifically designed for CI use: a `check` step can block a merge without requiring try/catch wrappers in the calling script. It does **not** indicate a CLI failure.
+
+#### 9 — VoiceError
+
+Voice API call failed for a reason other than authentication, rate limiting, or generic network trouble. Emitted by:
+
+- `deepl voice` when the plan does not include the Voice API (pre-flight check in the voice client)
+- Voice streaming URL validation failures (`src/api/voice-client.ts`: non-`wss://` scheme, unparseable URL, disallowed host)
+- Voice session lifecycle errors (failed to open, unexpected close)
+
+Remediation: confirm Pro/Enterprise plan, verify the session configuration, and retry.
+
+#### 10 — SyncDrift
+
+`deepl sync --frozen` (alias `--ci`) detected that lockfile-tracked translations are out of date with the source strings. Emitted only from `src/cli/commands/sync/register-sync-root.ts` when the sync run completes and `result.driftDetected === true`. No other command returns this code.
+
+Use this in CI to fail a pull request when a contributor edits source strings without running `deepl sync`. Exit is **soft** — `process.exitCode` is set so in-flight writes, auto-commit steps, and any `--watch` event loop drain cleanly before the process exits.
+
+Remediation: run `deepl sync` locally and commit the updated translations and lockfile.
+
+#### 11 — SyncConflict
+
+`deepl sync resolve` found git merge conflict markers in `.deepl-sync.lock` but could not automatically resolve every region. Emitted only by `sync resolve` when auto-resolution leaves residual conflict markers or produces invalid JSON (typically because the conflict region split a JSON entry in two and neither side parses in isolation).
+
+Distinct from exit code 1 (GeneralError): a pipeline that runs `deepl sync resolve` in CI can now branch on `11` to route the lockfile to a human for manual merge without masking real CLI crashes under the same code.
+
+Remediation: open `.deepl-sync.lock`, resolve the remaining `<<<<<<<` / `=======` / `>>>>>>>` regions by hand, save, and run `deepl sync` to fill any gaps.
+
+#### 12 — PartialFailure
+
+`deepl sync` completed, but at least one locale failed while at least one other locale succeeded. The successful locales' target files and lockfile entries are written; the failed locales' files are not touched. Emitted only by `deepl sync` (the root command).
+
+Authentication failures (401/403) abort the entire run and surface as exit code 2 (`AuthError`) instead of 12. Network / rate-limit / quota failures bubble up as 5 / 3 / 4 respectively. Code 12 specifically means "the run proceeded far enough to attempt per-locale work, and the result was mixed."
+
+**Retry model.** Re-running `deepl sync` (optionally with `--locale <failed,comma,separated>`) will retry only the locales whose lockfile entries weren't written. This is the canonical CI recovery path: branch on `$? -eq 12`, inspect the per-locale error report, and re-run with the failed locales as the filter.
+
+The paired typed error is `SyncPartialFailureError` in `src/utils/errors.ts`; the JSON error envelope emits `code: "SyncPartialFailure"` to match the SyncConflict/SyncDrift naming convention.
+
+### Classification heuristics (fallback)
+
+When an error reaches the top-level handler without being a `DeepLCLIError`, the CLI inspects the error message (lowercased) and maps it to a code. These substring matches live in `classifyByMessage` in `src/utils/exit-codes.ts`:
+
+- **2 — AuthError**: `authentication failed`, `invalid api key`, `api key not set`, `api key is required`
+- **3 — RateLimitError**: `rate limit exceeded`, `too many requests`, `\b429\b`
+- **4 — QuotaError**: `quota exceeded`, `character limit reached`, `\b456\b`
+- **5 — NetworkError**: `econnrefused`, `enotfound`, `econnreset`, `etimedout`, `socket hang up`, `network error`, `network timeout`, `connection refused`, `connection reset`, `connection timed out`, `service temporarily unavailable`, `\b503\b`
+- **7 — ConfigError** (checked before 6 because config messages may contain "invalid"): `config file`, `config directory`, `configuration file`, `configuration error`, `failed to load config`, `failed to save config`, `failed to read config`
+- **6 — InvalidInput**: `cannot be empty`, `file not found`, `path not found`, `directory not found`, `not found in glossary`, `unsupported format`, `unsupported language`, `not supported for`, `not supported in`, `invalid target language`, `invalid source language`, `invalid language code`, `invalid glossary`, `invalid hook`, `invalid url`, `invalid size`, `is required`, `cannot specify both`
+- **9 — VoiceError**: `voice api`, `voice session`
+- **1 — GeneralError**: anything not matched above
+
+### Trace IDs
+
+API error messages include the DeepL `X-Trace-ID` header when available, which is useful when contacting DeepL support:
+
+```bash
+deepl translate "Hello" --to es
+# Error: Authentication failed: Invalid API key (Trace ID: abc123-def456-ghi789)
+```
+
+The trace ID is also accessible programmatically via `DeepLClient.lastTraceId` after any API call.
+
+### Shell handling examples
+
+Retry only on retryable codes (`3` and `5`):
+
+```bash
+#!/bin/bash
+deepl translate "Hello" --to es
+case $? in
+  0) echo "Success" ;;
+  3|5) sleep 5 && deepl translate "Hello" --to es ;;
+  *) echo "Non-retryable error ($?)"; exit $? ;;
+esac
+```
+
+Fail a CI build when translations drift:
+
+```bash
+deepl sync --frozen || {
+  code=$?
+  [ $code -eq 10 ] && echo "::error::Translation drift — run 'deepl sync' locally" >&2
+  exit $code
+}
+```
+
+Block a merge when `deepl write --check` flags a file:
+
+```bash
+deepl write --check README.md
+[ $? -eq 8 ] && echo "Write suggests improvements; run: deepl write --fix README.md" >&2
+```
+
 ---
 
 ## See Also
@@ -2425,5 +3042,5 @@ export TERM=dumb
 
 ---
 
-**Last Updated**: February 17, 2026
-**DeepL CLI Version**: 1.0.0
+**Last Updated**: April 20, 2026
+**DeepL CLI Version**: 1.1.0

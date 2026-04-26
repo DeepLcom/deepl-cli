@@ -29,12 +29,17 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 ### Resources
 
 - [Glossaries](./15-glossaries.sh) - Managing glossaries for consistent terminology
+- [Translation Memory Listing](./33-tm-list.sh) — List translation memories on your account
 
 ### Workflow
 
 - [Watch Mode](./16-watch-mode.sh) - Real-time file monitoring and auto-translation
 - [Git Hooks Integration](./17-git-hooks.sh) - Automating translation validation in git workflow
 - [CI/CD Integration](./18-cicd-integration.sh) - Using DeepL CLI in automated workflows
+- [Sync — Basic Usage](./30-sync-basic.sh) - Scanning, diffing, and syncing i18n locale files
+- [Sync — CI/CD Integration](./31-sync-ci.sh) - Using deepl sync in automated pipelines
+- [Sync — Live Validation](./32-sync-live-validation.sh) - Comprehensive end-to-end validation of all sync features
+- [Sync — Laravel PHP arrays](./34-sync-laravel-php.sh) - `laravel_php` format parser: AST allowlist, span-surgical reconstruct, pipe-pluralization warning gate, `sync.limits` caps
 
 ### Configuration
 
@@ -109,4 +114,4 @@ The `sample-files/` directory contains sample documents used in the examples.
 
 ## Contributing Examples
 
-Have a useful example? Please contribute! See [../CLAUDE.md](../CLAUDE.md) for guidelines.
+Have a useful example? Please contribute! See [../CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.

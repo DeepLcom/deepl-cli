@@ -257,6 +257,150 @@ describe('TextTranslationHandler', () => {
       ).rejects.toThrow('Source language (--from) is required');
     });
 
+    describe('--translation-memory', () => {
+      const TM_UUID = '11111111-2222-3333-4444-555555555555';
+
+      it('throws ValidationError (exit 6) when --translation-memory used without --from', async () => {
+        const err = await handler
+          .translateText('Hello', defaultOptions({ translationMemory: 'my-tm' }))
+          .catch(e => e);
+        expect(err).toBeInstanceOf(ValidationError);
+        expect((err as ValidationError).exitCode).toBe(6);
+        expect((err as Error).message).toContain('--from is required when using --translation-memory');
+      });
+
+      it('throws ValidationError (exit 6) when combined with latency_optimized', async () => {
+        const err = await handler
+          .translateText('Hello', defaultOptions({
+            from: 'en', translationMemory: 'my-tm', modelType: 'latency_optimized',
+          }))
+          .catch(e => e);
+        expect(err).toBeInstanceOf(ValidationError);
+        expect((err as ValidationError).exitCode).toBe(6);
+        expect((err as Error).message).toContain('requires quality_optimized model type');
+      });
+
+      it('resolves TM name via listTranslationMemories and passes resolved UUID to translate()', async () => {
+        mocks.translationService.listTranslationMemories.mockResolvedValue([
+          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        ]);
+
+        await handler.translateText('Hello', defaultOptions({
+          from: 'en', translationMemory: 'my-tm',
+        }));
+
+        expect(mocks.translationService.listTranslationMemories).toHaveBeenCalledTimes(1);
+        expect(mocks.translationService.translate).toHaveBeenCalledWith(
+          'Hello',
+          expect.objectContaining({
+            targetLang: 'de',
+            translationMemoryId: TM_UUID,
+            modelType: 'quality_optimized',
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('passes --tm-threshold through as translationMemoryThreshold', async () => {
+        mocks.translationService.listTranslationMemories.mockResolvedValue([
+          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        ]);
+
+        await handler.translateText('Hello', defaultOptions({
+          from: 'en', translationMemory: 'my-tm', tmThreshold: 85,
+        }));
+
+        expect(mocks.translationService.translate).toHaveBeenCalledWith(
+          'Hello',
+          expect.objectContaining({ translationMemoryThreshold: 85 }),
+          expect.any(Object)
+        );
+      });
+
+      it('UUID fast-path: does NOT call listTranslationMemories when a UUID is passed', async () => {
+        await handler.translateText('Hello', defaultOptions({
+          from: 'en', translationMemory: TM_UUID,
+        }));
+
+        expect(mocks.translationService.listTranslationMemories).not.toHaveBeenCalled();
+        expect(mocks.translationService.translate).toHaveBeenCalledWith(
+          'Hello',
+          expect.objectContaining({ translationMemoryId: TM_UUID }),
+          expect.any(Object)
+        );
+      });
+
+      it('forces modelType=quality_optimized when --translation-memory set and no --model-type given', async () => {
+        mocks.translationService.listTranslationMemories.mockResolvedValue([
+          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        ]);
+
+        await handler.translateText('Hello', defaultOptions({
+          from: 'en', translationMemory: 'my-tm',
+        }));
+
+        expect(mocks.translationService.translate).toHaveBeenCalledWith(
+          'Hello',
+          expect.objectContaining({ modelType: 'quality_optimized' }),
+          expect.any(Object)
+        );
+      });
+
+      describe('multi-target', () => {
+        it('lists translation memories exactly once regardless of target count', async () => {
+          mocks.translationService.listTranslationMemories.mockResolvedValue([
+            { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+          ]);
+          mocks.translationService.translateToMultiple.mockResolvedValue([
+            { targetLang: 'de' as any, text: 'Hallo' },
+            { targetLang: 'de' as any, text: 'Hallo' },
+            { targetLang: 'de' as any, text: 'Hallo' },
+          ]);
+
+          await handler.translateText('Hello', defaultOptions({
+            from: 'en', to: 'de,de,de', translationMemory: 'my-tm',
+          }));
+
+          expect(mocks.translationService.listTranslationMemories).toHaveBeenCalledTimes(1);
+          expect(mocks.translationService.translateToMultiple).toHaveBeenCalledWith(
+            'Hello',
+            ['de', 'de', 'de'],
+            expect.objectContaining({
+              translationMemoryId: TM_UUID,
+              modelType: 'quality_optimized',
+            })
+          );
+        });
+
+        it('does NOT warn about --translation-memory or --tm-threshold as ignored options', async () => {
+          const { Logger } = jest.requireMock('../../src/utils/logger');
+          mocks.translationService.listTranslationMemories.mockResolvedValue([
+            { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+          ]);
+          mocks.translationService.translateToMultiple.mockResolvedValue([
+            { targetLang: 'de' as any, text: 'Hallo' },
+          ]);
+
+          await handler.translateText('Hello', defaultOptions({
+            from: 'en', to: 'de,de', translationMemory: 'my-tm', tmThreshold: 80,
+          }));
+
+          const warnCalls = (Logger.warn as jest.Mock).mock.calls.map(c => c[0] as string);
+          expect(warnCalls.some(m => m.includes('--translation-memory'))).toBe(false);
+          expect(warnCalls.some(m => m.includes('--tm-threshold'))).toBe(false);
+        });
+
+        it('throws ValidationError when --translation-memory used without --from in multi-target', async () => {
+          const err = await handler
+            .translateText('Hello', defaultOptions({ to: 'de,fr', translationMemory: 'my-tm' }))
+            .catch(e => e);
+          expect(err).toBeInstanceOf(ValidationError);
+          expect((err as ValidationError).exitCode).toBe(6);
+          expect((err as Error).message).toContain('--from is required when using --translation-memory');
+        });
+      });
+    });
+
     describe('format output', () => {
       it('should return JSON string for format=json', async () => {
         const result = await handler.translateText('Hello', defaultOptions({ format: 'json' }));
@@ -265,14 +409,52 @@ describe('TextTranslationHandler', () => {
       });
 
       it('should return table for format=table with multi-target', async () => {
-        mocks.translationService.translateToMultiple.mockResolvedValue([
-          { targetLang: 'de' as any, text: 'Hallo' },
-          { targetLang: 'fr' as any, text: 'Bonjour' },
-        ]);
+        const originalIsTTY = process.stdout.isTTY;
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: true,
+          configurable: true,
+          writable: true,
+        });
+        try {
+          mocks.translationService.translateToMultiple.mockResolvedValue([
+            { targetLang: 'de' as any, text: 'Hallo' },
+            { targetLang: 'fr' as any, text: 'Bonjour' },
+          ]);
 
-        const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
-        expect(result).toContain('DE');
-        expect(result).toContain('FR');
+          const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
+          expect(result).toContain('DE');
+          expect(result).toContain('FR');
+        } finally {
+          Object.defineProperty(process.stdout, 'isTTY', {
+            value: originalIsTTY,
+            configurable: true,
+            writable: true,
+          });
+        }
+      });
+
+      it('should fall back to plain text for format=table when stdout is not a TTY', async () => {
+        const originalIsTTY = process.stdout.isTTY;
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: false,
+          configurable: true,
+          writable: true,
+        });
+        try {
+          mocks.translationService.translateToMultiple.mockResolvedValue([
+            { targetLang: 'de' as any, text: 'Hallo' },
+            { targetLang: 'fr' as any, text: 'Bonjour' },
+          ]);
+
+          const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
+          expect(result).toBe('[de] Hallo\n[fr] Bonjour');
+        } finally {
+          Object.defineProperty(process.stdout, 'isTTY', {
+            value: originalIsTTY,
+            configurable: true,
+            writable: true,
+          });
+        }
       });
 
       it('should append billed characters metadata when present', async () => {

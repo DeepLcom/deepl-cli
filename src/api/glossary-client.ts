@@ -52,12 +52,16 @@ export class GlossaryClient extends HttpClient {
   }
 
   async listGlossaries(): Promise<GlossaryInfo[]> {
-    const response = await this.makeRequest<{ glossaries: GlossaryApiResponse[] }>(
-      'GET',
-      '/v3/glossaries'
-    );
+    try {
+      const response = await this.makeRequest<{ glossaries: GlossaryApiResponse[] }>(
+        'GET',
+        '/v3/glossaries'
+      );
 
-    return (response.glossaries || []).map(normalizeGlossaryInfo);
+      return (response.glossaries || []).map(normalizeGlossaryInfo);
+    } catch (error) {
+      throw this.handleError(error, 'listGlossaries');
+    }
   }
 
   async getGlossary(glossaryId: string): Promise<GlossaryInfo> {

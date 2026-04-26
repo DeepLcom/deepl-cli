@@ -1,0 +1,37 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "greeting": {
+      "comment": "Welcome message",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hello"
+          }
+        }
+      }
+    },
+    "farewell": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goodbye"
+          }
+        }
+      }
+    },
+    "welcome": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome"
+          }
+        }
+      }
+    }
+  }
+}

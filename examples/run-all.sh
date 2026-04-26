@@ -66,10 +66,15 @@ EXAMPLES=(
   "14-voice.sh"
   # Resources
   "15-glossaries.sh"
+  "33-tm-list.sh"
   # Workflow
   "16-watch-mode.sh"
   "17-git-hooks.sh"
   "18-cicd-integration.sh"
+  "30-sync-basic.sh"
+  "31-sync-ci.sh"
+  "32-sync-live-validation.sh"
+  "34-sync-laravel-php.sh"
   # Configuration
   "19-configuration.sh"
   "20-custom-config-files.sh"
@@ -114,6 +119,10 @@ if [ "$FAST_MODE" = true ]; then
     "15-glossaries.sh"
     # Workflow (watch/hooks skipped)
     "18-cicd-integration.sh"
+    "30-sync-basic.sh"
+    "31-sync-ci.sh"
+    "32-sync-live-validation.sh"
+    "34-sync-laravel-php.sh"
     # Configuration
     "19-configuration.sh"
     "20-custom-config-files.sh"

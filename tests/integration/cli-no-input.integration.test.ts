@@ -32,7 +32,7 @@ describe('--no-input flag', () => {
       const result = runCLIExpectError('deepl --no-input write "test text" --interactive');
 
       expect(result.status).toBe(6);
-      expect(result.output).toContain('not supported in non-interactive mode');
+      expect(result.output).toContain('requires an interactive terminal');
     });
   });
 

@@ -6,24 +6,25 @@ import { execSync } from 'child_process';
 import * as path from 'path';
 
 describe('CLI did-you-mean suggestions', () => {
-  const cliPath = path.resolve(__dirname, '../../src/cli/index.ts');
+  // Use the compiled CLI (same as every other e2e test). Previously this test
+  // invoked the TS source via `node --loader ts-node/esm`, which added
+  // 1.5-2s of cold-start overhead per call and pushed the 10s execSync
+  // timeout over the edge under full-suite parallelism.
+  const cliPath = path.resolve(__dirname, '../../dist/cli/index.js');
 
   function runCLI(args: string): { stdout: string; stderr: string; exitCode: number } {
     try {
-      const stdout = execSync(
-        `node --loader ts-node/esm "${cliPath}" ${args}`,
-        {
-          encoding: 'utf-8',
-          env: { ...process.env, NODE_NO_WARNINGS: '1', NO_COLOR: '1' },
-          timeout: 10000,
-        }
-      );
+      const stdout = execSync(`node "${cliPath}" ${args}`, {
+        encoding: 'utf-8',
+        env: { ...process.env, NODE_NO_WARNINGS: '1', NO_COLOR: '1' },
+        timeout: 10000,
+      });
       return { stdout, stderr: '', exitCode: 0 };
     } catch (error: any) {
       return {
         stdout: (error.stdout as string) ?? '',
         stderr: (error.stderr as string) ?? '',
-        exitCode: error.status as number,
+        exitCode: (error.status as number) ?? 1,
       };
     }
   }

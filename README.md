@@ -10,8 +10,9 @@
 ## 🌟 Key Features
 
 - **🌍 Translation** - High-quality translation using DeepL's next-gen LLM
+- **🔄 Continuous Localization (`deepl sync`)** - Incremental i18n file sync with 11 format parsers
 - **📄 Document Translation** - Translate PDF, DOCX, PPTX, XLSX with formatting preservation
-- **🎙️ Voice Translation** - Real-time speech translation via WebSocket streaming (Voice API)
+- **🎙️ Voice Translation (Pro/Enterprise)** - Real-time speech translation via WebSocket streaming (Voice API)
 - **👀 Watch Mode** - Real-time file watching with auto-translation
 - **✍️ Writing Enhancement** - Grammar, style, and tone suggestions (DeepL Write API)
 - **💾 Smart Caching** - Local SQLite cache with LRU eviction
@@ -31,25 +32,26 @@ For security policy and vulnerability reporting, see [SECURITY.md](SECURITY.md).
   - [Verbose Mode](#verbose-mode)
   - [Quiet Mode](#quiet-mode)
   - [Custom Configuration Files](#custom-configuration-files)
+  - [Configuration Paths](#configuration-paths)
+    - [Proxy Configuration](#proxy-configuration)
+    - [Retry and Timeout Configuration](#retry-and-timeout-configuration)
 - [Usage](#-usage)
   - **Core Commands:** [Translation](#translation) | [Writing Enhancement](#writing-enhancement) | [Voice Translation](#voice-translation)
-  - **Resources:** [Glossaries](#glossaries)
+  - **Resources:** [Glossaries](#glossaries) | [Translation Memories](#translation-memories)
   - **Workflow:** [Watch Mode](#watch-mode) | [Git Hooks](#git-hooks)
   - **Configuration:** [Setup Wizard](#setup-wizard) | [Authentication](#authentication) | [Configure Defaults](#configure-defaults) | [Cache Management](#cache-management) | [Style Rules](#style-rules)
-  - **Information:** [Usage Statistics](#api-usage-statistics) | [Language Detection](#language-detection) | [Languages](#supported-languages) | [Shell Completion](#shell-completion)
+  - **Information:** [Usage Statistics](#api-usage-statistics) | [Language Detection](#language-detection) | [Languages](#supported-languages) | [Shell Completion](#shell-completion) | [Command Suggestions](#command-suggestions)
   - **Administration:** [Admin API](#admin-api)
 - [Development](#-development)
 - [Architecture](#-architecture)
+- [Testing](#-testing)
+- [Documentation](#-documentation)
+- [Environment Variables](#-environment-variables)
+- [Security & Privacy](#-security--privacy)
 - [Contributing](#-contributing)
 - [License](#-license)
 
 ## 📦 Installation
-
-### From npm (Coming Soon)
-
-```bash
-npm install -g deepl-cli
-```
 
 ### From Source
 
@@ -69,7 +71,7 @@ npm link
 
 # Verify installation
 deepl --version
-# Output: 1.0.0
+# Output: deepl-cli 1.x.x
 ```
 
 > **Note:** This project uses [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3) for local caching, which requires native compilation. If `npm install` fails with build errors, ensure you have:
@@ -77,6 +79,12 @@ deepl --version
 > - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
 > - **Linux**: `python3`, `make`, and `gcc` (`apt install python3 make gcc g++`)
 > - **Windows**: Visual Studio Build Tools or `windows-build-tools` (`npm install -g windows-build-tools`)
+
+### From npm (not yet published)
+
+An npm package is not yet published; install from source until then.
+
+> **CI examples below** (and generated hook output) assume a published npm package; source-installed users should substitute the source-install path.
 
 ## 🚀 Quick Start
 
@@ -288,13 +296,13 @@ deepl translate locales/en.json --to es,fr,de --output locales/
 
 **Smart Caching for Text Files:**
 
-Small text-based files (under 100 KB) automatically use the cached text translation API for faster performance and reduced API calls. Larger files automatically fall back to the document translation API (not cached).
+Small text-based files (under 100 KiB) automatically use the cached text translation API for faster performance and reduced API calls. Larger files automatically fall back to the document translation API (not cached).
 
-- **Cached formats:** `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` (files under 100 KB only)
+- **Cached formats:** `.txt`, `.md`, `.html`, `.htm`, `.srt`, `.xlf`, `.xliff` (files under 100 KiB only)
 - **Structured formats:** `.json`, `.yaml`, `.yml` — parsed and translated via batch text API (no size limit)
-- **Large file fallback:** Files ≥100 KB use document API (not cached, always makes API calls)
+- **Large file fallback:** Files ≥100 KiB use document API (not cached, always makes API calls)
 - **Binary formats:** `.pdf`, `.docx`, `.pptx`, `.xlsx` always use document API (not cached)
-- **Performance:** Only small text files (<100 KB) benefit from instant cached translations
+- **Performance:** Only small text files (<100 KiB) benefit from instant cached translations
 - **Cost savings:** Only small text files avoid repeated API calls
 
 ```bash
@@ -840,6 +848,8 @@ deepl init
 # - Basic configuration
 ```
 
+> To configure continuous localization for an existing project, see also [`deepl sync init`](#sync-init) or run the wizard directly.
+
 #### Authentication
 
 ```bash
@@ -1040,7 +1050,7 @@ DeepL CLI includes built-in retry logic and timeout handling for robust API comm
 - ✅ Automatic retry on transient failures
 - ✅ Exponential backoff to avoid overwhelming the API
 - ✅ Smart error detection (retries 5xx, not 4xx)
-- ✅ Configurable timeout and retry limits (programmatic API only)
+- ✅ Configurable via library-consumer options; not exposed as a CLI flag
 - ✅ Works across all DeepL API endpoints
 
 **Retry Behavior Examples:**
@@ -1313,7 +1323,7 @@ Cache location: `~/.cache/deepl-cli/cache.db` (or `~/.deepl-cli/cache.db` for le
 
 ### Prerequisites
 
-- Node.js >= 20.0.0
+- Node.js >= 20.19.0
 - npm >= 9.0.0
 - DeepL API key
 
@@ -1387,25 +1397,33 @@ deepl translate "Hello" --to es
 DeepL CLI follows a layered architecture:
 
 ```
-CLI Interface (Commands, Parsing, Help)
+CLI Commands (translate, write, voice, sync, watch, glossary, tm, …)
            ↓
-Core Application (Command Handlers, Interactive Shell)
+Service Layer (Translation, Write, Voice, Batch, Watch, Glossary,
+               TranslationMemory, StyleRules, Admin, Document,
+               GitHooks, Usage, Detect, Languages)
+           ↓                         ↓
+Sync Engine (src/sync)        Format Parsers (src/formats — 11 i18n formats)
+           ↓                         ↓
+API Client (Translate, Write, Glossary, Document, Voice,
+            StyleRules, Admin, TMS)
            ↓
-Service Layer (Translation, Write, Cache, Watch, Glossary)
-           ↓
-API Client (DeepL Translate, Write, Glossary APIs)
-           ↓
-Storage (SQLite Cache, Config, Translation Memory)
+Storage (SQLite Cache, Config) + Static Data (src/data — language registry)
 ```
 
 ### Key Components
 
-- **Translation Service** - Core translation logic with caching and preservation
-- **Write Service** - Grammar and style enhancement
-- **Cache Service** - SQLite-based cache with LRU eviction
-- **Preservation Service** - Preserves code blocks, variables, formatting
-- **Watch Service** - File watching with debouncing
-- **Glossary Service** - Glossary management and application
+- **Translation Service** — core translation with caching and text preservation
+- **Write Service** — grammar, style, and tone suggestions
+- **Voice Service** — real-time speech translation over WebSocket
+- **Sync Engine** — continuous localization: scan, diff, translate, write, lock
+- **Format Parsers** — 11 i18n parsers (JSON, YAML, TOML, PO, Android XML, iOS Strings, xcstrings, ARB, XLIFF, Properties, Laravel PHP) with format-preserving reconstruct
+- **Batch Service** — parallel multi-file translation
+- **Watch Service** — file watching with debouncing
+- **Glossary Service** — glossary management and application
+- **Translation Memory Service** — reuse approved translations (`--translation-memory`)
+- **Cache** — SQLite cache with LRU eviction (`src/storage/cache.ts`)
+- **Preservation utilities** — `src/utils/` helpers for code blocks, variables, and ICU MessageFormat
 
 ## 🧪 Testing
 
@@ -1452,6 +1470,10 @@ npm run examples:fast
 | `DEEPL_CONFIG_DIR` | Override config and cache directory                                                                                  |
 | `XDG_CONFIG_HOME`  | Override XDG config base (default: `~/.config`)                                                                      |
 | `XDG_CACHE_HOME`   | Override XDG cache base (default: `~/.cache`)                                                                        |
+| `HTTP_PROXY`       | HTTP proxy URL for outbound DeepL API traffic                                                                        |
+| `HTTPS_PROXY`      | HTTPS proxy URL (takes precedence over `HTTP_PROXY`)                                                                 |
+| `TMS_API_KEY`      | API key for the configured TMS server (`sync push`/`pull`)                                                           |
+| `TMS_TOKEN`        | Alternative auth token for the configured TMS server                                                                 |
 | `NO_COLOR`         | Disable colored output                                                                                               |
 | `FORCE_COLOR`      | Force colored output even when terminal doesn't support it. Useful in CI. `NO_COLOR` takes priority if both are set. |
 | `TERM=dumb`        | Disables colored output and progress spinners. Automatically set by some CI environments and editors.                |
@@ -1464,11 +1486,13 @@ See [docs/API.md#environment-variables](./docs/API.md#environment-variables) for
 - **Local caching** - All cached data stored locally in SQLite, never shared
 - **No telemetry** - Zero usage tracking or data collection
 - **Environment variable support** - Use `DEEPL_API_KEY` environment variable for CI/CD
-- **GDPR compliant** - Follows DeepL's GDPR compliance guidelines
+- **GDPR-aligned with DeepL's DPA** - Follows DeepL's Data Processing Agreement terms
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+DeepL® is a registered trademark of DeepL SE.
 
 ---
 

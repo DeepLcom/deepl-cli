@@ -34,7 +34,7 @@ describe('Usage CLI Integration', () => {
 
       expect.assertions(1);
       try {
-        runCLI('deepl usage', { stdio: 'pipe' });
+        runCLI('deepl usage', { stdio: 'pipe', excludeApiKey: true });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         // Should indicate API key is required

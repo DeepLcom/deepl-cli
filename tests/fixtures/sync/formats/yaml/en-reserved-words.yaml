@@ -1,0 +1,5 @@
+enabled: true
+disabled: false
+confirm: "yes"
+deny: "no"
+title: My Application

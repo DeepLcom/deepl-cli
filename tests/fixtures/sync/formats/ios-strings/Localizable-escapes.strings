@@ -1,0 +1,7 @@
+"escaped_quotes" = "She said \"hello\"";
+"escaped_backslash" = "C:\\Users\\test";
+"newline" = "Line one\nLine two";
+"tab" = "Col1\tCol2";
+"carriage_return" = "Before\rAfter";
+"null_char" = "Null\0Here";
+"mixed_escapes" = "Say \"hi\"\nand\\go";

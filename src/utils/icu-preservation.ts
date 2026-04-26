@@ -1,0 +1,208 @@
+/**
+ * ICU MessageFormat preservation for translation.
+ *
+ * Detects ICU plural/select/selectordinal patterns in i18n strings,
+ * extracts only the translatable leaf text, and provides a reassemble
+ * function to reconstruct the ICU structure after translation.
+ *
+ * Uses a brace-counting state machine — no external ICU dependencies.
+ */
+
+const ICU_KEYWORDS = new Set(['plural', 'select', 'selectordinal']);
+
+const ICU_DETECT_RE = /^\s*\{\s*[\w]+\s*,\s*(plural|select|selectordinal)\s*,/;
+
+export interface IcuSegment {
+  text: string;
+  isPluralBranch: boolean;
+}
+
+export interface IcuParseResult {
+  isIcu: boolean;
+  segments: IcuSegment[];
+  reassemble: (translations: string[]) => string;
+}
+
+/**
+ * Parse a string that may contain ICU MessageFormat syntax.
+ * Returns segments for translation and a reassemble function.
+ *
+ * If the string is not ICU, returns { isIcu: false, segments: [], reassemble: identity }.
+ * If parsing fails, returns the same (safe fallback — string passes through unchanged).
+ */
+export function parseIcu(text: string): IcuParseResult {
+  if (!ICU_DETECT_RE.test(text)) {
+    return { isIcu: false, segments: [], reassemble: () => text };
+  }
+
+  try {
+    const result = parseIcuBlock(text, 0);
+    if (!result) {
+      return { isIcu: false, segments: [], reassemble: () => text };
+    }
+    return {
+      isIcu: true,
+      segments: result.segments,
+      reassemble: (translations: string[]) => {
+        let idx = 0;
+        return result.template.replace(/__ICU_LEAF_(\d+)__/g, () => translations[idx++] ?? '');
+      },
+    };
+  } catch {
+    return { isIcu: false, segments: [], reassemble: () => text };
+  }
+}
+
+interface ParseBlockResult {
+  template: string;
+  segments: IcuSegment[];
+  endIndex: number;
+}
+
+function parseIcuBlock(text: string, start: number): ParseBlockResult | null {
+  let i = start;
+
+  // Skip leading whitespace
+  while (i < text.length && /\s/.test(text[i]!)) i++;
+
+  // Expect opening brace
+  if (text[i] !== '{') return null;
+  i++;
+
+  // Parse variable name
+  const varStart = skipWhitespace(text, i);
+  const varEnd = scanIdentifier(text, varStart);
+  if (varEnd === varStart) return null;
+  const varName = text.slice(varStart, varEnd);
+  i = varEnd;
+
+  // Expect comma
+  i = skipWhitespace(text, i);
+  if (text[i] !== ',') return null;
+  i++;
+
+  // Parse keyword
+  i = skipWhitespace(text, i);
+  const kwStart = i;
+  const kwEnd = scanIdentifier(text, kwStart);
+  if (kwEnd === kwStart) return null;
+  const keyword = text.slice(kwStart, kwEnd);
+  if (!ICU_KEYWORDS.has(keyword)) return null;
+  i = kwEnd;
+
+  // Expect comma
+  i = skipWhitespace(text, i);
+  if (text[i] !== ',') return null;
+  i++;
+
+  const isPluralType = keyword === 'plural' || keyword === 'selectordinal';
+  const segments: IcuSegment[] = [];
+  let template = `{${varName}, ${keyword},`;
+
+  // Parse branches: selector {content}
+  while (i < text.length) {
+    i = skipWhitespace(text, i);
+
+    // Check for closing brace (end of ICU block)
+    if (text[i] === '}') {
+      template += '}';
+      return { template, segments, endIndex: i };
+    }
+
+    // Parse selector (e.g., 'one', 'other', '=0', 'male')
+    const selStart = i;
+    while (i < text.length && text[i] !== '{' && !/\s/.test(text[i]!)) i++;
+    const selector = text.slice(selStart, i).trim();
+    if (!selector) return null;
+
+    // Expect opening brace for branch content
+    i = skipWhitespace(text, i);
+    if (text[i] !== '{') return null;
+
+    // Extract branch content using brace counting
+    const branchContent = extractBraceContent(text, i);
+    if (branchContent === null) return null;
+
+    const content = branchContent.content;
+    i = branchContent.endIndex + 1;
+
+    // Check if branch content itself contains nested ICU
+    const nestedResult = tryParseNestedContent(content, isPluralType, segments);
+    const leafIndex = segments.length;
+
+    if (nestedResult) {
+      template += ` ${selector} {${nestedResult.template}}`;
+    } else {
+      // Leaf text — this is what gets translated
+      segments.push({ text: content, isPluralBranch: isPluralType });
+      template += ` ${selector} {__ICU_LEAF_${leafIndex}__}`;
+    }
+  }
+
+  return null; // Unterminated
+}
+
+function tryParseNestedContent(
+  content: string,
+  _parentIsPluralBranch: boolean,
+  segments: IcuSegment[],
+): { template: string } | null {
+  // Check if content contains a nested ICU block
+  // e.g., "{gender, select, male {He has # items} female {She has # items}}"
+  // Content might be mixed: "text before {var, plural, ...} text after"
+
+  // For MVP: only handle content that IS a full ICU block (starts with {var, keyword, ...})
+  const trimmed = content.trim();
+  if (!ICU_DETECT_RE.test(trimmed)) return null;
+
+  const nested = parseIcuBlock(trimmed, 0);
+  if (!nested || nested.endIndex < trimmed.length - 1) return null;
+
+  // Merge nested segments into parent segments array
+  const baseIndex = segments.length;
+  for (const seg of nested.segments) {
+    segments.push(seg);
+  }
+
+  // Reindex the nested template's leaf references
+  let reindexed = nested.template;
+  for (let j = nested.segments.length - 1; j >= 0; j--) {
+    reindexed = reindexed.replace(`__ICU_LEAF_${j}__`, `__ICU_LEAF_${baseIndex + j}__`);
+  }
+
+  return { template: reindexed };
+}
+
+function extractBraceContent(text: string, start: number): { content: string; endIndex: number } | null {
+  if (text[start] !== '{') return null;
+
+  let depth = 0;
+  let i = start;
+
+  while (i < text.length) {
+    if (text[i] === '{') {
+      depth++;
+    } else if (text[i] === '}') {
+      depth--;
+      if (depth === 0) {
+        return {
+          content: text.slice(start + 1, i),
+          endIndex: i,
+        };
+      }
+    }
+    i++;
+  }
+
+  return null; // Unmatched braces
+}
+
+function skipWhitespace(text: string, i: number): number {
+  while (i < text.length && /\s/.test(text[i]!)) i++;
+  return i;
+}
+
+function scanIdentifier(text: string, i: number): number {
+  while (i < text.length && /[\w]/.test(text[i]!)) i++;
+  return i;
+}

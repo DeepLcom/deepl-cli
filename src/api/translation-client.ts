@@ -1,7 +1,14 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { TranslationOptions, Language } from '../types/index.js';
+import { TranslationOptions, Language, TranslationMemory } from '../types/index.js';
 import { NetworkError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
+import { Logger } from '../utils/logger.js';
+
+// DeepL's /v3/translation_memories endpoint paginates via `page` (0-indexed) and
+// `page_size` (max 25 per API docs). The page cap guards against infinite loops
+// if the server misreports `total_count` or never returns a short page.
+export const TRANSLATION_MEMORY_LIST_PAGE_SIZE = 25;
+export const MAX_TRANSLATION_MEMORY_LIST_PAGES = 20;
 
 interface DeepLTranslateResponse {
   translations: Array<{
@@ -225,6 +232,45 @@ export class TranslationClient extends HttpClient {
     }
   }
 
+  async listTranslationMemories(): Promise<TranslationMemory[]> {
+    try {
+      const first = await this.makeRequest<{
+        translation_memories?: TranslationMemory[];
+        total_count?: number;
+      }>('GET', '/v3/translation_memories');
+
+      const aggregated: TranslationMemory[] = [...(first.translation_memories ?? [])];
+      const total = first.total_count;
+      if (typeof total !== 'number' || aggregated.length >= total) {
+        return aggregated;
+      }
+
+      const pageSize = TRANSLATION_MEMORY_LIST_PAGE_SIZE;
+      let page = 1;
+      while (page < MAX_TRANSLATION_MEMORY_LIST_PAGES) {
+        const response = await this.makeRequest<{
+          translation_memories?: TranslationMemory[];
+          total_count?: number;
+        }>('GET', '/v3/translation_memories', { page, page_size: pageSize });
+
+        const batch = response.translation_memories ?? [];
+        aggregated.push(...batch);
+
+        if (batch.length === 0 || aggregated.length >= total) {
+          return aggregated;
+        }
+        page += 1;
+      }
+
+      Logger.warn(
+        `[warn] Stopped listing translation memories after ${MAX_TRANSLATION_MEMORY_LIST_PAGES} pages; results may be truncated.`
+      );
+      return aggregated;
+    } catch (error) {
+      throw this.handleError(error, 'listTranslationMemories');
+    }
+  }
+
   async getSupportedLanguages(
     type: 'source' | 'target'
   ): Promise<LanguageInfo[]> {
@@ -264,6 +310,11 @@ export class TranslationClient extends HttpClient {
 
     if (options.glossaryId) {
       params['glossary_id'] = options.glossaryId;
+    }
+
+    if (options.translationMemoryId) {
+      params['translation_memory_id'] = options.translationMemoryId;
+      params['translation_memory_threshold'] = String(options.translationMemoryThreshold ?? 75);
     }
 
     if (options.preserveFormatting) {

@@ -98,6 +98,44 @@ describe('text-preservation', () => {
       expect(result).toBe('');
       expect(map.size).toBe(0);
     });
+
+    it('should preserve Unicode placeholder {имя}', () => {
+      const map = new Map<string, string>();
+      const result = preserveVariables('Hello {имя}!', map);
+
+      expect(result).toBe('Hello __VAR_0__!');
+      expect(map.get('__VAR_0__')).toBe('{имя}');
+    });
+
+    it('should preserve positional printf specifier %1$s', () => {
+      const map = new Map<string, string>();
+      const result = preserveVariables('%1$s costs %2$d', map);
+
+      expect(result).toBe('__VAR_0__ costs __VAR_1__');
+      expect(map.get('__VAR_0__')).toBe('%1$s');
+      expect(map.get('__VAR_1__')).toBe('%2$d');
+    });
+
+    it('should preserve {{name}} as a single placeholder without corrupting to {name}', () => {
+      const map = new Map<string, string>();
+      const result = preserveVariables('Hello {{name}}, welcome!', map);
+
+      expect(result).toBe('Hello __VAR_0__, welcome!');
+      expect(map.get('__VAR_0__')).toBe('{{name}}');
+
+      const restored = restorePlaceholders('Hallo __VAR_0__, willkommen!', map);
+      expect(restored).toBe('Hallo {{name}}, willkommen!');
+    });
+
+    it('should preserve %f, %u, and %@ format specifiers', () => {
+      const map = new Map<string, string>();
+      const result = preserveVariables('Value: %f, count: %u, obj: %@', map);
+
+      expect(result).toContain('__VAR_0__');
+      expect(map.get('__VAR_0__')).toBe('%f');
+      expect(map.get('__VAR_1__')).toBe('%u');
+      expect(map.get('__VAR_2__')).toBe('%@');
+    });
   });
 
   describe('restorePlaceholders', () => {
@@ -121,6 +159,21 @@ describe('text-preservation', () => {
       map.set('__CODE_0__', '`x`');
       const result = restorePlaceholders('', map);
       expect(result).toBe('');
+    });
+
+    it('should restore placeholders whose original value contains $& literally', () => {
+      const map = new Map<string, string>();
+      map.set('__CODE_0__', '`match is $&`');
+      const result = restorePlaceholders('Result: __CODE_0__', map);
+      expect(result).toBe('Result: `match is $&`');
+    });
+
+    it('should restore placeholders whose original value contains $1 literally', () => {
+      const map = new Map<string, string>();
+      map.set('__VAR_0__', '${price}');
+      map.set('__CODE_0__', '`costs $1`');
+      const result = restorePlaceholders('__CODE_0__ for __VAR_0__', map);
+      expect(result).toBe('`costs $1` for ${price}');
     });
   });
 

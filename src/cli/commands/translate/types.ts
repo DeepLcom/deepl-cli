@@ -28,6 +28,8 @@ export interface TranslateOptions {
   pattern?: string;
   concurrency?: number;
   glossary?: string;
+  translationMemory?: string;
+  tmThreshold?: number;
   customInstruction?: string[];
   styleId?: string;
   enableBetaLanguages?: boolean;

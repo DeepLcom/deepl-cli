@@ -8,6 +8,11 @@ export default {
     '**/tests/**/*.test.ts',
     '**/tests/**/*.spec.ts',
   ],
+  // Exclude transient agent worktree copies; they shadow real tests and race on shared temp dirs.
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/.claude/worktrees/',
+  ],
 
   // Coverage configuration
   collectCoverageFrom: [
@@ -15,8 +20,14 @@ export default {
     '!src/**/*.d.ts',
     '!src/cli/index.ts', // Main entry point
     '!src/cli/commands/translate/index.ts', // Barrel re-exports
+    '!src/cli/commands/register-sync.ts', // CLI glue — tested by E2E (cli-sync.e2e.test.ts)
+    '!src/cli/commands/sync/register-sync-*.ts', // CLI glue per-subcommand builders — tested by E2E
+    '!src/cli/commands/sync/sync-options.ts', // CLI glue helper — tested via snapshot test
+    '!src/cli/commands/register-detect.ts', // CLI glue — tested by E2E
+    '!src/cli/commands/register-init.ts', // CLI glue — tested by E2E
     '!src/types/**/*.ts', // Type definitions
     '!src/version.ts', // Mocked in tests (uses import.meta.url)
+    '!src/formats/php-parser-bridge.ts', // Mocked in tests (uses import.meta.url)
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'cobertura'],
@@ -34,6 +45,7 @@ export default {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '(.*)/version\\.js$': '<rootDir>/tests/__mocks__/version',
+    '(.*)/php-parser-bridge\\.js$': '<rootDir>/tests/__mocks__/php-parser-bridge',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
 

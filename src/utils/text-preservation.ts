@@ -28,11 +28,13 @@ export function preserveVariables(text: string, preservationMap: Map<string, str
   let processed = text;
   let counter = 0;
 
-  // Preserve various variable formats (order matters - do ${} before {})
+  // Preserve various variable formats (order matters - longest match first)
   const patterns = [
-    /\$\{[a-zA-Z0-9_]+\}/g,         // ${name}
-    /\{[a-zA-Z0-9_]+\}/g,           // {name}, {0}
-    /%[sd]/g,                        // %s, %d
+    /\$\{[\p{L}\p{N}_]+\}/gu,       // ${name}, ${имя}
+    /\{\{[\p{L}\p{N}_]+\}\}/gu,     // {{name}}, {{имя}} — must precede {name}
+    /\{[\p{L}\p{N}_]+\}/gu,         // {name}, {名前}, {0}
+    /%\d+\$[sdfu@]/g,               // %1$s, %2$d
+    /%[sdfu@]/g,                     // %s, %d, %f, %u, %@
   ];
 
   for (const pattern of patterns) {
@@ -49,7 +51,9 @@ export function preserveVariables(text: string, preservationMap: Map<string, str
 export function restorePlaceholders(text: string, preservationMap: Map<string, string>): string {
   let restored = text;
   for (const [placeholder, original] of preservationMap.entries()) {
-    restored = restored.replace(placeholder, original);
+    while (restored.includes(placeholder)) {
+      restored = restored.replace(placeholder, () => original);
+    }
   }
   return restored;
 }

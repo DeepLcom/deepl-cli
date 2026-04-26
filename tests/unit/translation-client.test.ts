@@ -3,7 +3,8 @@
  * Covers translate, translateBatch, getUsage, getSupportedLanguages
  */
 
-import { TranslationClient, isTranslationResult } from '../../src/api/translation-client.js';
+import { TranslationClient, isTranslationResult, MAX_TRANSLATION_MEMORY_LIST_PAGES, TRANSLATION_MEMORY_LIST_PAGE_SIZE } from '../../src/api/translation-client.js';
+import { Logger } from '../../src/utils/logger.js';
 import axios from 'axios';
 
 jest.mock('axios');
@@ -188,6 +189,61 @@ describe('TranslationClient', () => {
     });
   });
 
+  describe('translation memory params', () => {
+    const TM_UUID = '11111111-2222-3333-4444-555555555555';
+
+    beforeEach(() => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { translations: [{ text: 'Hola' }] },
+        status: 200,
+        headers: {},
+      });
+    });
+
+    const getRequestBody = (): string => {
+      const call = mockAxiosInstance.request.mock.calls[0]?.[0];
+      return (call?.data ?? '') as string;
+    };
+
+    it('should emit translation_memory_id when translationMemoryId is set', async () => {
+      await client.translate('Hello', { targetLang: 'es', translationMemoryId: TM_UUID });
+      expect(getRequestBody()).toContain(`translation_memory_id=${TM_UUID}`);
+    });
+
+    it('should default translation_memory_threshold to 75 when only translationMemoryId is set', async () => {
+      await client.translate('Hello', { targetLang: 'es', translationMemoryId: TM_UUID });
+      expect(getRequestBody()).toContain('translation_memory_threshold=75');
+    });
+
+    it('should use explicit translation_memory_threshold when provided', async () => {
+      await client.translate('Hello', {
+        targetLang: 'es',
+        translationMemoryId: TM_UUID,
+        translationMemoryThreshold: 80,
+      });
+      expect(getRequestBody()).toContain('translation_memory_threshold=80');
+    });
+
+    it('should omit both keys when translationMemoryId is not set', async () => {
+      await client.translate('Hello', { targetLang: 'es', translationMemoryThreshold: 80 });
+      const body = getRequestBody();
+      expect(body).not.toContain('translation_memory_id');
+      expect(body).not.toContain('translation_memory_threshold');
+    });
+
+    it('should emit both glossary_id and translation_memory_id when both are set', async () => {
+      const GLOSSARY_UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+      await client.translate('Hello', {
+        targetLang: 'es',
+        glossaryId: GLOSSARY_UUID,
+        translationMemoryId: TM_UUID,
+      });
+      const body = getRequestBody();
+      expect(body).toContain(`glossary_id=${GLOSSARY_UUID}`);
+      expect(body).toContain(`translation_memory_id=${TM_UUID}`);
+    });
+  });
+
   describe('getUsage()', () => {
     it('should return usage information', async () => {
       mockAxiosInstance.request.mockResolvedValue({
@@ -303,6 +359,221 @@ describe('TranslationClient', () => {
     });
   });
 
+  describe('listTranslationMemories() error context', () => {
+    it('suffixes thrown errors with the [listTranslationMemories] method context', async () => {
+      const axiosError = Object.assign(new Error('Request failed'), {
+        isAxiosError: true,
+        response: { status: 403, data: { message: 'Invalid API key' }, headers: {} },
+        config: {},
+      });
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+
+      let thrown: unknown;
+      try {
+        await client.listTranslationMemories();
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toMatch(/\[listTranslationMemories\]$/);
+    });
+  });
+
+  describe('listTranslationMemories()', () => {
+    it('should return translation memories from /v3/translation_memories', async () => {
+      const tm = {
+        translation_memory_id: '11111111-2222-3333-4444-555555555555',
+        name: 'my-tm',
+        source_lang: 'EN',
+        target_lang: 'DE',
+      };
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { translation_memories: [tm] },
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.listTranslationMemories();
+
+      expect(result).toEqual([tm]);
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'GET', url: '/v3/translation_memories' }),
+      );
+    });
+
+    it('should return empty array when response has no translation_memories field', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: {},
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.listTranslationMemories();
+      expect(result).toEqual([]);
+    });
+
+    it('should issue the first call without pagination params', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { translation_memories: [] },
+        status: 200,
+        headers: {},
+      });
+
+      await client.listTranslationMemories();
+
+      const call = mockAxiosInstance.request.mock.calls[0]?.[0];
+      expect(call.method).toBe('GET');
+      expect(call.url).toBe('/v3/translation_memories');
+      expect(call.params).toBeUndefined();
+      expect(mockAxiosInstance.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not request additional pages when total_count is absent', async () => {
+      const pageSize = TRANSLATION_MEMORY_LIST_PAGE_SIZE;
+      const buildTm = (i: number) => ({
+        translation_memory_id: `11111111-2222-3333-4444-${String(i).padStart(12, '0')}`,
+        name: `tm-${i}`,
+        source_lang: 'EN',
+        target_lang: 'DE',
+      });
+      const fullPage = Array.from({ length: pageSize }, (_, i) => buildTm(i));
+
+      mockAxiosInstance.request.mockResolvedValueOnce({
+        data: { translation_memories: fullPage },
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.listTranslationMemories();
+
+      expect(result).toHaveLength(pageSize);
+      expect(mockAxiosInstance.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('should aggregate results across multiple pages when total_count exceeds first batch', async () => {
+      const pageSize = TRANSLATION_MEMORY_LIST_PAGE_SIZE;
+      const buildTm = (i: number) => ({
+        translation_memory_id: `11111111-2222-3333-4444-${String(i).padStart(12, '0')}`,
+        name: `tm-${i}`,
+        source_lang: 'EN',
+        target_lang: 'DE',
+      });
+      const firstPage = Array.from({ length: pageSize }, (_, i) => buildTm(i));
+      const secondPage = Array.from({ length: pageSize }, (_, i) => buildTm(pageSize + i));
+      const thirdPage = [buildTm(pageSize * 2)];
+      const total = pageSize * 2 + 1;
+
+      mockAxiosInstance.request
+        .mockResolvedValueOnce({
+          data: { translation_memories: firstPage, total_count: total },
+          status: 200,
+          headers: {},
+        })
+        .mockResolvedValueOnce({
+          data: { translation_memories: secondPage, total_count: total },
+          status: 200,
+          headers: {},
+        })
+        .mockResolvedValueOnce({
+          data: { translation_memories: thirdPage, total_count: total },
+          status: 200,
+          headers: {},
+        });
+
+      const result = await client.listTranslationMemories();
+
+      expect(result).toHaveLength(total);
+      expect(result[0]).toEqual(firstPage[0]);
+      expect(result[pageSize]).toEqual(secondPage[0]);
+      expect(result[pageSize * 2]).toEqual(thirdPage[0]);
+      expect(mockAxiosInstance.request).toHaveBeenCalledTimes(3);
+      expect(mockAxiosInstance.request.mock.calls[0][0].params).toBeUndefined();
+      expect(mockAxiosInstance.request.mock.calls[1][0].params).toEqual({ page: 1, page_size: pageSize });
+      expect(mockAxiosInstance.request.mock.calls[2][0].params).toEqual({ page: 2, page_size: pageSize });
+    });
+
+    it('should stop once accumulated results reach total_count', async () => {
+      const pageSize = TRANSLATION_MEMORY_LIST_PAGE_SIZE;
+      const buildTm = (i: number) => ({
+        translation_memory_id: `11111111-2222-3333-4444-${String(i).padStart(12, '0')}`,
+        name: `tm-${i}`,
+        source_lang: 'EN',
+        target_lang: 'DE',
+      });
+      const fullPage = Array.from({ length: pageSize }, (_, i) => buildTm(i));
+
+      mockAxiosInstance.request.mockResolvedValueOnce({
+        data: { translation_memories: fullPage, total_count: pageSize },
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.listTranslationMemories();
+
+      expect(result).toHaveLength(pageSize);
+      expect(mockAxiosInstance.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('should stop when a subsequent page returns no items', async () => {
+      const pageSize = TRANSLATION_MEMORY_LIST_PAGE_SIZE;
+      const buildTm = (i: number) => ({
+        translation_memory_id: `11111111-2222-3333-4444-${String(i).padStart(12, '0')}`,
+        name: `tm-${i}`,
+        source_lang: 'EN',
+        target_lang: 'DE',
+      });
+      const firstPage = Array.from({ length: pageSize }, (_, i) => buildTm(i));
+
+      mockAxiosInstance.request
+        .mockResolvedValueOnce({
+          data: { translation_memories: firstPage, total_count: pageSize + 10 },
+          status: 200,
+          headers: {},
+        })
+        .mockResolvedValueOnce({
+          data: { translation_memories: [], total_count: pageSize + 10 },
+          status: 200,
+          headers: {},
+        });
+
+      const result = await client.listTranslationMemories();
+
+      expect(result).toHaveLength(pageSize);
+      expect(mockAxiosInstance.request).toHaveBeenCalledTimes(2);
+    });
+
+    it('should bound pagination at MAX_TRANSLATION_MEMORY_LIST_PAGES and warn when hit', async () => {
+      const pageSize = TRANSLATION_MEMORY_LIST_PAGE_SIZE;
+      const buildTm = (i: number) => ({
+        translation_memory_id: `11111111-2222-3333-4444-${String(i).padStart(12, '0')}`,
+        name: `tm-${i}`,
+        source_lang: 'EN',
+        target_lang: 'DE',
+      });
+      const fullPage = Array.from({ length: pageSize }, (_, i) => buildTm(i));
+
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { translation_memories: fullPage, total_count: Number.MAX_SAFE_INTEGER },
+        status: 200,
+        headers: {},
+      });
+      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+
+      try {
+        const result = await client.listTranslationMemories();
+
+        expect(mockAxiosInstance.request).toHaveBeenCalledTimes(MAX_TRANSLATION_MEMORY_LIST_PAGES);
+        expect(result).toHaveLength(MAX_TRANSLATION_MEMORY_LIST_PAGES * pageSize);
+        expect(warnSpy).toHaveBeenCalled();
+        const warned = warnSpy.mock.calls.flat().join(' ');
+        expect(warned).toMatch(/translation memor/i);
+        expect(warned).toMatch(String(MAX_TRANSLATION_MEMORY_LIST_PAGES));
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+  });
+
   describe('isTranslationResult()', () => {
     it('should return true for valid result', () => {
       expect(isTranslationResult({ text: 'hello' })).toBe(true);
@@ -324,4 +595,5 @@ describe('TranslationClient', () => {
       expect(isTranslationResult({ text: 123 })).toBe(false);
     });
   });
+
 });

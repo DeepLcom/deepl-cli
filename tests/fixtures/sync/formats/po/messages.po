@@ -1,0 +1,26 @@
+# Translation file for the application
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Greeting message
+#. Welcome text shown on the home page
+#: src/app.py:12
+msgid "Hello"
+msgstr "Hola"
+
+# Farewell message
+#. Goodbye text shown when user leaves
+#: src/app.py:15
+msgid "Goodbye"
+msgstr "Adiós"
+
+#. Generic welcome message
+#: src/app.py:20
+msgid "Welcome to our app"
+msgstr "Bienvenido a nuestra aplicación"
+
+#: src/app.py:25
+msgid "Cancel"
+msgstr "Cancelar"

@@ -102,8 +102,42 @@ echo "Minification reduces the file size of translated documents by optimizing"
 echo "internal structure. Only supported for PPTX and DOCX formats."
 echo
 
-# Example 5: Combining advanced options
-echo "=== 5. Combining Advanced Options ==="
+# Example 5: Translation Memory
+echo "=== 5. Translation Memory ==="
+echo
+
+echo "Translation memories (TMs) let you reuse approved translations."
+echo "Authored and uploaded via the DeepL web UI — the CLI resolves names"
+echo "against GET /v3/translation_memories and forces quality_optimized model."
+echo
+
+echo "(a) Happy path — reference a TM by name (requires --from for pair):"
+echo "  deepl translate 'Welcome to our product.' \\"
+echo "    --from en --to de --translation-memory my-tm"
+echo
+
+echo "(b) Threshold variant — raise minimum match score to 80 (default is 75):"
+echo "  deepl translate 'Welcome to our product.' \\"
+echo "    --from en --to de --translation-memory my-tm --tm-threshold 80"
+echo
+
+# (c) Static validation errors — commented out so set -e does not abort the run.
+# Uncomment individually to observe the error output and exit codes.
+#
+# # Missing --from (TMs are pair-pinned). Exits 6 (ValidationError).
+# # Handler guard: src/cli/commands/translate/text-translation-handler.ts (also file-translation-handler.ts).
+# deepl translate 'Welcome' --to de --translation-memory my-tm
+#
+# # Model-type clash (TM requires quality_optimized). Exits 6 (ValidationError).
+# # Handler guard: src/cli/commands/register-translate.ts.
+# deepl translate 'Welcome' --from en --to de --translation-memory my-tm --model-type latency_optimized
+
+echo "For sync workflows, configure translation memory in .deepl-sync.yaml"
+echo "(translation.translation_memory) — see docs/SYNC.md#translation-memory."
+echo
+
+# Example 6: Combining advanced options
+echo "=== 6. Combining Advanced Options ==="
 echo
 
 cat > "$TEMP_DIR/complex.html" <<'EOF'
@@ -141,6 +175,10 @@ echo
 echo "Document options:"
 echo "  --enable-minification              Reduce PPTX/DOCX file size"
 echo "  --output-format docx              Convert PDF to DOCX"
+echo
+echo "Translation memory:"
+echo "  --translation-memory <name-or-uuid>  Reuse approved translations (requires --from)"
+echo "  --tm-threshold <0-100>               Minimum match score (default 75)"
 echo
 
 echo "=== All examples completed successfully! ==="

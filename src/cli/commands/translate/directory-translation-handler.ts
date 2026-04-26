@@ -3,7 +3,8 @@ import { BatchTranslationService } from '../../../services/batch-translation.js'
 import { ValidationError } from '../../../utils/errors.js';
 import { Logger } from '../../../utils/logger.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
-import { warnIgnoredOptions, validateLanguageCodes, buildTranslationOptions } from './translate-utils.js';
+import { warnIgnoredOptions, validateLanguageCodes } from './translate-utils.js';
+import { buildBaseTranslationOptions } from './translation-options-factory.js';
 
 export class DirectoryTranslationHandler {
   constructor(public ctx: HandlerContext) {}
@@ -37,7 +38,7 @@ export class DirectoryTranslationHandler {
   private async translateSingleTarget(dirPath: string, options: TranslateOptions): Promise<string> {
     validateLanguageCodes([options.to]);
 
-    const translationOptions = buildTranslationOptions(options);
+    const translationOptions = buildBaseTranslationOptions(options);
 
     const spinner = Logger.shouldShowSpinner() ? ora('Scanning files...').start() : null;
 

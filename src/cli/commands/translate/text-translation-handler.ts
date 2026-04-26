@@ -7,12 +7,11 @@ import {
   validateLanguageCodes,
   validateExtendedLanguageConstraints,
   validateXmlTags,
-  buildTranslationOptions,
-  resolveGlossaryId,
   warnIgnoredOptions,
   MAX_CUSTOM_INSTRUCTIONS,
   MAX_CUSTOM_INSTRUCTION_CHARS,
 } from './translate-utils.js';
+import { buildBaseTranslationOptions, applySharedTmAndGlossary } from './translation-options-factory.js';
 
 export class TextTranslationHandler {
   constructor(public ctx: HandlerContext) {}
@@ -52,11 +51,27 @@ export class TextTranslationHandler {
       );
     }
 
-    const translationOptions = buildTranslationOptions(options);
-
-    if (options.glossary) {
-      translationOptions.glossaryId = await resolveGlossaryId(this.ctx.glossaryService, options.glossary);
+    if (options.translationMemory) {
+      if (!options.from) {
+        throw new ValidationError(
+          '--from is required when using --translation-memory',
+          'Example: deepl translate --from en --to de --translation-memory my-tm "Hello"'
+        );
+      }
+      if (options.modelType && options.modelType !== 'quality_optimized') {
+        throw new ValidationError(
+          '--translation-memory requires quality_optimized model type',
+          'Remove --model-type or set --model-type quality_optimized'
+        );
+      }
     }
+
+    const translationOptions = buildBaseTranslationOptions(options);
+    await applySharedTmAndGlossary(translationOptions, options, {
+      glossaryService: this.ctx.glossaryService,
+      translationService: this.ctx.translationService,
+      targets: [options.to as Language],
+    });
 
     if (options.customInstruction && options.customInstruction.length > 0) {
       if (options.customInstruction.length > MAX_CUSTOM_INSTRUCTIONS) {
@@ -162,7 +177,7 @@ export class TextTranslationHandler {
   }
 
   private async translateToMultiple(text: string, options: TranslateOptions): Promise<string> {
-    const supported = new Set(['from', 'formality', 'context', 'glossary', 'showBilledCharacters', 'customInstruction', 'styleId']);
+    const supported = new Set(['from', 'formality', 'context', 'glossary', 'translationMemory', 'tmThreshold', 'showBilledCharacters', 'customInstruction', 'styleId']);
     warnIgnoredOptions('multi-target', options, supported);
 
     const targetLangs = options.to.split(',').map(lang => lang.trim());
@@ -176,13 +191,30 @@ export class TextTranslationHandler {
       );
     }
 
+    if (options.translationMemory) {
+      if (!options.from) {
+        throw new ValidationError(
+          '--from is required when using --translation-memory',
+          'Example: deepl translate --from en --to de --translation-memory my-tm "Hello"'
+        );
+      }
+      if (options.modelType && options.modelType !== 'quality_optimized') {
+        throw new ValidationError(
+          '--translation-memory requires quality_optimized model type',
+          'Remove --model-type or set --model-type quality_optimized'
+        );
+      }
+    }
+
     const validTargetLangs = targetLangs as Language[];
 
-    const { targetLang: _, ...translationOptions } = buildTranslationOptions(options);
+    const { targetLang: _, ...translationOptions } = buildBaseTranslationOptions(options);
 
-    if (options.glossary) {
-      translationOptions.glossaryId = await resolveGlossaryId(this.ctx.glossaryService, options.glossary);
-    }
+    await applySharedTmAndGlossary(translationOptions, options, {
+      glossaryService: this.ctx.glossaryService,
+      translationService: this.ctx.translationService,
+      targets: validTargetLangs,
+    });
 
     if (options.customInstruction && options.customInstruction.length > 0) {
       translationOptions.customInstructions = options.customInstruction;
@@ -203,6 +235,12 @@ export class TextTranslationHandler {
     }
 
     if (options.format === 'table') {
+      if (!process.stdout.isTTY) {
+        Logger.warn('--format table is not supported in non-TTY output; falling back to plain text');
+        return results
+          .map(result => `[${result.targetLang}] ${result.text}`)
+          .join('\n');
+      }
       return formatMultiTranslationTable(results);
     }
 
