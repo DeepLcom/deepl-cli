@@ -356,4 +356,51 @@ describe('LanguagesCommand', () => {
       expect(hi?.supportsFormality).toBeUndefined();
     });
   });
+
+  describe('formatLanguagesTable', () => {
+    it('should render Code/Name/Category headers and rows for source languages', () => {
+      const result = languagesCommand.formatLanguagesTable(mockSourceLanguages, 'source');
+      expect(result).toContain('Source Languages:');
+      expect(result).toContain('Code');
+      expect(result).toContain('Name');
+      expect(result).toContain('Category');
+      expect(result).toContain('German');
+    });
+
+    it('should add a Formality column when any target language reports it', () => {
+      const targets: LanguageInfo[] = [
+        { language: 'de', name: 'German', supportsFormality: true },
+        { language: 'en-us', name: 'English (American)', supportsFormality: false },
+      ];
+      const result = languagesCommand.formatLanguagesTable(targets, 'target');
+      expect(result).toContain('Target Languages:');
+      expect(result).toContain('Formality');
+      expect(result).toContain('yes');
+      expect(result).toContain('—');
+    });
+
+    it('should fall back to the registry when no client and no API languages', () => {
+      const noClientService = createMockLanguagesService({
+        hasClient: jest.fn().mockReturnValue(false),
+      });
+      const cmd = new LanguagesCommand(noClientService);
+      const result = cmd.formatLanguagesTable([], 'source');
+      // Registry has at least the core source languages — output must be a table, not the empty-state line.
+      expect(result).toContain('Source Languages:');
+      expect(result).not.toContain('(no languages available)');
+    });
+  });
+
+  describe('formatAllLanguagesTable', () => {
+    it('should join the source and target tables with a blank line', () => {
+      const result = languagesCommand.formatAllLanguagesTable(mockSourceLanguages, [
+        { language: 'de', name: 'German' },
+        { language: 'fr', name: 'French' },
+      ]);
+      expect(result).toContain('Source Languages:');
+      expect(result).toContain('Target Languages:');
+      // The two sections are separated by at least one blank line.
+      expect(result.split('\n\n').length).toBeGreaterThanOrEqual(2);
+    });
+  });
 });

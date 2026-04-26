@@ -85,6 +85,19 @@ export default {
   resetMocks: true,
   restoreMocks: true,
 
+  // KNOWN BENIGN WARNING: jest emits "A worker process has failed to exit
+  // gracefully" at the end of every full-suite run. Stack traces lead to six
+  // `nock(...).replyWithError(...)` test sites in deepl-client.test.ts and
+  // three integration files. The leak is in nock v14 + @mswjs/interceptors:
+  // each replyWithError call constructs a synthetic Node IncomingMessage
+  // that is never drained, leaving an HTTPINCOMINGMESSAGE handle pinned in
+  // the worker. The affected tests all PASS — only the orphaned handles
+  // trigger the warning. `forceExit: true` does not suppress it (the warning
+  // fires from the worker, not the main process, before forceExit applies),
+  // and `--runInBand` eliminates it but is 5× slower. Fixing upstream
+  // (nock/mswjs) is out of scope. Run `npm run test:debug` to audit for
+  // any NEW leak source beyond the six known replyWithError sites.
+
   // Verbose output
   verbose: true,
 };

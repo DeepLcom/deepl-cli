@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.2.0] - 2026-04-25
+
+### Added
+
+- **write**: Japanese (`ja`), Korean (`ko`), and Simplified Chinese (`zh`, `zh-Hans`) are now accepted target languages for `deepl write`.
+- **write**: `--tone` and `--style` now apply to Spanish (`es`), Italian (`it`), French (`fr`), and Portuguese (`pt`, `pt-BR`, `pt-PT`) in addition to the previously supported locales. The full value lists on `--tone` and `--style` are unchanged — the same 9 styles and 9 tones are accepted, and the mutual-exclusion rule between `--style` and `--tone` is unchanged. See `docs/API.md` for supported target-language / style / tone combinations.
+- **write**: 4xx responses from the Write API that arrive while `--style` or `--tone` is set now carry an explicit recovery hint pointing at `docs/API.md` for supported target-language / style / tone combinations.
+- **style-rules**: Full CRUD — `deepl style-rules create|show|update|delete` alongside the existing `list`. `create` requires `--name` and `--language`. `update` accepts `--name` for a rename and `--rules` for replacing configured rules (PUT `/configured_rules`); at least one is required. `--rules` takes a JSON object of category → settings, e.g. `'{"punctuation":{"quotation_mark":"use_guillemets"}}'` — matching the DeepL API's two-level rule shape. `delete` supports `-y`/`--yes`, `--dry-run`, and a TTY confirmation prompt. All new subcommands support `--format text|json`. Text-format output sanitizes control characters from rule names, configured-rule keys/values, and instruction text.
+- **style-rules**: Custom instructions management — `deepl style-rules instructions <style-rule-id>` (list, synthesized from the detailed `show` response), plus `add-instruction <style-id> <label> <prompt>`, `update-instruction <style-id> <label> <prompt>`, and `remove-instruction <style-id> <label>` subcommands. `remove-instruction` ships `-y`/`--yes`, `--dry-run`, and a TTY confirmation prompt (custom instructions are user-authored text and deserve confirmation before deletion).
+- **style-rules**: `deepl style-rules list` and `deepl style-rules instructions <style-rule-id>` accept `--format table` for aligned column output via `cli-table3`, matching the existing `translate`, `languages`, `usage`, and `cache` commands. In non-TTY output (pipe, redirect, CI), table falls back to plain text with a `WARN` line on stderr — same pattern used by `deepl translate --format table`.
+- **examples**: `examples/35-style-rules-crud.sh` — end-to-end style-rules workflow (create → show → update rules → add custom instruction → update instruction → remove instruction → delete rule).
+- **examples**: `examples/36-write-extended-languages.sh` — `deepl write` with Japanese, Korean, and Simplified Chinese targets and tone / style applied to Spanish, Italian, French, and Portuguese variants.
+
+### Fixed
+
+- **languages / cache stats / usage**: `--format table` now actually renders a `cli-table3` table on these commands. Previously the flag was advertised in `--help` but the action handler only branched on `'json'`, so `--format table` silently produced text output. Same non-TTY fallback as the other table commands.
+- **sync**: `deepl sync export --output <path>` (and other sync surfaces that call `assertPathWithinRoot`) no longer reject valid output paths under a project root that contains a symlink in its ancestor chain. The containment check now resolves both sides through `fs.realpath` before comparing, so a project under macOS `/tmp` (a symlink to `/private/tmp`) — or any other symlinked directory — works regardless of which form the user types or the engine captures. Symlink-based escape attempts (a symlink inside the project pointing outside) are now also rejected as a defense-in-depth bonus.
+
+### Security
+
+- **api**: Server-returned error messages are now passed through `sanitizeForTerminal` before being interpolated into the user-facing `API error: …` and `Server error (5xx): …` strings emitted from `src/api/http-client.ts`. Defense-in-depth against a buggy or malicious server scribbling ANSI escape codes or other terminal control characters on the user's terminal via the error path. Mirrors the existing TMS-client hardening; no change to error-message wording when the server payload is well-formed.
+
 ## [1.1.0] - 2026-04-23
 
 ### Added

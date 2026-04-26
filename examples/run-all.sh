@@ -62,6 +62,7 @@ EXAMPLES=(
   "12-cost-transparency.sh"
   # Core Commands - Write
   "13-write.sh"
+  "36-write-extended-languages.sh"
   # Core Commands - Voice
   "14-voice.sh"
   # Resources
@@ -80,6 +81,7 @@ EXAMPLES=(
   "20-custom-config-files.sh"
   "21-cache.sh"
   "22-style-rules.sh"
+  "35-style-rules-crud.sh"
   # Information
   "23-usage-monitoring.sh"
   "24-languages.sh"
@@ -113,6 +115,7 @@ if [ "$FAST_MODE" = true ]; then
     "12-cost-transparency.sh"
     # Core Commands - Write
     "13-write.sh"
+    "36-write-extended-languages.sh"
     # Core Commands - Voice
     "14-voice.sh"
     # Resources
@@ -128,6 +131,7 @@ if [ "$FAST_MODE" = true ]; then
     "20-custom-config-files.sh"
     "21-cache.sh"
     "22-style-rules.sh"
+    "35-style-rules-crud.sh"
     # Information
     "23-usage-monitoring.sh"
     "24-languages.sh"

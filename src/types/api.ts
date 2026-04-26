@@ -48,9 +48,13 @@ export type WriteLanguage =
   | 'es'
   | 'fr'
   | 'it'
+  | 'ja'
+  | 'ko'
   | 'pt'
   | 'pt-BR'
-  | 'pt-PT';
+  | 'pt-PT'
+  | 'zh'
+  | 'zh-Hans';
 
 export type WritingStyle =
   | 'default'
@@ -148,13 +152,23 @@ export interface StyleRule {
 }
 
 export interface CustomInstruction {
+  /** Server-assigned UUID. Present on responses; not sent on create. Used as the URL path segment for get/update/delete. */
+  id?: string;
   label: string;
   prompt: string;
   sourceLanguage?: string;
 }
 
+/**
+ * Configured rules for a style rule list. The DeepL API models this as a
+ * two-level dictionary: category → setting → value. Example for fr-CA:
+ *   { "punctuation": { "quotation_mark": "use_guillemets" } }
+ * Empty rules are represented as `{}`.
+ */
+export type ConfiguredRules = Record<string, Record<string, string>>;
+
 export interface StyleRuleDetailed extends StyleRule {
-  configuredRules: string[];
+  configuredRules: ConfiguredRules;
   customInstructions: CustomInstruction[];
 }
 
@@ -162,6 +176,30 @@ export interface StyleRulesListOptions {
   detailed?: boolean;
   page?: number;
   pageSize?: number;
+}
+
+export interface CreateStyleRuleOptions {
+  name: string;
+  language: string;
+  configuredRules?: ConfiguredRules;
+  customInstructions?: CustomInstruction[];
+}
+
+export interface UpdateStyleRuleOptions {
+  name?: string;
+  configuredRules?: ConfiguredRules;
+  customInstructions?: CustomInstruction[];
+}
+
+export interface CreateCustomInstructionOptions {
+  label: string;
+  prompt: string;
+  sourceLanguage?: string;
+}
+
+export interface UpdateCustomInstructionOptions {
+  prompt?: string;
+  sourceLanguage?: string;
 }
 
 // Admin API Types

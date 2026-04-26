@@ -238,4 +238,39 @@ describe('CacheCommand', () => {
       expect(stats.entries).toBe(1000000);
     });
   });
+
+  describe('formatStatsTable', () => {
+    const stats = {
+      entries: 142,
+      totalSize: 25 * 1024 * 1024,   // 25 MB
+      maxSize: 100 * 1024 * 1024,    // 100 MB
+      enabled: true,
+    };
+
+    it('should render Metric/Value columns with all five rows', () => {
+      const result = cacheCommand.formatStatsTable(stats);
+      expect(result).toContain('Metric');
+      expect(result).toContain('Value');
+      expect(result).toContain('Status');
+      expect(result).toContain('enabled');
+      expect(result).toContain('Entries');
+      expect(result).toContain('142');
+      expect(result).toContain('Used');
+      expect(result).toContain('25.00 MB');
+      expect(result).toContain('Limit');
+      expect(result).toContain('100.00 MB');
+      expect(result).toContain('Usage');
+      expect(result).toContain('25.0%');
+    });
+
+    it('should report disabled status', () => {
+      const result = cacheCommand.formatStatsTable({ ...stats, enabled: false });
+      expect(result).toContain('disabled');
+    });
+
+    it('should report 0.0% usage when maxSize is zero', () => {
+      const result = cacheCommand.formatStatsTable({ ...stats, totalSize: 0, maxSize: 0 });
+      expect(result).toContain('0.0%');
+    });
+  });
 });

@@ -205,5 +205,47 @@ describe('WriteClient', () => {
         client.improveText('Test', {})
       ).rejects.toThrow();
     });
+
+    it('should append docs hint on 400 when writingStyle was sent', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 400, data: { message: "Style 'business' is not supported for 'ja'" }, headers: {} },
+        message: 'Bad request',
+      };
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        client.improveText('Test', { targetLang: 'ja', writingStyle: 'business' })
+      ).rejects.toThrow(/See docs\/API\.md for supported target language \/ style \/ tone combinations/);
+    });
+
+    it('should append docs hint on 400 when tone was sent', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 400, data: { message: "Tone 'friendly' is not supported for 'ko'" }, headers: {} },
+        message: 'Bad request',
+      };
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        client.improveText('Test', { targetLang: 'ko', tone: 'friendly' })
+      ).rejects.toThrow(/See docs\/API\.md for supported target language \/ style \/ tone combinations/);
+    });
+
+    it('should NOT append docs hint on 400 when neither style nor tone was sent', async () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: { status: 400, data: { message: 'Generic bad request' }, headers: {} },
+        message: 'Bad request',
+      };
+      mockAxiosInstance.request.mockRejectedValue(axiosError);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        client.improveText('Test', { targetLang: 'ja' })
+      ).rejects.not.toThrow(/See docs\/API\.md/);
+    });
   });
 });

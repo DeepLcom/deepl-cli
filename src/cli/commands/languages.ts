@@ -1,10 +1,12 @@
 import chalk from 'chalk';
+import Table from 'cli-table3';
 import type { LanguagesService } from '../../services/languages.js';
 import { LanguageInfo } from '../../api/deepl-client.js';
 import {
   getSourceLanguages as getRegistrySourceLanguages,
   getTargetLanguages as getRegistryTargetLanguages,
 } from '../../data/language-registry.js';
+import { isColorEnabled } from '../../utils/formatters.js';
 
 export interface LanguageDisplayEntry {
   code: string;
@@ -126,5 +128,46 @@ export class LanguagesCommand {
     const targetPart = this.formatLanguages(targetLanguages, 'target');
 
     return `${sourcePart}\n\n${targetPart}`;
+  }
+
+  /** Format a single language list (source or target) as a cli-table3 table. */
+  formatLanguagesTable(languages: LanguageInfo[], type: 'source' | 'target'): string {
+    const entries = languages.length === 0 && !this.service.hasClient()
+      ? this.getRegistryLanguages(type)
+      : this.mergeWithRegistry(languages, type);
+
+    const header = type === 'source' ? 'Source Languages' : 'Target Languages';
+    if (entries.length === 0) {
+      return `${header}: (no languages available)`;
+    }
+
+    const showFormality = type === 'target' && entries.some(e => e.supportsFormality !== undefined);
+    const head = showFormality
+      ? ['Code', 'Name', 'Category', 'Formality']
+      : ['Code', 'Name', 'Category'];
+    const colWidths = showFormality ? [10, 30, 12, 13] : [10, 36, 12];
+    const colorDisabled = !isColorEnabled();
+
+    const table = new Table({
+      head,
+      colWidths,
+      wordWrap: true,
+      ...(colorDisabled && { style: { head: [], border: [] } }),
+    });
+
+    for (const entry of entries) {
+      const row: string[] = [entry.code, entry.name, entry.category];
+      if (showFormality) {
+        row.push(entry.supportsFormality ? 'yes' : '—');
+      }
+      table.push(row);
+    }
+
+    return `${header}:\n${table.toString()}`;
+  }
+
+  /** Format both source and target language tables joined by a blank line. */
+  formatAllLanguagesTable(sourceLanguages: LanguageInfo[], targetLanguages: LanguageInfo[]): string {
+    return `${this.formatLanguagesTable(sourceLanguages, 'source')}\n\n${this.formatLanguagesTable(targetLanguages, 'target')}`;
   }
 }

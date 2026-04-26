@@ -36,6 +36,13 @@ Examples:
             const stats = await cacheCommand.stats();
             if (options.format === 'json') {
               Logger.output(JSON.stringify(stats, null, 2));
+            } else if (options.format === 'table') {
+              if (!process.stdout.isTTY) {
+                Logger.warn('--format table is not supported in non-TTY output; falling back to plain text');
+                Logger.output(cacheCommand.formatStats(stats));
+              } else {
+                Logger.output(cacheCommand.formatStatsTable(stats));
+              }
             } else {
               Logger.output(cacheCommand.formatStats(stats));
             }

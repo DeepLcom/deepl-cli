@@ -19,6 +19,12 @@ import {
   StyleRule,
   StyleRuleDetailed,
   StyleRulesListOptions,
+  CreateStyleRuleOptions,
+  UpdateStyleRuleOptions,
+  CustomInstruction,
+  ConfiguredRules,
+  CreateCustomInstructionOptions,
+  UpdateCustomInstructionOptions,
   AdminApiKey,
   AdminUsageOptions,
   AdminUsageReport,
@@ -218,6 +224,49 @@ export class DeepLClient {
     options: StyleRulesListOptions = {}
   ): Promise<(StyleRule | StyleRuleDetailed)[]> {
     return this.styleRulesClient.getStyleRules(options);
+  }
+
+  async createStyleRule(options: CreateStyleRuleOptions): Promise<StyleRule> {
+    return this.styleRulesClient.createStyleRule(options);
+  }
+
+  async getStyleRule(styleId: string, detailed = false): Promise<StyleRule | StyleRuleDetailed> {
+    return this.styleRulesClient.getStyleRule(styleId, detailed);
+  }
+
+  async updateStyleRule(styleId: string, options: UpdateStyleRuleOptions): Promise<StyleRule> {
+    return this.styleRulesClient.updateStyleRule(styleId, options);
+  }
+
+  async deleteStyleRule(styleId: string): Promise<void> {
+    return this.styleRulesClient.deleteStyleRule(styleId);
+  }
+
+  async replaceConfiguredRules(styleId: string, rules: ConfiguredRules): Promise<StyleRuleDetailed> {
+    return this.styleRulesClient.replaceConfiguredRules(styleId, rules);
+  }
+
+  async createCustomInstruction(
+    styleId: string,
+    options: CreateCustomInstructionOptions,
+  ): Promise<CustomInstruction> {
+    return this.styleRulesClient.createCustomInstruction(styleId, options);
+  }
+
+  async getCustomInstruction(styleId: string, label: string): Promise<CustomInstruction> {
+    return this.styleRulesClient.getCustomInstruction(styleId, label);
+  }
+
+  async updateCustomInstruction(
+    styleId: string,
+    label: string,
+    options: UpdateCustomInstructionOptions,
+  ): Promise<CustomInstruction> {
+    return this.styleRulesClient.updateCustomInstruction(styleId, label, options);
+  }
+
+  async deleteCustomInstruction(styleId: string, label: string): Promise<void> {
+    return this.styleRulesClient.deleteCustomInstruction(styleId, label);
   }
 
   async listApiKeys(): Promise<AdminApiKey[]> {

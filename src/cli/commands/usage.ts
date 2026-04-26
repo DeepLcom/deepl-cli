@@ -4,8 +4,10 @@
  */
 
 import chalk from 'chalk';
+import Table from 'cli-table3';
 import type { UsageService } from '../../services/usage.js';
 import { UsageInfo } from '../../api/deepl-client.js';
+import { isColorEnabled } from '../../utils/formatters.js';
 
 export class UsageCommand {
   private service: UsageService;
@@ -136,5 +138,102 @@ export class UsageCommand {
       return `${minutes}m ${seconds % 60}s`;
     }
     return `${seconds}s ${ms % 1000}ms`;
+  }
+
+  /** Format usage statistics as a cli-table3 table. */
+  formatUsageTable(usage: UsageInfo): string {
+    const formatNumber = (n: number): string => n.toLocaleString('en-US');
+    const pct = (count: number, limit: number): string =>
+      limit > 0 ? `${((count / limit) * 100).toFixed(1)}%` : '—';
+    const fmtLimit = (limit: number | undefined): string =>
+      limit === undefined || limit === 0 ? 'unlimited' : formatNumber(limit);
+    const colorDisabled = !isColorEnabled();
+
+    const table = new Table({
+      head: ['Resource', 'Used', 'Limit', 'Usage'],
+      colWidths: [22, 18, 18, 10],
+      wordWrap: true,
+      ...(colorDisabled && { style: { head: [], border: [] } }),
+    });
+
+    table.push([
+      'Characters',
+      formatNumber(usage.characterCount),
+      fmtLimit(usage.characterLimit),
+      pct(usage.characterCount, usage.characterLimit),
+    ]);
+
+    if (usage.accountUnitCount !== undefined) {
+      table.push([
+        'Account units',
+        formatNumber(usage.accountUnitCount),
+        fmtLimit(usage.accountUnitLimit),
+        pct(usage.accountUnitCount, usage.accountUnitLimit ?? 0),
+      ]);
+    }
+
+    if (usage.apiKeyUnitCount !== undefined) {
+      table.push([
+        'API key units',
+        formatNumber(usage.apiKeyUnitCount),
+        fmtLimit(usage.apiKeyUnitLimit),
+        pct(usage.apiKeyUnitCount, usage.apiKeyUnitLimit ?? 0),
+      ]);
+    } else if (usage.apiKeyCharacterCount !== undefined) {
+      table.push([
+        'API key characters',
+        formatNumber(usage.apiKeyCharacterCount),
+        fmtLimit(usage.apiKeyCharacterLimit),
+        pct(usage.apiKeyCharacterCount, usage.apiKeyCharacterLimit ?? 0),
+      ]);
+    }
+
+    if (usage.speechToTextMillisecondsCount !== undefined) {
+      const sttLimit = usage.speechToTextMillisecondsLimit ?? 0;
+      table.push([
+        'Speech-to-text',
+        this.formatMilliseconds(usage.speechToTextMillisecondsCount),
+        sttLimit === 0 ? 'unlimited' : this.formatMilliseconds(sttLimit),
+        pct(usage.speechToTextMillisecondsCount, sttLimit),
+      ]);
+    }
+
+    let output = table.toString();
+
+    if (usage.products && usage.products.length > 0) {
+      const productTable = new Table({
+        head: ['Product', 'Used', 'API key'],
+        colWidths: [28, 22, 22],
+        wordWrap: true,
+        ...(colorDisabled && { style: { head: [], border: [] } }),
+      });
+      for (const product of usage.products) {
+        if (product.billingUnit === 'milliseconds') {
+          productTable.push([
+            product.productType,
+            this.formatMilliseconds(product.characterCount),
+            this.formatMilliseconds(product.apiKeyCharacterCount),
+          ]);
+        } else if (product.unitCount !== undefined) {
+          const apiKeyVal = product.apiKeyUnitCount !== undefined
+            ? `${formatNumber(product.apiKeyUnitCount)} units`
+            : `${formatNumber(product.apiKeyCharacterCount)} chars`;
+          productTable.push([
+            product.productType,
+            `${formatNumber(product.unitCount)} units`,
+            apiKeyVal,
+          ]);
+        } else {
+          productTable.push([
+            product.productType,
+            `${formatNumber(product.characterCount)} chars`,
+            `${formatNumber(product.apiKeyCharacterCount)} chars`,
+          ]);
+        }
+      }
+      output = `${output}\n\nProduct Breakdown:\n${productTable.toString()}`;
+    }
+
+    return output;
   }
 }

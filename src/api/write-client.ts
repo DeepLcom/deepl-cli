@@ -1,6 +1,6 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { WriteOptions, WriteImprovement } from '../types/index.js';
-import { NetworkError } from '../utils/errors.js';
+import { NetworkError, ValidationError } from '../utils/errors.js';
 
 interface DeepLWriteResponse {
   improvements: Array<{
@@ -52,7 +52,16 @@ export class WriteClient extends HttpClient {
         detectedSourceLanguage: improvement.detected_source_language,
       }));
     } catch (error) {
-      throw this.handleError(error);
+      const translated = this.handleError(error);
+      if (
+        translated instanceof ValidationError &&
+        (options.writingStyle !== undefined || options.tone !== undefined)
+      ) {
+        throw new ValidationError(
+          `${translated.message} See docs/API.md for supported target language / style / tone combinations.`
+        );
+      }
+      throw translated;
     }
   }
 }
