@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
-**Version**: 1.1.0
-**Last Updated**: April 23, 2026
+**Version**: 1.2.0
+**Last Updated**: April 25, 2026
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -664,7 +664,7 @@ deepl write [OPTIONS] TEXT
 
 #### Description
 
-Enhance text quality with AI-powered grammar checking, style improvement, and tone adjustment. Supports 8 languages.
+Enhance text quality with AI-powered grammar checking, style improvement, and tone adjustment. Supports 14 target languages.
 
 **File Detection:** The command automatically detects if the text argument is a file path. If a file exists at that path, it operates on the file; otherwise, it treats the argument as text to improve.
 
@@ -672,7 +672,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 **Language:**
 
-- `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT`. Optional — omit to auto-detect the language and rephrase in the original language.
+- `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `zh`, `zh-Hans`. Optional — omit to auto-detect the language and rephrase in the original language.
 - `--to LANG` - Long-only alias of `--lang`. Accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`; the short form `-t` is intentionally **not** bound here (it would collide with `deepl translate -t, --to`). Specifying both `--to` and `--lang` with different values exits with a `ValidationError`.
 
 **Style Options (mutually exclusive with tone):**
@@ -694,6 +694,16 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
   - `confident` - More assertive and certain
   - `diplomatic` - More careful and tactful
   - `prefer_enthusiastic`, `prefer_friendly`, etc. - Soft preferences
+
+**Supported target-language / style-and-tone combinations:**
+
+| Target language | `--style` | `--tone` |
+|-----------------|:---------:|:--------:|
+| `en`, `en-GB`, `en-US`, `de` | ✓ | ✓ |
+| `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT` | ✓ | ✓ |
+| `ja`, `ko`, `zh`, `zh-Hans` | — | — |
+
+When `--style` or `--tone` is set for a target language that does not support it, the server returns a 4xx; the CLI converts that response into a `ValidationError` (exit code 6) that names the unsupported combination and points back to this table.
 
 **Output Options:**
 
@@ -2000,7 +2010,7 @@ Show cache statistics (status, entries count, size, percentage used).
 
 **Options:**
 
-- `--format <format>` - Output format: `text`, `json`, `table` (default: `text`)
+- `--format <format>` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 ##### `clear`
 
@@ -2139,7 +2149,7 @@ Display your DeepL API character usage and remaining quota. Helps you monitor co
 
 #### Options
 
-- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 #### Examples
 
@@ -2215,7 +2225,7 @@ You can filter to show only source languages, only target languages, or both (de
 
 - `--source, -s` - Show only source languages
 - `--target` - Show only target languages
-- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 #### Examples
 
@@ -2462,7 +2472,7 @@ deepl auth clear
 
 ### style-rules
 
-Manage DeepL style rules (Pro API only). Style rules are created via the DeepL web UI and applied to translations using their ID.
+Manage DeepL style rules (Pro API only). Style rules carry a list of configured rule ids and optional custom instructions, and apply to translations via their style id.
 
 #### Synopsis
 
@@ -2481,30 +2491,208 @@ List all available style rules.
 - `--detailed` - Show detailed information including configured rules and custom instructions
 - `--page NUMBER` - Page number for pagination
 - `--page-size NUMBER` - Number of results per page (1-25)
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
+
+**Examples:**
+
+```bash
+deepl style-rules list
+deepl style-rules list --detailed
+deepl style-rules list --format json
+deepl style-rules list --format table
+deepl style-rules list --page 1 --page-size 10
+```
+
+##### `create`
+
+Create a new style rule list.
+
+**Options:**
+
+- `--name NAME` - Style rule name (required)
+- `--language LANG` - Target language (required)
+- `--rules JSON` - Configured rules as a JSON object of category → settings (optional). The DeepL API models configured rules as a two-level dictionary; arrays are not accepted. See "Configured rules shape" below.
 - `--format FORMAT` - Output format: `text`, `json` (default: `text`)
 
 **Examples:**
 
 ```bash
-# List all style rules
-deepl style-rules list
+deepl style-rules create --name "Corporate" --language en
+deepl style-rules create --name "Québécois" --language fr \
+  --rules '{"punctuation":{"quotation_mark":"use_guillemets"}}'
+```
 
-# List with details
-deepl style-rules list --detailed
+**Configured rules shape:**
 
-# JSON output
-deepl style-rules list --format json
+The DeepL API expects `configured_rules` as a nested object — a category name maps to a settings object, and each setting maps to a string value. Empty rules are `{}`. Example for fr-CA:
 
-# Pagination
-deepl style-rules list --page 1 --page-size 10
+```json
+{
+  "punctuation": {
+    "quotation_mark": "use_guillemets",
+    "spacing_and_punctuation": "do_not_use_space"
+  },
+  "spelling_and_grammar": {
+    "accents_and_cedillas": "use_even_on_capital_letters"
+  }
+}
+```
+
+The available categories, settings, and accepted values are defined by the DeepL API; consult DeepL's API documentation for the current rule schema.
+
+##### `show`
+
+Show a single style rule.
+
+**Arguments:**
+
+- `<id>` - Style rule id (required)
+
+**Options:**
+
+- `--detailed` - Include configured rules and custom instructions
+- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
+
+**Examples:**
+
+```bash
+deepl style-rules show sr-abc123
+deepl style-rules show sr-abc123 --detailed --format json
+```
+
+##### `update`
+
+Update a style rule — rename and/or replace configured rules. At least one of `--name` / `--rules` is required. When both are provided, the rename (PATCH) runs first, then the rules replacement (PUT `/configured_rules`).
+
+**Arguments:**
+
+- `<id>` - Style rule id (required)
+
+**Options:**
+
+- `--name NAME` - New name
+- `--rules JSON` - Replace configured rules with a JSON object of category → settings (see "Configured rules shape" under `create`)
+- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
+
+**Examples:**
+
+```bash
+deepl style-rules update sr-abc123 --name "Renamed"
+deepl style-rules update sr-abc123 --rules '{"punctuation":{"quotation_mark":"use_guillemets"}}'
+deepl style-rules update sr-abc123 --name "New" --rules '{"spelling_and_grammar":{"accents_and_cedillas":"use_even_on_capital_letters"}}'
+```
+
+##### `delete`
+
+Delete a style rule. Prompts for confirmation on a TTY; use `--yes` to skip or `--dry-run` to preview.
+
+**Arguments:**
+
+- `<id>` - Style rule id (required)
+
+**Options:**
+
+- `-y`, `--yes` - Skip confirmation prompt
+- `--dry-run` - Show what would be deleted without performing the operation
+
+**Examples:**
+
+```bash
+deepl style-rules delete sr-abc123
+deepl style-rules delete sr-abc123 --yes
+deepl style-rules delete sr-abc123 --dry-run
+```
+
+##### `instructions`
+
+List custom instructions attached to a style rule. Synthesized from the detailed `show` response.
+
+**Arguments:**
+
+- `<style-id>` - Style rule id (required)
+
+**Options:**
+
+- `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
+
+**Examples:**
+
+```bash
+deepl style-rules instructions sr-abc123
+deepl style-rules instructions sr-abc123 --format json
+deepl style-rules instructions sr-abc123 --format table
+```
+
+##### `add-instruction`
+
+Add a custom instruction to a style rule.
+
+**Arguments:**
+
+- `<style-id>` - Style rule id (required)
+- `<label>` - Instruction label, unique within the rule (required)
+- `<prompt>` - Instruction prompt text (required)
+
+**Options:**
+
+- `--source-language LANG` - Source language code (optional)
+- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
+
+**Examples:**
+
+```bash
+deepl style-rules add-instruction sr-abc123 tone "Be formal"
+deepl style-rules add-instruction sr-abc123 register "Use first person" --source-language en
+```
+
+##### `update-instruction`
+
+Update the prompt and/or source language of an existing custom instruction. The label cannot be changed (it is the identifier); rename by removing and re-adding.
+
+**Arguments:**
+
+- `<style-id>` - Style rule id (required)
+- `<label>` - Instruction label (required)
+- `<prompt>` - New instruction prompt text (required)
+
+**Options:**
+
+- `--source-language LANG` - Source language code (optional)
+- `--format FORMAT` - Output format: `text`, `json` (default: `text`)
+
+**Examples:**
+
+```bash
+deepl style-rules update-instruction sr-abc123 tone "Be friendlier"
+```
+
+##### `remove-instruction`
+
+Remove a custom instruction from a style rule. Prompts for confirmation on a TTY.
+
+**Arguments:**
+
+- `<style-id>` - Style rule id (required)
+- `<label>` - Instruction label (required)
+
+**Options:**
+
+- `-y`, `--yes` - Skip confirmation prompt
+- `--dry-run` - Show what would be removed without performing the operation
+
+**Examples:**
+
+```bash
+deepl style-rules remove-instruction sr-abc123 tone --yes
+deepl style-rules remove-instruction sr-abc123 tone --dry-run
 ```
 
 #### Notes
 
-- Style rules are created and managed via the DeepL web interface, not through the API
-- Style rules are Pro API only and datacenter-specific (EU and US rules don't cross)
-- Use the style ID from `style-rules list` with `deepl translate --style-id <uuid>`
-- Style rules force the `quality_optimized` model type
+- Style rules are Pro API only and datacenter-specific (EU and US rules don't cross).
+- Use the style id with `deepl translate --style-id <uuid>` to apply a rule at translation time.
+- Style rules force the `quality_optimized` model type.
+- Text-format output of stored user strings (rule names, instruction labels, instruction prompts) passes through a terminal-escape sanitizer to prevent injection of control characters from the API response. JSON-format output preserves raw strings (JSON-escaped at the encoding layer).
 
 ### admin
 

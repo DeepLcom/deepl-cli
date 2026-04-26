@@ -55,6 +55,38 @@ describe('Write Command E2E', () => {
       }
     });
 
+    it('should accept --lang ja without validation error', () => {
+      try {
+        execSync('deepl write "test" --lang ja', { encoding: 'utf-8', stdio: 'pipe' });
+      } catch (error: any) {
+        expect(error.status).not.toBe(6);
+      }
+    });
+
+    it('should accept --lang ko without validation error', () => {
+      try {
+        execSync('deepl write "test" --lang ko', { encoding: 'utf-8', stdio: 'pipe' });
+      } catch (error: any) {
+        expect(error.status).not.toBe(6);
+      }
+    });
+
+    it('should accept --lang zh without validation error', () => {
+      try {
+        execSync('deepl write "test" --lang zh', { encoding: 'utf-8', stdio: 'pipe' });
+      } catch (error: any) {
+        expect(error.status).not.toBe(6);
+      }
+    });
+
+    it('should accept --lang zh-Hans without validation error', () => {
+      try {
+        execSync('deepl write "test" --lang zh-Hans', { encoding: 'utf-8', stdio: 'pipe' });
+      } catch (error: any) {
+        expect(error.status).not.toBe(6);
+      }
+    });
+
     it('should reject combining --style and --tone', () => {
       expect.assertions(1);
       try {

@@ -181,6 +181,17 @@ describe('registerWrite', () => {
       );
     });
 
+    it.each(['ja', 'ko', 'zh', 'zh-Hans'])('should accept new target language %s', async (lang) => {
+      mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
+      mockWriteCommand.improve.mockResolvedValue('ok');
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', lang]);
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+        'Hello',
+        expect.objectContaining({ lang }),
+      );
+      expect(handleError).not.toHaveBeenCalled();
+    });
+
     it('should reject both --style and --tone', async () => {
       await program.parseAsync([
         'node', 'test', 'write', 'Hello', '--style', 'business', '--tone', 'friendly',

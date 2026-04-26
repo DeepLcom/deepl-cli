@@ -19,6 +19,7 @@ export function registerUsage(
 Examples:
   $ deepl usage
   $ deepl usage --format json
+  $ deepl usage --format table
 `)
     .action(async (options: { format?: string }) => {
       try {
@@ -27,6 +28,13 @@ Examples:
         const usage = await usageCommand.getUsage();
         if (options.format === 'json') {
           Logger.output(JSON.stringify(usage, null, 2));
+        } else if (options.format === 'table') {
+          if (!process.stdout.isTTY) {
+            Logger.warn('--format table is not supported in non-TTY output; falling back to plain text');
+            Logger.output(usageCommand.formatUsage(usage));
+          } else {
+            Logger.output(usageCommand.formatUsageTable(usage));
+          }
         } else {
           Logger.output(usageCommand.formatUsage(usage));
         }
