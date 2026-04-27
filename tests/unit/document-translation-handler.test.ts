@@ -153,7 +153,7 @@ describe('DocumentTranslationHandler', () => {
       mocks.documentTranslationService.translateDocument.mockResolvedValue({
         success: true,
         outputPath: '/tmp/output.pdf',
-      } as any);
+      });
 
       const result = await handler.translateDocument('/tmp/doc.pdf', defaultOptions());
 

@@ -100,7 +100,7 @@ function makeStubParser(
       return single!;
     }),
     reconstruct: jest.fn((content) => content),
-  } as FormatParser;
+  };
 }
 
 function makeRegistryWithParser(parser: FormatParser): FormatRegistry {

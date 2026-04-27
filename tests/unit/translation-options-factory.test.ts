@@ -82,7 +82,7 @@ describe('translation-options-factory', () => {
     it('resolves glossaryId when options.glossary is set', async () => {
       glossarySvc.resolveGlossaryId.mockResolvedValue('glos-123');
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', glossary: 'my-glossary' } as TranslateOptions, {
+      await applySharedTmAndGlossary(base, { to: 'de', glossary: 'my-glossary' }, {
         glossaryService: glossarySvc,
         translationService: translationSvc,
         targets: ['de'],
@@ -93,7 +93,7 @@ describe('translation-options-factory', () => {
 
     it('skips glossary resolution when options.glossary is absent', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de' } as TranslateOptions, {
+      await applySharedTmAndGlossary(base, { to: 'de' }, {
         glossaryService: glossarySvc,
         translationService: translationSvc,
         targets: ['de'],
@@ -104,7 +104,7 @@ describe('translation-options-factory', () => {
 
     it('resolves TM id and sets threshold when options.translationMemory is set', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm', tmThreshold: 80 } as TranslateOptions, {
+      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm', tmThreshold: 80 }, {
         glossaryService: glossarySvc,
         translationService: translationSvc,
         targets: ['de'],
@@ -115,7 +115,7 @@ describe('translation-options-factory', () => {
 
     it('defaults modelType to quality_optimized when TM is set and modelType was absent', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm' } as TranslateOptions, {
+      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm' }, {
         glossaryService: glossarySvc,
         translationService: translationSvc,
         targets: ['de'],
@@ -125,7 +125,7 @@ describe('translation-options-factory', () => {
 
     it('preserves an already-set modelType when TM is also set', async () => {
       const base: Record<string, unknown> = { targetLang: 'de', modelType: 'quality_optimized' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm', modelType: 'quality_optimized' } as TranslateOptions, {
+      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm', modelType: 'quality_optimized' }, {
         glossaryService: glossarySvc,
         translationService: translationSvc,
         targets: ['de'],
@@ -135,7 +135,7 @@ describe('translation-options-factory', () => {
 
     it('omits translationMemoryThreshold when tmThreshold is undefined', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm' } as TranslateOptions, {
+      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm' }, {
         glossaryService: glossarySvc,
         translationService: translationSvc,
         targets: ['de'],
@@ -148,7 +148,7 @@ describe('translation-options-factory', () => {
         { translation_memory_id: 'tm-multi', name: 'multi-tm', source_language: 'en', target_languages: ['de'], ready: true },
       ]) as never;
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'multi-tm' } as TranslateOptions, {
+      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'multi-tm' }, {
         glossaryService: glossarySvc,
         translationService: translationSvc,
         targets: ['de'], // single-pair TMs for each target — here one target matches
@@ -158,7 +158,7 @@ describe('translation-options-factory', () => {
 
     it('skips TM block when options.translationMemory is absent', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de' } as TranslateOptions, {
+      await applySharedTmAndGlossary(base, { to: 'de' }, {
         glossaryService: glossarySvc,
         translationService: translationSvc,
         targets: ['de'],

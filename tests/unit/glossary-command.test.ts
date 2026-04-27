@@ -8,7 +8,7 @@
 import { GlossaryCommand } from '../../src/cli/commands/glossary';
 import { GlossaryService } from '../../src/services/glossary';
 import { GlossaryInfo } from '../../src/types/glossary.js';
-import { GlossaryLanguagePair, Language } from '../../src/types/index.js';
+import { GlossaryLanguagePair } from '../../src/types/index.js';
 import * as fs from 'fs';
 import { createMockGlossaryService } from '../helpers/mock-factories';
 
@@ -644,9 +644,9 @@ describe('GlossaryCommand', () => {
   describe('formatLanguagePairs()', () => {
     it('should format language pairs for display', () => {
       const pairs: GlossaryLanguagePair[] = [
-        { sourceLang: 'en' as Language, targetLang: 'es' as Language },
-        { sourceLang: 'de' as Language, targetLang: 'en' as Language },
-        { sourceLang: 'fr' as Language, targetLang: 'de' as Language },
+        { sourceLang: 'en', targetLang: 'es' },
+        { sourceLang: 'de', targetLang: 'en' },
+        { sourceLang: 'fr', targetLang: 'de' },
       ];
 
       const result = glossaryCommand.formatLanguagePairs(pairs);
@@ -664,7 +664,7 @@ describe('GlossaryCommand', () => {
 
     it('should format single language pair', () => {
       const pairs: GlossaryLanguagePair[] = [
-        { sourceLang: 'en' as Language, targetLang: 'de' as Language },
+        { sourceLang: 'en', targetLang: 'de' },
       ];
 
       const result = glossaryCommand.formatLanguagePairs(pairs);

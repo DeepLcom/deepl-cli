@@ -107,7 +107,7 @@ describe('FileTranslationHandler', () => {
     mockDocHandler = {
       translateDocument: jest.fn().mockResolvedValue('Translated doc.pdf -> /tmp/output.pdf'),
       ctx: result.ctx,
-    } as unknown as jest.Mocked<DocumentTranslationHandler>;
+    };
 
     handler = new FileTranslationHandler(result.ctx, mockDocHandler);
 
@@ -122,10 +122,10 @@ describe('FileTranslationHandler', () => {
   describe('translateFile()', () => {
     it('should throw ValidationError when no output is specified', async () => {
       await expect(
-        handler.translateFile('/tmp/file.txt', { to: 'de', cache: true } as TranslateOptions)
+        handler.translateFile('/tmp/file.txt', { to: 'de', cache: true })
       ).rejects.toThrow(ValidationError);
       await expect(
-        handler.translateFile('/tmp/file.txt', { to: 'de', cache: true } as TranslateOptions)
+        handler.translateFile('/tmp/file.txt', { to: 'de', cache: true })
       ).rejects.toThrow('Output file path is required');
     });
 
@@ -140,8 +140,8 @@ describe('FileTranslationHandler', () => {
 
     it('should call fileTranslationService.translateFileToMultiple for multi-target', async () => {
       mocks.fileTranslationService.translateFileToMultiple.mockResolvedValue([
-        { targetLang: 'de' as any, text: 'Hallo', outputPath: '/tmp/out/file.de.txt' },
-        { targetLang: 'fr' as any, text: 'Bonjour', outputPath: '/tmp/out/file.fr.txt' },
+        { targetLang: 'de', text: 'Hallo', outputPath: '/tmp/out/file.de.txt' },
+        { targetLang: 'fr', text: 'Bonjour', outputPath: '/tmp/out/file.fr.txt' },
       ]);
 
       const result = await handler.translateFile('/tmp/file.txt', defaultOptions({ to: 'de,fr', output: '/tmp/out' }));
@@ -155,8 +155,8 @@ describe('FileTranslationHandler', () => {
 
       beforeEach(() => {
         mocks.fileTranslationService.translateFileToMultiple.mockResolvedValue([
-          { targetLang: 'de' as any, text: 'Hallo', outputPath: '/tmp/out/file.de.txt' },
-          { targetLang: 'fr' as any, text: 'Bonjour', outputPath: '/tmp/out/file.fr.txt' },
+          { targetLang: 'de', text: 'Hallo', outputPath: '/tmp/out/file.de.txt' },
+          { targetLang: 'fr', text: 'Bonjour', outputPath: '/tmp/out/file.fr.txt' },
         ]);
       });
 

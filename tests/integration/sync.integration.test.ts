@@ -2078,8 +2078,8 @@ describe('Sync Integration — translation memory', () => {
         const tmThresholdRaw = parsed['translation_memory_threshold'];
         capture.push({
           targetLang,
-          tmId: Array.isArray(tmIdRaw) ? tmIdRaw[0] : (tmIdRaw as string | undefined),
-          tmThreshold: Array.isArray(tmThresholdRaw) ? tmThresholdRaw[0] : (tmThresholdRaw as string | undefined),
+          tmId: Array.isArray(tmIdRaw) ? tmIdRaw[0] : (tmIdRaw),
+          tmThreshold: Array.isArray(tmThresholdRaw) ? tmThresholdRaw[0] : (tmThresholdRaw),
           body: parsed,
         });
         const texts = getTexts(rawBody);

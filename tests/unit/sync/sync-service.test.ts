@@ -1281,7 +1281,7 @@ describe('SyncService', () => {
           return ['locales/en.json', 'locales/old-path/en.json'];
         }
         return ['/test/locales/en.json'];
-      }) as never);
+      }));
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
         throw new Error('ENOENT');
@@ -1320,7 +1320,7 @@ describe('SyncService', () => {
           return [];
         }
         return ['/test/locales/en.json'];
-      }) as never);
+      }));
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
         throw new Error('ENOENT');

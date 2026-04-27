@@ -18,7 +18,7 @@ function sanitizePullKeysResponse(raw: unknown): Record<string, string> {
       'Check that your TMS server returns the documented shape: {"<key>": "<translation>", ...}.',
     );
   }
-  const keys = Object.keys(raw as Record<string, unknown>);
+  const keys = Object.keys(raw);
   if (keys.length > MAX_PULL_KEY_COUNT) {
     throw new ValidationError(
       `TMS pull response exceeds MAX_PULL_KEY_COUNT (${MAX_PULL_KEY_COUNT})`,

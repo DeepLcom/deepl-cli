@@ -217,7 +217,7 @@ describe('--dry-run flag', () => {
         handleError: jest.fn() as jest.Mock & ((error: unknown) => never),
       };
 
-      registerGlossary(program, mockDeps as any);
+      registerGlossary(program, mockDeps);
 
       await program.parseAsync([
         'node', 'deepl', 'glossary', 'delete', 'my-glossary',

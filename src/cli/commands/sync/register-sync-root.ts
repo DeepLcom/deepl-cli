@@ -142,7 +142,7 @@ async function handleSyncRoot(
       }
     }
     const syncCommand = await createSyncCommand(deps);
-    const result = await syncCommand.run(options as Parameters<typeof syncCommand.run>[0]);
+    const result = await syncCommand.run(options);
     if (result.driftDetected) {
       // Soft exit — set exitCode and return so in-flight writes / auto-commit
       // steps / the --watch event loop drain cleanly instead of being killed
@@ -154,6 +154,6 @@ async function handleSyncRoot(
     if (options['format'] === 'json') {
       emitJsonErrorAndExit(error);
     }
-    handleError(error as Error);
+    handleError(error);
   }
 }

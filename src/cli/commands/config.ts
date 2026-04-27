@@ -38,7 +38,7 @@ export class ConfigCommand {
       }
       return value;
     }
-    return this.maskSensitiveValues(this.config.get() as unknown as Record<string, unknown>);
+    return this.maskSensitiveValues(this.config.get());
   }
 
   /**
@@ -57,7 +57,7 @@ export class ConfigCommand {
     const config = this.config.get();
 
     // Mask sensitive values
-    return this.maskSensitiveValues(config as unknown as Record<string, unknown>);
+    return this.maskSensitiveValues(config);
   }
 
   /**

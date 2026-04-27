@@ -770,8 +770,8 @@ describe('TranslationService', () => {
   describe('getSupportedLanguages()', () => {
     it('should return supported source languages', async () => {
       mockDeepLClient.getSupportedLanguages.mockResolvedValue([
-        { language: 'en' as Language, name: 'English' },
-        { language: 'es' as Language, name: 'Spanish' },
+        { language: 'en', name: 'English' },
+        { language: 'es', name: 'Spanish' },
       ]);
 
       const languages = await translationService.getSupportedLanguages('source');
@@ -783,8 +783,8 @@ describe('TranslationService', () => {
 
     it('should return supported target languages', async () => {
       mockDeepLClient.getSupportedLanguages.mockResolvedValue([
-        { language: 'es' as Language, name: 'Spanish' },
-        { language: 'fr' as Language, name: 'French' },
+        { language: 'es', name: 'Spanish' },
+        { language: 'fr', name: 'French' },
       ]);
 
       const languages = await translationService.getSupportedLanguages('target');
@@ -795,7 +795,7 @@ describe('TranslationService', () => {
 
     it('should cache supported languages', async () => {
       mockDeepLClient.getSupportedLanguages.mockResolvedValue([
-        { language: 'en' as Language, name: 'English' },
+        { language: 'en', name: 'English' },
       ]);
 
       await translationService.getSupportedLanguages('source');

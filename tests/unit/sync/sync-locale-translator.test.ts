@@ -84,7 +84,7 @@ function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncCo
     translation: {},
     validation: { validate_after_sync: false },
     ...overrides,
-  } as unknown as ResolvedSyncConfig;
+  };
 }
 
 function makeParser(): FormatParser {

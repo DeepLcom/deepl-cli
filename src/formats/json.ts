@@ -244,7 +244,7 @@ export class JsonFormatParser implements FormatParser {
         }
       } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
         this.removeDeletedKeys(val, key, translations, flatKeyInfo);
-        if (Object.keys(val as Record<string, unknown>).length === 0) {
+        if (Object.keys(val).length === 0) {
           delete record[prop];
         }
       }

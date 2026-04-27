@@ -75,6 +75,6 @@ async function handleSyncPush(
     if (options.format === 'json') {
       emitJsonErrorAndExit(error);
     }
-    deps.handleError(error as Error);
+    deps.handleError(error);
   }
 }

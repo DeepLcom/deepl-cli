@@ -483,7 +483,7 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
   }
 
   return {
-    version: obj['version'] as number,
+    version: obj['version'],
     source_locale: obj['source_locale'],
     target_locales: obj['target_locales'] as string[],
     buckets: obj['buckets'] as Record<string, SyncBucketConfig>,

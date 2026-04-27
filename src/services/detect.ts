@@ -21,7 +21,7 @@ export class DetectService {
     }
 
     const result = await this.client.translate(text, {
-      targetLang: 'en' as Language,
+      targetLang: 'en',
     });
 
     if (!result.detectedSourceLang) {

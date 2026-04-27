@@ -17,10 +17,10 @@ describe('formatters', () => {
     it('should format single translation as JSON', () => {
       const result: TranslationResult = {
         text: 'Hola',
-        detectedSourceLang: 'en' as Language,
+        detectedSourceLang: 'en',
       };
 
-      const output = formatTranslationJson(result, 'es' as Language);
+      const output = formatTranslationJson(result, 'es');
       const parsed = JSON.parse(output);
 
       expect(parsed.text).toBe('Hola');
@@ -33,7 +33,7 @@ describe('formatters', () => {
         text: 'Hola',
       };
 
-      const output = formatTranslationJson(result, 'es' as Language, true);
+      const output = formatTranslationJson(result, 'es', true);
       const parsed = JSON.parse(output);
 
       expect(parsed.cached).toBe(true);
@@ -44,7 +44,7 @@ describe('formatters', () => {
         text: 'Hola',
       };
 
-      const output = formatTranslationJson(result, 'es' as Language);
+      const output = formatTranslationJson(result, 'es');
       const parsed = JSON.parse(output);
 
       expect(parsed.cached).toBeUndefined();
@@ -55,7 +55,7 @@ describe('formatters', () => {
         text: 'Hola',
       };
 
-      const output = formatTranslationJson(result, 'es' as Language);
+      const output = formatTranslationJson(result, 'es');
       const parsed = JSON.parse(output);
 
       expect(parsed.text).toBe('Hola');
@@ -68,7 +68,7 @@ describe('formatters', () => {
         text: 'Hola',
       };
 
-      const output = formatTranslationJson(result, 'es' as Language);
+      const output = formatTranslationJson(result, 'es');
 
       expect(output).toContain('  "text": "Hola"');
       expect(output).toContain('  "targetLang": "es"');

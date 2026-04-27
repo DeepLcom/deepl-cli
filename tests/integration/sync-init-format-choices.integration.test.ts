@@ -16,10 +16,10 @@ import type { ServiceDeps } from '../../src/cli/commands/service-factory';
 function makeDeps(): ServiceDeps {
   const handleError = jest.fn();
   return {
-    createDeepLClient: jest.fn() as unknown as ServiceDeps['createDeepLClient'],
-    getApiKeyAndOptions: jest.fn() as unknown as ServiceDeps['getApiKeyAndOptions'],
-    getConfigService: jest.fn() as unknown as ServiceDeps['getConfigService'],
-    getCacheService: jest.fn() as unknown as ServiceDeps['getCacheService'],
+    createDeepLClient: jest.fn(),
+    getApiKeyAndOptions: jest.fn(),
+    getConfigService: jest.fn(),
+    getCacheService: jest.fn(),
     handleError: handleError as unknown as ServiceDeps['handleError'],
   };
 }

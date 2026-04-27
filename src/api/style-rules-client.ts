@@ -163,7 +163,7 @@ export class StyleRulesClient extends HttpClient {
     const wire = await this.makeJsonRequest<StyleRuleWireShape>(
       'PUT',
       `/v3/style_rules/${encodeURIComponent(styleId)}/configured_rules`,
-      rules as unknown as Record<string, unknown>,
+      rules,
     );
     return mapStyleRuleDetailed(wire);
   }

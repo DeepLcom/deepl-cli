@@ -64,10 +64,10 @@ function snapshotCommand(cmd: Command): CommandSnapshot {
 function buildSyncTree(): CommandSnapshot {
   const program = new Command();
   const deps: ServiceDeps = {
-    createDeepLClient: jest.fn() as unknown as ServiceDeps['createDeepLClient'],
-    getApiKeyAndOptions: jest.fn() as unknown as ServiceDeps['getApiKeyAndOptions'],
-    getConfigService: jest.fn() as unknown as ServiceDeps['getConfigService'],
-    getCacheService: jest.fn() as unknown as ServiceDeps['getCacheService'],
+    createDeepLClient: jest.fn(),
+    getApiKeyAndOptions: jest.fn(),
+    getConfigService: jest.fn(),
+    getCacheService: jest.fn(),
     handleError: jest.fn() as unknown as ServiceDeps['handleError'],
   };
   registerSync(program, deps);
@@ -101,10 +101,10 @@ describe('register-sync commander tree', () => {
   it('keeps the hidden glossary-report rejector registered', () => {
     const program = new Command();
     const deps: ServiceDeps = {
-      createDeepLClient: jest.fn() as unknown as ServiceDeps['createDeepLClient'],
-      getApiKeyAndOptions: jest.fn() as unknown as ServiceDeps['getApiKeyAndOptions'],
-      getConfigService: jest.fn() as unknown as ServiceDeps['getConfigService'],
-      getCacheService: jest.fn() as unknown as ServiceDeps['getCacheService'],
+      createDeepLClient: jest.fn(),
+      getApiKeyAndOptions: jest.fn(),
+      getConfigService: jest.fn(),
+      getCacheService: jest.fn(),
       handleError: jest.fn() as unknown as ServiceDeps['handleError'],
     };
     registerSync(program, deps);

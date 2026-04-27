@@ -162,7 +162,7 @@ describe('TmsClient timeout', () => {
       serverUrl: 'https://tms.example.com',
       projectId: 'p',
       apiKey: 'k',
-      fetch: stubFetch as unknown as typeof globalThis.fetch,
+      fetch: stubFetch,
       timeoutMs: 5000,
       retry: { maxAttempts: 1 },
     });
@@ -186,7 +186,7 @@ describe('TmsClient retry', () => {
       serverUrl: 'https://tms.example.com',
       projectId: 'p',
       apiKey: 'k',
-      fetch: stubFetch as unknown as typeof globalThis.fetch,
+      fetch: stubFetch,
       retry: { maxAttempts: 3, baseDelayMs: 1, maxDelayMs: 2, jitter: false },
     });
     await expect(client.pushKey('k', 'de', 'v')).resolves.toBeUndefined();
@@ -204,7 +204,7 @@ describe('TmsClient retry', () => {
       serverUrl: 'https://tms.example.com',
       projectId: 'p',
       apiKey: 'k',
-      fetch: stubFetch as unknown as typeof globalThis.fetch,
+      fetch: stubFetch,
       retry: { maxAttempts: 3, baseDelayMs: 1, maxDelayMs: 2, jitter: false },
     });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(/503/);
@@ -222,7 +222,7 @@ describe('TmsClient retry', () => {
       serverUrl: 'https://tms.example.com',
       projectId: 'p',
       apiKey: 'k',
-      fetch: stubFetch as unknown as typeof globalThis.fetch,
+      fetch: stubFetch,
       retry: { maxAttempts: 3, baseDelayMs: 1, maxDelayMs: 2, jitter: false },
     });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(ConfigError);
@@ -244,7 +244,7 @@ describe('TmsClient error body', () => {
       serverUrl: 'https://tms.example.com',
       projectId: 'p',
       apiKey: 'k',
-      fetch: stubFetch as unknown as typeof globalThis.fetch,
+      fetch: stubFetch,
       retry: { maxAttempts: 1 },
     });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(/oops/);
@@ -262,7 +262,7 @@ describe('TmsClient error body', () => {
       serverUrl: 'https://tms.example.com',
       projectId: 'p',
       apiKey: 'k',
-      fetch: stubFetch as unknown as typeof globalThis.fetch,
+      fetch: stubFetch,
       retry: { maxAttempts: 1 },
     });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(
@@ -282,7 +282,7 @@ describe('TmsClient error body', () => {
       serverUrl: 'https://tms.example.com',
       projectId: 'p',
       apiKey: 'k',
-      fetch: stubFetch as unknown as typeof globalThis.fetch,
+      fetch: stubFetch,
       retry: { maxAttempts: 1 },
     });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(

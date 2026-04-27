@@ -214,6 +214,6 @@ async function handleSyncInit(
     if (options.format === 'json') {
       emitJsonErrorAndExit(error);
     }
-    handleError(error as Error);
+    handleError(error);
   }
 }

@@ -127,7 +127,7 @@ describe('WriteCommand', () => {
         };
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
-        const result = await writeCommand.improve('Test', {} as any);
+        const result = await writeCommand.improve('Test', {});
 
         expect(result).toBe('Improved text.');
       });
