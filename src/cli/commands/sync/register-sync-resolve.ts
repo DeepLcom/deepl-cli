@@ -103,6 +103,6 @@ async function handleSyncResolve(
     if (options.format === 'json') {
       emitJsonErrorAndExit(error);
     }
-    deps.handleError(error as Error);
+    deps.handleError(error);
   }
 }

@@ -173,7 +173,7 @@ describe('DetectCommand', () => {
 
     it('should produce pretty-printed JSON', () => {
       const output = detectCommand.formatJson({
-        detectedLanguage: 'ja' as any,
+        detectedLanguage: 'ja',
         languageName: 'Japanese',
       });
 

@@ -55,7 +55,7 @@ describe('walkBuckets', () => {
     mockFg.mockReset();
     mockReadFile.mockReset();
     mockStat.mockReset();
-    mockStat.mockResolvedValue({ size: 1024 } as never);
+    mockStat.mockResolvedValue({ size: 1024 });
   });
 
   it('yields one entry per source file with parsed entries', async () => {
@@ -127,7 +127,7 @@ describe('walkBuckets', () => {
   describe('sync.limits enforcement', () => {
     it('skips files whose size exceeds sync.limits.max_file_bytes', async () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
-      mockStat.mockResolvedValue({ size: 5_000_000 } as never);
+      mockStat.mockResolvedValue({ size: 5_000_000 });
 
       const config = makeConfig({
         sync: {
@@ -162,7 +162,7 @@ describe('walkBuckets', () => {
 
     it('passes through files within the configured caps', async () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
-      mockStat.mockResolvedValue({ size: 100 } as never);
+      mockStat.mockResolvedValue({ size: 100 });
       mockReadFile.mockResolvedValue('{"a":"Hello"}');
 
       const config = makeConfig({
@@ -179,7 +179,7 @@ describe('walkBuckets', () => {
     });
 
     it('skips entire bucket when glob returns more files than sync.limits.max_source_files', async () => {
-      mockFg.mockResolvedValue(Array.from({ length: 10 }, (_, i) => `/test/locales/en/${i}.json`) as never);
+      mockFg.mockResolvedValue(Array.from({ length: 10 }, (_, i) => `/test/locales/en/${i}.json`));
 
       const config = makeConfig({
         sync: {
@@ -197,7 +197,7 @@ describe('walkBuckets', () => {
 
     it('processes the bucket when file count equals max_source_files', async () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
-      mockStat.mockResolvedValue({ size: 100 } as never);
+      mockStat.mockResolvedValue({ size: 100 });
       mockReadFile.mockResolvedValue('{"a":"Hello"}');
 
       const config = makeConfig({
@@ -214,7 +214,7 @@ describe('walkBuckets', () => {
 
     it('skips files where a laravel_php parser depth cap is exceeded', async () => {
       mockFg.mockResolvedValue(['/test/lang/en.php'] as never);
-      mockStat.mockResolvedValue({ size: 200 } as never);
+      mockStat.mockResolvedValue({ size: 200 });
       mockReadFile.mockResolvedValue(
         `<?php return ['a' => ['b' => ['c' => ['d' => 'too deep']]]];`,
       );

@@ -1992,8 +1992,8 @@ describe('TranslateCommand', () => {
 
     it('should pass styleId in translateToMultiple', async () => {
       mockTranslationService.translateToMultiple.mockResolvedValue([
-        { targetLang: 'es' as any, text: 'Hola' },
-        { targetLang: 'fr' as any, text: 'Bonjour' },
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'fr', text: 'Bonjour' },
       ]);
 
       await translateCommand.translateText('Hello', {
@@ -2129,8 +2129,8 @@ describe('TranslateCommand', () => {
 
     it('should allow core + extended mix without restricted options', async () => {
       mockTranslationService.translateToMultiple.mockResolvedValue([
-        { targetLang: 'es' as any, text: 'Hola' },
-        { targetLang: 'sw' as any, text: 'Hujambo' },
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'sw', text: 'Hujambo' },
       ]);
 
       await translateCommand.translateText('Hello', { to: 'es,sw' });
@@ -2471,7 +2471,7 @@ describe('TranslateCommand', () => {
     it('should return JSON format for single text translation', async () => {
       mockTranslationService.translate.mockResolvedValue({
         text: 'Hola',
-        detectedSourceLang: 'en' as any,
+        detectedSourceLang: 'en',
       });
 
       const result = await translateCommand.translateText('Hello', {
@@ -2486,8 +2486,8 @@ describe('TranslateCommand', () => {
 
     it('should return JSON format for multi-target translation', async () => {
       mockTranslationService.translateToMultiple.mockResolvedValue([
-        { targetLang: 'es' as any, text: 'Hola' },
-        { targetLang: 'fr' as any, text: 'Bonjour' },
+        { targetLang: 'es', text: 'Hola' },
+        { targetLang: 'fr', text: 'Bonjour' },
       ]);
 
       const result = await translateCommand.translateText('Hello', {
@@ -2510,8 +2510,8 @@ describe('TranslateCommand', () => {
       });
       try {
         mockTranslationService.translateToMultiple.mockResolvedValue([
-          { targetLang: 'es' as any, text: 'Hola' },
-          { targetLang: 'fr' as any, text: 'Bonjour' },
+          { targetLang: 'es', text: 'Hola' },
+          { targetLang: 'fr', text: 'Bonjour' },
         ]);
 
         const result = await translateCommand.translateText('Hello', {
@@ -2602,7 +2602,7 @@ describe('TranslateCommand', () => {
 
     it('should pass showBilledCharacters to translateToMultiple', async () => {
       mockTranslationService.translateToMultiple.mockResolvedValue([
-        { targetLang: 'es' as any, text: 'Hola' },
+        { targetLang: 'es', text: 'Hola' },
       ]);
 
       await translateCommand.translateText('Hello', {
@@ -2695,7 +2695,7 @@ describe('TranslateCommand', () => {
 
     it('should pass skipCache to translateToMultiple', async () => {
       mockTranslationService.translateToMultiple.mockResolvedValue([
-        { targetLang: 'es' as any, text: 'Hola' },
+        { targetLang: 'es', text: 'Hola' },
       ]);
 
       await translateCommand.translateText('Hello', {

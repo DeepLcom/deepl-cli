@@ -252,7 +252,7 @@ describe('ConfigService', () => {
     it('should validate boolean values', () => {
       expect(() => {
 
-        configService.set('cache.enabled', 'yes' as any);
+        configService.set('cache.enabled', 'yes');
       }).toThrow(/Expected boolean for "cache\.enabled"\. Use true or false\./);
     });
   });

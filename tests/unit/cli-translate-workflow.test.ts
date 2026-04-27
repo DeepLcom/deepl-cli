@@ -11,7 +11,6 @@ import { FileTranslationService } from '../../src/services/file-translation.js';
 import { DeepLClient, LanguageInfo } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
 import { CacheService } from '../../src/storage/cache.js';
-import { Language } from '../../src/types/index.js';
 import { TEST_API_KEY, createMockConfigService, createMockCacheService } from '../helpers';
 
 describe('Translation Workflow Integration', () => {
@@ -450,8 +449,8 @@ describe('Translation Workflow Integration', () => {
 
     it('should get supported source languages', async () => {
       const mockLanguages: LanguageInfo[] = [
-        { language: 'en' as Language, name: 'English' },
-        { language: 'de' as Language, name: 'German' },
+        { language: 'en', name: 'English' },
+        { language: 'de', name: 'German' },
       ];
 
       jest.spyOn(client, 'getSupportedLanguages').mockResolvedValue(mockLanguages);
@@ -463,8 +462,8 @@ describe('Translation Workflow Integration', () => {
 
     it('should get supported target languages', async () => {
       const mockLanguages: LanguageInfo[] = [
-        { language: 'es' as Language, name: 'Spanish' },
-        { language: 'fr' as Language, name: 'French' },
+        { language: 'es', name: 'Spanish' },
+        { language: 'fr', name: 'French' },
       ];
 
       jest.spyOn(client, 'getSupportedLanguages').mockResolvedValue(mockLanguages);
@@ -475,7 +474,7 @@ describe('Translation Workflow Integration', () => {
     });
 
     it('should cache language results for 24 hours', async () => {
-      const mockLanguages: LanguageInfo[] = [{ language: 'en' as Language, name: 'English' }];
+      const mockLanguages: LanguageInfo[] = [{ language: 'en', name: 'English' }];
 
       const getSpy = jest.spyOn(client, 'getSupportedLanguages').mockResolvedValue(mockLanguages);
 

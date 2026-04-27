@@ -117,7 +117,7 @@ describe('WatchCommand', () => {
       (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
 
       // Mock process.on to avoid hanging tests
-      jest.spyOn(process, 'on').mockImplementation(() => process as any);
+      jest.spyOn(process, 'on').mockImplementation(() => process);
     });
 
     it('should throw error for non-existent path', async () => {
@@ -395,7 +395,7 @@ describe('WatchCommand', () => {
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
 
       // Mock the watch service watch method to return a resolved promise
-      mockWatchService.watch.mockReturnValue(undefined as any);
+      mockWatchService.watch.mockReturnValue(undefined);
 
       // Start watch - it will reach the infinite Promise and hang there
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -596,7 +596,7 @@ describe('WatchCommand', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
       (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
-      jest.spyOn(process, 'on').mockImplementation(() => process as any);
+      jest.spyOn(process, 'on').mockImplementation(() => process);
     });
 
     it('should call getStagedFiles and pass result to WatchService when gitStaged is true', async () => {

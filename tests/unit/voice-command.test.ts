@@ -454,7 +454,7 @@ describe('VoiceCommand', () => {
     it('should render target transcript when onTargetTranscript is invoked', async () => {
       mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onTargetTranscript!({
-          language: 'de' as any,
+          language: 'de',
           concluded: [{ text: 'Hallo', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
@@ -516,7 +516,7 @@ describe('VoiceCommand', () => {
     it('should display tentative text in target transcript', async () => {
       mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onTargetTranscript!({
-          language: 'de' as any,
+          language: 'de',
           concluded: [],
           tentative: [{ text: 'Hal', start_time: 0, end_time: 0.3 }],
         });
@@ -534,7 +534,7 @@ describe('VoiceCommand', () => {
     it('should ignore target transcript for unknown language', async () => {
       mockService.translateFile.mockImplementation((_file, _opts, callbacks) => {
         callbacks!.onTargetTranscript!({
-          language: 'es' as any,
+          language: 'es',
           concluded: [{ text: 'Hola', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
@@ -641,17 +641,17 @@ describe('VoiceCommand', () => {
           tentative: [],
         });
         callbacks!.onTargetTranscript!({
-          language: 'de' as any,
+          language: 'de',
           concluded: [{ text: 'Hallo', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
         callbacks!.onTargetTranscript!({
-          language: 'fr' as any,
+          language: 'fr',
           concluded: [{ text: 'Bonjour', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
         callbacks!.onTargetTranscript!({
-          language: 'es' as any,
+          language: 'es',
           concluded: [{ text: 'Hola', start_time: 0, end_time: 0.5 }],
           tentative: [],
         });
@@ -684,12 +684,12 @@ describe('VoiceCommand', () => {
           tentative: [],
         });
         callbacks!.onTargetTranscript!({
-          language: 'de' as any,
+          language: 'de',
           concluded: [{ text: 'Hallo', start_time: 0, end_time: 0.3 }],
           tentative: [],
         });
         callbacks!.onTargetTranscript!({
-          language: 'fr' as any,
+          language: 'fr',
           concluded: [{ text: 'Salut', start_time: 0, end_time: 0.3 }],
           tentative: [],
         });
@@ -720,7 +720,7 @@ describe('VoiceCommand', () => {
             tentative: [],
           });
           callbacks!.onTargetTranscript!({
-            language: 'de' as any,
+            language: 'de',
             concluded: [{ text: 'Hallo', start_time: 0, end_time: 0.5 }],
             tentative: [],
           });
@@ -803,7 +803,7 @@ describe('VoiceCommand', () => {
           tentative: [],
         });
         callbacks!.onTargetTranscript!({
-          language: 'de' as any,
+          language: 'de',
           concluded: [{ text: 'Prüfung', start_time: 0, end_time: 0.3 }],
           tentative: [],
         });

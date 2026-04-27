@@ -27,7 +27,7 @@ function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncCo
     projectRoot: '/test',
     overrides: {},
     ...overrides,
-  } as ResolvedSyncConfig;
+  };
 }
 
 function makeParser(sourceEntries: ExtractedEntry[], targetEntries: ExtractedEntry[]): FormatParser {

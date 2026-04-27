@@ -1,4 +1,4 @@
-import { SyncCommand, type CliSyncOptions } from '../../../src/cli/commands/sync-command';
+import { SyncCommand } from '../../../src/cli/commands/sync-command';
 import type { SyncService, SyncResult, SyncFileResult } from '../../../src/sync/sync-service';
 import { Logger } from '../../../src/utils/logger';
 
@@ -110,7 +110,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ dryRun: true } as CliSyncOptions);
+      await command.run({ dryRun: true });
 
       const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(infoOutput.toLowerCase()).toContain('dry-run');
@@ -121,7 +121,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(infoOutput.toLowerCase()).toContain('drift');
@@ -132,7 +132,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ format: 'json' } as CliSyncOptions);
+      await command.run({ format: 'json' });
 
       const jsonCall = stdoutWriteSpy.mock.calls.find((c: unknown[]) => {
         try {
@@ -154,7 +154,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(infoOutput).toContain('500,000 chars');
@@ -166,7 +166,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(infoOutput).toContain('Pro tier estimate');
@@ -177,7 +177,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ dryRun: true } as CliSyncOptions);
+      await command.run({ dryRun: true });
 
       const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(infoOutput).toContain('Pro tier estimate');
@@ -188,7 +188,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ format: 'json' } as CliSyncOptions);
+      await command.run({ format: 'json' });
 
       const jsonCall = stdoutWriteSpy.mock.calls.find((c: unknown[]) => {
         try { JSON.parse(String(c[0]).trim()); return true; } catch { return false; }
@@ -202,7 +202,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ format: 'json' } as CliSyncOptions);
+      await command.run({ format: 'json' });
 
       const jsonCall = stdoutWriteSpy.mock.calls.find((c: unknown[]) => {
         try { JSON.parse(String(c[0]).trim()); return true; } catch { return false; }
@@ -216,7 +216,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ format: 'json' } as CliSyncOptions);
+      await command.run({ format: 'json' });
 
       const jsonCall = stdoutWriteSpy.mock.calls.find((c: unknown[]) => {
         try { JSON.parse(String(c[0]).trim()); return true; } catch { return false; }
@@ -230,7 +230,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const warnOutput = logWarnSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(warnOutput).toContain('3');
@@ -242,7 +242,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const warnOutput = logWarnSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(warnOutput).toContain('5');
@@ -256,7 +256,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ ci: true } as CliSyncOptions);
+      await command.run({ ci: true });
 
       const syncCall = mockService.sync.mock.calls[0]!;
       const syncOptions = syncCall[1] as Record<string, unknown>;
@@ -273,8 +273,8 @@ describe('SyncCommand', () => {
       const frozenCommand = new SyncCommand(mockServiceFrozen);
       const ciCommand = new SyncCommand(mockServiceCi);
 
-      const frozenResult = await frozenCommand.run({ frozen: true } as CliSyncOptions);
-      const ciResult = await ciCommand.run({ ci: true } as CliSyncOptions);
+      const frozenResult = await frozenCommand.run({ frozen: true });
+      const ciResult = await ciCommand.run({ ci: true });
 
       expect(frozenResult.driftDetected).toBe(ciResult.driftDetected);
       expect(frozenResult.frozen).toBe(ciResult.frozen);
@@ -288,7 +288,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(infoOutput).not.toContain('$');
@@ -300,7 +300,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(infoOutput).toContain('3 new');
@@ -314,7 +314,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ flagForReview: true } as CliSyncOptions);
+      await command.run({ flagForReview: true });
 
       const syncCall = mockService.sync.mock.calls[0]!;
       const syncOptions = syncCall[1] as Record<string, unknown>;
@@ -328,7 +328,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ dryRun: true } as CliSyncOptions);
+      await command.run({ dryRun: true });
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).toContain('~4,500 chars');
@@ -340,7 +340,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ dryRun: true } as CliSyncOptions);
+      await command.run({ dryRun: true });
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).not.toContain('This sync');
@@ -351,7 +351,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ dryRun: true } as CliSyncOptions);
+      await command.run({ dryRun: true });
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).toContain('across 3 languages');
@@ -362,7 +362,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ dryRun: true } as CliSyncOptions);
+      await command.run({ dryRun: true });
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).toContain('across 1 language');
@@ -374,7 +374,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ dryRun: true, format: 'json' } as CliSyncOptions);
+      await command.run({ dryRun: true, format: 'json' });
 
       const jsonCall = stdoutWriteSpy.mock.calls.find((c: unknown[]) => {
         try { JSON.parse(String(c[0]).trim()); return true; } catch { return false; }
@@ -418,7 +418,7 @@ describe('SyncCommand', () => {
       );
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).toContain('\u2713 de: 10/10');
@@ -439,7 +439,7 @@ describe('SyncCommand', () => {
       );
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).toContain('\u2713 de: 5/5 keys (locales/de.json)');
@@ -456,7 +456,7 @@ describe('SyncCommand', () => {
       );
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).toContain('\u2717 de: 8/10');
@@ -467,7 +467,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ dryRun: true } as CliSyncOptions);
+      await command.run({ dryRun: true });
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).not.toMatch(/[✓✗]/);
@@ -479,7 +479,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).not.toMatch(/\d+\/\d+/);
@@ -513,7 +513,7 @@ describe('SyncCommand', () => {
       } as unknown as jest.Mocked<SyncService>;
       const command = new SyncCommand(mockService);
 
-      await command.run({} as CliSyncOptions);
+      await command.run({});
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       const tickMatches = infoOutput.match(/\u2713 de:/g) ?? [];
@@ -528,7 +528,7 @@ describe('SyncCommand', () => {
       const command = new SyncCommand(mockService);
 
       // run() with watch=false should complete normally (watch=true would block)
-      const syncResult = await command.run({ watch: false, debounce: 300 } as CliSyncOptions);
+      const syncResult = await command.run({ watch: false, debounce: 300 });
       expect(syncResult.success).toBe(true);
       expect(mockService.sync).toHaveBeenCalledTimes(1);
     });
@@ -587,7 +587,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true } as CliSyncOptions);
+      await command.run({ autoCommit: true });
 
       const calls = mockExecFile.mock.calls;
       const gitCalls = calls.map((c: unknown[]) => [c[0], c[1]]);
@@ -611,7 +611,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true } as CliSyncOptions);
+      await command.run({ autoCommit: true });
 
       const calls = mockExecFile.mock.calls;
       const gitCalls = calls.map((c: unknown[]) => [c[0], c[1]]);
@@ -625,7 +625,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true } as CliSyncOptions);
+      await command.run({ autoCommit: true });
 
       const gitInvocations = mockExecFile.mock.calls.filter(
         (c: unknown[]) => c[0] === 'git',
@@ -654,7 +654,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true } as CliSyncOptions);
+      await command.run({ autoCommit: true });
 
       const calls = mockExecFile.mock.calls;
       const gitCalls = calls.map((c: unknown[]) => [c[0], c[1]]);
@@ -695,7 +695,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true } as CliSyncOptions);
+      await command.run({ autoCommit: true });
 
       const warnOutput = logWarnSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(warnOutput).toContain('Not a git repository');
@@ -711,7 +711,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true } as CliSyncOptions);
+      await command.run({ autoCommit: true });
 
       const calls = mockExecFile.mock.calls;
       const addCalls = calls.filter(
@@ -729,7 +729,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true } as CliSyncOptions);
+      await command.run({ autoCommit: true });
 
       expect(mockExecFile).not.toHaveBeenCalled();
     });
@@ -739,7 +739,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true, dryRun: true } as CliSyncOptions);
+      await command.run({ autoCommit: true, dryRun: true });
 
       const addCalls = mockExecFile.mock.calls.filter(
         (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('add'),
@@ -752,7 +752,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true } as CliSyncOptions);
+      await command.run({ autoCommit: true });
 
       const addCalls = mockExecFile.mock.calls.filter(
         (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('add'),
@@ -765,7 +765,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ autoCommit: true } as CliSyncOptions);
+      await command.run({ autoCommit: true });
 
       const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(infoOutput).toContain('Auto-committed');
@@ -818,7 +818,7 @@ describe('SyncCommand', () => {
         return process;
       }) as unknown as ProcessOn);
 
-      const runPromise = command.run({ watch: true, debounce: 100 } as CliSyncOptions);
+      const runPromise = command.run({ watch: true, debounce: 100 });
 
       await flushWatchSetup();
 
@@ -846,7 +846,7 @@ describe('SyncCommand', () => {
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
-      await command.run({ watch: true } as CliSyncOptions);
+      await command.run({ watch: true });
 
       const warnOutput = logWarnSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
       expect(warnOutput).toContain('No source files to watch');
@@ -902,7 +902,7 @@ describe('SyncCommand', () => {
         return process;
       }) as unknown as ProcessOn);
 
-      const runPromise = command.run({ watch: true, debounce: 50, autoCommit: true } as CliSyncOptions);
+      const runPromise = command.run({ watch: true, debounce: 50, autoCommit: true });
 
       await flushWatchSetup();
 
@@ -952,7 +952,7 @@ describe('SyncCommand', () => {
       // Don't mock process.on — the whole point is to observe real listener
       // churn across repeated invocations. Trigger shutdown by emitting the
       // signal to the real process emitter (listeners only react synchronously).
-      const firstRun = command.run({ watch: true, debounce: 50 } as CliSyncOptions);
+      const firstRun = command.run({ watch: true, debounce: 50 });
       await flushWatchSetup();
       // Under heavy CI worker contention the fixed-round flush occasionally
       // returns before watchAndSync has reached its process.on('SIGINT', ...)
@@ -971,7 +971,7 @@ describe('SyncCommand', () => {
       expect(process.listenerCount('SIGTERM')).toBe(sigtermBaseline);
 
       // Second invocation should also add exactly one listener, then remove it.
-      const secondRun = command.run({ watch: true, debounce: 50 } as CliSyncOptions);
+      const secondRun = command.run({ watch: true, debounce: 50 });
       await flushWatchSetup();
       for (let i = 0; i < 10 && process.listenerCount('SIGINT') === sigintBaseline; i++) {
         await flushWatchSetup();
@@ -999,7 +999,7 @@ describe('SyncCommand', () => {
         return process;
       }) as unknown as ProcessOn);
 
-      const runPromise = command.run({ watch: true, debounce: 100 } as CliSyncOptions);
+      const runPromise = command.run({ watch: true, debounce: 100 });
 
       await flushWatchSetup();
 
@@ -1043,7 +1043,7 @@ describe('SyncCommand', () => {
           return process;
         }) as unknown as ProcessOn);
 
-        const runPromise = command.run({ watch: true, debounce: 50 } as CliSyncOptions);
+        const runPromise = command.run({ watch: true, debounce: 50 });
         await flushWatchSetup();
 
         const initialLoads = mockLoadSyncConfig.mock.calls.length;
@@ -1085,7 +1085,7 @@ describe('SyncCommand', () => {
           return process;
         }) as unknown as ProcessOn);
 
-        const runPromise = command.run({ watch: true, debounce: 50 } as CliSyncOptions);
+        const runPromise = command.run({ watch: true, debounce: 50 });
         await flushWatchSetup();
         // Under CI worker contention the fixed-round flush occasionally
         // returns before watcher.on('change', ...) has registered. Loop
@@ -1132,7 +1132,7 @@ describe('SyncCommand', () => {
           return process;
         }) as unknown as ProcessOn);
 
-        const runPromise = command.run({ watch: true, debounce: 50 } as CliSyncOptions);
+        const runPromise = command.run({ watch: true, debounce: 50 });
         await flushWatchSetup();
 
         const initialLoads = mockLoadSyncConfig.mock.calls.length;
@@ -1168,7 +1168,7 @@ describe('SyncCommand', () => {
           return process;
         }) as unknown as ProcessOn);
 
-        const runPromise = command.run({ watch: true, debounce: 50 } as CliSyncOptions);
+        const runPromise = command.run({ watch: true, debounce: 50 });
         await flushWatchSetup();
 
         const watchedPaths = mockWatch.mock.calls[0]![0] as string[];

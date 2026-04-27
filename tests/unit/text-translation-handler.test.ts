@@ -139,8 +139,8 @@ describe('TextTranslationHandler', () => {
 
     it('should call translateToMultiple() for comma-separated targets', async () => {
       mocks.translationService.translateToMultiple.mockResolvedValue([
-        { targetLang: 'de' as any, text: 'Hallo' },
-        { targetLang: 'fr' as any, text: 'Bonjour' },
+        { targetLang: 'de', text: 'Hallo' },
+        { targetLang: 'fr', text: 'Bonjour' },
       ]);
 
       const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr' }));
@@ -352,9 +352,9 @@ describe('TextTranslationHandler', () => {
             { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
           ]);
           mocks.translationService.translateToMultiple.mockResolvedValue([
-            { targetLang: 'de' as any, text: 'Hallo' },
-            { targetLang: 'de' as any, text: 'Hallo' },
-            { targetLang: 'de' as any, text: 'Hallo' },
+            { targetLang: 'de', text: 'Hallo' },
+            { targetLang: 'de', text: 'Hallo' },
+            { targetLang: 'de', text: 'Hallo' },
           ]);
 
           await handler.translateText('Hello', defaultOptions({
@@ -378,7 +378,7 @@ describe('TextTranslationHandler', () => {
             { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
           ]);
           mocks.translationService.translateToMultiple.mockResolvedValue([
-            { targetLang: 'de' as any, text: 'Hallo' },
+            { targetLang: 'de', text: 'Hallo' },
           ]);
 
           await handler.translateText('Hello', defaultOptions({
@@ -417,8 +417,8 @@ describe('TextTranslationHandler', () => {
         });
         try {
           mocks.translationService.translateToMultiple.mockResolvedValue([
-            { targetLang: 'de' as any, text: 'Hallo' },
-            { targetLang: 'fr' as any, text: 'Bonjour' },
+            { targetLang: 'de', text: 'Hallo' },
+            { targetLang: 'fr', text: 'Bonjour' },
           ]);
 
           const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
@@ -442,8 +442,8 @@ describe('TextTranslationHandler', () => {
         });
         try {
           mocks.translationService.translateToMultiple.mockResolvedValue([
-            { targetLang: 'de' as any, text: 'Hallo' },
-            { targetLang: 'fr' as any, text: 'Bonjour' },
+            { targetLang: 'de', text: 'Hallo' },
+            { targetLang: 'fr', text: 'Bonjour' },
           ]);
 
           const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
@@ -460,7 +460,7 @@ describe('TextTranslationHandler', () => {
       it('should append billed characters metadata when present', async () => {
         mocks.translationService.translate.mockResolvedValue({
           text: 'translated',
-          detectedSourceLang: 'en' as any,
+          detectedSourceLang: 'en',
           billedCharacters: 42,
         });
 
@@ -471,7 +471,7 @@ describe('TextTranslationHandler', () => {
       it('should append model type metadata when present', async () => {
         mocks.translationService.translate.mockResolvedValue({
           text: 'translated',
-          detectedSourceLang: 'en' as any,
+          detectedSourceLang: 'en',
           modelTypeUsed: 'quality_optimized',
         });
 
@@ -483,7 +483,7 @@ describe('TextTranslationHandler', () => {
     it('should call warnIgnoredOptions for multi-target translation', async () => {
       const { Logger } = jest.requireMock('../../src/utils/logger');
       mocks.translationService.translateToMultiple.mockResolvedValue([
-        { targetLang: 'de' as any, text: 'Hallo' },
+        { targetLang: 'de', text: 'Hallo' },
       ]);
 
       await handler.translateText('Hello', defaultOptions({

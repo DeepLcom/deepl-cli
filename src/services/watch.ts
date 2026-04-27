@@ -271,7 +271,7 @@ export class WatchService {
       await this.fileTranslationService.translateFile(
         filePath,
         outputPath,
-        { ...baseOptions, targetLang } as TranslationOptions,
+        { ...baseOptions, targetLang },
         { preserveCode }
       );
 

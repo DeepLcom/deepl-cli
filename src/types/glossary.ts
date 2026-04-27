@@ -57,7 +57,7 @@ export function normalizeGlossaryInfo(response: GlossaryApiResponse): GlossaryIn
     source_lang = Array.from(sourceLangs)[0]!;
   } else {
     Logger.warn('Glossary has empty dictionaries; defaulting source language to "en"');
-    source_lang = 'en' as Language;
+    source_lang = 'en';
   }
 
   return {
