@@ -57,6 +57,9 @@ export default {
         strict: true,
         esModuleInterop: true,
         skipLibCheck: true,
+        // TypeScript 6.0 stopped auto-including all @types/* packages globally;
+        // declare the ones the test suite needs (jest globals + node).
+        types: ['node', 'jest'],
       },
     }],
     '^.+\\.jsx?$': ['ts-jest', {
@@ -65,6 +68,7 @@ export default {
         esModuleInterop: true,
         skipLibCheck: true,
         allowJs: true,
+        types: ['node', 'jest'],
       },
     }],
   },
