@@ -68,7 +68,7 @@
     "form-data": "^4.0.4",
     "inquirer": "^13.4.2",
     "minimatch": "^10.2.1",
-    "ora": "^9.0.0",
+    "ora": "^9.4.0",
     "p-limit": "^7.0.0",
     "php-parser": "3.5.1",
     "smol-toml": "^1.6.1",
