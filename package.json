@@ -83,7 +83,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^25.6.0",
     "@types/ws": "^8.18.1",
-    "ajv": "^8.18.0",
+    "ajv": "^8.20.0",
     "diff": "^9.0.0",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
