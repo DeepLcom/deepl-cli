@@ -1,8 +1,22 @@
 import { Option, type Command } from 'commander';
 import chalk from 'chalk';
 import type { ConfigService } from '../../storage/config.js';
+import type { LanguageInfo } from '../../api/deepl-client.js';
 import { Logger } from '../../utils/logger.js';
 import { createLanguagesCommand, type CreateDeepLClient } from './service-factory.js';
+
+/**
+ * The features matrix rides along on every LanguageInfo, so it is stripped from
+ * JSON unless asked for; existing consumers keep the shape they were written to.
+ */
+function forJson(languages: LanguageInfo[], includeFeatures: boolean): unknown[] {
+  if (includeFeatures) return languages;
+  return languages.map(language => {
+    const copy = { ...language };
+    delete copy.features;
+    return copy;
+  });
+}
 
 export function registerLanguages(
   program: Command,
@@ -19,20 +33,24 @@ export function registerLanguages(
     .description('List supported source and target languages')
     .option('-s, --source', 'Show only source languages')
     .option('--target', 'Show only target languages')
+    .option('--features', 'Show per-language feature support (requires an API key)')
     .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('text'))
     .addHelpText('after', `
 Examples:
   $ deepl languages
   $ deepl languages --source
   $ deepl languages --target
+  $ deepl languages --features
+  $ deepl languages --target --features --format table
   $ deepl languages --format json
   $ deepl languages --format table
 `)
-    .action(async (options: { source?: boolean; target?: boolean; format?: string }) => {
+    .action(async (options: { source?: boolean; target?: boolean; features?: boolean; format?: string }) => {
       try {
         const apiKey = getConfigService().getValue<string>('auth.apiKey');
         const envKey = process.env['DEEPL_API_KEY'];
         const hasApiKey = !!(apiKey ?? envKey);
+        const showFeatures = !!options.features;
 
         let client = null;
         if (hasApiKey) {
@@ -40,6 +58,9 @@ Examples:
         } else {
           Logger.warn(chalk.yellow('Note: No API key configured. Showing local language registry only.'));
           Logger.warn(chalk.yellow('Run: deepl auth set-key <your-api-key> for API-verified names.\n'));
+          if (showFeatures) {
+            Logger.warn(chalk.yellow('Note: --features needs an API key; the local registry carries no feature data.\n'));
+          }
         }
 
         const languagesCommand = await createLanguagesCommand(client);
@@ -47,16 +68,19 @@ Examples:
         if (options.format === 'json') {
           if (options.source && !options.target) {
             const sourceLanguages = await languagesCommand.getSourceLanguages();
-            Logger.output(JSON.stringify(sourceLanguages, null, 2));
+            Logger.output(JSON.stringify(forJson(sourceLanguages, showFeatures), null, 2));
           } else if (options.target && !options.source) {
             const targetLanguages = await languagesCommand.getTargetLanguages();
-            Logger.output(JSON.stringify(targetLanguages, null, 2));
+            Logger.output(JSON.stringify(forJson(targetLanguages, showFeatures), null, 2));
           } else {
             const [sourceLanguages, targetLanguages] = await Promise.all([
               languagesCommand.getSourceLanguages(),
               languagesCommand.getTargetLanguages(),
             ]);
-            Logger.output(JSON.stringify({ source: sourceLanguages, target: targetLanguages }, null, 2));
+            Logger.output(JSON.stringify({
+              source: forJson(sourceLanguages, showFeatures),
+              target: forJson(targetLanguages, showFeatures),
+            }, null, 2));
           }
           return;
         }
@@ -71,21 +95,21 @@ Examples:
         if (options.source && !options.target) {
           const sourceLanguages = await languagesCommand.getSourceLanguages();
           output = wantTable
-            ? languagesCommand.formatLanguagesTable(sourceLanguages, 'source')
-            : languagesCommand.formatLanguages(sourceLanguages, 'source');
+            ? languagesCommand.formatLanguagesTable(sourceLanguages, 'source', showFeatures)
+            : languagesCommand.formatLanguages(sourceLanguages, 'source', showFeatures);
         } else if (options.target && !options.source) {
           const targetLanguages = await languagesCommand.getTargetLanguages();
           output = wantTable
-            ? languagesCommand.formatLanguagesTable(targetLanguages, 'target')
-            : languagesCommand.formatLanguages(targetLanguages, 'target');
+            ? languagesCommand.formatLanguagesTable(targetLanguages, 'target', showFeatures)
+            : languagesCommand.formatLanguages(targetLanguages, 'target', showFeatures);
         } else {
           const [sourceLanguages, targetLanguages] = await Promise.all([
             languagesCommand.getSourceLanguages(),
             languagesCommand.getTargetLanguages(),
           ]);
           output = wantTable
-            ? languagesCommand.formatAllLanguagesTable(sourceLanguages, targetLanguages)
-            : languagesCommand.formatAllLanguages(sourceLanguages, targetLanguages);
+            ? languagesCommand.formatAllLanguagesTable(sourceLanguages, targetLanguages, showFeatures)
+            : languagesCommand.formatAllLanguages(sourceLanguages, targetLanguages, showFeatures);
         }
 
         Logger.output(output);

@@ -1,4 +1,8 @@
-import { LanguagesCommand } from '../../src/cli/commands/languages';
+import {
+  LanguagesCommand,
+  partitionFeatureKeys,
+  type LanguageDisplayEntry,
+} from '../../src/cli/commands/languages';
 import { LanguageInfo } from '../../src/api/deepl-client';
 import { createMockLanguagesService } from '../helpers/mock-factories';
 
@@ -401,6 +405,213 @@ describe('LanguagesCommand', () => {
       expect(result).toContain('Target Languages:');
       // The two sections are separated by at least one blank line.
       expect(result.split('\n\n').length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('partitionFeatureKeys()', () => {
+    const entry = (
+      code: string,
+      features?: Record<string, { status: string }>,
+    ): LanguageDisplayEntry => ({
+      code,
+      name: code.toUpperCase(),
+      category: 'core',
+      ...(features && { features }),
+    });
+
+    it('should keep a feature that discriminates between entries', () => {
+      const { columns } = partitionFeatureKeys([
+        entry('de', { glossary: { status: 'stable' } }),
+        entry('hi', {}),
+      ]);
+
+      expect(columns).toEqual(['glossary']);
+    });
+
+    it('should suppress a feature supported identically by every entry', () => {
+      const { columns, uniform } = partitionFeatureKeys([
+        entry('de', { tag_handling: { status: 'stable' } }),
+        entry('hi', { tag_handling: { status: 'stable' } }),
+      ]);
+
+      expect(columns).toEqual([]);
+      expect(uniform).toEqual([{ key: 'tag_handling', cell: 'yes' }]);
+    });
+
+    it('should order known features first and unknown features alphabetically after', () => {
+      const all = {
+        zebra_feature: { status: 'stable' },
+        translation_memory: { status: 'stable' },
+        alpha_feature: { status: 'stable' },
+        formality: { status: 'stable' },
+        glossary: { status: 'stable' },
+      };
+      const { columns } = partitionFeatureKeys([entry('de', all), entry('hi', {})]);
+
+      expect(columns).toEqual([
+        'formality',
+        'glossary',
+        'translation_memory',
+        'alpha_feature',
+        'zebra_feature',
+      ]);
+    });
+
+    it('should treat a differing status as discriminating', () => {
+      const { columns } = partitionFeatureKeys([
+        entry('de', { glossary: { status: 'stable' } }),
+        entry('th', { glossary: { status: 'beta' } }),
+      ]);
+
+      expect(columns).toEqual(['glossary']);
+    });
+
+    it('should return nothing for an empty entry list', () => {
+      expect(partitionFeatureKeys([])).toEqual({ columns: [], uniform: [] });
+    });
+  });
+
+  describe('feature display', () => {
+    // Asserted through the display-entry layer: formatLanguages() merges against
+    // the whole registry, so languages absent from the argument would report no
+    // features and make every column discriminating.
+    const displayEntries: LanguageDisplayEntry[] = [
+      {
+        code: 'de',
+        name: 'German',
+        category: 'core',
+        supportsFormality: true,
+        features: {
+          formality: { status: 'stable' },
+          glossary: { status: 'stable' },
+          style_rules: { status: 'stable' },
+          tag_handling: { status: 'stable' },
+        },
+      },
+      {
+        code: 'pt',
+        name: 'Portuguese',
+        category: 'core',
+        supportsFormality: true,
+        features: {
+          formality: { status: 'stable' },
+          glossary: { status: 'stable' },
+          tag_handling: { status: 'stable' },
+        },
+      },
+      {
+        code: 'hi',
+        name: 'Hindi',
+        category: 'extended',
+        supportsFormality: false,
+        features: { tag_handling: { status: 'stable' } },
+      },
+    ];
+
+    it('should list supported features per language in text output', () => {
+      const formatted = languagesCommand.formatDisplayEntries(displayEntries, 'target', true);
+      const de = formatted.split('\n').find(l => l.includes('German'));
+      const pt = formatted.split('\n').find(l => l.includes('Portuguese'));
+
+      expect(de).toContain('formality');
+      expect(de).toContain('style rules');
+      expect(pt).toContain('glossary');
+      expect(pt).not.toContain('style rules');
+    });
+
+    it('should note the features every listed language shares', () => {
+      const formatted = languagesCommand.formatDisplayEntries(displayEntries, 'target', true);
+
+      expect(formatted).toContain('All listed languages also support: tag handling.');
+    });
+
+    it('should mark a language with no supported features', () => {
+      const formatted = languagesCommand.formatDisplayEntries(displayEntries, 'target', true);
+      const hi = formatted.split('\n').find(l => l.includes('Hindi'));
+
+      expect(hi).toContain('none');
+    });
+
+    it('should render features for extended languages too', () => {
+      const entries: LanguageDisplayEntry[] = [
+        { code: 'de', name: 'German', category: 'core', features: {} },
+        {
+          code: 'th',
+          name: 'Thai',
+          category: 'extended',
+          features: { style_rules: { status: 'stable' } },
+        },
+      ];
+      const formatted = languagesCommand.formatDisplayEntries(entries, 'target', true);
+      const th = formatted.split('\n').find(l => l.includes('Thai'));
+
+      expect(th).toContain('style rules');
+    });
+
+    it('should drop the [F] marker and legend when features are shown', () => {
+      const formatted = languagesCommand.formatDisplayEntries(displayEntries, 'target', true);
+
+      expect(formatted).not.toContain('[F]');
+    });
+
+    it('should label a non-stable status instead of yes', () => {
+      const entries: LanguageDisplayEntry[] = [
+        { code: 'de', name: 'German', category: 'core', features: { glossary: { status: 'beta' } } },
+        { code: 'hi', name: 'Hindi', category: 'extended', features: {} },
+      ];
+      const formatted = languagesCommand.formatDisplayEntries(entries, 'target', true);
+      const de = formatted.split('\n').find(l => l.includes('German'));
+
+      expect(de).toContain('glossary (beta)');
+    });
+
+    it('should fall back to the default rendering when no entry reports features', () => {
+      const noFeatures: LanguageDisplayEntry[] = [
+        { code: 'de', name: 'German', category: 'core', supportsFormality: true },
+      ];
+      const withFlag = languagesCommand.formatDisplayEntries(noFeatures, 'target', true);
+      const without = languagesCommand.formatDisplayEntries(noFeatures, 'target');
+
+      expect(withFlag).toBe(without);
+    });
+
+    it('should leave default text output untouched when features are not requested', () => {
+      const withFlagOff = languagesCommand.formatDisplayEntries(displayEntries, 'target');
+
+      expect(withFlagOff).toContain('[F]');
+      expect(withFlagOff).not.toContain('tag handling');
+    });
+
+    it('should thread the flag through formatLanguages to the display layer', () => {
+      const apiLangs: LanguageInfo[] = [
+        {
+          language: 'de',
+          name: 'German',
+          supportsFormality: true,
+          features: { glossary: { status: 'stable' } },
+        },
+      ];
+      const formatted = languagesCommand.formatLanguages(apiLangs, 'target', true);
+      const de = formatted.split('\n').find(l => l.includes('German'));
+
+      expect(de).toContain('glossary');
+    });
+
+    it('should add a column per discriminating feature in table output', () => {
+      const table = languagesCommand.formatDisplayEntriesTable(displayEntries, 'target', true);
+
+      expect(table).toContain('Formality');
+      expect(table).toContain('Glossary');
+      expect(table).toContain('Style Rules');
+      expect(table).not.toContain('Tag Handling');
+      expect(table).toContain('All listed languages also support: tag handling.');
+    });
+
+    it('should not add feature columns to table output by default', () => {
+      const table = languagesCommand.formatDisplayEntriesTable(displayEntries, 'target');
+
+      expect(table).not.toContain('Glossary');
+      expect(table).toContain('Formality');
     });
   });
 });
