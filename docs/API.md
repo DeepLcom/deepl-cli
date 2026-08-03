@@ -410,6 +410,13 @@ deepl translate document.pdf --to es --output document.es.docx --output-format d
 # Enable document minification for smaller file size (PPTX/DOCX only)
 deepl translate presentation.pptx --to de --output presentation.de.pptx --enable-minification
 deepl translate report.docx --to fr --output report.fr.docx --enable-minification
+
+# Apply a glossary (--from is required for document glossaries)
+deepl translate report.docx --from en --to de --output report.de.docx --glossary tech-terms
+
+# Repeat --glossary for up to 5; the last one wins a conflicting term
+deepl translate report.docx --from en --to de --output report.de.docx \
+  --glossary base-terms --glossary project-overrides
 ```
 
 **Supported Document Formats:**
@@ -440,6 +447,7 @@ deepl translate report.docx --to fr --output report.fr.docx --enable-minificatio
 - Large documents may take several seconds to translate
 - Maximum file sizes: 30MB (document API, all formats), 100 KiB (cached text API)
 - **Document minification** (`--enable-minification`): Reduces file size for PPTX and DOCX files only. Useful for large presentations and documents.
+- **Glossaries**: `--glossary` applies to documents and is repeatable up to 5, with the same last-one-wins precedence as text translation. `--from` is required — the API rejects a document glossary without a source language ("source_lang has to be specified in order to use a glossary"). Glossary matching is context-dependent exactly as it is for text: a term may be applied in one sentence and left alone in another, and a bare newline-separated word list often gets few terms applied. `--translation-memory` remains unsupported for documents.
 
 **Directory translation:**
 
