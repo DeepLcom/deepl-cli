@@ -144,17 +144,30 @@ export class BatchTranslationService {
       );
       result.successful.push(...batchResult.successful);
       result.failed.push(...batchResult.failed);
-      completed += batchResult.successful.length + batchResult.failed.length;
+      result.skipped.push(...batchResult.skipped);
+      completed +=
+        batchResult.successful.length + batchResult.failed.length + batchResult.skipped.length;
     }
 
     // Per-file translation for structured/other files
     if (perFileFiles.length > 0) {
       const limit = pLimit(this.concurrency);
+      // Same reasoning as the batched path: an unsupported target_lang is a
+      // property of the request, so the files still queued would each spend a
+      // round trip to be told the same thing.
+      let requestRejected: unknown;
 
       const tasks = perFileFiles.map(file =>
         limit(async () => {
           if (batchOptions.abortSignal?.aborted) {
             result.skipped.push({ file, reason: 'Aborted' });
+            completed++;
+            batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
+            return;
+          }
+
+          if (requestRejected !== undefined) {
+            result.skipped.push({ file, reason: errorMessage(requestRejected) });
             completed++;
             batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
             return;
@@ -178,6 +191,9 @@ export class BatchTranslationService {
             completed++;
             batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
           } catch (error) {
+            if (isUnrecoverableRequestError(error)) {
+              requestRejected = error;
+            }
             result.failed.push({
               file,
               error: errorMessage(error),
@@ -207,9 +223,14 @@ export class BatchTranslationService {
     totalFiles: number,
     startCompleted: number,
     onProgress?: (progress: ProgressInfo) => void,
-  ): Promise<{ successful: Array<{ file: string; outputPath: string }>; failed: Array<{ file: string; error: string }> }> {
+  ): Promise<{
+    successful: Array<{ file: string; outputPath: string }>;
+    failed: Array<{ file: string; error: string }>;
+    skipped: Array<{ file: string; reason: string }>;
+  }> {
     const successful: Array<{ file: string; outputPath: string }> = [];
     const failed: Array<{ file: string; error: string }> = [];
+    const skipped: Array<{ file: string; reason: string }> = [];
 
     interface FileEntry {
       file: string;
@@ -235,8 +256,10 @@ export class BatchTranslationService {
       }
 
       if (requestRejected !== undefined) {
+        // Never sent, so reported as skipped rather than as individual failures
+        // carrying another batch's error.
         for (const entry of batch) {
-          failed.push({ file: entry.file, error: errorMessage(requestRejected) });
+          skipped.push({ file: entry.file, reason: errorMessage(requestRejected) });
           completed++;
           onProgress?.({ completed, total: totalFiles, current: entry.file });
         }
@@ -346,7 +369,7 @@ export class BatchTranslationService {
     }
     await flushBatch();
 
-    return { successful, failed };
+    return { successful, failed, skipped };
   }
 
   /**

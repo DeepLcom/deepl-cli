@@ -11,6 +11,8 @@ import { TranslationService, MAX_TEXT_BYTES } from '../../../src/services/transl
 import pLimit from 'p-limit';
 import fg from 'fast-glob';
 import { createMockFileTranslationService, createMockTranslationService } from '../../helpers/mock-factories';
+import { NetworkError, ValidationError } from '../../../src/utils/errors';
+import { isUnrecoverableRequestError } from '../../../src/utils/unrecoverable-request-error';
 
 // Mock ESM modules
 jest.mock('p-limit');
@@ -511,7 +513,7 @@ describe('BatchTranslationService', () => {
       }
 
       mockTranslationService.translateBatch.mockRejectedValue(
-        new Error("API error: Value for 'target_lang' not supported."),
+        new ValidationError("API error: Value for 'target_lang' not supported."),
       );
 
       const result = await batchServiceWithTranslation.translateFiles(
@@ -523,8 +525,26 @@ describe('BatchTranslationService', () => {
       // The same rejection applies to every batch, so it is asked once rather
       // than once per batch.
       expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(1);
-      expect(result.failed).toHaveLength(52);
       expect(result.successful).toHaveLength(0);
+      // The first batch genuinely failed; the rest were never sent, so they are
+      // reported as skipped rather than as failures carrying another batch's error.
+      expect(result.failed).toHaveLength(50);
+      expect(result.skipped).toHaveLength(2);
+      expect(result.skipped[0]!.reason).toMatch(/target_lang/);
+    });
+
+    it('should keep going when a 5xx quotes the same phrase as a rejected language', () => {
+      // A gateway error interpolates the upstream body, so the message alone
+      // cannot distinguish it from a genuine rejection.
+      const transient = new NetworkError(
+        "Server error (502): upstream unavailable, value for 'target_lang' not supported by shard",
+      );
+      expect(isUnrecoverableRequestError(transient)).toBe(false);
+      expect(
+        isUnrecoverableRequestError(
+          new ValidationError("API error: Value for 'target_lang' not supported."),
+        ),
+      ).toBe(true);
     });
 
     it('should keep going when a batch fails for a reason specific to it', async () => {
