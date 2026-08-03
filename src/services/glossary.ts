@@ -6,6 +6,7 @@
 import { DeepLClient } from '../api/deepl-client.js';
 import { GlossaryInfo, GlossaryLanguagePair, Language, isMultilingual } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
+import { baseLanguage } from '../data/language-registry.js';
 import { ValidationError, ConfigError } from '../utils/errors.js';
 
 function sanitizeForError(input: string): string {
@@ -168,6 +169,12 @@ export class GlossaryService {
    * read as also covering en→fr. Free on this path because the list is already
    * fetched to resolve the name; the UUID path trusts the caller and skips the
    * check, as translation-memory resolution does.
+   *
+   * Both sides are compared on their base language, because dictionaries only
+   * ever name base languages while `--to` accepts regional variants: a de→en
+   * glossary has to count as covering de→en-us, which the API accepts. That
+   * makes the check deliberately permissive at the edges — a pair it lets
+   * through is still the API's to reject, which is the cheaper mistake.
    */
   async resolveGlossaryId(
     nameOrId: string,
@@ -205,8 +212,8 @@ export class GlossaryService {
       const covered = (target: string): boolean =>
         match.dictionaries.some(
           d =>
-            d.source_lang.toLowerCase() === from &&
-            d.target_lang.toLowerCase() === target.toLowerCase(),
+            baseLanguage(d.source_lang) === baseLanguage(from) &&
+            baseLanguage(d.target_lang) === baseLanguage(target),
         );
       const missing = expected.targets.filter(target => !covered(target));
       if (missing.length > 0) {

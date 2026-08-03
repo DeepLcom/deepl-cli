@@ -417,6 +417,41 @@ describe('GlossaryService', () => {
         ).rejects.toThrow('does not support the requested language pair');
       });
 
+      it('should treat a base-language dictionary as covering its regional variants', async () => {
+        // Glossary dictionaries carry base codes, while --to accepts regional
+        // variants, so de→en has to cover de→en-us or glossaries become
+        // unusable for the variants DeepL steers users towards.
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'de', target_lang: 'en' }]) as never,
+        );
+
+        for (const target of ['en-us', 'en-gb'] as const) {
+          await expect(
+            glossaryService.resolveGlossaryId('tech-terms', { from: 'de', targets: [target] }),
+          ).resolves.toBe('found-glossary-id');
+        }
+      });
+
+      it('should treat a regional --from as covered by a base-language dictionary', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'pt', target_lang: 'de' }]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'pt-br', targets: ['de'] }),
+        ).resolves.toBe('found-glossary-id');
+      });
+
+      it('should still reject a pair no dictionary covers even across regions', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'de', target_lang: 'en' }]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'de', targets: ['pt-br'] }),
+        ).rejects.toThrow('does not support the requested language pair');
+      });
+
       it('should compare languages case-insensitively', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
           listing([{ source_lang: 'EN', target_lang: 'ES' }]) as never,

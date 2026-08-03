@@ -91,6 +91,16 @@ export function looksLikeLanguageTag(code: string): boolean {
   return LANGUAGE_TAG.test(code);
 }
 
+/**
+ * The base language of a code, dropping any regional subtag: `en-us` -> `en`.
+ * Used where one side of a comparison carries variants the other cannot, such as
+ * glossary dictionaries, which only ever name base languages while `--to`
+ * accepts `en-us`, `pt-br` and the rest.
+ */
+export function baseLanguage(code: string): string {
+  return code.toLowerCase().split('-')[0] ?? code.toLowerCase();
+}
+
 /** Check whether a language code is recognized by the registry. */
 export function isValidLanguage(code: string): boolean {
   return LANGUAGE_REGISTRY.has(code);
