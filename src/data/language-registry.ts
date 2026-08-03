@@ -1,15 +1,21 @@
 /**
  * Language Registry
  *
- * Single source of truth for all DeepL-supported language codes, display names,
- * and feature categories. Every CLI component that needs to validate or display
- * language codes should import from this module rather than maintaining its own list.
+ * Lookup and classification helpers over the generated language snapshot in
+ * ./language-entries.ts. GET /v3/languages is the authority on which languages
+ * exist; the snapshot is a build artifact of it, so that listing and validating
+ * languages works without a network call or an API key.
+ *
+ * Because the snapshot can lag the API, callers that validate user input accept
+ * well-formed codes it does not contain (see looksLikeLanguageTag) instead of
+ * rejecting them.
  *
  * Languages are organized into three categories that determine feature availability:
  * - **core**: Full feature support (formality, glossary, all model types)
  * - **regional**: Target-only variants of core languages (e.g., en-gb, pt-br)
  * - **extended**: quality_optimized model only; no formality or glossary support
  */
+import { ENTRIES } from './language-entries.js';
 
 /**
  * Feature-availability tier for a language.
@@ -32,139 +38,58 @@ export interface LanguageEntry {
   targetOnly?: boolean;
 }
 
-const ENTRIES: LanguageEntry[] = [
-  // Core languages (full feature support: formality, glossary, all model types)
-  { code: 'ar', name: 'Arabic', category: 'core' },
-  { code: 'bg', name: 'Bulgarian', category: 'core' },
-  { code: 'cs', name: 'Czech', category: 'core' },
-  { code: 'da', name: 'Danish', category: 'core' },
-  { code: 'de', name: 'German', category: 'core' },
-  { code: 'el', name: 'Greek', category: 'core' },
-  { code: 'en', name: 'English', category: 'core' },
-  { code: 'es', name: 'Spanish', category: 'core' },
-  { code: 'et', name: 'Estonian', category: 'core' },
-  { code: 'fi', name: 'Finnish', category: 'core' },
-  { code: 'fr', name: 'French', category: 'core' },
-  { code: 'he', name: 'Hebrew', category: 'core' },
-  { code: 'hu', name: 'Hungarian', category: 'core' },
-  { code: 'id', name: 'Indonesian', category: 'core' },
-  { code: 'it', name: 'Italian', category: 'core' },
-  { code: 'ja', name: 'Japanese', category: 'core' },
-  { code: 'ko', name: 'Korean', category: 'core' },
-  { code: 'lt', name: 'Lithuanian', category: 'core' },
-  { code: 'lv', name: 'Latvian', category: 'core' },
-  { code: 'nb', name: 'Norwegian Bokmål', category: 'core' },
-  { code: 'nl', name: 'Dutch', category: 'core' },
-  { code: 'pl', name: 'Polish', category: 'core' },
-  { code: 'pt', name: 'Portuguese', category: 'core' },
-  { code: 'ro', name: 'Romanian', category: 'core' },
-  { code: 'ru', name: 'Russian', category: 'core' },
-  { code: 'sk', name: 'Slovak', category: 'core' },
-  { code: 'sl', name: 'Slovenian', category: 'core' },
-  { code: 'sv', name: 'Swedish', category: 'core' },
-  { code: 'tr', name: 'Turkish', category: 'core' },
-  { code: 'uk', name: 'Ukrainian', category: 'core' },
-  { code: 'vi', name: 'Vietnamese', category: 'core' },
-  { code: 'zh', name: 'Chinese', category: 'core' },
-
-  // Regional variants (target-only)
-  { code: 'en-gb', name: 'English (British)', category: 'regional', targetOnly: true },
-  { code: 'en-us', name: 'English (American)', category: 'regional', targetOnly: true },
-  { code: 'es-419', name: 'Spanish (Latin America)', category: 'regional', targetOnly: true },
-  { code: 'pt-br', name: 'Portuguese (Brazilian)', category: 'regional', targetOnly: true },
-  { code: 'pt-pt', name: 'Portuguese (European)', category: 'regional', targetOnly: true },
-  { code: 'zh-hans', name: 'Chinese (Simplified)', category: 'regional', targetOnly: true },
-  { code: 'zh-hant', name: 'Chinese (Traditional)', category: 'regional', targetOnly: true },
-
-  // Extended languages (quality_optimized only, no formality/glossary)
-  { code: 'ace', name: 'Acehnese', category: 'extended' },
-  { code: 'af', name: 'Afrikaans', category: 'extended' },
-  { code: 'an', name: 'Aragonese', category: 'extended' },
-  { code: 'as', name: 'Assamese', category: 'extended' },
-  { code: 'ay', name: 'Aymara', category: 'extended' },
-  { code: 'az', name: 'Azerbaijani', category: 'extended' },
-  { code: 'ba', name: 'Bashkir', category: 'extended' },
-  { code: 'be', name: 'Belarusian', category: 'extended' },
-  { code: 'bho', name: 'Bhojpuri', category: 'extended' },
-  { code: 'bn', name: 'Bengali', category: 'extended' },
-  { code: 'br', name: 'Breton', category: 'extended' },
-  { code: 'bs', name: 'Bosnian', category: 'extended' },
-  { code: 'ca', name: 'Catalan', category: 'extended' },
-  { code: 'ceb', name: 'Cebuano', category: 'extended' },
-  { code: 'ckb', name: 'Central Kurdish', category: 'extended' },
-  { code: 'cy', name: 'Welsh', category: 'extended' },
-  { code: 'eo', name: 'Esperanto', category: 'extended' },
-  { code: 'eu', name: 'Basque', category: 'extended' },
-  { code: 'fa', name: 'Persian', category: 'extended' },
-  { code: 'ga', name: 'Irish', category: 'extended' },
-  { code: 'gl', name: 'Galician', category: 'extended' },
-  { code: 'gn', name: 'Guarani', category: 'extended' },
-  { code: 'gom', name: 'Goan Konkani', category: 'extended' },
-  { code: 'gu', name: 'Gujarati', category: 'extended' },
-  { code: 'ha', name: 'Hausa', category: 'extended' },
-  { code: 'hi', name: 'Hindi', category: 'extended' },
-  { code: 'hr', name: 'Croatian', category: 'extended' },
-  { code: 'ht', name: 'Haitian Creole', category: 'extended' },
-  { code: 'hy', name: 'Armenian', category: 'extended' },
-  { code: 'ig', name: 'Igbo', category: 'extended' },
-  { code: 'is', name: 'Icelandic', category: 'extended' },
-  { code: 'jv', name: 'Javanese', category: 'extended' },
-  { code: 'ka', name: 'Georgian', category: 'extended' },
-  { code: 'kk', name: 'Kazakh', category: 'extended' },
-  { code: 'kmr', name: 'Northern Kurdish', category: 'extended' },
-  { code: 'ky', name: 'Kyrgyz', category: 'extended' },
-  { code: 'la', name: 'Latin', category: 'extended' },
-  { code: 'lb', name: 'Luxembourgish', category: 'extended' },
-  { code: 'lmo', name: 'Lombard', category: 'extended' },
-  { code: 'ln', name: 'Lingala', category: 'extended' },
-  { code: 'mai', name: 'Maithili', category: 'extended' },
-  { code: 'mg', name: 'Malagasy', category: 'extended' },
-  { code: 'mi', name: 'Maori', category: 'extended' },
-  { code: 'mk', name: 'Macedonian', category: 'extended' },
-  { code: 'ml', name: 'Malayalam', category: 'extended' },
-  { code: 'mn', name: 'Mongolian', category: 'extended' },
-  { code: 'mr', name: 'Marathi', category: 'extended' },
-  { code: 'ms', name: 'Malay', category: 'extended' },
-  { code: 'mt', name: 'Maltese', category: 'extended' },
-  { code: 'my', name: 'Myanmar (Burmese)', category: 'extended' },
-  { code: 'ne', name: 'Nepali', category: 'extended' },
-  { code: 'oc', name: 'Occitan', category: 'extended' },
-  { code: 'om', name: 'Oromo', category: 'extended' },
-  { code: 'pa', name: 'Punjabi', category: 'extended' },
-  { code: 'pag', name: 'Pangasinan', category: 'extended' },
-  { code: 'pam', name: 'Pampanga', category: 'extended' },
-  { code: 'prs', name: 'Dari', category: 'extended' },
-  { code: 'ps', name: 'Pashto', category: 'extended' },
-  { code: 'qu', name: 'Quechua', category: 'extended' },
-  { code: 'sa', name: 'Sanskrit', category: 'extended' },
-  { code: 'scn', name: 'Sicilian', category: 'extended' },
-  { code: 'sq', name: 'Albanian', category: 'extended' },
-  { code: 'sr', name: 'Serbian', category: 'extended' },
-  { code: 'st', name: 'Southern Sotho', category: 'extended' },
-  { code: 'su', name: 'Sundanese', category: 'extended' },
-  { code: 'sw', name: 'Swahili', category: 'extended' },
-  { code: 'ta', name: 'Tamil', category: 'extended' },
-  { code: 'te', name: 'Telugu', category: 'extended' },
-  { code: 'tg', name: 'Tajik', category: 'extended' },
-  { code: 'th', name: 'Thai', category: 'extended' },
-  { code: 'tk', name: 'Turkmen', category: 'extended' },
-  { code: 'tl', name: 'Tagalog', category: 'extended' },
-  { code: 'tn', name: 'Tswana', category: 'extended' },
-  { code: 'ts', name: 'Tsonga', category: 'extended' },
-  { code: 'tt', name: 'Tatar', category: 'extended' },
-  { code: 'ur', name: 'Urdu', category: 'extended' },
-  { code: 'uz', name: 'Uzbek', category: 'extended' },
-  { code: 'wo', name: 'Wolof', category: 'extended' },
-  { code: 'xh', name: 'Xhosa', category: 'extended' },
-  { code: 'yi', name: 'Yiddish', category: 'extended' },
-  { code: 'yue', name: 'Cantonese', category: 'extended' },
-  { code: 'zu', name: 'Zulu', category: 'extended' },
-];
-
 /** Read-only map of language code to its registry entry. Primary lookup structure. */
 export const LANGUAGE_REGISTRY: ReadonlyMap<string, LanguageEntry> = new Map(
   ENTRIES.map(entry => [entry.code, entry])
 );
+
+/** The fields of a GET /v3/languages entry the derivation below depends on. */
+export interface DerivableLanguage {
+  lang: string;
+  name: string;
+  usable_as_source?: boolean;
+  features?: Record<string, unknown>;
+}
+
+/**
+ * Derives a registry entry from one GET /v3/languages entry. The tiers are not
+ * a human judgement: glossary support separates extended from the rest, and
+ * source usability separates core from regional. Checked against the live
+ * response, this reproduces the hand-maintained tiers exactly.
+ *
+ * Shared with scripts/generate-language-registry.mjs so the snapshot and the
+ * runtime fallback for codes the snapshot predates cannot disagree.
+ */
+export function deriveLanguageEntry(language: DerivableLanguage): LanguageEntry {
+  const code = language.lang.toLowerCase();
+  const usableAsSource = language.usable_as_source !== false;
+  const supportsGlossary = language.features?.['glossary'] !== undefined;
+
+  const category: LanguageCategory = !supportsGlossary
+    ? 'extended'
+    : usableAsSource
+      ? 'core'
+      : 'regional';
+
+  return {
+    code,
+    name: language.name,
+    category,
+    ...(!usableAsSource && { targetOnly: true }),
+  };
+}
+
+/**
+ * Whether a code is shaped like a language tag DeepL might serve. Used where the
+ * API is the authority on what exists: a well-formed code the snapshot has not
+ * heard of is passed through for the API to accept or reject, while malformed
+ * input is still worth rejecting locally with a suggestion.
+ */
+const LANGUAGE_TAG = /^[a-z]{2,3}(-[a-z0-9]{2,4})?$/;
+
+export function looksLikeLanguageTag(code: string): boolean {
+  return LANGUAGE_TAG.test(code);
+}
 
 /** Check whether a language code is recognized by the registry. */
 export function isValidLanguage(code: string): boolean {

@@ -45,7 +45,9 @@
     "check-deps": "node scripts/check-dependencies.mjs",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "generate:languages": "node scripts/generate-language-registry.mjs",
+    "check:languages": "node scripts/generate-language-registry.mjs --check"
   },
   "keywords": [
     "deepl",

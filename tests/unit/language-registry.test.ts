@@ -7,12 +7,14 @@ import {
   getTargetLanguages,
   getAllLanguageCodes,
   getExtendedLanguageCodes,
+  deriveLanguageEntry,
+  looksLikeLanguageTag,
 } from '../../src/data/language-registry';
 
 describe('Language Registry', () => {
   describe('LANGUAGE_REGISTRY', () => {
-    it('should contain 121 language entries', () => {
-      expect(LANGUAGE_REGISTRY.size).toBe(121);
+    it('should contain 125 language entries', () => {
+      expect(LANGUAGE_REGISTRY.size).toBe(125);
     });
 
     it('should have unique language codes', () => {
@@ -26,9 +28,9 @@ describe('Language Registry', () => {
       expect(core.length).toBe(32);
     });
 
-    it('should contain all 7 regional variants', () => {
+    it('should contain all 11 regional variants', () => {
       const regional = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category === 'regional');
-      expect(regional.length).toBe(7);
+      expect(regional.length).toBe(11);
     });
 
     it('should contain all 82 extended languages', () => {
@@ -78,6 +80,18 @@ describe('Language Registry', () => {
     it('should include known extended languages', () => {
       expect(LANGUAGE_REGISTRY.get('hi')).toEqual({ code: 'hi', name: 'Hindi', category: 'extended' });
       expect(LANGUAGE_REGISTRY.get('sw')).toEqual({ code: 'sw', name: 'Swahili', category: 'extended' });
+    });
+
+    it('should include the regional variants of German and French', () => {
+      expect(LANGUAGE_REGISTRY.get('de-ch')).toEqual({ code: 'de-ch', name: 'German (Swiss)', category: 'regional', targetOnly: true });
+      expect(LANGUAGE_REGISTRY.get('fr-ca')).toEqual({ code: 'fr-ca', name: 'French (Canadian)', category: 'regional', targetOnly: true });
+    });
+
+    it('should carry the API name even where it duplicates a bare code', () => {
+      // The API calls both `de` and `de-DE` "German"; the snapshot mirrors it
+      // rather than inventing a disambiguated name.
+      expect(getLanguageName('de-de')).toBe('German');
+      expect(getLanguageName('fr-fr')).toBe('French');
     });
   });
 
@@ -163,14 +177,14 @@ describe('Language Registry', () => {
       expect(codes).toContain('sw');
     });
 
-    it('should return 114 languages (121 - 7 regional)', () => {
+    it('should return 114 languages (125 - 11 regional)', () => {
       expect(getSourceLanguages().length).toBe(114);
     });
   });
 
   describe('getTargetLanguages()', () => {
     it('should include all languages', () => {
-      expect(getTargetLanguages().length).toBe(121);
+      expect(getTargetLanguages().length).toBe(125);
     });
 
     it('should include regional variants', () => {
@@ -183,9 +197,9 @@ describe('Language Registry', () => {
   });
 
   describe('getAllLanguageCodes()', () => {
-    it('should return set of all 121 codes', () => {
+    it('should return set of all 125 codes', () => {
       const codes = getAllLanguageCodes();
-      expect(codes.size).toBe(121);
+      expect(codes.size).toBe(125);
     });
 
     it('should support has() lookups', () => {
@@ -216,6 +230,92 @@ describe('Language Registry', () => {
       expect(codes.has('en')).toBe(false);
       expect(codes.has('en-gb')).toBe(false);
     });
+  });
+
+  describe('deriveLanguageEntry()', () => {
+    const stable = { status: 'stable' };
+
+    it('should classify a source-usable language with glossary support as core', () => {
+      expect(
+        deriveLanguageEntry({
+          lang: 'de',
+          name: 'German',
+          usable_as_source: true,
+          features: { glossary: stable, formality: stable },
+        }),
+      ).toEqual({ code: 'de', name: 'German', category: 'core' });
+    });
+
+    it('should classify a target-only language with glossary support as regional', () => {
+      expect(
+        deriveLanguageEntry({
+          lang: 'de-CH',
+          name: 'German (Swiss)',
+          usable_as_source: false,
+          features: { glossary: stable, formality: stable },
+        }),
+      ).toEqual({ code: 'de-ch', name: 'German (Swiss)', category: 'regional', targetOnly: true });
+    });
+
+    it('should classify a language without glossary support as extended', () => {
+      expect(
+        deriveLanguageEntry({
+          lang: 'hi',
+          name: 'Hindi',
+          usable_as_source: true,
+          features: { tag_handling: stable },
+        }),
+      ).toEqual({ code: 'hi', name: 'Hindi', category: 'extended' });
+    });
+
+    it('should treat a missing features object as extended', () => {
+      expect(
+        deriveLanguageEntry({ lang: 'xx', name: 'Test', usable_as_source: true }).category,
+      ).toBe('extended');
+    });
+
+    it('should lowercase the code', () => {
+      expect(deriveLanguageEntry({ lang: 'ZH-Hans', name: 'Chinese' }).code).toBe('zh-hans');
+    });
+
+    it('should mark targetOnly whenever the language is not source-usable', () => {
+      expect(
+        deriveLanguageEntry({ lang: 'th', name: 'Thai', usable_as_source: false }).targetOnly,
+      ).toBe(true);
+      expect(
+        deriveLanguageEntry({ lang: 'th', name: 'Thai', usable_as_source: true }).targetOnly,
+      ).toBeUndefined();
+    });
+
+    it('should reproduce every entry currently in the snapshot', () => {
+      // The snapshot is generated by this derivation, so re-deriving an entry
+      // from the shape it came from must be a fixed point.
+      const de = LANGUAGE_REGISTRY.get('de')!;
+      expect(
+        deriveLanguageEntry({
+          lang: 'de',
+          name: de.name,
+          usable_as_source: true,
+          features: { glossary: { status: 'stable' } },
+        }),
+      ).toEqual(de);
+    });
+  });
+
+  describe('looksLikeLanguageTag()', () => {
+    it.each(['de', 'ace', 'de-ch', 'en-gb', 'es-419', 'zh-hans', 'bho'])(
+      'should accept the well-formed tag %s',
+      code => {
+        expect(looksLikeLanguageTag(code)).toBe(true);
+      },
+    );
+
+    it.each(['grman', 'g', '', 'de_CH', 'de-', '-de', 'de-ch-extra', 'DE'])(
+      'should reject the malformed tag %s',
+      code => {
+        expect(looksLikeLanguageTag(code)).toBe(false);
+      },
+    );
   });
 
   describe('formality support', () => {
