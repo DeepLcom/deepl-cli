@@ -2354,7 +2354,7 @@ deepl languages [OPTIONS]
 
 #### Description
 
-Display all 121 supported languages grouped by category. Core and regional languages are shown first, followed by extended languages. When an API key is configured, language names are fetched from the DeepL API; otherwise, the local language registry is used.
+Display all 125 supported languages grouped by category. Core and regional languages are shown first, followed by extended languages. When an API key is configured, language names are fetched from the DeepL API; otherwise, the local language registry is used.
 
 You can filter to show only source languages, only target languages, or both (default).
 
@@ -2438,10 +2438,18 @@ deepl languages
 - `--features` replaces the `[F]` shorthand, since formality is one of the reported features
 - `--format json` includes a raw `features` object with each feature's status, but only when `--features` is passed
 
+**Where the language list comes from:**
+
+- `GET /v3/languages` is the authority on which languages exist. The CLI bundles a snapshot of it so that listing and validating languages works offline and without an API key
+- The snapshot is generated, not hand-maintained (`npm run generate:languages`; `npm run check:languages` reports drift). Tiers are derived from the response — glossary support separates extended from the rest, source usability separates core from regional — so they are not a separate judgement that can disagree with the API
+- Because the snapshot can lag the API, a **well-formed language code it does not list is accepted and sent to the API**, which accepts or rejects it authoritatively. Input that is not shaped like a language tag is still rejected locally, with a pointer to `deepl languages`. This applies to `translate`, `sync` and to language values in the config file
+- The listing itself is the union of the API response and the snapshot, so a language DeepL offers is never hidden even if the snapshot predates it
+
 **Notes:**
 
-- Source and target language lists differ: 7 regional variants (en-gb, en-us, es-419, pt-br, pt-pt, zh-hans, zh-hant) are target-only
+- Source and target language lists differ: 11 regional variants (de-ch, de-de, en-gb, en-us, es-419, fr-ca, fr-fr, pt-br, pt-pt, zh-hans, zh-hant) are target-only
 - Extended languages (82 codes) only support `quality_optimized` model type and do not support formality or glossary features
+- The API reports the same display name for a bare code and its explicit-region variant — both `de` and `de-de` are "German", both `fr` and `fr-fr` are "French". The CLI mirrors the API rather than inventing distinct names; the code column distinguishes them
 - The extended tier is a coarser signal than the feature matrix: some extended languages do support style rules and translation memory even though they support neither formality nor glossary
 - Without an API key, the command shows all languages from the local registry with a warning; `--features` additionally warns that it needs a key
 
@@ -2495,7 +2503,7 @@ echo "$LANG"  # es
 - Requires an API key (the detection uses a translate API call)
 - Each detection call consumes character quota (the text is translated to produce the detection)
 - Very short text (single characters or words) may produce unreliable detection results
-- Supports all 121 languages recognized by the DeepL API (core, regional, and extended)
+- Supports all 125 languages recognized by the DeepL API (core, regional, and extended)
 
 ---
 

@@ -1011,7 +1011,7 @@ deepl detect "Hola mundo" --format json
 
 #### Supported Languages
 
-List all 121 supported languages grouped by category:
+List all 125 supported languages grouped by category:
 
 ```bash
 # Show all supported languages (both source and target)
@@ -1067,10 +1067,12 @@ deepl languages
 **Note:** Languages are grouped into three categories:
 
 - **Core** (32) — Full feature support including formality and glossaries
-- **Regional** (7) — Target-only variants: `en-gb`, `en-us`, `es-419`, `pt-br`, `pt-pt`, `zh-hans`, `zh-hant`
+- **Regional** (11) — Target-only variants: `de-ch`, `de-de`, `en-gb`, `en-us`, `es-419`, `fr-ca`, `fr-fr`, `pt-br`, `pt-pt`, `zh-hans`, `zh-hant`
 - **Extended** (82) — Only support `quality_optimized` model, no formality or glossary
 
 `--features` is finer-grained than these tiers — some extended languages do support style rules and translation memory. It needs an API key, since the local registry carries no feature data. A feature only gets its own column when support differs across the languages listed; one supported by all of them is summarised on the last line instead of repeated on every row.
+
+**The API decides what exists.** `GET /v3/languages` is authoritative; the bundled list is a generated snapshot of it (`npm run generate:languages`) so that listing and validating languages works offline. Because a snapshot can lag the API, a well-formed language code it does not list is passed to the API rather than rejected locally — that is why `deepl translate --to de-CH` works even if your copy of the list predates Swiss German. Input that is not shaped like a language tag is still rejected immediately.
 
 See [examples/24-languages.sh](./examples/24-languages.sh) for a complete example.
 

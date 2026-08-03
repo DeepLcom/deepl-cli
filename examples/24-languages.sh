@@ -93,7 +93,7 @@ echo
 
 echo "💡 Language categories:"
 echo "   - Core (32): Full support - formality, glossaries, all model types"
-echo "   - Regional (7): Target-only variants (en-us, en-gb, pt-br, etc.)"
+echo "   - Regional (11): Target-only variants (en-us, en-gb, de-ch, fr-ca, pt-br, etc.)"
 echo "   - Extended (82): quality_optimized only, no formality or glossaries"
 echo "   - --features is finer-grained than these tiers: some extended languages"
 echo "     do support style rules and translation memory"
