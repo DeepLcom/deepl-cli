@@ -39,13 +39,51 @@ export function mockAuthError(scope: nock.Scope): nock.Scope {
   return scope.post('/v2/translate').reply(403, { message: 'Invalid API key' });
 }
 
+/**
+ * The default carries a `features` matrix because the live response does: tiers
+ * and formality support are both derived from it, so a fixture without one makes
+ * every language read as extended with formality unreported -- the opposite of
+ * what these four languages actually support.
+ */
+const STABLE = { status: 'stable' } as const;
+
 export function mockLanguagesResponse(
   scope: nock.Scope,
-  languages: Array<{ lang: string; name: string; usable_as_source?: boolean; usable_as_target?: boolean }> = [
-    { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
-    { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
-    { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
-    { lang: 'fr', name: 'French', usable_as_source: true, usable_as_target: true },
+  languages: Array<{
+    lang: string;
+    name: string;
+    usable_as_source?: boolean;
+    usable_as_target?: boolean;
+    features?: Record<string, { status: string }>;
+  }> = [
+    {
+      lang: 'de',
+      name: 'German',
+      usable_as_source: true,
+      usable_as_target: true,
+      features: { formality: STABLE, glossary: STABLE, tag_handling: STABLE },
+    },
+    {
+      lang: 'en',
+      name: 'English',
+      usable_as_source: true,
+      usable_as_target: true,
+      features: { glossary: STABLE, tag_handling: STABLE },
+    },
+    {
+      lang: 'es',
+      name: 'Spanish',
+      usable_as_source: true,
+      usable_as_target: true,
+      features: { formality: STABLE, glossary: STABLE, tag_handling: STABLE },
+    },
+    {
+      lang: 'fr',
+      name: 'French',
+      usable_as_source: true,
+      usable_as_target: true,
+      features: { formality: STABLE, glossary: STABLE, tag_handling: STABLE },
+    },
   ],
   resource: string = 'translate_text',
 ): nock.Scope {

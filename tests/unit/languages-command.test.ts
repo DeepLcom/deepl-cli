@@ -467,6 +467,39 @@ describe('LanguagesCommand', () => {
     });
   });
 
+  describe('tiering a language the snapshot does not list', () => {
+    it('should treat a hyphenated code as a target-only regional variant', () => {
+      // LanguageInfo carries no usable_as_source, so the subtag is the only
+      // signal available; asserted because nothing else pins this guess.
+      const merged = languagesCommand.mergeWithRegistry(
+        [{ language: 'de-ch', name: 'German (Swiss)', features: { glossary: { status: 'stable' } } }],
+        'target',
+      );
+      const entry = merged.find(e => e.code === 'de-ch');
+
+      expect(entry).toBeDefined();
+      expect(entry!.category).toBe('regional');
+    });
+
+    it('should treat a bare code with glossary support as core', () => {
+      const merged = languagesCommand.mergeWithRegistry(
+        [{ language: 'xx' as never, name: 'Novel', features: { glossary: { status: 'stable' } } }],
+        'target',
+      );
+
+      expect(merged.find(e => e.code === 'xx')!.category).toBe('core');
+    });
+
+    it('should treat a code without glossary support as extended', () => {
+      const merged = languagesCommand.mergeWithRegistry(
+        [{ language: 'yy' as never, name: 'Other', features: { tag_handling: { status: 'stable' } } }],
+        'target',
+      );
+
+      expect(merged.find(e => e.code === 'yy')!.category).toBe('extended');
+    });
+  });
+
   describe('partitionFeatureKeys()', () => {
     const entry = (
       code: string,
@@ -667,10 +700,10 @@ describe('LanguagesCommand', () => {
       ];
       const formatted = languagesCommand.formatLanguages(apiLangs, 'target', true);
 
-      // Reported once for the whole listing rather than per row: the languages
-      // the response omitted carry no feature data, so they cannot make glossary
-      // look like a discriminating column.
-      expect(formatted).toContain('glossary');
+      // Asserted on the footer line specifically: the section header for extended
+      // languages also contains the word "glossary", so a bare toContain would
+      // pass even with the flag ignored entirely.
+      expect(formatted).toMatch(/also support:.*glossary/);
     });
 
     it('should report a language the response omitted as unknown, not as supporting nothing', () => {

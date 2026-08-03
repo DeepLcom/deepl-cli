@@ -205,17 +205,15 @@ describe('registerWrite', () => {
       expect(mockWriteCommand.improve).toHaveBeenCalled();
       const warning = (Logger.warn as jest.Mock).mock.calls.map(c => String(c[0])).join('\n');
       expect(warning).toContain('not in the bundled Write language list');
-      for (const code of WRITE_TARGET_LANGUAGES) {
-        expect(warning).toContain(code);
-      }
+      expect(warning).toContain(WRITE_TARGET_LANGUAGES.join(', '));
     });
 
     it('should enumerate every supported language when rejecting malformed input', async () => {
       await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'nope_nope']);
       const error = handleError.mock.calls[0]?.[0] as Error;
-      for (const code of WRITE_TARGET_LANGUAGES) {
-        expect(error.message).toContain(code);
-      }
+      // Asserted as the joined list: individual codes like 'de' occur inside
+      // ordinary words in the message, so per-code checks cannot fail.
+      expect(error.message).toContain(WRITE_TARGET_LANGUAGES.join(', '));
     });
 
     it('should accept every language in the generated list', async () => {

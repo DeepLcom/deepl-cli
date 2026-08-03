@@ -18,14 +18,45 @@ import type { Language } from '../../src/types/common';
  * regenerating it -- the documented release step -- does not turn this suite red
  * for a change it is supposed to accept. Drift from the API is checked by
  * "npm run check:languages", which is where that belongs.
+ *
+ * Comparing the registry against the array it is built from proves the plumbing
+ * but not the data, so the floors below stand in for the literal counts: they
+ * hold across any plausible upstream change and still fail on a snapshot that
+ * lost most of its languages.
  */
 const TIERS = ['core', 'regional', 'extended'] as const;
 const entriesIn = (category: string) => ENTRIES.filter(e => e.category === category);
+
+/** Floors chosen well under today's 125/32/11/82 and well over an empty file. */
+const MIN_TOTAL = 100;
+const MIN_PER_TIER: Record<(typeof TIERS)[number], number> = {
+  core: 20,
+  regional: 5,
+  extended: 50,
+};
 
 describe('Language Registry', () => {
   describe('LANGUAGE_REGISTRY', () => {
     it('should contain one entry per snapshot language', () => {
       expect(LANGUAGE_REGISTRY.size).toBe(ENTRIES.length);
+    });
+
+    it('should hold a plausible number of languages', () => {
+      // Independent of ENTRIES.length, which the assertion above compares against
+      // itself: a snapshot regenerated from a broken response fails here.
+      expect(LANGUAGE_REGISTRY.size).toBeGreaterThanOrEqual(MIN_TOTAL);
+    });
+
+    it.each(TIERS)('should hold a plausible number of %s languages', category => {
+      expect(entriesIn(category).length).toBeGreaterThanOrEqual(MIN_PER_TIER[category]);
+    });
+
+    it('should still contain a representative language from every tier', () => {
+      // Named codes, so losing a whole tier or a common language is caught even
+      // if the totals stay plausible.
+      for (const code of ['en', 'de', 'ja', 'zh', 'en-gb', 'pt-br', 'zh-hans', 'hi', 'sw', 'th']) {
+        expect(LANGUAGE_REGISTRY.has(code)).toBe(true);
+      }
     });
 
     it('should have unique language codes', () => {
@@ -48,14 +79,7 @@ describe('Language Registry', () => {
       );
     });
 
-    /**
-     * Mirrors the generator's floor: the tiers come from the features matrix, so
-     * a matrix that stopped reporting `glossary` would retier every language as
-     * extended and make --formality and --glossary unusable everywhere.
-     */
-    it('should keep a plausible number of core languages', () => {
-      expect(entriesIn('core').length).toBeGreaterThanOrEqual(20);
-    });
+
 
     it('should mark regional variants as targetOnly', () => {
       const regional = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category === 'regional');
