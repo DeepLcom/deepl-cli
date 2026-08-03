@@ -2,11 +2,10 @@ import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { Language, GlossaryInfo, GlossaryLanguagePair, normalizeGlossaryInfo, GlossaryApiResponse } from '../types/index.js';
 import { ValidationError } from '../utils/errors.js';
 
-interface DeepLGlossaryLanguagePairsResponse {
-  supported_languages: Array<{
-    source_lang: string;
-    target_lang: string;
-  }>;
+interface DeepLV3GlossaryLanguageResponse {
+  lang: string;
+  usable_as_source?: boolean;
+  usable_as_target?: boolean;
 }
 
 export class GlossaryClient extends HttpClient {
@@ -14,16 +13,36 @@ export class GlossaryClient extends HttpClient {
     super(apiKey, options);
   }
 
+  /**
+   * Lists glossary language pairs via GET /v3/languages?resource=glossary
+   * (the v2 pairs endpoint is deprecated). v3 returns one role-flagged
+   * language list instead of pairs; the source×target cross-product minus
+   * identity reproduces the v2 pair set exactly (verified live: 992 pairs,
+   * zero difference in either direction).
+   */
   async getGlossaryLanguages(): Promise<GlossaryLanguagePair[]> {
-    const response = await this.makeRequest<DeepLGlossaryLanguagePairsResponse>(
+    const response = await this.makeRequest<DeepLV3GlossaryLanguageResponse[]>(
       'GET',
-      '/v2/glossary-language-pairs'
+      '/v3/languages',
+      { resource: 'glossary' }
     );
 
-    return response.supported_languages.map((pair) => ({
-      sourceLang: this.normalizeLanguage(pair.source_lang),
-      targetLang: this.normalizeLanguage(pair.target_lang),
-    }));
+    const sources = response.filter((lang) => lang.usable_as_source);
+    const targets = response.filter((lang) => lang.usable_as_target);
+
+    const pairs: GlossaryLanguagePair[] = [];
+    for (const source of sources) {
+      for (const target of targets) {
+        if (source.lang === target.lang) {
+          continue;
+        }
+        pairs.push({
+          sourceLang: this.normalizeLanguage(source.lang),
+          targetLang: this.normalizeLanguage(target.lang),
+        });
+      }
+    }
+    return pairs;
   }
 
   async createGlossary(

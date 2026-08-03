@@ -24,12 +24,17 @@ export type LanguageCategory = 'core' | 'regional' | 'extended';
  * @property category - Feature-availability tier
  * @property targetOnly - When true, the language can only be used as a translation target
  *   (not as a source). Applies to regional variants like 'en-gb' and 'pt-br'.
+ * @property supportsFormality - When true, the language supports the formality
+ *   parameter as a translation target. Static because GET /v3/languages does not
+ *   report formality support (the v2 endpoint did); values mirror the last
+ *   /v2/languages?type=target response (captured 2026-08-01).
  */
 export interface LanguageEntry {
   code: string;
   name: string;
   category: LanguageCategory;
   targetOnly?: boolean;
+  supportsFormality?: boolean;
 }
 
 const ENTRIES: LanguageEntry[] = [
@@ -38,27 +43,27 @@ const ENTRIES: LanguageEntry[] = [
   { code: 'bg', name: 'Bulgarian', category: 'core' },
   { code: 'cs', name: 'Czech', category: 'core' },
   { code: 'da', name: 'Danish', category: 'core' },
-  { code: 'de', name: 'German', category: 'core' },
+  { code: 'de', name: 'German', category: 'core', supportsFormality: true },
   { code: 'el', name: 'Greek', category: 'core' },
   { code: 'en', name: 'English', category: 'core' },
-  { code: 'es', name: 'Spanish', category: 'core' },
+  { code: 'es', name: 'Spanish', category: 'core', supportsFormality: true },
   { code: 'et', name: 'Estonian', category: 'core' },
   { code: 'fi', name: 'Finnish', category: 'core' },
-  { code: 'fr', name: 'French', category: 'core' },
+  { code: 'fr', name: 'French', category: 'core', supportsFormality: true },
   { code: 'he', name: 'Hebrew', category: 'core' },
   { code: 'hu', name: 'Hungarian', category: 'core' },
   { code: 'id', name: 'Indonesian', category: 'core' },
-  { code: 'it', name: 'Italian', category: 'core' },
-  { code: 'ja', name: 'Japanese', category: 'core' },
+  { code: 'it', name: 'Italian', category: 'core', supportsFormality: true },
+  { code: 'ja', name: 'Japanese', category: 'core', supportsFormality: true },
   { code: 'ko', name: 'Korean', category: 'core' },
   { code: 'lt', name: 'Lithuanian', category: 'core' },
   { code: 'lv', name: 'Latvian', category: 'core' },
   { code: 'nb', name: 'Norwegian Bokmål', category: 'core' },
-  { code: 'nl', name: 'Dutch', category: 'core' },
-  { code: 'pl', name: 'Polish', category: 'core' },
+  { code: 'nl', name: 'Dutch', category: 'core', supportsFormality: true },
+  { code: 'pl', name: 'Polish', category: 'core', supportsFormality: true },
   { code: 'pt', name: 'Portuguese', category: 'core' },
   { code: 'ro', name: 'Romanian', category: 'core' },
-  { code: 'ru', name: 'Russian', category: 'core' },
+  { code: 'ru', name: 'Russian', category: 'core', supportsFormality: true },
   { code: 'sk', name: 'Slovak', category: 'core' },
   { code: 'sl', name: 'Slovenian', category: 'core' },
   { code: 'sv', name: 'Swedish', category: 'core' },
@@ -70,9 +75,9 @@ const ENTRIES: LanguageEntry[] = [
   // Regional variants (target-only)
   { code: 'en-gb', name: 'English (British)', category: 'regional', targetOnly: true },
   { code: 'en-us', name: 'English (American)', category: 'regional', targetOnly: true },
-  { code: 'es-419', name: 'Spanish (Latin America)', category: 'regional', targetOnly: true },
-  { code: 'pt-br', name: 'Portuguese (Brazilian)', category: 'regional', targetOnly: true },
-  { code: 'pt-pt', name: 'Portuguese (European)', category: 'regional', targetOnly: true },
+  { code: 'es-419', name: 'Spanish (Latin America)', category: 'regional', targetOnly: true, supportsFormality: true },
+  { code: 'pt-br', name: 'Portuguese (Brazilian)', category: 'regional', targetOnly: true, supportsFormality: true },
+  { code: 'pt-pt', name: 'Portuguese (European)', category: 'regional', targetOnly: true, supportsFormality: true },
   { code: 'zh-hans', name: 'Chinese (Simplified)', category: 'regional', targetOnly: true },
   { code: 'zh-hant', name: 'Chinese (Traditional)', category: 'regional', targetOnly: true },
 

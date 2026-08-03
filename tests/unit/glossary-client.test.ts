@@ -41,14 +41,13 @@ describe('GlossaryClient', () => {
   });
 
   describe('getGlossaryLanguages()', () => {
-    it('should return supported glossary language pairs', async () => {
+    it('should derive language pairs from the v3 role-flagged list', async () => {
       mockAxiosInstance.request.mockResolvedValue({
-        data: {
-          supported_languages: [
-            { source_lang: 'EN', target_lang: 'DE' },
-            { source_lang: 'EN', target_lang: 'FR' },
-          ],
-        },
+        data: [
+          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: false },
+          { lang: 'de', name: 'German', usable_as_source: false, usable_as_target: true },
+          { lang: 'fr', name: 'French', usable_as_source: false, usable_as_target: true },
+        ],
         status: 200,
         headers: {},
       });
@@ -58,6 +57,31 @@ describe('GlossaryClient', () => {
       expect(result).toEqual([
         { sourceLang: 'en', targetLang: 'de' },
         { sourceLang: 'en', targetLang: 'fr' },
+      ]);
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'GET',
+          url: '/v3/languages',
+          params: { resource: 'glossary' },
+        }),
+      );
+    });
+
+    it('should exclude identity pairs', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
+          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.getGlossaryLanguages();
+
+      expect(result).toEqual([
+        { sourceLang: 'en', targetLang: 'de' },
+        { sourceLang: 'de', targetLang: 'en' },
       ]);
     });
 

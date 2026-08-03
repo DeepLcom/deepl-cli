@@ -2,6 +2,7 @@ import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { TranslationOptions, Language, TranslationMemory } from '../types/index.js';
 import { NetworkError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
+import { LANGUAGE_REGISTRY } from '../data/language-registry.js';
 import { Logger } from '../utils/logger.js';
 
 // DeepL's /v3/translation_memories endpoint paginates via `page` (0-indexed) and
@@ -43,10 +44,11 @@ interface DeepLUsageResponse {
   }>;
 }
 
-interface DeepLLanguageResponse {
-  language: string;
+interface DeepLV3LanguageResponse {
+  lang: string;
   name: string;
-  supports_formality?: boolean;
+  usable_as_source?: boolean;
+  usable_as_target?: boolean;
 }
 
 export interface TranslationResult {
@@ -273,21 +275,34 @@ export class TranslationClient extends HttpClient {
     }
   }
 
+  /**
+   * Lists languages via GET /v3/languages (v2 is deprecated). One response
+   * carries both roles as usable_as_source/usable_as_target flags, filtered
+   * here to preserve the per-type contract. The v3 response no longer reports
+   * formality support, so that comes from the static language registry.
+   */
   async getSupportedLanguages(
     type: 'source' | 'target'
   ): Promise<LanguageInfo[]> {
     try {
-      const response = await this.makeRequest<DeepLLanguageResponse[]>(
+      const response = await this.makeRequest<DeepLV3LanguageResponse[]>(
         'GET',
-        '/v2/languages',
-        { type }
+        '/v3/languages',
+        { resource: 'translate_text' }
       );
 
-      return response.map((lang) => ({
-        language: this.normalizeLanguage(lang.language),
-        name: lang.name,
-        ...(lang.supports_formality !== undefined && { supportsFormality: lang.supports_formality }),
-      }));
+      return response
+        .filter((lang) => (type === 'source' ? lang.usable_as_source : lang.usable_as_target))
+        .map((lang) => {
+          const code = this.normalizeLanguage(lang.lang);
+          return {
+            language: code,
+            name: lang.name,
+            ...(type === 'target' && {
+              supportsFormality: LANGUAGE_REGISTRY.get(code)?.supportsFormality ?? false,
+            }),
+          };
+        });
     } catch (error) {
       throw this.handleError(error);
     }

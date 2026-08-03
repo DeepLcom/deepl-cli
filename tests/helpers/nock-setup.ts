@@ -41,17 +41,17 @@ export function mockAuthError(scope: nock.Scope): nock.Scope {
 
 export function mockLanguagesResponse(
   scope: nock.Scope,
-  languages: Array<{ language: string; name: string; supports_formality?: boolean }> = [
-    { language: 'DE', name: 'German', supports_formality: true },
-    { language: 'EN', name: 'English', supports_formality: false },
-    { language: 'ES', name: 'Spanish', supports_formality: true },
-    { language: 'FR', name: 'French', supports_formality: true },
+  languages: Array<{ lang: string; name: string; usable_as_source?: boolean; usable_as_target?: boolean }> = [
+    { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
+    { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
+    { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
+    { lang: 'fr', name: 'French', usable_as_source: true, usable_as_target: true },
   ],
-  type: 'source' | 'target' = 'target',
+  resource: string = 'translate_text',
 ): nock.Scope {
   return scope
-    .get('/v2/languages')
-    .query({ type })
+    .get('/v3/languages')
+    .query({ resource })
     .reply(200, languages);
 }
 

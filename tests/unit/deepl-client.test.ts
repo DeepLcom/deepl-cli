@@ -812,11 +812,12 @@ describe('DeepLClient', () => {
   describe('getSupportedLanguages()', () => {
     it('should return supported source languages', async () => {
       nock(baseUrl)
-        .get('/v2/languages')
-        .query({ type: 'source' })
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
         .reply(200, [
-          { language: 'EN', name: 'English' },
-          { language: 'ES', name: 'Spanish' },
+          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
+          { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
+          { lang: 'en-gb', name: 'English (British)', usable_as_source: false, usable_as_target: true },
         ]);
 
       const languages = await client.getSupportedLanguages('source');
@@ -824,15 +825,16 @@ describe('DeepLClient', () => {
       expect(languages).toHaveLength(2);
       expect(languages[0]?.language).toBe('en');
       expect(languages[0]?.name).toBe('English');
+      expect(languages[0]?.supportsFormality).toBeUndefined();
     });
 
     it('should return supported target languages', async () => {
       nock(baseUrl)
-        .get('/v2/languages')
-        .query({ type: 'target' })
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
         .reply(200, [
-          { language: 'ES', name: 'Spanish' },
-          { language: 'FR', name: 'French' },
+          { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
+          { lang: 'fr', name: 'French', usable_as_source: true, usable_as_target: true },
         ]);
 
       const languages = await client.getSupportedLanguages('target');
@@ -841,10 +843,42 @@ describe('DeepLClient', () => {
       expect(languages[0]?.language).toBe('es');
     });
 
+    it('should exclude source-only languages from target results', async () => {
+      nock(baseUrl)
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
+        .reply(200, [
+          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
+          { lang: 'xx', name: 'Source Only', usable_as_source: true, usable_as_target: false },
+        ]);
+
+      const languages = await client.getSupportedLanguages('target');
+
+      expect(languages).toHaveLength(1);
+      expect(languages[0]?.language).toBe('de');
+    });
+
+    it('should mark formality support on targets from the registry', async () => {
+      nock(baseUrl)
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
+        .reply(200, [
+          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
+          { lang: 'ja', name: 'Japanese', usable_as_source: true, usable_as_target: true },
+          { lang: 'ko', name: 'Korean', usable_as_source: true, usable_as_target: true },
+        ]);
+
+      const languages = await client.getSupportedLanguages('target');
+
+      expect(languages.find(l => l.language === 'de')?.supportsFormality).toBe(true);
+      expect(languages.find(l => l.language === 'ja')?.supportsFormality).toBe(true);
+      expect(languages.find(l => l.language === 'ko')?.supportsFormality).toBe(false);
+    });
+
     it('should handle language API errors', async () => {
       nock(baseUrl)
-        .get('/v2/languages')
-        .query({ type: 'source' })
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
         .reply(500);
 
       await expect(
@@ -1891,50 +1925,59 @@ describe('DeepLClient', () => {
   });
 
   describe('getGlossaryLanguages()', () => {
-    it('should return supported glossary language pairs', async () => {
+    it('should derive pairs as the cross-product minus identity', async () => {
       nock(baseUrl)
-        .get('/v2/glossary-language-pairs')
-        .reply(200, {
-          supported_languages: [
-            { source_lang: 'en', target_lang: 'de' },
-            { source_lang: 'de', target_lang: 'en' },
-            { source_lang: 'en', target_lang: 'fr' },
-          ],
-        });
+        .get('/v3/languages')
+        .query({ resource: 'glossary' })
+        .reply(200, [
+          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
+          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
+          { lang: 'fr', name: 'French', usable_as_source: true, usable_as_target: true },
+        ]);
 
       const pairs = await client.getGlossaryLanguages();
 
-      expect(pairs).toHaveLength(3);
-      expect(pairs[0]?.sourceLang).toBe('en');
-      expect(pairs[0]?.targetLang).toBe('de');
-      expect(pairs[1]?.sourceLang).toBe('de');
-      expect(pairs[1]?.targetLang).toBe('en');
+      // 3 languages, both roles each: 3×3 minus 3 identity pairs
+      expect(pairs).toHaveLength(6);
+      expect(pairs).toContainEqual({ sourceLang: 'en', targetLang: 'de' });
+      expect(pairs).toContainEqual({ sourceLang: 'de', targetLang: 'en' });
+      expect(pairs).toContainEqual({ sourceLang: 'en', targetLang: 'fr' });
+      expect(pairs).not.toContainEqual({ sourceLang: 'en', targetLang: 'en' });
+    });
+
+    it('should respect role flags when building pairs', async () => {
+      nock(baseUrl)
+        .get('/v3/languages')
+        .query({ resource: 'glossary' })
+        .reply(200, [
+          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
+          { lang: 'xx', name: 'Target Only', usable_as_source: false, usable_as_target: true },
+        ]);
+
+      const pairs = await client.getGlossaryLanguages();
+
+      expect(pairs).toEqual([{ sourceLang: 'en', targetLang: 'xx' }]);
     });
 
     it('should normalize language codes to lowercase', async () => {
       nock(baseUrl)
-        .get('/v2/glossary-language-pairs')
-        .reply(200, {
-          supported_languages: [
-            { source_lang: 'EN', target_lang: 'DE' },
-            { source_lang: 'EN-US', target_lang: 'ES' },
-          ],
-        });
+        .get('/v3/languages')
+        .query({ resource: 'glossary' })
+        .reply(200, [
+          { lang: 'EN', name: 'English', usable_as_source: true, usable_as_target: false },
+          { lang: 'DE', name: 'German', usable_as_source: false, usable_as_target: true },
+        ]);
 
       const pairs = await client.getGlossaryLanguages();
 
-      expect(pairs[0]?.sourceLang).toBe('en');
-      expect(pairs[0]?.targetLang).toBe('de');
-      expect(pairs[1]?.sourceLang).toBe('en-us');
-      expect(pairs[1]?.targetLang).toBe('es');
+      expect(pairs).toEqual([{ sourceLang: 'en', targetLang: 'de' }]);
     });
 
     it('should handle empty response', async () => {
       nock(baseUrl)
-        .get('/v2/glossary-language-pairs')
-        .reply(200, {
-          supported_languages: [],
-        });
+        .get('/v3/languages')
+        .query({ resource: 'glossary' })
+        .reply(200, []);
 
       const pairs = await client.getGlossaryLanguages();
 
@@ -1943,7 +1986,8 @@ describe('DeepLClient', () => {
 
     it('should handle API errors', async () => {
       nock(baseUrl)
-        .get('/v2/glossary-language-pairs')
+        .get('/v3/languages')
+        .query({ resource: 'glossary' })
         .reply(403, {
           message: 'Authentication failed',
         });

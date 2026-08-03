@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **cli**: `deepl correct` command (alias `c`) — spelling and grammar correction without rewording, via the Write API's `/v2/write/correct` endpoint. Supports the same input handling and workflow flags as `write` (`--check` with exit code 8, `--fix`/`--backup`, `--diff`, `--interactive`, `--output`/`--in-place`, `--format json`, `--no-cache`), but not `--style`/`--tone`, which the correct endpoint does not accept. Results are cached under a separate `correct:` namespace so corrections and rephrasings of the same text never collide.
 
+### Changed
+
+- **api**: Language listings migrated from the formally deprecated `GET /v2/languages` and `GET /v2/glossary-language-pairs` endpoints to `GET /v3/languages` (`resource=translate_text` / `resource=glossary`). Command output is unchanged: source/target lists derive from the v3 `usable_as_source`/`usable_as_target` flags, glossary pairs from the source×target cross-product (verified identical to the v2 pair list), and the `[F]` formality markers now come from the language registry since the v3 response no longer reports formality support.
+
 - **http**: `NO_PROXY` / `no_proxy` are honoured, with the standard semantics — `*` for everything, a leading dot or `*.` for subdomains, and an optional `host:port` that must agree. A corporate `HTTPS_PROXY` was previously applied to every request, including one aimed at localhost.
 - **auth**: `deepl auth set-key --no-verify` stores a key without validating it against the API. Validation ran before persisting, so on a network without proxy configuration both documented setup paths — `auth set-key` and `init` — failed and discarded the key; an unreachable API now also names `DEEPL_API_KEY` as the zero-network alternative.
 - **ci**: `npm run check-deps` fails the build when a package imported by `src/` is missing from `dependencies`, including one declared only under `devDependencies`. It runs in CI and in the publish job, and matches package names as quoted strings so indirect loads such as `requireModule('php-parser')` count as references.

@@ -487,16 +487,17 @@ describe('DeepLClient Integration', () => {
   });
 
   describe('getSupportedLanguages()', () => {
-    it('should make correct HTTP GET request for source languages', async () => {
+    it('should make correct HTTP GET request and filter source languages', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
       const scope = nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'source' })
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
         .reply(200, [
-          { language: 'EN', name: 'English' },
-          { language: 'DE', name: 'German' },
+          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
+          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
+          { lang: 'en-gb', name: 'English (British)', usable_as_source: false, usable_as_target: true },
         ]);
 
       const result = await client.getSupportedLanguages('source');
@@ -508,23 +509,23 @@ describe('DeepLClient Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('should make correct HTTP GET request for target languages', async () => {
+    it('should filter target languages from the same response shape', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
       const scope = nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'target' })
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
         .reply(200, [
-          { language: 'ES', name: 'Spanish' },
-          { language: 'FR', name: 'French' },
+          { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
+          { lang: 'fr', name: 'French', usable_as_source: true, usable_as_target: true },
         ]);
 
       const result = await client.getSupportedLanguages('target');
 
       expect(result).toEqual([
-        { language: 'es', name: 'Spanish' },
-        { language: 'fr', name: 'French' },
+        { language: 'es', name: 'Spanish', supportsFormality: true },
+        { language: 'fr', name: 'French', supportsFormality: true },
       ]);
       expect(scope.isDone()).toBe(true);
     });
@@ -534,25 +535,25 @@ describe('DeepLClient Integration', () => {
       clients.push(client);
 
       nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'source' })
-        .reply(200, [{ language: 'EN-US', name: 'English (American)' }]);
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
+        .reply(200, [{ lang: 'EN-US', name: 'English (American)', usable_as_source: true }]);
 
       const result = await client.getSupportedLanguages('source');
 
       expect(result[0]?.language).toBe('en-us');
     });
 
-    it('should parse supports_formality for target languages', async () => {
+    it('should source formality support from the registry for targets', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
       nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'target' })
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
         .reply(200, [
-          { language: 'DE', name: 'German', supports_formality: true },
-          { language: 'EN-US', name: 'English (American)', supports_formality: false },
+          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
+          { lang: 'en-us', name: 'English (American)', usable_as_source: false, usable_as_target: true },
         ]);
 
       const result = await client.getSupportedLanguages('target');
@@ -561,14 +562,14 @@ describe('DeepLClient Integration', () => {
       expect(result[1]?.supportsFormality).toBe(false);
     });
 
-    it('should omit supportsFormality when not in response', async () => {
+    it('should omit supportsFormality for source languages', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
       nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'source' })
-        .reply(200, [{ language: 'EN', name: 'English' }]);
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
+        .reply(200, [{ lang: 'en', name: 'English', usable_as_source: true }]);
 
       const result = await client.getSupportedLanguages('source');
 

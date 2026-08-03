@@ -328,8 +328,9 @@ describe('TranslationClient', () => {
     it('should return source languages', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: [
-          { language: 'EN', name: 'English' },
-          { language: 'DE', name: 'German', supports_formality: true },
+          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
+          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
+          { lang: 'en-gb', name: 'English (British)', usable_as_source: false, usable_as_target: true },
         ],
         status: 200,
         headers: {},
@@ -340,13 +341,19 @@ describe('TranslationClient', () => {
       expect(result).toHaveLength(2);
       expect(result[0]!.language).toBe('en');
       expect(result[0]!.name).toBe('English');
-      expect(result[1]!.supportsFormality).toBe(true);
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'GET',
+          url: '/v3/languages',
+          params: { resource: 'translate_text' },
+        }),
+      );
     });
 
-    it('should return target languages', async () => {
+    it('should return target languages with registry-sourced formality', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: [
-          { language: 'ES', name: 'Spanish', supports_formality: true },
+          { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
         ],
         status: 200,
         headers: {},
@@ -356,6 +363,7 @@ describe('TranslationClient', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]!.language).toBe('es');
+      expect(result[0]!.supportsFormality).toBe(true);
     });
   });
 
