@@ -24,6 +24,11 @@ export class DocumentTranslationHandler {
 
     const supported = new Set(['from', 'formality', 'glossary', 'outputFormat', 'enableMinification']);
     warnIgnoredOptions('document', options, supported);
+    // Actually ignored, not just announced: leaving them set let shared
+    // validation reject a command over a flag this mode has just said it would
+    // disregard.
+    const { modelType: _model, tagHandling: _tags, tagHandlingVersion: _version, ...rest } = options;
+    options = rest;
 
     validateLanguageCodes([options.to]);
     // Documents accept glossaries, so the extended-tier constraint applies here

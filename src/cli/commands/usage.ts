@@ -26,19 +26,28 @@ function isDurationBilled(product: ProductUsage): boolean {
  * response carries one, and the API-key-scoped amount.
  *
  * `accountUsed` stays undefined rather than falling back to the API-key figure:
- * live responses omit `unit_count` for these products, so the fallback printed
- * the key's own usage in the account column and the two were always equal.
+ * live responses omit `unit_count` for these products, so a fallback would print
+ * the key's own usage in the account column and the two would always be equal.
+ *
+ * A `milliseconds`-billed product reports its duration in the character-count
+ * fields, which is why those are read at all -- but only there. Under `minutes`
+ * billing they are character counts, and scaling one by 60,000 invents hours of
+ * usage that never happened.
  */
 function productDurationsMs(product: ProductUsage): {
   accountUsed: number | undefined;
-  apiKeyUsed: number;
+  apiKeyUsed: number | undefined;
 } {
-  const scale = product.billingUnit === 'minutes' ? 60_000 : 1;
-  const account = product.unitCount ?? product.accountUnitCount;
-  const apiKeyUsed = product.apiKeyUnitCount ?? product.apiKeyCharacterCount;
+  const perMinute = product.billingUnit === 'minutes';
+  const scale = perMinute ? 60_000 : 1;
+  const duration = (value: number | null | undefined): number | undefined =>
+    typeof value === 'number' && Number.isFinite(value) ? value * scale : undefined;
+  const accountFallback = perMinute ? undefined : duration(product.characterCount);
+  const apiKeyFallback = perMinute ? undefined : duration(product.apiKeyCharacterCount);
   return {
-    accountUsed: account === undefined ? undefined : account * scale,
-    apiKeyUsed: apiKeyUsed * scale,
+    accountUsed:
+      duration(product.unitCount) ?? duration(product.accountUnitCount) ?? accountFallback,
+    apiKeyUsed: duration(product.apiKeyUnitCount) ?? apiKeyFallback,
   };
 }
 
@@ -123,11 +132,15 @@ export class UsageCommand {
         const name = productDisplayName(product.productType);
         if (isDurationBilled(product)) {
           const { accountUsed, apiKeyUsed } = productDurationsMs(product);
-          lines.push(
-            accountUsed === undefined
-              ? `  ${name}: ${this.formatMilliseconds(apiKeyUsed)} (API key)`
-              : `  ${name}: ${this.formatMilliseconds(accountUsed)} (API key: ${this.formatMilliseconds(apiKeyUsed)})`,
-          );
+          const account = accountUsed === undefined ? undefined : this.formatMilliseconds(accountUsed);
+          const apiKey = apiKeyUsed === undefined ? undefined : this.formatMilliseconds(apiKeyUsed);
+          if (account !== undefined && apiKey !== undefined) {
+            lines.push(`  ${name}: ${account} (API key: ${apiKey})`);
+          } else if (apiKey !== undefined) {
+            lines.push(`  ${name}: ${apiKey} (API key)`);
+          } else {
+            lines.push(`  ${name}: ${account ?? 'not reported'}`);
+          }
         } else if (product.unitCount !== undefined) {
           const apiKeyPart = product.apiKeyUnitCount !== undefined
             ? ` (API key: ${formatNumber(product.apiKeyUnitCount)} units)`
@@ -219,7 +232,7 @@ export class UsageCommand {
           productTable.push([
             name,
             accountUsed === undefined ? '—' : this.formatMilliseconds(accountUsed),
-            this.formatMilliseconds(apiKeyUsed),
+            apiKeyUsed === undefined ? '—' : this.formatMilliseconds(apiKeyUsed),
           ]);
         } else if (product.unitCount !== undefined) {
           const apiKeyVal = product.apiKeyUnitCount !== undefined

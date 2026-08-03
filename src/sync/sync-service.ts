@@ -194,9 +194,20 @@ export class SyncService {
       // The pair is known from the config, so a glossary that does not cover it
       // fails here rather than once per file, as with the translation memory
       // below.
-      const glossaryLocales = options?.localeFilter?.length
-        ? config.target_locales.filter(l => options.localeFilter!.includes(l))
-        : config.target_locales;
+      //
+      // Locales with their own `locale_overrides.<locale>.glossary` are excluded:
+      // the top-level glossary is never asked to translate them, so requiring it
+      // to cover them would reject a configuration that works.
+      const overriddenLocales = new Set(
+        Object.entries(config.translation?.locale_overrides ?? {})
+          .filter(([, override]) => override?.glossary)
+          .map(([locale]) => locale),
+      );
+      const glossaryLocales = (
+        options?.localeFilter?.length
+          ? config.target_locales.filter(l => options.localeFilter!.includes(l))
+          : config.target_locales
+      ).filter(locale => !overriddenLocales.has(locale));
       resolvedGlossaryId = await this.glossaryService.resolveGlossaryId(
         config.translation.glossary,
         { from: config.source_locale as Language, targets: glossaryLocales as Language[] },

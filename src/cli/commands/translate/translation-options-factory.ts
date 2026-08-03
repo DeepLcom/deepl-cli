@@ -63,12 +63,18 @@ export async function applyGlossarySelection<
   // the same glossary: a duplicate would flip the wire parameter from
   // glossary_id to glossary_ids, key an identical request differently, and
   // spend two of the five slots the API allows.
+  //
+  // A repeat keeps its LAST position, because the last glossary to define a term
+  // is the one the API applies -- dropping the later occurrence would hand the
+  // conflict to a glossary the user had deliberately overridden.
   const ids: string[] = [];
   for (const nameOrId of options.glossary) {
     const id = await resolveGlossaryId(glossaryService, nameOrId, expected);
-    if (!ids.includes(id)) {
-      ids.push(id);
+    const existing = ids.indexOf(id);
+    if (existing !== -1) {
+      ids.splice(existing, 1);
     }
+    ids.push(id);
   }
 
   const [only] = ids;

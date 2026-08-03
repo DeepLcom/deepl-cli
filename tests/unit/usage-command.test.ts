@@ -347,6 +347,44 @@ describe('UsageCommand', () => {
       expect(formatted).not.toContain('speech_to_text: 0 characters');
     });
 
+    it('should not render a character count as minutes of usage', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 0,
+        characterLimit: 20000000,
+        products: [
+          {
+            productType: 'speechToText',
+            characterCount: 1000,
+            apiKeyCharacterCount: 1000,
+            billingUnit: 'minutes',
+          },
+        ],
+      });
+
+      // 1000 characters scaled by 60,000 would claim 16h 40m of voice usage.
+      expect(formatted).not.toContain('16h 40m');
+      expect(formatted).toContain('speech_to_text: not reported');
+    });
+
+    it('should ignore a null count rather than reporting it as zero', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 0,
+        characterLimit: 20000000,
+        products: [
+          {
+            productType: 'speechToText',
+            characterCount: 0,
+            apiKeyCharacterCount: 0,
+            accountUnitCount: null as unknown as number,
+            apiKeyUnitCount: 60,
+            billingUnit: 'minutes',
+          },
+        ],
+      });
+
+      expect(formatted).toContain('speech_to_text: 1h 0m 0s (API key)');
+    });
+
     it('should report the account-wide duration when the response carries one', () => {
       const formatted = usageCommand.formatUsage({
         characterCount: 0,

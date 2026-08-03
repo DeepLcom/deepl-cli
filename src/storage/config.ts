@@ -6,7 +6,7 @@
 import { randomBytes } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { DeepLConfig, Formality, OutputFormat } from '../types/index.js';
+import { DeepLConfig, Formality, Language, OutputFormat } from '../types/index.js';
 import { resolvePaths } from '../utils/paths.js';
 import { isValidLanguage, looksLikeLanguageTag } from '../data/language-registry.js';
 import { ConfigError } from '../utils/errors.js';
@@ -247,17 +247,28 @@ export class ConfigService {
     return ConfigService.getDefaults();
   }
 
+  /**
+   * Validates a config read from disk, and normalizes its language codes in
+   * place. A file written before codes were stored lowercase -- or edited by
+   * hand -- otherwise keeps its casing, and `TranslationService` merges
+   * `defaults.sourceLang` verbatim, so `DE` and an explicit `--from de` would key
+   * two cache entries for one request.
+   */
   private validateLoadedConfig(config: DeepLConfig): void {
     if (config.api?.baseUrl) {
       validateApiUrl(config.api.baseUrl);
     }
     if (config.defaults?.sourceLang) {
       this.validateLanguage(config.defaults.sourceLang, 'defaults.sourceLang');
+      config.defaults.sourceLang = config.defaults.sourceLang.toLowerCase() as Language;
     }
     if (config.defaults?.targetLangs) {
       for (const lang of config.defaults.targetLangs) {
         this.validateLanguage(lang, 'defaults.targetLangs');
       }
+      config.defaults.targetLangs = config.defaults.targetLangs.map(
+        lang => lang.toLowerCase() as Language,
+      );
     }
     if (config.defaults?.formality) {
       this.validateFormality(config.defaults.formality, 'defaults.formality');
@@ -352,8 +363,7 @@ export class ConfigService {
 
     // Validate specific paths
     if (path === 'defaults.sourceLang' && value !== undefined) {
-
-      this.validateLanguage(value as string, path);
+      this.validateLanguage(value as string, path, true);
     }
 
     if (path === 'defaults.targetLangs') {
@@ -361,8 +371,7 @@ export class ConfigService {
         throw new ConfigError('Target languages must be an array');
       }
       for (const lang of value) {
-
-        this.validateLanguage(lang, path);
+        this.validateLanguage(lang, path, true);
       }
     }
 
@@ -399,7 +408,12 @@ export class ConfigService {
    * accepted when they are shaped like a language tag, because GET /v3/languages
    * is the authority on which languages exist and the snapshot can lag it.
    */
-  private validateLanguage(lang: string, key?: string): void {
+  /**
+   * @param announceUnknown - warn when the code is well-formed but absent from
+   *   the bundled snapshot. Only the write path announces: every command loads
+   *   the config, and a note on each invocation is noise, not guidance.
+   */
+  private validateLanguage(lang: string, key?: string, announceUnknown = false): void {
     // Lowercased first: the translate paths lowercase their flags before use, and
     // the tag pattern below is lowercase-only, so `DE` is as valid as `de` here.
     const normalized = typeof lang === 'string' ? lang.toLowerCase() : lang;
@@ -407,10 +421,10 @@ export class ConfigService {
       const context = key ? ` for "${key}"` : '';
       throw new ConfigError(`Invalid language code "${lang}"${context}. Run: deepl languages to see valid codes`);
     }
-    if (!isValidLanguage(normalized)) {
-      // Stored anyway, since the snapshot can lag the API -- but flagged here,
-      // because a typo in config otherwise surfaces on every later command with
-      // nothing pointing back at the value responsible.
+    if (announceUnknown && !isValidLanguage(normalized)) {
+      // Stored anyway, since the snapshot can lag the API -- but flagged as it is
+      // written, because a typo in config otherwise surfaces on every later
+      // command with nothing pointing back at the value responsible.
       const context = key ? ` for "${key}"` : '';
       Logger.warn(
         `Note: "${lang}"${context} is not in the bundled language list; it will be sent to the API as-is.\n` +
