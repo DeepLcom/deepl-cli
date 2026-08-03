@@ -760,7 +760,7 @@ This table is maintained by hand and reflects what the API **accepts**, which is
 
 The 14 languages are generated from `GET /v3/languages?resource=write` into `src/data/language-entries.ts` by `npm run generate:languages`, alongside the translation list, and `npm run check:languages` reports drift in either. The `WriteLanguage` type is derived from that same list, so a language added upstream widens it on regenerate rather than needing a second hand edit.
 
-Unlike `translate --to`, which passes a well-formed unknown code to the API, `write` and `correct` **reject** a code outside this list locally (exit 6) and name every valid option. The set is small enough to enumerate, so that beats a round trip — the reasoning that makes permissiveness right for translation does not transfer to 14 of 125 languages.
+`write` and `correct` check `--lang` against this list locally and name every valid option, because the set is small enough to enumerate in an error. The list is a snapshot, though, so a code that is *shaped* like a language tag but absent from it is sent to the API with the list as a warning rather than rejected — otherwise a language DeepL adds is unreachable until the snapshot is regenerated. Input that is not shaped like a language tag still exits 6 locally.
 
 **Output Options:**
 
@@ -2327,14 +2327,10 @@ deepl usage
 # API Key Usage:
 #   Used: 1,880,000 / unlimited
 #
-# Speech-to-Text Usage:
-#   Used: 12m 34s / 1h 0m 0s (20.9%)
-#   Remaining: 47m 26s
-#
 # Product Breakdown:
 #   translate: 900,000 characters (API key: 880,000)
 #   write: 1,250,000 characters (API key: 1,000,000)
-#   speech_to_text: 12m 34s (API key: 12m 34s)
+#   speech_to_text: 12m 34s (API key)
 ```
 
 **Output Fields:**
@@ -2348,8 +2344,7 @@ deepl usage
 
 - **Billing Period**: Start and end dates of the current billing cycle
 - **API Key Usage**: Characters used by this specific API key (vs. the whole account)
-- **Speech-to-Text Usage**: Duration used and remaining for speech-to-text quota (displayed as hours/minutes/seconds)
-- **Product Breakdown**: Per-product character counts (translate, write) and durations (speech_to_text) with API key-level breakdown
+- **Product Breakdown**: Per-product character counts (translate, write) and durations (speech_to_text) with the API-key-level figure alongside. A duration-billed product shows `(API key)` when the response carries no account-wide total, rather than repeating the key's own figure as if it were one.
 
 **Notes:**
 
