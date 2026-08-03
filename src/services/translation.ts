@@ -402,6 +402,13 @@ export class TranslationService {
    * so it holds the version the request will actually carry. Leaving it unset
    * would let the key stay stable across a change of the API's own default,
    * serving entries the API would no longer produce.
+   *
+   * Every parameter that changes the returned text has to appear here or the
+   * cache serves the wrong translation: a plain request and the same request
+   * with a translation memory, different --ignore-tags, or --preserve-formatting
+   * are different requests. `preserveFormatting` is included because
+   * preserve_formatting suppresses the sentence-boundary punctuation and case
+   * correction, which shows up in the text.
    */
   private generateCacheKey(text: string, options: TranslationOptions): string {
     // Keyed on the parameter the request will actually carry, so the two ways of
@@ -424,7 +431,13 @@ export class TranslationService {
       customInstructions: options.customInstructions, // 11. Custom instructions
       styleId: options.styleId,          // 12. Style rules
       glossaryIds: glossary && 'glossary_ids' in glossary ? glossary.glossary_ids : undefined, // 13. Multi-glossary selection (order-significant)
-      // Note: preserveFormatting doesn't affect translation output, so not cached
+      translationMemoryId: options.translationMemoryId, // 14. Memory consulted for matches
+      translationMemoryThreshold: options.translationMemoryThreshold, // 15. Which matches it reuses
+      ignoreTags: options.ignoreTags,     // 16. Tags left untranslated
+      splittingTags: options.splittingTags, // 17. Tags that split sentences
+      nonSplittingTags: options.nonSplittingTags, // 18. Tags that do not
+      outlineDetection: options.outlineDetection, // 19. XML structure inference
+      preserveFormatting: options.preserveFormatting, // 20. Suppresses boundary correction
     };
 
     // Generate SHA-256 hash of the stable representation

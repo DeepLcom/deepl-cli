@@ -1240,6 +1240,77 @@ describe('TranslationService', () => {
       });
     });
 
+    describe('cache keys for parameters that change the translation', () => {
+      const keysFor = async (
+        optionSets: Array<Record<string, unknown>>,
+      ): Promise<string[]> => {
+        mockCacheService.get.mockReturnValue(null);
+        mockDeepLClient.translate.mockResolvedValue({ text: 'Hola' });
+        mockCacheService.set.mockClear();
+
+        for (const options of optionSets) {
+          await translationService.translate('Hello', { targetLang: 'es', ...options } as any);
+        }
+
+        return mockCacheService.set.mock.calls.map((call) => call[0]);
+      };
+
+      it('should separate a translation-memory request from one without', async () => {
+        const [none, withTm] = await keysFor([{}, { translationMemoryId: 'tm-1' }]);
+        expect(none).not.toBe(withTm);
+      });
+
+      it('should separate two translation memories', async () => {
+        const [one, two] = await keysFor([
+          { translationMemoryId: 'tm-1' },
+          { translationMemoryId: 'tm-2' },
+        ]);
+        expect(one).not.toBe(two);
+      });
+
+      it('should separate two match thresholds for the same memory', async () => {
+        const [low, high] = await keysFor([
+          { translationMemoryId: 'tm-1', translationMemoryThreshold: 20 },
+          { translationMemoryId: 'tm-1', translationMemoryThreshold: 80 },
+        ]);
+        expect(low).not.toBe(high);
+      });
+
+      it.each([
+        ['ignoreTags', ['b'], ['i']],
+        ['splittingTags', ['p'], ['div']],
+        ['nonSplittingTags', ['br'], ['span']],
+      ])('should separate two values of %s', async (field, first, second) => {
+        const [a, b] = await keysFor([
+          { tagHandling: 'xml', [field]: first },
+          { tagHandling: 'xml', [field]: second },
+        ]);
+        expect(a).not.toBe(b);
+      });
+
+      it('should separate outlineDetection=false from the default', async () => {
+        const [off, on] = await keysFor([
+          { tagHandling: 'xml', outlineDetection: false },
+          { tagHandling: 'xml' },
+        ]);
+        expect(off).not.toBe(on);
+      });
+
+      /** preserve_formatting suppresses sentence-boundary correction, so it shows up in the text. */
+      it('should separate the two preserveFormatting values', async () => {
+        const [off, on] = await keysFor([
+          { preserveFormatting: false },
+          { preserveFormatting: true },
+        ]);
+        expect(off).not.toBe(on);
+      });
+
+      it('should leave keys unchanged for requests using none of them', async () => {
+        const [plain, alsoPlain] = await keysFor([{}, {}]);
+        expect(plain).toBe(alsoPlain);
+      });
+    });
+
     it('should use cached result when options are provided in different order', async () => {
       // Set up cache to return a hit for the second call
       let callCount = 0;
