@@ -503,8 +503,25 @@ describe('TranslationClient', () => {
 
       const result = await client.getSupportedLanguages('target');
 
+      // Formality support is left unstated rather than denied: a response that
+      // described no features is not evidence that formality is unavailable, and
+      // claiming false turned on the [F] legend with no [F] to explain.
       expect(result[0]).not.toHaveProperty('features');
-      expect(result[0]!.supportsFormality).toBe(false);
+      expect(result[0]!.supportsFormality).toBeUndefined();
+    });
+
+    it('should fetch the language list once for both roles', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [{ lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true }],
+        status: 200,
+        headers: {},
+      });
+
+      await client.getSupportedLanguages('source');
+      await client.getSupportedLanguages('target');
+
+      // The request does not vary by role -- both are filtered out of one payload.
+      expect(mockAxiosInstance.request).toHaveBeenCalledTimes(1);
     });
   });
 

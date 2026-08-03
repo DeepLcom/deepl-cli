@@ -46,15 +46,33 @@ function featureLabel(key: string): string {
   );
 }
 
+/** Cell text for a language the response carried no feature data for at all. */
+const UNKNOWN_CELL = '?';
+
+/**
+ * Whether the response described this language's features at all. An empty
+ * matrix is data -- it says the language supports none of them -- while a
+ * missing one means the language never appeared in the response.
+ */
+function hasFeatureData(entry: LanguageDisplayEntry): boolean {
+  return entry.features !== undefined;
+}
+
 /**
  * Cell text for one feature on one language. A feature is supported when the
  * API reports the key at all; `status` describes maturity, so anything other
- * than `stable` is shown verbatim rather than collapsed to yes.
+ * than `stable` is shown verbatim rather than collapsed to yes. `status` is an
+ * open enum and may be absent, which still means the feature is there.
+ *
+ * A language the response omitted entirely reads as unknown rather than
+ * unsupported: the listing keeps snapshot entries the API did not mention, and
+ * claiming they support nothing would be inventing an answer.
  */
 function featureCell(entry: LanguageDisplayEntry, key: string): string {
+  if (!hasFeatureData(entry)) return UNKNOWN_CELL;
   const feature = entry.features?.[key];
   if (!feature) return '—';
-  return feature.status === 'stable' ? 'yes' : feature.status;
+  return !feature.status || feature.status === 'stable' ? 'yes' : feature.status;
 }
 
 function sortFeatureKeys(keys: string[]): string[] {
@@ -78,18 +96,22 @@ export function partitionFeatureKeys(entries: LanguageDisplayEntry[]): {
   columns: string[];
   uniform: Array<{ key: string; cell: string }>;
 } {
-  if (entries.length === 0) return { columns: [], uniform: [] };
+  // Only languages the response described can say whether a feature varies;
+  // including the rest made every feature look non-uniform, so a feature all of
+  // them share became a column of repeated values instead of one footer note.
+  const described = entries.filter(hasFeatureData);
+  if (described.length === 0) return { columns: [], uniform: [] };
 
   const allKeys = new Set<string>();
-  for (const entry of entries) {
+  for (const entry of described) {
     for (const key of Object.keys(entry.features ?? {})) allKeys.add(key);
   }
 
   const columns: string[] = [];
   const uniform: Array<{ key: string; cell: string }> = [];
   for (const key of allKeys) {
-    const first = featureCell(entries[0]!, key);
-    if (entries.some(entry => featureCell(entry, key) !== first)) {
+    const first = featureCell(described[0]!, key);
+    if (described.some(entry => featureCell(entry, key) !== first)) {
       columns.push(key);
     } else {
       uniform.push({ key, cell: first });
@@ -105,11 +127,18 @@ export function partitionFeatureKeys(entries: LanguageDisplayEntry[]): {
 }
 
 function hasAnyFeatures(entries: LanguageDisplayEntry[]): boolean {
-  return entries.some(entry => Object.keys(entry.features ?? {}).length > 0);
+  return entries.some(hasFeatureData);
 }
 
-/** Lowercased feature list for prose contexts, e.g. `glossary, style rules`. */
+/**
+ * Lowercased feature list for prose contexts, e.g. `glossary, style rules`.
+ * Empty when there is nothing per-language to say: with no discriminating
+ * features the footer note carries the answer, and annotating every row `none`
+ * would contradict it.
+ */
 function featureList(entry: LanguageDisplayEntry, keys: string[]): string {
+  if (!hasFeatureData(entry)) return 'no feature data';
+  if (keys.length === 0) return '';
   const supported = keys
     .filter(key => featureCell(entry, key) !== '—')
     .map(key => {
@@ -120,8 +149,16 @@ function featureList(entry: LanguageDisplayEntry, keys: string[]): string {
   return supported.length > 0 ? supported.join(', ') : 'none';
 }
 
-function uniformNote(uniform: Array<{ key: string; cell: string }>): string | undefined {
-  const supported = uniform.filter(u => u.cell !== '—');
+/**
+ * The one-line summary for features every language shares. Scoped to the
+ * languages the response described when some rows carry no data, since those
+ * rows are listed too and the note must not speak for them.
+ */
+function uniformNote(
+  uniform: Array<{ key: string; cell: string }>,
+  entries: LanguageDisplayEntry[],
+): string | undefined {
+  const supported = uniform.filter(u => u.cell !== '—' && u.cell !== UNKNOWN_CELL);
   if (supported.length === 0) return undefined;
   const list = supported
     .map(u => {
@@ -129,7 +166,10 @@ function uniformNote(uniform: Array<{ key: string; cell: string }>): string | un
       return u.cell === 'yes' ? label : `${label} (${u.cell})`;
     })
     .join(', ');
-  return `All listed languages also support: ${list}.`;
+  const subject = entries.every(hasFeatureData)
+    ? 'All listed languages'
+    : 'All languages with reported features';
+  return `${subject} also support: ${list}.`;
 }
 
 export class LanguagesCommand {
@@ -263,8 +303,11 @@ export class LanguagesCommand {
     const { columns, uniform } = renderFeatures
       ? partitionFeatureKeys(entries)
       : { columns: [], uniform: [] };
-    const suffix = (entry: LanguageDisplayEntry): string =>
-      renderFeatures ? chalk.gray(` — ${featureList(entry, columns)}`) : '';
+    const suffix = (entry: LanguageDisplayEntry): string => {
+      if (!renderFeatures) return '';
+      const list = featureList(entry, columns);
+      return list ? chalk.gray(` — ${list}`) : '';
+    };
 
     coreAndRegional.forEach(entry => {
       const code = entry.code.padEnd(maxCodeLength + 2);
@@ -286,7 +329,7 @@ export class LanguagesCommand {
       lines.push(chalk.gray('  [F] = supports formality parameter'));
     }
 
-    const note = renderFeatures ? uniformNote(uniform) : undefined;
+    const note = renderFeatures ? uniformNote(uniform, entries) : undefined;
     if (note) {
       lines.push('');
       lines.push(chalk.gray(`  ${note}`));
@@ -366,7 +409,7 @@ export class LanguagesCommand {
       table.push(row);
     }
 
-    const note = renderFeatures ? uniformNote(uniform) : undefined;
+    const note = renderFeatures ? uniformNote(uniform, entries) : undefined;
     return `${header}:\n${table.toString()}${note ? `\n${note}` : ''}`;
   }
 

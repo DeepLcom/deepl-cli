@@ -288,15 +288,35 @@ export class TranslationClient extends HttpClient {
    * here to preserve the per-type contract. Formality support comes from the
    * per-language features matrix, which is what v2's supports_formality became.
    */
+  /**
+   * The raw translate_text language list, fetched at most once per client.
+   *
+   * Both roles are filtered out of one payload, and the request does not vary by
+   * role, so `deepl languages` -- which asks for both -- was making the same
+   * full-list request twice. A failed fetch is not retained, so the next caller
+   * retries.
+   */
+  private translateLanguages?: Promise<DeepLV3LanguageResponse[]>;
+
+  private fetchTranslateLanguages(): Promise<DeepLV3LanguageResponse[]> {
+    if (!this.translateLanguages) {
+      this.translateLanguages = this.makeRequest<DeepLV3LanguageResponse[]>(
+        'GET',
+        '/v3/languages',
+        { resource: 'translate_text' }
+      ).catch((error: unknown) => {
+        delete this.translateLanguages;
+        throw error;
+      });
+    }
+    return this.translateLanguages;
+  }
+
   async getSupportedLanguages(
     type: 'source' | 'target'
   ): Promise<LanguageInfo[]> {
     try {
-      const response = await this.makeRequest<DeepLV3LanguageResponse[]>(
-        'GET',
-        '/v3/languages',
-        { resource: 'translate_text' }
-      );
+      const response = await this.fetchTranslateLanguages();
 
       return response
         .filter((lang) => (type === 'source' ? lang.usable_as_source : lang.usable_as_target))
@@ -305,9 +325,13 @@ export class TranslationClient extends HttpClient {
           return {
             language: code,
             name: lang.name,
-            ...(type === 'target' && {
-              supportsFormality: lang.features?.['formality'] !== undefined,
-            }),
+            // Only claimed when the response actually described this language's
+            // features: asserting false for a language it said nothing about
+            // turned the [F] legend on with no [F] anywhere to explain it.
+            ...(type === 'target' &&
+              lang.features && {
+                supportsFormality: lang.features['formality'] !== undefined,
+              }),
             ...(lang.features && { features: lang.features }),
           };
         });

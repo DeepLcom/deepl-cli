@@ -651,9 +651,33 @@ describe('LanguagesCommand', () => {
         },
       ];
       const formatted = languagesCommand.formatLanguages(apiLangs, 'target', true);
-      const de = formatted.split('\n').find(l => l.includes('German'));
 
-      expect(de).toContain('glossary');
+      // Reported once for the whole listing rather than per row: the languages
+      // the response omitted carry no feature data, so they cannot make glossary
+      // look like a discriminating column.
+      expect(formatted).toContain('glossary');
+    });
+
+    it('should report a language the response omitted as unknown, not as supporting nothing', () => {
+      const apiLangs: LanguageInfo[] = [
+        {
+          language: 'de',
+          name: 'German',
+          supportsFormality: true,
+          features: { glossary: { status: 'stable' }, formality: { status: 'stable' } },
+        },
+        {
+          language: 'pt',
+          name: 'Portuguese',
+          supportsFormality: true,
+          features: { glossary: { status: 'stable' } },
+        },
+      ];
+      const formatted = languagesCommand.formatLanguages(apiLangs, 'target', true);
+      const zulu = formatted.split('\n').find(l => l.includes('Zulu'));
+
+      expect(zulu).toContain('no feature data');
+      expect(zulu).not.toContain('none');
     });
 
     it('should add a column per discriminating feature in table output', () => {

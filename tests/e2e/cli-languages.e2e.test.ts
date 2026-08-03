@@ -167,10 +167,22 @@ describe('Languages Command E2E', () => {
       const german = output.split('\n').find(line => line.includes('German'));
       const english = output.split('\n').find(line => line.includes('English (British)'));
 
+      // formality is what varies across the languages the mock describes, so it
+      // is the per-row annotation; glossary is shared by all of them and is
+      // reported once at the end instead of on every row.
       expect(german).toContain('formality');
-      expect(german).toContain('glossary');
-      expect(english).toContain('glossary');
       expect(english).not.toContain('formality');
+      expect(output).toContain('glossary');
+    });
+
+    it('should scope the shared-feature note to the languages it has data for', () => {
+      const output = featuresRunCLI('languages --target --features');
+
+      // The listing also carries snapshot languages the mock never returned, so
+      // the note must not speak for them.
+      expect(output).toContain('All languages with reported features also support');
+      const zulu = output.split('\n').find(line => line.includes('Zulu'));
+      expect(zulu).toContain('no feature data');
     });
 
     // Column suppression is asserted in the unit tests: the row set here is the
