@@ -430,6 +430,27 @@ describe('translate-utils', () => {
       expect(result.modelType).toBe('quality_optimized');
     });
 
+    it('should map tagHandlingVersion so file and directory mode honour it too', () => {
+      const result = buildTranslationOptions({
+        to: 'de',
+        tagHandling: 'html',
+        tagHandlingVersion: 'v1',
+      });
+      expect(result.tagHandlingVersion).toBe('v1');
+    });
+
+    it('should reject tagHandlingVersion without tagHandling', () => {
+      expect(() => buildTranslationOptions({ to: 'de', tagHandlingVersion: 'v2' })).toThrow(
+        '--tag-handling-version requires --tag-handling',
+      );
+    });
+
+    it('should reject a tagHandlingVersion that is neither v1 nor v2', () => {
+      expect(() =>
+        buildTranslationOptions({ to: 'de', tagHandling: 'xml', tagHandlingVersion: 'v3' }),
+      ).toThrow('--tag-handling-version must be "v1" or "v2"');
+    });
+
     it('should map preserveFormatting when explicitly set', () => {
       const result = buildTranslationOptions({ to: 'de', preserveFormatting: true });
       expect(result.preserveFormatting).toBe(true);

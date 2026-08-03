@@ -117,6 +117,24 @@ export function validateXmlTags(tags: string[], paramName: string): void {
   }
 }
 
+/**
+ * Validate `--tag-handling-version` and return it. Shared so every handler maps
+ * the flag: since the CLI pins v2 whenever tag handling is on, a handler that
+ * dropped the flag would silently send v2 to a caller who asked for v1.
+ */
+export function validateTagHandlingVersion(
+  options: TranslateOptions,
+): TranslationParams['tagHandlingVersion'] {
+  if (!options.tagHandlingVersion) return undefined;
+  if (!options.tagHandling) {
+    throw new ValidationError('--tag-handling-version requires --tag-handling to be set (xml or html)');
+  }
+  if (options.tagHandlingVersion !== 'v1' && options.tagHandlingVersion !== 'v2') {
+    throw new ValidationError('--tag-handling-version must be "v1" or "v2"');
+  }
+  return options.tagHandlingVersion;
+}
+
 export function buildTranslationOptions(options: TranslateOptions): TranslationParams {
   const result: TranslationParams = {
     targetLang: options.to as Language,
@@ -127,6 +145,8 @@ export function buildTranslationOptions(options: TranslateOptions): TranslationP
   if (options.context) result.context = options.context;
   if (options.splitSentences) result.splitSentences = options.splitSentences as TranslationParams['splitSentences'];
   if (options.tagHandling) result.tagHandling = options.tagHandling as TranslationParams['tagHandling'];
+  const tagHandlingVersion = validateTagHandlingVersion(options);
+  if (tagHandlingVersion) result.tagHandlingVersion = tagHandlingVersion;
   if (options.modelType) result.modelType = options.modelType as TranslationParams['modelType'];
   if (options.preserveFormatting !== undefined) result.preserveFormatting = options.preserveFormatting;
   if (options.showBilledCharacters) result.showBilledCharacters = true;
