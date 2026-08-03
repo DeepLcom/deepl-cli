@@ -533,9 +533,6 @@ deepl translate "Cost analysis" --to es,fr,de --format table --show-billed-chara
 # Preview what would be translated without making API calls (file/directory mode)
 deepl translate ./docs --to es --dry-run
 
-# Include beta languages that are not yet stable
-deepl translate "Hello" --to my --enable-beta-languages
-
 # Specify tag handling version (v2 improves structure handling, requires --tag-handling)
 deepl translate page.html --to es --tag-handling html --tag-handling-version v2
 

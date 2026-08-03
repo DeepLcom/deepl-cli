@@ -270,8 +270,6 @@ describe('TranslationClient', () => {
           api_key_character_limit: 500,
           start_time: '2024-01-01',
           end_time: '2024-12-31',
-          speech_to_text_milliseconds_count: 5000,
-          speech_to_text_milliseconds_limit: 60000,
           api_key_unit_count: 10,
           api_key_unit_limit: 100,
           account_unit_count: 20,
@@ -287,8 +285,6 @@ describe('TranslationClient', () => {
       expect(result.apiKeyCharacterLimit).toBe(500);
       expect(result.startTime).toBe('2024-01-01');
       expect(result.endTime).toBe('2024-12-31');
-      expect(result.speechToTextMillisecondsCount).toBe(5000);
-      expect(result.speechToTextMillisecondsLimit).toBe(60000);
       expect(result.apiKeyUnitCount).toBe(10);
       expect(result.apiKeyUnitLimit).toBe(100);
       expect(result.accountUnitCount).toBe(20);

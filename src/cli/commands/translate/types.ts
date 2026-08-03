@@ -32,7 +32,6 @@ export interface TranslateOptions {
   tmThreshold?: number;
   customInstruction?: string[];
   styleId?: string;
-  enableBetaLanguages?: boolean;
   tagHandlingVersion?: string;
   cache?: boolean;
   format?: string;

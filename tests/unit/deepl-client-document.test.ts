@@ -178,35 +178,7 @@ describe('DeepLClient - Document Translation', () => {
       );
     });
 
-    it('should include enable_beta_languages parameter when enabled', async () => {
-      const mockResponse = {
-        data: {
-          document_id: 'doc-id',
-          document_key: 'doc-key',
-        },
-      };
-
-      mockAxiosInstance.request.mockResolvedValue(mockResponse);
-
-      const fileBuffer = Buffer.from('test content');
-      await client.uploadDocument(fileBuffer, {
-        targetLang: 'es',
-        filename: 'document.pdf',
-        enableBetaLanguages: true,
-      });
-
-      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: 'POST',
-          url: '/v2/document',
-        })
-      );
-
-      const callArgs = mockAxiosInstance.request.mock.calls[0][0];
-      expect(callArgs.data).toBeDefined();
-    });
-
-    it('should NOT include enable_beta_languages parameter when not specified', async () => {
+    it('should never include the retired enable_beta_languages parameter', async () => {
       const mockResponse = {
         data: {
           document_id: 'doc-id',

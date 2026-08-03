@@ -30,8 +30,6 @@ interface DeepLUsageResponse {
   api_key_unit_limit?: number;
   account_unit_count?: number;
   account_unit_limit?: number;
-  speech_to_text_milliseconds_count?: number;
-  speech_to_text_milliseconds_limit?: number;
   start_time?: string;
   end_time?: string;
   products?: Array<{
@@ -86,8 +84,6 @@ export interface UsageInfo {
   apiKeyUnitLimit?: number;
   accountUnitCount?: number;
   accountUnitLimit?: number;
-  speechToTextMillisecondsCount?: number;
-  speechToTextMillisecondsLimit?: number;
   startTime?: string;
   endTime?: string;
   products?: ProductUsage[];
@@ -200,12 +196,6 @@ export class TranslationClient extends HttpClient {
       }
       if (response.end_time) {
         usage.endTime = response.end_time;
-      }
-      if (response.speech_to_text_milliseconds_count !== undefined) {
-        usage.speechToTextMillisecondsCount = response.speech_to_text_milliseconds_count;
-      }
-      if (response.speech_to_text_milliseconds_limit !== undefined) {
-        usage.speechToTextMillisecondsLimit = response.speech_to_text_milliseconds_limit;
       }
       if (response.api_key_unit_count !== undefined) {
         usage.apiKeyUnitCount = response.api_key_unit_count;
@@ -387,9 +377,6 @@ export class TranslationClient extends HttpClient {
       params['tag_handling_version'] = options.tagHandlingVersion;
     }
 
-    if (options.enableBetaLanguages) {
-      params['enable_beta_languages'] = '1';
-    }
 
     return params;
   }

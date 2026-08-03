@@ -103,27 +103,6 @@ export class UsageCommand {
       lines.push(`  Used: ${formatNumber(usage.apiKeyCharacterCount)} / ${limitStr}`);
     }
 
-    if (usage.speechToTextMillisecondsCount !== undefined) {
-      const sttCount = usage.speechToTextMillisecondsCount;
-      const sttLimit = usage.speechToTextMillisecondsLimit ?? 0;
-      const sttPercentage = sttLimit > 0
-        ? ((sttCount / sttLimit) * 100).toFixed(1)
-        : '0.0';
-      const sttRemaining = sttLimit - sttCount;
-      const isHighStt = sttLimit > 0 && (sttCount / sttLimit) > 0.8;
-
-      lines.push('');
-      lines.push(chalk.bold('Speech-to-Text Usage:'));
-      const sttColor = isHighStt ? chalk.yellow : chalk.green;
-      lines.push(`  Used: ${sttColor(this.formatMilliseconds(sttCount))} / ${this.formatMilliseconds(sttLimit)} (${sttColor(sttPercentage + '%')})`);
-      lines.push(`  Remaining: ${this.formatMilliseconds(sttRemaining)}`);
-
-      if (isHighStt) {
-        lines.push('');
-        lines.push(chalk.yellow('Warning: You are approaching your speech-to-text limit'));
-      }
-    }
-
     if (usage.products && usage.products.length > 0) {
       lines.push('');
       lines.push(chalk.bold('Product Breakdown:'));
@@ -204,16 +183,6 @@ export class UsageCommand {
         formatNumber(usage.apiKeyCharacterCount),
         fmtLimit(usage.apiKeyCharacterLimit),
         pct(usage.apiKeyCharacterCount, usage.apiKeyCharacterLimit ?? 0),
-      ]);
-    }
-
-    if (usage.speechToTextMillisecondsCount !== undefined) {
-      const sttLimit = usage.speechToTextMillisecondsLimit ?? 0;
-      table.push([
-        'Speech-to-text',
-        this.formatMilliseconds(usage.speechToTextMillisecondsCount),
-        sttLimit === 0 ? 'unlimited' : this.formatMilliseconds(sttLimit),
-        pct(usage.speechToTextMillisecondsCount, sttLimit),
       ]);
     }
 

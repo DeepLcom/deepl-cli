@@ -301,47 +301,7 @@ describe('UsageCommand', () => {
       expect(formatted).toContain('880,000');
     });
 
-    it('should display speech-to-text usage when available', () => {
-      const formatted = usageCommand.formatUsage({
-        characterCount: 2150000,
-        characterLimit: 20000000,
-        speechToTextMillisecondsCount: 3661000,
-        speechToTextMillisecondsLimit: 36000000,
-      });
-
-      expect(formatted).toContain('Speech-to-Text Usage:');
-      expect(formatted).toContain('1h 1m 1s');
-      expect(formatted).toContain('10h 0m 0s');
-      expect(formatted).toContain('10.2%');
-    });
-
-    it('should show warning for high speech-to-text usage', () => {
-      const formatted = usageCommand.formatUsage({
-        characterCount: 100,
-        characterLimit: 500000,
-        speechToTextMillisecondsCount: 30000000,
-        speechToTextMillisecondsLimit: 36000000,
-      });
-
-      expect(formatted).toContain('Speech-to-Text Usage:');
-      expect(formatted).toContain('83.3%');
-      expect(formatted).toContain('Warning: You are approaching your speech-to-text limit');
-    });
-
-    it('should format zero speech-to-text usage in seconds, not milliseconds', () => {
-      const formatted = usageCommand.formatUsage({
-        characterCount: 100,
-        characterLimit: 500000,
-        speechToTextMillisecondsCount: 0,
-        speechToTextMillisecondsLimit: 36000000,
-      });
-
-      expect(formatted).toContain('Speech-to-Text Usage:');
-      expect(formatted).toContain('0s');
-      expect(formatted).not.toContain('0ms');
-    });
-
-    it('should omit speech-to-text section when not available', () => {
+    it('should not render a dedicated speech-to-text section (voice usage lives in the product breakdown)', () => {
       const formatted = usageCommand.formatUsage({
         characterCount: 123456,
         characterLimit: 500000,
@@ -416,14 +376,12 @@ describe('UsageCommand', () => {
       expect(formatted).not.toContain('textTranslation');
     });
 
-    it('should display full Pro response with speech-to-text', () => {
+    it('should display full Pro response with voice usage in the product breakdown', () => {
       const formatted = usageCommand.formatUsage({
         characterCount: 2150000,
         characterLimit: 20000000,
         apiKeyCharacterCount: 1880000,
         apiKeyCharacterLimit: 0,
-        speechToTextMillisecondsCount: 120000,
-        speechToTextMillisecondsLimit: 36000000,
         startTime: '2025-04-24T14:58:02Z',
         endTime: '2025-05-24T14:58:02Z',
         products: [
@@ -433,7 +391,8 @@ describe('UsageCommand', () => {
       });
 
       expect(formatted).toContain('Character Usage:');
-      expect(formatted).toContain('Speech-to-Text Usage:');
+      expect(formatted).not.toContain('Speech-to-Text Usage:');
+      expect(formatted).toContain('speech_to_text: 2m 0s');
       expect(formatted).toContain('Billing Period:');
       expect(formatted).toContain('API Key Usage:');
       expect(formatted).toContain('Product Breakdown:');
@@ -465,7 +424,7 @@ describe('UsageCommand', () => {
       expect(result).toContain('—'); // pct() returns em-dash when limit=0
     });
 
-    it('should add API key, account-unit, and STT rows when those fields are present', () => {
+    it('should add API key and account-unit rows when those fields are present', () => {
       const result = usageCommand.formatUsageTable({
         characterCount: 100,
         characterLimit: 500,
@@ -473,12 +432,10 @@ describe('UsageCommand', () => {
         accountUnitLimit: 10,
         apiKeyUnitCount: 2,
         apiKeyUnitLimit: 4,
-        speechToTextMillisecondsCount: 60000,
-        speechToTextMillisecondsLimit: 600000,
       });
       expect(result).toContain('Account units');
       expect(result).toContain('API key units');
-      expect(result).toContain('Speech-to-text');
+      expect(result).not.toContain('Speech-to-text');
     });
 
     it('should append a Product Breakdown table when products are present', () => {

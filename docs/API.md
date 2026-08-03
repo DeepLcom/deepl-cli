@@ -256,7 +256,6 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--tm-threshold N` - Minimum match score 0–100 (default 75, requires `--translation-memory`). Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--custom-instruction INSTRUCTION` - Custom instruction for translation (repeatable, max 10, max 300 chars each). Forces `quality_optimized` model. Cannot be used with `latency_optimized`.
 - `--style-id UUID` - Style rule ID for translation (Pro API only). Forces `quality_optimized` model. Cannot be used with `latency_optimized`. Use `deepl style-rules list` to see available IDs.
-- `--enable-beta-languages` - Include beta languages that are not yet stable (forward-compatibility with new DeepL languages)
 - `--no-cache` - Bypass cache for this translation (useful for testing/forcing fresh translation)
 - `--dry-run` - Show what would be translated without performing the operation
 

@@ -67,9 +67,6 @@ export class DocumentClient extends HttpClient {
           if (options.enableDocumentMinification) {
             formData.append('enable_document_minification', '1');
           }
-          if (options.enableBetaLanguages) {
-            formData.append('enable_beta_languages', '1');
-          }
 
           return {
             data: formData,

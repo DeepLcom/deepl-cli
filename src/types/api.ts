@@ -30,7 +30,6 @@ export interface TranslationOptions {
   customInstructions?: string[];
   styleId?: string;
   tagHandlingVersion?: 'v1' | 'v2';
-  enableBetaLanguages?: boolean;
 }
 
 export interface TranslationMemory {
@@ -134,7 +133,6 @@ export interface DocumentTranslationOptions {
   glossaryId?: string;
   outputFormat?: DocumentOutputFormat;
   enableDocumentMinification?: boolean;
-  enableBetaLanguages?: boolean;
 }
 
 // Glossary Types

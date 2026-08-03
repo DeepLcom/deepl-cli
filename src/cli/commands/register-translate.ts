@@ -67,7 +67,6 @@ export function registerTranslate(
     .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('text'))
     .option('--show-billed-characters', 'Request and display actual billed character count for cost transparency')
     .optionsGroup('Advanced:')
-    .option('--enable-beta-languages', 'Include beta languages that are not yet stable (forward-compatibility)')
     .option('--no-cache', 'Bypass cache for this translation (useful for testing)')
     .option('--api-url <url>', 'Custom API endpoint (e.g., https://api-free.deepl.com/v2 or internal test URLs)')
     .addHelpText('after', `
@@ -109,7 +108,6 @@ Examples:
       tmThreshold?: number;
       customInstruction?: string[];
       styleId?: string;
-      enableBetaLanguages?: boolean;
       format?: string;
       apiUrl?: string;
       dryRun?: boolean;

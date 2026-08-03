@@ -137,9 +137,6 @@ export class TextTranslationHandler {
       translationOptions.tagHandlingVersion = options.tagHandlingVersion;
     }
 
-    if (options.enableBetaLanguages) {
-      translationOptions.enableBetaLanguages = true;
-    }
 
     const result = await this.ctx.translationService.translate(
       text,

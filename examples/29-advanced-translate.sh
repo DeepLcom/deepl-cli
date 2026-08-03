@@ -54,17 +54,11 @@ echo "  --tag-handling-version v2   Improved structure handling"
 echo "  (requires --tag-handling xml or --tag-handling html)"
 echo
 
-# Example 2: Beta languages
-echo "=== 2. Beta Languages ==="
+# Example 2: Listing languages
+echo "=== 2. Listing Languages ==="
 echo
 
-echo "Include beta languages that are not yet stable:"
-echo "  deepl translate 'Hello world' --to ar --enable-beta-languages"
-echo
-echo "Beta languages may have lower quality but provide forward-compatibility"
-echo "as DeepL adds support for new languages."
-echo
-echo "List available languages (including beta):"
+echo "List available languages:"
 echo "  deepl languages --source"
 echo "  deepl languages --target"
 echo
@@ -151,8 +145,7 @@ EOF
 echo "Combining multiple advanced flags:"
 echo "  deepl translate complex.html --to de \\"
 echo "    --tag-handling html --tag-handling-version v2 \\"
-echo "    --formality more --preserve-code \\"
-echo "    --enable-beta-languages"
+echo "    --formality more --preserve-code"
 echo
 deepl translate "$TEMP_DIR/complex.html" --to de --tag-handling html --tag-handling-version v2 --formality more --preserve-code --output "$TEMP_DIR/complex.de.html"
 echo
@@ -165,9 +158,6 @@ echo
 echo "Tag handling:"
 echo "  --tag-handling <xml|html>          Enable tag handling mode"
 echo "  --tag-handling-version <v1|v2>     Tag handling version (v2 = improved)"
-echo
-echo "Beta languages:"
-echo "  --enable-beta-languages            Include unstable/beta languages"
 echo
 echo "API endpoint:"
 echo "  --api-url <url>                    Custom API endpoint URL"

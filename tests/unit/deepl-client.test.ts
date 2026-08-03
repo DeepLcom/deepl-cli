@@ -328,30 +328,7 @@ describe('DeepLClient', () => {
       expect(nock.isDone()).toBe(true);
     });
 
-    it('should send enable_beta_languages parameter when enabled', async () => {
-      nock(baseUrl)
-        .post('/v2/translate', (body) => {
-           
-          return body.enable_beta_languages === '1';
-        })
-        .reply(200, {
-          translations: [
-            {
-              detected_source_language: 'EN',
-              text: 'Hola',
-            },
-          ],
-        });
-
-      await client.translate('Hello', {
-        targetLang: 'es',
-        enableBetaLanguages: true,
-      });
-
-      expect(nock.isDone()).toBe(true);
-    });
-
-    it('should not send enable_beta_languages when not requested', async () => {
+    it('should never send the retired enable_beta_languages parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
            
@@ -756,21 +733,21 @@ describe('DeepLClient', () => {
       await expect(client.getUsage()).rejects.toThrow();
     });
 
-    it('should parse speech-to-text milliseconds fields', async () => {
+    it('should ignore the deprecated speech_to_text_milliseconds_* fields', async () => {
       nock(baseUrl)
         .get('/v2/usage')
         .reply(200, {
           character_count: 12345,
           character_limit: 500000,
-          speech_to_text_milliseconds_count: 120000,
-          speech_to_text_milliseconds_limit: 36000000,
+          speech_to_text_milliseconds_count: 0,
+          speech_to_text_milliseconds_limit: 0,
         });
 
       const usage = await client.getUsage();
 
       expect(usage.characterCount).toBe(12345);
-      expect(usage.speechToTextMillisecondsCount).toBe(120000);
-      expect(usage.speechToTextMillisecondsLimit).toBe(36000000);
+      expect(usage).not.toHaveProperty('speechToTextMillisecondsCount');
+      expect(usage).not.toHaveProperty('speechToTextMillisecondsLimit');
     });
 
     it('should parse products with billing_unit', async () => {
@@ -794,19 +771,6 @@ describe('DeepLClient', () => {
       expect(products[1]!.billingUnit).toBe('milliseconds');
     });
 
-    it('should omit speech-to-text fields when not present in response', async () => {
-      nock(baseUrl)
-        .get('/v2/usage')
-        .reply(200, {
-          character_count: 12345,
-          character_limit: 500000,
-        });
-
-      const usage = await client.getUsage();
-
-      expect(usage.speechToTextMillisecondsCount).toBeUndefined();
-      expect(usage.speechToTextMillisecondsLimit).toBeUndefined();
-    });
   });
 
   describe('getSupportedLanguages()', () => {
@@ -1894,33 +1858,6 @@ describe('DeepLClient', () => {
       expect(results[1]?.text).toBe('Adiós');
       // Note: In batch translation, billed_characters is for the entire batch,
       // not per translation. The API client returns it at the response level.
-    });
-
-    it('should send enable_beta_languages in batch translation', async () => {
-      nock(baseUrl)
-        .post('/v2/translate', (body) => {
-           
-          return body.enable_beta_languages === '1';
-        })
-        .reply(200, {
-          translations: [
-            {
-              detected_source_language: 'EN',
-              text: 'Hola',
-            },
-            {
-              detected_source_language: 'EN',
-              text: 'Adiós',
-            },
-          ],
-        });
-
-      await client.translateBatch(['Hello', 'Goodbye'], {
-        targetLang: 'es',
-        enableBetaLanguages: true,
-      });
-
-      expect(nock.isDone()).toBe(true);
     });
   });
 

@@ -718,13 +718,13 @@ describe('Translate CLI Integration', () => {
     });
   });
 
-  describe('--enable-beta-languages flag', () => {
-    it('should show --enable-beta-languages in help text', () => {
+  describe('--enable-beta-languages flag (removed)', () => {
+    it('should not appear in help text', () => {
       const result = translateHelp;
-      expect(result).toContain('--enable-beta-languages');
+      expect(result).not.toContain('--enable-beta-languages');
     });
 
-    it('should accept --enable-beta-languages flag', () => {
+    it('should be rejected as an unknown option', () => {
       expect.assertions(1);
       try {
         runCLI('deepl translate "Hello" --to es --enable-beta-languages', {
@@ -732,20 +732,7 @@ describe('Translate CLI Integration', () => {
         });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option/i);
-      }
-    });
-
-    it('should accept --enable-beta-languages with other options', () => {
-      expect.assertions(1);
-      try {
-        runCLI(
-          'deepl translate "Hello" --to es --enable-beta-languages --formality more',
-          { stdio: 'pipe' }
-        );
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option/i);
+        expect(output).toMatch(/unknown.*option/i);
       }
     });
   });
