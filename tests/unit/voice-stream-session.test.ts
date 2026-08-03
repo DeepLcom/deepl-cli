@@ -10,6 +10,7 @@ import { VoiceClient } from '../../src/api/voice-client.js';
 import { VoiceError } from '../../src/utils/errors.js';
 import type {
   VoiceSessionResponse,
+  VoiceSessionResult,
   VoiceTranslateOptions,
   VoiceStreamCallbacks,
 } from '../../src/types/voice.js';
@@ -602,6 +603,11 @@ describe('VoiceStreamSession', () => {
               concluded: [{ text: 'world', language: 'en', start_time: 0.5, end_time: 1 }],
               tentative: [],
             });
+            callbacks.onTargetTranscript?.({
+              language: 'de',
+              concluded: [{ text: 'Hallo Welt', start_time: 0, end_time: 1 }],
+              tentative: [],
+            });
             callbacks.onEndOfStream?.();
           });
         });
@@ -667,6 +673,11 @@ describe('VoiceStreamSession', () => {
               concluded: [{ text: 'Bonjour', language: 'fr', start_time: 0, end_time: 1 }],
               tentative: [],
             });
+            callbacks.onTargetTranscript?.({
+              language: 'de',
+              concluded: [{ text: 'Guten Tag', start_time: 0, end_time: 1 }],
+              tentative: [],
+            });
             callbacks.onEndOfStream?.();
           });
         });
@@ -677,6 +688,128 @@ describe('VoiceStreamSession', () => {
       const result = await streamSession.run(emptyChunks());
 
       expect(result.source.lang).toBe('fr');
+    });
+  });
+
+  describe('incomplete translations', () => {
+    /** Drives a session to end_of_stream after emitting the given frames. */
+    function runWithFrames(
+      frames: (callbacks: VoiceStreamCallbacks) => void,
+      sessionOptions: VoiceTranslateOptions = options,
+      chunks: AsyncGenerator<Buffer> = emptyChunks(),
+    ): Promise<VoiceSessionResult> {
+      const EventEmitter = require('events');
+      const mockWs = new EventEmitter();
+      mockWs.readyState = 1;
+      mockWs.send = jest.fn();
+      mockWs.close = jest.fn();
+
+      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
+        process.nextTick(() => {
+          mockWs.emit('open');
+          process.nextTick(() => {
+            frames(callbacks);
+            callbacks.onEndOfStream?.();
+          });
+        });
+        return mockWs;
+      });
+
+      const streamSession = new VoiceStreamSession(mockClient, session, sessionOptions);
+      return streamSession.run(chunks);
+    }
+
+    it('should reject when the source was transcribed but a target produced no text', async () => {
+      await expect(
+        runWithFrames((callbacks) => {
+          callbacks.onSourceTranscript?.({
+            concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+            tentative: [],
+          });
+        }),
+      ).rejects.toThrow(VoiceError);
+    });
+
+    it('should name every target language that produced no text', async () => {
+      expect.assertions(3);
+      try {
+        await runWithFrames(
+          (callbacks) => {
+            callbacks.onSourceTranscript?.({
+              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+              tentative: [],
+            });
+            callbacks.onTargetTranscript?.({
+              language: 'fr',
+              concluded: [{ text: 'Bonjour', start_time: 0, end_time: 1 }],
+              tentative: [],
+            });
+          },
+          { targetLangs: ['de', 'fr', 'es'], chunkInterval: 0 },
+        );
+      } catch (error) {
+        expect((error as Error).message).toContain('de');
+        expect((error as Error).message).toContain('es');
+        expect((error as Error).message).not.toContain('fr');
+      }
+    });
+
+    it('should treat a whitespace-only translation as missing', async () => {
+      await expect(
+        runWithFrames((callbacks) => {
+          callbacks.onSourceTranscript?.({
+            concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+            tentative: [],
+          });
+          callbacks.onTargetTranscript?.({
+            language: 'de',
+            concluded: [{ text: '  ', start_time: 0, end_time: 1 }],
+            tentative: [],
+          });
+        }),
+      ).rejects.toThrow(VoiceError);
+    });
+
+    it('should reject when the only translated text stayed tentative', async () => {
+      await expect(
+        runWithFrames((callbacks) => {
+          callbacks.onSourceTranscript?.({
+            concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+            tentative: [],
+          });
+          callbacks.onTargetTranscript?.({
+            language: 'de',
+            concluded: [],
+            tentative: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
+          });
+        }),
+      ).rejects.toThrow(VoiceError);
+    });
+
+    it('should resolve when the audio contained no speech at all', async () => {
+      const result = await runWithFrames(() => undefined);
+
+      expect(result.source.text).toBe('');
+      expect(result.targets[0]!.text).toBe('');
+    });
+
+    it('should close the input generator when rejecting', async () => {
+      const tracked = trackedChunks();
+
+      await expect(
+        runWithFrames(
+          (callbacks) => {
+            callbacks.onSourceTranscript?.({
+              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+              tentative: [],
+            });
+          },
+          options,
+          tracked.chunks,
+        ),
+      ).rejects.toThrow(VoiceError);
+
+      expect(tracked.closed()).toBe(true);
     });
   });
 

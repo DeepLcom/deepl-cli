@@ -136,6 +136,19 @@ export class VoiceStreamSession {
         this.ws.close();
         this.closeInput();
         this.finalizeTranscripts();
+
+        const untranslated = this.untranslatedTargets();
+        if (untranslated.length > 0) {
+          this.fail(
+            reject,
+            new VoiceError(
+              `Voice session ended without a translation for: ${untranslated.join(', ')}.`,
+              'The audio was transcribed but the server sent no translated text. Retry the request.',
+            ),
+          );
+          return;
+        }
+
         resolve({
           sessionId: this.session.session_id,
           source: this.sourceTranscript,
@@ -257,6 +270,21 @@ export class VoiceStreamSession {
       transcript.segments.push(segment);
       parts.push(segment.text);
     }
+  }
+
+  /**
+   * Target languages the server ended the stream without translating. Audio
+   * that contained no speech concludes no source text either and is not
+   * treated as a failure; only a transcribed source with a missing
+   * translation is, since that output would otherwise look successful.
+   */
+  private untranslatedTargets(): string[] {
+    if (this.sourceTranscript.text.trim() === '') {
+      return [];
+    }
+    return Array.from(this.targetTranscripts.values())
+      .filter((transcript) => transcript.text.trim() === '')
+      .map((transcript) => transcript.lang);
   }
 
   private finalizeTranscripts(): void {

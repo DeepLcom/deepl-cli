@@ -999,6 +999,8 @@ deepl voice [options] <file>
 
 > **Note:** All formality values (`default`, `formal`, `informal`, `more`, `less`, `prefer_more`, `prefer_less`) are accepted. The voice API natively uses `formal`/`informal` (in addition to `more`/`less`), while the translate API uses `prefer_more`/`prefer_less`.
 
+> **Note:** If the server ends the stream after transcribing the audio but without sending a translation for one of `--to`'s languages, the command fails with exit code 9 and names the languages, rather than printing an empty translation line and exiting 0. Audio containing no speech transcribes to nothing and is translated to nothing, which is not an error and still exits 0.
+
 #### Supported Audio Formats
 
 | Extension       | Content Type                          |
@@ -3277,6 +3279,7 @@ Voice API call failed for a reason other than authentication, rate limiting, or 
 - `deepl voice` when the plan does not include the Voice API (pre-flight check in the voice client)
 - Voice streaming URL validation failures (`src/api/voice-client.ts`: non-`wss://` scheme, unparseable URL, disallowed host)
 - Voice session lifecycle errors (failed to open, unexpected close)
+- `deepl voice` when the stream ends with the source transcribed but no translation for a requested target language
 
 Remediation: confirm Pro/Enterprise plan, verify the session configuration, and retry.
 

@@ -338,6 +338,11 @@ describe('VoiceService', () => {
           concluded: [{ text: 'world', language: 'en', start_time: 0.5, end_time: 1 }],
           tentative: [],
         });
+        cb.onTargetTranscript?.({
+          language: 'de',
+          concluded: [{ text: 'Hallo Welt', start_time: 0, end_time: 1 }],
+          tentative: [],
+        });
         cb.onEndOfStream?.();
       });
 
@@ -367,6 +372,11 @@ describe('VoiceService', () => {
             tentative: [],
           });
         }
+        cb.onTargetTranscript?.({
+          language: 'de',
+          concluded: [{ text: 'Segmente', start_time: 0, end_time: 1 }],
+          tentative: [],
+        });
         cb.onEndOfStream?.();
       });
 
@@ -389,6 +399,11 @@ describe('VoiceService', () => {
             { text: 'Two', language: 'en', start_time: 0.5, end_time: 1 },
             { text: 'Three', language: 'en', start_time: 1, end_time: 1.5 },
           ],
+          tentative: [],
+        });
+        cb.onTargetTranscript?.({
+          language: 'de',
+          concluded: [{ text: 'Eins Zwei Drei', start_time: 0, end_time: 1.5 }],
           tentative: [],
         });
         cb.onEndOfStream?.();
