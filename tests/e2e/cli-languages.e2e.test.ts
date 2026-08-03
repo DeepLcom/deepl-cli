@@ -6,7 +6,8 @@
  * Full API integration is tested separately in integration tests.
  */
 
-import { spawnSync } from 'child_process';
+import { spawn, spawnSync, ChildProcess } from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
@@ -100,6 +101,104 @@ describe('Languages Command E2E', () => {
 
       const combined = result.stdout + result.stderr;
       expect(combined).toMatch(/no api key|local.*registry/i);
+    });
+  });
+
+  describe('languages --features (against the mock API)', () => {
+    const featuresConfig = createTestConfigDir('e2e-languages-features');
+    let mockServerProcess: ChildProcess | undefined;
+    let featuresRunCLI: (command: string) => string;
+
+    function startMockServer(): Promise<number> {
+      return new Promise((resolve, reject) => {
+        const serverScript = path.join(__dirname, 'mock-deepl-server.cjs');
+        const child = spawn('node', [serverScript], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env },
+        });
+
+        mockServerProcess = child;
+        let output = '';
+
+        child.stdout.on('data', (data: Buffer) => {
+          output += data.toString();
+          const match = output.match(/PORT=(\d+)/);
+          if (match) {
+            resolve(parseInt(match[1]!, 10));
+          }
+        });
+
+        child.on('error', reject);
+        child.on('exit', code => {
+          if (code !== null && code !== 0) {
+            reject(new Error(`Mock server exited with code ${code}`));
+          }
+        });
+
+        setTimeout(() => reject(new Error('Mock server did not start within 15s')), 15000);
+      });
+    }
+
+    beforeAll(async () => {
+      const port = await startMockServer();
+      const config = {
+        auth: { apiKey: 'mock-api-key-for-testing:fx' },
+        api: { baseUrl: `http://127.0.0.1:${port}`, usePro: false },
+        cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
+        output: { format: 'text', verbose: false, color: false },
+      };
+      fs.writeFileSync(
+        path.join(featuresConfig.path, 'config.json'),
+        JSON.stringify(config, null, 2),
+      );
+      featuresRunCLI = makeNodeRunCLI(featuresConfig.path, { noColor: true, timeout: 15000 }).runCLI;
+    }, 30000);
+
+    afterAll(() => {
+      if (mockServerProcess) {
+        mockServerProcess.kill('SIGTERM');
+      }
+      featuresConfig.cleanup();
+    });
+
+    it('should list the features each language supports', () => {
+      const output = featuresRunCLI('languages --target --features');
+
+      const german = output.split('\n').find(line => line.includes('German'));
+      const english = output.split('\n').find(line => line.includes('English (British)'));
+
+      expect(german).toContain('formality');
+      expect(german).toContain('glossary');
+      expect(english).toContain('glossary');
+      expect(english).not.toContain('formality');
+    });
+
+    // Column suppression is asserted in the unit tests: the row set here is the
+    // whole registry, so the languages this mock does not return report no
+    // features and nothing comes out uniform.
+    it('should drop the [F] shorthand in favour of the matrix', () => {
+      const output = featuresRunCLI('languages --target --features');
+
+      expect(output).not.toContain('[F]');
+    });
+
+    it('should keep the [F] shorthand when features are not requested', () => {
+      const output = featuresRunCLI('languages --target');
+
+      expect(output).toContain('[F]');
+      expect(output).not.toContain('tag handling');
+    });
+
+    it('should include the matrix in JSON only when requested', () => {
+      const withFeatures = JSON.parse(featuresRunCLI('languages --target --features --format json'));
+      const without = JSON.parse(featuresRunCLI('languages --target --format json'));
+
+      expect(withFeatures.find((l: { language: string }) => l.language === 'de').features).toEqual({
+        formality: { status: 'stable' },
+        glossary: { status: 'stable' },
+        tag_handling: { status: 'stable' },
+      });
+      expect(without.find((l: { language: string }) => l.language === 'de')).not.toHaveProperty('features');
     });
   });
 

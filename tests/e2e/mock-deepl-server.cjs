@@ -202,13 +202,52 @@ function handleRequest(req, res, body) {
   }
 
   if (method === 'GET' && url.startsWith('/v3/languages')) {
+    // tag_handling is uniform so it exercises the suppression path; formality
+    // and glossary vary so they stay as columns.
+    var stable = { status: 'stable' };
     var languages = [
-      { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
-      { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
-      { lang: 'fr', name: 'French', usable_as_source: true, usable_as_target: true },
-      { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
-      { lang: 'en-us', name: 'English (American)', usable_as_source: false, usable_as_target: true },
-      { lang: 'en-gb', name: 'English (British)', usable_as_source: false, usable_as_target: true },
+      {
+        lang: 'en',
+        name: 'English',
+        usable_as_source: true,
+        usable_as_target: true,
+        features: { glossary: stable, tag_handling: stable },
+      },
+      {
+        lang: 'de',
+        name: 'German',
+        usable_as_source: true,
+        usable_as_target: true,
+        features: { formality: stable, glossary: stable, tag_handling: stable },
+      },
+      {
+        lang: 'fr',
+        name: 'French',
+        usable_as_source: true,
+        usable_as_target: true,
+        features: { formality: stable, glossary: stable, tag_handling: stable },
+      },
+      {
+        lang: 'es',
+        name: 'Spanish',
+        usable_as_source: true,
+        usable_as_target: true,
+        features: { formality: stable, glossary: stable, tag_handling: stable },
+      },
+      {
+        lang: 'en-us',
+        name: 'English (American)',
+        usable_as_source: false,
+        usable_as_target: true,
+        features: { glossary: stable, tag_handling: stable },
+      },
+      {
+        lang: 'en-gb',
+        name: 'English (British)',
+        usable_as_source: false,
+        usable_as_target: true,
+        features: { glossary: stable, tag_handling: stable },
+      },
     ];
 
     res.writeHead(200);
