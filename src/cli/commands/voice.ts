@@ -31,6 +31,23 @@ const VALID_VOICE_SOURCE_LANGS: ReadonlySet<string> = new Set<VoiceSourceLanguag
   'ja','ko','lt','lv','nb','nl','pl','pt','ro','ru','sk','sl','sv','tr','uk','zh',
 ]);
 
+/**
+ * Lowercase lookups onto the spellings the Voice API expects (`en-GB`,
+ * `zh-HANS`), so input is accepted in any casing as it is everywhere else.
+ */
+const VOICE_TARGET_BY_LOWERCASE = new Map<string, VoiceTargetLanguage>(
+  Array.from(VALID_VOICE_TARGET_LANGS, lang => [
+    lang.toLowerCase(),
+    lang as VoiceTargetLanguage,
+  ]),
+);
+const VOICE_SOURCE_BY_LOWERCASE = new Map<string, VoiceSourceLanguage>(
+  Array.from(VALID_VOICE_SOURCE_LANGS, lang => [
+    lang.toLowerCase(),
+    lang as VoiceSourceLanguage,
+  ]),
+);
+
 const VALID_VOICE_CONTENT_TYPES: ReadonlySet<string> = new Set<VoiceSourceMediaContentType>([
   'audio/auto',
   'audio/pcm;encoding=s16le;rate=8000','audio/pcm;encoding=s16le;rate=16000',
@@ -132,20 +149,29 @@ export class VoiceCommand {
   }
 
   private buildOptions(options: VoiceCommandOptions): VoiceTranslateOptions {
-    const targetLangs = options.to.split(',').map((l) => l.trim());
-
-    for (const lang of targetLangs) {
-      if (!VALID_VOICE_TARGET_LANGS.has(lang)) {
+    // Matched case-insensitively and canonicalized to the spelling the Voice API
+    // expects. The rest of the CLI accepts any casing and `deepl languages`
+    // prints these codes lowercase, so requiring `zh-HANS` would reject the
+    // spelling the CLI itself teaches.
+    const targetLangs = options.to.split(',').map((l) => {
+      const raw = l.trim();
+      const canonical = VOICE_TARGET_BY_LOWERCASE.get(raw.toLowerCase());
+      if (!canonical) {
         throw new ValidationError(
-          `Invalid voice target language: "${lang}". Valid codes: ${Array.from(VALID_VOICE_TARGET_LANGS).sort().join(', ')}`,
+          `Invalid voice target language: "${raw}". Valid codes: ${Array.from(VALID_VOICE_TARGET_LANGS).sort().join(', ')}`,
         );
       }
-    }
+      return canonical;
+    });
 
-    if (options.from && !VALID_VOICE_SOURCE_LANGS.has(options.from)) {
-      throw new ValidationError(
-        `Invalid voice source language: "${options.from}". Valid codes: ${Array.from(VALID_VOICE_SOURCE_LANGS).sort().join(', ')}`,
-      );
+    if (options.from) {
+      const canonicalSource = VOICE_SOURCE_BY_LOWERCASE.get(options.from.toLowerCase());
+      if (!canonicalSource) {
+        throw new ValidationError(
+          `Invalid voice source language: "${options.from}". Valid codes: ${Array.from(VALID_VOICE_SOURCE_LANGS).sort().join(', ')}`,
+        );
+      }
+      options.from = canonicalSource;
     }
 
     if (options.contentType && !VALID_VOICE_CONTENT_TYPES.has(options.contentType)) {
@@ -164,7 +190,7 @@ export class VoiceCommand {
     }
 
     return {
-      targetLangs: targetLangs as VoiceTargetLanguage[],
+      targetLangs,
       sourceLang: options.from as VoiceSourceLanguage | undefined,
       sourceLanguageMode: options.sourceLanguageMode as VoiceSourceLanguageMode | undefined,
       formality: options.formality as VoiceTranslateOptions['formality'],

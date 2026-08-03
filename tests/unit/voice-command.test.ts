@@ -1039,4 +1039,38 @@ describe('VoiceCommand', () => {
       expect(result).toBe('[de] Welt\n[fr] Monde');
     });
   });
+  describe('language code casing', () => {
+    it('should accept a regional target in the casing the CLI prints', async () => {
+      // `deepl languages` prints en-gb / zh-hans, and every other command takes
+      // any casing, so requiring en-GB / zh-HANS here would reject the CLI's own
+      // spelling.
+      mockService.translateFile.mockResolvedValue(mockResult);
+
+      for (const code of ['en-gb', 'zh-hans', 'PT-br']) {
+        await expect(command.translate('test.mp3', { to: code })).resolves.toContain('[source]');
+      }
+    });
+
+    it('should canonicalize the code the Voice API receives', async () => {
+      mockService.translateFile.mockResolvedValue(mockResult);
+
+      await command.translate('test.mp3', { to: 'zh-hans,en-gb', from: 'EN' });
+
+      expect(mockService.translateFile).toHaveBeenLastCalledWith(
+        'test.mp3',
+        expect.objectContaining({ targetLangs: ['zh-HANS', 'en-GB'], sourceLang: 'en' }),
+        undefined,
+      );
+    });
+
+    it('should still reject a code that is not a voice language', async () => {
+      await expect(command.translate('test.mp3', { to: 'xx' })).rejects.toThrow(
+        /Invalid voice target language/,
+      );
+      await expect(command.translate('test.mp3', { to: 'de', from: 'xx' })).rejects.toThrow(
+        /Invalid voice source language/,
+      );
+    });
+  });
+
 });

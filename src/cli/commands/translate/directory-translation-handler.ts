@@ -2,6 +2,7 @@ import ora from 'ora';
 import { BatchTranslationService } from '../../../services/batch-translation.js';
 import { ValidationError } from '../../../utils/errors.js';
 import { Logger } from '../../../utils/logger.js';
+import { ExitCode } from '../../../utils/exit-codes.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
 import { warnIgnoredOptions, validateLanguageCodes } from './translate-utils.js';
 import { buildBaseTranslationOptions } from './translation-options-factory.js';
@@ -90,6 +91,12 @@ export class DirectoryTranslationHandler {
         result.failed.forEach(f => {
           output.push(`  - ${f.file}: ${f.error}`);
         });
+        // Reported in the exit code as well as the summary: a run where nothing
+        // translated must not look like success to a script or a CI job, and
+        // language validation defers to the API, so a bad --to surfaces here
+        // rather than as a local rejection.
+        process.exitCode =
+          stats.successful === 0 ? ExitCode.GeneralError : ExitCode.PartialFailure;
       }
 
       if (stats.skipped > 0) {
