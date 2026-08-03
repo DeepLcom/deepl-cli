@@ -1,6 +1,7 @@
 import ora from 'ora';
 import { Logger } from '../../../utils/logger.js';
 import { ValidationError } from '../../../utils/errors.js';
+import type { Language } from '../../../types/index.js';
 import type { DocumentTranslationOptions } from '../../../types/api.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
 import { warnIgnoredOptions, validateLanguageCodes } from './translate-utils.js';
@@ -34,7 +35,9 @@ export class DocumentTranslationHandler {
 
     const translationOptions = buildBaseTranslationOptions(options);
 
-    await applyGlossarySelection(translationOptions, options, this.ctx.glossaryService);
+    await applyGlossarySelection(translationOptions, options, this.ctx.glossaryService, [
+      options.to as Language,
+    ]);
 
     if (options.outputFormat) {
       translationOptions.outputFormat = options.outputFormat;

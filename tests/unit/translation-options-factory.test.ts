@@ -88,7 +88,22 @@ describe('translation-options-factory', () => {
         targets: ['de'],
       });
       expect(base['glossaryId']).toBe('glos-123');
-      expect(glossarySvc.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      // No `from` in these options, so there is no pair to preflight against.
+      expect(glossarySvc.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', undefined);
+    });
+
+    it('passes the requested language pair when from and targets are known', async () => {
+      glossarySvc.resolveGlossaryId.mockResolvedValue('glos-123');
+      const base: Record<string, unknown> = { targetLang: 'de' };
+      await applySharedTmAndGlossary(base, { to: 'de,fr', from: 'en', glossary: ['my-glossary'] }, {
+        glossaryService: glossarySvc,
+        translationService: translationSvc,
+        targets: ['de', 'fr'],
+      });
+      expect(glossarySvc.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
+        from: 'en',
+        targets: ['de', 'fr'],
+      });
     });
 
     it('skips glossary resolution when options.glossary is absent', async () => {

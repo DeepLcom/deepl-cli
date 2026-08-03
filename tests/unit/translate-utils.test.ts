@@ -589,7 +589,23 @@ describe('translate-utils', () => {
       const result = await resolveGlossaryId(mockGlossaryService, 'my-glossary');
 
       expect(result).toBe('glossary-123');
-      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', undefined);
+    });
+
+    it('should forward the expected language pair for the preflight check', async () => {
+      const mockGlossaryService = {
+        resolveGlossaryId: jest.fn().mockResolvedValue('glossary-123'),
+      } as unknown as GlossaryService;
+
+      await resolveGlossaryId(mockGlossaryService, 'my-glossary', {
+        from: 'en',
+        targets: ['de'],
+      });
+
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
+        from: 'en',
+        targets: ['de'],
+      });
     });
 
     it('should pass through errors from glossaryService', async () => {

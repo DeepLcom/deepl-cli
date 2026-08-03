@@ -552,7 +552,7 @@ deepl translate README.md --from en --to fr --glossary abc-123-def-456 --output 
 
 **Multiple glossaries on one request:**
 
-Repeat `--glossary` to apply up to 5 glossaries to a single request. Their entries are merged, so terms unique to each glossary all apply. When more than one glossary defines the same source term, the **last** `--glossary` on the command line wins — order is significant, and reordering the flags produces a different translation (and a separate cache entry). Names and UUIDs can be mixed; each value is resolved independently. A 6th `--glossary` exits 6 (ValidationError), and an unresolvable name exits 7 (ConfigError) without sending a translation request.
+Repeat `--glossary` to apply up to 5 glossaries to a single request. Their entries are merged, so terms unique to each glossary all apply. When more than one glossary defines the same source term, the **last** `--glossary` on the command line wins — order is significant, and reordering the flags produces a different translation (and a separate cache entry). Names and UUIDs can be mixed; each value is resolved independently. A 6th `--glossary` exits 6 (ValidationError). A name that cannot be resolved — unknown, ambiguous, or covering a different language pair than the one requested — exits 7 (ConfigError) without sending a translation request.
 
 ```bash
 # Shared base terminology, overridden by project-specific terms
@@ -587,7 +587,17 @@ deepl translate "Welcome to our product." --from en --to de \
 
 **Multi-target file translation with glossary / TM:**
 
-Both `--glossary` and `--translation-memory` apply to multi-target file translation (e.g. `--to en,fr,es`) and in that mode `--from` is required. Glossary name resolution works transparently across all target languages. Translation memory name resolution, however, requires a single TM that covers every requested target language pair — because each TM in DeepL is scoped to one source→target pair, using a TM name with differing multi-targets surfaces a `ConfigError` (exit 7). For multi-target TM use, pass the TM UUID directly.
+Both `--glossary` and `--translation-memory` apply to multi-target file translation (e.g. `--to en,fr,es`) and in that mode `--from` is required. Resolving either **by name** checks that the resource covers every requested language pair before any translation request goes out, and exits 7 (`ConfigError`) naming what it does cover if not:
+
+```bash
+deepl translate "hello" --from en --to de --glossary "EN-ES Test Glossary"
+# Error: Glossary "EN-ES Test Glossary" does not support the requested language pair
+# Suggestion: Glossary covers en→es; requested en→de.
+```
+
+A multilingual glossary satisfies this when it holds a dictionary for each requested pair; matching is per dictionary, so a glossary holding en→es and de→fr does not count as covering en→fr. Each translation memory in DeepL is scoped to one source→target pair, so a TM name with differing multi-targets cannot satisfy it at all — pass the TM UUID for multi-target TM use.
+
+Passing a **UUID** skips the check and lets the API decide, which is the escape hatch if the check is ever wrong: the API answers with `No dictionary found for language pair EN-DE in glossary <id>`.
 
 ```bash
 # Glossary across multiple targets (name resolution works for all targets)

@@ -160,12 +160,26 @@ export class GlossaryService {
   /**
    * Resolve a glossary name or ID to a glossary ID.
    * If the input is a UUID, returns it directly. Otherwise looks up by name.
+   *
+   * When `expected` is given, the resolved glossary's dictionaries must cover
+   * that language pair, which turns "No dictionary found for language pair
+   * EN-DE" from the API into a local error naming what the glossary does cover.
+   * Matching is per dictionary, so a glossary holding en→es and de→fr is not
+   * read as also covering en→fr. Free on this path because the list is already
+   * fetched to resolve the name; the UUID path trusts the caller and skips the
+   * check, as translation-memory resolution does.
    */
-  async resolveGlossaryId(nameOrId: string): Promise<string> {
+  async resolveGlossaryId(
+    nameOrId: string,
+    expected?: { from: Language; targets: Language[] },
+  ): Promise<string> {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nameOrId)) {
       return nameOrId;
     }
-    const cached = this.resolutionCache.get(nameOrId);
+    const cacheKey = expected
+      ? `${nameOrId}|${expected.from.toLowerCase()}|${expected.targets.map(t => t.toLowerCase()).join(',')}`
+      : nameOrId;
+    const cached = this.resolutionCache.get(cacheKey);
     if (cached !== undefined) {
       Logger.verbose(`[verbose] Glossary cache hit: "${nameOrId}" -> ${cached}`);
       return cached;
@@ -183,7 +197,30 @@ export class GlossaryService {
     if (!match) {
       throw new ConfigError(`Glossary "${sanitizeForError(nameOrId)}" not found`);
     }
-    this.resolutionCache.set(nameOrId, match.glossary_id);
+
+    // An empty dictionary list says nothing about coverage, so leave the
+    // judgement to the API rather than rejecting on no evidence.
+    if (expected && match.dictionaries.length > 0) {
+      const from = expected.from.toLowerCase();
+      const covered = (target: string): boolean =>
+        match.dictionaries.some(
+          d =>
+            d.source_lang.toLowerCase() === from &&
+            d.target_lang.toLowerCase() === target.toLowerCase(),
+        );
+      const missing = expected.targets.filter(target => !covered(target));
+      if (missing.length > 0) {
+        const pairs = match.dictionaries
+          .map(d => `${d.source_lang.toLowerCase()}→${d.target_lang.toLowerCase()}`)
+          .join(', ');
+        throw new ConfigError(
+          `Glossary "${sanitizeForError(nameOrId)}" does not support the requested language pair`,
+          `Glossary covers ${pairs}; requested ${from}→${missing.map(t => t.toLowerCase()).join(',')}.`,
+        );
+      }
+    }
+
+    this.resolutionCache.set(cacheKey, match.glossary_id);
     Logger.verbose(`[verbose] Resolved glossary "${nameOrId}" -> ${match.glossary_id}`);
     return match.glossary_id;
   }

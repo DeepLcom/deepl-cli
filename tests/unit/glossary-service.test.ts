@@ -341,6 +341,132 @@ describe('GlossaryService', () => {
       expect(mockDeepLClient.listGlossaries).not.toHaveBeenCalled();
     });
 
+    describe('language-pair preflight', () => {
+      const listing = (dictionaries: Array<{ source_lang: string; target_lang: string }>) => [
+        {
+          glossary_id: 'found-glossary-id',
+          name: 'tech-terms',
+          source_lang: dictionaries[0]!.source_lang,
+          target_langs: dictionaries.map(d => d.target_lang),
+          dictionaries: dictionaries.map(d => ({ ...d, entry_count: 1 })),
+          creation_time: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      it('should resolve when a dictionary covers the requested pair', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'en', target_lang: 'es' }]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es'] }),
+        ).resolves.toBe('found-glossary-id');
+      });
+
+      it('should reject when no dictionary covers the requested target', async () => {
+        expect.assertions(2);
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'en', target_lang: 'es' }]) as never,
+        );
+
+        try {
+          await glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['de'] });
+        } catch (error) {
+          expect((error as Error).message).toContain('does not support the requested language pair');
+          expect((error as ConfigError).suggestion).toContain('en→es');
+        }
+      });
+
+      it('should reject when the source language does not match', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'en', target_lang: 'es' }]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'de', targets: ['es'] }),
+        ).rejects.toThrow('does not support the requested language pair');
+      });
+
+      it('should require every requested target to be covered', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([
+            { source_lang: 'en', target_lang: 'es' },
+            { source_lang: 'en', target_lang: 'fr' },
+          ]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es', 'fr'] }),
+        ).resolves.toBe('found-glossary-id');
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es', 'de'] }),
+        ).rejects.toThrow('does not support the requested language pair');
+      });
+
+      it('should match per dictionary rather than across derived source and target lists', async () => {
+        // en→es and de→fr must not be read as also covering en→fr.
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([
+            { source_lang: 'en', target_lang: 'es' },
+            { source_lang: 'de', target_lang: 'fr' },
+          ]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['fr'] }),
+        ).rejects.toThrow('does not support the requested language pair');
+      });
+
+      it('should compare languages case-insensitively', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'EN', target_lang: 'ES' }]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es'] }),
+        ).resolves.toBe('found-glossary-id');
+      });
+
+      it('should skip the check for a UUID, trusting the caller', async () => {
+        const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+        await expect(
+          glossaryService.resolveGlossaryId(uuid, { from: 'en', targets: ['de'] }),
+        ).resolves.toBe(uuid);
+        expect(mockDeepLClient.listGlossaries).not.toHaveBeenCalled();
+      });
+
+      it('should skip the check when the glossary reports no dictionaries', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue([
+          {
+            glossary_id: 'empty-glossary-id',
+            name: 'tech-terms',
+            source_lang: 'en',
+            target_langs: [],
+            dictionaries: [],
+            creation_time: '2024-01-01T00:00:00Z',
+          },
+        ] as never);
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['de'] }),
+        ).resolves.toBe('empty-glossary-id');
+      });
+
+      it('should not let a cached resolution skip the check for a different pair', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'en', target_lang: 'es' }]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es'] }),
+        ).resolves.toBe('found-glossary-id');
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['de'] }),
+        ).rejects.toThrow('does not support the requested language pair');
+      });
+    });
+
     it('should emit a verbose log with resolved glossary name -> UUID after name lookup', async () => {
       mockDeepLClient.listGlossaries.mockResolvedValue([
         {

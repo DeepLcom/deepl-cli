@@ -197,7 +197,7 @@ describe('FileTranslationHandler', () => {
         }));
 
         expect(mocks.glossaryService.resolveGlossaryId).toHaveBeenCalledTimes(1);
-        expect(mocks.glossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+        expect(mocks.glossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', { from: 'en', targets: ['de', 'fr'] });
         const call = mocks.fileTranslationService.translateFileToMultiple.mock.calls[0]!;
         expect(call[2]).toEqual(expect.objectContaining({ glossaryId: 'glossary-abc-123' }));
       });

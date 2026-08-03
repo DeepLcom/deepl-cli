@@ -1193,7 +1193,7 @@ describe('TranslateCommand', () => {
       });
 
       expect(result).toBe('Hallo Welt');
-      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', { from: 'en', targets: ['de'] });
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello world',
         { targetLang: 'de', sourceLang: 'en', glossaryId: 'glossary-123' },
@@ -1216,7 +1216,7 @@ describe('TranslateCommand', () => {
       });
 
       expect(result).toBe('Bonjour le monde');
-      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('01234567-89ab-cdef-0123-456789abcdef');
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('01234567-89ab-cdef-0123-456789abcdef', { from: 'en', targets: ['fr'] });
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello world',
         { targetLang: 'fr', sourceLang: 'en', glossaryId: '01234567-89ab-cdef-0123-456789abcdef' },
@@ -1255,7 +1255,7 @@ describe('TranslateCommand', () => {
         })
       ).rejects.toThrow('Glossary "non-existent" not found');
 
-      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('non-existent');
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('non-existent', { from: 'en', targets: ['de'] });
     });
 
     it('should translate to multiple languages with glossary', async () => {
@@ -1273,7 +1273,7 @@ describe('TranslateCommand', () => {
       });
 
       expect(result).toBe('[de] Hallo\n[fr] Bonjour');
-      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('tech-terms');
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('tech-terms', { from: 'en', targets: ['de', 'fr'] });
       expect(mockTranslationService.translateToMultiple).toHaveBeenCalledWith(
         'Hello',
         ['de', 'fr'],
@@ -1298,7 +1298,7 @@ describe('TranslateCommand', () => {
       });
 
       expect(result).toBe('Sehr geehrte Damen und Herren');
-      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('business-glossary');
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('business-glossary', { from: 'en', targets: ['de'] });
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Dear Sir or Madam',
         {
@@ -3325,7 +3325,7 @@ describe('TranslateCommand', () => {
         glossary: ['my-glossary'],
       });
 
-      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', { from: 'en', targets: ['es'] });
       expect(mockTranslationService.translate).toHaveBeenCalledWith(
         'Hello',
         expect.objectContaining({ glossaryId: 'glossary-file-123' }),

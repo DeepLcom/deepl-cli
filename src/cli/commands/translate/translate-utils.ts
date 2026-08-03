@@ -134,8 +134,12 @@ export function buildTranslationOptions(options: TranslateOptions): TranslationP
   return result;
 }
 
-export async function resolveGlossaryId(glossaryService: GlossaryService, nameOrId: string): Promise<string> {
-  return glossaryService.resolveGlossaryId(nameOrId);
+export async function resolveGlossaryId(
+  glossaryService: GlossaryService,
+  nameOrId: string,
+  expected?: { from: Language; targets: Language[] },
+): Promise<string> {
+  return glossaryService.resolveGlossaryId(nameOrId, expected);
 }
 
 export function isFilePath(input: string, cachedStats: fs.Stats | null | undefined, fileTranslationService: FileTranslationService): boolean {

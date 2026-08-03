@@ -44,16 +44,23 @@ export async function applyGlossarySelection<
   base: T,
   options: TranslateOptions,
   glossaryService: GlossaryService,
+  targets?: Language[],
 ): Promise<void> {
   if (!options.glossary || options.glossary.length === 0) {
     return;
   }
 
+  // --glossary already requires --from, so the pair is always known here.
+  const expected =
+    options.from && targets && targets.length > 0
+      ? { from: options.from as Language, targets }
+      : undefined;
+
   // Resolved sequentially so the service's resolution cache is populated
   // before the next name-or-ID lookup needs the glossary list.
   const ids: string[] = [];
   for (const nameOrId of options.glossary) {
-    ids.push(await resolveGlossaryId(glossaryService, nameOrId));
+    ids.push(await resolveGlossaryId(glossaryService, nameOrId, expected));
   }
 
   const [only] = ids;
@@ -104,7 +111,7 @@ export async function applySharedTmAndGlossary<
   options: TranslateOptions,
   deps: SharedTmAndGlossaryDeps,
 ): Promise<void> {
-  await applyGlossarySelection(base, options, deps.glossaryService);
+  await applyGlossarySelection(base, options, deps.glossaryService, deps.targets);
 
   if (options.translationMemory) {
     const cache = deps.tmCache ?? new Map<string, string>();
