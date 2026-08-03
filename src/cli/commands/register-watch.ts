@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createWatchCommand, type ServiceDeps } from './service-factory.js';
+import { applyGlossarySourceLang, hasGlossarySelection } from '../../utils/glossary-params.js';
 
 export function registerWatch(
   program: Command,
@@ -65,6 +66,16 @@ Examples:
               'Use --to <lang>:   deepl watch ./docs --to de\n  Set a default:     deepl init',
             );
           }
+        }
+
+        // Resolved before --dry-run so a well-formed-looking command is not
+        // reported as runnable when it would fail on the first file change.
+        if (hasGlossarySelection(options)) {
+          applyGlossarySourceLang(
+            options,
+            deps.getConfigService().getValue<string>('defaults.sourceLang'),
+            'Example: deepl watch ./docs --from en --to es --glossary my-glossary',
+          );
         }
 
         if (options.dryRun) {

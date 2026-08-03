@@ -8,6 +8,44 @@ export interface GlossarySelection {
   glossaryIds?: string[];
 }
 
+/** A command's `--glossary`/`--from` pair, however that command spells them. */
+export interface GlossarySourceLangSelection {
+  glossary?: string | string[];
+  from?: string;
+}
+
+/** Whether `--glossary` names anything; `[]` is truthy but selects nothing. */
+export function hasGlossarySelection(selection: GlossarySourceLangSelection): boolean {
+  const { glossary } = selection;
+  return Array.isArray(glossary) ? glossary.length > 0 : !!glossary;
+}
+
+/**
+ * Settle the source language a glossary request will carry, filling `from` from
+ * the configured default when the flag is absent.
+ *
+ * The API rejects a glossary without `source_lang`, but `--from` is not the only
+ * way one is supplied: `TranslationService` merges `defaults.sourceLang`, so
+ * rejecting on a missing flag alone broke sessions that had been working from
+ * config. Resolving it onto `from` instead means every path sees the same
+ * answer, including the document path, which merges no defaults of its own, and
+ * the glossary preflight, which needs the pair to check coverage.
+ */
+export function applyGlossarySourceLang(
+  selection: GlossarySourceLangSelection,
+  configuredSourceLang: string | undefined,
+  example: string,
+): void {
+  if (!hasGlossarySelection(selection) || selection.from) {
+    return;
+  }
+  if (configuredSourceLang) {
+    selection.from = configuredSourceLang.toLowerCase();
+    return;
+  }
+  throw new ValidationError('Source language (--from) is required when using a glossary', example);
+}
+
 export type GlossaryWireParams =
   | { glossary_id: string }
   | { glossary_ids: string[] };

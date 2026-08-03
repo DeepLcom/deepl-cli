@@ -14,6 +14,7 @@ import {
   SAFE_TEXT_SIZE_LIMIT,
 } from './translate-utils.js';
 import { buildBaseTranslationOptions, applySharedTmAndGlossary } from './translation-options-factory.js';
+import { applyGlossarySourceLang } from '../../../utils/glossary-params.js';
 import type { DocumentTranslationHandler } from './document-translation-handler.js';
 
 export class FileTranslationHandler {
@@ -36,12 +37,11 @@ export class FileTranslationHandler {
 
       const validTargetLangs = targetLangs as Language[];
 
-      if (options.glossary && !options.from) {
-        throw new ValidationError(
-          'Source language (--from) is required when using a glossary',
-          'Example: deepl translate --from en --to en,fr,es --glossary my-glossary file.txt'
-        );
-      }
+      applyGlossarySourceLang(
+        options,
+        this.ctx.config.getValue<string>('defaults.sourceLang'),
+        'Example: deepl translate --from en --to en,fr,es --glossary my-glossary file.txt'
+      );
 
       if (options.translationMemory) {
         if (!options.from) {
@@ -123,12 +123,11 @@ export class FileTranslationHandler {
   async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
     validateLanguageCodes([options.to]);
 
-    if (options.glossary && !options.from) {
-      throw new ValidationError(
-        'Source language (--from) is required when using a glossary',
-        'Example: deepl translate --from en --to es --glossary my-glossary file.txt'
-      );
-    }
+    applyGlossarySourceLang(
+      options,
+      this.ctx.config.getValue<string>('defaults.sourceLang'),
+      'Example: deepl translate --from en --to es --glossary my-glossary file.txt'
+    );
 
     if (options.translationMemory) {
       if (!options.from) {

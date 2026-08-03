@@ -465,7 +465,12 @@ describe('WatchCommand', () => {
           // Expected: the watcher is stubbed to throw once reached
         }
 
-        expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+        // The pair goes with it so coverage is checked at launch, not once per
+        // file change.
+        expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
+          from: 'en',
+          targets: ['es'],
+        });
       });
     });
 

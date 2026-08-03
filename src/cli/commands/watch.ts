@@ -40,8 +40,11 @@ export class WatchCommand {
     this.glossaryService = glossaryService;
   }
 
-  private async resolveGlossaryId(nameOrId: string): Promise<string> {
-    return this.glossaryService.resolveGlossaryId(nameOrId);
+  private async resolveGlossaryId(
+    nameOrId: string,
+    expected?: { from: Language; targets: Language[] },
+  ): Promise<string> {
+    return this.glossaryService.resolveGlossaryId(nameOrId, expected);
   }
 
   /**
@@ -104,10 +107,14 @@ export class WatchCommand {
       Logger.info(chalk.gray(`Git-staged files: ${stagedFiles.size}`));
     }
 
-    // Resolve glossary ID if provided
+    // Resolve glossary ID if provided. The pair is known at launch, so the
+    // coverage check happens here rather than once per file change.
     let glossaryId: string | undefined;
     if (options.glossary) {
-      glossaryId = await this.resolveGlossaryId(options.glossary);
+      glossaryId = await this.resolveGlossaryId(
+        options.glossary,
+        options.from ? { from: options.from as Language, targets: targetLangs } : undefined,
+      );
     }
 
     // Determine output directory

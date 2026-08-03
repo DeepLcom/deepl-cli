@@ -12,6 +12,7 @@ import {
   MAX_CUSTOM_INSTRUCTION_CHARS,
 } from './translate-utils.js';
 import { buildBaseTranslationOptions, applySharedTmAndGlossary } from './translation-options-factory.js';
+import { applyGlossarySourceLang } from '../../../utils/glossary-params.js';
 
 export class TextTranslationHandler {
   constructor(public ctx: HandlerContext) {}
@@ -44,12 +45,11 @@ export class TextTranslationHandler {
     validateLanguageCodes([options.to]);
     validateExtendedLanguageConstraints(options.to, options);
 
-    if (options.glossary && !options.from) {
-      throw new ValidationError(
-        'Source language (--from) is required when using a glossary',
-        'Example: deepl translate --from en --to es --glossary my-glossary "Hello"'
-      );
-    }
+    applyGlossarySourceLang(
+      options,
+      this.ctx.config.getValue<string>('defaults.sourceLang'),
+      'Example: deepl translate --from en --to es --glossary my-glossary "Hello"'
+    );
 
     if (options.translationMemory) {
       if (!options.from) {
@@ -127,17 +127,6 @@ export class TextTranslationHandler {
       translationOptions.ignoreTags = tags;
     }
 
-    if (options.tagHandlingVersion) {
-      if (!options.tagHandling) {
-        throw new ValidationError('--tag-handling-version requires --tag-handling to be set (xml or html)');
-      }
-      if (options.tagHandlingVersion !== 'v1' && options.tagHandlingVersion !== 'v2') {
-        throw new ValidationError('--tag-handling-version must be "v1" or "v2"');
-      }
-      translationOptions.tagHandlingVersion = options.tagHandlingVersion;
-    }
-
-
     const result = await this.ctx.translationService.translate(
       text,
       translationOptions,
@@ -181,12 +170,11 @@ export class TextTranslationHandler {
     validateLanguageCodes(targetLangs);
     validateExtendedLanguageConstraints(options.to, options);
 
-    if (options.glossary && !options.from) {
-      throw new ValidationError(
-        'Source language (--from) is required when using a glossary',
-        'Example: deepl translate --from en --to es --glossary my-glossary "Hello"'
-      );
-    }
+    applyGlossarySourceLang(
+      options,
+      this.ctx.config.getValue<string>('defaults.sourceLang'),
+      'Example: deepl translate --from en --to es --glossary my-glossary "Hello"'
+    );
 
     if (options.translationMemory) {
       if (!options.from) {

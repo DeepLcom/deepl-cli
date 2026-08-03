@@ -5,6 +5,8 @@
 import {
   resolveGlossaryWireParams,
   encodeGlossaryIdsForMultipart,
+  applyGlossarySourceLang,
+  hasGlossarySelection,
   MAX_GLOSSARIES_PER_REQUEST,
 } from '../../src/utils/glossary-params.js';
 import { ValidationError } from '../../src/utils/errors.js';
@@ -84,5 +86,55 @@ describe('encodeGlossaryIdsForMultipart', () => {
 
   it('should preserve order', () => {
     expect(encodeGlossaryIdsForMultipart([B, A])).toBe(`${B},${A}`);
+  });
+});
+
+describe('hasGlossarySelection', () => {
+  it('should treat an empty array as selecting nothing, unlike bare truthiness', () => {
+    expect(hasGlossarySelection({ glossary: [] })).toBe(false);
+  });
+
+  it('should recognize a string and a non-empty array', () => {
+    expect(hasGlossarySelection({ glossary: 'terms' })).toBe(true);
+    expect(hasGlossarySelection({ glossary: ['terms'] })).toBe(true);
+  });
+});
+
+describe('applyGlossarySourceLang', () => {
+  const example = 'Example: deepl translate --from en --to es --glossary g "Hello"';
+
+  it('should leave an explicit --from alone', () => {
+    const options = { glossary: ['terms'], from: 'de' };
+    applyGlossarySourceLang(options, 'en', example);
+    expect(options.from).toBe('de');
+  });
+
+  it('should fall back to the configured source language', () => {
+    // The request carries source_lang either way, so rejecting on a missing
+    // flag alone broke sessions that had been working from config.
+    const options: { glossary: string[]; from?: string } = { glossary: ['terms'] };
+    applyGlossarySourceLang(options, 'EN', example);
+    expect(options.from).toBe('en');
+  });
+
+  it('should throw only when neither the flag nor the config supplies one', () => {
+    expect(() => applyGlossarySourceLang({ glossary: ['terms'] }, undefined, example)).toThrow(
+      ValidationError,
+    );
+    expect(() => applyGlossarySourceLang({ glossary: ['terms'] }, undefined, example)).toThrow(
+      'Source language (--from) is required when using a glossary',
+    );
+  });
+
+  it('should do nothing when no glossary is selected', () => {
+    const options: { glossary?: string[]; from?: string } = { glossary: [] };
+    expect(() => applyGlossarySourceLang(options, undefined, example)).not.toThrow();
+    expect(options.from).toBeUndefined();
+  });
+
+  it('should accept a single-string glossary, as watch and sync spell it', () => {
+    const options: { glossary: string; from?: string } = { glossary: 'terms' };
+    applyGlossarySourceLang(options, 'en', example);
+    expect(options.from).toBe('en');
   });
 });
