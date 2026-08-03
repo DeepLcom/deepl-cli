@@ -102,6 +102,33 @@ describe('Languages Command E2E', () => {
       const combined = result.stdout + result.stderr;
       expect(combined).toMatch(/no api key|local.*registry/i);
     });
+
+    it('should list the same languages in --format json as in text output', () => {
+      // Both formats read the same bundled snapshot, so answering
+      // {"source":[],"target":[]} while the text output printed 125 was the JSON
+      // path simply not falling back.
+      const result = runCLIWithEnv('languages --format json', { DEEPL_API_KEY: '' });
+
+      expect(result.status).toBe(0);
+      const parsed = JSON.parse(result.stdout) as {
+        source: Array<{ language: string; name: string }>;
+        target: Array<{ language: string; name: string }>;
+      };
+      expect(parsed.source.length).toBeGreaterThan(100);
+      expect(parsed.target.length).toBeGreaterThan(parsed.source.length);
+      expect(parsed.source).toEqual(
+        expect.arrayContaining([{ language: 'de', name: 'German' }]),
+      );
+      expect(parsed.target.map(entry => entry.language)).toContain('en-gb');
+    });
+
+    it('should list target-only languages in --format json --target', () => {
+      const result = runCLIWithEnv('languages --target --format json', { DEEPL_API_KEY: '' });
+
+      expect(result.status).toBe(0);
+      const parsed = JSON.parse(result.stdout) as Array<{ language: string }>;
+      expect(parsed.map(entry => entry.language)).toContain('pt-br');
+    });
   });
 
   describe('languages --features (against the mock API)', () => {

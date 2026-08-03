@@ -18,6 +18,23 @@ function forJson(languages: LanguageInfo[], includeFeatures: boolean): unknown[]
   });
 }
 
+/**
+ * The bundled snapshot in LanguageInfo shape, for output with no API key.
+ *
+ * Without this the JSON path answered `{"source":[],"target":[]}` while the text
+ * path printed all 125 from the same snapshot -- listing languages works offline
+ * either way, so the two formats have no business disagreeing.
+ */
+function registryAsLanguageInfo(
+  command: { getRegistryLanguages: (type: 'source' | 'target') => Array<{ code: string; name: string }> },
+  type: 'source' | 'target',
+): LanguageInfo[] {
+  return command.getRegistryLanguages(type).map(entry => ({
+    language: entry.code as LanguageInfo['language'],
+    name: entry.name,
+  }));
+}
+
 export function registerLanguages(
   program: Command,
   deps: {
@@ -66,16 +83,24 @@ Examples:
         const languagesCommand = await createLanguagesCommand(client);
 
         if (options.format === 'json') {
+          const listFor = async (type: 'source' | 'target'): Promise<LanguageInfo[]> => {
+            const fromApi =
+              type === 'source'
+                ? await languagesCommand.getSourceLanguages()
+                : await languagesCommand.getTargetLanguages();
+            return fromApi.length === 0 && !hasApiKey
+              ? registryAsLanguageInfo(languagesCommand, type)
+              : fromApi;
+          };
+
           if (options.source && !options.target) {
-            const sourceLanguages = await languagesCommand.getSourceLanguages();
-            Logger.output(JSON.stringify(forJson(sourceLanguages, showFeatures), null, 2));
+            Logger.output(JSON.stringify(forJson(await listFor('source'), showFeatures), null, 2));
           } else if (options.target && !options.source) {
-            const targetLanguages = await languagesCommand.getTargetLanguages();
-            Logger.output(JSON.stringify(forJson(targetLanguages, showFeatures), null, 2));
+            Logger.output(JSON.stringify(forJson(await listFor('target'), showFeatures), null, 2));
           } else {
             const [sourceLanguages, targetLanguages] = await Promise.all([
-              languagesCommand.getSourceLanguages(),
-              languagesCommand.getTargetLanguages(),
+              listFor('source'),
+              listFor('target'),
             ]);
             Logger.output(JSON.stringify({
               source: forJson(sourceLanguages, showFeatures),
