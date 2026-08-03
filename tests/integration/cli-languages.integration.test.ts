@@ -48,12 +48,18 @@ describe('Languages CLI Integration', () => {
     });
 
     it('should list the regional variants the snapshot previously omitted', () => {
-      const output = runCLI('deepl languages --target', { apiKey: '' });
+      // noColor because the code is chalk.cyan'd, so anchoring on the row would
+      // otherwise trip over the escape sequence wherever colour is forced on;
+      // excludeApiKey to read the snapshot rather than the live API.
+      const output = runCLI('deepl languages --target', {
+        excludeApiKey: true,
+        noColor: true,
+      });
 
-      expect(output).toContain('German (Swiss)');
-      expect(output).toContain('French (Canadian)');
-      expect(output).toMatch(/^\s+de-ch\s/m);
-      expect(output).toMatch(/^\s+fr-fr\s/m);
+      expect(output).toMatch(/^\s+de-ch\s+German \(Swiss\)$/m);
+      expect(output).toMatch(/^\s+fr-ca\s+French \(Canadian\)$/m);
+      expect(output).toMatch(/^\s+de-de\s+German$/m);
+      expect(output).toMatch(/^\s+fr-fr\s+French$/m);
     });
   });
 
