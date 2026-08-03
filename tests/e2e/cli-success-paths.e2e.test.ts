@@ -76,6 +76,7 @@ describe('CLI Success Paths E2E', () => {
   let runCLI: (command: string) => string;
   let runCLIAll: (command: string) => string;
   let runCLIPipe: (stdin: string, command: string) => string;
+  let runCLIExpectError: (command: string) => { status: number; output: string };
 
   beforeAll(async () => {
     testConfigDir = testConfig.path;
@@ -85,6 +86,7 @@ describe('CLI Success Paths E2E', () => {
     runCLI = (command: string) => helpers.runCLI(command);
     runCLIAll = (command: string) => helpers.runCLIAll(command);
     runCLIPipe = (stdin: string, command: string) => helpers.runCLIPipe(stdin, command);
+    runCLIExpectError = (command: string) => helpers.runCLIExpectError(command);
 
     mockPort = await startMockServer();
     baseUrl = `http://127.0.0.1:${mockPort}`;
@@ -119,6 +121,20 @@ describe('CLI Success Paths E2E', () => {
     it('should translate text from stdin pipe', () => {
       const output = runCLIPipe('Translate me', `translate --to es --api-url ${baseUrl}`);
       expect(output.trim().split('\n')[0]).toBe('Traduceme');
+    });
+
+    it('should send a well-formed target the bundled snapshot does not list', () => {
+      // The mock echoes "[TARGET] text", so reaching it at all proves the code
+      // was not rejected locally. GET /v3/languages is the authority on which
+      // languages exist, and the snapshot can lag it.
+      const output = runCLI('translate "Unmapped" --to xx-yy');
+      expect(output.trim().split('\n')[0]).toBe('[XX-YY] Unmapped');
+    });
+
+    it('should still reject a target that is not shaped like a language tag', () => {
+      const result = runCLIExpectError('translate "Hello" --to notalanguage');
+      expect(result.status).toBeGreaterThan(0);
+      expect(result.output).toMatch(/Invalid target language code: "notalanguage"/);
     });
 
     it('should translate a file and write to output', () => {

@@ -51,10 +51,11 @@ describe('translate-utils', () => {
 
   describe('constants', () => {
     it('VALID_LANGUAGES should contain all language codes', () => {
-      expect(VALID_LANGUAGES.size).toBe(121);
+      expect(VALID_LANGUAGES.size).toBe(125);
       expect(VALID_LANGUAGES.has('en')).toBe(true);
       expect(VALID_LANGUAGES.has('de')).toBe(true);
       expect(VALID_LANGUAGES.has('en-gb')).toBe(true);
+      expect(VALID_LANGUAGES.has('de-ch')).toBe(true);
       expect(VALID_LANGUAGES.has('hi')).toBe(true);
     });
 
@@ -104,12 +105,26 @@ describe('translate-utils', () => {
       expect(() => validateLanguageCodes([])).not.toThrow();
     });
 
-    it('should throw ValidationError for invalid language code', () => {
-      expect(() => validateLanguageCodes(['xx'])).toThrow(ValidationError);
+    it('should throw ValidationError for a malformed language code', () => {
+      expect(() => validateLanguageCodes(['not-a-language'])).toThrow(ValidationError);
     });
 
     it('should include the invalid code in the error message', () => {
       expect(() => validateLanguageCodes(['zzzz'])).toThrow(/Invalid target language code: "zzzz"/);
+    });
+
+    it('should pass through a well-formed code the snapshot does not know', () => {
+      // The API is the authority on which languages exist, and the bundled
+      // snapshot can lag it. Rejecting locally made valid targets unusable.
+      expect(() => validateLanguageCodes(['xx'])).not.toThrow();
+      expect(() => validateLanguageCodes(['de-ch', 'fr-ca'])).not.toThrow();
+      expect(() => validateLanguageCodes(['abc-1234'])).not.toThrow();
+    });
+
+    it('should still reject input that is not shaped like a language tag', () => {
+      for (const code of ['g', 'grman', 'de_ch', 'de-', '../etc/passwd', 'de ch']) {
+        expect(() => validateLanguageCodes([code])).toThrow(ValidationError);
+      }
     });
 
     it('should emit a concise message and point at `deepl languages` for the full list', () => {

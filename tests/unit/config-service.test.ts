@@ -230,6 +230,13 @@ describe('ConfigService', () => {
       }).not.toThrow();
     });
 
+    it('should accept a well-formed code the bundled snapshot does not know', () => {
+      // The API decides what exists; the snapshot can lag it.
+      expect(() => {
+        configService.set('defaults.sourceLang', 'de-ch');
+      }).not.toThrow();
+    });
+
     it('should validate formality values', () => {
       expect(() => {
         configService.set('defaults.formality', 'invalid');

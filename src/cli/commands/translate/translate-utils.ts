@@ -3,7 +3,11 @@ import * as path from 'path';
 import { Language, Formality } from '../../../types/index.js';
 import { ValidationError } from '../../../utils/errors.js';
 import { Logger } from '../../../utils/logger.js';
-import { getAllLanguageCodes, getExtendedLanguageCodes } from '../../../data/language-registry.js';
+import {
+  getAllLanguageCodes,
+  getExtendedLanguageCodes,
+  looksLikeLanguageTag,
+} from '../../../data/language-registry.js';
 import type { FileTranslationService } from '../../../services/file-translation.js';
 import type { GlossaryService } from '../../../services/glossary.js';
 import type { TranslateOptions, TranslationParams } from './types.js';
@@ -54,14 +58,21 @@ export function warnIgnoredOptions(mode: string, options: TranslateOptions, supp
   }
 }
 
+/**
+ * Rejects input that is not shaped like a language tag. Codes the bundled
+ * snapshot does not list are passed through: GET /v3/languages is the authority
+ * on which languages exist, and the snapshot can lag it, so rejecting here made
+ * languages the API accepts unusable. The API answers an unknown code with a
+ * 400 of its own.
+ */
 export function validateLanguageCodes(langCodes: string[]): void {
   for (const lang of langCodes) {
-    if (!VALID_LANGUAGES.has(lang)) {
-      throw new ValidationError(
-        `Invalid target language code: "${lang}".`,
-        'Run: deepl languages  to see all available languages'
-      );
-    }
+    if (VALID_LANGUAGES.has(lang)) continue;
+    if (looksLikeLanguageTag(lang)) continue;
+    throw new ValidationError(
+      `Invalid target language code: "${lang}".`,
+      'Run: deepl languages  to see all available languages'
+    );
   }
 }
 

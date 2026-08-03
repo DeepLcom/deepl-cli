@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DeepLConfig, Formality, OutputFormat } from '../types/index.js';
 import { resolvePaths } from '../utils/paths.js';
-import { isValidLanguage } from '../data/language-registry.js';
+import { isValidLanguage, looksLikeLanguageTag } from '../data/language-registry.js';
 import { ConfigError } from '../utils/errors.js';
 import { validateApiUrl } from '../utils/validate-url.js';
 import { Logger } from '../utils/logger.js';
@@ -379,10 +379,12 @@ export class ConfigService {
   }
 
   /**
-   * Validate language code
+   * Validate language code. Codes the bundled snapshot does not list are
+   * accepted when they are shaped like a language tag, because GET /v3/languages
+   * is the authority on which languages exist and the snapshot can lag it.
    */
   private validateLanguage(lang: string, key?: string): void {
-    if (!isValidLanguage(lang)) {
+    if (!isValidLanguage(lang) && !looksLikeLanguageTag(lang)) {
       const context = key ? ` for "${key}"` : '';
       throw new ConfigError(`Invalid language code "${lang}"${context}. Run: deepl languages to see valid codes`);
     }
