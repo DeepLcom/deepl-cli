@@ -84,6 +84,15 @@ export class WatchCommand {
       );
     }
 
+    // The API rejects any translation naming a glossary without source_lang, so
+    // an unguarded watch session fails once per file change instead of at launch.
+    if (options.glossary && !options.from) {
+      throw new ValidationError(
+        'Source language (--from) is required when using a glossary',
+        'Example: deepl watch ./docs --from en --to es --glossary my-glossary'
+      );
+    }
+
     // Get git-staged files if requested
     let stagedFiles: Set<string> | undefined;
     if (options.gitStaged) {

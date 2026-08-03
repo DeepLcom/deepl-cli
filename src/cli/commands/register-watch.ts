@@ -21,7 +21,7 @@ export function registerWatch(
     .option('-o, --output <path>', 'Output directory (default: <path>/translations or same dir for files)')
     .optionsGroup('Translation Quality:')
     .addOption(new Option('--formality <level>', 'Formality level').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less', 'formal', 'informal']))
-    .option('--glossary <name-or-id>', 'Use glossary by name or ID (pass --from as well; the API rejects a glossary without a source language)')
+    .option('--glossary <name-or-id>', 'Use glossary by name or ID (requires --from; the API rejects a glossary without a source language)')
     .option('--preserve-code', 'Preserve code blocks and variables during translation')
     .option('--preserve-formatting', 'Preserve line breaks and whitespace formatting')
     .optionsGroup('Watch Behavior:')

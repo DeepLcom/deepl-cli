@@ -1287,7 +1287,7 @@ authentication	Authentifizierung
 - **Direct updates** - v3 API uses PATCH endpoints for efficient updates (no delete+recreate)
 - **Smart defaults** - `--target` flag only required for multilingual glossaries
 - **Visual indicators** - 📖 for single-target, 📚 for multilingual glossaries
-- **Translation integration** - Use `--glossary` flag in translate and watch commands to apply glossary terms (always alongside `--from`; the API rejects a glossary without a source language)
+- **Translation integration** - Use `--glossary` flag in translate and watch commands to apply glossary terms (`--from` is required alongside it; the API rejects a glossary without a source language)
 - **Several glossaries at once** - Repeat `--glossary` on `translate` for up to 5 glossaries; entries are merged and the last glossary given wins any conflicting term
 
 ```bash

@@ -1104,7 +1104,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - `--formality LEVEL` - Formality level: `default`, `more`, `less`, `prefer_more`, `prefer_less`, `formal`, `informal`
 - `--preserve-code` - Preserve code blocks
 - `--preserve-formatting` - Preserve line breaks and whitespace formatting
-- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. Pass `--from` as well: the API refuses a glossary without a source language ("Use of a glossary requires the source_lang parameter to be specified"), and `watch` does not check for it up front, so every file change fails on the API call instead. Unlike `translate`, `watch` takes a single glossary.
+- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. `--from` is required, because the API refuses a glossary without a source language ("Use of a glossary requires the source_lang parameter to be specified"); omitting it exits 6 before the watcher starts rather than failing on every file change. Unlike `translate`, `watch` takes a single glossary.
 
 **Git Integration:**
 

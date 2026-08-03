@@ -8,6 +8,7 @@ import { WatchService } from '../../src/services/watch';
 import { FileTranslationService } from '../../src/services/file-translation';
 import { TranslationService } from '../../src/services/translation';
 import { GlossaryService } from '../../src/services/glossary';
+import { ValidationError } from '../../src/utils/errors';
 import {
   createMockTranslationService,
   createMockGlossaryService,
@@ -399,6 +400,73 @@ describe('WatchCommand', () => {
           to: '',
         })
       ).rejects.toThrow('No target language specified.');
+    });
+
+    describe('--glossary without --from', () => {
+      it('should reject before starting a watcher', async () => {
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+
+        await expect(
+          watchCommand.watch('/some/file.md', {
+            to: 'es',
+            glossary: 'my-glossary',
+          })
+        ).rejects.toThrow('Source language (--from) is required when using a glossary');
+
+        expect(mockWatchService.watch).not.toHaveBeenCalled();
+      });
+
+      it('should reject with a ValidationError carrying a watch example', async () => {
+        expect.assertions(3);
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+
+        try {
+          await watchCommand.watch('/some/file.md', {
+            to: 'es',
+            glossary: 'my-glossary',
+          });
+        } catch (error) {
+          expect(error).toBeInstanceOf(ValidationError);
+          expect((error as ValidationError).exitCode).toBe(6);
+          expect((error as ValidationError).suggestion).toContain('deepl watch');
+        }
+      });
+
+      it('should not resolve the glossary name, which would call the API', async () => {
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+
+        await expect(
+          watchCommand.watch('/some/file.md', {
+            to: 'es',
+            glossary: 'my-glossary',
+          })
+        ).rejects.toThrow(ValidationError);
+
+        expect(mockGlossaryService.resolveGlossaryId).not.toHaveBeenCalled();
+      });
+
+      it('should accept --glossary when --from is provided', async () => {
+        expect.assertions(1);
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+        mockGlossaryService.resolveGlossaryId.mockResolvedValue('resolved-id');
+        mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+        try {
+          await watchCommand.watch('/some/file.md', {
+            to: 'es',
+            from: 'en',
+            glossary: 'my-glossary',
+          });
+        } catch {
+          // Expected: the watcher is stubbed to throw once reached
+        }
+
+        expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      });
     });
 
     it('should display initial watch message with all options', async () => {

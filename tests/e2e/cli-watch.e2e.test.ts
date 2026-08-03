@@ -82,6 +82,67 @@ describe('Watch Command E2E', () => {
     });
   });
 
+  describe('watch --glossary without --from', () => {
+    /**
+     * The guard sits behind the API key gate, so a key must be present. The
+     * unreachable baseUrl proves the exit is the guard's own: any run that got
+     * as far as resolving the glossary name would fail on the network instead.
+     */
+    function deadUrlConfigDir(): string {
+      const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-config-'));
+      fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify({
+        auth: { apiKey: 'e2e-watch-glossary-key:fx' },
+        api: { baseUrl: 'http://127.0.0.1:9', usePro: false },
+        defaults: { formality: 'default', preserveFormatting: true },
+        cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
+        output: { format: 'text', verbose: false, color: false },
+        watch: { debounceMs: 500, autoCommit: false },
+      }, null, 2));
+      return configDir;
+    }
+
+    it('should exit 6 without starting a watcher', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-e2e-'));
+      fs.writeFileSync(path.join(tmpDir, 'readme.md'), 'Hello world');
+      const configDir = deadUrlConfigDir();
+      const { runCLIExpectError } = makeNodeRunCLI(configDir);
+
+      try {
+        const { status, output } = runCLIExpectError(
+          `watch ${tmpDir} --to es --glossary my-glossary`,
+          { timeout: 20000 },
+        );
+
+        expect(status).toBe(6);
+        expect(output).toContain('Source language (--from) is required when using a glossary');
+        expect(output).not.toContain('Watching for changes');
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+        fs.rmSync(configDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should get past the guard when --from is given', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-e2e-'));
+      fs.writeFileSync(path.join(tmpDir, 'readme.md'), 'Hello world');
+      const configDir = deadUrlConfigDir();
+      const { runCLIExpectError } = makeNodeRunCLI(configDir);
+
+      try {
+        const { status, output } = runCLIExpectError(
+          `watch ${tmpDir} --from en --to es --glossary my-glossary`,
+          { timeout: 20000 },
+        );
+
+        expect(output).not.toContain('Source language (--from) is required');
+        expect(status).not.toBe(6);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+        fs.rmSync(configDir, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('watch without required arguments', () => {
     it('should fail when no path is provided', () => {
       try {
