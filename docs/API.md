@@ -1005,7 +1005,7 @@ deepl voice [options] <file>
 | `--to <languages>`              | `-t`  | Target language(s), comma-separated, max 5 (required)                                          | -         |
 | `--from <language>`             | `-f`  | Source language (auto-detect if not specified)                                                 | auto      |
 | `--formality <level>`           |       | Formality level: `default`, `formal`, `more`, `informal`, `less`, `prefer_more`, `prefer_less` | `default` |
-| `--glossary <name-or-id>`       |       | Use glossary by name or ID (requires `--from`; repeatable, max 5, last wins on conflicts)       | -         |
+| `--glossary <name-or-id>`       |       | Use glossary by name or ID (single glossary; not repeatable)                                    | -         |
 | `--content-type <type>`         |       | Audio content type (auto-detected from file extension)                                         | auto      |
 | `--chunk-size <bytes>`          |       | Audio chunk size in bytes                                                                      | `6400`    |
 | `--chunk-interval <ms>`         |       | Interval between audio chunks in milliseconds                                                  | `200`     |

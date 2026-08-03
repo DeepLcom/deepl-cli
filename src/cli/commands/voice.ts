@@ -86,7 +86,12 @@ export class VoiceCommand {
 
       return this.formatResult(result, options.format);
     } catch (error) {
-      this.reportPartialResult(error, translateOptions.targetLangs.length, isTTY);
+      this.reportPartialResult(
+        error,
+        translateOptions.targetLangs.length,
+        isTTY,
+        options.format,
+      );
       throw error;
     } finally {
       process.removeListener('SIGINT', sigintHandler);
@@ -114,7 +119,12 @@ export class VoiceCommand {
 
       return this.formatResult(result, options.format);
     } catch (error) {
-      this.reportPartialResult(error, translateOptions.targetLangs.length, isTTY);
+      this.reportPartialResult(
+        error,
+        translateOptions.targetLangs.length,
+        isTTY,
+        options.format,
+      );
       throw error;
     } finally {
       process.removeListener('SIGINT', sigintHandler);
@@ -170,10 +180,12 @@ export class VoiceCommand {
   private createTTYCallbacks(targetLangs: VoiceTargetLanguage[], maxReconnectAttempts?: number): VoiceStreamCallbacks {
     const state: Record<string, { concluded: string; tentative: string }> = {};
 
-    // Initialize state for source + each target
+    // Initialize state for source + each target. Keyed lowercase for the same
+    // reason the session is: the server may echo a different canonicalization of
+    // a requested code, and an update matching no key renders nothing.
     state['source'] = { concluded: '', tentative: '' };
     for (const lang of targetLangs) {
-      state[lang] = { concluded: '', tentative: '' };
+      state[lang.toLowerCase()] = { concluded: '', tentative: '' };
     }
 
     const lineCount = 1 + targetLangs.length; // source + targets
@@ -232,7 +244,7 @@ export class VoiceCommand {
         scheduleRender();
       },
       onTargetTranscript: (update) => {
-        const tgt = state[update.language];
+        const tgt = state[update.language.toLowerCase()];
         if (!tgt) return;
         const concludedText = update.concluded.map((s) => s.text).join(' ');
         if (concludedText) {
@@ -266,18 +278,27 @@ export class VoiceCommand {
    * cost another stream to see them. Written to stderr, so a partial result is
    * never mistaken for the command's output.
    */
-  private reportPartialResult(error: unknown, targetCount: number, isTTY: boolean): void {
+  private reportPartialResult(
+    error: unknown,
+    targetCount: number,
+    isTTY: boolean,
+    format?: string,
+  ): void {
     if (!(error instanceof VoicePartialResultError)) {
+      return;
+    }
+    const salvaged = this.formatResult(error.result, format);
+    if (salvaged.trim() === '') {
       return;
     }
     if (isTTY) {
       this.clearTTYDisplay(targetCount);
     }
-    const salvaged = this.formatResult(error.result);
-    if (salvaged.trim() !== '') {
-      Logger.warn(chalk.yellow('Partial result before the session failed:'));
-      Logger.warn(salvaged);
-    }
+    // Logger.error, not warn: warnings are suppressed under --quiet, and erasing
+    // the live display without reprinting would leave the user with nothing for
+    // audio that has already been transcribed and billed.
+    Logger.error(chalk.yellow('Partial result before the session failed:'));
+    Logger.error(salvaged);
   }
 
   private formatResult(result: VoiceSessionResult, format?: string): string {
