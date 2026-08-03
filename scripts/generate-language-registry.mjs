@@ -13,7 +13,7 @@
  *
  * Needs DEEPL_API_KEY and a current build (npm run build).
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import * as path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -41,9 +41,46 @@ function fail(message) {
 
 const byCode = (a, b) => a.code.localeCompare(b.code, 'en');
 
+const LANGUAGE_CODE = /^[a-z]{2,3}(-[a-z0-9]{2,4})?$/;
+/** Letters, marks, digits and the punctuation DeepL's display names actually use. */
+const DISPLAY_NAME = /^[\p{L}\p{M}\p{N} ()'’.,-]{1,60}$/u;
+
+/**
+ * Quote a value as a single-quoted TypeScript string literal, escaping what
+ * would otherwise end the literal or the line.
+ */
+function quote(value) {
+  const escaped = String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+  return `'${escaped}'`;
+}
+
+/**
+ * Rejects a response field that has no business being in a language list.
+ * The output of this script is TypeScript that the next build compiles and the
+ * test suite imports, so a response field is untrusted input to a code
+ * generator: it is validated, not merely escaped.
+ */
+export function assertRenderable(entry) {
+  if (typeof entry.code !== 'string' || !LANGUAGE_CODE.test(entry.code)) {
+    throw new Error(`refusing to write language code ${JSON.stringify(entry.code)}: not shaped like a language tag`);
+  }
+  if (typeof entry.name !== 'string' || !DISPLAY_NAME.test(entry.name)) {
+    throw new Error(`refusing to write display name ${JSON.stringify(entry.name)} for ${entry.code}`);
+  }
+  if (!['core', 'regional', 'extended'].includes(entry.category)) {
+    throw new Error(`unexpected category ${JSON.stringify(entry.category)} for ${entry.code}`);
+  }
+}
+
 function renderEntry(entry) {
-  const fields = [`code: '${entry.code}'`, `name: '${entry.name.replace(/'/g, "\\'")}'`];
-  fields.push(`category: '${entry.category}'`);
+  const fields = [`code: ${quote(entry.code)}`, `name: ${quote(entry.name)}`];
+  fields.push(`category: ${quote(entry.category)}`);
   if (entry.targetOnly) fields.push('targetOnly: true');
   return `  { ${fields.join(', ')} },`;
 }
@@ -53,6 +90,10 @@ function renderEntry(entry) {
  * the data it already holds, without a live API call.
  */
 export function renderRegistry(entries, writeTargets) {
+  // Validated before grouping: grouping filters by category, so an entry with an
+  // unrecognized one would be dropped from the output without ever being checked.
+  entries.forEach(assertRenderable);
+
   const body = GROUPS.map(([category, heading]) => {
     const group = entries.filter(e => e.category === category).sort(byCode);
     return [`  // ${heading}`, ...group.map(renderEntry)].join('\n');
@@ -92,7 +133,7 @@ ${body}
  * derived from it, so a language added upstream widens the type on regenerate.
  */
 export const WRITE_TARGET_LANGUAGES = [
-${writeTargets.map(code => `  '${code}',`).join('\n')}
+${writeTargets.map(code => `  ${quote(code)},`).join('\n')}
 ] as const;
 `;
 }
@@ -162,8 +203,18 @@ async function main() {
   if (writeTargets.length === 0) {
     fail('no write target languages reported (expected usable_as_target on resource=write)');
   }
+  for (const code of writeTargets) {
+    if (!LANGUAGE_CODE.test(code)) {
+      fail(`refusing to write Write language code ${JSON.stringify(code)}: not shaped like a language tag`);
+    }
+  }
 
-  const contents = renderRegistry(entries, writeTargets);
+  let contents;
+  try {
+    contents = renderRegistry(entries, writeTargets);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
 
   if (checkOnly) {
     const current = existsSync(TARGET) ? readFileSync(TARGET, 'utf8') : '';
@@ -208,7 +259,20 @@ async function main() {
 }
 
 // Importable for re-rendering without touching the network; only the CLI entry
-// point fetches.
-if (process.argv[1] === import.meta.filename) {
+// point fetches. argv[1] is compared through realpathSync because Node resolves
+// the ESM entry to its real path, so a symlinked checkout (or an npm-linked
+// package) would otherwise make both npm scripts silent no-ops.
+const invokedPath = process.argv[1];
+const invokedDirectly =
+  invokedPath !== undefined &&
+  (() => {
+    try {
+      return realpathSync(invokedPath) === import.meta.filename;
+    } catch {
+      return invokedPath === import.meta.filename;
+    }
+  })();
+
+if (invokedDirectly) {
   await main();
 }
