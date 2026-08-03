@@ -3,6 +3,7 @@
  */
 
 import { Language, Formality } from './common';
+import { WRITE_TARGET_LANGUAGES } from '../data/language-entries.js';
 
 export type ModelType =
   | 'quality_optimized'
@@ -45,21 +46,12 @@ export interface TranslationMemory {
   target_languages: string[];
 }
 
-export type WriteLanguage =
-  | 'de'
-  | 'en'
-  | 'en-gb'
-  | 'en-us'
-  | 'es'
-  | 'fr'
-  | 'it'
-  | 'ja'
-  | 'ko'
-  | 'pt'
-  | 'pt-br'
-  | 'pt-pt'
-  | 'zh'
-  | 'zh-hans';
+/**
+ * Target languages the Write API accepts. Derived from the generated snapshot
+ * so that adding a language upstream widens this on `npm run generate:languages`
+ * rather than needing a second, hand-kept copy of the same list.
+ */
+export type WriteLanguage = (typeof WRITE_TARGET_LANGUAGES)[number];
 
 export type WritingStyle =
   | 'default'

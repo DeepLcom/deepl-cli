@@ -10,6 +10,7 @@ import {
   deriveLanguageEntry,
   looksLikeLanguageTag,
 } from '../../src/data/language-registry';
+import { WRITE_TARGET_LANGUAGES } from '../../src/data/language-entries';
 
 describe('Language Registry', () => {
   describe('LANGUAGE_REGISTRY', () => {
@@ -229,6 +230,37 @@ describe('Language Registry', () => {
       const codes = getExtendedLanguageCodes();
       expect(codes.has('en')).toBe(false);
       expect(codes.has('en-gb')).toBe(false);
+    });
+  });
+
+  describe('WRITE_TARGET_LANGUAGES', () => {
+    it('should be non-empty', () => {
+      expect(WRITE_TARGET_LANGUAGES.length).toBeGreaterThan(0);
+    });
+
+    it('should be lowercase and sorted, matching how the generator emits it', () => {
+      const codes = [...WRITE_TARGET_LANGUAGES];
+      expect(codes).toEqual(codes.map(c => c.toLowerCase()));
+      expect(codes).toEqual([...codes].sort((a, b) => a.localeCompare(b, 'en')));
+    });
+
+    it('should have no duplicates', () => {
+      expect(new Set(WRITE_TARGET_LANGUAGES).size).toBe(WRITE_TARGET_LANGUAGES.length);
+    });
+
+    it('should only contain languages the translate snapshot also knows', () => {
+      // Both lists come from the same GET /v3/languages, so a write target the
+      // main snapshot has never heard of means one of them was generated stale.
+      for (const code of WRITE_TARGET_LANGUAGES) {
+        expect(isValidLanguage(code)).toBe(true);
+      }
+    });
+
+    it('should be a subset of the target languages', () => {
+      const targets = new Set(getTargetLanguages().map(e => e.code));
+      for (const code of WRITE_TARGET_LANGUAGES) {
+        expect(targets.has(code)).toBe(true);
+      }
     });
   });
 

@@ -42,19 +42,32 @@ if (!existsSync(DERIVATION)) {
 const { deriveLanguageEntry } = await import(DERIVATION);
 
 const host = apiKey.endsWith(':fx') ? 'https://api-free.deepl.com' : 'https://api.deepl.com';
-const response = await fetch(`${host}/v3/languages?resource=translate_text`, {
-  headers: { Authorization: `DeepL-Auth-Key ${apiKey}` },
-});
-if (!response.ok) {
-  fail(`GET /v3/languages returned ${response.status} ${response.statusText}`);
+
+async function fetchResource(resource) {
+  const response = await fetch(`${host}/v3/languages?resource=${resource}`, {
+    headers: { Authorization: `DeepL-Auth-Key ${apiKey}` },
+  });
+  if (!response.ok) {
+    fail(`GET /v3/languages?resource=${resource} returned ${response.status} ${response.statusText}`);
+  }
+  const languages = await response.json();
+  if (!Array.isArray(languages) || languages.length === 0) {
+    fail(`GET /v3/languages?resource=${resource} returned no languages`);
+  }
+  return languages;
 }
 
-const languages = await response.json();
-if (!Array.isArray(languages) || languages.length === 0) {
-  fail('GET /v3/languages returned no languages');
-}
+const languages = await fetchResource('translate_text');
+const writeLanguages = await fetchResource('write');
 
 const entries = languages.map(deriveLanguageEntry);
+// The write endpoints take a target language only, so the list is filtered by
+// that role rather than run through deriveLanguageEntry -- write has no notion
+// of the core/regional/extended tiers.
+const writeTargets = writeLanguages
+  .filter(language => language.usable_as_target)
+  .map(language => language.lang.toLowerCase())
+  .sort((a, b) => a.localeCompare(b, 'en'));
 const byCode = (a, b) => a.code.localeCompare(b.code, 'en');
 const groups = [
   ['core', 'Core languages (full feature support: formality, glossary, all model types)'],
@@ -93,16 +106,51 @@ import type { LanguageEntry } from './language-registry.js';
 export const ENTRIES: LanguageEntry[] = [
 ${body}
 ];
+
+/**
+ * Target languages the Write API accepts, from resource=write.
+ *
+ * Unlike translation, \`write\` and \`correct\` reject a code outside this list
+ * locally rather than deferring to the API: the supported set is small enough
+ * to enumerate in the error, so naming the valid options beats a round trip.
+ * That makes keeping this generated the thing that stops it going stale.
+ *
+ * \`as const\` is load-bearing -- the WriteLanguage union in src/types/api.ts is
+ * derived from it, so adding a language upstream widens the type on regenerate
+ * instead of needing a second hand edit.
+ */
+export const WRITE_TARGET_LANGUAGES = [
+${writeTargets.map(code => `  '${code}',`).join('\n')}
+] as const;
 `;
 
 if (checkOnly) {
   const current = existsSync(TARGET) ? readFileSync(TARGET, 'utf8') : '';
   if (current === contents) {
-    console.log(`${entries.length} languages; snapshot is current.`);
+    console.log(
+      `${entries.length} languages, ${writeTargets.length} write targets; snapshot is current.`,
+    );
     process.exit(0);
   }
+  // Name which list moved: the two are generated from different resources, and
+  // "N languages upstream" is misleading when it is the write list that drifted.
+  const codesIn = (source, open, close) => {
+    const start = source.indexOf(open);
+    if (start === -1) return '';
+    const from = start + open.length;
+    const end = source.indexOf(close, from);
+    return (source.slice(from, end === -1 ? undefined : end).match(/'[a-z0-9-]+'/g) ?? []).join(',');
+  };
+  const blocks = [
+    ['translate_text', `${entries.length}`, 'export const ENTRIES', '\n];'],
+    ['write', `${writeTargets.length}`, 'export const WRITE_TARGET_LANGUAGES', '] as const;'],
+  ];
+  const drifted = blocks
+    .filter(([, , open, close]) => codesIn(current, open, close) !== codesIn(contents, open, close))
+    .map(([name, count]) => `${name} (${count} upstream)`);
+  const detail = drifted.length > 0 ? drifted.join(', ') : 'formatting only';
   console.error(
-    `error: ${path.relative(ROOT, TARGET)} is out of date with the API (${entries.length} languages upstream).\n` +
+    `error: ${path.relative(ROOT, TARGET)} is out of date with the API -- ${detail}.\n` +
       'Run: npm run generate:languages',
   );
   process.exit(1);
@@ -110,4 +158,7 @@ if (checkOnly) {
 
 writeFileSync(TARGET, contents);
 const counts = groups.map(([c]) => `${c} ${entries.filter(e => e.category === c).length}`);
-console.log(`wrote ${path.relative(ROOT, TARGET)}: ${entries.length} languages (${counts.join(', ')})`);
+console.log(
+  `wrote ${path.relative(ROOT, TARGET)}: ${entries.length} languages (${counts.join(', ')}), ` +
+    `${writeTargets.length} write targets`,
+);

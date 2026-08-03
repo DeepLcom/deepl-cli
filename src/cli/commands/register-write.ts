@@ -3,13 +3,20 @@ import { existsSync } from 'fs';
 import { atomicWriteFile } from '../../utils/atomic-write.js';
 import chalk from 'chalk';
 import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/index.js';
+import { WRITE_TARGET_LANGUAGES } from '../../data/language-entries.js';
 import { Logger } from '../../utils/logger.js';
 import { ExitCode } from '../../utils/exit-codes.js';
 import { isNoInput } from '../../utils/confirm.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
-export const WRITE_LANGUAGES = ['de', 'en', 'en-gb', 'en-us', 'es', 'fr', 'it', 'ja', 'ko', 'pt', 'pt-br', 'pt-pt', 'zh', 'zh-hans'] as const;
+/**
+ * Generated from GET /v3/languages?resource=write, so it cannot drift from what
+ * the API accepts. Unlike `translate --to`, a code outside this list is rejected
+ * locally rather than deferred to the API: at 14 entries the error can name every
+ * valid option, which beats a round trip.
+ */
+export const WRITE_LANGUAGES = WRITE_TARGET_LANGUAGES;
 /**
  * Codes are accepted in any casing and normalized to lowercase, matching
  * `translate --to` and the codes `deepl languages` prints. The Write API

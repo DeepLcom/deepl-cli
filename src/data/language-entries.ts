@@ -144,3 +144,32 @@ export const ENTRIES: LanguageEntry[] = [
   { code: 'yue', name: 'Cantonese', category: 'extended' },
   { code: 'zu', name: 'Zulu', category: 'extended' },
 ];
+
+/**
+ * Target languages the Write API accepts, from resource=write.
+ *
+ * Unlike translation, `write` and `correct` reject a code outside this list
+ * locally rather than deferring to the API: the supported set is small enough
+ * to enumerate in the error, so naming the valid options beats a round trip.
+ * That makes keeping this generated the thing that stops it going stale.
+ *
+ * `as const` is load-bearing -- the WriteLanguage union in src/types/api.ts is
+ * derived from it, so adding a language upstream widens the type on regenerate
+ * instead of needing a second hand edit.
+ */
+export const WRITE_TARGET_LANGUAGES = [
+  'de',
+  'en',
+  'en-gb',
+  'en-us',
+  'es',
+  'fr',
+  'it',
+  'ja',
+  'ko',
+  'pt',
+  'pt-br',
+  'pt-pt',
+  'zh',
+  'zh-hans',
+] as const;

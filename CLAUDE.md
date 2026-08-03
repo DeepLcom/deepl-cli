@@ -77,7 +77,7 @@ Use **Semantic Versioning** with **Conventional Commits**:
 
 ### When Cutting a Release
 
-1. Refresh the bundled language list: `npm run generate:languages` (needs `DEEPL_API_KEY` and a current build). Commit it if it changed — `npm run check:languages` reports drift without writing. The list is a generated snapshot of `GET /v3/languages`; a stale one no longer breaks translation, since validation defers to the API, but `deepl languages` offline and the derived tiers do go stale
+1. Refresh the bundled language lists: `npm run generate:languages` (needs `DEEPL_API_KEY` and a current build). Commit if changed — `npm run check:languages` reports which list drifted without writing. Both come from `GET /v3/languages`: the translation snapshot (`resource=translate_text`) and the Write target list (`resource=write`). A stale translation snapshot no longer breaks translation, since validation defers to the API, but `deepl languages` offline and the derived tiers do go stale. **A stale Write list does break `write`/`correct`**, which reject unknown codes locally — so this step matters most for that list
 2. Move Unreleased items to `## [X.Y.Z] - YYYY-MM-DD`
 3. Set the version with `npm version X.Y.Z --no-git-tag-version` (updates `package.json` and the lockfile together; the release workflow refuses to publish if the tag and `package.json` disagree)
 4. Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: <summary>"`

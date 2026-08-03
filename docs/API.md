@@ -754,6 +754,14 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 When `--style` or `--tone` is set for a target language that does not support it, the server returns a 4xx; the CLI converts that response into a `ValidationError` (exit code 6) that names the unsupported combination and points back to this table.
 
+This table is maintained by hand and reflects what the API **accepts**, which is not always what its metadata reports: `GET /v3/languages?resource=write` omits `writing_style` for `en`, yet `--style` with `--lang en` succeeds and returns what `--lang en-us` returns. Do not narrow this table to the metadata without re-checking behaviour.
+
+**Where the target-language list comes from:**
+
+The 14 languages are generated from `GET /v3/languages?resource=write` into `src/data/language-entries.ts` by `npm run generate:languages`, alongside the translation list, and `npm run check:languages` reports drift in either. The `WriteLanguage` type is derived from that same list, so a language added upstream widens it on regenerate rather than needing a second hand edit.
+
+Unlike `translate --to`, which passes a well-formed unknown code to the API, `write` and `correct` **reject** a code outside this list locally (exit 6) and name every valid option. The set is small enough to enumerate, so that beats a round trip — the reasoning that makes permissiveness right for translation does not transfer to 14 of 125 languages.
+
 **Output Options:**
 
 - `--alternatives, -a` - Show all improvement alternatives

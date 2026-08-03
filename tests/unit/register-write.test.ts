@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { WRITE_TARGET_LANGUAGES } from '../../src/data/language-entries';
 
 jest.mock('chalk', () => {
   const passthrough = (s: string) => s;
@@ -193,6 +194,35 @@ describe('registerWrite', () => {
       expect(handleError).toHaveBeenCalledWith(
         expect.objectContaining({ message: expect.stringContaining('Invalid language code') }),
       );
+    });
+
+    it('should reject a well-formed code the Write API does not support', async () => {
+      // Deliberately stricter than `translate --to`, which passes well-formed
+      // unknown codes to the API: the Write set is small enough to enumerate,
+      // so naming the valid options beats a round trip.
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'hi']);
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Invalid language code') }),
+      );
+      expect(mockWriteCommand.improve).not.toHaveBeenCalled();
+    });
+
+    it('should enumerate every supported language in the rejection', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'xx']);
+      const error = handleError.mock.calls[0]?.[0] as Error;
+      for (const code of WRITE_TARGET_LANGUAGES) {
+        expect(error.message).toContain(code);
+      }
+    });
+
+    it('should accept every language in the generated list', async () => {
+      for (const code of WRITE_TARGET_LANGUAGES) {
+        jest.clearAllMocks();
+        mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
+        mockWriteCommand.improve.mockResolvedValue('ok');
+        await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', code]);
+        expect(handleError).not.toHaveBeenCalled();
+      }
     });
 
     it.each(['ja', 'ko', 'zh', 'zh-hans'])('should accept new target language %s', async (lang) => {
