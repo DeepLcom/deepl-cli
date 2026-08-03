@@ -5,4 +5,4 @@
  * For CLI usage, see src/cli/index.ts
  */
 
-export * from './types';
+export * from './types/index.js';

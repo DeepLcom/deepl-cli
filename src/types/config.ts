@@ -2,7 +2,7 @@
  * Configuration type definitions
  */
 
-import { Language, Formality, OutputFormat } from './common';
+import { Language, Formality, OutputFormat } from './common.js';
 
 export interface DeepLConfig {
   auth: {
