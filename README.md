@@ -1044,6 +1044,22 @@ deepl languages --source
 # Show only target languages
 deepl languages --target
 
+# Show which features each language supports
+deepl languages --target --features
+# Target Languages:
+#   de        German — formality, glossary, style rules, translation memory, auto detection
+#   pt        Portuguese — formality, glossary, auto detection
+#   en-gb     English (British) — glossary, style rules, translation memory
+#   ...
+#   Extended Languages (quality_optimized only, no formality/glossary):
+#   th        Thai — style rules, translation memory, auto detection
+#   ...
+#
+#   All listed languages also support: tag handling.
+
+# The same matrix as columns
+deepl languages --target --features --format table
+
 # Works without API key (shows local registry data)
 deepl languages
 ```
@@ -1053,6 +1069,8 @@ deepl languages
 - **Core** (32) — Full feature support including formality and glossaries
 - **Regional** (7) — Target-only variants: `en-gb`, `en-us`, `es-419`, `pt-br`, `pt-pt`, `zh-hans`, `zh-hant`
 - **Extended** (82) — Only support `quality_optimized` model, no formality or glossary
+
+`--features` is finer-grained than these tiers — some extended languages do support style rules and translation memory. It needs an API key, since the local registry carries no feature data. A feature only gets its own column when support differs across the languages listed; one supported by all of them is summarised on the last line instead of repeated on every row.
 
 See [examples/24-languages.sh](./examples/24-languages.sh) for a complete example.
 

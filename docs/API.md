@@ -2362,6 +2362,7 @@ You can filter to show only source languages, only target languages, or both (de
 
 - `--source, -s` - Show only source languages
 - `--target` - Show only target languages
+- `--features` - Show which features each language supports (requires an API key; the local registry carries no feature data)
 - `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 #### Examples
@@ -2399,6 +2400,23 @@ deepl languages --source
 # Show only target languages
 deepl languages --target
 
+# Show which features each language supports
+deepl languages --target --features
+# Target Languages:
+#   de        German — formality, glossary, style rules, translation memory, auto detection
+#   pt        Portuguese — formality, glossary, auto detection
+#   en-gb     English (British) — glossary, style rules, translation memory
+#   ...
+#   Extended Languages (quality_optimized only, no formality/glossary):
+#   hi        Hindi — auto detection
+#   th        Thai — style rules, translation memory, auto detection
+#   ...
+#
+#   All listed languages also support: tag handling.
+
+# The same matrix as columns
+deepl languages --target --features --format table
+
 # Works without API key (shows local registry data)
 deepl languages
 # Note: No API key configured. Showing local language registry only.
@@ -2411,11 +2429,21 @@ deepl languages
 - Target languages that support the `--formality` parameter are marked with `[F]` (requires API key)
 - Language codes are left-aligned and padded for readability
 
+**Feature matrix (`--features`):**
+
+- Feature support comes from `GET /v3/languages`; a feature is supported when the API reports it for that language
+- Which features are shown is derived from the response, not a fixed list. A feature only appears when its support differs across the languages listed; one supported by all of them is reported once as `All listed languages also support: ...` instead of being repeated on every row
+- Because of that, the columns differ between listings: `auto detection` appears under `--target` (target-only variants lack it) but is uniform under `--source`
+- A feature that is not yet generally available shows its status instead of `yes`, e.g. `glossary (beta)`
+- `--features` replaces the `[F]` shorthand, since formality is one of the reported features
+- `--format json` includes a raw `features` object with each feature's status, but only when `--features` is passed
+
 **Notes:**
 
 - Source and target language lists differ: 7 regional variants (en-gb, en-us, es-419, pt-br, pt-pt, zh-hans, zh-hant) are target-only
 - Extended languages (82 codes) only support `quality_optimized` model type and do not support formality or glossary features
-- Without an API key, the command shows all languages from the local registry with a warning
+- The extended tier is a coarser signal than the feature matrix: some extended languages do support style rules and translation memory even though they support neither formality nor glossary
+- Without an API key, the command shows all languages from the local registry with a warning; `--features` additionally warns that it needs a key
 
 ---
 
