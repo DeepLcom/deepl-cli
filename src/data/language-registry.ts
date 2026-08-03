@@ -15,7 +15,7 @@
  * - **regional**: Target-only variants of core languages (e.g., en-gb, pt-br)
  * - **extended**: quality_optimized model only; no formality or glossary support
  */
-import { ENTRIES } from './language-entries.js';
+import { ENTRIES as GENERATED_ENTRIES } from './language-entries.js';
 
 /**
  * Feature-availability tier for a language.
@@ -37,6 +37,13 @@ export interface LanguageEntry {
   category: LanguageCategory;
   targetOnly?: boolean;
 }
+
+/**
+ * The snapshot as plain entries. It is generated `as const` so the `Language`
+ * union can be derived from its codes; the lookups below want the interface, not
+ * 125 individual literal types.
+ */
+const ENTRIES: readonly LanguageEntry[] = GENERATED_ENTRIES;
 
 /** Read-only map of language code to its registry entry. Primary lookup structure. */
 export const LANGUAGE_REGISTRY: ReadonlyMap<string, LanguageEntry> = new Map(

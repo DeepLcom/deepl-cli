@@ -9,10 +9,14 @@
  * the CLI can list and validate languages without a network call or API key.
  * It may therefore lag the API, which is why callers accept well-formed codes
  * it does not contain rather than rejecting them.
+ *
+ * `as const` is load-bearing: the Language union in src/types/common.ts is
+ * derived from these codes, so a language added upstream widens the type on
+ * regenerate instead of needing a second hand-kept copy of the same list.
  */
 import type { LanguageEntry } from './language-registry.js';
 
-export const ENTRIES: LanguageEntry[] = [
+export const ENTRIES = [
   // Core languages (full feature support: formality, glossary, all model types)
   { code: 'ar', name: 'Arabic', category: 'core' },
   { code: 'bg', name: 'Bulgarian', category: 'core' },
@@ -143,7 +147,7 @@ export const ENTRIES: LanguageEntry[] = [
   { code: 'yi', name: 'Yiddish', category: 'extended' },
   { code: 'yue', name: 'Cantonese', category: 'extended' },
   { code: 'zu', name: 'Zulu', category: 'extended' },
-];
+] as const satisfies readonly LanguageEntry[];
 
 /**
  * Target languages the Write API accepts, from resource=write.

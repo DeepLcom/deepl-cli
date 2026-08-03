@@ -10,12 +10,22 @@ import {
   deriveLanguageEntry,
   looksLikeLanguageTag,
 } from '../../src/data/language-registry';
-import { WRITE_TARGET_LANGUAGES } from '../../src/data/language-entries';
+import { ENTRIES, WRITE_TARGET_LANGUAGES } from '../../src/data/language-entries';
+import type { Language } from '../../src/types/common';
+
+/**
+ * Counts are compared against the snapshot rather than written out, so
+ * regenerating it -- the documented release step -- does not turn this suite red
+ * for a change it is supposed to accept. Drift from the API is checked by
+ * "npm run check:languages", which is where that belongs.
+ */
+const TIERS = ['core', 'regional', 'extended'] as const;
+const entriesIn = (category: string) => ENTRIES.filter(e => e.category === category);
 
 describe('Language Registry', () => {
   describe('LANGUAGE_REGISTRY', () => {
-    it('should contain 125 language entries', () => {
-      expect(LANGUAGE_REGISTRY.size).toBe(125);
+    it('should contain one entry per snapshot language', () => {
+      expect(LANGUAGE_REGISTRY.size).toBe(ENTRIES.length);
     });
 
     it('should have unique language codes', () => {
@@ -24,19 +34,27 @@ describe('Language Registry', () => {
       expect(unique.size).toBe(codes.length);
     });
 
-    it('should contain all 32 core languages', () => {
-      const core = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category === 'core');
-      expect(core.length).toBe(32);
+    it.each(TIERS)('should contain every %s language from the snapshot', category => {
+      const inRegistry = Array.from(LANGUAGE_REGISTRY.values()).filter(
+        e => e.category === category,
+      );
+      expect(inRegistry.length).toBe(entriesIn(category).length);
+      expect(inRegistry.length).toBeGreaterThan(0);
     });
 
-    it('should contain all 11 regional variants', () => {
-      const regional = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category === 'regional');
-      expect(regional.length).toBe(11);
+    it('should place every entry in exactly one known tier', () => {
+      expect(TIERS.map(entriesIn).reduce((sum, group) => sum + group.length, 0)).toBe(
+        ENTRIES.length,
+      );
     });
 
-    it('should contain all 82 extended languages', () => {
-      const extended = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category === 'extended');
-      expect(extended.length).toBe(82);
+    /**
+     * Mirrors the generator's floor: the tiers come from the features matrix, so
+     * a matrix that stopped reporting `glossary` would retier every language as
+     * extended and make --formality and --glossary unusable everywhere.
+     */
+    it('should keep a plausible number of core languages', () => {
+      expect(entriesIn('core').length).toBeGreaterThanOrEqual(20);
     });
 
     it('should mark regional variants as targetOnly', () => {
@@ -178,14 +196,16 @@ describe('Language Registry', () => {
       expect(codes).toContain('sw');
     });
 
-    it('should return 114 languages (125 - 11 regional)', () => {
-      expect(getSourceLanguages().length).toBe(114);
+    it('should return every language that is not target-only', () => {
+      const targetOnly = ENTRIES.filter(e => 'targetOnly' in e && e.targetOnly).length;
+      expect(getSourceLanguages().length).toBe(ENTRIES.length - targetOnly);
+      expect(targetOnly).toBeGreaterThan(0);
     });
   });
 
   describe('getTargetLanguages()', () => {
     it('should include all languages', () => {
-      expect(getTargetLanguages().length).toBe(125);
+      expect(getTargetLanguages().length).toBe(ENTRIES.length);
     });
 
     it('should include regional variants', () => {
@@ -198,9 +218,9 @@ describe('Language Registry', () => {
   });
 
   describe('getAllLanguageCodes()', () => {
-    it('should return set of all 125 codes', () => {
+    it('should return a set of every snapshot code', () => {
       const codes = getAllLanguageCodes();
-      expect(codes.size).toBe(125);
+      expect(codes.size).toBe(ENTRIES.length);
     });
 
     it('should support has() lookups', () => {
@@ -213,9 +233,9 @@ describe('Language Registry', () => {
   });
 
   describe('getExtendedLanguageCodes()', () => {
-    it('should return set of 82 extended codes', () => {
+    it('should return a set of every extended code', () => {
       const codes = getExtendedLanguageCodes();
-      expect(codes.size).toBe(82);
+      expect(codes.size).toBe(entriesIn('extended').length);
     });
 
     it('should only contain extended language codes', () => {
@@ -331,6 +351,25 @@ describe('Language Registry', () => {
           features: { glossary: { status: 'stable' } },
         }),
       ).toEqual(de);
+    });
+  });
+
+  describe('Language union', () => {
+    /**
+     * Compile-time, not runtime: these assignments fail to build if the union
+     * goes back to being hand-written and falls behind the snapshot again, which
+     * is exactly how de-ch, de-de, fr-ca and fr-fr came to be missing from it.
+     */
+    it('should cover the regional variants a hand-written union had missed', () => {
+      const codes: Language[] = ['de-ch', 'de-de', 'fr-ca', 'fr-fr'];
+      codes.forEach(code => expect(isValidLanguage(code)).toBe(true));
+    });
+
+    it('should still exclude a code the snapshot does not list', () => {
+      // @ts-expect-error 'zz' is not a snapshot language; widening Language to
+      // string would make this directive unused and fail the build.
+      const unknown: Language = 'zz';
+      expect(isValidLanguage(unknown)).toBe(false);
     });
   });
 
