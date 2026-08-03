@@ -251,7 +251,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--non-splitting-tags TAGS` - Comma-separated XML tags that should not be used to split sentences (requires `--tag-handling xml`)
 - `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
 - `--tag-handling-version VERSION` - Tag handling version: `v1`, `v2`. v2 improves XML/HTML structure handling (requires `--tag-handling`)
-- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
+- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. Repeatable, up to 5 per request; when several glossaries define the same source term, the last one given wins. Passing a 6th exits 6 (ValidationError).
 - `--translation-memory NAME-OR-UUID` - Use translation memory by name or UUID (forces `quality_optimized` model). Requires `--from` because TMs are pinned to a specific source→target language pair. Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--tm-threshold N` - Minimum match score 0–100 (default 75, requires `--translation-memory`). Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--custom-instruction INSTRUCTION` - Custom instruction for translation (repeatable, max 10, max 300 chars each). Forces `quality_optimized` model. Cannot be used with `latency_optimized`.
@@ -541,6 +541,24 @@ deepl translate "API documentation" --to es --glossary tech-terms
 # Use glossary by ID
 deepl translate README.md --to fr --glossary abc-123-def-456 --output README.fr.md
 ```
+
+**Multiple glossaries on one request:**
+
+Repeat `--glossary` to apply up to 5 glossaries to a single request. Their entries are merged, so terms unique to each glossary all apply. When more than one glossary defines the same source term, the **last** `--glossary` on the command line wins — order is significant, and reordering the flags produces a different translation (and a separate cache entry). Names and UUIDs can be mixed; each value is resolved independently. A 6th `--glossary` exits 6 (ValidationError), and an unresolvable name exits 7 (ConfigError) without sending a translation request.
+
+```bash
+# Shared base terminology, overridden by project-specific terms
+deepl translate "Hello world" --to de --glossary base-terms --glossary project-overrides
+
+# Reversing the order makes base-terms win any conflicting entry
+deepl translate "Hello world" --to de --glossary project-overrides --glossary base-terms
+
+# Names and UUIDs can be mixed
+deepl translate README.md --to fr --output README.fr.md \
+  --glossary abc-123-def-456 --glossary house-style
+```
+
+A single `--glossary` is still sent as the API's `glossary_id`, so existing commands and their cached results are unaffected.
 
 **Translation memory usage:**
 

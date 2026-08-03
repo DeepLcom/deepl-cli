@@ -1280,6 +1280,12 @@ authentication	Authentifizierung
 - **Smart defaults** - `--target` flag only required for multilingual glossaries
 - **Visual indicators** - 📖 for single-target, 📚 for multilingual glossaries
 - **Translation integration** - Use `--glossary` flag in translate and watch commands to apply glossary terms
+- **Several glossaries at once** - Repeat `--glossary` on `translate` for up to 5 glossaries; entries are merged and the last glossary given wins any conflicting term
+
+```bash
+# Layer project overrides on top of shared base terminology
+deepl translate "Hello world" --to de --glossary base-terms --glossary project-overrides
+```
 
 ### Translation Memories
 

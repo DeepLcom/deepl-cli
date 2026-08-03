@@ -35,6 +35,13 @@ request	Anfrage
 response	Antwort
 EOF
 
+# Create an override glossary (EN → DE) that redefines one term from the tech
+# glossary, so the precedence between two glossaries is visible in the output
+cat > "$SAMPLE_DIR/override-glossary.tsv" << 'EOF'
+endpoint	Schnittstelle
+webhook	Webhook
+EOF
+
 # Create a business terminology glossary (EN → ES)
 cat > "$SAMPLE_DIR/business-glossary.tsv" << 'EOF'
 stakeholder	parte interesada
@@ -59,7 +66,7 @@ echo
 # from a clean slate.
 echo "0. Pre-run cleanup of any leftover demo glossaries"
 if command -v jq &>/dev/null; then
-  DEMO_NAMES='tech-terms-demo tech-terms-renamed tech-final business-terms-demo multi-demo'
+  DEMO_NAMES='tech-terms-demo tech-terms-renamed tech-final business-terms-demo multi-demo override-terms-demo'
   for name in $DEMO_NAMES; do
     deepl glossary list --format json 2>/dev/null \
       | jq -r --arg n "$name" '.[] | select(.name == $n) | .glossary_id' 2>/dev/null \
@@ -195,6 +202,22 @@ deepl translate "The API endpoint requires authentication." --from en --to de --
 
 echo
 
+echo "   Repeat --glossary to apply up to 5 glossaries to one request."
+echo "   Entries are merged; on a term both define, the LAST glossary wins."
+deepl glossary create override-terms-demo en de "$SAMPLE_DIR/override-glossary.tsv"
+
+echo
+echo "   Both glossaries, override last -> 'endpoint' becomes Schnittstelle:"
+deepl translate "The API endpoint requires authentication." --from en --to de \
+  --glossary tech-terms-renamed --glossary override-terms-demo
+
+echo
+echo "   Same two glossaries reversed -> 'endpoint' stays Endpunkt:"
+deepl translate "The API endpoint requires authentication." --from en --to de \
+  --glossary override-terms-demo --glossary tech-terms-renamed
+
+echo
+
 # ═══════════════════════════════════════════════════════
 # ADVANCED OPERATIONS
 # ═══════════════════════════════════════════════════════
@@ -230,6 +253,9 @@ deepl glossary delete tech-final --yes 2>/dev/null || echo "   (Already deleted)
 
 echo "   Deleting business-terms-demo..."
 deepl glossary delete business-terms-demo --yes 2>/dev/null || echo "   (Already deleted)"
+
+echo "   Deleting override-terms-demo..."
+deepl glossary delete override-terms-demo --yes 2>/dev/null || echo "   (Already deleted)"
 
 echo "   Deleting multi-demo..."
 deepl glossary delete multi-demo --yes 2>/dev/null || echo "   (Already deleted)"
