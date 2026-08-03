@@ -2,6 +2,7 @@ import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { TranslationOptions, Language, TranslationMemory } from '../types/index.js';
 import { NetworkError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
+import { resolveGlossaryWireParams } from '../utils/glossary-params.js';
 import { LANGUAGE_REGISTRY } from '../data/language-registry.js';
 import { Logger } from '../utils/logger.js';
 
@@ -315,8 +316,9 @@ export class TranslationClient extends HttpClient {
       params['formality'] = normalizeFormality(options.formality, 'text');
     }
 
-    if (options.glossaryId) {
-      params['glossary_id'] = options.glossaryId;
+    const glossaryParams = resolveGlossaryWireParams(options);
+    if (glossaryParams) {
+      Object.assign(params, glossaryParams);
     }
 
     if (options.translationMemoryId) {

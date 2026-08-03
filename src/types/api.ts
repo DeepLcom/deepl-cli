@@ -13,6 +13,12 @@ export interface TranslationOptions {
   sourceLang?: Language;
   targetLang: Language;
   glossaryId?: string;
+  /**
+   * Two to five glossaries applied to one request. Their entries are merged;
+   * when more than one defines the same source term the last one wins, so the
+   * order is significant. Mutually exclusive with `glossaryId`.
+   */
+  glossaryIds?: string[];
   translationMemoryId?: string;
   translationMemoryThreshold?: number;
   formality?: Formality;
@@ -131,6 +137,8 @@ export interface DocumentTranslationOptions {
   filename?: string;
   formality?: Formality;
   glossaryId?: string;
+  /** See `TranslationOptions.glossaryIds`. */
+  glossaryIds?: string[];
   outputFormat?: DocumentOutputFormat;
   enableDocumentMinification?: boolean;
 }

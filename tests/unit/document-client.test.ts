@@ -121,6 +121,83 @@ describe('DocumentClient', () => {
       expect(mockAxiosInstance.request).toHaveBeenCalled();
     });
 
+    describe('glossary params', () => {
+      const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+      const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+      beforeEach(() => {
+        mockAxiosInstance.request.mockResolvedValue({
+          data: { document_id: 'doc-1', document_key: 'key-1' },
+          status: 200,
+          headers: {},
+        });
+      });
+
+      const getMultipartBody = (): string => {
+        const call = mockAxiosInstance.request.mock.calls[0]?.[0];
+        return (call?.data?.getBuffer?.() as Buffer | undefined)?.toString('utf8') ?? '';
+      };
+
+      const upload = async (options: Record<string, unknown>): Promise<void> => {
+        await client.uploadDocument(Buffer.from('content'), {
+          targetLang: 'de',
+          filename: 'doc.txt',
+          ...options,
+        } as any);
+      };
+
+      it('should send glossary_id for a single glossaryId', async () => {
+        await upload({ glossaryId: A });
+        const body = getMultipartBody();
+        expect(body).toContain('name="glossary_id"');
+        expect(body).toContain(A);
+        expect(body).not.toContain('name="glossary_ids"');
+      });
+
+      it('should send glossary_id when glossaryIds holds exactly one ID', async () => {
+        await upload({ glossaryIds: [A] });
+        const body = getMultipartBody();
+        expect(body).toContain('name="glossary_id"');
+        expect(body).not.toContain('name="glossary_ids"');
+      });
+
+      /**
+       * Multipart uploads keep only the first of several repeated fields, so the
+       * IDs must arrive comma-joined or every glossary after the first is
+       * silently dropped by the API.
+       */
+      it('should comma-join several glossary IDs into one glossary_ids field', async () => {
+        await upload({ glossaryIds: [A, B] });
+        const body = getMultipartBody();
+        expect(body).toContain('name="glossary_ids"');
+        expect(body).toContain(`${A},${B}`);
+        expect(body).not.toContain('name="glossary_id"\r\n');
+        expect(body.match(/name="glossary_ids"/g)).toHaveLength(1);
+      });
+
+      it('should not pad the joined IDs with whitespace, which voids the parameter', async () => {
+        await upload({ glossaryIds: [A, B] });
+        expect(getMultipartBody()).not.toContain(`${A}, ${B}`);
+      });
+
+      it('should keep the caller order, since the last glossary wins', async () => {
+        await upload({ glossaryIds: [B, A] });
+        expect(getMultipartBody()).toContain(`${B},${A}`);
+      });
+
+      it('should reject more than five glossaries before uploading', async () => {
+        await expect(
+          upload({ glossaryIds: [A, B, A, B, A, B] }),
+        ).rejects.toThrow(/maximum of 5 glossaries/);
+        expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+      });
+
+      it('should reject glossaryId combined with glossaryIds', async () => {
+        await expect(upload({ glossaryId: A, glossaryIds: [B] })).rejects.toThrow(/Cannot combine/);
+        expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+      });
+    });
+
     it('should handle API errors', async () => {
       const axiosError = {
         isAxiosError: true,

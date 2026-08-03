@@ -244,6 +244,84 @@ describe('TranslationClient', () => {
     });
   });
 
+  describe('glossary params', () => {
+    const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const C = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+    beforeEach(() => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { translations: [{ text: 'Hola' }] },
+        status: 200,
+        headers: {},
+      });
+    });
+
+    const getRequestBody = (): string => {
+      const call = mockAxiosInstance.request.mock.calls[0]?.[0];
+      return (call?.data ?? '') as string;
+    };
+
+    it('should send glossary_id for a single glossaryId', async () => {
+      await client.translate('Hello', { targetLang: 'es', glossaryId: A });
+      const body = getRequestBody();
+      expect(body).toContain(`glossary_id=${A}`);
+      expect(body).not.toContain('glossary_ids');
+    });
+
+    it('should send glossary_id when glossaryIds holds exactly one ID', async () => {
+      await client.translate('Hello', { targetLang: 'es', glossaryIds: [A] });
+      const body = getRequestBody();
+      expect(body).toContain(`glossary_id=${A}`);
+      expect(body).not.toContain('glossary_ids');
+    });
+
+    it('should send repeated glossary_ids fields for several glossaries', async () => {
+      await client.translate('Hello', { targetLang: 'es', glossaryIds: [A, B, C] });
+      const body = getRequestBody();
+      expect(body).toContain(`glossary_ids=${A}`);
+      expect(body).toContain(`glossary_ids=${B}`);
+      expect(body).toContain(`glossary_ids=${C}`);
+      expect(body).not.toMatch(/(^|&)glossary_id=/);
+    });
+
+    it('should keep the caller order on the wire, since the last glossary wins', async () => {
+      await client.translate('Hello', { targetLang: 'es', glossaryIds: [C, A] });
+      expect(getRequestBody()).toContain(`glossary_ids=${C}&glossary_ids=${A}`);
+    });
+
+    it('should omit glossary params entirely when none are set', async () => {
+      await client.translate('Hello', { targetLang: 'es' });
+      expect(getRequestBody()).not.toContain('glossary');
+    });
+
+    it('should reject more than five glossaries before sending a request', async () => {
+      await expect(
+        client.translate('Hello', { targetLang: 'es', glossaryIds: [A, B, C, A, B, C] }),
+      ).rejects.toThrow(/maximum of 5 glossaries/);
+      expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+    });
+
+    it('should reject glossaryId combined with glossaryIds', async () => {
+      await expect(
+        client.translate('Hello', { targetLang: 'es', glossaryId: A, glossaryIds: [B] }),
+      ).rejects.toThrow(/Cannot combine/);
+      expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+    });
+
+    it('should apply the same shape to translateBatch', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { translations: [{ text: 'Hola' }, { text: 'Adios' }] },
+        status: 200,
+        headers: {},
+      });
+      await client.translateBatch(['Hello', 'Bye'], { targetLang: 'es', glossaryIds: [A, B] });
+      const body = getRequestBody();
+      expect(body).toContain(`glossary_ids=${A}`);
+      expect(body).toContain(`glossary_ids=${B}`);
+    });
+  });
+
   describe('getUsage()', () => {
     it('should return usage information', async () => {
       mockAxiosInstance.request.mockResolvedValue({

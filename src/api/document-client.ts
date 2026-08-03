@@ -2,6 +2,10 @@ import { HttpClient, DeepLClientOptions } from './http-client.js';
 import { DocumentTranslationOptions, DocumentHandle, DocumentStatus } from '../types/index.js';
 import { ValidationError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
+import {
+  resolveGlossaryWireParams,
+  encodeGlossaryIdsForMultipart,
+} from '../utils/glossary-params.js';
 
 interface DeepLDocumentUploadResponse {
   document_id: string;
@@ -58,8 +62,16 @@ export class DocumentClient extends HttpClient {
           if (options.formality) {
             formData.append('formality', normalizeFormality(options.formality, 'text'));
           }
-          if (options.glossaryId) {
-            formData.append('glossary_id', options.glossaryId);
+          const glossaryParams = resolveGlossaryWireParams(options);
+          if (glossaryParams) {
+            if ('glossary_id' in glossaryParams) {
+              formData.append('glossary_id', glossaryParams.glossary_id);
+            } else {
+              formData.append(
+                'glossary_ids',
+                encodeGlossaryIdsForMultipart(glossaryParams.glossary_ids),
+              );
+            }
           }
           if (options.outputFormat) {
             formData.append('output_format', options.outputFormat);
