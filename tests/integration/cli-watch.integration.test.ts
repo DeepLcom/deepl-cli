@@ -226,13 +226,33 @@ describe('Watch Service Integration', () => {
   });
 
   describe('getStats()', () => {
-    const waitFor = async (condition: () => boolean, timeoutMs = 5000): Promise<void> => {
+    /**
+     * `nudge` re-touches the file being waited on. fsevents can drop the
+     * notification for a file created in the moment after 'ready' fires, while
+     * the stream is still arming: the event then never arrives at all rather
+     * than arriving late (observed adds land in ~20ms or not within 5s), and
+     * `ignoreInitial: true` means no rescan recovers it. Re-touching does not
+     * weaken the assertion — a watcher that fails to count adds never reaches
+     * the expected value however often the file is touched.
+     */
+    const waitForFilesWatched = async (
+      expected: number,
+      nudge?: () => void,
+      timeoutMs = 5000,
+    ): Promise<void> => {
       const start = Date.now();
-      while (!condition()) {
+      let lastNudge = start;
+      while (watchService.getStats().filesWatched !== expected) {
         if (Date.now() - start > timeoutMs) {
-          throw new Error('Timed out waiting for condition');
+          throw new Error(
+            `Timed out waiting for filesWatched === ${expected}, last saw ${watchService.getStats().filesWatched}`,
+          );
         }
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        if (nudge && Date.now() - lastNudge > 500) {
+          lastNudge = Date.now();
+          nudge();
+        }
       }
     };
 
@@ -290,10 +310,10 @@ describe('Watch Service Integration', () => {
 
       const newFile = path.join(tmpDir, 'b.txt');
       fs.writeFileSync(newFile, 'World');
-      await waitFor(() => watchService.getStats().filesWatched === 2);
+      await waitForFilesWatched(2, () => fs.writeFileSync(newFile, 'World again'));
 
       fs.unlinkSync(newFile);
-      await waitFor(() => watchService.getStats().filesWatched === 1);
+      await waitForFilesWatched(1);
     });
 
     it('should increment error count on translation failure', async () => {
