@@ -21,6 +21,9 @@ function hasSuspiciousChars(name: string): boolean {
 
 const LIST_CACHE_TTL_MS = 60_000;
 
+/** Language pairs to name in a coverage error before summarizing the rest. */
+const MAX_PAIRS_IN_SUGGESTION = 8;
+
 /**
  * Characters the glossary TSV wire format reserves as column and row
  * separators. A term containing one of them cannot survive the round trip:
@@ -217,9 +220,15 @@ export class GlossaryService {
         );
       const missing = expected.targets.filter(target => !covered(target));
       if (missing.length > 0) {
-        const pairs = match.dictionaries
-          .map(d => `${d.source_lang.toLowerCase()}→${d.target_lang.toLowerCase()}`)
-          .join(', ');
+        const allPairs = match.dictionaries.map(
+          d => `${d.source_lang.toLowerCase()}→${d.target_lang.toLowerCase()}`,
+        );
+        // A multilingual glossary can hold dozens of dictionaries, and the whole
+        // cross-product on one line stops being a suggestion.
+        const pairs =
+          allPairs.length > MAX_PAIRS_IN_SUGGESTION
+            ? `${allPairs.slice(0, MAX_PAIRS_IN_SUGGESTION).join(', ')} and ${allPairs.length - MAX_PAIRS_IN_SUGGESTION} more`
+            : allPairs.join(', ');
         throw new ConfigError(
           `Glossary "${sanitizeForError(nameOrId)}" does not support the requested language pair`,
           `Glossary covers ${pairs}; requested ${from}→${missing.map(t => t.toLowerCase()).join(',')}.`,

@@ -4,7 +4,11 @@ import { ValidationError } from '../../../utils/errors.js';
 import type { Language } from '../../../types/index.js';
 import type { DocumentTranslationOptions } from '../../../types/api.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
-import { warnIgnoredOptions, validateLanguageCodes } from './translate-utils.js';
+import {
+  warnIgnoredOptions,
+  validateLanguageCodes,
+  validateExtendedLanguageConstraints,
+} from './translate-utils.js';
 import { buildBaseTranslationOptions, applyGlossarySelection } from './translation-options-factory.js';
 import { applyGlossarySourceLang } from '../../../utils/glossary-params.js';
 
@@ -22,6 +26,10 @@ export class DocumentTranslationHandler {
     warnIgnoredOptions('document', options, supported);
 
     validateLanguageCodes([options.to]);
+    // Documents support glossaries now, which makes the extended-tier constraint
+    // reachable here: without this the upload happens and the API rejects it,
+    // while the text path says so locally.
+    validateExtendedLanguageConstraints(options.to, options);
 
     // The API rejects a document glossary without source_lang: "source_lang has
     // to be specified in order to use a glossary."

@@ -4,7 +4,11 @@ import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createTranslateCommand, type ServiceDeps } from './service-factory.js';
-import { MAX_GLOSSARIES_PER_REQUEST } from '../../utils/glossary-params.js';
+import {
+  MAX_GLOSSARIES_PER_REQUEST,
+  applyGlossarySourceLang,
+  hasGlossarySelection,
+} from '../../utils/glossary-params.js';
 
 export function registerTranslate(
   program: Command,
@@ -163,6 +167,17 @@ Examples:
           throw new ValidationError(
             '--translation-memory requires quality_optimized model type',
             'Remove --model-type or set --model-type quality_optimized',
+          );
+        }
+
+        // Checked before --dry-run reports the command as runnable. Glossary name
+        // resolution still needs the API and stays out of dry-run, but the
+        // requirement that a glossary carry a source language does not.
+        if (hasGlossarySelection(options)) {
+          applyGlossarySourceLang(
+            options,
+            deps.getConfigService().getValue<string>('defaults.sourceLang'),
+            'Example: deepl translate --from en --to es --glossary my-glossary "Hello"',
           );
         }
 

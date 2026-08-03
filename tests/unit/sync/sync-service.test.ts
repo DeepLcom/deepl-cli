@@ -2424,7 +2424,12 @@ describe('SyncService', () => {
         translation: { glossary: 'my-glossary' },
       }));
 
-      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      // With the configured pair, so a glossary that does not cover it fails here
+      // rather than once per file.
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
+        from: 'en',
+        targets: ['de'],
+      });
     });
 
     it('should not resolve glossary during dryRun', async () => {
