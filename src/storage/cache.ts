@@ -66,11 +66,13 @@ function isCorruptionError(error: unknown): boolean {
  * Current on-disk schema version for the SQLite cache. Stamped into
  * `PRAGMA user_version` on fresh DBs and checked on every open. Bumping
  * this number means "future callers will read a DB laid out differently."
- * Pre-versioned databases (created before this field existed) report
- * `user_version = 0` and are upgrade-stamped in place without data
- * migration — the schema is backward-compatible.
+ *
+ * Version 2 marks a change in how translation cache keys are computed. Opening
+ * an older DB drops the `translation:` rows -- no reader can reach them again --
+ * and leaves every other namespace in place, since their keys are unchanged. The
+ * table layout is identical in all versions, so nothing is migrated.
  */
-const CACHE_SCHEMA_VERSION = 1;
+const CACHE_SCHEMA_VERSION = 2;
 
 export class CacheService {
   private static instance: CacheService | null = null;
@@ -243,6 +245,13 @@ export class CacheService {
     `);
 
     if (userVersion < CACHE_SCHEMA_VERSION) {
+      // Only the translation namespace: its key derivation changed, so those rows
+      // address entries no reader can reach again, and leaving them would let
+      // them occupy the size budget and `cache stats` until their TTL expires.
+      // Every other namespace (write, correct) keys the same way it always did
+      // and is read in place. A fresh DB has no rows, so this is a no-op on
+      // first open.
+      this.db.exec("DELETE FROM cache WHERE key LIKE 'translation:%'");
       this.db.exec(`PRAGMA user_version = ${CACHE_SCHEMA_VERSION}`);
     }
   }

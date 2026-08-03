@@ -76,16 +76,16 @@ describe('CacheService', () => {
       expect(result).toEqual({ journal_mode: 'wal' });
     });
 
-    it('should stamp user_version = 1 on a fresh database', () => {
+    it('should stamp the current schema version on a fresh database', () => {
       const db = (cacheService as any).db;
-      const result = db.prepare('PRAGMA user_version').get();
-      expect(result).toEqual({ user_version: 1 });
+      const result = db.prepare('PRAGMA user_version').get() as { user_version: number };
+      expect(result.user_version).toBe(2);
     });
 
     it('should upgrade-stamp a pre-versioned (user_version=0) database in place', () => {
-      // Simulate a DB created before schema versioning: stamp 0, close,
-      // reopen via a new CacheService, verify it got stamped to 1 and
-      // existing data survived.
+      // Simulate a DB created before schema versioning: stamp 0, close, reopen
+      // via a new CacheService, verify it got stamped and non-translation data
+      // survived.
       const db = (cacheService as any).db;
       db.exec('PRAGMA user_version = 0');
       cacheService.set('preexisting', { text: 'survives' });
@@ -94,8 +94,29 @@ describe('CacheService', () => {
       const reopened = new CacheService({ dbPath: testCachePath });
       try {
         const reopenedDb = (reopened as any).db;
-        expect(reopenedDb.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
+        expect(
+          (reopenedDb.prepare('PRAGMA user_version').get() as { user_version: number })
+            .user_version,
+        ).toBe(2);
         expect(reopened.get('preexisting')).toEqual({ text: 'survives' });
+      } finally {
+        reopened.close();
+      }
+    });
+
+    it('should drop only translation rows when upgrading an older database', () => {
+      // Translation keys are derived differently from version 2 on, so those rows
+      // are unreachable; every other namespace keys the same way and is kept.
+      const db = (cacheService as any).db;
+      db.exec('PRAGMA user_version = 1');
+      cacheService.set('translation:oldhash', { text: 'unreachable' });
+      cacheService.set('write:samehash', { text: 'still reachable' });
+      cacheService.close();
+
+      const reopened = new CacheService({ dbPath: testCachePath });
+      try {
+        expect(reopened.get('translation:oldhash')).toBeNull();
+        expect(reopened.get('write:samehash')).toEqual({ text: 'still reachable' });
       } finally {
         reopened.close();
       }

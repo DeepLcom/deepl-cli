@@ -393,9 +393,11 @@ export class TranslationService {
    * intentional — the API receives the un-normalized bytes, so the cache keys
    * on exactly what is sent.
    *
-   * New fields are appended after the existing ones so that keys for requests
-   * not using them stay unchanged. `glossaryIds` is hashed in the caller's
-   * order rather than sorted, because reordering the list changes which
+   * New fields are appended after the existing ones, so a field left `undefined`
+   * does not perturb the key -- `JSON.stringify` omits it. `preserveFormatting`
+   * is the exception: the service merges a config default for it, so it is always
+   * materialized and every key reflects it. `glossaryIds` is hashed in the
+   * caller's order rather than sorted, because reordering the list changes which
    * glossary wins a conflicting term and therefore the translation itself.
    *
    * `tagHandlingVersion` is resolved rather than read straight off the options,
