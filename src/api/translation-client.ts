@@ -38,6 +38,7 @@ interface DeepLUsageResponse {
     character_count: number;
     api_key_character_count: number;
     unit_count?: number;
+    account_unit_count?: number;
     api_key_unit_count?: number;
     billing_unit?: string;
   }>;
@@ -74,6 +75,12 @@ export interface ProductUsage {
   characterCount: number;
   apiKeyCharacterCount: number;
   unitCount?: number;
+  /**
+   * Account-wide units. What live responses actually carry for duration-billed
+   * products, where `unit_count` is absent -- so leaving it unparsed made the
+   * account total unreportable.
+   */
+  accountUnitCount?: number;
   apiKeyUnitCount?: number;
   billingUnit?: string;
 }
@@ -232,6 +239,7 @@ export class TranslationClient extends HttpClient {
           characterCount: p.character_count,
           apiKeyCharacterCount: p.api_key_character_count,
           ...(p.unit_count !== undefined && { unitCount: p.unit_count }),
+          ...(p.account_unit_count !== undefined && { accountUnitCount: p.account_unit_count }),
           ...(p.api_key_unit_count !== undefined && { apiKeyUnitCount: p.api_key_unit_count }),
           ...(p.billing_unit && { billingUnit: p.billing_unit }),
         }));
@@ -299,16 +307,14 @@ export class TranslationClient extends HttpClient {
   private translateLanguages?: Promise<DeepLV3LanguageResponse[]>;
 
   private fetchTranslateLanguages(): Promise<DeepLV3LanguageResponse[]> {
-    if (!this.translateLanguages) {
-      this.translateLanguages = this.makeRequest<DeepLV3LanguageResponse[]>(
-        'GET',
-        '/v3/languages',
-        { resource: 'translate_text' }
-      ).catch((error: unknown) => {
-        delete this.translateLanguages;
-        throw error;
-      });
-    }
+    this.translateLanguages ??= this.makeRequest<DeepLV3LanguageResponse[]>(
+      'GET',
+      '/v3/languages',
+      { resource: 'translate_text' }
+    ).catch((error: unknown) => {
+      delete this.translateLanguages;
+      throw error;
+    });
     return this.translateLanguages;
   }
 

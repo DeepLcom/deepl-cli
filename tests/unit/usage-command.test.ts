@@ -340,8 +340,30 @@ describe('UsageCommand', () => {
         ],
       });
 
-      expect(formatted).toContain('speech_to_text: 24h 23m 0s (API key: 24h 23m 0s)');
+      // No account-wide figure in the response, so only the API key's own usage
+      // is reported. Printing it in both columns implied an account total the
+      // response never carried.
+      expect(formatted).toContain('speech_to_text: 24h 23m 0s (API key)');
       expect(formatted).not.toContain('speech_to_text: 0 characters');
+    });
+
+    it('should report the account-wide duration when the response carries one', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 0,
+        characterLimit: 20000000,
+        products: [
+          {
+            productType: 'speechToText',
+            characterCount: 0,
+            apiKeyCharacterCount: 0,
+            accountUnitCount: 6000,
+            apiKeyUnitCount: 1463,
+            billingUnit: 'minutes',
+          },
+        ],
+      });
+
+      expect(formatted).toContain('speech_to_text: 100h 0m 0s (API key: 24h 23m 0s)');
     });
 
     it('should prefer unitCount over apiKeyUnitCount for minutes-billed totals', () => {
