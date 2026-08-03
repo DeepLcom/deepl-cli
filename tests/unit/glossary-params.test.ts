@@ -110,8 +110,8 @@ describe('applyGlossarySourceLang', () => {
   });
 
   it('should fall back to the configured source language', () => {
-    // The request carries source_lang either way, so rejecting on a missing
-    // flag alone broke sessions that had been working from config.
+    // The request carries source_lang either way, so a missing flag is not on
+    // its own a reason to reject.
     const options: { glossary: string[]; from?: string } = { glossary: ['terms'] };
     applyGlossarySourceLang(options, 'EN', example);
     expect(options.from).toBe('en');

@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 /**
- * Regenerates src/data/language-entries.ts from GET /v3/languages.
- *
- * The language list used to be hand-maintained, which meant it could silently
- * fall behind the API: four target languages DeepL had added (de-CH, de-DE,
- * fr-CA, fr-FR) were missing, so the CLI rejected them locally even though the
- * API accepted them. Generating the file keeps it an honest snapshot.
+ * Regenerates src/data/language-entries.ts from GET /v3/languages, keeping the
+ * bundled snapshot a build artifact of the API rather than a hand-kept list.
  *
  * Tiers are derived, not judged: the derivation lives in
  * src/data/language-registry.ts and is imported from dist/ so the snapshot and
@@ -25,11 +21,10 @@ const TARGET = path.join(ROOT, 'src', 'data', 'language-entries.ts');
 const DERIVATION = path.join(ROOT, 'dist', 'data', 'language-registry.js');
 
 /**
- * A tier count this far below the live shape means the derivation stopped
- * working rather than that DeepL dropped languages -- most likely the features
- * matrix stopped reporting `glossary`, which would silently retier all 125
- * languages as extended and make --formality and --glossary unusable
- * everywhere. Cheap floor, catches the whole failure class.
+ * A core count below this means the derivation is broken rather than that DeepL
+ * dropped languages -- most likely the features matrix no longer reports
+ * `glossary`, which would tier every language as extended and make --formality
+ * and --glossary unusable. Cheap floor over the whole failure class.
  */
 const MIN_CORE_LANGUAGES = 20;
 
@@ -54,9 +49,8 @@ function renderEntry(entry) {
 }
 
 /**
- * Renders the whole file. Exported so the snapshot can be re-rendered from the
- * data it already holds -- a formatting or type change to the template does not
- * need a live API call to apply.
+ * Renders the whole file. Exported so the snapshot can also be re-rendered from
+ * the data it already holds, without a live API call.
  */
 export function renderRegistry(entries, writeTargets) {
   const body = GROUPS.map(([category, heading]) => {
@@ -78,7 +72,7 @@ export function renderRegistry(entries, writeTargets) {
  *
  * \`as const\` is load-bearing: the Language union in src/types/common.ts is
  * derived from these codes, so a language added upstream widens the type on
- * regenerate instead of needing a second hand-kept copy of the same list.
+ * regenerate.
  */
 import type { LanguageEntry } from './language-registry.js';
 
@@ -89,14 +83,13 @@ ${body}
 /**
  * Target languages the Write API accepts, from resource=write.
  *
- * Unlike translation, \`write\` and \`correct\` reject a code outside this list
- * locally rather than deferring to the API: the supported set is small enough
- * to enumerate in the error, so naming the valid options beats a round trip.
- * That makes keeping this generated the thing that stops it going stale.
+ * \`write\` and \`correct\` check a code against this list locally, because the
+ * set is small enough for the error to name every option. A code shaped like a
+ * language tag but absent from the list still goes to the API, with the list as
+ * a warning, so a language added upstream is usable before a regenerate.
  *
  * \`as const\` is load-bearing -- the WriteLanguage union in src/types/api.ts is
- * derived from it, so adding a language upstream widens the type on regenerate
- * instead of needing a second hand edit.
+ * derived from it, so a language added upstream widens the type on regenerate.
  */
 export const WRITE_TARGET_LANGUAGES = [
 ${writeTargets.map(code => `  '${code}',`).join('\n')}
@@ -136,9 +129,8 @@ async function main() {
     return { resource, languages };
   }
 
-  // Fetched together and reported together: failing fast on the first resource
-  // meant a key that cannot read resource=write blocked regenerating the
-  // translation list too, which it can read perfectly well.
+  // Fetched and reported together, so a key that cannot read one resource still
+  // regenerates from the other and both failures surface at once.
   const [translateResult, writeResult] = await Promise.all([
     fetchResource('translate_text'),
     fetchResource('write'),
@@ -165,8 +157,8 @@ async function main() {
         'snapshot that would retier every language as extended.',
     );
   }
-  // An empty write list would collapse the WriteLanguage union to never, so
-  // every --lang would be rejected while naming no valid option at all.
+  // An empty write list collapses the WriteLanguage union to never, which would
+  // reject every --lang while naming no valid option at all.
   if (writeTargets.length === 0) {
     fail('no write target languages reported (expected usable_as_target on resource=write)');
   }
@@ -181,10 +173,10 @@ async function main() {
       );
       process.exit(0);
     }
-    // Name which list moved: the two are generated from different resources, and
-    // "N languages upstream" is misleading when it is the write list that drifted.
-    // Compared on the whole block rather than the codes alone, so a renamed
-    // display name is not reported as "formatting only".
+    // Name which list moved: the two come from different resources, so "N
+    // languages upstream" is misleading when it is the write list that drifted.
+    // Whole blocks are compared, not just the codes, so a renamed display name
+    // is reported as real drift.
     const blockIn = (source, open, close) => {
       const start = source.indexOf(open);
       if (start === -1) return '';

@@ -403,12 +403,12 @@ export class TranslationService {
    * would let the key stay stable across a change of the API's own default,
    * serving entries the API would no longer produce.
    *
-   * Every parameter that changes the returned text has to appear here or the
-   * cache serves the wrong translation: a plain request and the same request
-   * with a translation memory, different --ignore-tags, or --preserve-formatting
-   * are different requests. `preserveFormatting` is included because
-   * preserve_formatting suppresses the sentence-boundary punctuation and case
-   * correction, which shows up in the text.
+   * Every parameter that changes the returned text belongs here, or the cache
+   * serves the wrong translation: a plain request and the same request with a
+   * translation memory, different --ignore-tags, or --preserve-formatting are
+   * different requests. `preserveFormatting` counts because preserve_formatting
+   * suppresses the sentence-boundary punctuation and case correction, which
+   * shows up in the text.
    */
   private generateCacheKey(text: string, options: TranslationOptions): string {
     // Keyed on the parameter the request will actually carry, so the two ways of

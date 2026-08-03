@@ -5,10 +5,9 @@ import { errorMessage } from './error-message.js';
  * item failed.
  *
  * A rejected `target_lang` is the same rejection for every file and every target
- * in the run, so retrying it per batch buys nothing: it just spends another round
- * trip -- and bills the items that do succeed -- to be told the same thing again.
- * Language validation defers to the API on codes the bundled snapshot predates,
- * which is what makes this reachable from a plain typo.
+ * in the run, so retrying it per batch buys nothing but another round trip.
+ * Language validation defers to the API on codes the bundled snapshot does not
+ * list, which is what makes this reachable from a plain typo.
  */
 export function isUnrecoverableRequestError(error: unknown): boolean {
   const message = errorMessage(error).toLowerCase();

@@ -357,8 +357,7 @@ describe('Language Registry', () => {
   describe('Language union', () => {
     /**
      * Compile-time, not runtime: these assignments fail to build if the union
-     * goes back to being hand-written and falls behind the snapshot again, which
-     * is exactly how de-ch, de-de, fr-ca and fr-fr came to be missing from it.
+     * stops deriving from the snapshot and falls behind it.
      */
     it('should cover the regional variants a hand-written union had missed', () => {
       const codes: Language[] = ['de-ch', 'de-de', 'fr-ca', 'fr-fr'];

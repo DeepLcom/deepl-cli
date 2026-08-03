@@ -19,11 +19,8 @@ function forJson(languages: LanguageInfo[], includeFeatures: boolean): unknown[]
 }
 
 /**
- * The bundled snapshot in LanguageInfo shape, for output with no API key.
- *
- * Without this the JSON path answered `{"source":[],"target":[]}` while the text
- * path printed all 125 from the same snapshot -- listing languages works offline
- * either way, so the two formats have no business disagreeing.
+ * The bundled snapshot in LanguageInfo shape, for output with no API key, so that
+ * JSON lists the same languages the text and table formats read from it.
  */
 function registryAsLanguageInfo(
   command: { getRegistryLanguages: (type: 'source' | 'target') => Array<{ code: string; name: string }> },

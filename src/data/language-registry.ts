@@ -40,8 +40,8 @@ export interface LanguageEntry {
 
 /**
  * The snapshot as plain entries. It is generated `as const` so the `Language`
- * union can be derived from its codes; the lookups below want the interface, not
- * 125 individual literal types.
+ * union can derive from its codes; the lookups below want the interface rather
+ * than one literal type per language.
  */
 const ENTRIES: readonly LanguageEntry[] = GENERATED_ENTRIES;
 
@@ -61,11 +61,10 @@ export interface DerivableLanguage {
 /**
  * Derives a registry entry from one GET /v3/languages entry. The tiers are not
  * a human judgement: glossary support separates extended from the rest, and
- * source usability separates core from regional. Checked against the live
- * response, this reproduces the hand-maintained tiers exactly.
+ * source usability separates core from regional.
  *
  * Shared with scripts/generate-language-registry.mjs so the snapshot and the
- * runtime fallback for codes the snapshot predates cannot disagree.
+ * runtime fallback for codes it does not list cannot disagree.
  */
 export function deriveLanguageEntry(language: DerivableLanguage): LanguageEntry {
   const code = language.lang.toLowerCase();
@@ -100,9 +99,9 @@ export function looksLikeLanguageTag(code: string): boolean {
 
 /**
  * The base language of a code, dropping any regional subtag: `en-us` -> `en`.
- * Used where one side of a comparison carries variants the other cannot, such as
- * glossary dictionaries, which only ever name base languages while `--to`
- * accepts `en-us`, `pt-br` and the rest.
+ * For comparisons where one side carries variants the other cannot -- glossary
+ * dictionaries name base languages only, while `--to` accepts `en-us`, `pt-br`
+ * and the rest.
  */
 export function baseLanguage(code: string): string {
   return code.toLowerCase().split('-')[0] ?? code.toLowerCase();

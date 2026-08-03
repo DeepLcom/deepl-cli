@@ -76,9 +76,8 @@ export interface ProductUsage {
   apiKeyCharacterCount: number;
   unitCount?: number;
   /**
-   * Account-wide units. What live responses actually carry for duration-billed
-   * products, where `unit_count` is absent -- so leaving it unparsed made the
-   * account total unreportable.
+   * Account-wide units, which is what duration-billed products report instead of
+   * `unit_count`.
    */
   accountUnitCount?: number;
   apiKeyUnitCount?: number;
@@ -297,12 +296,10 @@ export class TranslationClient extends HttpClient {
    * per-language features matrix, which is what v2's supports_formality became.
    */
   /**
-   * The raw translate_text language list, fetched at most once per client.
-   *
-   * Both roles are filtered out of one payload, and the request does not vary by
-   * role, so `deepl languages` -- which asks for both -- was making the same
-   * full-list request twice. A failed fetch is not retained, so the next caller
-   * retries.
+   * The raw translate_text language list, fetched at most once per client. The
+   * request does not vary by role and both roles are filtered out of the one
+   * payload, so a caller asking for both costs a single request. A failed fetch
+   * is not retained, leaving the next caller free to retry.
    */
   private translateLanguages?: Promise<DeepLV3LanguageResponse[]>;
 
@@ -331,9 +328,8 @@ export class TranslationClient extends HttpClient {
           return {
             language: code,
             name: lang.name,
-            // Only claimed when the response actually described this language's
-            // features: asserting false for a language it said nothing about
-            // turned the [F] legend on with no [F] anywhere to explain it.
+            // Only claimed when the response described this language's features;
+            // silence about a language is not evidence that formality is absent.
             ...(type === 'target' &&
               lang.features && {
                 supportsFormality: lang.features['formality'] !== undefined,

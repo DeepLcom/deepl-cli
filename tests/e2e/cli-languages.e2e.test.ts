@@ -104,9 +104,8 @@ describe('Languages Command E2E', () => {
     });
 
     it('should list the same languages in --format json as in text output', () => {
-      // Both formats read the same bundled snapshot, so answering
-      // {"source":[],"target":[]} while the text output printed 125 was the JSON
-      // path simply not falling back.
+      // Both formats read the same bundled snapshot, so both list the same
+      // languages when there is no API key.
       const result = runCLIWithEnv('languages --format json', { DEEPL_API_KEY: '' });
 
       expect(result.status).toBe(0);
@@ -196,7 +195,7 @@ describe('Languages Command E2E', () => {
 
       // formality is what varies across the languages the mock describes, so it
       // is the per-row annotation; glossary is shared by all of them and is
-      // reported once at the end instead of on every row.
+      // reported once at the end rather than on every row.
       expect(german).toContain('formality');
       expect(english).not.toContain('formality');
       expect(output).toContain('glossary');

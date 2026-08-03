@@ -26,9 +26,8 @@ export class DocumentTranslationHandler {
     warnIgnoredOptions('document', options, supported);
 
     validateLanguageCodes([options.to]);
-    // Documents support glossaries now, which makes the extended-tier constraint
-    // reachable here: without this the upload happens and the API rejects it,
-    // while the text path says so locally.
+    // Documents accept glossaries, so the extended-tier constraint applies here
+    // too: checked before the upload rather than left to the API.
     validateExtendedLanguageConstraints(options.to, options);
 
     // The API rejects a document glossary without source_lang: "source_lang has

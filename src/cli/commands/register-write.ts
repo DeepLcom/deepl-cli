@@ -13,10 +13,10 @@ import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
 /**
  * Generated from GET /v3/languages?resource=write. Small enough that an error can
- * name every option, which is why it is checked locally at all -- but it is still
- * a snapshot, so an unrecognized code that is shaped like a language tag is
- * deferred to the API with a warning rather than rejected. Rejecting outright
- * made a language DeepL had added unreachable until someone regenerated the file.
+ * name every option, which is why it is checked locally at all. It is still a
+ * snapshot, so a code shaped like a language tag but absent from it goes to the
+ * API with a warning rather than being rejected -- otherwise a language DeepL
+ * adds is unreachable until the file is regenerated.
  */
 export const WRITE_LANGUAGES = WRITE_TARGET_LANGUAGES;
 /**
@@ -89,9 +89,8 @@ export function createWriteAction(
         if (canonical) {
           options.lang = canonical;
         } else if (looksLikeLanguageTag(options.lang.toLowerCase())) {
-          // The bundled list is a snapshot and can lag the API, and nothing in CI
-          // regenerates it, so a language DeepL has added must not be
-          // unreachable: a well-formed code goes to the API to accept or reject.
+          // The snapshot can lag the API, so a well-formed code it does not list
+          // is the API's to accept or reject.
           Logger.warn(
             `Note: "${options.lang}" is not in the bundled Write language list; deferring to the API.\n` +
               `      Bundled options: ${WRITE_LANGUAGES.join(', ')}`

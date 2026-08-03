@@ -61,17 +61,15 @@ export function warnIgnoredOptions(mode: string, options: TranslateOptions, supp
 /**
  * Rejects input that is not shaped like a language tag. Codes the bundled
  * snapshot does not list are passed through: GET /v3/languages is the authority
- * on which languages exist, and the snapshot can lag it, so rejecting here made
- * languages the API accepts unusable. The API answers an unknown code with a
- * 400 of its own.
+ * on which languages exist and the snapshot can lag it, so an unknown code is
+ * the API's to accept or reject with a 400 of its own.
  */
 export function validateLanguageCodes(langCodes: string[]): void {
   for (const lang of langCodes) {
     if (VALID_LANGUAGES.has(lang)) continue;
     if (looksLikeLanguageTag(lang)) {
-      // Said up front, before anything is sent or billed. Deferring to the API
-      // means a two-letter typo now comes back as a bare "target_lang not
-      // supported" from the server, which no longer points anywhere useful.
+      // Said up front, before anything is sent or billed: the API answers an
+      // unknown code with a bare "target_lang not supported" that points nowhere.
       Logger.warn(
         `Note: "${lang}" is not in the bundled language list; deferring to the API.\n` +
           '      Run: deepl languages  to see the languages this build knows about.'
@@ -128,8 +126,8 @@ export function validateXmlTags(tags: string[], paramName: string): void {
 
 /**
  * Validate `--tag-handling-version` and return it. Shared so every handler maps
- * the flag: since the CLI pins v2 whenever tag handling is on, a handler that
- * dropped the flag would silently send v2 to a caller who asked for v1.
+ * the flag: the CLI pins v2 whenever tag handling is on, so a handler that
+ * dropped the flag would send v2 to a caller who asked for v1.
  */
 export function validateTagHandlingVersion(
   options: TranslateOptions,

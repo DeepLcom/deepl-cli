@@ -52,7 +52,7 @@ const UNKNOWN_CELL = '?';
 /**
  * Whether the response described this language's features at all. An empty
  * matrix is data -- it says the language supports none of them -- while a
- * missing one means the language never appeared in the response.
+ * missing one means the language did not appear in the response.
  */
 function hasFeatureData(entry: LanguageDisplayEntry): boolean {
   return entry.features !== undefined;
@@ -64,9 +64,9 @@ function hasFeatureData(entry: LanguageDisplayEntry): boolean {
  * than `stable` is shown verbatim rather than collapsed to yes. `status` is an
  * open enum and may be absent, which still means the feature is there.
  *
- * A language the response omitted entirely reads as unknown rather than
- * unsupported: the listing keeps snapshot entries the API did not mention, and
- * claiming they support nothing would be inventing an answer.
+ * A language the response omitted reads as unknown rather than unsupported:
+ * the listing includes snapshot entries the API did not mention, and claiming
+ * they support nothing would be inventing an answer.
  */
 function featureCell(entry: LanguageDisplayEntry, key: string): string {
   if (!hasFeatureData(entry)) return UNKNOWN_CELL;
@@ -96,9 +96,9 @@ export function partitionFeatureKeys(entries: LanguageDisplayEntry[]): {
   columns: string[];
   uniform: Array<{ key: string; cell: string }>;
 } {
-  // Only languages the response described can say whether a feature varies;
-  // including the rest made every feature look non-uniform, so a feature all of
-  // them share became a column of repeated values instead of one footer note.
+  // Only languages the response described can say whether a feature varies.
+  // Counting the rest would make every feature look non-uniform, turning one
+  // shared by all of them into a column of repeated values.
   const described = entries.filter(hasFeatureData);
   if (described.length === 0) return { columns: [], uniform: [] };
 
@@ -133,7 +133,7 @@ function hasAnyFeatures(entries: LanguageDisplayEntry[]): boolean {
 /**
  * Lowercased feature list for prose contexts, e.g. `glossary, style rules`.
  * Empty when there is nothing per-language to say: with no discriminating
- * features the footer note carries the answer, and annotating every row `none`
+ * features the footer note carries the answer, so annotating each row `none`
  * would contradict it.
  */
 function featureList(entry: LanguageDisplayEntry, keys: string[]): string {
@@ -152,7 +152,7 @@ function featureList(entry: LanguageDisplayEntry, keys: string[]): string {
 /**
  * The one-line summary for features every language shares. Scoped to the
  * languages the response described when some rows carry no data, since those
- * rows are listed too and the note must not speak for them.
+ * rows are listed too and the note cannot speak for them.
  */
 function uniformNote(
   uniform: Array<{ key: string; cell: string }>,

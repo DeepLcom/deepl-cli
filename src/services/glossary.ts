@@ -173,11 +173,11 @@ export class GlossaryService {
    * fetched to resolve the name; the UUID path trusts the caller and skips the
    * check, as translation-memory resolution does.
    *
-   * Both sides are compared on their base language, because dictionaries only
-   * ever name base languages while `--to` accepts regional variants: a de→en
-   * glossary has to count as covering de→en-us, which the API accepts. That
-   * makes the check deliberately permissive at the edges — a pair it lets
-   * through is still the API's to reject, which is the cheaper mistake.
+   * Both sides are compared on their base language, because dictionaries name
+   * base languages only while `--to` accepts regional variants: a de→en glossary
+   * covers de→en-us, which the API accepts. That makes the check deliberately
+   * permissive at the edges — a pair it lets through is still the API's to
+   * reject, which is the cheaper mistake.
    */
   async resolveGlossaryId(
     nameOrId: string,
@@ -223,7 +223,7 @@ export class GlossaryService {
         const allPairs = match.dictionaries.map(
           d => `${d.source_lang.toLowerCase()}→${d.target_lang.toLowerCase()}`,
         );
-        // A multilingual glossary can hold dozens of dictionaries, and the whole
+        // A multilingual glossary can hold dozens of dictionaries; the whole
         // cross-product on one line stops being a suggestion.
         const pairs =
           allPairs.length > MAX_PAIRS_IN_SUGGESTION

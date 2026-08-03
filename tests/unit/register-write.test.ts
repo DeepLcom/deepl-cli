@@ -197,9 +197,8 @@ describe('registerWrite', () => {
     });
 
     it('should defer a well-formed code the bundled list does not have', async () => {
-      // The bundled list is a snapshot and nothing in CI regenerates it, so
-      // rejecting outright made a language DeepL had added unreachable. The
-      // request goes through with a warning that still names the bundled set.
+      // The bundled list is a snapshot, so a well-formed code it does not list
+      // goes through with a warning that still names the bundled set.
       await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'xx']);
 
       expect(handleError).not.toHaveBeenCalled();

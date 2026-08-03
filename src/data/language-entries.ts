@@ -12,7 +12,7 @@
  *
  * `as const` is load-bearing: the Language union in src/types/common.ts is
  * derived from these codes, so a language added upstream widens the type on
- * regenerate instead of needing a second hand-kept copy of the same list.
+ * regenerate.
  */
 import type { LanguageEntry } from './language-registry.js';
 
@@ -152,14 +152,13 @@ export const ENTRIES = [
 /**
  * Target languages the Write API accepts, from resource=write.
  *
- * Unlike translation, `write` and `correct` reject a code outside this list
- * locally rather than deferring to the API: the supported set is small enough
- * to enumerate in the error, so naming the valid options beats a round trip.
- * That makes keeping this generated the thing that stops it going stale.
+ * `write` and `correct` check a code against this list locally, because the
+ * set is small enough for the error to name every option. A code shaped like a
+ * language tag but absent from the list still goes to the API, with the list as
+ * a warning, so a language added upstream is usable before a regenerate.
  *
  * `as const` is load-bearing -- the WriteLanguage union in src/types/api.ts is
- * derived from it, so adding a language upstream widens the type on regenerate
- * instead of needing a second hand edit.
+ * derived from it, so a language added upstream widens the type on regenerate.
  */
 export const WRITE_TARGET_LANGUAGES = [
   'de',

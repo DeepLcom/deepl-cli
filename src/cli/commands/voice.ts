@@ -262,9 +262,9 @@ export class VoiceCommand {
 
   /**
    * Print what a failed session did produce. The audio is transcribed and billed
-   * before the missing translation is noticed, so discarding the transcripts
-   * would make the user re-stream and pay again to see them. Written to stderr so
-   * a partial result is never mistaken for the command's output.
+   * before a missing translation is noticed, so discarding the transcripts would
+   * cost another stream to see them. Written to stderr, so a partial result is
+   * never mistaken for the command's output.
    */
   private reportPartialResult(error: unknown, targetCount: number, isTTY: boolean): void {
     if (!(error instanceof VoicePartialResultError)) {

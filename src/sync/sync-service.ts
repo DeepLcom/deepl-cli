@@ -192,8 +192,8 @@ export class SyncService {
     let resolvedGlossaryId: string | undefined;
     if (config.translation?.glossary && config.translation.glossary !== 'auto' && !options?.dryRun) {
       // The pair is known from the config, so a glossary that does not cover it
-      // fails here rather than once per file, as translation-memory resolution
-      // below already does.
+      // fails here rather than once per file, as with the translation memory
+      // below.
       const glossaryLocales = options?.localeFilter?.length
         ? config.target_locales.filter(l => options.localeFilter!.includes(l))
         : config.target_locales;

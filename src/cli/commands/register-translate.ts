@@ -170,9 +170,9 @@ Examples:
           );
         }
 
-        // Checked before --dry-run reports the command as runnable. Glossary name
-        // resolution still needs the API and stays out of dry-run, but the
-        // requirement that a glossary carry a source language does not.
+        // Checked before --dry-run reports the command as runnable. Resolving a
+        // glossary name needs the API and stays out of dry-run; the requirement
+        // that a glossary carry a source language does not.
         if (hasGlossarySelection(options)) {
           applyGlossarySourceLang(
             options,

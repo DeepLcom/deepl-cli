@@ -24,8 +24,8 @@ const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 
 /**
  * A session that ended with at least one target untranslated, carrying whatever
- * did arrive. The audio has been transcribed and billed by this point, so the
- * partial transcripts travel with the failure instead of being discarded.
+ * did arrive. The audio is transcribed and billed by this point, so the partial
+ * transcripts travel with the failure rather than being discarded.
  */
 export class VoicePartialResultError extends VoiceError {
   constructor(
@@ -76,9 +76,9 @@ export class VoiceStreamSession {
 
     for (const lang of options.targetLangs) {
       const transcript: VoiceTranscript = { lang, text: '', segments: [] };
-      // Keyed lowercase because the requested spellings (zh-HANS, en-GB) are not
-      // the only canonicalization the server might echo, and an unmatched update
-      // is dropped silently -- which then reads as a missing translation.
+      // Keyed lowercase: the requested spellings (zh-HANS, en-GB) are not the
+      // only canonicalization the server may echo, and an update that matches no
+      // target is dropped, which reads as a missing translation.
       this.targetTranscripts.set(lang.toLowerCase(), transcript);
       this.textParts.set(transcript, []);
     }

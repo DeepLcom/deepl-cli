@@ -222,8 +222,8 @@ export class BatchTranslationService {
     let currentBatch: FileEntry[] = [];
     let currentBytes = 0;
     // Set once the API rejects the request itself (an unsupported target_lang,
-    // say). Every remaining batch would be told the same thing, so they are
-    // failed without spending the round trips.
+    // say). Every remaining batch would draw the same rejection, so they fail
+    // without spending the round trips.
     let requestRejected: unknown;
 
     const flushBatch = async (): Promise<void> => {

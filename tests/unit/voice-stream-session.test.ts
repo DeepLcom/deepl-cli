@@ -798,9 +798,8 @@ describe('VoiceStreamSession', () => {
     });
 
     it('should match the echoed language regardless of casing', async () => {
-      // The requested set spells variants zh-HANS and en-GB; a server echoing
-      // another canonicalization used to have its translation dropped on the
-      // floor and then reported as missing.
+      // The requested set spells variants zh-HANS and en-GB, so a server echoing
+      // another canonicalization must still match its requested target.
       const result = await runWithFrames(
         (callbacks) => {
           callbacks.onSourceTranscript?.({

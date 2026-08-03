@@ -33,8 +33,8 @@ export class GlossaryClient extends HttpClient {
     const pairs: GlossaryLanguagePair[] = [];
     for (const source of sources) {
       for (const target of targets) {
-        // Compared after normalization: raw casing differing between the two role
-        // lists would otherwise emit a self-pair the API does not offer.
+        // Compared after normalization, so casing differing between the two role
+        // lists cannot emit a self-pair the API does not offer.
         const sourceLang = this.normalizeLanguage(source.lang);
         const targetLang = this.normalizeLanguage(target.lang);
         if (sourceLang === targetLang) {

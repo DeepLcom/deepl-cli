@@ -68,8 +68,8 @@ Examples:
           }
         }
 
-        // Resolved before --dry-run so a well-formed-looking command is not
-        // reported as runnable when it would fail on the first file change.
+        // Resolved before --dry-run, which otherwise reports a command as
+        // runnable when it would fail on the first file change.
         if (hasGlossarySelection(options)) {
           applyGlossarySourceLang(
             options,

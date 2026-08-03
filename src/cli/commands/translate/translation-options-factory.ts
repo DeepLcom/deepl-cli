@@ -60,9 +60,9 @@ export async function applyGlossarySelection<
   // before the next name-or-ID lookup needs the glossary list.
   //
   // Deduplicated after resolution, because a name and its own UUID resolve to
-  // the same glossary: naming one twice would otherwise flip the wire parameter
-  // from glossary_id to glossary_ids, mint a third cache key for an identical
-  // request, and spend two of the five slots the API allows.
+  // the same glossary: a duplicate would flip the wire parameter from
+  // glossary_id to glossary_ids, key an identical request differently, and
+  // spend two of the five slots the API allows.
   const ids: string[] = [];
   for (const nameOrId of options.glossary) {
     const id = await resolveGlossaryId(glossaryService, nameOrId, expected);

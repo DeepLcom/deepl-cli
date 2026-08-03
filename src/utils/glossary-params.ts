@@ -24,12 +24,11 @@ export function hasGlossarySelection(selection: GlossarySourceLangSelection): bo
  * Settle the source language a glossary request will carry, filling `from` from
  * the configured default when the flag is absent.
  *
- * The API rejects a glossary without `source_lang`, but `--from` is not the only
- * way one is supplied: `TranslationService` merges `defaults.sourceLang`, so
- * rejecting on a missing flag alone broke sessions that had been working from
- * config. Resolving it onto `from` instead means every path sees the same
- * answer, including the document path, which merges no defaults of its own, and
- * the glossary preflight, which needs the pair to check coverage.
+ * The API rejects a glossary without `source_lang`, and `--from` is not the only
+ * way one is supplied: `TranslationService` merges `defaults.sourceLang`.
+ * Resolving the effective value onto `from` gives every path the same answer,
+ * including the document path, which merges no defaults of its own, and the
+ * glossary preflight, which needs the pair to check coverage.
  */
 export function applyGlossarySourceLang(
   selection: GlossarySourceLangSelection,

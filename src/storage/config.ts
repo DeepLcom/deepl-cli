@@ -47,7 +47,7 @@ const DEFAULT_DEBOUNCE_MS = 500;
 
 /**
  * Language values are stored lowercase, matching what `deepl languages` prints
- * and what every translate path normalizes its flags to, so a config written as
+ * and what the translate paths normalize their flags to, so a config written as
  * `DE` does not read back as a code the registry cannot look up.
  */
 function normalizeLanguageValue(path: string, value: unknown): unknown {
@@ -400,17 +400,17 @@ export class ConfigService {
    * is the authority on which languages exist and the snapshot can lag it.
    */
   private validateLanguage(lang: string, key?: string): void {
-    // Lowercased first: every translate path lowercases the flag before using it,
-    // so `--from DE` works while `config set defaults.sourceLang DE` was rejected
-    // by a lowercase-only pattern -- the one casing that is certainly valid.
+    // Lowercased first: the translate paths lowercase their flags before use, and
+    // the tag pattern below is lowercase-only, so `DE` is as valid as `de` here.
     const normalized = typeof lang === 'string' ? lang.toLowerCase() : lang;
     if (!isValidLanguage(normalized) && !looksLikeLanguageTag(normalized)) {
       const context = key ? ` for "${key}"` : '';
       throw new ConfigError(`Invalid language code "${lang}"${context}. Run: deepl languages to see valid codes`);
     }
     if (!isValidLanguage(normalized)) {
-      // Stored anyway, because the snapshot can lag the API -- but a typo written
-      // to config fails on every later command with nothing pointing back here.
+      // Stored anyway, since the snapshot can lag the API -- but flagged here,
+      // because a typo in config otherwise surfaces on every later command with
+      // nothing pointing back at the value responsible.
       const context = key ? ` for "${key}"` : '';
       Logger.warn(
         `Note: "${lang}"${context} is not in the bundled language list; it will be sent to the API as-is.\n` +

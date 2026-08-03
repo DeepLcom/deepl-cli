@@ -114,8 +114,8 @@ describe('translate-utils', () => {
     });
 
     it('should pass through a well-formed code the snapshot does not know', () => {
-      // The API is the authority on which languages exist, and the bundled
-      // snapshot can lag it. Rejecting locally made valid targets unusable.
+      // The API is the authority on which languages exist and the bundled
+      // snapshot can lag it, so a well-formed code is the API's to judge.
       expect(() => validateLanguageCodes(['xx'])).not.toThrow();
       expect(() => validateLanguageCodes(['de-ch', 'fr-ca'])).not.toThrow();
       expect(() => validateLanguageCodes(['abc-1234'])).not.toThrow();
@@ -125,8 +125,8 @@ describe('translate-utils', () => {
       mockedLoggerWarn.mockClear();
       validateLanguageCodes(['ex']);
 
-      // Said before anything is sent: the API answers a typo with a bare
-      // "target_lang not supported" that points nowhere.
+      // Said before anything is sent, since the API answers an unknown code with
+      // a bare "target_lang not supported" that points nowhere.
       const warning = mockedLoggerWarn.mock.calls.map(call => String(call[0])).join('\n');
       expect(warning).toContain('"ex" is not in the bundled language list');
       expect(warning).toContain('deepl languages');

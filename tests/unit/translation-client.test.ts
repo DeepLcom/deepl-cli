@@ -505,7 +505,7 @@ describe('TranslationClient', () => {
 
       // Formality support is left unstated rather than denied: a response that
       // described no features is not evidence that formality is unavailable, and
-      // claiming false turned on the [F] legend with no [F] to explain.
+      // claiming false would turn on the [F] legend with no [F] to explain.
       expect(result[0]).not.toHaveProperty('features');
       expect(result[0]!.supportsFormality).toBeUndefined();
     });

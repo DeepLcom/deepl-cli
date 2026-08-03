@@ -251,8 +251,8 @@ export class GlossaryCommand {
     if (multilingual) {
       lines.push('\nLanguage pairs:');
       glossary.dictionaries.forEach(dict => {
-        // Lowercased like the summary above: normalizeGlossaryInfo only touches
-        // the top-level fields, so raw dictionaries printed EN -> DE under en.
+        // Lowercased like the summary above; normalizeGlossaryInfo only touches
+        // the top-level fields.
         lines.push(`  ${dict.source_lang.toLowerCase()} → ${dict.target_lang.toLowerCase()}: ${dict.entry_count} entries`);
       });
     }
