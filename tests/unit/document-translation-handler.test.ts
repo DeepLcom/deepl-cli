@@ -103,6 +103,129 @@ describe('DocumentTranslationHandler', () => {
       expect(MockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('document'));
     });
 
+    describe('glossaries', () => {
+      const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+      const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+      const resolveTo = (mapping: Record<string, string>): void => {
+        mocks.glossaryService.resolveGlossaryId.mockImplementation(
+          async (nameOrId: string) => {
+            const id = mapping[nameOrId];
+            if (!id) throw new ValidationError(`Glossary "${nameOrId}" not found`);
+            return id;
+          },
+        );
+      };
+
+      it('should forward a single resolved glossary as glossaryId', async () => {
+        resolveTo({ 'base-terms': A });
+
+        await handler.translateDocument(
+          '/tmp/doc.pdf',
+          defaultOptions({ from: 'en', glossary: ['base-terms'] }),
+        );
+
+        expect(mocks.documentTranslationService.translateDocument).toHaveBeenCalledWith(
+          '/tmp/doc.pdf',
+          '/tmp/output.pdf',
+          expect.objectContaining({ glossaryId: A }),
+          expect.any(Function),
+        );
+        const passed = mocks.documentTranslationService.translateDocument.mock.calls[0]?.[2];
+        expect(passed?.glossaryIds).toBeUndefined();
+      });
+
+      it('should forward several resolved glossaries as glossaryIds in order', async () => {
+        resolveTo({ 'base-terms': A, 'project-overrides': B });
+
+        await handler.translateDocument(
+          '/tmp/doc.pdf',
+          defaultOptions({ from: 'en', glossary: ['base-terms', 'project-overrides'] }),
+        );
+
+        expect(mocks.documentTranslationService.translateDocument).toHaveBeenCalledWith(
+          '/tmp/doc.pdf',
+          '/tmp/output.pdf',
+          expect.objectContaining({ glossaryIds: [A, B] }),
+          expect.any(Function),
+        );
+        const passed = mocks.documentTranslationService.translateDocument.mock.calls[0]?.[2];
+        expect(passed?.glossaryId).toBeUndefined();
+      });
+
+      it('should preserve the reversed order, which changes the winning glossary', async () => {
+        resolveTo({ 'base-terms': A, 'project-overrides': B });
+
+        await handler.translateDocument(
+          '/tmp/doc.pdf',
+          defaultOptions({ from: 'en', glossary: ['project-overrides', 'base-terms'] }),
+        );
+
+        expect(mocks.documentTranslationService.translateDocument).toHaveBeenCalledWith(
+          '/tmp/doc.pdf',
+          '/tmp/output.pdf',
+          expect.objectContaining({ glossaryIds: [B, A] }),
+          expect.any(Function),
+        );
+      });
+
+      it('should no longer warn that document mode ignores --glossary', async () => {
+        const { Logger: MockLogger } = jest.requireMock('../../src/utils/logger');
+        resolveTo({ 'base-terms': A });
+
+        await handler.translateDocument(
+          '/tmp/doc.pdf',
+          defaultOptions({ from: 'en', glossary: ['base-terms'] }),
+        );
+
+        const warnings = MockLogger.warn.mock.calls.map((call: unknown[]) => String(call[0]));
+        expect(warnings.some((w: string) => w.includes('--glossary'))).toBe(false);
+      });
+
+      /** The API rejects a document glossary without source_lang. */
+      it('should require --from when a glossary is given', async () => {
+        expect.assertions(3);
+        resolveTo({ 'base-terms': A });
+
+        await expect(
+          handler.translateDocument('/tmp/doc.pdf', defaultOptions({ glossary: ['base-terms'] })),
+        ).rejects.toThrow(ValidationError);
+        try {
+          await handler.translateDocument('/tmp/doc.pdf', defaultOptions({ glossary: ['base-terms'] }));
+        } catch (error) {
+          expect((error as ValidationError).message).toContain('--from');
+        }
+        expect(mocks.documentTranslationService.translateDocument).not.toHaveBeenCalled();
+      });
+
+      it('should not require --from when no glossary is given', async () => {
+        await handler.translateDocument('/tmp/doc.pdf', defaultOptions());
+
+        expect(mocks.documentTranslationService.translateDocument).toHaveBeenCalled();
+      });
+
+      it('should fail without uploading when a glossary name does not resolve', async () => {
+        resolveTo({ 'base-terms': A });
+
+        await expect(
+          handler.translateDocument(
+            '/tmp/doc.pdf',
+            defaultOptions({ from: 'en', glossary: ['base-terms', 'no-such-glossary'] }),
+          ),
+        ).rejects.toThrow(/no-such-glossary/);
+        expect(mocks.documentTranslationService.translateDocument).not.toHaveBeenCalled();
+      });
+
+      it('should send no glossary params when the flag is absent', async () => {
+        await handler.translateDocument('/tmp/doc.pdf', defaultOptions({ from: 'en' }));
+
+        const passed = mocks.documentTranslationService.translateDocument.mock.calls[0]?.[2];
+        expect(passed?.glossaryId).toBeUndefined();
+        expect(passed?.glossaryIds).toBeUndefined();
+        expect(mocks.glossaryService.resolveGlossaryId).not.toHaveBeenCalled();
+      });
+    });
+
     it('should pass outputFormat through', async () => {
       await handler.translateDocument('/tmp/doc.pdf', defaultOptions({ outputFormat: 'pdf' }));
 

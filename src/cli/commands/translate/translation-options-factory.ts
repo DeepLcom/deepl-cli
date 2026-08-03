@@ -28,6 +28,42 @@ export function buildBaseTranslationOptions(options: TranslateOptions): Translat
   return buildBaseLegacy(options);
 }
 
+/**
+ * Resolve `--glossary` values to IDs and place them on `base`. One glossary is
+ * assigned to `glossaryId` so the request keeps the shape — and cache key — it
+ * had before multiple glossaries were supported; several go to `glossaryIds`,
+ * in the order given, because the API applies the last glossary that defines a
+ * conflicting term.
+ *
+ * Separate from `applySharedTmAndGlossary` because document translation
+ * supports glossaries but not translation memories.
+ */
+export async function applyGlossarySelection<
+  T extends { glossaryId?: string; glossaryIds?: string[] },
+>(
+  base: T,
+  options: TranslateOptions,
+  glossaryService: GlossaryService,
+): Promise<void> {
+  if (!options.glossary || options.glossary.length === 0) {
+    return;
+  }
+
+  // Resolved sequentially so the service's resolution cache is populated
+  // before the next name-or-ID lookup needs the glossary list.
+  const ids: string[] = [];
+  for (const nameOrId of options.glossary) {
+    ids.push(await resolveGlossaryId(glossaryService, nameOrId));
+  }
+
+  const [only] = ids;
+  if (ids.length === 1 && only) {
+    base.glossaryId = only;
+  } else {
+    base.glossaryIds = ids;
+  }
+}
+
 export interface SharedTmAndGlossaryDeps {
   glossaryService: GlossaryService;
   translationService: TranslationService;
@@ -68,21 +104,7 @@ export async function applySharedTmAndGlossary<
   options: TranslateOptions,
   deps: SharedTmAndGlossaryDeps,
 ): Promise<void> {
-  if (options.glossary && options.glossary.length > 0) {
-    // Resolved sequentially so the service's resolution cache is populated
-    // before the next name-or-ID lookup needs the glossary list.
-    const ids: string[] = [];
-    for (const nameOrId of options.glossary) {
-      ids.push(await resolveGlossaryId(deps.glossaryService, nameOrId));
-    }
-
-    const [only] = ids;
-    if (ids.length === 1 && only) {
-      base.glossaryId = only;
-    } else {
-      base.glossaryIds = ids;
-    }
-  }
+  await applyGlossarySelection(base, options, deps.glossaryService);
 
   if (options.translationMemory) {
     const cache = deps.tmCache ?? new Map<string, string>();

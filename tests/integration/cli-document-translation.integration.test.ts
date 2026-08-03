@@ -41,6 +41,87 @@ describe('Document Translation Integration', () => {
     nock.cleanAll();
   });
 
+  describe('Service-level: glossaries on the multipart upload', () => {
+    const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+    /**
+     * Runs one upload and hands back the raw multipart body, so the encoding
+     * the API actually requires is asserted rather than assumed.
+     */
+    const uploadWith = async (
+      glossary: { glossaryId?: string; glossaryIds?: string[] },
+      label: string,
+    ): Promise<string> => {
+      const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
+      const service = new DocumentTranslationService(client);
+
+      const inputPath = path.join(testDir, `glossary-${label}.pdf`);
+      const outputPath = path.join(testDir, `glossary-${label}-out.pdf`);
+      fs.writeFileSync(inputPath, Buffer.from('%PDF-1.4 test content'));
+
+      let capturedBody = '';
+      nock(FREE_API_URL)
+        .post('/v2/document', (body: string) => {
+          capturedBody = body;
+          return true;
+        })
+        .reply(200, { document_id: `doc-${label}`, document_key: `key-${label}` });
+
+      nock(FREE_API_URL)
+        .post(`/v2/document/doc-${label}`)
+        .reply(200, { document_id: `doc-${label}`, status: 'done', billed_characters: 10 });
+
+      nock(FREE_API_URL)
+        .post(`/v2/document/doc-${label}/result`)
+        .reply(200, Buffer.from('%PDF-1.4 translated'));
+
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'de',
+        sourceLang: 'en',
+        ...glossary,
+      });
+
+      return capturedBody;
+    };
+
+    it('sends glossary_id for a single glossary', async () => {
+      const body = await uploadWith({ glossaryId: A }, 'single');
+
+      expect(body).toContain('name="glossary_id"');
+      expect(body).toContain(A);
+      expect(body).not.toContain('name="glossary_ids"');
+    });
+
+    /**
+     * Multipart uploads keep only the first of several repeated fields, so the
+     * IDs must arrive comma-joined with no whitespace or the API silently
+     * applies just one glossary.
+     */
+    it('comma-joins several glossaries into one glossary_ids field', async () => {
+      const body = await uploadWith({ glossaryIds: [A, B] }, 'multi');
+
+      expect(body).toContain('name="glossary_ids"');
+      expect(body).toContain(`${A},${B}`);
+      expect(body.match(/name="glossary_ids"/g)).toHaveLength(1);
+      expect(body).not.toContain(`${A}, ${B}`);
+    });
+
+    it('preserves the given order, which selects the winning glossary', async () => {
+      const body = await uploadWith({ glossaryIds: [B, A] }, 'reversed');
+
+      expect(body).toContain(`${B},${A}`);
+    });
+
+    it('sends no glossary field when none is selected', async () => {
+      const body = await uploadWith({}, 'none');
+
+      expect(body).not.toContain('name="glossary_id"');
+      expect(body).not.toContain('name="glossary_ids"');
+    });
+  });
+
   describe('Service-level: happy path (upload -> poll -> download)', () => {
     it('should complete the full document translation workflow', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });

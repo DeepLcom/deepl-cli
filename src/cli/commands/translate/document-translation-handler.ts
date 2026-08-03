@@ -4,7 +4,7 @@ import { ValidationError } from '../../../utils/errors.js';
 import type { DocumentTranslationOptions } from '../../../types/api.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
 import { warnIgnoredOptions, validateLanguageCodes } from './translate-utils.js';
-import { buildBaseTranslationOptions } from './translation-options-factory.js';
+import { buildBaseTranslationOptions, applyGlossarySelection } from './translation-options-factory.js';
 
 export class DocumentTranslationHandler {
   constructor(public ctx: HandlerContext) {}
@@ -16,14 +16,25 @@ export class DocumentTranslationHandler {
       );
     }
 
-    const supported = new Set(['from', 'formality', 'outputFormat', 'enableMinification']);
+    const supported = new Set(['from', 'formality', 'glossary', 'outputFormat', 'enableMinification']);
     warnIgnoredOptions('document', options, supported);
 
     validateLanguageCodes([options.to]);
 
+    // The API rejects a document glossary without source_lang: "source_lang has
+    // to be specified in order to use a glossary."
+    if (options.glossary && options.glossary.length > 0 && !options.from) {
+      throw new ValidationError(
+        'Source language (--from) is required when using a glossary',
+        'Example: deepl translate --from en --to es --glossary my-glossary report.pdf --output report.es.pdf'
+      );
+    }
+
     const outputPath = options.output!;
 
     const translationOptions = buildBaseTranslationOptions(options);
+
+    await applyGlossarySelection(translationOptions, options, this.ctx.glossaryService);
 
     if (options.outputFormat) {
       translationOptions.outputFormat = options.outputFormat;

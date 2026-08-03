@@ -3700,7 +3700,6 @@ describe('TranslateCommand', () => {
           tagHandling: 'xml',
           modelType: 'quality_optimized',
           customInstruction: ['Be formal'],
-          glossary: ['my-glossary'],
           preserveCode: true,
         });
 
@@ -3709,9 +3708,6 @@ describe('TranslateCommand', () => {
         );
         expect(warnSpy).toHaveBeenCalledWith(
           expect.stringMatching(/--split-sentences/)
-        );
-        expect(warnSpy).toHaveBeenCalledWith(
-          expect.stringMatching(/--glossary/)
         );
         expect(warnSpy).toHaveBeenCalledWith(
           expect.stringMatching(/--preserve-code/)
@@ -3726,6 +3722,21 @@ describe('TranslateCommand', () => {
           formality: 'more',
           outputFormat: 'docx',
           enableMinification: true,
+        });
+
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not warn about --glossary, which document mode now supports', async () => {
+        (mockGlossaryService.resolveGlossaryId as jest.Mock).mockResolvedValueOnce(
+          'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        );
+
+        await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
+          to: 'es',
+          output: '/output.pdf',
+          from: 'en',
+          glossary: ['my-glossary'],
         });
 
         expect(warnSpy).not.toHaveBeenCalled();
