@@ -146,7 +146,11 @@ function featureList(entry: LanguageDisplayEntry, keys: string[]): string {
       const label = featureLabel(key).toLowerCase();
       return cell === 'yes' ? label : `${label} (${cell})`;
     });
-  return supported.length > 0 ? supported.join(', ') : 'none';
+  if (supported.length > 0) return supported.join(', ');
+  // Supports none of the columns, but the footer may still be crediting it with
+  // the features every described language shares; "none" would contradict that.
+  // Only a language supporting nothing at all is reported as supporting nothing.
+  return Object.keys(entry.features ?? {}).length === 0 ? 'none' : '';
 }
 
 /**
@@ -284,9 +288,11 @@ export class LanguagesCommand {
     const lines: string[] = [];
     const header = type === 'source' ? 'Source Languages:' : 'Target Languages:';
     const renderFeatures = showFeatures && hasAnyFeatures(entries);
-    // Formality is one of the feature columns, so the [F] shorthand would say it twice.
+    // Formality is one of the feature columns, so the [F] shorthand would say it
+    // twice. `=== true` because a language the response did not describe carries
+    // no answer, and a legend with no [F] beneath it reads as "none support it".
     const showFormality =
-      !renderFeatures && type === 'target' && entries.some(e => e.supportsFormality !== undefined);
+      !renderFeatures && type === 'target' && entries.some(e => e.supportsFormality === true);
 
     lines.push(chalk.bold(header));
 
@@ -376,8 +382,13 @@ export class LanguagesCommand {
     const { columns, uniform } = renderFeatures
       ? partitionFeatureKeys(entries)
       : { columns: [], uniform: [] };
+    // Formality is one of the feature columns, so the dedicated column would say
+    // it twice -- unless no feature discriminates, in which case dropping it
+    // would make --features show strictly less than the plain listing.
     const showFormality =
-      !renderFeatures && type === 'target' && entries.some(e => e.supportsFormality !== undefined);
+      (!renderFeatures || columns.length === 0) &&
+      type === 'target' &&
+      entries.some(e => e.supportsFormality === true);
 
     const head = ['Code', 'Name', 'Category'];
     const colWidths = [10, renderFeatures ? 24 : showFormality ? 30 : 36, 12];
@@ -409,8 +420,13 @@ export class LanguagesCommand {
       table.push(row);
     }
 
+    const notes: string[] = [];
+    if (renderFeatures && columns.length > 0 && entries.some(e => !hasFeatureData(e))) {
+      notes.push(`${UNKNOWN_CELL} = the API response did not describe this language`);
+    }
     const note = renderFeatures ? uniformNote(uniform, entries) : undefined;
-    return `${header}:\n${table.toString()}${note ? `\n${note}` : ''}`;
+    if (note) notes.push(note);
+    return `${header}:\n${table.toString()}${notes.length > 0 ? `\n${notes.join('\n')}` : ''}`;
   }
 
   /** Format both source and target language tables joined by a blank line. */

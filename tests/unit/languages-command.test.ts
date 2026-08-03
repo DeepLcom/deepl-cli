@@ -584,8 +584,23 @@ describe('LanguagesCommand', () => {
       expect(formatted).toContain('All listed languages also support: tag handling.');
     });
 
-    it('should mark a language with no supported features', () => {
+    it('should not claim a language supports nothing when the footer credits it', () => {
       const formatted = languagesCommand.formatDisplayEntries(displayEntries, 'target', true);
+      const hi = formatted.split('\n').find(l => l.includes('Hindi'));
+
+      // Hindi supports none of the discriminating columns but does support the
+      // uniform one, which the footer reports -- "none" would contradict it.
+      expect(hi).not.toContain('none');
+      expect(formatted).toContain('All listed languages also support: tag handling.');
+    });
+
+    it('should mark a language the response credits with no features at all', () => {
+      const entries: LanguageDisplayEntry[] = [
+        { code: 'de', name: 'German', category: 'core', features: { glossary: { status: 'stable' } } },
+        { code: 'hi', name: 'Hindi', category: 'extended', features: {} },
+      ];
+
+      const formatted = languagesCommand.formatDisplayEntries(entries, 'target', true);
       const hi = formatted.split('\n').find(l => l.includes('Hindi'));
 
       expect(hi).toContain('none');
