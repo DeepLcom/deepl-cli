@@ -2,7 +2,7 @@
  * API-related type definitions
  */
 
-import { Language, Formality } from './common';
+import { Language, Formality } from './common.js';
 import { WRITE_TARGET_LANGUAGES } from '../data/language-entries.js';
 
 export type ModelType =

@@ -80,7 +80,7 @@ supports() {  # supports <lang> <feature>
 }
 
 if supports th glossary; then
-  deepl translate --to th --glossary my-terms "Hello"
+  deepl translate --from en --to th --glossary my-terms "Hello"
 else
   echo "Thai does not support glossaries; translating without one"
   deepl translate --to th "Hello"

@@ -45,6 +45,21 @@ const DEFAULT_CACHE_SIZE = 1024 * 1024 * 1024; // 1GB
 const DEFAULT_CACHE_TTL = 30 * 24 * 60 * 60; // 30 days in seconds
 const DEFAULT_DEBOUNCE_MS = 500;
 
+/**
+ * Language values are stored lowercase, matching what `deepl languages` prints
+ * and what every translate path normalizes its flags to, so a config written as
+ * `DE` does not read back as a code the registry cannot look up.
+ */
+function normalizeLanguageValue(path: string, value: unknown): unknown {
+  if (path === 'defaults.sourceLang' && typeof value === 'string') {
+    return value.toLowerCase();
+  }
+  if (path === 'defaults.targetLangs' && Array.isArray(value)) {
+    return value.map(lang => (typeof lang === 'string' ? lang.toLowerCase() : lang));
+  }
+  return value;
+}
+
 export class ConfigService {
   private config: DeepLConfig;
   private configPath: string;
@@ -71,6 +86,7 @@ export class ConfigService {
 
     const keys = key.split('.');
     this.validatePath(keys, value);
+    value = normalizeLanguageValue(keys.join('.'), value);
 
     let current: Record<string, unknown> = this.config as unknown as Record<string, unknown>;
     for (let i = 0; i < keys.length - 1; i++) {
@@ -384,9 +400,22 @@ export class ConfigService {
    * is the authority on which languages exist and the snapshot can lag it.
    */
   private validateLanguage(lang: string, key?: string): void {
-    if (!isValidLanguage(lang) && !looksLikeLanguageTag(lang)) {
+    // Lowercased first: every translate path lowercases the flag before using it,
+    // so `--from DE` works while `config set defaults.sourceLang DE` was rejected
+    // by a lowercase-only pattern -- the one casing that is certainly valid.
+    const normalized = typeof lang === 'string' ? lang.toLowerCase() : lang;
+    if (!isValidLanguage(normalized) && !looksLikeLanguageTag(normalized)) {
       const context = key ? ` for "${key}"` : '';
       throw new ConfigError(`Invalid language code "${lang}"${context}. Run: deepl languages to see valid codes`);
+    }
+    if (!isValidLanguage(normalized)) {
+      // Stored anyway, because the snapshot can lag the API -- but a typo written
+      // to config fails on every later command with nothing pointing back here.
+      const context = key ? ` for "${key}"` : '';
+      Logger.warn(
+        `Note: "${lang}"${context} is not in the bundled language list; it will be sent to the API as-is.\n` +
+          '      Run: deepl languages  to see the languages this build knows about.'
+      );
     }
   }
 
