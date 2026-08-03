@@ -15,6 +15,7 @@ import { TranslationOptions } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
+import { isUnrecoverableRequestError } from '../utils/unrecoverable-request-error.js';
 import { errorMessage } from '../utils/error-message.js';
 
 interface BatchOptions {
@@ -220,12 +221,25 @@ export class BatchTranslationService {
     let completed = startCompleted;
     let currentBatch: FileEntry[] = [];
     let currentBytes = 0;
+    // Set once the API rejects the request itself (an unsupported target_lang,
+    // say). Every remaining batch would be told the same thing, so they are
+    // failed without spending the round trips.
+    let requestRejected: unknown;
 
     const flushBatch = async (): Promise<void> => {
       const batch = currentBatch;
       currentBatch = [];
       currentBytes = 0;
       if (batch.length === 0) {
+        return;
+      }
+
+      if (requestRejected !== undefined) {
+        for (const entry of batch) {
+          failed.push({ file: entry.file, error: errorMessage(requestRejected) });
+          completed++;
+          onProgress?.({ completed, total: totalFiles, current: entry.file });
+        }
         return;
       }
 
@@ -275,6 +289,9 @@ export class BatchTranslationService {
           onProgress?.({ completed, total: totalFiles, current: entry.file });
         }
       } catch (error) {
+        if (isUnrecoverableRequestError(error)) {
+          requestRejected = error;
+        }
         Logger.error(`Batch translation failed: ${errorMessage(error)}`);
         for (const entry of batch) {
           failed.push({

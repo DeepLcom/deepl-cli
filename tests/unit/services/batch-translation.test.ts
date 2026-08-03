@@ -502,6 +502,54 @@ describe('BatchTranslationService', () => {
       expect(secondCallTexts).toHaveLength(2);
     });
 
+    it('should stop requesting once the API rejects the target language', async () => {
+      const files: string[] = [];
+      for (let i = 0; i < 52; i++) {
+        const f = path.join(testDir, `reject${i}.txt`);
+        fs.writeFileSync(f, `Text ${i}`);
+        files.push(f);
+      }
+
+      mockTranslationService.translateBatch.mockRejectedValue(
+        new Error("API error: Value for 'target_lang' not supported."),
+      );
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'ex' as never },
+        { outputDir: testDir },
+      );
+
+      // The same rejection applies to every batch, so it is asked once rather
+      // than once per batch.
+      expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(1);
+      expect(result.failed).toHaveLength(52);
+      expect(result.successful).toHaveLength(0);
+    });
+
+    it('should keep going when a batch fails for a reason specific to it', async () => {
+      const files: string[] = [];
+      for (let i = 0; i < 52; i++) {
+        const f = path.join(testDir, `partial${i}.txt`);
+        fs.writeFileSync(f, `Text ${i}`);
+        files.push(f);
+      }
+
+      mockTranslationService.translateBatch
+        .mockRejectedValueOnce(new Error('Too many requests'))
+        .mockImplementation(async (texts) => texts.map(t => ({ text: `translated: ${t}` })));
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir },
+      );
+
+      expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(2);
+      expect(result.successful).toHaveLength(2);
+      expect(result.failed).toHaveLength(50);
+    });
+
     it('should split batches when cumulative bytes exceed MAX_TEXT_BYTES', async () => {
       // Create two files that together exceed MAX_TEXT_BYTES
       const halfSize = Math.floor(MAX_TEXT_BYTES / 2) + 100;

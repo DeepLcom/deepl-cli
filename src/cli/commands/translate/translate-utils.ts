@@ -68,7 +68,16 @@ export function warnIgnoredOptions(mode: string, options: TranslateOptions, supp
 export function validateLanguageCodes(langCodes: string[]): void {
   for (const lang of langCodes) {
     if (VALID_LANGUAGES.has(lang)) continue;
-    if (looksLikeLanguageTag(lang)) continue;
+    if (looksLikeLanguageTag(lang)) {
+      // Said up front, before anything is sent or billed. Deferring to the API
+      // means a two-letter typo now comes back as a bare "target_lang not
+      // supported" from the server, which no longer points anywhere useful.
+      Logger.warn(
+        `Note: "${lang}" is not in the bundled language list; deferring to the API.\n` +
+          '      Run: deepl languages  to see the languages this build knows about.'
+      );
+      continue;
+    }
     throw new ValidationError(
       `Invalid target language code: "${lang}".`,
       'Run: deepl languages  to see all available languages'

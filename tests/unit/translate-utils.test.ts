@@ -121,6 +121,24 @@ describe('translate-utils', () => {
       expect(() => validateLanguageCodes(['abc-1234'])).not.toThrow();
     });
 
+    it('should warn that an unknown code is being deferred to the API', () => {
+      mockedLoggerWarn.mockClear();
+      validateLanguageCodes(['ex']);
+
+      // Said before anything is sent: the API answers a typo with a bare
+      // "target_lang not supported" that points nowhere.
+      const warning = mockedLoggerWarn.mock.calls.map(call => String(call[0])).join('\n');
+      expect(warning).toContain('"ex" is not in the bundled language list');
+      expect(warning).toContain('deepl languages');
+    });
+
+    it('should not warn about a code the snapshot lists', () => {
+      mockedLoggerWarn.mockClear();
+      validateLanguageCodes(['de', 'en-gb']);
+
+      expect(mockedLoggerWarn).not.toHaveBeenCalled();
+    });
+
     it('should still reject input that is not shaped like a language tag', () => {
       for (const code of ['g', 'grman', 'de_ch', 'de-', '../etc/passwd', 'de ch']) {
         expect(() => validateLanguageCodes([code])).toThrow(ValidationError);
