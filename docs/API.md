@@ -544,10 +544,10 @@ deepl translate complex.xml --to de --tag-handling xml \
 
 ```bash
 # Use glossary for consistent terminology
-deepl translate "API documentation" --to es --glossary tech-terms
+deepl translate "API documentation" --from en --to es --glossary tech-terms
 
 # Use glossary by ID
-deepl translate README.md --to fr --glossary abc-123-def-456 --output README.fr.md
+deepl translate README.md --from en --to fr --glossary abc-123-def-456 --output README.fr.md
 ```
 
 **Multiple glossaries on one request:**
@@ -556,13 +556,13 @@ Repeat `--glossary` to apply up to 5 glossaries to a single request. Their entri
 
 ```bash
 # Shared base terminology, overridden by project-specific terms
-deepl translate "Hello world" --to de --glossary base-terms --glossary project-overrides
+deepl translate "Hello world" --from en --to de --glossary base-terms --glossary project-overrides
 
 # Reversing the order makes base-terms win any conflicting entry
-deepl translate "Hello world" --to de --glossary project-overrides --glossary base-terms
+deepl translate "Hello world" --from en --to de --glossary project-overrides --glossary base-terms
 
 # Names and UUIDs can be mixed
-deepl translate README.md --to fr --output README.fr.md \
+deepl translate README.md --from en --to fr --output README.fr.md \
   --glossary abc-123-def-456 --glossary house-style
 ```
 

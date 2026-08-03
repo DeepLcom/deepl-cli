@@ -3715,19 +3715,6 @@ describe('TranslateCommand', () => {
       });
 
       it('should not warn when only supported options are used in document mode', async () => {
-        await (translateCommand as any).fileHandler.documentHandler.translateDocument('/doc.pdf', {
-          to: 'es',
-          output: '/output.pdf',
-          from: 'en',
-          formality: 'more',
-          outputFormat: 'docx',
-          enableMinification: true,
-        });
-
-        expect(warnSpy).not.toHaveBeenCalled();
-      });
-
-      it('should not warn about --glossary, which document mode now supports', async () => {
         (mockGlossaryService.resolveGlossaryId as jest.Mock).mockResolvedValueOnce(
           'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
         );
@@ -3736,7 +3723,10 @@ describe('TranslateCommand', () => {
           to: 'es',
           output: '/output.pdf',
           from: 'en',
+          formality: 'more',
           glossary: ['my-glossary'],
+          outputFormat: 'docx',
+          enableMinification: true,
         });
 
         expect(warnSpy).not.toHaveBeenCalled();

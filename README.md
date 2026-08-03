@@ -377,6 +377,13 @@ deepl translate contract.pdf --to de --formality more --output contract.de.pdf
 # Specify source language
 deepl translate document.pdf --from en --to es --output document.es.pdf
 
+# Apply a glossary (--from is required whenever a glossary is used)
+deepl translate report.docx --from en --to de --glossary tech-terms --output report.de.docx
+
+# Repeat --glossary for up to 5; the last one wins a conflicting term
+deepl translate report.docx --from en --to de --output report.de.docx \
+  --glossary base-terms --glossary project-overrides
+
 # Convert PDF to DOCX during translation (ONLY supported conversion)
 deepl translate document.pdf --to es --output-format docx --output document.es.docx
 # Translates PDF to Spanish and converts to editable Word format
@@ -393,6 +400,7 @@ deepl translate document.pdf --to es --output-format docx --output document.es.d
 - ✅ **Progress Tracking** - Real-time status updates during translation
 - ✅ **Large Files** - Handles documents up to 30MB
 - ✅ **Cost Tracking** - Shows billed characters after translation
+- ✅ **Glossaries** - `--glossary` applies to documents too, repeatable up to 5 (requires `--from`). Translation memories are not supported for documents.
 - ✅ **Async Processing** - Documents are translated on DeepL servers with polling
 
 **Supported Formats:**
@@ -1284,7 +1292,7 @@ authentication	Authentifizierung
 
 ```bash
 # Layer project overrides on top of shared base terminology
-deepl translate "Hello world" --to de --glossary base-terms --glossary project-overrides
+deepl translate "Hello world" --from en --to de --glossary base-terms --glossary project-overrides
 ```
 
 ### Translation Memories

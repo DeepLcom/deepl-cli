@@ -26,7 +26,7 @@ export function registerTranslate(
     .option('--context <text>', 'Additional context to improve translation quality')
     .option(
       '--glossary <name-or-id>',
-      `Use glossary by name or ID (repeatable, max ${MAX_GLOSSARIES_PER_REQUEST}; when several define the same term, the last one wins)`,
+      `Use glossary by name or ID (requires --from; repeatable, max ${MAX_GLOSSARIES_PER_REQUEST}; when several define the same term, the last one wins). Applies to text, files and documents.`,
       (val: string, prev: string[] | undefined) => (prev ?? []).concat([val]),
     )
     .option(
@@ -81,8 +81,9 @@ Examples:
   $ deepl translate ./docs --to de,es,fr --pattern "*.md"
   $ echo "Hello" | deepl translate --to ja
   $ deepl translate report.pdf --to de --output-format docx
-  $ deepl translate "Hello" --to es --formality more --glossary my-glossary
-  $ deepl translate "Hello" --to es --glossary base-terms --glossary project-overrides
+  $ deepl translate "Hello" --from en --to es --formality more --glossary my-glossary
+  $ deepl translate "Hello" --from en --to es --glossary base-terms --glossary project-overrides
+  $ deepl translate report.docx --from en --to de --glossary tech-terms --output report.de.docx
   $ deepl translate page.html --to fr --tag-handling html
   $ deepl translate "Hello" --to es --custom-instruction "Use informal language"
   $ deepl translate ./docs --to es --dry-run
