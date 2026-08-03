@@ -189,26 +189,30 @@ describe('registerWrite', () => {
   });
 
   describe('validation', () => {
-    it('should reject invalid language code', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'xx']);
+    it('should reject a code that is not shaped like a language tag', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'de_ch']);
       expect(handleError).toHaveBeenCalledWith(
         expect.objectContaining({ message: expect.stringContaining('Invalid language code') }),
       );
     });
 
-    it('should reject a well-formed code the Write API does not support', async () => {
-      // Deliberately stricter than `translate --to`, which passes well-formed
-      // unknown codes to the API: the Write set is small enough to enumerate,
-      // so naming the valid options beats a round trip.
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'hi']);
-      expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('Invalid language code') }),
-      );
-      expect(mockWriteCommand.improve).not.toHaveBeenCalled();
+    it('should defer a well-formed code the bundled list does not have', async () => {
+      // The bundled list is a snapshot and nothing in CI regenerates it, so
+      // rejecting outright made a language DeepL had added unreachable. The
+      // request goes through with a warning that still names the bundled set.
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'xx']);
+
+      expect(handleError).not.toHaveBeenCalled();
+      expect(mockWriteCommand.improve).toHaveBeenCalled();
+      const warning = (Logger.warn as jest.Mock).mock.calls.map(c => String(c[0])).join('\n');
+      expect(warning).toContain('not in the bundled Write language list');
+      for (const code of WRITE_TARGET_LANGUAGES) {
+        expect(warning).toContain(code);
+      }
     });
 
-    it('should enumerate every supported language in the rejection', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'xx']);
+    it('should enumerate every supported language when rejecting malformed input', async () => {
+      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'nope_nope']);
       const error = handleError.mock.calls[0]?.[0] as Error;
       for (const code of WRITE_TARGET_LANGUAGES) {
         expect(error.message).toContain(code);

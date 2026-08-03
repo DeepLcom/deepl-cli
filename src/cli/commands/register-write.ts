@@ -4,6 +4,7 @@ import { atomicWriteFile } from '../../utils/atomic-write.js';
 import chalk from 'chalk';
 import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/index.js';
 import { WRITE_TARGET_LANGUAGES } from '../../data/language-entries.js';
+import { looksLikeLanguageTag } from '../../data/language-registry.js';
 import { Logger } from '../../utils/logger.js';
 import { ExitCode } from '../../utils/exit-codes.js';
 import { isNoInput } from '../../utils/confirm.js';
@@ -11,10 +12,11 @@ import { ValidationError } from '../../utils/errors.js';
 import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
 /**
- * Generated from GET /v3/languages?resource=write, so it cannot drift from what
- * the API accepts. Unlike `translate --to`, a code outside this list is rejected
- * locally rather than deferred to the API: at 14 entries the error can name every
- * valid option, which beats a round trip.
+ * Generated from GET /v3/languages?resource=write. Small enough that an error can
+ * name every option, which is why it is checked locally at all -- but it is still
+ * a snapshot, so an unrecognized code that is shaped like a language tag is
+ * deferred to the API with a warning rather than rejected. Rejecting outright
+ * made a language DeepL had added unreachable until someone regenerated the file.
  */
 export const WRITE_LANGUAGES = WRITE_TARGET_LANGUAGES;
 /**
@@ -84,10 +86,20 @@ export function createWriteAction(
 
       if (options.lang) {
         const canonical = WRITE_LANGUAGE_BY_LOWERCASE.get(options.lang.toLowerCase());
-        if (!canonical) {
+        if (canonical) {
+          options.lang = canonical;
+        } else if (looksLikeLanguageTag(options.lang.toLowerCase())) {
+          // The bundled list is a snapshot and can lag the API, and nothing in CI
+          // regenerates it, so a language DeepL has added must not be
+          // unreachable: a well-formed code goes to the API to accept or reject.
+          Logger.warn(
+            `Note: "${options.lang}" is not in the bundled Write language list; deferring to the API.\n` +
+              `      Bundled options: ${WRITE_LANGUAGES.join(', ')}`
+          );
+          options.lang = options.lang.toLowerCase();
+        } else {
           throw new ValidationError(`Invalid language code: ${options.lang}. Valid options: ${WRITE_LANGUAGES.join(', ')}`);
         }
-        options.lang = canonical;
       }
 
       if (options.style && !(WRITE_STYLES as readonly string[]).includes(options.style)) {

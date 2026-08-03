@@ -3,3 +3,7 @@ dist
 coverage
 *.log
 .DS_Store
+
+# Generated from GET /v3/languages; check:languages compares the raw text, so
+# reformatting it would report permanent drift.
+src/data/language-entries.ts
