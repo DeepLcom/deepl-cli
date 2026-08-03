@@ -58,6 +58,7 @@ export interface SharedTmAndGlossaryDeps {
 export async function applySharedTmAndGlossary<
   T extends {
     glossaryId?: string;
+    glossaryIds?: string[];
     translationMemoryId?: string;
     translationMemoryThreshold?: number;
     modelType?: TranslationParams['modelType'];
@@ -67,8 +68,20 @@ export async function applySharedTmAndGlossary<
   options: TranslateOptions,
   deps: SharedTmAndGlossaryDeps,
 ): Promise<void> {
-  if (options.glossary) {
-    base.glossaryId = await resolveGlossaryId(deps.glossaryService, options.glossary);
+  if (options.glossary && options.glossary.length > 0) {
+    // Resolved sequentially so the service's resolution cache is populated
+    // before the next name-or-ID lookup needs the glossary list.
+    const ids: string[] = [];
+    for (const nameOrId of options.glossary) {
+      ids.push(await resolveGlossaryId(deps.glossaryService, nameOrId));
+    }
+
+    const [only] = ids;
+    if (ids.length === 1 && only) {
+      base.glossaryId = only;
+    } else {
+      base.glossaryIds = ids;
+    }
   }
 
   if (options.translationMemory) {

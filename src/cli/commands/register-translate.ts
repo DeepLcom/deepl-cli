@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createTranslateCommand, type ServiceDeps } from './service-factory.js';
+import { MAX_GLOSSARIES_PER_REQUEST } from '../../utils/glossary-params.js';
 
 export function registerTranslate(
   program: Command,
@@ -23,7 +24,11 @@ export function registerTranslate(
     .optionsGroup('Translation Quality:')
     .addOption(new Option('--formality <level>', 'Formality level (formal/informal are aliases for more/less)').choices(['default', 'more', 'less', 'prefer_more', 'prefer_less', 'formal', 'informal']))
     .option('--context <text>', 'Additional context to improve translation quality')
-    .option('--glossary <name-or-id>', 'Use glossary by name or ID')
+    .option(
+      '--glossary <name-or-id>',
+      `Use glossary by name or ID (repeatable, max ${MAX_GLOSSARIES_PER_REQUEST}; when several define the same term, the last one wins)`,
+      (val: string, prev: string[] | undefined) => (prev ?? []).concat([val]),
+    )
     .option(
       '--translation-memory <name-or-uuid>',
       'Use translation memory by name or UUID (forces quality_optimized model). Run "deepl tm list" to see available TMs.',
@@ -77,6 +82,7 @@ Examples:
   $ echo "Hello" | deepl translate --to ja
   $ deepl translate report.pdf --to de --output-format docx
   $ deepl translate "Hello" --to es --formality more --glossary my-glossary
+  $ deepl translate "Hello" --to es --glossary base-terms --glossary project-overrides
   $ deepl translate page.html --to fr --tag-handling html
   $ deepl translate "Hello" --to es --custom-instruction "Use informal language"
   $ deepl translate ./docs --to es --dry-run
@@ -103,7 +109,7 @@ Examples:
       recursive?: boolean;
       pattern?: string;
       concurrency?: number;
-      glossary?: string;
+      glossary?: string[];
       translationMemory?: string;
       tmThreshold?: number;
       customInstruction?: string[];
@@ -124,6 +130,13 @@ Examples:
               'Use --to <lang>:   deepl translate "Hello" --to de\n  Set a default:     deepl init',
             );
           }
+        }
+
+        if (options.glossary && options.glossary.length > MAX_GLOSSARIES_PER_REQUEST) {
+          throw new ValidationError(
+            `--glossary can be given at most ${MAX_GLOSSARIES_PER_REQUEST} times, got ${options.glossary.length}`,
+            'Merge entries into fewer glossaries, or drop some --glossary flags.',
+          );
         }
 
         if (options.tmThreshold !== undefined && !options.translationMemory) {
@@ -183,8 +196,9 @@ Examples:
           if (options.from) {
             lines.push(chalk.yellow(`[dry-run] Source language: ${options.from}`));
           }
-          if (options.glossary) {
-            lines.push(chalk.yellow(`[dry-run] Glossary: ${options.glossary}`));
+          if (options.glossary && options.glossary.length > 0) {
+            const label = options.glossary.length > 1 ? 'Glossaries' : 'Glossary';
+            lines.push(chalk.yellow(`[dry-run] ${label}: ${options.glossary.join(', ')}`));
           }
           if (options.translationMemory) {
             lines.push(chalk.yellow(`[dry-run] Translation memory: ${options.translationMemory}`));

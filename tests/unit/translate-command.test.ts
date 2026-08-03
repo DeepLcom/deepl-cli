@@ -1189,7 +1189,7 @@ describe('TranslateCommand', () => {
       const result = await translateCommand.translateText('Hello world', {
         to: 'de',
         from: 'en',
-        glossary: 'my-glossary',
+        glossary: ['my-glossary'],
       });
 
       expect(result).toBe('Hallo Welt');
@@ -1212,7 +1212,7 @@ describe('TranslateCommand', () => {
       const result = await translateCommand.translateText('Hello world', {
         to: 'fr',
         from: 'en',
-        glossary: '01234567-89ab-cdef-0123-456789abcdef',
+        glossary: ['01234567-89ab-cdef-0123-456789abcdef'],
       });
 
       expect(result).toBe('Bonjour le monde');
@@ -1228,7 +1228,7 @@ describe('TranslateCommand', () => {
       await expect(
         translateCommand.translateText('Hello world', {
           to: 'de',
-          glossary: 'my-glossary',
+          glossary: ['my-glossary'],
         })
       ).rejects.toThrow('Source language (--from) is required when using a glossary');
     });
@@ -1237,7 +1237,7 @@ describe('TranslateCommand', () => {
       await expect(
         translateCommand.translateText('Hello world', {
           to: 'de,fr',
-          glossary: 'my-glossary',
+          glossary: ['my-glossary'],
         })
       ).rejects.toThrow('Source language (--from) is required when using a glossary');
     });
@@ -1251,7 +1251,7 @@ describe('TranslateCommand', () => {
         translateCommand.translateText('Hello world', {
           to: 'de',
           from: 'en',
-          glossary: 'non-existent',
+          glossary: ['non-existent'],
         })
       ).rejects.toThrow('Glossary "non-existent" not found');
 
@@ -1269,7 +1269,7 @@ describe('TranslateCommand', () => {
       const result = await translateCommand.translateText('Hello', {
         to: 'de,fr',
         from: 'en',
-        glossary: 'tech-terms',
+        glossary: ['tech-terms'],
       });
 
       expect(result).toBe('[de] Hallo\n[fr] Bonjour');
@@ -1292,7 +1292,7 @@ describe('TranslateCommand', () => {
       const result = await translateCommand.translateText('Dear Sir or Madam', {
         to: 'de',
         from: 'en',
-        glossary: 'business-glossary',
+        glossary: ['business-glossary'],
         formality: 'more',
         context: 'Business letter opening',
       });
@@ -2098,7 +2098,7 @@ describe('TranslateCommand', () => {
       await expect(
         translateCommand.translateText('Hello', {
           to: 'sw',
-          glossary: 'my-glossary',
+          glossary: ['my-glossary'],
         })
       ).rejects.toThrow('do not support glossaries');
     });
@@ -3322,7 +3322,7 @@ describe('TranslateCommand', () => {
         to: 'es',
         from: 'en',
         output: '/out.txt',
-        glossary: 'my-glossary',
+        glossary: ['my-glossary'],
       });
 
       expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
@@ -3648,7 +3648,7 @@ describe('TranslateCommand', () => {
             to: 'es',
             output: '/output',
             splitSentences: 'on',
-            glossary: 'my-glossary',
+            glossary: ['my-glossary'],
             customInstruction: ['Be formal'],
             modelType: 'quality_optimized',
             context: 'technical docs',
@@ -3700,7 +3700,7 @@ describe('TranslateCommand', () => {
           tagHandling: 'xml',
           modelType: 'quality_optimized',
           customInstruction: ['Be formal'],
-          glossary: 'my-glossary',
+          glossary: ['my-glossary'],
           preserveCode: true,
         });
 
@@ -3783,7 +3783,7 @@ describe('TranslateCommand', () => {
     it('should not include glossaryId (resolved separately)', () => {
       const result = buildTranslationOptions({
         to: 'es',
-        glossary: 'my-glossary',
+        glossary: ['my-glossary'],
       });
       expect(result).not.toHaveProperty('glossaryId');
     });

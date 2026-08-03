@@ -162,7 +162,7 @@ describe('FileTranslationHandler', () => {
 
       it('throws ValidationError for --glossary without --from in multi-target', async () => {
         const err = await handler
-          .translateFile('/tmp/file.txt', defaultOptions({ to: 'de,fr', output: '/tmp/out', glossary: 'my-glossary' }))
+          .translateFile('/tmp/file.txt', defaultOptions({ to: 'de,fr', output: '/tmp/out', glossary: ['my-glossary'] }))
           .catch(e => e);
         expect(err).toBeInstanceOf(ValidationError);
         expect((err as Error).message).toContain('Source language (--from) is required');
@@ -193,7 +193,7 @@ describe('FileTranslationHandler', () => {
 
         await handler.translateFile('/tmp/file.txt', defaultOptions({
           to: 'de,fr', output: '/tmp/out',
-          from: 'en', glossary: 'my-glossary',
+          from: 'en', glossary: ['my-glossary'],
         }));
 
         expect(mocks.glossaryService.resolveGlossaryId).toHaveBeenCalledTimes(1);
@@ -310,10 +310,10 @@ describe('FileTranslationHandler', () => {
       mocks.glossaryService.resolveGlossaryId.mockResolvedValue('glossary-123');
 
       await expect(
-        handler.translateFile('/tmp/file.txt', defaultOptions({ glossary: 'my-glossary' }))
+        handler.translateFile('/tmp/file.txt', defaultOptions({ glossary: ['my-glossary'] }))
       ).rejects.toThrow(ValidationError);
       await expect(
-        handler.translateFile('/tmp/file.txt', defaultOptions({ glossary: 'my-glossary' }))
+        handler.translateFile('/tmp/file.txt', defaultOptions({ glossary: ['my-glossary'] }))
       ).rejects.toThrow('Source language (--from) is required');
     });
 

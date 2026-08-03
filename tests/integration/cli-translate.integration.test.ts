@@ -1238,7 +1238,7 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
       const options: TranslateOptions = {
         to: 'de',
         from: 'en',
-        glossary: 'my-glossary',
+        glossary: ['my-glossary'],
         translationMemory: 'my-tm',
         cache: false,
       };
@@ -1249,6 +1249,144 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
       expect(tmListScope.isDone()).toBe(true);
       expect(translateScope.isDone()).toBe(true);
       expect(nock.isDone()).toBe(true);
+    });
+  });
+
+  describe('multiple glossaries on one call', () => {
+    const SECOND_GLOSSARY_UUID = 'ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb';
+
+    const mockGlossaryList = (): nock.Scope =>
+      nock(DEEPL_FREE_API_URL)
+        .get('/v3/glossaries')
+        .reply(200, {
+          glossaries: [
+            {
+              glossary_id: GLOSSARY_UUID,
+              name: 'base-terms',
+              ready: true,
+              creation_time: '2026-04-19T00:00:00Z',
+              dictionaries: [{ source_lang: 'EN', target_lang: 'DE', entry_count: 1 }],
+            },
+            {
+              glossary_id: SECOND_GLOSSARY_UUID,
+              name: 'project-overrides',
+              ready: true,
+              creation_time: '2026-04-19T00:00:00Z',
+              dictionaries: [{ source_lang: 'EN', target_lang: 'DE', entry_count: 1 }],
+            },
+          ],
+        });
+
+    it('resolves each name and sends glossary_ids in the given order', async () => {
+      const glossaryListScope = mockGlossaryList();
+
+      const translateScope = nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          expect(body['glossary_ids']).toEqual([GLOSSARY_UUID, SECOND_GLOSSARY_UUID]);
+          expect(body['glossary_id']).toBeUndefined();
+          return true;
+        })
+        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+
+      const options: TranslateOptions = {
+        to: 'de',
+        from: 'en',
+        glossary: ['base-terms', 'project-overrides'],
+        cache: false,
+      };
+
+      await handler.translateText('Hi', options);
+
+      expect(glossaryListScope.isDone()).toBe(true);
+      expect(translateScope.isDone()).toBe(true);
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('preserves the reversed order, which selects the other winning glossary', async () => {
+      const glossaryListScope = mockGlossaryList();
+
+      const translateScope = nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          expect(body['glossary_ids']).toEqual([SECOND_GLOSSARY_UUID, GLOSSARY_UUID]);
+          return true;
+        })
+        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+
+      const options: TranslateOptions = {
+        to: 'de',
+        from: 'en',
+        glossary: ['project-overrides', 'base-terms'],
+        cache: false,
+      };
+
+      await handler.translateText('Hi', options);
+
+      expect(glossaryListScope.isDone()).toBe(true);
+      expect(translateScope.isDone()).toBe(true);
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('still sends singular glossary_id for one glossary', async () => {
+      const glossaryListScope = mockGlossaryList();
+
+      const translateScope = nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          expect(body['glossary_id']).toBe(GLOSSARY_UUID);
+          expect(body['glossary_ids']).toBeUndefined();
+          return true;
+        })
+        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+
+      const options: TranslateOptions = {
+        to: 'de',
+        from: 'en',
+        glossary: ['base-terms'],
+        cache: false,
+      };
+
+      await handler.translateText('Hi', options);
+
+      expect(glossaryListScope.isDone()).toBe(true);
+      expect(translateScope.isDone()).toBe(true);
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('accepts a mix of names and UUIDs', async () => {
+      const glossaryListScope = mockGlossaryList();
+
+      const translateScope = nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          expect(body['glossary_ids']).toEqual([SECOND_GLOSSARY_UUID, GLOSSARY_UUID]);
+          return true;
+        })
+        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+
+      const options: TranslateOptions = {
+        to: 'de',
+        from: 'en',
+        glossary: [SECOND_GLOSSARY_UUID, 'base-terms'],
+        cache: false,
+      };
+
+      await handler.translateText('Hi', options);
+
+      expect(glossaryListScope.isDone()).toBe(true);
+      expect(translateScope.isDone()).toBe(true);
+      expect(nock.isDone()).toBe(true);
+    });
+
+    it('fails when one of several glossary names does not exist', async () => {
+      const glossaryListScope = mockGlossaryList();
+
+      const options: TranslateOptions = {
+        to: 'de',
+        from: 'en',
+        glossary: ['base-terms', 'no-such-glossary'],
+        cache: false,
+      };
+
+      await expect(handler.translateText('Hi', options)).rejects.toThrow(/no-such-glossary/);
+      expect(glossaryListScope.isDone()).toBe(true);
     });
   });
 });

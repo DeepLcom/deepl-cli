@@ -22,7 +22,7 @@ describe('translation-options-factory', () => {
     });
 
     it('maps glossary into options.glossary but does NOT set glossaryId (resolution is async)', () => {
-      const result = buildBaseTranslationOptions({ to: 'de', glossary: 'my-glossary' });
+      const result = buildBaseTranslationOptions({ to: 'de', glossary: ['my-glossary'] });
       expect(result.glossaryId).toBeUndefined();
     });
 
@@ -82,7 +82,7 @@ describe('translation-options-factory', () => {
     it('resolves glossaryId when options.glossary is set', async () => {
       glossarySvc.resolveGlossaryId.mockResolvedValue('glos-123');
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', glossary: 'my-glossary' }, {
+      await applySharedTmAndGlossary(base, { to: 'de', glossary: ['my-glossary'] }, {
         glossaryService: glossarySvc,
         translationService: translationSvc,
         targets: ['de'],
@@ -176,7 +176,7 @@ describe('translation-options-factory', () => {
         to: 'de',
         from: 'en',
         formality: 'less',
-        glossary: 'my-glossary',
+        glossary: ['my-glossary'],
         modelType: 'quality_optimized',
         preserveFormatting: true,
       };
@@ -209,7 +209,7 @@ describe('translation-options-factory', () => {
         to: 'de',
         from: 'en',
         formality: 'more',
-        glossary: 'my-glossary',
+        glossary: ['my-glossary'],
         translationMemory: 'my-tm',
         tmThreshold: 85,
         modelType: 'quality_optimized',

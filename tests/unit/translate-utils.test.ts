@@ -161,10 +161,10 @@ describe('translate-utils', () => {
 
     it('should throw for extended language with glossary', () => {
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, glossary: 'my-glossary' })
+        validateExtendedLanguageConstraints('hi', { ...baseOptions, glossary: ['my-glossary'] })
       ).toThrow(ValidationError);
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, glossary: 'my-glossary' })
+        validateExtendedLanguageConstraints('hi', { ...baseOptions, glossary: ['my-glossary'] })
       ).toThrow(/do not support glossaries/);
     });
 
@@ -174,7 +174,7 @@ describe('translate-utils', () => {
           to: 'de',
           modelType: 'latency_optimized',
           formality: 'more',
-          glossary: 'some-glossary',
+          glossary: ['some-glossary'],
         })
       ).not.toThrow();
     });

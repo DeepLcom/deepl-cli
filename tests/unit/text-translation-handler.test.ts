@@ -250,10 +250,10 @@ describe('TextTranslationHandler', () => {
     it('should throw ValidationError for glossary without --from', async () => {
       mocks.glossaryService.resolveGlossaryId.mockResolvedValue('glossary-123');
       await expect(
-        handler.translateText('Hello', defaultOptions({ glossary: 'my-glossary' }))
+        handler.translateText('Hello', defaultOptions({ glossary: ['my-glossary'] }))
       ).rejects.toThrow(ValidationError);
       await expect(
-        handler.translateText('Hello', defaultOptions({ glossary: 'my-glossary' }))
+        handler.translateText('Hello', defaultOptions({ glossary: ['my-glossary'] }))
       ).rejects.toThrow('Source language (--from) is required');
     });
 

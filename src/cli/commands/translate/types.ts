@@ -27,7 +27,7 @@ export interface TranslateOptions {
   recursive?: boolean;
   pattern?: string;
   concurrency?: number;
-  glossary?: string;
+  glossary?: string[];
   translationMemory?: string;
   tmThreshold?: number;
   customInstruction?: string[];
