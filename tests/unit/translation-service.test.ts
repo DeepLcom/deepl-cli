@@ -1207,6 +1207,39 @@ describe('TranslationService', () => {
       });
     });
 
+    describe('tag handling version cache keys', () => {
+      const keysFor = async (
+        optionSets: Array<Record<string, unknown>>,
+      ): Promise<string[]> => {
+        mockCacheService.get.mockReturnValue(null);
+        mockDeepLClient.translate.mockResolvedValue({ text: 'Hola' });
+        mockCacheService.set.mockClear();
+
+        for (const options of optionSets) {
+          await translationService.translate('Hello', { targetLang: 'es', ...options } as any);
+        }
+
+        return mockCacheService.set.mock.calls.map((call) => call[0]);
+      };
+
+      /** Pinning makes these the same request, so they must share an entry. */
+      it('should key a bare tag-handling request the same as an explicit v2', async () => {
+        const [pinned, explicit] = await keysFor([
+          { tagHandling: 'xml' },
+          { tagHandling: 'xml', tagHandlingVersion: 'v2' },
+        ]);
+        expect(pinned).toBe(explicit);
+      });
+
+      it('should separate an explicit v1 from the pinned default', async () => {
+        const [v1, pinned] = await keysFor([
+          { tagHandling: 'xml', tagHandlingVersion: 'v1' },
+          { tagHandling: 'xml' },
+        ]);
+        expect(v1).not.toBe(pinned);
+      });
+    });
+
     it('should use cached result when options are provided in different order', async () => {
       // Set up cache to return a hit for the second call
       let callCount = 0;

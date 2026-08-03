@@ -541,8 +541,8 @@ deepl translate "Cost analysis" --to es,fr,de --format table --show-billed-chara
 # Preview what would be translated without making API calls (file/directory mode)
 deepl translate ./docs --to es --dry-run
 
-# Specify tag handling version (v2 improves structure handling, requires --tag-handling)
-deepl translate page.html --to es --tag-handling html --tag-handling-version v2
+# Tag handling pins v2 (better structure handling); opt back into v1 explicitly
+deepl translate page.html --to es --tag-handling html --tag-handling-version v1
 
 # Advanced XML/HTML tag handling (requires --tag-handling xml)
 # Control automatic XML structure detection

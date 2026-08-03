@@ -13,6 +13,7 @@ import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurren
 import { ValidationError } from '../utils/errors.js';
 import { errorMessage } from '../utils/error-message.js';
 import { resolveGlossaryWireParams } from '../utils/glossary-params.js';
+import { resolveTagHandlingVersion } from '../utils/tag-handling-version.js';
 import { preserveCodeBlocks, preserveVariables, restorePlaceholders } from '../utils/text-preservation.js';
 
 export { MULTI_TARGET_CONCURRENCY };
@@ -396,6 +397,11 @@ export class TranslationService {
    * not using them stay unchanged. `glossaryIds` is hashed in the caller's
    * order rather than sorted, because reordering the list changes which
    * glossary wins a conflicting term and therefore the translation itself.
+   *
+   * `tagHandlingVersion` is resolved rather than read straight off the options,
+   * so it holds the version the request will actually carry. Leaving it unset
+   * would let the key stay stable across a change of the API's own default,
+   * serving entries the API would no longer produce.
    */
   private generateCacheKey(text: string, options: TranslationOptions): string {
     // Keyed on the parameter the request will actually carry, so the two ways of
@@ -414,7 +420,7 @@ export class TranslationService {
       modelType: options.modelType,      // 7. Model type affects output quality
       splitSentences: options.splitSentences, // 8. Sentence splitting behavior
       tagHandling: options.tagHandling,  // 9. HTML/XML processing
-      tagHandlingVersion: options.tagHandlingVersion, // 10. Tag handling version
+      tagHandlingVersion: resolveTagHandlingVersion(options), // 10. Tag handling version
       customInstructions: options.customInstructions, // 11. Custom instructions
       styleId: options.styleId,          // 12. Style rules
       glossaryIds: glossary && 'glossary_ids' in glossary ? glossary.glossary_ids : undefined, // 13. Multi-glossary selection (order-significant)

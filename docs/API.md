@@ -250,7 +250,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--splitting-tags TAGS` - Comma-separated XML tags that split sentences (requires `--tag-handling xml`)
 - `--non-splitting-tags TAGS` - Comma-separated XML tags that should not be used to split sentences (requires `--tag-handling xml`)
 - `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
-- `--tag-handling-version VERSION` - Tag handling version: `v1`, `v2`. v2 improves XML/HTML structure handling (requires `--tag-handling`)
+- `--tag-handling-version VERSION` - Tag handling version: `v1`, `v2`. v2 improves XML/HTML structure handling (requires `--tag-handling`). **Defaults to `v2`**, sent explicitly on every `--tag-handling` request rather than left to the API's own default, which is documented as moving from v1 to v2 at some point — pinning keeps output from shifting on DeepL's timetable. Pass `--tag-handling-version v1` for the older behaviour, which DeepL documents as heading for deprecation
 - `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. Repeatable, up to 5 per request; when several glossaries define the same source term, the last one given wins. Passing a 6th exits 6 (ValidationError).
 - `--translation-memory NAME-OR-UUID` - Use translation memory by name or UUID (forces `quality_optimized` model). Requires `--from` because TMs are pinned to a specific source→target language pair. Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--tm-threshold N` - Minimum match score 0–100 (default 75, requires `--translation-memory`). Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).

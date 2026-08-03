@@ -2146,6 +2146,43 @@ describe('DeepLClient', () => {
 
       expect(scope.isDone()).toBe(true);
     });
+
+    it('should pin tag_handling_version to v2 when tag_handling is set without a version', async () => {
+      const scope = nock(baseUrl)
+        .post('/v2/translate', (body: string) => {
+          const params = new URLSearchParams(body);
+          return params.get('tag_handling_version') === 'v2';
+        })
+        .reply(200, {
+          translations: [{ text: '<p>Hola</p>', detected_source_language: 'EN' }],
+        });
+
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'html',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should send an explicit v1 rather than the pinned default', async () => {
+      const scope = nock(baseUrl)
+        .post('/v2/translate', (body: string) => {
+          const params = new URLSearchParams(body);
+          return params.get('tag_handling_version') === 'v1';
+        })
+        .reply(200, {
+          translations: [{ text: '<p>Hola</p>', detected_source_language: 'EN' }],
+        });
+
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'xml',
+        tagHandlingVersion: 'v1',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
   });
 
   describe('Admin API', () => {

@@ -3,6 +3,7 @@ import { TranslationOptions, Language, TranslationMemory } from '../types/index.
 import { NetworkError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
 import { resolveGlossaryWireParams } from '../utils/glossary-params.js';
+import { resolveTagHandlingVersion } from '../utils/tag-handling-version.js';
 import { Logger } from '../utils/logger.js';
 
 // DeepL's /v3/translation_memories endpoint paginates via `page` (0-indexed) and
@@ -391,8 +392,9 @@ export class TranslationClient extends HttpClient {
       params['style_id'] = options.styleId;
     }
 
-    if (options.tagHandlingVersion) {
-      params['tag_handling_version'] = options.tagHandlingVersion;
+    const tagHandlingVersion = resolveTagHandlingVersion(options);
+    if (tagHandlingVersion) {
+      params['tag_handling_version'] = tagHandlingVersion;
     }
 
 
