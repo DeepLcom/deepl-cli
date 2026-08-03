@@ -2518,8 +2518,8 @@ describe('TranslateCommand', () => {
           format: 'table',
         });
 
-        expect(result).toContain('ES');
-        expect(result).toContain('FR');
+        expect(result).toContain('es');
+        expect(result).toContain('fr');
         expect(result).toContain('Hola');
         expect(result).toContain('Bonjour');
       } finally {

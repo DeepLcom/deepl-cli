@@ -97,13 +97,13 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovements[0]!);
 
         const result = await writeCommand.improve('This is a sentence.', {
-          lang: 'en-US',
+          lang: 'en-us',
         });
 
         expect(result).toBe('This is a well-written sentence.');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'This is a sentence.',
-          { targetLang: 'en-US' },
+          { targetLang: 'en-us' },
           { skipCache: undefined }
         );
       });
@@ -114,7 +114,7 @@ describe('WriteCommand', () => {
         );
 
         await expect(
-          writeCommand.improve('', { lang: 'en-US' })
+          writeCommand.improve('', { lang: 'en-us' })
         ).rejects.toThrow('Text cannot be empty');
       });
 
@@ -142,14 +142,14 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improve('This is a sentence.', {
-          lang: 'en-US',
+          lang: 'en-us',
           style: 'simple',
         });
 
         expect(result).toBe('This is easy to read.');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'This is a sentence.',
-          { targetLang: 'en-US', writingStyle: 'simple' },
+          { targetLang: 'en-us', writingStyle: 'simple' },
           { skipCache: undefined }
         );
       });
@@ -163,14 +163,14 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improve('We want to tell you.', {
-          lang: 'en-US',
+          lang: 'en-us',
           style: 'business',
         });
 
         expect(result).toBe('We are pleased to inform you.');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'We want to tell you.',
-          { targetLang: 'en-US', writingStyle: 'business' },
+          { targetLang: 'en-us', writingStyle: 'business' },
           { skipCache: undefined }
         );
       });
@@ -184,14 +184,14 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improve('This shows it works.', {
-          lang: 'en-US',
+          lang: 'en-us',
           style: 'academic',
         });
 
         expect(result).toContain('demonstrates');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'This shows it works.',
-          { targetLang: 'en-US', writingStyle: 'academic' },
+          { targetLang: 'en-us', writingStyle: 'academic' },
           { skipCache: undefined }
         );
       });
@@ -205,14 +205,14 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improve('That is interesting.', {
-          lang: 'en-US',
+          lang: 'en-us',
           style: 'casual',
         });
 
         expect(result).toContain('cool');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'That is interesting.',
-          { targetLang: 'en-US', writingStyle: 'casual' },
+          { targetLang: 'en-us', writingStyle: 'casual' },
           { skipCache: undefined }
         );
       });
@@ -228,14 +228,14 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improve('This is good.', {
-          lang: 'en-US',
+          lang: 'en-us',
           tone: 'enthusiastic',
         });
 
         expect(result).toContain('fantastic');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'This is good.',
-          { targetLang: 'en-US', tone: 'enthusiastic' },
+          { targetLang: 'en-us', tone: 'enthusiastic' },
           { skipCache: undefined }
         );
       });
@@ -249,7 +249,7 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improve('Hello.', {
-          lang: 'en-US',
+          lang: 'en-us',
           tone: 'friendly',
         });
 
@@ -265,7 +265,7 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improve('I think this will work.', {
-          lang: 'en-US',
+          lang: 'en-us',
           tone: 'confident',
         });
 
@@ -281,7 +281,7 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improve('Try something else.', {
-          lang: 'en-US',
+          lang: 'en-us',
           tone: 'diplomatic',
         });
 
@@ -300,7 +300,7 @@ describe('WriteCommand', () => {
         mockWriteService.improve.mockResolvedValue(mockImprovements);
 
         const result = await writeCommand.improve('Test', {
-          lang: 'en-US',
+          lang: 'en-us',
           showAlternatives: true,
         });
 
@@ -309,7 +309,7 @@ describe('WriteCommand', () => {
         expect(result).toContain('Third improvement.');
         expect(mockWriteService.improve).toHaveBeenCalledWith(
           'Test',
-          { targetLang: 'en-US' },
+          { targetLang: 'en-us' },
           { skipCache: undefined }
         );
       });
@@ -323,7 +323,7 @@ describe('WriteCommand', () => {
         mockWriteService.improve.mockResolvedValue(mockImprovements);
 
         const result = await writeCommand.improve('Test', {
-          lang: 'en-US',
+          lang: 'en-us',
           showAlternatives: true,
         });
 
@@ -340,7 +340,7 @@ describe('WriteCommand', () => {
 
         await expect(
           writeCommand.improve('Test', {
-            lang: 'en-US',
+            lang: 'en-us',
             style: 'business',
             tone: 'enthusiastic',
           })
@@ -355,7 +355,7 @@ describe('WriteCommand', () => {
         );
 
         await expect(
-          writeCommand.improve('Test', { lang: 'en-US' })
+          writeCommand.improve('Test', { lang: 'en-us' })
         ).rejects.toThrow('Service error');
       });
 
@@ -365,7 +365,7 @@ describe('WriteCommand', () => {
         );
 
         await expect(
-          writeCommand.improve('Test', { lang: 'en-US' })
+          writeCommand.improve('Test', { lang: 'en-us' })
         ).rejects.toThrow('Authentication failed');
       });
 
@@ -375,24 +375,24 @@ describe('WriteCommand', () => {
         );
 
         await expect(
-          writeCommand.improve('Test', { lang: 'en-US' })
+          writeCommand.improve('Test', { lang: 'en-us' })
         ).rejects.toThrow('Quota exceeded');
       });
     });
 
     describe('supported languages', () => {
       it('should work with all supported Write languages', async () => {
-        const languages: Array<'de' | 'en' | 'en-GB' | 'en-US' | 'es' | 'fr' | 'it' | 'pt' | 'pt-BR' | 'pt-PT'> = [
+        const languages: Array<'de' | 'en' | 'en-gb' | 'en-us' | 'es' | 'fr' | 'it' | 'pt' | 'pt-br' | 'pt-pt'> = [
           'de',
           'en',
-          'en-GB',
-          'en-US',
+          'en-gb',
+          'en-us',
           'es',
           'fr',
           'it',
           'pt',
-          'pt-BR',
-          'pt-PT',
+          'pt-br',
+          'pt-pt',
         ];
 
         for (const lang of languages) {
@@ -427,26 +427,26 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improveFile(testFile, {
-          lang: 'en-US',
+          lang: 'en-us',
         });
 
         expect(result).toBe('This is improved content.');
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'Original content',
-          { targetLang: 'en-US' },
+          { targetLang: 'en-us' },
           { skipCache: undefined }
         );
       });
 
       it('should throw error for non-existent file', async () => {
         await expect(
-          writeCommand.improveFile(join(testDir, 'nonexistent.txt'), { lang: 'en-US' })
+          writeCommand.improveFile(join(testDir, 'nonexistent.txt'), { lang: 'en-us' })
         ).rejects.toThrow('File not found');
       });
 
       it('should throw error for empty file path', async () => {
         await expect(
-          writeCommand.improveFile('', { lang: 'en-US' })
+          writeCommand.improveFile('', { lang: 'en-us' })
         ).rejects.toThrow('File path cannot be empty');
       });
     });
@@ -465,7 +465,7 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         await writeCommand.improveFile(inputFile, {
-          lang: 'en-US',
+          lang: 'en-us',
           outputFile,
         });
 
@@ -485,7 +485,7 @@ describe('WriteCommand', () => {
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
         const result = await writeCommand.improveFile(testFile, {
-          lang: 'en-US',
+          lang: 'en-us',
           inPlace: true,
         });
 
@@ -507,11 +507,11 @@ describe('WriteCommand', () => {
 
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
-        await writeCommand.improveFile(testFile, { lang: 'en-US' });
+        await writeCommand.improveFile(testFile, { lang: 'en-us' });
 
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           'Plain text content',
-          { targetLang: 'en-US' },
+          { targetLang: 'en-us' },
           { skipCache: undefined }
         );
       });
@@ -527,11 +527,11 @@ describe('WriteCommand', () => {
 
         mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
-        await writeCommand.improveFile(testFile, { lang: 'en-US' });
+        await writeCommand.improveFile(testFile, { lang: 'en-us' });
 
         expect(mockWriteService.getBestImprovement).toHaveBeenCalledWith(
           '# Original Heading',
-          { targetLang: 'en-US' },
+          { targetLang: 'en-us' },
           { skipCache: undefined }
         );
       });
@@ -588,7 +588,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
       const result = await writeCommand.improveWithDiff(original, {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result.original).toBe(original);
@@ -609,7 +609,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
       const result = await writeCommand.improveFileWithDiff(testFile, {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result.original).toBe('Original content');
@@ -628,7 +628,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
       const result = await writeCommand.checkText('Original text.', {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result.needsImprovement).toBe(true);
@@ -647,7 +647,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
       const result = await writeCommand.checkText(text, {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result.needsImprovement).toBe(false);
@@ -666,7 +666,7 @@ describe('WriteCommand', () => {
 
       const result = await writeCommand.checkText(
         'Line 1 original\nLine 2\nLine 3 original',
-        { lang: 'en-US' }
+        { lang: 'en-us' }
       );
 
       expect(result.needsImprovement).toBe(true);
@@ -687,7 +687,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
       const result = await writeCommand.checkFile(testFile, {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result.needsImprovement).toBe(true);
@@ -698,7 +698,7 @@ describe('WriteCommand', () => {
     it('should throw error for non-existent file', async () => {
       await expect(
         writeCommand.checkFile(join(testDir, 'nonexistent.txt'), {
-          lang: 'en-US',
+          lang: 'en-us',
         })
       ).rejects.toThrow('File not found');
     });
@@ -716,7 +716,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
       const result = await writeCommand.checkFile(testFile, {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result.needsImprovement).toBe(false);
@@ -738,7 +738,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
       const result = await writeCommand.autoFixFile(testFile, {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result.fixed).toBe(true);
@@ -764,7 +764,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
       const result = await writeCommand.autoFixFile(testFile, {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result.fixed).toBe(false);
@@ -788,7 +788,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
 
       const result = await writeCommand.autoFixFile(testFile, {
-        lang: 'en-US',
+        lang: 'en-us',
         createBackup: true,
       });
 
@@ -803,7 +803,7 @@ describe('WriteCommand', () => {
     it('should throw error for non-existent file', async () => {
       await expect(
         writeCommand.autoFixFile(join(testDir, 'nonexistent.txt'), {
-          lang: 'en-US',
+          lang: 'en-us',
         })
       ).rejects.toThrow('File not found');
     });
@@ -831,7 +831,7 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(1);
 
       const result = await writeCommand.improveInteractive('Original text.', {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       // Should call API 4 times (once for each style)
@@ -850,7 +850,7 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(-1); // -1 = keep original
 
       const result = await writeCommand.improveInteractive('Original text.', {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result).toBe('Original text.');
@@ -865,7 +865,7 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(0);
 
       const result = await writeCommand.improveInteractive('Original text.', {
-        lang: 'en-US',
+        lang: 'en-us',
         style: 'business',
       });
 
@@ -885,7 +885,7 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(0);
 
       const result = await writeCommand.improveInteractive('Original.', {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       // Should work and return a result
@@ -916,7 +916,7 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(1);
 
       const result = await writeCommand.improveFileInteractive(testFile, {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(result.selected).toBe('Business.');
@@ -934,7 +934,7 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(0);
 
       const result = await writeCommand.improveInteractive('Original.', {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       // Should still work with partial results
@@ -951,7 +951,7 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(0);
 
       await writeCommand.improveInteractive('Original.', {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(mockLogger.verbose).toHaveBeenCalledWith(
@@ -975,7 +975,7 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(0);
 
       await writeCommand.improveInteractive('Original.', {
-        lang: 'en-US',
+        lang: 'en-us',
       });
 
       expect(mockLogger.verbose).toHaveBeenCalledWith(
@@ -993,7 +993,7 @@ describe('WriteCommand', () => {
         .mockRejectedValueOnce(new Error('API error'));
 
       await expect(
-        writeCommand.improveInteractive('Original text.', { lang: 'en-US' })
+        writeCommand.improveInteractive('Original text.', { lang: 'en-us' })
       ).rejects.toThrow('No improvements could be generated');
     });
 
@@ -1006,14 +1006,14 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(0);
 
       const result = await writeCommand.improveInteractive('Original text.', {
-        lang: 'en-US',
+        lang: 'en-us',
         tone: 'enthusiastic',
       });
 
       expect(mockWriteService.improve).toHaveBeenCalledTimes(1);
       expect(mockWriteService.improve).toHaveBeenCalledWith(
         'Original text.',
-        { targetLang: 'en-US', tone: 'enthusiastic' },
+        { targetLang: 'en-us', tone: 'enthusiastic' },
         { skipCache: undefined }
       );
       expect(result).toBe('Enthusiastic improvement!');
@@ -1028,7 +1028,7 @@ describe('WriteCommand', () => {
       mockSelect.mockResolvedValue(-1);
 
       const result = await writeCommand.improveInteractive('Original text.', {
-        lang: 'en-US',
+        lang: 'en-us',
         tone: 'friendly',
       });
 
@@ -1050,31 +1050,31 @@ describe('WriteCommand', () => {
 
     it('should reject symlinks in improveFile()', async () => {
       await expect(
-        writeCommand.improveFile(symlinkPath, { lang: 'en-US' })
+        writeCommand.improveFile(symlinkPath, { lang: 'en-us' })
       ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
 
     it('should reject symlinks in improveFileWithDiff()', async () => {
       await expect(
-        writeCommand.improveFileWithDiff(symlinkPath, { lang: 'en-US' })
+        writeCommand.improveFileWithDiff(symlinkPath, { lang: 'en-us' })
       ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
 
     it('should reject symlinks in checkFile()', async () => {
       await expect(
-        writeCommand.checkFile(symlinkPath, { lang: 'en-US' })
+        writeCommand.checkFile(symlinkPath, { lang: 'en-us' })
       ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
 
     it('should reject symlinks in autoFixFile()', async () => {
       await expect(
-        writeCommand.autoFixFile(symlinkPath, { lang: 'en-US' })
+        writeCommand.autoFixFile(symlinkPath, { lang: 'en-us' })
       ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
 
     it('should reject symlinks in improveFileInteractive()', async () => {
       await expect(
-        writeCommand.improveFileInteractive(symlinkPath, { lang: 'en-US' })
+        writeCommand.improveFileInteractive(symlinkPath, { lang: 'en-us' })
       ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
   });
@@ -1089,14 +1089,14 @@ describe('WriteCommand', () => {
       mockWriteService.getBestCorrection.mockResolvedValue(mockCorrection);
 
       const result = await writeCommand.improve('This is an test.', {
-        lang: 'en-US',
+        lang: 'en-us',
         correct: true,
       });
 
       expect(result).toBe('This is a test.');
       expect(mockWriteService.getBestCorrection).toHaveBeenCalledWith(
         'This is an test.',
-        { targetLang: 'en-US' },
+        { targetLang: 'en-us' },
         { skipCache: undefined }
       );
       expect(mockWriteService.getBestImprovement).not.toHaveBeenCalled();
@@ -1139,7 +1139,7 @@ describe('WriteCommand', () => {
       mockWriteService.getBestCorrection.mockResolvedValue(mockCorrection);
 
       const result = await writeCommand.checkText('This is an test.', {
-        lang: 'en-US',
+        lang: 'en-us',
         correct: true,
       });
 
@@ -1151,7 +1151,7 @@ describe('WriteCommand', () => {
     it('should not use the correct endpoint when correct is not set', async () => {
       mockWriteService.getBestImprovement.mockResolvedValue(mockCorrection);
 
-      await writeCommand.improve('Test', { lang: 'en-US' });
+      await writeCommand.improve('Test', { lang: 'en-us' });
 
       expect(mockWriteService.getBestCorrection).not.toHaveBeenCalled();
       expect(mockWriteService.correct).not.toHaveBeenCalled();

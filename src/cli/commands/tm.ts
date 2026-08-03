@@ -23,8 +23,8 @@ export class TmCommand {
     }
     return tms
       .map(tm => {
-        const src = tm.source_language.toUpperCase();
-        const targets = tm.target_languages.map(t => t.toUpperCase()).join(', ');
+        const src = tm.source_language;
+        const targets = tm.target_languages.join(', ');
         return `${sanitizeName(tm.name)} (${src} \u2192 ${targets})`;
       })
       .join('\n');

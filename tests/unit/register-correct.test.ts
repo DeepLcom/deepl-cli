@@ -128,7 +128,7 @@ describe('registerCorrect', () => {
       await program.parseAsync(['node', 'test', 'correct', 'Hello', '--lang', 'EN-us']);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'en-US' }),
+        expect.objectContaining({ lang: 'en-us' }),
       );
     });
 

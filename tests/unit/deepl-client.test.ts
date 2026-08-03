@@ -562,7 +562,7 @@ describe('DeepLClient', () => {
       {
         name: 'improveText()',
         path: '/v2/write/rephrase',
-        call: (c) => c.improveText('Test', { targetLang: 'en-US' }),
+        call: (c) => c.improveText('Test', { targetLang: 'en-us' }),
       },
     ];
 
@@ -1215,7 +1215,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('This is a sentence.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result).toHaveLength(1);
@@ -1230,7 +1230,7 @@ describe('DeepLClient', () => {
           .reply(200, { improvements: [] });
 
         await expect(
-          client.improveText('Test', { targetLang: 'en-US' })
+          client.improveText('Test', { targetLang: 'en-us' })
         ).rejects.toThrow('No improvements returned');
       });
     });
@@ -1252,7 +1252,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('This is a sentence.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'simple',
         });
 
@@ -1276,7 +1276,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('We want to tell you.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'business',
         });
 
@@ -1300,7 +1300,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('This shows it works.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'academic',
         });
 
@@ -1324,7 +1324,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('That is interesting.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'casual',
         });
 
@@ -1350,7 +1350,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('This is good.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           tone: 'enthusiastic',
         });
 
@@ -1374,7 +1374,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('Hello.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           tone: 'friendly',
         });
 
@@ -1398,7 +1398,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('I think this will work.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           tone: 'confident',
         });
 
@@ -1422,7 +1422,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('Try something else.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           tone: 'diplomatic',
         });
 
@@ -1448,7 +1448,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('Test text.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result[0]?.text).toBe('Improved text.');
@@ -1527,7 +1527,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('This is a sentence.', {
-          targetLang: 'en-GB',
+          targetLang: 'en-gb',
         });
 
         expect(result[0]?.targetLanguage).toBe('en-GB');
@@ -1550,7 +1550,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText(longText, {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result[0]?.text.length).toBeGreaterThan(0);
@@ -1569,7 +1569,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('Test: quotes & chars', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result[0]?.text).toContain('&');
@@ -1589,7 +1589,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('Para 1.\n\nPara 2.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result[0]?.text).toContain('\n\n');
@@ -1613,7 +1613,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('This is a sentence.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'prefer_simple',
         });
 
@@ -1637,7 +1637,7 @@ describe('DeepLClient', () => {
           });
 
         const result = await client.improveText('This is good.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           tone: 'prefer_enthusiastic',
         });
 

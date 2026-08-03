@@ -26,7 +26,7 @@ deepl correct "This is an test with some mistaks."
 echo
 
 echo "2. Explicit target language"
-deepl correct "Their going too the store." --lang en-US
+deepl correct "Their going too the store." --lang en-us
 echo
 
 echo "3. The c alias"
@@ -34,7 +34,7 @@ deepl c "I has a apple."
 echo
 
 echo "4. Diff view"
-deepl correct "This are a example sentence." --lang en-US --diff
+deepl correct "This are a example sentence." --lang en-us --diff
 echo
 
 echo "5. Check mode (exit 8 would mean corrections needed)"

@@ -50,9 +50,9 @@ describe('TmCommand', () => {
       ];
       const out = tmCommand.formatList(tms);
       expect(out).toContain('brand-terms');
-      expect(out).toContain('EN \u2192 DE, FR');
+      expect(out).toContain('en \u2192 de, fr');
       expect(out).toContain('legal-phrases');
-      expect(out).toContain('EN \u2192 FR');
+      expect(out).toContain('en \u2192 fr');
     });
 
     it('strips ASCII control chars from the name column so a malicious TM cannot corrupt the terminal', () => {

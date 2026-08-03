@@ -19,52 +19,52 @@ echo
 
 # Basic text improvement
 echo "1. Basic text improvement:"
-deepl write "This is a sentence." --lang en-US
+deepl write "This is a sentence." --lang en-us
 echo
 
 # Business writing style
 echo "2. Business writing style:"
-deepl write "We want to tell you about our new product." --lang en-US --style business
+deepl write "We want to tell you about our new product." --lang en-us --style business
 echo
 
 # Academic writing style
 echo "3. Academic writing style:"
-deepl write "This shows that the method works." --lang en-US --style academic
+deepl write "This shows that the method works." --lang en-us --style academic
 echo
 
 # Casual writing style
 echo "4. Casual writing style:"
-deepl write "That is interesting." --lang en-US --style casual
+deepl write "That is interesting." --lang en-us --style casual
 echo
 
 # Simple writing style
 echo "5. Simple writing style:"
-deepl write "The implementation demonstrates efficacy." --lang en-US --style simple
+deepl write "The implementation demonstrates efficacy." --lang en-us --style simple
 echo
 
 # Enthusiastic tone
 echo "6. Enthusiastic tone:"
-deepl write "This is good." --lang en-US --tone enthusiastic
+deepl write "This is good." --lang en-us --tone enthusiastic
 echo
 
 # Friendly tone
 echo "7. Friendly tone:"
-deepl write "Hello." --lang en-US --tone friendly
+deepl write "Hello." --lang en-us --tone friendly
 echo
 
 # Confident tone
 echo "8. Confident tone:"
-deepl write "I think this will work." --lang en-US --tone confident
+deepl write "I think this will work." --lang en-us --tone confident
 echo
 
 # Diplomatic tone
 echo "9. Diplomatic tone:"
-deepl write "Try something else." --lang en-US --tone diplomatic
+deepl write "Try something else." --lang en-us --tone diplomatic
 echo
 
 # Show alternatives
 echo "10. Show all alternative improvements:"
-deepl write "This is a test." --lang en-US --alternatives
+deepl write "This is a test." --lang en-us --alternatives
 echo
 
 # Different languages
@@ -82,11 +82,11 @@ echo
 
 # Prefer styles (fallback if not supported)
 echo "14. Prefer business style (with fallback):"
-deepl write "We need to discuss this." --lang en-US --style prefer_business
+deepl write "We need to discuss this." --lang en-us --style prefer_business
 echo
 
 echo "15. Bypass cache (always call API):"
-deepl write "This is a sentence." --lang en-US --no-cache
+deepl write "This is a sentence." --lang en-us --no-cache
 echo
 
 # ═══════════════════════════════════════════════════════
@@ -97,11 +97,11 @@ DEMO_FILE="/tmp/deepl-write-demo.txt"
 echo "Their going to the store tommorow. The weather will be good, I think we should definately go." > "$DEMO_FILE"
 
 echo "16. Improve text from a file:"
-deepl write "$DEMO_FILE" --lang en-US
+deepl write "$DEMO_FILE" --lang en-us
 echo
 
 echo "17. Write improved text to output file:"
-deepl write "$DEMO_FILE" --output /tmp/deepl-write-improved.txt --lang en-US
+deepl write "$DEMO_FILE" --output /tmp/deepl-write-improved.txt --lang en-us
 echo "   Output saved to /tmp/deepl-write-improved.txt"
 cat /tmp/deepl-write-improved.txt
 echo
@@ -111,11 +111,11 @@ echo
 # ═══════════════════════════════════════════════════════
 
 echo "18. Check if text needs improvement (exit 0=clean, 8=changes needed):"
-deepl write "Their going to the store" --check --lang en-US || true
+deepl write "Their going to the store" --check --lang en-us || true
 echo
 
 echo "19. Check a file for improvements:"
-deepl write "$DEMO_FILE" --check --lang en-US || true
+deepl write "$DEMO_FILE" --check --lang en-us || true
 echo
 
 echo "20. Auto-fix a file in place:"
@@ -136,12 +136,12 @@ echo
 # ═══════════════════════════════════════════════════════
 
 echo "22. Show diff between original and improved text:"
-deepl write "Their going to the store tommorow." --diff --lang en-US
+deepl write "Their going to the store tommorow." --diff --lang en-us
 echo
 
 echo "23. Edit file in place:"
 echo "This text could be more better." > "$DEMO_FILE"
-deepl write "$DEMO_FILE" --in-place --lang en-US
+deepl write "$DEMO_FILE" --in-place --lang en-us
 echo "   Updated file content:"
 cat "$DEMO_FILE"
 echo
@@ -151,7 +151,7 @@ echo
 # ═══════════════════════════════════════════════════════
 
 echo "24. JSON output format:"
-deepl write "Their going to the store" --format json --lang en-US
+deepl write "Their going to the store" --format json --lang en-us
 echo
 
 # ═══════════════════════════════════════════════════════
@@ -160,7 +160,7 @@ echo
 
 # Note: --interactive requires a TTY (won't work in piped scripts)
 echo "25. Interactive mode (choose from multiple suggestions):"
-echo "   deepl write \"Their going to the store\" --interactive --lang en-US"
+echo "   deepl write \"Their going to the store\" --interactive --lang en-us"
 echo "   (Skipped in non-interactive script — try this manually)"
 echo
 

@@ -146,7 +146,7 @@ export function formatMultiTranslationTable(
 
   results.forEach((result) => {
     const row = [
-      result.targetLang.toUpperCase(),
+      result.targetLang,
       result.text,
     ];
 

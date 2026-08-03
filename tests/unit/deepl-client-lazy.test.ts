@@ -97,7 +97,7 @@ describe('DeepLClient lazy sub-client construction', () => {
     nock(baseUrl).post('/v2/write/rephrase').reply(200, {
       improvements: [{ text: 'Improved.', target_language: 'en-US' }],
     });
-    await client.improveText('Test.', { targetLang: 'en-US' });
+    await client.improveText('Test.', { targetLang: 'en-us' });
 
     expect((client as any)._writeClient).not.toBeNull();
     expect((client as any)._translationClient).toBeUndefined();

@@ -585,14 +585,14 @@ describe('DeepLClient Integration', () => {
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
           expect(body.text).toBe('Hello world');
-          expect(body.target_lang).toBe('en-US');
+          expect(body.target_lang).toBe('en-us');
           return true;
         })
         .reply(200, {
           improvements: [{ text: 'Hello, world!', target_language: 'en-US' }],
         });
 
-      const result = await client.improveText('Hello world', { targetLang: 'en-US' });
+      const result = await client.improveText('Hello world', { targetLang: 'en-us' });
 
       expect(result[0]?.text).toBe('Hello, world!');
       expect(result[0]?.targetLanguage).toBe('en-US');
@@ -612,7 +612,7 @@ describe('DeepLClient Integration', () => {
           improvements: [{ text: 'Improved text', target_language: 'en-US' }],
         });
 
-      await client.improveText('Test', { targetLang: 'en-US', writingStyle: 'business' });
+      await client.improveText('Test', { targetLang: 'en-us', writingStyle: 'business' });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -629,7 +629,7 @@ describe('DeepLClient Integration', () => {
           improvements: [{ text: 'Improved text', target_language: 'en-US' }],
         });
 
-      await client.improveText('Test', { targetLang: 'en-US', tone: 'friendly' });
+      await client.improveText('Test', { targetLang: 'en-us', tone: 'friendly' });
       expect(scope.isDone()).toBe(true);
     });
 

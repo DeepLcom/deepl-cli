@@ -94,7 +94,7 @@ describe('WriteClient', () => {
         headers: {},
       });
 
-      await client.improveText('Test', { targetLang: 'en-GB' });
+      await client.improveText('Test', { targetLang: 'en-gb' });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -282,7 +282,7 @@ describe('WriteClient', () => {
         headers: {},
       });
 
-      await client.correctText('Test', { targetLang: 'en-GB' });
+      await client.correctText('Test', { targetLang: 'en-gb' });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -301,10 +301,10 @@ describe('WriteClient', () => {
         headers: {},
       });
 
-      await client.correctText('Test', { targetLang: 'en-US' });
+      await client.correctText('Test', { targetLang: 'en-us' });
 
       const body = mockAxiosInstance.request.mock.calls[0][0].data as string;
-      expect(body).toContain('target_lang=en-US');
+      expect(body).toContain('target_lang=en-us');
       expect(body).not.toContain('writing_style');
       expect(body).not.toContain('tone');
     });

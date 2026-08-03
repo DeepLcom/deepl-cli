@@ -46,14 +46,14 @@ describe('Write Command Integration', () => {
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
           expect(body.text).toBe('Hello world');
-          expect(body.target_lang).toBe('en-US');
+          expect(body.target_lang).toBe('en-us');
           return true;
         })
         .reply(200, {
           improvements: [{ text: 'Hello, world!', target_language: 'en-US' }],
         });
 
-      const result = await writeService.improve('Hello world', { targetLang: 'en-US' });
+      const result = await writeService.improve('Hello world', { targetLang: 'en-us' });
 
       expect(result).toHaveLength(1);
       expect(result[0]?.text).toBe('Hello, world!');
@@ -71,7 +71,7 @@ describe('Write Command Integration', () => {
           ],
         });
 
-      const result = await writeService.improve('Hello world', { targetLang: 'en-US' });
+      const result = await writeService.improve('Hello world', { targetLang: 'en-us' });
 
       expect(result).toHaveLength(3);
       expect(result[0]?.text).toBe('Hello, world!');
@@ -87,7 +87,7 @@ describe('Write Command Integration', () => {
         });
 
       await expect(
-        writeService.improve('Perfect text', { targetLang: 'en-US' })
+        writeService.improve('Perfect text', { targetLang: 'en-us' })
       ).rejects.toThrow('No improvements returned');
     });
   });
@@ -115,14 +115,14 @@ describe('Write Command Integration', () => {
     it('should still accept explicit target_lang', async () => {
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
-          expect(body.target_lang).toBe('en-GB');
+          expect(body.target_lang).toBe('en-gb');
           return true;
         })
         .reply(200, {
           improvements: [{ text: 'Hello, world!', target_language: 'en-GB' }],
         });
 
-      const result = await writeService.improve('Hello world', { targetLang: 'en-GB' });
+      const result = await writeService.improve('Hello world', { targetLang: 'en-gb' });
 
       expect(result[0]?.text).toBe('Hello, world!');
       expect(scope.isDone()).toBe(true);
@@ -167,7 +167,7 @@ describe('Write Command Integration', () => {
         });
 
       const result = await writeService.improve(input, {
-        targetLang: 'en-US',
+        targetLang: 'en-us',
         writingStyle,
       });
 
@@ -223,7 +223,7 @@ describe('Write Command Integration', () => {
         });
 
       const result = await writeService.improve(input, {
-        targetLang: 'en-US',
+        targetLang: 'en-us',
         tone: toneValue,
       });
 
@@ -258,7 +258,7 @@ describe('Write Command Integration', () => {
         expectedExact: undefined,
       },
       {
-        lang: 'en-GB',
+        lang: 'en-gb',
         label: 'British English',
         input: 'I want to buy this',
         output: 'I should like to purchase this item',
@@ -286,7 +286,7 @@ describe('Write Command Integration', () => {
         expectedExact: undefined,
       },
       {
-        lang: 'zh-Hans',
+        lang: 'zh-hans',
         label: 'Simplified Chinese',
         input: '我要买这个',
         output: '我想购买这个',
@@ -318,14 +318,14 @@ describe('Write Command Integration', () => {
       { lang: 'it', field: 'writing_style' as const, value: 'casual' },
       { lang: 'fr', field: 'writing_style' as const, value: 'academic' },
       { lang: 'pt', field: 'writing_style' as const, value: 'simple' },
-      { lang: 'pt-BR', field: 'writing_style' as const, value: 'business' },
-      { lang: 'pt-PT', field: 'writing_style' as const, value: 'casual' },
+      { lang: 'pt-br', field: 'writing_style' as const, value: 'business' },
+      { lang: 'pt-pt', field: 'writing_style' as const, value: 'casual' },
       { lang: 'es', field: 'tone' as const, value: 'friendly' },
       { lang: 'it', field: 'tone' as const, value: 'confident' },
       { lang: 'fr', field: 'tone' as const, value: 'diplomatic' },
       { lang: 'pt', field: 'tone' as const, value: 'enthusiastic' },
-      { lang: 'pt-BR', field: 'tone' as const, value: 'friendly' },
-      { lang: 'pt-PT', field: 'tone' as const, value: 'confident' },
+      { lang: 'pt-br', field: 'tone' as const, value: 'friendly' },
+      { lang: 'pt-pt', field: 'tone' as const, value: 'confident' },
     ])('should send $field=$value with target_lang=$lang', async ({ lang, field, value }) => {
       const targetLang = lang as WriteLanguage;
       const scope = nock(FREE_API_URL)
@@ -353,7 +353,7 @@ describe('Write Command Integration', () => {
 
   describe('improve() - Error Handling', () => {
     it('should throw error for empty text', async () => {
-      await expect(writeService.improve('', { targetLang: 'en-US' })).rejects.toThrow(
+      await expect(writeService.improve('', { targetLang: 'en-us' })).rejects.toThrow(
         'Text cannot be empty'
       );
     });
@@ -361,7 +361,7 @@ describe('Write Command Integration', () => {
     it('should throw error when both style and tone are specified', async () => {
       await expect(
         writeService.improve('Test', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'business',
           tone: 'friendly',
         })
@@ -372,7 +372,7 @@ describe('Write Command Integration', () => {
       nock(FREE_API_URL).post('/v2/write/rephrase').reply(403, { message: 'Invalid API key' });
 
       await expect(
-        writeService.improve('Test', { targetLang: 'en-US' })
+        writeService.improve('Test', { targetLang: 'en-us' })
       ).rejects.toThrow('Authentication failed');
     });
 
@@ -380,7 +380,7 @@ describe('Write Command Integration', () => {
       nock(FREE_API_URL).post('/v2/write/rephrase').reply(456, { message: 'Quota exceeded' });
 
       await expect(
-        writeService.improve('Test', { targetLang: 'en-US' })
+        writeService.improve('Test', { targetLang: 'en-us' })
       ).rejects.toThrow('Quota exceeded');
     });
 
@@ -391,7 +391,7 @@ describe('Write Command Integration', () => {
         .reply(429, { message: 'Too many requests' });
 
       await expect(
-        writeService.improve('Test', { targetLang: 'en-US' })
+        writeService.improve('Test', { targetLang: 'en-us' })
       ).rejects.toThrow('Rate limit exceeded');
     });
 
@@ -410,7 +410,7 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Improved text', target_language: 'en-US' }],
         });
 
-      await writeService.improve(longText, { targetLang: 'en-US' });
+      await writeService.improve(longText, { targetLang: 'en-us' });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -426,7 +426,7 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Improved text!', target_language: 'en-US' }],
         });
 
-      await writeService.improve(specialText, { targetLang: 'en-US' });
+      await writeService.improve(specialText, { targetLang: 'en-us' });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -442,7 +442,7 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Hello, 世界 🌍 café!', target_language: 'en-US' }],
         });
 
-      const result = await writeService.improve(unicodeText, { targetLang: 'en-US' });
+      const result = await writeService.improve(unicodeText, { targetLang: 'en-us' });
       expect(result[0]?.text).toContain('世界');
       expect(result[0]?.text).toContain('🌍');
       expect(scope.isDone()).toBe(true);
@@ -462,7 +462,7 @@ describe('Write Command Integration', () => {
           ],
         });
 
-      const result = await writeService.improve(multilineText, { targetLang: 'en-US' });
+      const result = await writeService.improve(multilineText, { targetLang: 'en-us' });
       expect(result[0]?.text).toContain('\n');
       expect(result[0]?.text.split('\n')).toHaveLength(3);
     });
@@ -480,7 +480,7 @@ describe('Write Command Integration', () => {
         });
 
       const result = await writeService.getBestImprovement('Test text', {
-        targetLang: 'en-US',
+        targetLang: 'en-us',
       });
 
       expect(result.text).toBe('First improvement');
@@ -494,7 +494,7 @@ describe('Write Command Integration', () => {
         });
 
       await expect(
-        writeService.getBestImprovement('Test', { targetLang: 'en-US' })
+        writeService.getBestImprovement('Test', { targetLang: 'en-us' })
       ).rejects.toThrow('No improvements returned');
     });
   });
@@ -516,7 +516,7 @@ describe('Write Command Integration', () => {
         });
 
       await writeService.improve('Utilize this', {
-        targetLang: 'en-US',
+        targetLang: 'en-us',
         writingStyle: 'prefer_simple',
       });
 
@@ -539,7 +539,7 @@ describe('Write Command Integration', () => {
         });
 
       await writeService.improve('This is good', {
-        targetLang: 'en-US',
+        targetLang: 'en-us',
         tone: 'prefer_enthusiastic',
       });
 
@@ -556,8 +556,8 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Improved!', target_language: 'en-US' }],
         });
 
-      const result1 = await writeService.improve('Test', { targetLang: 'en-US' });
-      const result2 = await writeService.improve('Test', { targetLang: 'en-US' });
+      const result1 = await writeService.improve('Test', { targetLang: 'en-us' });
+      const result2 = await writeService.improve('Test', { targetLang: 'en-us' });
 
       expect(result1).toEqual(result2);
       expect(scope.isDone()).toBe(true);
@@ -571,8 +571,8 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Improved!', target_language: 'en-US' }],
         });
 
-      await writeService.improve('Test', { targetLang: 'en-US' });
-      await writeService.improve('Test', { targetLang: 'en-US' }, { skipCache: true });
+      await writeService.improve('Test', { targetLang: 'en-us' });
+      await writeService.improve('Test', { targetLang: 'en-us' }, { skipCache: true });
 
       expect(nock.isDone()).toBe(true);
     });
@@ -590,8 +590,8 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Casual text', target_language: 'en-US' }],
         });
 
-      const business = await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'business' });
-      const casual = await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'casual' });
+      const business = await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'business' });
+      const casual = await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'casual' });
 
       expect(business[0]?.text).toBe('Business text');
       expect(casual[0]?.text).toBe('Casual text');
@@ -611,7 +611,7 @@ describe('Write Command Integration', () => {
         .replyWithError('Network error');
 
       await expect(
-        noRetryWriteService.improve('Test', { targetLang: 'en-US' })
+        noRetryWriteService.improve('Test', { targetLang: 'en-us' })
       ).rejects.toThrow();
 
       noRetryClient.destroy();

@@ -60,25 +60,25 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('This is a sentence.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result).toHaveLength(1);
         expect(result[0]?.text).toBe('This is a well-written sentence.');
         expect(mockClient.improveText).toHaveBeenCalledWith('This is a sentence.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
       });
 
       it('should throw error for empty text', async () => {
         await expect(
-          writeService.improve('', { targetLang: 'en-US' })
+          writeService.improve('', { targetLang: 'en-us' })
         ).rejects.toThrow('Text cannot be empty');
       });
 
       it('should throw error for whitespace-only text', async () => {
         await expect(
-          writeService.improve('   ', { targetLang: 'en-US' })
+          writeService.improve('   ', { targetLang: 'en-us' })
         ).rejects.toThrow('Text cannot be empty');
       });
 
@@ -111,13 +111,13 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('This is a sentence.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'simple',
         });
 
         expect(result[0]?.text).toBe('This is easy to read.');
         expect(mockClient.improveText).toHaveBeenCalledWith('This is a sentence.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'simple',
         });
       });
@@ -133,7 +133,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('We want to tell you.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'business',
         });
 
@@ -151,7 +151,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('This shows it works.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'academic',
         });
 
@@ -169,7 +169,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('That is interesting.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           writingStyle: 'casual',
         });
 
@@ -189,7 +189,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('This is good.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           tone: 'enthusiastic',
         });
 
@@ -207,7 +207,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('Hello.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           tone: 'friendly',
         });
 
@@ -225,7 +225,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('I think this will work.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           tone: 'confident',
         });
 
@@ -243,7 +243,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('Try something else.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
           tone: 'diplomatic',
         });
 
@@ -255,7 +255,7 @@ describe('WriteService', () => {
       it('should throw error when both --style and --tone are specified', async () => {
         await expect(
           writeService.improve('Test', {
-            targetLang: 'en-US',
+            targetLang: 'en-us',
             writingStyle: 'business',
             tone: 'enthusiastic',
           })
@@ -273,7 +273,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('Test text.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result[0]?.text).toBe('Improved text.');
@@ -285,7 +285,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockRejectedValue(new Error('API error'));
 
         await expect(
-          writeService.improve('Test', { targetLang: 'en-US' })
+          writeService.improve('Test', { targetLang: 'en-us' })
         ).rejects.toThrow('API error');
       });
 
@@ -295,7 +295,7 @@ describe('WriteService', () => {
         );
 
         await expect(
-          writeService.improve('Test', { targetLang: 'en-US' })
+          writeService.improve('Test', { targetLang: 'en-us' })
         ).rejects.toThrow('Authentication failed');
       });
 
@@ -305,7 +305,7 @@ describe('WriteService', () => {
         );
 
         await expect(
-          writeService.improve('Test', { targetLang: 'en-US' })
+          writeService.improve('Test', { targetLang: 'en-us' })
         ).rejects.toThrow('Quota exceeded');
       });
 
@@ -315,7 +315,7 @@ describe('WriteService', () => {
         );
 
         await expect(
-          writeService.improve('Test', { targetLang: 'en-US' })
+          writeService.improve('Test', { targetLang: 'en-us' })
         ).rejects.toThrow('Rate limit exceeded');
       });
     });
@@ -333,7 +333,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve(longText, {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result[0]?.text.length).toBeGreaterThan(0);
@@ -350,7 +350,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('Test: quotes & chars', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result[0]?.text).toContain('&');
@@ -368,7 +368,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('Para 1.\n\nPara 2.', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result[0]?.text).toContain('\n\n');
@@ -389,7 +389,7 @@ describe('WriteService', () => {
         mockClient.improveText.mockResolvedValue(mockImprovements);
 
         const result = await writeService.improve('Test', {
-          targetLang: 'en-US',
+          targetLang: 'en-us',
         });
 
         expect(result).toHaveLength(2);
@@ -415,7 +415,7 @@ describe('WriteService', () => {
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
       const result = await writeService.getBestImprovement('Test', {
-        targetLang: 'en-US',
+        targetLang: 'en-us',
       });
 
       expect(result.text).toBe('Best improvement.');
@@ -425,7 +425,7 @@ describe('WriteService', () => {
       mockClient.improveText.mockResolvedValue([]);
 
       await expect(
-        writeService.getBestImprovement('Test', { targetLang: 'en-US' })
+        writeService.getBestImprovement('Test', { targetLang: 'en-us' })
       ).rejects.toThrow('No improvements available');
     });
   });
@@ -441,7 +441,7 @@ describe('WriteService', () => {
     it('should cache results after API call', async () => {
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      await writeService.improve('Test', { targetLang: 'en-US' });
+      await writeService.improve('Test', { targetLang: 'en-us' });
 
       expect(mockCacheService.set).toHaveBeenCalledTimes(1);
       expect(mockCacheService.set).toHaveBeenCalledWith(
@@ -453,7 +453,7 @@ describe('WriteService', () => {
     it('should return cached result on hit without calling API', async () => {
       mockCacheService.get.mockReturnValue(mockImprovements);
 
-      const result = await writeService.improve('Test', { targetLang: 'en-US' });
+      const result = await writeService.improve('Test', { targetLang: 'en-us' });
 
       expect(result).toEqual(mockImprovements);
       expect(mockClient.improveText).not.toHaveBeenCalled();
@@ -464,7 +464,7 @@ describe('WriteService', () => {
       mockConfigService.getValue.mockReturnValue(false);
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      await writeService.improve('Test', { targetLang: 'en-US' });
+      await writeService.improve('Test', { targetLang: 'en-us' });
 
       expect(mockCacheService.get).not.toHaveBeenCalled();
       expect(mockCacheService.set).not.toHaveBeenCalled();
@@ -474,7 +474,7 @@ describe('WriteService', () => {
     it('should skip cache when skipCache is true', async () => {
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      await writeService.improve('Test', { targetLang: 'en-US' }, { skipCache: true });
+      await writeService.improve('Test', { targetLang: 'en-us' }, { skipCache: true });
 
       expect(mockCacheService.get).not.toHaveBeenCalled();
       expect(mockCacheService.set).not.toHaveBeenCalled();
@@ -484,8 +484,8 @@ describe('WriteService', () => {
     it('should produce different cache keys for different options', async () => {
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'business' });
-      await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'casual' });
+      await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'business' });
+      await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'casual' });
 
       const key1 = mockCacheService.set.mock.calls[0]![0];
       const key2 = mockCacheService.set.mock.calls[1]![0];
@@ -495,8 +495,8 @@ describe('WriteService', () => {
     it('should produce same cache key for same options (deterministic)', async () => {
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'business' });
-      await writeService.improve('Test', { targetLang: 'en-US', writingStyle: 'business' });
+      await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'business' });
+      await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'business' });
 
       const key1 = mockCacheService.set.mock.calls[0]![0];
       const key2 = mockCacheService.set.mock.calls[1]![0];
@@ -506,7 +506,7 @@ describe('WriteService', () => {
     it('should benefit getBestImprovement from cache', async () => {
       mockCacheService.get.mockReturnValue(mockImprovements);
 
-      const result = await writeService.getBestImprovement('Test', { targetLang: 'en-US' });
+      const result = await writeService.getBestImprovement('Test', { targetLang: 'en-us' });
 
       expect(result.text).toBe('Improved text.');
       expect(mockClient.improveText).not.toHaveBeenCalled();
@@ -525,10 +525,10 @@ describe('WriteService', () => {
     it('should correct text via client.correctText', async () => {
       mockClient.correctText.mockResolvedValue(mockCorrections);
 
-      const result = await writeService.correct('This is an test.', { targetLang: 'en-US' });
+      const result = await writeService.correct('This is an test.', { targetLang: 'en-us' });
 
       expect(result).toEqual(mockCorrections);
-      expect(mockClient.correctText).toHaveBeenCalledWith('This is an test.', { targetLang: 'en-US' });
+      expect(mockClient.correctText).toHaveBeenCalledWith('This is an test.', { targetLang: 'en-us' });
       expect(mockClient.improveText).not.toHaveBeenCalled();
     });
 
@@ -541,7 +541,7 @@ describe('WriteService', () => {
     it('should cache results under the correct: prefix', async () => {
       mockClient.correctText.mockResolvedValue(mockCorrections);
 
-      await writeService.correct('Test', { targetLang: 'en-US' });
+      await writeService.correct('Test', { targetLang: 'en-us' });
 
       expect(mockCacheService.set).toHaveBeenCalledTimes(1);
       expect(mockCacheService.set).toHaveBeenCalledWith(
@@ -553,7 +553,7 @@ describe('WriteService', () => {
     it('should return cached result on hit without calling API', async () => {
       mockCacheService.get.mockReturnValue(mockCorrections);
 
-      const result = await writeService.correct('Test', { targetLang: 'en-US' });
+      const result = await writeService.correct('Test', { targetLang: 'en-us' });
 
       expect(result).toEqual(mockCorrections);
       expect(mockClient.correctText).not.toHaveBeenCalled();
@@ -563,7 +563,7 @@ describe('WriteService', () => {
     it('should skip cache when skipCache is true', async () => {
       mockClient.correctText.mockResolvedValue(mockCorrections);
 
-      await writeService.correct('Test', { targetLang: 'en-US' }, { skipCache: true });
+      await writeService.correct('Test', { targetLang: 'en-us' }, { skipCache: true });
 
       expect(mockCacheService.get).not.toHaveBeenCalled();
       expect(mockCacheService.set).not.toHaveBeenCalled();
@@ -574,8 +574,8 @@ describe('WriteService', () => {
       mockClient.correctText.mockResolvedValue(mockCorrections);
       mockClient.improveText.mockResolvedValue(mockCorrections);
 
-      await writeService.correct('Test', { targetLang: 'en-US' });
-      await writeService.improve('Test', { targetLang: 'en-US' });
+      await writeService.correct('Test', { targetLang: 'en-us' });
+      await writeService.improve('Test', { targetLang: 'en-us' });
 
       const correctKey = mockCacheService.set.mock.calls[0]![0];
       const writeKey = mockCacheService.set.mock.calls[1]![0];
@@ -585,8 +585,8 @@ describe('WriteService', () => {
     it('should produce deterministic cache keys', async () => {
       mockClient.correctText.mockResolvedValue(mockCorrections);
 
-      await writeService.correct('Test', { targetLang: 'en-US' });
-      await writeService.correct('Test', { targetLang: 'en-US' });
+      await writeService.correct('Test', { targetLang: 'en-us' });
+      await writeService.correct('Test', { targetLang: 'en-us' });
 
       const key1 = mockCacheService.set.mock.calls[0]![0];
       const key2 = mockCacheService.set.mock.calls[1]![0];
@@ -601,7 +601,7 @@ describe('WriteService', () => {
         { text: 'Second.', targetLanguage: 'en-US' },
       ]);
 
-      const result = await writeService.getBestCorrection('Test', { targetLang: 'en-US' });
+      const result = await writeService.getBestCorrection('Test', { targetLang: 'en-us' });
 
       expect(result.text).toBe('First.');
     });
@@ -611,24 +611,24 @@ describe('WriteService', () => {
       mockClient.correctText.mockResolvedValue([]);
 
       await expect(
-        writeService.getBestCorrection('Test', { targetLang: 'en-US' })
+        writeService.getBestCorrection('Test', { targetLang: 'en-us' })
       ).rejects.toThrow('No improvements available');
     });
   });
 
   describe('supported languages', () => {
     it('should work with all supported Write languages', async () => {
-      const languages: Array<'de' | 'en' | 'en-GB' | 'en-US' | 'es' | 'fr' | 'it' | 'pt' | 'pt-BR' | 'pt-PT'> = [
+      const languages: Array<'de' | 'en' | 'en-gb' | 'en-us' | 'es' | 'fr' | 'it' | 'pt' | 'pt-br' | 'pt-pt'> = [
         'de',
         'en',
-        'en-GB',
-        'en-US',
+        'en-gb',
+        'en-us',
         'es',
         'fr',
         'it',
         'pt',
-        'pt-BR',
-        'pt-PT',
+        'pt-br',
+        'pt-pt',
       ];
 
       for (const lang of languages) {
@@ -658,7 +658,7 @@ describe('WriteService', () => {
       ];
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      const result = await cachelessService.improve('Test', { targetLang: 'en-US' });
+      const result = await cachelessService.improve('Test', { targetLang: 'en-us' });
 
       expect(result).toHaveLength(1);
       expect(mockClient.improveText).toHaveBeenCalledTimes(1);

@@ -9,10 +9,11 @@ import { isNoInput } from '../../utils/confirm.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
-export const WRITE_LANGUAGES = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'ja', 'ko', 'pt', 'pt-BR', 'pt-PT', 'zh', 'zh-Hans'] as const;
+export const WRITE_LANGUAGES = ['de', 'en', 'en-gb', 'en-us', 'es', 'fr', 'it', 'ja', 'ko', 'pt', 'pt-br', 'pt-pt', 'zh', 'zh-hans'] as const;
 /**
- * Codes are accepted in any casing and normalized to the API's form, matching
- * `translate --to` and the lowercase codes `deepl languages` prints.
+ * Codes are accepted in any casing and normalized to lowercase, matching
+ * `translate --to` and the codes `deepl languages` prints. The Write API
+ * accepts any casing and echoes its own (`en-GB`, `zh-Hans`) regardless.
  */
 const WRITE_LANGUAGE_BY_LOWERCASE = new Map<string, WriteLanguage>(
   WRITE_LANGUAGES.map((language) => [language.toLowerCase(), language]),

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Example 36: Write — extended language coverage
-# Demonstrates JA/KO/ZH/zh-Hans target languages and
+# Demonstrates ja/ko/zh/zh-hans target languages and
 # tone / style applied to ES/IT/FR/PT variants.
 
 set -e
@@ -30,8 +30,8 @@ echo "3. Simplified Chinese target (zh)"
 deepl write "请改进这句话。" --lang zh
 echo
 
-echo "4. Simplified Chinese target (zh-Hans)"
-deepl write "请改进这句话。" --lang zh-Hans
+echo "4. Simplified Chinese target (zh-hans)"
+deepl write "请改进这句话。" --lang zh-hans
 echo
 
 # Tone / style on Romance variants
@@ -48,11 +48,11 @@ deepl write "Les résultats montrent une corrélation." --lang fr --style academ
 echo
 
 echo "8. Portuguese (Brazil) + friendly tone"
-deepl write "Podemos ajudar com isso." --lang pt-BR --tone friendly
+deepl write "Podemos ajudar com isso." --lang pt-br --tone friendly
 echo
 
 echo "9. Portuguese (Portugal) + confident tone"
-deepl write "Vamos entregar no prazo." --lang pt-PT --tone confident
+deepl write "Vamos entregar no prazo." --lang pt-pt --tone confident
 echo
 
 # Auto-detect round-trip for a CJK input

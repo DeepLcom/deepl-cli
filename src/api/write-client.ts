@@ -89,7 +89,7 @@ export class WriteClient extends HttpClient {
 
     return response.improvements.map(improvement => ({
       text: improvement.text,
-      targetLanguage: improvement.target_language as WriteImprovement['targetLanguage'],
+      targetLanguage: improvement.target_language,
       detectedSourceLanguage: improvement.detected_source_language,
     }));
   }

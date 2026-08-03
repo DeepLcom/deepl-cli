@@ -45,7 +45,7 @@ describe('Correct Command Integration', () => {
       const scope = nock(FREE_API_URL)
         .post('/v2/write/correct', (body) => {
           expect(body.text).toBe('This is an test.');
-          expect(body.target_lang).toBe('en-US');
+          expect(body.target_lang).toBe('en-us');
           expect(body.writing_style).toBeUndefined();
           expect(body.tone).toBeUndefined();
           return true;
@@ -54,7 +54,7 @@ describe('Correct Command Integration', () => {
           improvements: [{ text: 'This is a test.', target_language: 'en-US' }],
         });
 
-      const result = await writeService.correct('This is an test.', { targetLang: 'en-US' });
+      const result = await writeService.correct('This is an test.', { targetLang: 'en-us' });
 
       expect(result).toHaveLength(1);
       expect(result[0]?.text).toBe('This is a test.');
@@ -90,7 +90,7 @@ describe('Correct Command Integration', () => {
           ],
         });
 
-      const result = await writeService.correct('This is an test.', { targetLang: 'en-US' });
+      const result = await writeService.correct('This is an test.', { targetLang: 'en-us' });
 
       expect(result).toHaveLength(2);
       expect(result[0]?.text).toBe('This is a test.');
@@ -105,7 +105,7 @@ describe('Correct Command Integration', () => {
         });
 
       await expect(
-        writeService.correct('Perfect text.', { targetLang: 'en-US' })
+        writeService.correct('Perfect text.', { targetLang: 'en-us' })
       ).rejects.toThrow('No improvements returned');
     });
 
@@ -119,7 +119,7 @@ describe('Correct Command Integration', () => {
           improvements: [{ text: 'This is a test.', target_language: 'en-US' }],
         });
 
-      await writeService.correct('This is an test.', { targetLang: 'en-US' });
+      await writeService.correct('This is an test.', { targetLang: 'en-us' });
 
       expect(rephraseScope.isDone()).toBe(false);
     });
@@ -132,7 +132,7 @@ describe('Correct Command Integration', () => {
         .reply(403, { message: 'Authorization failed' });
 
       await expect(
-        writeService.correct('Test', { targetLang: 'en-US' })
+        writeService.correct('Test', { targetLang: 'en-us' })
       ).rejects.toThrow(/auth|API key|forbidden/i);
     });
 
@@ -143,7 +143,7 @@ describe('Correct Command Integration', () => {
         .reply(429, { message: 'Too many requests' });
 
       await expect(
-        writeService.correct('Test', { targetLang: 'en-US' })
+        writeService.correct('Test', { targetLang: 'en-us' })
       ).rejects.toThrow(/rate|too many|limit/i);
     });
 
@@ -154,7 +154,7 @@ describe('Correct Command Integration', () => {
         .reply(503, { message: 'Service unavailable' });
 
       await expect(
-        writeService.correct('Test', { targetLang: 'en-US' })
+        writeService.correct('Test', { targetLang: 'en-us' })
       ).rejects.toThrow();
     });
 
@@ -177,8 +177,8 @@ describe('Correct Command Integration', () => {
           improvements: [{ text: 'This is a test.', target_language: 'en-US' }],
         });
 
-      const first = await writeService.correct('This is an test.', { targetLang: 'en-US' });
-      const second = await writeService.correct('This is an test.', { targetLang: 'en-US' });
+      const first = await writeService.correct('This is an test.', { targetLang: 'en-us' });
+      const second = await writeService.correct('This is an test.', { targetLang: 'en-us' });
 
       expect(first).toEqual(second);
       expect(scope.isDone()).toBe(true);
@@ -199,8 +199,8 @@ describe('Correct Command Integration', () => {
           improvements: [{ text: 'Rephrased.', target_language: 'en-US' }],
         });
 
-      const corrected = await writeService.correct('Same text.', { targetLang: 'en-US' });
-      const improved = await writeService.improve('Same text.', { targetLang: 'en-US' });
+      const corrected = await writeService.correct('Same text.', { targetLang: 'en-us' });
+      const improved = await writeService.improve('Same text.', { targetLang: 'en-us' });
 
       expect(corrected[0]?.text).toBe('Corrected.');
       expect(improved[0]?.text).toBe('Rephrased.');
@@ -216,8 +216,8 @@ describe('Correct Command Integration', () => {
           improvements: [{ text: 'This is a test.', target_language: 'en-US' }],
         });
 
-      await writeService.correct('This is an test.', { targetLang: 'en-US' }, { skipCache: true });
-      await writeService.correct('This is an test.', { targetLang: 'en-US' }, { skipCache: true });
+      await writeService.correct('This is an test.', { targetLang: 'en-us' }, { skipCache: true });
+      await writeService.correct('This is an test.', { targetLang: 'en-us' }, { skipCache: true });
 
       expect(scope.isDone()).toBe(true);
     });
@@ -234,7 +234,7 @@ describe('Correct Command Integration', () => {
           ],
         });
 
-      const result = await writeService.getBestCorrection('Test', { targetLang: 'en-US' });
+      const result = await writeService.getBestCorrection('Test', { targetLang: 'en-us' });
 
       expect(result.text).toBe('Best correction.');
     });

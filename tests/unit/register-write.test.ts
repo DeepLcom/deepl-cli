@@ -134,7 +134,7 @@ describe('registerWrite', () => {
       await program.parseAsync(['node', 'test', 'write', 'Hello', '-l', 'en-US']);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'en-US' }),
+        expect.objectContaining({ lang: 'en-us' }),
       );
     });
 
@@ -195,7 +195,7 @@ describe('registerWrite', () => {
       );
     });
 
-    it.each(['ja', 'ko', 'zh', 'zh-Hans'])('should accept new target language %s', async (lang) => {
+    it.each(['ja', 'ko', 'zh', 'zh-hans'])('should accept new target language %s', async (lang) => {
       mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
       mockWriteCommand.improve.mockResolvedValue('ok');
       await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', lang]);
@@ -210,11 +210,11 @@ describe('registerWrite', () => {
     // before validating, so write rejecting them made the CLI's own output
     // unusable with the command documented as consistent with translate.
     it.each([
-      ['en-us', 'en-US'],
-      ['en-US', 'en-US'],
-      ['EN-US', 'en-US'],
-      ['pt-br', 'pt-BR'],
-      ['zh-hans', 'zh-Hans'],
+      ['en-us', 'en-us'],
+      ['en-US', 'en-us'],
+      ['EN-US', 'en-us'],
+      ['pt-br', 'pt-br'],
+      ['zh-Hans', 'zh-hans'],
       ['DE', 'de'],
     ])('should accept --lang %s and normalize it to %s', async (input, canonical) => {
       mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
@@ -234,7 +234,7 @@ describe('registerWrite', () => {
       expect(handleError).not.toHaveBeenCalled();
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'pt-BR' }),
+        expect.objectContaining({ lang: 'pt-br' }),
       );
     });
 

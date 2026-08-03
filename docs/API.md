@@ -711,7 +711,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 **Language:**
 
-- `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `zh`, `zh-Hans`. Optional — omit to auto-detect the language and rephrase in the original language.
+- `--lang, -l LANG` - Target language: `de`, `en`, `en-gb`, `en-us`, `es`, `fr`, `it`, `ja`, `ko`, `pt`, `pt-br`, `pt-pt`, `zh`, `zh-hans`. Optional — omit to auto-detect the language and rephrase in the original language.
 - `--to LANG` - Long-only alias of `--lang`. Accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`; the short form `-t` is intentionally **not** bound here (it would collide with `deepl translate -t, --to`). Specifying both `--to` and `--lang` with different values exits with a `ValidationError`.
 
 **Style Options (mutually exclusive with tone):**
@@ -738,9 +738,9 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 | Target language | `--style` | `--tone` |
 |-----------------|:---------:|:--------:|
-| `en`, `en-GB`, `en-US`, `de` | ✓ | ✓ |
-| `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT` | ✓ | ✓ |
-| `ja`, `ko`, `zh`, `zh-Hans` | — | — |
+| `en`, `en-gb`, `en-us`, `de` | ✓ | ✓ |
+| `es`, `fr`, `it`, `pt`, `pt-br`, `pt-pt` | ✓ | ✓ |
+| `ja`, `ko`, `zh`, `zh-hans` | — | — |
 
 When `--style` or `--tone` is set for a target language that does not support it, the server returns a 4xx; the CLI converts that response into a `ValidationError` (exit code 6) that names the unsupported combination and points back to this table.
 
@@ -764,18 +764,18 @@ When `--style` or `--tone` is set for a target language that does not support it
 
 - `de` - German
 - `en` - English (generic, defaults to American English)
-- `en-GB` - British English
-- `en-US` - American English
+- `en-gb` - British English
+- `en-us` - American English
 - `es` - Spanish
 - `fr` - French
 - `it` - Italian
 - `ja` - Japanese
 - `ko` - Korean
 - `pt` - Portuguese (generic, defaults to Brazilian Portuguese)
-- `pt-BR` - Brazilian Portuguese
-- `pt-PT` - European Portuguese
+- `pt-br` - Brazilian Portuguese
+- `pt-pt` - European Portuguese
 - `zh` - Chinese (generic, defaults to Simplified Chinese)
-- `zh-Hans` - Simplified Chinese
+- `zh-hans` - Simplified Chinese
 
 #### Examples
 
@@ -789,7 +789,7 @@ deepl write "Me and him went to store."
 **With explicit language:**
 
 ```bash
-deepl write "Me and him went to store." --lang en-US
+deepl write "Me and him went to store." --lang en-us
 # → "He and I went to the store."
 ```
 
@@ -797,11 +797,11 @@ deepl write "Me and him went to store." --lang en-US
 
 ```bash
 # Business style
-deepl write "We want to tell you about our product." --lang en-US --style business
+deepl write "We want to tell you about our product." --lang en-us --style business
 # → "We are pleased to inform you about our product."
 
 # Casual style
-deepl write "The analysis demonstrates significant findings." --lang en-US --style casual
+deepl write "The analysis demonstrates significant findings." --lang en-us --style casual
 # → "The analysis shows some pretty big findings."
 ```
 
@@ -809,67 +809,67 @@ deepl write "The analysis demonstrates significant findings." --lang en-US --sty
 
 ```bash
 # Confident tone
-deepl write "I think this might work." --lang en-US --tone confident
+deepl write "I think this might work." --lang en-us --tone confident
 # → "This will work."
 
 # Diplomatic tone
-deepl write "Your approach is wrong." --lang en-US --tone diplomatic
+deepl write "Your approach is wrong." --lang en-us --tone diplomatic
 # → "Perhaps we could consider an alternative approach."
 ```
 
 **Show alternatives:**
 
 ```bash
-deepl write "This is good." --lang en-US --alternatives
+deepl write "This is good." --lang en-us --alternatives
 ```
 
 **File operations:**
 
 ```bash
 # Improve file and save to new location
-deepl write document.txt --lang en-US --output improved.txt
+deepl write document.txt --lang en-us --output improved.txt
 
 # Edit file in place
-deepl write document.txt --lang en-US --in-place
+deepl write document.txt --lang en-us --in-place
 
 # Auto-fix with backup
-deepl write document.txt --lang en-US --fix --backup
+deepl write document.txt --lang en-us --fix --backup
 ```
 
 **Interactive mode:**
 
 ```bash
 # Choose from multiple alternatives interactively
-deepl write "Text to improve." --lang en-US --interactive
+deepl write "Text to improve." --lang en-us --interactive
 ```
 
 **Check mode:**
 
 ```bash
 # Check if file needs improvement (exit code 8 if changes needed)
-deepl write document.md --lang en-US --check
+deepl write document.md --lang en-us --check
 ```
 
 **Diff view:**
 
 ```bash
 # Show differences between original and improved
-deepl write file.txt --lang en-US --diff
+deepl write file.txt --lang en-us --diff
 ```
 
 **JSON output:**
 
 ```bash
 # Get machine-readable JSON output
-deepl write "This are good." --lang en-US --format json
-# {"original":"This are good.","improved":"This is good.","changes":1,"language":"en-US"}
+deepl write "This are good." --lang en-us --format json
+# {"original":"This are good.","improved":"This is good.","changes":1,"language":"en-us"}
 ```
 
 **Bypass cache:**
 
 ```bash
 # Force a fresh API call, skipping cached results
-deepl write "Improve this text." --lang en-US --no-cache
+deepl write "Improve this text." --lang en-us --no-cache
 ```
 
 ---
@@ -897,7 +897,7 @@ Fixes spelling and grammar only, avoiding the broader rewording that `deepl writ
 
 **Language:**
 
-- `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `zh`, `zh-Hans`. Optional — omit to auto-detect the language and correct in the original language.
+- `--lang, -l LANG` - Target language: `de`, `en`, `en-gb`, `en-us`, `es`, `fr`, `it`, `ja`, `ko`, `pt`, `pt-br`, `pt-pt`, `zh`, `zh-hans`. Optional — omit to auto-detect the language and correct in the original language.
 - `--to LANG` - Long-only alias of `--lang`, as on `write`.
 
 **Output Modes:**
@@ -1685,8 +1685,8 @@ cache	caché
 # Create single-target glossary from TSV file
 deepl glossary create tech-terms en es glossary.tsv
 # ✓ Glossary created: tech-terms (ID: abc123...)
-# Source language: EN
-# Target languages: ES
+# Source language: en
+# Target languages: es
 # Type: Single target
 # Total entries: 3
 
@@ -1746,8 +1746,8 @@ Show glossary details including name, ID, languages, creation date, and entry co
 deepl glossary show tech-terms
 # Name: tech-terms
 # ID: abc123...
-# Source language: EN
-# Target languages: DE
+# Source language: en
+# Target languages: de
 # Type: Single target
 # Total entries: 3
 # Created: 2024-10-07T12:34:56.000Z
@@ -1756,15 +1756,15 @@ deepl glossary show tech-terms
 deepl glossary show multilingual-terms
 # Name: multilingual-terms
 # ID: def456...
-# Source language: EN
-# Target languages: ES, FR, DE
+# Source language: en
+# Target languages: es, fr, de
 # Type: Multilingual
 # Total entries: 15
 #
 # Language pairs:
-#   EN → ES: 5 entries
-#   EN → FR: 5 entries
-#   EN → DE: 5 entries
+#   en → es: 5 entries
+#   en → fr: 5 entries
+#   en → de: 5 entries
 # Created: 2024-10-08T10:00:00.000Z
 ```
 
@@ -2104,7 +2104,7 @@ List all translation memories on the account.
 
 **Output Format (text):**
 
-- Per-TM: `name (source → target[, target...])` — e.g. `brand-terms (EN → DE, FR, JA)`. Control chars and zero-width codepoints are stripped from the rendered name to prevent a malicious API-returned name from corrupting the terminal via ANSI escape sequences.
+- Per-TM: `name (source → target[, target...])` — e.g. `brand-terms (en → de, fr, ja)`. Control chars and zero-width codepoints are stripped from the rendered name to prevent a malicious API-returned name from corrupting the terminal via ANSI escape sequences.
 - Empty list: `No translation memories found`
 
 **Output Format (JSON):**
@@ -2115,8 +2115,8 @@ Raw `TranslationMemory[]` as returned by `GET /v3/translation_memories` — fiel
 
 ```bash
 deepl tm list
-# brand-terms (EN → DE, FR, JA)
-# legal-phrases (EN → FR)
+# brand-terms (en → de, fr, ja)
+# legal-phrases (en → fr)
 
 deepl tm list --format json | jq '.[] | select(.name == "brand-terms") | .translation_memory_id'
 # "3f2504e0-4f89-41d3-9a0c-0305e82c3301"

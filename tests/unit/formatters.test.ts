@@ -151,11 +151,11 @@ describe('formatters', () => {
       expect(output).toContain('Characters');
 
       // Verify data rows
-      expect(output).toContain('ES');
+      expect(output).toContain('es');
       expect(output).toContain('Hola');
       expect(output).toContain('5');
 
-      expect(output).toContain('FR');
+      expect(output).toContain('fr');
       expect(output).toContain('Bonjour');
       expect(output).toContain('7');
     });
@@ -170,7 +170,7 @@ describe('formatters', () => {
 
       const output = formatMultiTranslationTable(results);
 
-      expect(output).toContain('ES');
+      expect(output).toContain('es');
       expect(output).toContain('Hola');
       // Should NOT contain Characters column when billedCharacters is missing
       expect(output).not.toContain('Characters');
@@ -187,7 +187,7 @@ describe('formatters', () => {
 
       const output = formatMultiTranslationTable(results);
 
-      expect(output).toContain('DE');
+      expect(output).toContain('de');
       expect(output).toContain('Dies ist ein sehr langer');
       expect(output).toContain('100');
     });
@@ -248,10 +248,10 @@ describe('formatters', () => {
       const output = formatMultiTranslationTable(results);
 
       // All languages present
-      expect(output).toContain('ES');
-      expect(output).toContain('FR');
-      expect(output).toContain('DE');
-      expect(output).toContain('JA');
+      expect(output).toContain('es');
+      expect(output).toContain('fr');
+      expect(output).toContain('de');
+      expect(output).toContain('ja');
 
       // All translations present
       expect(output).toContain('Hola');
@@ -304,7 +304,7 @@ describe('formatters', () => {
 
       expect(output).toContain('Language');
       expect(output).toContain('Translation');
-      expect(output).toContain('ES');
+      expect(output).toContain('es');
       expect(output).toContain('Hola');
       // eslint-disable-next-line no-control-regex
       const ansiRegex = /\x1b\[[0-9;]*m/;
@@ -431,14 +431,14 @@ describe('formatters', () => {
       const output = formatWriteJson(
         'This are good.',
         'This is good.',
-        'en-US'
+        'en-us'
       );
       const parsed = JSON.parse(output);
 
       expect(parsed.original).toBe('This are good.');
       expect(parsed.improved).toBe('This is good.');
       expect(parsed.changes).toBe(1);
-      expect(parsed.language).toBe('en-US');
+      expect(parsed.language).toBe('en-us');
     });
 
     it('should set changes to 0 when text is unchanged', () => {

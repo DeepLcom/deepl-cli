@@ -48,18 +48,18 @@ export interface TranslationMemory {
 export type WriteLanguage =
   | 'de'
   | 'en'
-  | 'en-GB'
-  | 'en-US'
+  | 'en-gb'
+  | 'en-us'
   | 'es'
   | 'fr'
   | 'it'
   | 'ja'
   | 'ko'
   | 'pt'
-  | 'pt-BR'
-  | 'pt-PT'
+  | 'pt-br'
+  | 'pt-pt'
   | 'zh'
-  | 'zh-Hans';
+  | 'zh-hans';
 
 export type WritingStyle =
   | 'default'
@@ -95,7 +95,8 @@ export interface CorrectOptions {
 
 export interface WriteImprovement {
   text: string;
-  targetLanguage: WriteLanguage;
+  /** As echoed by the API, which uses its own casing (`en-GB`, `zh-Hans`). */
+  targetLanguage: string;
   detectedSourceLanguage?: string;
 }
 

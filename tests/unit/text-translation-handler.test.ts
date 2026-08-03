@@ -452,8 +452,8 @@ describe('TextTranslationHandler', () => {
           ]);
 
           const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
-          expect(result).toContain('DE');
-          expect(result).toContain('FR');
+          expect(result).toContain('de');
+          expect(result).toContain('fr');
         } finally {
           Object.defineProperty(process.stdout, 'isTTY', {
             value: originalIsTTY,

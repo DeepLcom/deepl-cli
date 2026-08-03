@@ -241,8 +241,8 @@ export class GlossaryCommand {
     const lines = [
       `Name: ${sanitizeForTerminal(glossary.name)}`,
       `ID: ${glossary.glossary_id}`,
-      `Source language: ${glossary.source_lang.toUpperCase()}`,
-      `Target languages: ${glossary.target_langs.map(l => l.toUpperCase()).join(', ')}`,
+      `Source language: ${glossary.source_lang}`,
+      `Target languages: ${glossary.target_langs.join(', ')}`,
       `Type: ${multilingual ? 'Multilingual' : 'Single target'}`,
       `Total entries: ${totalEntries}`,
       `Created: ${createdStr}`,
@@ -251,7 +251,7 @@ export class GlossaryCommand {
     if (multilingual) {
       lines.push('\nLanguage pairs:');
       glossary.dictionaries.forEach(dict => {
-        lines.push(`  ${dict.source_lang.toUpperCase()} → ${dict.target_lang.toUpperCase()}: ${dict.entry_count} entries`);
+        lines.push(`  ${dict.source_lang} → ${dict.target_lang}: ${dict.entry_count} entries`);
       });
     }
 

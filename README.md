@@ -592,87 +592,87 @@ See [examples/08-model-type-selection.sh](./examples/08-model-type-selection.sh)
 
 Improve your writing with AI-powered grammar, style, and tone suggestions using the **DeepL Write API**.
 
-The `--lang` flag is optional. If omitted, DeepL auto-detects the language and rephrases in the original language. Generic codes `en` and `pt` are also accepted (mapped to `en-US` and `pt-BR` respectively).
+The `--lang` flag is optional. If omitted, DeepL auto-detects the language and rephrases in the original language. Generic codes `en` and `pt` are also accepted (mapped to `en-us` and `pt-br` respectively).
 
 ```bash
 # Auto-detect language (--lang is optional)
 deepl write "This is a sentence."
 
 # Specify language explicitly
-deepl write "This is a sentence." --lang en-US
+deepl write "This is a sentence." --lang en-us
 
-# Use generic language code (en maps to en-US, pt maps to pt-BR)
+# Use generic language code (en maps to en-us, pt maps to pt-br)
 deepl write "This is a sentence." --lang en
 
 # Apply business writing style
-deepl write "We want to tell you about our new product." --lang en-US --style business
+deepl write "We want to tell you about our new product." --lang en-us --style business
 
 # Apply academic writing style
-deepl write "This shows that the method works." --lang en-US --style academic
+deepl write "This shows that the method works." --lang en-us --style academic
 
 # Apply casual tone
-deepl write "That is interesting." --lang en-US --style casual
+deepl write "That is interesting." --lang en-us --style casual
 
 # Use confident tone
-deepl write "I think this will work." --lang en-US --tone confident
+deepl write "I think this will work." --lang en-us --tone confident
 
 # Use diplomatic tone
-deepl write "Try something else." --lang en-US --tone diplomatic
+deepl write "Try something else." --lang en-us --tone diplomatic
 
 # Show all alternative improvements
 deepl write "This is good." --tone enthusiastic --alternatives
 
 # Improve files and save to output
-deepl write input.txt --lang en-US --output improved.txt
+deepl write input.txt --lang en-us --output improved.txt
 
 # Edit file in place
-deepl write document.md --lang en-US --in-place
+deepl write document.md --lang en-us --in-place
 
 # Interactive mode - choose from multiple style alternatives
 # Generates improvements with simple, business, academic, and casual styles
-deepl write "Text to improve." --lang en-US --interactive
+deepl write "Text to improve." --lang en-us --interactive
 
 # Interactive mode with file
-deepl write document.md --lang en-US --interactive --in-place
+deepl write document.md --lang en-us --interactive --in-place
 
 # Interactive mode with specific style (single option)
-deepl write "Text to improve." --lang en-US --style business --interactive
+deepl write "Text to improve." --lang en-us --style business --interactive
 
 # Check if text needs improvement (exit code 0 if no changes needed)
-deepl write document.md --lang en-US --check
+deepl write document.md --lang en-us --check
 
 # Auto-fix files in place
-deepl write document.md --lang en-US --fix
+deepl write document.md --lang en-us --fix
 
 # Auto-fix with backup
-deepl write document.md --lang en-US --fix --backup
+deepl write document.md --lang en-us --fix --backup
 
 # Show diff between original and improved
-deepl write file.txt --lang en-US --diff
+deepl write file.txt --lang en-us --diff
 
 # Show diff for plain text
-deepl write "This text could be better." --lang en-US --diff
+deepl write "This text could be better." --lang en-us --diff
 
 # Bypass cache for this request
-deepl write "Fresh improvement please." --lang en-US --no-cache
+deepl write "Fresh improvement please." --lang en-us --no-cache
 ```
 
 **Supported Languages:**
 
 - German (`de`)
 - English (`en`) - generic, defaults to American English
-- English - British (`en-GB`)
-- English - American (`en-US`)
+- English - British (`en-gb`)
+- English - American (`en-us`)
 - Spanish (`es`)
 - French (`fr`)
 - Italian (`it`)
 - Japanese (`ja`)
 - Korean (`ko`)
 - Portuguese (`pt`) - generic, defaults to Brazilian Portuguese
-- Portuguese - Brazilian (`pt-BR`)
-- Portuguese - European (`pt-PT`)
+- Portuguese - Brazilian (`pt-br`)
+- Portuguese - European (`pt-pt`)
 - Chinese (`zh`) - generic, defaults to Simplified Chinese
-- Chinese - Simplified (`zh-Hans`)
+- Chinese - Simplified (`zh-hans`)
 
 **Writing Styles:**
 
@@ -1183,8 +1183,8 @@ DeepL glossaries ensure consistent terminology across translations. The v3 Gloss
 echo -e "API\tAPI\nREST\tREST\nauthentication\tAuthentifizierung" > glossary.tsv
 deepl glossary create tech-terms en de glossary.tsv
 # ✓ Glossary created: tech-terms (ID: abc123...)
-# Source language: EN
-# Target languages: DE
+# Source language: en
+# Target languages: de
 # Type: Single target
 # Total entries: 3
 
@@ -1282,8 +1282,8 @@ authentication	Authentifizierung
 
 **Key Features:**
 
-- **Single-target glossaries** - One source language → one target language (e.g., EN → DE)
-- **Multilingual glossaries** - One source language → multiple target languages (e.g., EN → ES, FR, DE)
+- **Single-target glossaries** - One source language → one target language (e.g., en → de)
+- **Multilingual glossaries** - One source language → multiple target languages (e.g., en → es, fr, de)
 - **Direct updates** - v3 API uses PATCH endpoints for efficient updates (no delete+recreate)
 - **Smart defaults** - `--target` flag only required for multilingual glossaries
 - **Visual indicators** - 📖 for single-target, 📚 for multilingual glossaries
@@ -1302,8 +1302,8 @@ Reuse approved translations from your account's translation memories. TMs are au
 ```bash
 # List translation memories on the account
 deepl tm list
-# brand-terms (EN → DE, FR, JA)
-# legal-phrases (EN → FR)
+# brand-terms (en → de, fr, ja)
+# legal-phrases (en → fr)
 
 # JSON output for scripting
 deepl tm list --format json
