@@ -5,6 +5,7 @@ import { LanguageInfo, type LanguageFeatures } from '../../api/deepl-client.js';
 import {
   getSourceLanguages as getRegistrySourceLanguages,
   getTargetLanguages as getRegistryTargetLanguages,
+  deriveLanguageEntry,
 } from '../../data/language-registry.js';
 import { isColorEnabled } from '../../utils/formatters.js';
 
@@ -147,7 +148,13 @@ export class LanguagesCommand {
   }
 
   /**
-   * Merge API languages with registry data. API names take precedence.
+   * Merge API languages with the bundled snapshot. API names take precedence.
+   *
+   * The row set is the union of both: iterating only the snapshot meant a
+   * language the API offers but the snapshot predates was silently dropped from
+   * the listing, so `deepl languages` could not show what `translate` accepted.
+   * Snapshot entries the API omits are kept, so a partial response never makes
+   * languages disappear.
    */
   mergeWithRegistry(
     apiLanguages: LanguageInfo[],
@@ -162,7 +169,7 @@ export class LanguagesCommand {
       ? getRegistrySourceLanguages()
       : getRegistryTargetLanguages();
 
-    return registryEntries.map(entry => {
+    const merged = registryEntries.map(entry => {
       const apiLang = apiMap.get(entry.code);
       return {
         code: entry.code,
@@ -172,6 +179,32 @@ export class LanguagesCommand {
         ...(apiLang?.features && { features: apiLang.features }),
       };
     });
+
+    const known = new Set(registryEntries.map(entry => entry.code));
+    for (const lang of apiLanguages) {
+      const code = lang.language.toLowerCase();
+      if (known.has(code)) continue;
+      // LanguageInfo carries no usable_as_source, and deriving it from the role
+      // would tier the same code differently in each listing. A regional variant
+      // always carries a subtag, which is the stable signal available here; core
+      // and regional render in the same section anyway, and regenerating the
+      // snapshot replaces the guess with the API's own answer.
+      const { code: derivedCode, name, category } = deriveLanguageEntry({
+        lang: code,
+        name: lang.name,
+        usable_as_source: !code.includes('-'),
+        ...(lang.features && { features: lang.features }),
+      });
+      merged.push({
+        code: derivedCode,
+        name,
+        category,
+        ...(lang.supportsFormality !== undefined && { supportsFormality: lang.supportsFormality }),
+        ...(lang.features && { features: lang.features }),
+      });
+    }
+
+    return merged;
   }
 
   /**

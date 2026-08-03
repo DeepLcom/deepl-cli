@@ -408,6 +408,65 @@ describe('LanguagesCommand', () => {
     });
   });
 
+  describe('mergeWithRegistry() row set', () => {
+    it('should include a language the API reports but the snapshot does not', () => {
+      const apiLangs: LanguageInfo[] = [
+        {
+          language: 'xx-yy' as LanguageInfo['language'],
+          name: 'Testish (Regional)',
+          supportsFormality: true,
+          features: { glossary: { status: 'stable' } },
+        },
+      ];
+      const merged = languagesCommand.mergeWithRegistry(apiLangs, 'target');
+      const entry = merged.find(e => e.code === 'xx-yy');
+
+      expect(entry).toBeDefined();
+      expect(entry!.name).toBe('Testish (Regional)');
+    });
+
+    it('should derive the tier for a language the snapshot does not know', () => {
+      const apiLangs: LanguageInfo[] = [
+        {
+          language: 'xx' as LanguageInfo['language'],
+          name: 'Glossaryless',
+          features: { tag_handling: { status: 'stable' } },
+        },
+        {
+          language: 'yy' as LanguageInfo['language'],
+          name: 'Glossaried',
+          features: { glossary: { status: 'stable' } },
+        },
+      ];
+      const merged = languagesCommand.mergeWithRegistry(apiLangs, 'target');
+
+      expect(merged.find(e => e.code === 'xx')!.category).toBe('extended');
+      expect(merged.find(e => e.code === 'yy')!.category).toBe('core');
+    });
+
+    it('should keep snapshot languages the API omits', () => {
+      const merged = languagesCommand.mergeWithRegistry(
+        [{ language: 'de', name: 'German' }],
+        'target',
+      );
+
+      expect(merged.find(e => e.code === 'ja')).toBeDefined();
+      expect(merged.length).toBeGreaterThan(100);
+    });
+
+    it('should take the API list as given for the role being listed', () => {
+      // The client already filters by usable_as_source/usable_as_target, so the
+      // union trusts whichever list it is handed for that role.
+      const sourceMerged = languagesCommand.mergeWithRegistry(
+        [{ language: 'xx' as LanguageInfo['language'], name: 'Testish' }],
+        'source',
+      );
+
+      expect(sourceMerged.find(e => e.code === 'xx')).toBeDefined();
+      expect(sourceMerged.find(e => e.code === 'en-gb')).toBeUndefined();
+    });
+  });
+
   describe('partitionFeatureKeys()', () => {
     const entry = (
       code: string,

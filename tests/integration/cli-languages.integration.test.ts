@@ -46,6 +46,15 @@ describe('Languages CLI Integration', () => {
       expect(output).toContain('Source Languages:');
       expect(output).toContain('Extended Languages');
     });
+
+    it('should list the regional variants the snapshot previously omitted', () => {
+      const output = runCLI('deepl languages --target', { apiKey: '' });
+
+      expect(output).toContain('German (Swiss)');
+      expect(output).toContain('French (Canadian)');
+      expect(output).toMatch(/^\s+de-ch\s/m);
+      expect(output).toMatch(/^\s+fr-fr\s/m);
+    });
   });
 
   describe('deepl languages command structure', () => {
