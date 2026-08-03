@@ -3,7 +3,6 @@ import { TranslationOptions, Language, TranslationMemory } from '../types/index.
 import { NetworkError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
 import { resolveGlossaryWireParams } from '../utils/glossary-params.js';
-import { LANGUAGE_REGISTRY } from '../data/language-registry.js';
 import { Logger } from '../utils/logger.js';
 
 // DeepL's /v3/translation_memories endpoint paginates via `page` (0-indexed) and
@@ -46,8 +45,10 @@ interface DeepLUsageResponse {
 interface DeepLV3LanguageResponse {
   lang: string;
   name: string;
+  status?: string;
   usable_as_source?: boolean;
   usable_as_target?: boolean;
+  features?: LanguageFeatures;
 }
 
 export interface TranslationResult {
@@ -90,10 +91,24 @@ export interface UsageInfo {
   products?: ProductUsage[];
 }
 
+/**
+ * Per-feature support as reported by GET /v3/languages. A feature is supported
+ * when its key is present; `status` describes maturity, not availability.
+ * Known values are `stable`, `beta` and `early_access`, but the enum is open,
+ * so it stays a plain string.
+ */
+export interface LanguageFeature {
+  status: string;
+}
+
+/** Feature keys vary by `resource`, so the map is deliberately open-ended. */
+export type LanguageFeatures = Record<string, LanguageFeature>;
+
 export interface LanguageInfo {
   language: Language;
   name: string;
   supportsFormality?: boolean;
+  features?: LanguageFeatures;
 }
 
 export class TranslationClient extends HttpClient {
@@ -269,8 +284,8 @@ export class TranslationClient extends HttpClient {
   /**
    * Lists languages via GET /v3/languages (v2 is deprecated). One response
    * carries both roles as usable_as_source/usable_as_target flags, filtered
-   * here to preserve the per-type contract. The v3 response no longer reports
-   * formality support, so that comes from the static language registry.
+   * here to preserve the per-type contract. Formality support comes from the
+   * per-language features matrix, which is what v2's supports_formality became.
    */
   async getSupportedLanguages(
     type: 'source' | 'target'
@@ -290,8 +305,9 @@ export class TranslationClient extends HttpClient {
             language: code,
             name: lang.name,
             ...(type === 'target' && {
-              supportsFormality: LANGUAGE_REGISTRY.get(code)?.supportsFormality ?? false,
+              supportsFormality: lang.features?.['formality'] !== undefined,
             }),
+            ...(lang.features && { features: lang.features }),
           };
         });
     } catch (error) {

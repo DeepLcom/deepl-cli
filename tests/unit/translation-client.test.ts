@@ -424,10 +424,23 @@ describe('TranslationClient', () => {
       );
     });
 
-    it('should return target languages with registry-sourced formality', async () => {
+    it('should derive target formality from the features matrix', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: [
-          { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
+          {
+            lang: 'es',
+            name: 'Spanish',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' }, glossary: { status: 'stable' } },
+          },
+          {
+            lang: 'ko',
+            name: 'Korean',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { glossary: { status: 'stable' } },
+          },
         ],
         status: 200,
         headers: {},
@@ -435,9 +448,63 @@ describe('TranslationClient', () => {
 
       const result = await client.getSupportedLanguages('target');
 
-      expect(result).toHaveLength(1);
-      expect(result[0]!.language).toBe('es');
       expect(result[0]!.supportsFormality).toBe(true);
+      expect(result[1]!.supportsFormality).toBe(false);
+    });
+
+    it('should report formality for a language the static registry never flagged', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          {
+            lang: 'pt',
+            name: 'Portuguese',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' } },
+          },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.getSupportedLanguages('target');
+
+      expect(result[0]!.supportsFormality).toBe(true);
+    });
+
+    it('should pass the features matrix through for both roles', async () => {
+      const features = {
+        glossary: { status: 'stable' },
+        style_rules: { status: 'beta' },
+      };
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true, features },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      const source = await client.getSupportedLanguages('source');
+      const target = await client.getSupportedLanguages('target');
+
+      expect(source[0]!.features).toEqual(features);
+      expect(target[0]!.features).toEqual(features);
+    });
+
+    it('should omit features when the response carries none', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.getSupportedLanguages('target');
+
+      expect(result[0]).not.toHaveProperty('features');
+      expect(result[0]!.supportsFormality).toBe(false);
     });
   });
 

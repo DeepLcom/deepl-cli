@@ -517,15 +517,37 @@ describe('DeepLClient Integration', () => {
         .get('/v3/languages')
         .query({ resource: 'translate_text' })
         .reply(200, [
-          { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
-          { lang: 'fr', name: 'French', usable_as_source: true, usable_as_target: true },
+          {
+            lang: 'es',
+            name: 'Spanish',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' } },
+          },
+          {
+            lang: 'fr',
+            name: 'French',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' } },
+          },
         ]);
 
       const result = await client.getSupportedLanguages('target');
 
       expect(result).toEqual([
-        { language: 'es', name: 'Spanish', supportsFormality: true },
-        { language: 'fr', name: 'French', supportsFormality: true },
+        {
+          language: 'es',
+          name: 'Spanish',
+          supportsFormality: true,
+          features: { formality: { status: 'stable' } },
+        },
+        {
+          language: 'fr',
+          name: 'French',
+          supportsFormality: true,
+          features: { formality: { status: 'stable' } },
+        },
       ]);
       expect(scope.isDone()).toBe(true);
     });
@@ -544,7 +566,7 @@ describe('DeepLClient Integration', () => {
       expect(result[0]?.language).toBe('en-us');
     });
 
-    it('should source formality support from the registry for targets', async () => {
+    it('should source formality support from the features matrix for targets', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
@@ -552,8 +574,20 @@ describe('DeepLClient Integration', () => {
         .get('/v3/languages')
         .query({ resource: 'translate_text' })
         .reply(200, [
-          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
-          { lang: 'en-us', name: 'English (American)', usable_as_source: false, usable_as_target: true },
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' }, glossary: { status: 'stable' } },
+          },
+          {
+            lang: 'en-us',
+            name: 'English (American)',
+            usable_as_source: false,
+            usable_as_target: true,
+            features: { glossary: { status: 'stable' } },
+          },
         ]);
 
       const result = await client.getSupportedLanguages('target');

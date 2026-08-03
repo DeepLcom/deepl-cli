@@ -822,14 +822,32 @@ describe('DeepLClient', () => {
       expect(languages[0]?.language).toBe('de');
     });
 
-    it('should mark formality support on targets from the registry', async () => {
+    it('should mark formality support on targets from the features matrix', async () => {
       nock(baseUrl)
         .get('/v3/languages')
         .query({ resource: 'translate_text' })
         .reply(200, [
-          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
-          { lang: 'ja', name: 'Japanese', usable_as_source: true, usable_as_target: true },
-          { lang: 'ko', name: 'Korean', usable_as_source: true, usable_as_target: true },
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' } },
+          },
+          {
+            lang: 'ja',
+            name: 'Japanese',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' } },
+          },
+          {
+            lang: 'ko',
+            name: 'Korean',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { glossary: { status: 'stable' } },
+          },
         ]);
 
       const languages = await client.getSupportedLanguages('target');

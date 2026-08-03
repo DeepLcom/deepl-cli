@@ -66,13 +66,13 @@ describe('Language Registry', () => {
   describe('specific language entries', () => {
     it('should include known core languages', () => {
       expect(LANGUAGE_REGISTRY.get('en')).toEqual({ code: 'en', name: 'English', category: 'core' });
-      expect(LANGUAGE_REGISTRY.get('de')).toEqual({ code: 'de', name: 'German', category: 'core', supportsFormality: true });
-      expect(LANGUAGE_REGISTRY.get('ja')).toEqual({ code: 'ja', name: 'Japanese', category: 'core', supportsFormality: true });
+      expect(LANGUAGE_REGISTRY.get('de')).toEqual({ code: 'de', name: 'German', category: 'core' });
+      expect(LANGUAGE_REGISTRY.get('ja')).toEqual({ code: 'ja', name: 'Japanese', category: 'core' });
     });
 
     it('should include known regional variants', () => {
       expect(LANGUAGE_REGISTRY.get('en-gb')).toEqual({ code: 'en-gb', name: 'English (British)', category: 'regional', targetOnly: true });
-      expect(LANGUAGE_REGISTRY.get('pt-br')).toEqual({ code: 'pt-br', name: 'Portuguese (Brazilian)', category: 'regional', targetOnly: true, supportsFormality: true });
+      expect(LANGUAGE_REGISTRY.get('pt-br')).toEqual({ code: 'pt-br', name: 'Portuguese (Brazilian)', category: 'regional', targetOnly: true });
     });
 
     it('should include known extended languages', () => {
@@ -218,22 +218,10 @@ describe('Language Registry', () => {
     });
   });
 
-  describe('supportsFormality', () => {
-    it('should mark the formality-capable languages', () => {
-      for (const code of ['de', 'es', 'es-419', 'fr', 'it', 'ja', 'nl', 'pl', 'pt-br', 'pt-pt', 'ru']) {
-        expect(LANGUAGE_REGISTRY.get(code)?.supportsFormality).toBe(true);
-      }
-    });
-
-    it('should leave non-formality languages unmarked', () => {
-      for (const code of ['en', 'en-us', 'ko', 'zh', 'ar', 'ace']) {
-        expect(LANGUAGE_REGISTRY.get(code)?.supportsFormality).toBeUndefined();
-      }
-    });
-
-    it('should never mark an extended language', () => {
-      getExtendedLanguageCodes().forEach(code => {
-        expect(LANGUAGE_REGISTRY.get(code)?.supportsFormality).toBeUndefined();
+  describe('formality support', () => {
+    it('should not carry formality data; GET /v3/languages reports it as features.formality', () => {
+      LANGUAGE_REGISTRY.forEach(entry => {
+        expect(entry).not.toHaveProperty('supportsFormality');
       });
     });
   });
