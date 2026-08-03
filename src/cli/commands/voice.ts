@@ -17,6 +17,8 @@ import type {
   VoiceSourceMediaContentType,
 } from '../../types/index.js';
 import { ValidationError } from '../../utils/errors.js';
+import { Logger } from '../../utils/logger.js';
+import { VoicePartialResultError } from '../../services/voice-stream-session.js';
 
 const VALID_VOICE_TARGET_LANGS: ReadonlySet<string> = new Set<VoiceTargetLanguage>([
   'ar','bg','cs','da','de','el','en','en-GB','en-US','es','et','fi','fr',
@@ -83,6 +85,9 @@ export class VoiceCommand {
       }
 
       return this.formatResult(result, options.format);
+    } catch (error) {
+      this.reportPartialResult(error, translateOptions.targetLangs.length, isTTY);
+      throw error;
     } finally {
       process.removeListener('SIGINT', sigintHandler);
     }
@@ -108,6 +113,9 @@ export class VoiceCommand {
       }
 
       return this.formatResult(result, options.format);
+    } catch (error) {
+      this.reportPartialResult(error, translateOptions.targetLangs.length, isTTY);
+      throw error;
     } finally {
       process.removeListener('SIGINT', sigintHandler);
     }
@@ -250,6 +258,26 @@ export class VoiceCommand {
       }
     }
     readline.moveCursor(process.stdout, 0, -(lineCount - 1));
+  }
+
+  /**
+   * Print what a failed session did produce. The audio is transcribed and billed
+   * before the missing translation is noticed, so discarding the transcripts
+   * would make the user re-stream and pay again to see them. Written to stderr so
+   * a partial result is never mistaken for the command's output.
+   */
+  private reportPartialResult(error: unknown, targetCount: number, isTTY: boolean): void {
+    if (!(error instanceof VoicePartialResultError)) {
+      return;
+    }
+    if (isTTY) {
+      this.clearTTYDisplay(targetCount);
+    }
+    const salvaged = this.formatResult(error.result);
+    if (salvaged.trim() !== '') {
+      Logger.warn(chalk.yellow('Partial result before the session failed:'));
+      Logger.warn(salvaged);
+    }
   }
 
   private formatResult(result: VoiceSessionResult, format?: string): string {

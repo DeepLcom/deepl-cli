@@ -22,6 +22,21 @@ import type {
 
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 
+/**
+ * A session that ended with at least one target untranslated, carrying whatever
+ * did arrive. The audio has been transcribed and billed by this point, so the
+ * partial transcripts travel with the failure instead of being discarded.
+ */
+export class VoicePartialResultError extends VoiceError {
+  constructor(
+    message: string,
+    suggestion: string,
+    readonly result: VoiceSessionResult,
+  ) {
+    super(message, suggestion);
+  }
+}
+
 export class VoiceStreamSession {
   private readonly client: VoiceClient;
   private readonly session: VoiceSessionResponse;
@@ -61,7 +76,10 @@ export class VoiceStreamSession {
 
     for (const lang of options.targetLangs) {
       const transcript: VoiceTranscript = { lang, text: '', segments: [] };
-      this.targetTranscripts.set(lang, transcript);
+      // Keyed lowercase because the requested spellings (zh-HANS, en-GB) are not
+      // the only canonicalization the server might echo, and an unmatched update
+      // is dropped silently -- which then reads as a missing translation.
+      this.targetTranscripts.set(lang.toLowerCase(), transcript);
       this.textParts.set(transcript, []);
     }
   }
@@ -118,7 +136,7 @@ export class VoiceStreamSession {
         this.callbacks?.onSourceTranscript?.(update);
       },
       onTargetTranscript: (update: VoiceTargetTranscriptUpdate) => {
-        const target = this.targetTranscripts.get(update.language);
+        const target = this.targetTranscripts.get(update.language.toLowerCase());
         if (target) {
           this.accumulateTranscript(target, update.concluded);
         }
@@ -137,23 +155,26 @@ export class VoiceStreamSession {
         this.closeInput();
         this.finalizeTranscripts();
 
+        const result: VoiceSessionResult = {
+          sessionId: this.session.session_id,
+          source: this.sourceTranscript,
+          targets: Array.from(this.targetTranscripts.values()),
+        };
+
         const untranslated = this.untranslatedTargets();
         if (untranslated.length > 0) {
           this.fail(
             reject,
-            new VoiceError(
+            new VoicePartialResultError(
               `Voice session ended without a translation for: ${untranslated.join(', ')}.`,
               'The audio was transcribed but the server sent no translated text. Retry the request.',
+              result,
             ),
           );
           return;
         }
 
-        resolve({
-          sessionId: this.session.session_id,
-          source: this.sourceTranscript,
-          targets: Array.from(this.targetTranscripts.values()),
-        });
+        resolve(result);
       },
       onError: (error) => {
         this.callbacks?.onError?.(error);

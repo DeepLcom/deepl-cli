@@ -5,7 +5,10 @@
  * and transcript accumulation directly on the extracted class.
  */
 
-import { VoiceStreamSession } from '../../src/services/voice-stream-session.js';
+import {
+  VoiceStreamSession,
+  VoicePartialResultError,
+} from '../../src/services/voice-stream-session.js';
 import { VoiceClient } from '../../src/api/voice-client.js';
 import { VoiceError } from '../../src/utils/errors.js';
 import type {
@@ -13,6 +16,7 @@ import type {
   VoiceSessionResult,
   VoiceTranslateOptions,
   VoiceStreamCallbacks,
+  VoiceTargetLanguage,
 } from '../../src/types/voice.js';
 import { createMockVoiceClient } from '../helpers/mock-factories';
 
@@ -791,6 +795,58 @@ describe('VoiceStreamSession', () => {
 
       expect(result.source.text).toBe('');
       expect(result.targets[0]!.text).toBe('');
+    });
+
+    it('should match the echoed language regardless of casing', async () => {
+      // The requested set spells variants zh-HANS and en-GB; a server echoing
+      // another canonicalization used to have its translation dropped on the
+      // floor and then reported as missing.
+      const result = await runWithFrames(
+        (callbacks) => {
+          callbacks.onSourceTranscript?.({
+            concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+            tentative: [],
+          });
+          callbacks.onTargetTranscript?.({
+            // Cast because the union only spells the requested casing; the wire
+            // is not bound by it, which is the whole hazard here.
+            language: 'zh-Hans' as VoiceTargetLanguage,
+            concluded: [{ text: '你好', start_time: 0, end_time: 1 }],
+            tentative: [],
+          });
+        },
+        { targetLangs: ['zh-HANS'], chunkInterval: 0 },
+      );
+
+      expect(result.targets[0]!.text).toBe('你好');
+      expect(result.targets[0]!.lang).toBe('zh-HANS');
+    });
+
+    it('should carry the salvaged transcripts on the error', async () => {
+      expect.assertions(3);
+      try {
+        await runWithFrames(
+          (callbacks) => {
+            callbacks.onSourceTranscript?.({
+              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+              tentative: [],
+            });
+            callbacks.onTargetTranscript?.({
+              language: 'fr',
+              concluded: [{ text: 'Bonjour', start_time: 0, end_time: 1 }],
+              tentative: [],
+            });
+          },
+          { targetLangs: ['fr', 'de'], chunkInterval: 0 },
+        );
+      } catch (error) {
+        // The audio is billed either way, so what did arrive must not be thrown
+        // away with the failure.
+        const partial = (error as VoicePartialResultError).result;
+        expect(partial.source.text).toBe('Hello');
+        expect(partial.targets.find(t => t.lang === 'fr')?.text).toBe('Bonjour');
+        expect(partial.targets.find(t => t.lang === 'de')?.text).toBe('');
+      }
     });
 
     it('should close the input generator when rejecting', async () => {
