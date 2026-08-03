@@ -12,6 +12,7 @@ import { Logger } from '../utils/logger.js';
 import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
 import { ValidationError } from '../utils/errors.js';
 import { errorMessage } from '../utils/error-message.js';
+import { resolveGlossaryWireParams } from '../utils/glossary-params.js';
 import { preserveCodeBlocks, preserveVariables, restorePlaceholders } from '../utils/text-preservation.js';
 
 export { MULTI_TARGET_CONCURRENCY };
@@ -390,8 +391,17 @@ export class TranslationService {
    * encodings of the same visible string produce distinct cache keys. This is
    * intentional — the API receives the un-normalized bytes, so the cache keys
    * on exactly what is sent.
+   *
+   * New fields are appended after the existing ones so that keys for requests
+   * not using them stay unchanged. `glossaryIds` is hashed in the caller's
+   * order rather than sorted, because reordering the list changes which
+   * glossary wins a conflicting term and therefore the translation itself.
    */
   private generateCacheKey(text: string, options: TranslationOptions): string {
+    // Keyed on the parameter the request will actually carry, so the two ways of
+    // naming one glossary share a key and an empty selection keys as no glossary
+    const glossary = resolveGlossaryWireParams(options);
+
     // Create a stable representation with deterministic property order
     // Property order matters because JSON.stringify() preserves insertion order
     const cacheData = {
@@ -399,7 +409,7 @@ export class TranslationService {
       targetLang: options.targetLang,    // 2. Target language
       sourceLang: options.sourceLang,    // 3. Source language (if specified)
       formality: options.formality,      // 4. Formality level
-      glossaryId: options.glossaryId,    // 5. Glossary ID
+      glossaryId: glossary && 'glossary_id' in glossary ? glossary.glossary_id : undefined, // 5. Glossary ID
       context: options.context,          // 6. Context hint
       modelType: options.modelType,      // 7. Model type affects output quality
       splitSentences: options.splitSentences, // 8. Sentence splitting behavior
@@ -407,6 +417,7 @@ export class TranslationService {
       tagHandlingVersion: options.tagHandlingVersion, // 10. Tag handling version
       customInstructions: options.customInstructions, // 11. Custom instructions
       styleId: options.styleId,          // 12. Style rules
+      glossaryIds: glossary && 'glossary_ids' in glossary ? glossary.glossary_ids : undefined, // 13. Multi-glossary selection (order-significant)
       // Note: preserveFormatting doesn't affect translation output, so not cached
     };
 

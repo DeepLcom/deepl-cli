@@ -1156,6 +1156,57 @@ describe('TranslationService', () => {
       expect(key1).toBe(key2);
     });
 
+    describe('multi-glossary cache keys', () => {
+      const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+      const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+      const keysFor = async (
+        optionSets: Array<Record<string, unknown>>,
+      ): Promise<string[]> => {
+        mockCacheService.get.mockReturnValue(null);
+        mockDeepLClient.translate.mockResolvedValue({ text: 'Hola' });
+        mockCacheService.set.mockClear();
+
+        for (const options of optionSets) {
+          await translationService.translate('Hello', { targetLang: 'es', ...options } as any);
+        }
+
+        return mockCacheService.set.mock.calls.map((call) => call[0]);
+      };
+
+      it('should key a single glossary the same whether it arrives as glossaryId or glossaryIds', async () => {
+        const [viaSingular, viaList] = await keysFor([
+          { glossaryId: A },
+          { glossaryIds: [A] },
+        ]);
+        expect(viaSingular).toBe(viaList);
+      });
+
+      it('should separate one glossary from two', async () => {
+        const [one, two] = await keysFor([{ glossaryIds: [A] }, { glossaryIds: [A, B] }]);
+        expect(one).not.toBe(two);
+      });
+
+      /** Reordering changes which glossary wins a conflicting term, so the keys must differ. */
+      it('should separate the two orderings of the same glossaries', async () => {
+        const [ab, ba] = await keysFor([{ glossaryIds: [A, B] }, { glossaryIds: [B, A] }]);
+        expect(ab).not.toBe(ba);
+      });
+
+      it('should reuse the key for an identical multi-glossary request', async () => {
+        const [first, second] = await keysFor([
+          { glossaryIds: [A, B] },
+          { glossaryIds: [A, B] },
+        ]);
+        expect(first).toBe(second);
+      });
+
+      it('should leave keys for glossary-free requests unchanged by the new field', async () => {
+        const [none, empty] = await keysFor([{}, { glossaryIds: [] }]);
+        expect(none).toBe(empty);
+      });
+    });
+
     it('should use cached result when options are provided in different order', async () => {
       // Set up cache to return a hit for the second call
       let callCount = 0;
