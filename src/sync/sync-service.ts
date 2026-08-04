@@ -189,8 +189,16 @@ export class SyncService {
     let driftDetected = false;
     let lockDirty = false;
 
+    // Resolution runs for a dry run too. It costs one listing per kind, the
+    // command already needs an API key to reach this point, and a glossary or
+    // translation memory the config names but the account cannot use for the
+    // requested pair is exactly what a preview exists to report.
+    const effectiveLocales = options?.localeFilter?.length
+      ? config.target_locales.filter(l => options.localeFilter!.includes(l))
+      : config.target_locales;
+
     let resolvedGlossaryId: string | undefined;
-    if (config.translation?.glossary && config.translation.glossary !== 'auto' && !options?.dryRun) {
+    if (config.translation?.glossary && config.translation.glossary !== 'auto') {
       // The pair is known from the config, so a glossary that does not cover it
       // fails here rather than once per file, as with the translation memory
       // below.
@@ -203,11 +211,7 @@ export class SyncService {
           .filter(([, override]) => override?.glossary)
           .map(([locale]) => locale),
       );
-      const glossaryLocales = (
-        options?.localeFilter?.length
-          ? config.target_locales.filter(l => options.localeFilter!.includes(l))
-          : config.target_locales
-      ).filter(locale => !overriddenLocales.has(locale));
+      const glossaryLocales = effectiveLocales.filter(locale => !overriddenLocales.has(locale));
       resolvedGlossaryId = await this.glossaryService.resolveGlossaryId(
         config.translation.glossary,
         { from: config.source_locale as Language, targets: glossaryLocales as Language[] },
@@ -215,16 +219,44 @@ export class SyncService {
     }
 
     let resolvedTmId: string | undefined;
-    if (config.translation?.translation_memory && !options?.dryRun) {
-      const effectiveLocales = options?.localeFilter?.length
-        ? config.target_locales.filter(l => options.localeFilter!.includes(l))
-        : config.target_locales;
+    if (config.translation?.translation_memory) {
       resolvedTmId = await resolveTranslationMemoryId(
         this.translationService,
         config.translation.translation_memory,
         this.tmCache,
         { from: config.source_locale as Language, targets: effectiveLocales as Language[] },
       );
+    }
+
+    // Per-locale overrides are resolved here rather than inside the bucket loop,
+    // which repeated the work for every file: an override that does not cover its
+    // own locale has to fail before anything is translated, not after earlier
+    // files have already been written. `auto` names no glossary to resolve — it
+    // is managed by the auto-glossary pass after translation.
+    const localeGlossaryIds = new Map<string, string>();
+    const localeTmIds = new Map<string, string>();
+    for (const locale of effectiveLocales) {
+      const override = config.translation?.locale_overrides?.[locale];
+      if (override?.glossary && override.glossary !== 'auto') {
+        localeGlossaryIds.set(
+          locale,
+          await this.glossaryService.resolveGlossaryId(override.glossary, {
+            from: config.source_locale as Language,
+            targets: [locale as Language],
+          }),
+        );
+      }
+      if (override?.translation_memory) {
+        localeTmIds.set(
+          locale,
+          await resolveTranslationMemoryId(
+            this.translationService,
+            override.translation_memory,
+            this.tmCache,
+            { from: config.source_locale as Language, targets: [locale as Language] },
+          ),
+        );
+      }
     }
 
     let keyContexts = new Map<string, KeyContext>();
@@ -307,9 +339,7 @@ export class SyncService {
         sourceEntryMap, targetEntryMap,
         allContextSentKeys, allInstructionSentKeys, allInstructionGroupTotals,
         keyContexts, localeTranslator,
-        glossaryService: this.glossaryService,
-        translationService: this.translationService,
-        tmCache: this.tmCache,
+        localeGlossaryIds, localeTmIds,
         currentTotalCharsBilled: totalCharsBilled,
       });
 

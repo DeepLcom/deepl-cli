@@ -1,7 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { TranslationService } from '../services/translation.js';
-import type { GlossaryService } from '../services/glossary.js';
 import { computeDiff } from './sync-differ.js';
 import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
 import { ValidationError } from '../utils/errors.js';
@@ -9,10 +7,7 @@ import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
 import { computeSourceHash } from './sync-lock.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncLockFile, SyncLockTranslation } from './types.js';
-import type { Language } from '../types/common.js';
 import type { KeyContext } from './sync-context.js';
-import { resolveTranslationMemoryId } from '../services/translation-memory.js';
-import type { TmCacheLike } from './tm-cache.js';
 import { Logger } from '../utils/logger.js';
 import { extractTranslatable, type WalkedBucketFile } from './sync-bucket-walker.js';
 import type { LocaleTranslator } from './sync-locale-translator.js';
@@ -31,9 +26,13 @@ export interface ProcessBucketDeps {
   // Read-only refs:
   keyContexts: Map<string, KeyContext>;
   localeTranslator: LocaleTranslator;
-  glossaryService: GlossaryService;
-  translationService: TranslationService;
-  tmCache: TmCacheLike;
+  /**
+   * Glossary and translation-memory IDs for locales carrying a
+   * `locale_overrides.<locale>` entry, resolved once by the orchestrator so a
+   * reference that does not cover its locale fails before any file is touched.
+   */
+  localeGlossaryIds: Map<string, string>;
+  localeTmIds: Map<string, string>;
   // For cost-cap check — orchestrator's cumulative as of this bucket:
   currentTotalCharsBilled: number;
 }
@@ -66,7 +65,7 @@ export async function processBucket(
 ): Promise<BucketContribution> {
   const { config, options, lockFile, sourceEntryMap, targetEntryMap,
     allContextSentKeys, allInstructionSentKeys, allInstructionGroupTotals,
-    keyContexts, localeTranslator, glossaryService, translationService, tmCache,
+    keyContexts, localeTranslator, localeGlossaryIds, localeTmIds,
     currentTotalCharsBilled } = deps;
   const { bucketConfig, parser, relPath, content, entries, isMultiLocale } = walked;
 
@@ -227,27 +226,6 @@ export async function processBucket(
   for (const diff of diffs) {
     if (diff.status === 'current' && !localeSuccessMap.has(diff.key)) {
       localeSuccessMap.set(diff.key, new Set());
-    }
-  }
-
-  const localeGlossaryIds = new Map<string, string>();
-  for (const locale of locales) {
-    const override = config.translation?.locale_overrides?.[locale]?.glossary;
-    if (override && override !== 'auto' && !options?.dryRun) {
-      localeGlossaryIds.set(locale, await glossaryService.resolveGlossaryId(override));
-    }
-  }
-
-  const localeTmIds = new Map<string, string>();
-  for (const locale of locales) {
-    const override = config.translation?.locale_overrides?.[locale]?.translation_memory;
-    if (override && !options?.dryRun) {
-      localeTmIds.set(locale, await resolveTranslationMemoryId(
-        translationService,
-        override,
-        tmCache,
-        { from: config.source_locale as Language, targets: [locale as Language] },
-      ));
     }
   }
 

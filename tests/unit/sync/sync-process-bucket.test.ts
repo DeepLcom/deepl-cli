@@ -7,9 +7,7 @@ import type { ResolvedSyncConfig } from '../../../src/sync/sync-config';
 import type { SyncLockFile } from '../../../src/sync/types';
 import type { WalkedBucketFile } from '../../../src/sync/sync-bucket-walker';
 import type { LocaleTranslator, TranslateLocaleResult } from '../../../src/sync/sync-locale-translator';
-import type { GlossaryService } from '../../../src/services/glossary';
 import { ValidationError } from '../../../src/utils/errors';
-import { createMockTranslationService } from '../../helpers/mock-factories';
 
 jest.mock('../../../src/utils/logger', () => ({
   Logger: {
@@ -77,9 +75,8 @@ function makeDeps(
     allInstructionGroupTotals: new Map(),
     keyContexts: new Map(),
     localeTranslator: { translate } as unknown as LocaleTranslator,
-    glossaryService: { resolveGlossaryId: jest.fn() } as unknown as GlossaryService,
-    translationService: createMockTranslationService(),
-    tmCache: { has: () => false, get: () => undefined, set: () => undefined },
+    localeGlossaryIds: new Map(),
+    localeTmIds: new Map(),
     currentTotalCharsBilled: 0,
   };
 }

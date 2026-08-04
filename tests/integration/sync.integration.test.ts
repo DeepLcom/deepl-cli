@@ -2527,9 +2527,9 @@ translation:
     });
   });
 
-  // ---- 9. Dry-run suppression ----
-  describe('dry-run suppression', () => {
-    it('makes zero list calls and zero translate calls when dryRun is set even with TM configured', async () => {
+  // ---- 9. Dry-run resolution ----
+  describe('dry-run resolution', () => {
+    it('resolves configured TMs during a dry run but sends nothing to translate', async () => {
       writeYamlConfig(
         tmpDir,
         `version: 1
@@ -2549,14 +2549,52 @@ translation:
       );
       writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
 
-      // No nock interceptors registered — any outbound request would
-      // surface as an unmatched-request error and fail the test.
+      // Only the listing is mocked. A /v2/translate request would be unmatched
+      // and fail the test, which is the invariant a dry run has to keep.
+      // Twice: the top-level name and the override name are separate cache keys.
+      const listScope = mockListTms(
+        [
+          { id: TM_UUID_MY, name: 'my-tm', source: 'en', target: 'de' },
+          { id: TM_UUID_DE_SPECIFIC, name: 'de-specific-tm', source: 'en', target: 'de' },
+        ],
+        2,
+      );
 
       const config = await loadSyncConfig(tmpDir);
       const result = await syncService.sync(config, { dryRun: true });
 
       expect(result.dryRun).toBe(true);
+      expect(listScope.isDone()).toBe(true);
       expect(nock.pendingMocks()).toEqual([]);
+    });
+
+    it('fails a dry run when a per-locale override TM does not cover its locale', async () => {
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
+source_locale: en
+target_locales:
+  - de
+  - fr
+buckets:
+  json:
+    include:
+      - "locales/en.json"
+translation:
+  locale_overrides:
+    fr:
+      translation_memory: "de-only"
+`,
+      );
+      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+
+      mockListTms([{ id: TM_UUID_DE, name: 'de-only', source: 'en', target: 'de' }]);
+
+      const config = await loadSyncConfig(tmpDir);
+      const caught = await syncService.sync(config, { dryRun: true }).catch((e: unknown) => e);
+
+      expect(caught).toBeInstanceOf(ConfigError);
+      expect((caught as Error).message).toMatch(/does not support the requested language pair/);
     });
   });
 });

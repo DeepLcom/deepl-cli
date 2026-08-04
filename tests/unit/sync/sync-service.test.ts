@@ -7,7 +7,7 @@ import { FormatRegistry } from '../../../src/formats/index';
 import type { FormatParser, ExtractedEntry, TranslatedEntry } from '../../../src/formats/format';
 import { JsonFormatParser } from '../../../src/formats/json';
 import { YamlFormatParser } from '../../../src/formats/yaml';
-import { ValidationError } from '../../../src/utils/errors';
+import { ValidationError, ConfigError } from '../../../src/utils/errors';
 
 jest.mock('fast-glob', () => {
   const mockFn = Object.assign(
@@ -1783,7 +1783,12 @@ describe('SyncService', () => {
       });
       await service.sync(config);
 
-      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      // With the override's own locale as the pair, so a glossary that does not
+      // cover it fails at startup rather than reaching the API.
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
+        from: 'en',
+        targets: ['de'],
+      });
       expect(translateBatch).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ glossaryId: 'resolved-glossary-id-123' }),
@@ -2353,20 +2358,20 @@ describe('SyncService', () => {
       expect((deCall![1] as Record<string, unknown>)['translationMemoryThreshold']).toBe(90);
     });
 
-    it('should not resolve TM during dryRun', async () => {
+    it('should resolve the top-level TM during dryRun so the preview validates it', async () => {
       setupLockManager(makeEmptyLockFile());
       const { service, mockTranslation } = createService();
+      mockTranslation.listTranslationMemories.mockResolvedValue([
+        { translation_memory_id: TM_UUID_A, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+      ]);
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
       await service.sync(makeConfig({
-        translation: {
-          translation_memory: 'my-tm',
-          locale_overrides: { de: { translation_memory: 'de-tm' } },
-        },
+        translation: { translation_memory: 'my-tm' },
       }), { dryRun: true });
 
-      expect(mockTranslation.listTranslationMemories).not.toHaveBeenCalled();
+      expect(mockTranslation.listTranslationMemories).toHaveBeenCalled();
     });
 
     it('should throw ConfigError when top-level TM does not support all target locales', async () => {
@@ -2432,15 +2437,129 @@ describe('SyncService', () => {
       });
     });
 
-    it('should not resolve glossary during dryRun', async () => {
+    it('should resolve glossary during dryRun so the preview validates the config', async () => {
+      // A dry run reports what a real run would do, and already needs an API key
+      // to get this far, so a glossary the config names but the account cannot
+      // use is something the preview has to surface.
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockResolvedValue('glos-123');
+
+      await service.sync(makeConfig({
+        translation: { glossary: 'my-glossary' },
+      }), { dryRun: true });
+
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
+        from: 'en',
+        targets: ['de'],
+      });
+    });
+
+    it('should surface a top-level glossary that does not cover the pair during dryRun', async () => {
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockRejectedValue(
+        new ConfigError('Glossary "my-glossary" does not support the requested language pair'),
+      );
+
+      await expect(
+        service.sync(makeConfig({ translation: { glossary: 'my-glossary' } }), { dryRun: true }),
+      ).rejects.toThrow(/does not support the requested language pair/);
+    });
+
+    it('should check a per-locale override glossary against its own locale at startup', async () => {
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockResolvedValue('glos-fr');
+
+      await service.sync(makeConfig({
+        target_locales: ['de', 'fr'],
+        translation: {
+          locale_overrides: { fr: { glossary: 'fr-terms' } },
+        },
+      }));
+
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('fr-terms', {
+        from: 'en',
+        targets: ['fr'],
+      });
+    });
+
+    it('should fail once at startup when an override glossary does not cover its locale', async () => {
+      // Resolution also runs per file, where the same rejection was reported
+      // once per file rather than once for the run.
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockRejectedValue(
+        new ConfigError('Glossary "fr-terms" does not support the requested language pair'),
+      );
+
+      await expect(service.sync(makeConfig({
+        target_locales: ['de', 'fr'],
+        translation: {
+          locale_overrides: { fr: { glossary: 'fr-terms' } },
+        },
+      }))).rejects.toThrow(/does not support the requested language pair/);
+
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledTimes(1);
+    });
+
+    it('should check override glossaries during dryRun too', async () => {
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockResolvedValue('glos-fr');
+
+      await service.sync(makeConfig({
+        target_locales: ['de', 'fr'],
+        translation: {
+          locale_overrides: { fr: { glossary: 'fr-terms' } },
+        },
+      }), { dryRun: true });
+
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('fr-terms', {
+        from: 'en',
+        targets: ['fr'],
+      });
+    });
+
+    it('should not resolve an "auto" override glossary, which is managed rather than named', async () => {
       const { service, mockGlossary } = createService();
       setupLockManager(makeEmptyLockFile());
       mockFg.mockResolvedValue(['/test/locales/en.json']);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
       await service.sync(makeConfig({
-        translation: { glossary: 'my-glossary' },
-      }), { dryRun: true });
+        target_locales: ['de'],
+        translation: {
+          locale_overrides: { de: { glossary: 'auto' } },
+        },
+      }));
+
+      expect(mockGlossary.resolveGlossaryId).not.toHaveBeenCalled();
+    });
+
+    it('should skip an override for a locale the filter excludes', async () => {
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+
+      await service.sync(makeConfig({
+        target_locales: ['de', 'fr'],
+        translation: {
+          locale_overrides: { fr: { glossary: 'fr-terms' } },
+        },
+      }), { localeFilter: ['de'] });
 
       expect(mockGlossary.resolveGlossaryId).not.toHaveBeenCalled();
     });
