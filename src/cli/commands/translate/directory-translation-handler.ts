@@ -2,7 +2,7 @@ import ora from 'ora';
 import { BatchTranslationService } from '../../../services/batch-translation.js';
 import { ValidationError } from '../../../utils/errors.js';
 import { Logger } from '../../../utils/logger.js';
-import { ExitCode } from '../../../utils/exit-codes.js';
+import { ExitCode, exitCodeForError } from '../../../utils/exit-codes.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
 import {
   warnIgnoredOptions,
@@ -112,8 +112,17 @@ export class DirectoryTranslationHandler {
         // translated must not look like success to a script or a CI job, and
         // language validation defers to the API, so a bad --to surfaces here
         // rather than as a local rejection.
-        process.exitCode =
-          stats.successful === 0 ? ExitCode.GeneralError : ExitCode.PartialFailure;
+        //
+        // When one rejection stopped the whole run, its own code is reported
+        // instead of the generic failure — a refused `target_lang` is invalid
+        // input (6) and an exhausted quota is a quota error (4), which a script
+        // can act on differently from a file that happened to fail.
+        if (result.requestRejected !== undefined) {
+          process.exitCode = exitCodeForError(result.requestRejected);
+        } else {
+          process.exitCode =
+            stats.successful === 0 ? ExitCode.GeneralError : ExitCode.PartialFailure;
+        }
       }
 
       if (stats.skipped > 0) {

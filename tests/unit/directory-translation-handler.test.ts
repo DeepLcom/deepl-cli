@@ -266,6 +266,13 @@ describe('DirectoryTranslationHandler', () => {
     getStatistics: jest.Mock;
   };
 
+  // The handler reports a failed run through process.exitCode, which is this
+  // process's own: left set, it makes jest exit non-zero even when every test
+  // passed, so a real failure elsewhere would be indistinguishable.
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
   beforeEach(() => {
     // Re-apply mock implementations cleared by resetMocks: true in jest.config
     const translateUtilsMock = jest.requireMock(
@@ -437,6 +444,46 @@ describe('DirectoryTranslationHandler', () => {
         ['de', 'fr'],
         expect.anything(),
       );
+    });
+
+    it('should classify the exit code from a request-level rejection', async () => {
+      // A rejected target_lang aborts the whole run, so it is user input rather
+      // than an unclassified failure: exit 6, not the generic 1 that a run where
+      // every file failed for its own reason gets.
+      mockBatchService.translateDirectory.mockResolvedValue({
+        successful: [],
+        failed: [{ file: 'a.txt', error: "Value for 'target_lang' not supported." }],
+        skipped: [],
+        requestRejected: new ValidationError("Value for 'target_lang' not supported."),
+      });
+      mockBatchService.getStatistics.mockReturnValue({
+        total: 1,
+        successful: 0,
+        failed: 1,
+        skipped: 0,
+      });
+
+      await handler.translateDirectory('/some/dir', baseOptions);
+
+      expect(process.exitCode).toBe(6);
+    });
+
+    it('should still exit 1 when every file failed for its own reason', async () => {
+      mockBatchService.translateDirectory.mockResolvedValue({
+        successful: [],
+        failed: [{ file: 'a.txt', error: 'Network error' }],
+        skipped: [],
+      });
+      mockBatchService.getStatistics.mockReturnValue({
+        total: 1,
+        successful: 0,
+        failed: 1,
+        skipped: 0,
+      });
+
+      await handler.translateDirectory('/some/dir', baseOptions);
+
+      expect(process.exitCode).toBe(1);
     });
 
     it('should validate the flags this mode passes on, and not --glossary', async () => {

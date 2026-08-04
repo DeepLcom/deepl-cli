@@ -38,6 +38,13 @@ interface BatchResult {
   successful: Array<{ file: string; outputPath: string }>;
   failed: Array<{ file: string; error: string }>;
   skipped: Array<{ file: string; reason: string }>;
+  /**
+   * The rejection that stopped the run, when one described the request rather
+   * than a single file. Surfaced so the caller can report the rejection's own
+   * exit code instead of a generic failure: a refused `target_lang` is user
+   * input, not an unclassified error.
+   */
+  requestRejected?: unknown;
 }
 
 interface BatchStatistics {
@@ -145,6 +152,7 @@ export class BatchTranslationService {
       result.successful.push(...batchResult.successful);
       result.failed.push(...batchResult.failed);
       result.skipped.push(...batchResult.skipped);
+      result.requestRejected ??= batchResult.requestRejected;
       completed +=
         batchResult.successful.length + batchResult.failed.length + batchResult.skipped.length;
     }
@@ -205,6 +213,7 @@ export class BatchTranslationService {
       );
 
       await Promise.all(tasks);
+      result.requestRejected ??= requestRejected;
     }
 
     return result;
@@ -227,6 +236,7 @@ export class BatchTranslationService {
     successful: Array<{ file: string; outputPath: string }>;
     failed: Array<{ file: string; error: string }>;
     skipped: Array<{ file: string; reason: string }>;
+    requestRejected?: unknown;
   }> {
     const successful: Array<{ file: string; outputPath: string }> = [];
     const failed: Array<{ file: string; error: string }> = [];
@@ -369,7 +379,7 @@ export class BatchTranslationService {
     }
     await flushBatch();
 
-    return { successful, failed, skipped };
+    return { successful, failed, skipped, requestRejected };
   }
 
   /**
