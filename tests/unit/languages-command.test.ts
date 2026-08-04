@@ -259,6 +259,63 @@ describe('LanguagesCommand', () => {
     });
   });
 
+  describe('untrusted API strings', () => {
+    // Names, feature keys and feature statuses all come straight from
+    // /v3/languages. A hostile or intercepted endpoint could otherwise move the
+    // cursor, clear the screen, or hide text with a bidi override.
+    const HOSTILE_NAME = 'Ger\u001b[2Kman\u200b';
+
+    it('should strip control characters from a language name in text output', () => {
+      const formatted = languagesCommand.formatDisplayEntries(
+        [{ code: 'de', name: HOSTILE_NAME, category: 'core' as const }],
+        'target',
+      );
+
+      expect(formatted).not.toContain('\u001b');
+      expect(formatted).not.toContain('\u200b');
+      expect(formatted).toContain('Ger?[2Kman?');
+    });
+
+    it('should strip control characters from an extended-tier language name', () => {
+      const formatted = languagesCommand.formatDisplayEntries(
+        [{ code: 'hi', name: HOSTILE_NAME, category: 'extended' as const }],
+        'target',
+      );
+
+      expect(formatted).not.toContain('\u001b');
+    });
+
+    it('should strip control characters from a language name in table output', () => {
+      const formatted = languagesCommand.formatLanguagesTable(
+        [{ language: 'de' as const, name: HOSTILE_NAME }],
+        'target',
+      );
+
+      // cli-table3 colours its own borders, so the assertion is about the cell:
+      // the hostile name must not survive, and its sanitized form must appear.
+      expect(formatted).not.toContain(HOSTILE_NAME);
+      expect(formatted).toContain('Ger?[2Kman?');
+    });
+
+    it('should strip control characters from a feature key and status', () => {
+      const formatted = languagesCommand.formatDisplayEntries(
+        [
+          {
+            code: 'de',
+            name: 'German',
+            category: 'core' as const,
+            features: { 'glo\u001b[2Kssary': { status: 'be\u001b[2Kta' } },
+          },
+          { code: 'fr', name: 'French', category: 'core' as const, features: {} },
+        ],
+        'target',
+        true,
+      );
+
+      expect(formatted).not.toContain('\u001b');
+    });
+  });
+
   describe('formatAllLanguages()', () => {
     it('should format both source and target languages', () => {
       const formatted = languagesCommand.formatAllLanguages(

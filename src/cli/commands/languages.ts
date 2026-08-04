@@ -8,6 +8,7 @@ import {
   deriveLanguageEntry,
 } from '../../data/language-registry.js';
 import { isColorEnabled } from '../../utils/formatters.js';
+import { sanitizeForTerminal } from '../../utils/control-chars.js';
 
 export interface LanguageDisplayEntry {
   code: string;
@@ -37,13 +38,13 @@ const FEATURE_LABELS: Record<string, string> = {
 };
 
 function featureLabel(key: string): string {
-  return (
-    FEATURE_LABELS[key] ??
-    key
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-  );
+  const known = FEATURE_LABELS[key];
+  if (known) return known;
+  // The key is a response field, so it is sanitized before it is displayed.
+  return sanitizeForTerminal(key)
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 /** Cell text for a language the response carried no feature data for at all. */
@@ -72,7 +73,10 @@ function featureCell(entry: LanguageDisplayEntry, key: string): string {
   if (!hasFeatureData(entry)) return UNKNOWN_CELL;
   const feature = entry.features?.[key];
   if (!feature) return '—';
-  return !feature.status || feature.status === 'stable' ? 'yes' : feature.status;
+  if (!feature.status || feature.status === 'stable') return 'yes';
+  // `status` is an open enum echoed verbatim, so it is sanitized like any other
+  // response field before it reaches the terminal.
+  return sanitizeForTerminal(feature.status);
 }
 
 function sortFeatureKeys(keys: string[]): string[] {
@@ -318,7 +322,7 @@ export class LanguagesCommand {
     coreAndRegional.forEach(entry => {
       const code = entry.code.padEnd(maxCodeLength + 2);
       const formalityMarker = showFormality && entry.supportsFormality ? chalk.green(' [F]') : '';
-      lines.push(`  ${chalk.cyan(code)} ${entry.name}${formalityMarker}${suffix(entry)}`);
+      lines.push(`  ${chalk.cyan(code)} ${sanitizeForTerminal(entry.name)}${formalityMarker}${suffix(entry)}`);
     });
 
     if (extended.length > 0) {
@@ -326,7 +330,7 @@ export class LanguagesCommand {
       lines.push(chalk.gray('  Extended Languages (quality_optimized only, no formality/glossary):'));
       extended.forEach(entry => {
         const code = entry.code.padEnd(maxCodeLength + 2);
-        lines.push(`  ${chalk.gray(code)} ${chalk.gray(entry.name)}${suffix(entry)}`);
+        lines.push(`  ${chalk.gray(code)} ${chalk.gray(sanitizeForTerminal(entry.name))}${suffix(entry)}`);
       });
     }
 
@@ -410,7 +414,7 @@ export class LanguagesCommand {
     });
 
     for (const entry of entries) {
-      const row: string[] = [entry.code, entry.name, entry.category];
+      const row: string[] = [entry.code, sanitizeForTerminal(entry.name), entry.category];
       if (showFormality) {
         row.push(entry.supportsFormality ? 'yes' : '—');
       }

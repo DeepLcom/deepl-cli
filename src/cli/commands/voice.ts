@@ -18,6 +18,7 @@ import type {
 } from '../../types/index.js';
 import { ValidationError } from '../../utils/errors.js';
 import { Logger } from '../../utils/logger.js';
+import { sanitizeForTerminal } from '../../utils/control-chars.js';
 import { VoicePartialResultError } from '../../services/voice-stream-session.js';
 
 const VALID_VOICE_TARGET_LANGS: ReadonlySet<string> = new Set<VoiceTargetLanguage>([
@@ -59,6 +60,16 @@ const VALID_VOICE_CONTENT_TYPES: ReadonlySet<string> = new Set<VoiceSourceMediaC
   'audio/x-matroska;codecs=mp3','audio/x-matroska;codecs=opus',
   'audio/flac','audio/mpeg',
 ]);
+
+/**
+ * Join transcript segments for the live display, with response text sanitized.
+ * The display moves the cursor and clears a fixed number of lines, so a newline
+ * or escape sequence in a segment would derange the whole rendering rather than
+ * just its own line.
+ */
+function segmentText(segments: ReadonlyArray<{ text: string }>): string {
+  return segments.map((segment) => sanitizeForTerminal(segment.text)).join(' ');
+}
 
 /** The canonical language pair a validated `voice` invocation will send. */
 export interface VoiceLanguagePair {
@@ -282,11 +293,11 @@ export class VoiceCommand {
       },
       onSourceTranscript: (update) => {
         const src = state['source']!;
-        const concludedText = update.concluded.map((s) => s.text).join(' ');
+        const concludedText = segmentText(update.concluded);
         if (concludedText) {
           src.concluded += (src.concluded ? ' ' : '') + concludedText;
         }
-        src.tentative = update.tentative.map((s) => s.text).join(' ');
+        src.tentative = segmentText(update.tentative);
         if (src.tentative) {
           src.tentative = ' ' + src.tentative;
         }
@@ -295,11 +306,11 @@ export class VoiceCommand {
       onTargetTranscript: (update) => {
         const tgt = state[update.language.toLowerCase()];
         if (!tgt) return;
-        const concludedText = update.concluded.map((s) => s.text).join(' ');
+        const concludedText = segmentText(update.concluded);
         if (concludedText) {
           tgt.concluded += (tgt.concluded ? ' ' : '') + concludedText;
         }
-        tgt.tentative = update.tentative.map((s) => s.text).join(' ');
+        tgt.tentative = segmentText(update.tentative);
         if (tgt.tentative) {
           tgt.tentative = ' ' + tgt.tentative;
         }
@@ -350,6 +361,13 @@ export class VoiceCommand {
     Logger.error(salvaged);
   }
 
+  /**
+   * Transcripts and language labels are response fields, so the text format
+   * sanitizes them: the live display below moves the cursor and clears a fixed
+   * line count, which an embedded newline or escape sequence would throw off
+   * beyond the line it sits on. `--format json` keeps them verbatim, since
+   * JSON escaping makes them inert and that is the path machines read.
+   */
   private formatResult(result: VoiceSessionResult, format?: string): string {
     if (format === 'json') {
       return formatVoiceJson(result);
@@ -358,11 +376,11 @@ export class VoiceCommand {
     const lines: string[] = [];
 
     if (result.source.text) {
-      lines.push(`[source] ${result.source.text}`);
+      lines.push(`[source] ${sanitizeForTerminal(result.source.text)}`);
     }
 
     for (const target of result.targets) {
-      lines.push(`[${target.lang}] ${target.text}`);
+      lines.push(`[${sanitizeForTerminal(target.lang)}] ${sanitizeForTerminal(target.text)}`);
     }
 
     return lines.join('\n');

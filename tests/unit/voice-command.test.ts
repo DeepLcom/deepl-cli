@@ -1038,6 +1038,45 @@ describe('VoiceCommand', () => {
 
       expect(result).toBe('[de] Welt\n[fr] Monde');
     });
+
+    it('should strip control characters from transcript text and language labels', async () => {
+      // The live display moves the cursor and clears a fixed number of lines, so
+      // a newline or escape sequence inside transcript text would corrupt the
+      // rendering, not just the line it sits on. --format json keeps the text
+      // verbatim, since JSON escapes it and machines read that path.
+      // Cast because `lang` is a typed union, while on the wire it is whatever
+      // the endpoint sends.
+      const hostileResult = {
+        sessionId: 'session-hostile',
+        source: { lang: 'en', text: 'He\u001b[2Kllo\nthere', segments: [] },
+        targets: [
+          { lang: 'd\u001b[2Ke', text: 'Hal\u001b[2Klo', segments: [] },
+        ],
+      } as unknown as VoiceSessionResult;
+      mockService.translateFile.mockResolvedValue(hostileResult);
+
+      const result = await command.translate('test.mp3', { to: 'de' });
+
+      expect(result).not.toContain('\u001b');
+      expect(result).toContain('[source] He?[2Kllo?there');
+      expect(result).toContain('[d?[2Ke] Hal?[2Klo');
+    });
+
+    it('should keep transcript text verbatim in --format json', async () => {
+      const hostileResult: VoiceSessionResult = {
+        sessionId: 'session-hostile-json',
+        source: { lang: 'en', text: 'He\u001b[2Kllo', segments: [] },
+        targets: [{ lang: 'de', text: 'Hallo', segments: [] }],
+      };
+      mockService.translateFile.mockResolvedValue(hostileResult);
+
+      const result = await command.translate('test.mp3', { to: 'de', format: 'json' });
+
+      // JSON.stringify escapes the control character, so it cannot act on a
+      // terminal, and a consumer still gets the text the API returned.
+      expect(result).toContain('\\u001b[2K');
+      expect(JSON.parse(result).source.text).toBe('He\u001b[2Kllo');
+    });
   });
   describe('language code casing', () => {
     it('should accept a regional target in the casing the CLI prints', async () => {
