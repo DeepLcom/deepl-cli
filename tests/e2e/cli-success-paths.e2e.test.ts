@@ -271,5 +271,39 @@ describe('CLI Success Paths E2E', () => {
       const output = runCLIAll('languages');
       expect(output).toContain('Source Languages:');
     });
+
+    it('should report supportsFormality on every target in --format json', () => {
+      // The documented JSON shape for targets. The features matrix rides along on
+      // the same objects and is stripped without --features, so the two must not
+      // be confused: this field stays.
+      const output = runCLI('languages --target --format json');
+      const parsed = JSON.parse(output.trim()) as Array<Record<string, unknown>>;
+
+      expect(parsed.length).toBeGreaterThan(0);
+      for (const entry of parsed) {
+        expect(entry).toHaveProperty('supportsFormality');
+        expect(typeof entry['supportsFormality']).toBe('boolean');
+        expect(entry).not.toHaveProperty('features');
+      }
+      expect(parsed.find(e => e['language'] === 'de')?.['supportsFormality']).toBe(true);
+      expect(parsed.find(e => e['language'] === 'en')?.['supportsFormality']).toBe(false);
+    });
+
+    it('should omit supportsFormality from source languages in --format json', () => {
+      const output = runCLI('languages --source --format json');
+      const parsed = JSON.parse(output.trim()) as Array<Record<string, unknown>>;
+
+      expect(parsed.length).toBeGreaterThan(0);
+      for (const entry of parsed) {
+        expect(entry).not.toHaveProperty('supportsFormality');
+      }
+    });
+
+    it('should include the features matrix only with --features', () => {
+      const output = runCLI('languages --target --features --format json');
+      const parsed = JSON.parse(output.trim()) as Array<Record<string, unknown>>;
+
+      expect(parsed.find(e => e['language'] === 'de')).toHaveProperty('features');
+    });
   });
 });

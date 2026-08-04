@@ -857,6 +857,53 @@ describe('DeepLClient', () => {
       expect(languages.find(l => l.language === 'ko')?.supportsFormality).toBe(false);
     });
 
+    it('should report formality for every target the response describes', async () => {
+      // The field is part of the JSON contract for targets: /v3/languages carries
+      // a features matrix for every language it lists, so every target answers.
+      nock(baseUrl)
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
+        .reply(200, [
+          { lang: 'de', name: 'German', usable_as_target: true, features: { formality: { status: 'stable' } } },
+          { lang: 'sw', name: 'Swahili', usable_as_target: true, features: { tag_handling: { status: 'stable' } } },
+        ]);
+
+      const languages = await client.getSupportedLanguages('target');
+
+      expect(languages).toHaveLength(2);
+      for (const language of languages) {
+        expect(language).toHaveProperty('supportsFormality');
+      }
+    });
+
+    it('should omit formality rather than deny it for a target with no features', async () => {
+      // Silence about a language is not evidence that formality is absent, and
+      // `false` would turn on the [F] legend with nothing beneath it.
+      nock(baseUrl)
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
+        .reply(200, [
+          { lang: 'de', name: 'German', usable_as_target: true },
+        ]);
+
+      const languages = await client.getSupportedLanguages('target');
+
+      expect(languages[0]).not.toHaveProperty('supportsFormality');
+    });
+
+    it('should never report formality for source languages', async () => {
+      nock(baseUrl)
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
+        .reply(200, [
+          { lang: 'de', name: 'German', usable_as_source: true, features: { formality: { status: 'stable' } } },
+        ]);
+
+      const languages = await client.getSupportedLanguages('source');
+
+      expect(languages[0]).not.toHaveProperty('supportsFormality');
+    });
+
     it('should handle language API errors', async () => {
       nock(baseUrl)
         .get('/v3/languages')
