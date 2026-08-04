@@ -212,11 +212,18 @@ export class GlossaryService {
     // judgement to the API rather than rejecting on no evidence.
     if (expected && match.dictionaries.length > 0) {
       const from = expected.from.toLowerCase();
+      // Relaxed on the requested side only: a dictionary language matches the
+      // requested one exactly, or matches the base it reduces to. Dictionaries
+      // name base languages while `--to` accepts regional variants, so `de→en`
+      // has to cover `de→en-us` -- but reducing the dictionary's side too would
+      // let a `pt-br` dictionary satisfy `pt-pt`, a different pair.
+      const matches = (dictionaryLang: string, requested: string): boolean => {
+        const dictionary = dictionaryLang.toLowerCase();
+        return dictionary === requested.toLowerCase() || dictionary === baseLanguage(requested);
+      };
       const covered = (target: string): boolean =>
         match.dictionaries.some(
-          d =>
-            baseLanguage(d.source_lang) === baseLanguage(from) &&
-            baseLanguage(d.target_lang) === baseLanguage(target),
+          d => matches(d.source_lang, from) && matches(d.target_lang, target),
         );
       const missing = expected.targets.filter(target => !covered(target));
       if (missing.length > 0) {

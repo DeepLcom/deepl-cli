@@ -452,6 +452,40 @@ describe('GlossaryService', () => {
         ).rejects.toThrow('does not support the requested language pair');
       });
 
+      it('should not let one regional dictionary cover a different region', async () => {
+        // The relaxation exists because dictionaries name base languages while
+        // --to accepts variants, so it is needed in one direction only. Comparing
+        // both sides on their base language would make a pt-br dictionary satisfy
+        // pt-pt, which is a different language pair.
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'en', target_lang: 'pt-br' }]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['pt-pt'] }),
+        ).rejects.toThrow('does not support the requested language pair');
+      });
+
+      it('should not let a regional dictionary source cover a different region', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'pt-br', target_lang: 'de' }]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'pt-pt', targets: ['de'] }),
+        ).rejects.toThrow('does not support the requested language pair');
+      });
+
+      it('should still match a regional dictionary asked for exactly', async () => {
+        mockDeepLClient.listGlossaries.mockResolvedValue(
+          listing([{ source_lang: 'en', target_lang: 'pt-br' }]) as never,
+        );
+
+        await expect(
+          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['pt-br'] }),
+        ).resolves.toBe('found-glossary-id');
+      });
+
       it('should compare languages case-insensitively', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
           listing([{ source_lang: 'EN', target_lang: 'ES' }]) as never,
