@@ -99,8 +99,8 @@ export function resolveGlossaryWireParams(
  * Encode `glossary_ids` for multipart requests. Unlike form-urlencoded bodies,
  * multipart uploads do not parse repeated `glossary_ids` fields as a list — the
  * API keeps only the first and silently applies that one glossary — so the IDs
- * travel as a single comma-joined value. Whitespace around the commas makes the
- * API ignore the parameter outright.
+ * travel as a single comma-joined value, which the API applies in full. Spaces
+ * after the commas are tolerated, but nothing depends on that, so none are sent.
  */
 export function encodeGlossaryIdsForMultipart(ids: string[]): string {
   return ids.join(',');
