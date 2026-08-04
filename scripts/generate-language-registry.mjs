@@ -274,5 +274,12 @@ const invokedDirectly =
   })();
 
 if (invokedDirectly) {
-  await main();
+  // Caught so a thrown fetch, or an HTML error body that does not parse, reports
+  // itself the way every other failure in this script does rather than as an
+  // unhandled rejection with a stack trace.
+  try {
+    await main();
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
 }

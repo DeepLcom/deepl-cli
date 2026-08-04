@@ -10,6 +10,7 @@
 
 import { spawnSync } from 'child_process';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 
 const SCRIPT = path.join(__dirname, '..', '..', 'scripts', 'generate-language-registry.mjs');
 
@@ -109,6 +110,28 @@ describe('generate-language-registry', () => {
       expect(ok).toBe(true);
       expect(render([{ code: 'de', name: 'German', category: 'core' }], ["de' ], evil = ["]).output)
         .toContain("'de\\' ], evil = ['");
+    });
+  });
+
+  describe('failure reporting', () => {
+    it('should report a thrown fetch as its own error line, not an unhandled rejection', () => {
+      // A DNS failure or a socket reset throws rather than returning a response,
+      // and the script has to name it the way it names every other failure.
+      const preload = path.join(
+        __dirname,
+        '..',
+        'fixtures',
+        'throwing-fetch.mjs',
+      );
+      const result = spawnSync('node', ['--import', pathToFileURL(preload).href, SCRIPT], {
+        encoding: 'utf-8',
+        env: { ...process.env, DEEPL_API_KEY: 'test-key-for-generator:fx' },
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('error: simulated transport failure');
+      expect(result.stderr).not.toContain('UnhandledPromiseRejection');
+      expect(result.stderr).not.toContain('at async main');
     });
   });
 });
