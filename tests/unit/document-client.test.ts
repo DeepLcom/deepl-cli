@@ -175,12 +175,12 @@ describe('DocumentClient', () => {
         expect(body.match(/name="glossary_ids"/g)).toHaveLength(1);
       });
 
-      it('should not pad the joined IDs with whitespace, which voids the parameter', async () => {
+      it('should join the IDs without padding whitespace', async () => {
         await upload({ glossaryIds: [A, B] });
         expect(getMultipartBody()).not.toContain(`${A}, ${B}`);
       });
 
-      it('should keep the caller order, since the last glossary wins', async () => {
+      it('should keep the caller order rather than sorting it', async () => {
         await upload({ glossaryIds: [B, A] });
         expect(getMultipartBody()).toContain(`${B},${A}`);
       });

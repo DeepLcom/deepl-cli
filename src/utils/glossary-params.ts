@@ -57,8 +57,10 @@ export type GlossaryWireParams =
  * cache keys — they had before `glossary_ids` existed. Two or more go out as
  * `glossary_ids`, which the API refuses to accept alongside `glossary_id`.
  *
- * The list order is preserved and never sorted: when several glossaries define
- * the same source term, the API applies the last one that names it.
+ * The list order is preserved and never sorted, because it is part of the cache
+ * key. It does not decide conflicts: when several glossaries define the same
+ * source term, which mapping wins is the API's choice and does not track
+ * position in this list.
  */
 export function resolveGlossaryWireParams(
   selection: GlossarySelection,

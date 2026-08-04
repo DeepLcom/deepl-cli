@@ -15,9 +15,12 @@ export interface TranslationOptions {
   targetLang: Language;
   glossaryId?: string;
   /**
-   * Two to five glossaries applied to one request. Their entries are merged;
-   * when more than one defines the same source term the last one wins, so the
-   * order is significant. Mutually exclusive with `glossaryId`.
+   * Two to five glossaries applied to one request. Their entries are merged, so
+   * a term unique to any one of them applies. When more than one defines the
+   * same source term the API picks the winner, and it does not follow this
+   * order — do not rely on position to resolve a conflict. The order is still
+   * sent as given and never sorted, since it is part of the cache key.
+   * Mutually exclusive with `glossaryId`.
    */
   glossaryIds?: string[];
   translationMemoryId?: string;

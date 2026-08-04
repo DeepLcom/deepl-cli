@@ -1187,7 +1187,7 @@ describe('TranslationService', () => {
         expect(one).not.toBe(two);
       });
 
-      /** Reordering changes which glossary wins a conflicting term, so the keys must differ. */
+      /** A reordered list is a different request to the API, so the keys must differ. */
       it('should separate the two orderings of the same glossaries', async () => {
         const [ab, ba] = await keysFor([{ glossaryIds: [A, B] }, { glossaryIds: [B, A] }]);
         expect(ab).not.toBe(ba);

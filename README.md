@@ -378,7 +378,8 @@ deepl translate document.pdf --from en --to es --output document.es.pdf
 # Apply a glossary (needs a source language: --from, or defaults.sourceLang)
 deepl translate report.docx --from en --to de --glossary tech-terms --output report.de.docx
 
-# Repeat --glossary for up to 5; the last one wins a conflicting term
+# Repeat --glossary for up to 5; entries merge, and a term defined in
+# several is resolved by the API, not by flag order
 deepl translate report.docx --from en --to de --output report.de.docx \
   --glossary base-terms --glossary project-overrides
 

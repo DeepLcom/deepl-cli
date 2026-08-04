@@ -397,8 +397,9 @@ export class TranslationService {
    * does not perturb the key -- `JSON.stringify` omits it. `preserveFormatting`
    * is the exception: the service merges a config default for it, so it is always
    * materialized and every key reflects it. `glossaryIds` is hashed in the
-   * caller's order rather than sorted, because reordering the list changes which
-   * glossary wins a conflicting term and therefore the translation itself.
+   * caller's order rather than sorted, because that order is what goes on the
+   * wire, and the API is free to return a different translation for a different
+   * ordering of the same glossaries.
    *
    * `tagHandlingVersion` is resolved rather than read straight off the options,
    * so it holds the version the request will actually carry. Leaving it unset

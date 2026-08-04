@@ -414,7 +414,8 @@ deepl translate report.docx --to fr --output report.fr.docx --enable-minificatio
 # Apply a glossary (--from is required for document glossaries)
 deepl translate report.docx --from en --to de --output report.de.docx --glossary tech-terms
 
-# Repeat --glossary for up to 5; the last one wins a conflicting term
+# Repeat --glossary for up to 5; entries merge, and a term defined in
+# several is resolved by the API, not by flag order
 deepl translate report.docx --from en --to de --output report.de.docx \
   --glossary base-terms --glossary project-overrides
 ```

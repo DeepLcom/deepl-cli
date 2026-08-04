@@ -36,7 +36,7 @@ describe('resolveGlossaryWireParams', () => {
     expect(resolveGlossaryWireParams({ glossaryIds: [A, B] })).toEqual({ glossary_ids: [A, B] });
   });
 
-  it('should preserve the caller order, since the last glossary wins conflicts', () => {
+  it('should preserve the caller order rather than sorting it', () => {
     expect(resolveGlossaryWireParams({ glossaryIds: [C, A, B] })).toEqual({
       glossary_ids: [C, A, B],
     });

@@ -31,7 +31,7 @@ export function registerTranslate(
     .option('--context <text>', 'Additional context to improve translation quality')
     .option(
       '--glossary <name-or-id>',
-      `Use glossary by name or ID (requires --from; repeatable, max ${MAX_GLOSSARIES_PER_REQUEST}; when several define the same term, the last one wins). Applies to text, files and documents.`,
+      `Use glossary by name or ID (requires --from; repeatable, max ${MAX_GLOSSARIES_PER_REQUEST}; entries are merged, and for a term defined in several the API picks the winner regardless of flag order). Applies to text, files and documents.`,
       (val: string, prev: string[] | undefined) => (prev ?? []).concat([val]),
     )
     .option(

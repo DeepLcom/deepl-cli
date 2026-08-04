@@ -25,8 +25,13 @@ describe('translate --glossary repetition E2E', () => {
       expect(runCLI('translate --help')).toMatch(/max 5/i);
     });
 
-    it('should document that the last glossary wins a conflict', () => {
-      expect(runCLI('translate --help')).toMatch(/last one wins/i);
+    it('should document that flag order does not resolve a conflicting term', () => {
+      const output = runCLI('translate --help');
+
+      expect(output).toMatch(/merged/i);
+      // The help text is wrapped, so the phrase can carry a newline and indent.
+      expect(output).toMatch(/regardless\s+of\s+flag\s+order/i);
+      expect(output).not.toMatch(/last one wins/i);
     });
   });
 

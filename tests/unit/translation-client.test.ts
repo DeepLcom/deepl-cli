@@ -285,7 +285,7 @@ describe('TranslationClient', () => {
       expect(body).not.toMatch(/(^|&)glossary_id=/);
     });
 
-    it('should keep the caller order on the wire, since the last glossary wins', async () => {
+    it('should keep the caller order on the wire rather than sorting it', async () => {
       await client.translate('Hello', { targetLang: 'es', glossaryIds: [C, A] });
       expect(getRequestBody()).toContain(`glossary_ids=${C}&glossary_ids=${A}`);
     });
