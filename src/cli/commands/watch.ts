@@ -14,6 +14,8 @@ import { Language, Formality } from '../../types/index.js';
 import { FileTranslationResult, WatchTranslationResult } from '../../services/watch.js';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
+import { applyGlossarySourceLang, hasGlossarySelection } from '../../utils/glossary-params.js';
+import type { ConfigService } from '../../storage/config.js';
 
 interface WatchOptions {
   to: string;
@@ -33,11 +35,22 @@ interface WatchOptions {
 export class WatchCommand {
   private fileTranslationService: FileTranslationService;
   private glossaryService: GlossaryService;
+  private config?: ConfigService;
   private watchService?: WatchService;
 
-  constructor(translationService: TranslationService, glossaryService: GlossaryService) {
+  /**
+   * `config` supplies `defaults.sourceLang` for the glossary requirement below.
+   * Optional so a caller that has no configuration still gets the requirement,
+   * just without a default to satisfy it from.
+   */
+  constructor(
+    translationService: TranslationService,
+    glossaryService: GlossaryService,
+    config?: ConfigService,
+  ) {
     this.fileTranslationService = new FileTranslationService(translationService);
     this.glossaryService = glossaryService;
+    this.config = config;
   }
 
   private async resolveGlossaryId(
@@ -89,10 +102,14 @@ export class WatchCommand {
 
     // The API rejects any translation naming a glossary without source_lang, so
     // an unguarded watch session fails once per file change instead of at launch.
-    if (options.glossary && !options.from) {
-      throw new ValidationError(
-        'Source language (--from) is required when using a glossary',
-        'Example: deepl watch ./docs --from en --to es --glossary my-glossary'
+    // Settled from `defaults.sourceLang` when the flag is absent, the same way
+    // every other command does it, so a direct call and the CLI agree on what is
+    // runnable.
+    if (hasGlossarySelection(options)) {
+      applyGlossarySourceLang(
+        options,
+        this.config?.getValue<string>('defaults.sourceLang'),
+        'Example: deepl watch ./docs --from en --to es --glossary my-glossary',
       );
     }
 

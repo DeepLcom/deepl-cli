@@ -14,6 +14,7 @@ import {
   createMockGlossaryService,
   createMockFileTranslationService,
   createMockWatchService,
+  createMockConfigService,
 } from '../helpers/mock-factories';
 
 // Mock chalk
@@ -446,6 +447,55 @@ describe('WatchCommand', () => {
         ).rejects.toThrow(ValidationError);
 
         expect(mockGlossaryService.resolveGlossaryId).not.toHaveBeenCalled();
+      });
+
+      it('should accept a configured defaults.sourceLang in place of --from', async () => {
+        // The requirement is for a source language, not for the flag. A direct
+        // WatchCommand call has to read the configured default the same way the
+        // CLI path does, or the two disagree about what is runnable.
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+        mockGlossaryService.resolveGlossaryId.mockResolvedValue('glossary-123');
+        // Thrown so the watcher does not keep the test open, as elsewhere here.
+        mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+        const configured = new WatchCommand(
+          mockTranslationService,
+          mockGlossaryService,
+          createMockConfigService({
+            getValue: jest.fn((key: string) =>
+              key === 'defaults.sourceLang' ? 'en' : undefined,
+            ),
+          }),
+        );
+
+        await expect(
+          configured.watch('/some/file.md', { to: 'es', glossary: 'my-glossary' }),
+        ).rejects.toThrow('Test complete');
+
+        expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
+          from: 'en',
+          targets: ['es'],
+        });
+        expect(mockWatchService.watch).toHaveBeenCalledWith(
+          '/some/file.md',
+          expect.objectContaining({ glossaryId: 'glossary-123', sourceLang: 'en' }),
+        );
+      });
+
+      it('should still reject when the configured default is absent too', async () => {
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+
+        const configured = new WatchCommand(
+          mockTranslationService,
+          mockGlossaryService,
+          createMockConfigService({ getValue: jest.fn(() => undefined) }),
+        );
+
+        await expect(
+          configured.watch('/some/file.md', { to: 'es', glossary: 'my-glossary' }),
+        ).rejects.toThrow('Source language (--from) is required when using a glossary');
       });
 
       it('should accept --glossary when --from is provided', async () => {

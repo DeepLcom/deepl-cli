@@ -111,7 +111,7 @@ export async function createWatchCommand(
   const { WatchCommand: WatchCmd } = await import('./watch.js');
   const translationService = new TranslationService(client, deps.getConfigService(), await deps.getCacheService());
   const glossaryService = new GlossaryService(client);
-  return new WatchCmd(translationService, glossaryService);
+  return new WatchCmd(translationService, glossaryService, deps.getConfigService());
 }
 
 export async function createDetectCommand(

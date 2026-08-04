@@ -372,7 +372,13 @@ describe('service-factory', () => {
     const { GlossaryService } = require('../../src/services/glossary');
     expect(GlossaryService).toHaveBeenCalledWith(mockClient);
     const { WatchCommand } = require('../../src/cli/commands/watch');
-    expect(WatchCommand).toHaveBeenCalledWith(mockTranslationServiceObj, mockGlossaryServiceObj);
+    // The config service too: WatchCommand settles the glossary source language
+    // from defaults.sourceLang, so a CLI watch and a direct call agree.
+    expect(WatchCommand).toHaveBeenCalledWith(
+      mockTranslationServiceObj,
+      mockGlossaryServiceObj,
+      mockConfigService,
+    );
     expect(cmd).toBe(mockWatchCmdObj);
   });
 
