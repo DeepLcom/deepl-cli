@@ -156,7 +156,11 @@ Common issues and solutions when using the DeepL CLI.
 2. Verify DeepL API is reachable:
 
    ```bash
-   curl -s https://api-free.deepl.com/v2/languages -H "Authorization: DeepL-Auth-Key YOUR_KEY"
+   # Free keys (those ending in :fx)
+   curl -s "https://api-free.deepl.com/v3/languages?resource=translate_text" -H "Authorization: DeepL-Auth-Key YOUR_KEY"
+
+   # Pro keys — the free host answers a Pro key with 403, which is a reachable server
+   curl -s "https://api.deepl.com/v3/languages?resource=translate_text" -H "Authorization: DeepL-Auth-Key YOUR_KEY"
    ```
 
 3. If behind a corporate proxy, configure it via environment variables:

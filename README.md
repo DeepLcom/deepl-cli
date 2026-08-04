@@ -283,9 +283,9 @@ deepl translate "Bonjour" --from fr --to en
 
 # Multiple target languages (each result is prefixed with its language)
 deepl translate "Good morning" --to es,fr,de
-# [ES] Buenos días
-# [FR] Bonjour
-# [DE] Guten Morgen
+# [es] Buenos días
+# [fr] Bonjour
+# [de] Guten Morgen
 
 # Read from stdin
 echo "Hello world" | deepl translate --to es
@@ -325,15 +325,14 @@ Small text-based files (under 100 KiB) automatically use the cached text transla
 ```bash
 # Single file translation (uses cache for small text files)
 deepl translate README.md --to es --output README.es.md
-# Translated README.md to 1 language(s):
-#   [ES] README.es.md
+# Translated README.md -> README.es.md
 
 # Multiple target languages (creates README.es.md, README.fr.md, etc.)
 deepl translate docs.md --to es,fr,de --output ./translated/
-# Translated docs.md to 3 language(s):
-#   [ES] ./translated/docs.es.md
-#   [FR] ./translated/docs.fr.md
-#   [DE] ./translated/docs.de.md
+# Translated docs.md to 3 languages:
+#   [es] ./translated/docs.es.md
+#   [fr] ./translated/docs.fr.md
+#   [de] ./translated/docs.de.md
 
 # With code preservation (preserves code blocks in markdown)
 deepl translate tutorial.md --to ja --output tutorial.ja.md --preserve-code
@@ -341,8 +340,7 @@ deepl translate tutorial.md --to ja --output tutorial.ja.md --preserve-code
 # Large text file (over 100 KiB) - automatic fallback with warning
 deepl translate large-document.txt --to es --output large-document.es.txt
 # ⚠ File exceeds 100 KiB limit for cached translation (150.5 KiB), using document API instead
-# Translated large-document.txt to 1 language(s):
-#   [ES] large-document.es.txt
+# Translated large-document.txt -> large-document.es.txt
 ```
 
 #### Document Translation
@@ -377,7 +375,7 @@ deepl translate contract.pdf --to de --formality more --output contract.de.pdf
 # Specify source language
 deepl translate document.pdf --from en --to es --output document.es.pdf
 
-# Apply a glossary (--from is required whenever a glossary is used)
+# Apply a glossary (needs a source language: --from, or defaults.sourceLang)
 deepl translate report.docx --from en --to de --glossary tech-terms --output report.de.docx
 
 # Repeat --glossary for up to 5; the last one wins a conflicting term
@@ -400,7 +398,7 @@ deepl translate document.pdf --to es --output-format docx --output document.es.d
 - ✅ **Progress Tracking** - Real-time status updates during translation
 - ✅ **Large Files** - Handles documents up to 30MB
 - ✅ **Cost Tracking** - Shows billed characters after translation
-- ✅ **Glossaries** - `--glossary` applies to documents too, repeatable up to 5 (requires `--from`). Translation memories are not supported for documents.
+- ✅ **Glossaries** - `--glossary` applies to documents too, repeatable up to 5 (needs a source language: `--from`, or `defaults.sourceLang`). Translation memories are not supported for documents.
 - ✅ **Async Processing** - Documents are translated on DeepL servers with polling
 
 **Supported Formats:**
@@ -523,9 +521,9 @@ deepl translate "Hello, world!" --to es,fr,de --format table
 # ┌──────────┬──────────────────────────────────────────────────────────────────────┐
 # │ Language │ Translation                                                          │
 # ├──────────┼──────────────────────────────────────────────────────────────────────┤
-# │ ES       │ ¡Hola, mundo!                                                        │
-# │ FR       │ Bonjour le monde!                                                    │
-# │ DE       │ Hallo, Welt!                                                         │
+# │ es       │ ¡Hola, mundo!                                                        │
+# │ fr       │ Bonjour le monde!                                                    │
+# │ de       │ Hallo, Welt!                                                         │
 # └──────────┴──────────────────────────────────────────────────────────────────────┘
 
 # Table format with cost tracking (adds Characters column)
@@ -533,9 +531,9 @@ deepl translate "Cost analysis" --to es,fr,de --format table --show-billed-chara
 # ┌──────────┬────────────────────────────────────────────────────────────┬────────────┐
 # │ Language │ Translation                                                │ Characters │
 # ├──────────┼────────────────────────────────────────────────────────────┼────────────┤
-# │ ES       │ Análisis de costes                                         │ 14         │
-# │ FR       │ Analyse des coûts                                          │ 14         │
-# │ DE       │ Kostenanalyse                                              │ 14         │
+# │ es       │ Análisis de costes                                         │ 14         │
+# │ fr       │ Analyse des coûts                                          │ 14         │
+# │ de       │ Kostenanalyse                                              │ 14         │
 # └──────────┴────────────────────────────────────────────────────────────┴────────────┘
 
 # Preview what would be translated without making API calls (file/directory mode)
@@ -1307,7 +1305,7 @@ authentication	Authentifizierung
 - **Direct updates** - v3 API uses PATCH endpoints for efficient updates (no delete+recreate)
 - **Smart defaults** - `--target` flag only required for multilingual glossaries
 - **Visual indicators** - 📖 for single-target, 📚 for multilingual glossaries
-- **Translation integration** - Use `--glossary` flag in translate and watch commands to apply glossary terms (`--from` is required alongside it; the API rejects a glossary without a source language)
+- **Translation integration** - Use `--glossary` flag in translate and watch commands to apply glossary terms (a source language is required, since the API rejects a glossary without one: pass `--from`, or set `defaults.sourceLang`)
 - **Several glossaries at once** - Repeat `--glossary` on `translate` for up to 5 glossaries; entries are merged and the last glossary given wins any conflicting term
 
 ```bash

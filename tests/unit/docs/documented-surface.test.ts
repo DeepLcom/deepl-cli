@@ -7,6 +7,7 @@
 import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getAllLanguageCodes } from '../../../src/data/language-registry';
 
 interface DescribedCommand {
   name: string;
@@ -21,6 +22,8 @@ const DOCS = ['README.md', 'docs/API.md', 'docs/SYNC.md', 'docs/TROUBLESHOOTING.
 
 /** Deliberate misspellings used to demonstrate did-you-mean suggestions. */
 const TYPO_EXAMPLES = new Set(['transalte', 'translte', 'glossry', 'conifg', 'descibe']);
+
+const LANGUAGE_CODES = getAllLanguageCodes();
 
 function longFlags(options: { flags: string }[]): string[] {
   return options.flatMap((option) => option.flags.match(/--[a-z0-9-]+/g) ?? []);
@@ -118,6 +121,44 @@ describe('documented CLI surface', () => {
       }
 
       expect(unknown).toEqual([]);
+    });
+
+    it('shows language codes in the lowercase the CLI prints', () => {
+      // Every code the CLI displays is lowercase. Documented output that shows
+      // `[ES]` or a `│ ES │` table cell does not match what a reader will see,
+      // and copying it into a script that compares codes gives a wrong answer.
+      // Matched against the registry so markdown badges like `[![CI](...)]` and
+      // labels that are not languages are left alone.
+      const lines = fs.readFileSync(path.join(ROOT, docPath), 'utf-8').split('\n');
+      const offenders: string[] = [];
+
+      for (const line of lines) {
+        const candidates = [
+          ...(line.match(/\[([A-Z]{2,3}(?:-[A-Z0-9]{2,4})?)\]/g) ?? []),
+          ...(line.match(/│\s*([A-Z]{2,3}(?:-[A-Z0-9]{2,4})?)\s*│/g) ?? []),
+        ];
+        for (const candidate of candidates) {
+          const code = candidate.replace(/[[\]│\s]/g, '').toLowerCase();
+          if (LANGUAGE_CODES.has(code)) {
+            offenders.push(`${candidate.trim()}  in  ${line.trim()}`);
+          }
+        }
+      }
+
+      expect(offenders).toEqual([]);
+    });
+  });
+
+  describe('retired endpoints', () => {
+    // Language listings moved to GET /v3/languages; the v2 endpoints are
+    // formally deprecated, so no doc should teach a reader to call them.
+    const RETIRED = ['/v2/languages', '/v2/glossary-language-pairs'];
+
+    it.each(DOCS)('%s references no retired language endpoint', (docPath) => {
+      const contents = fs.readFileSync(path.join(ROOT, docPath), 'utf-8');
+      const found = RETIRED.filter((endpoint) => contents.includes(endpoint));
+
+      expect(found).toEqual([]);
     });
   });
 });

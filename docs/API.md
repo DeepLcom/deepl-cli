@@ -251,7 +251,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--non-splitting-tags TAGS` - Comma-separated XML tags that should not be used to split sentences (requires `--tag-handling xml`)
 - `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
 - `--tag-handling-version VERSION` - Tag handling version: `v1`, `v2`. v2 improves XML/HTML structure handling (requires `--tag-handling`). **Defaults to `v2`**, sent explicitly on every `--tag-handling` request rather than left to the API's own default, which is documented as moving from v1 to v2 at some point — pinning keeps output from shifting on DeepL's timetable. Pass `--tag-handling-version v1` for the older behaviour, which DeepL documents as heading for deprecation
-- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. Repeatable, up to 5 per request; when several glossaries define the same source term, the last one given wins. Passing a 6th exits 6 (ValidationError).
+- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. Repeatable, up to 5 per request; when several glossaries define the same source term, the last one given wins. Passing a 6th exits 6 (ValidationError). A source language is required, because the API rejects a glossary without one: supply `--from`, or set `defaults.sourceLang` and it is used automatically. With neither, the command exits 6 before any request.
 - `--translation-memory NAME-OR-UUID` - Use translation memory by name or UUID (forces `quality_optimized` model). Requires `--from` because TMs are pinned to a specific source→target language pair. Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--tm-threshold N` - Minimum match score 0–100 (default 75, requires `--translation-memory`). Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--custom-instruction INSTRUCTION` - Custom instruction for translation (repeatable, max 10, max 300 chars each). Forces `quality_optimized` model. Cannot be used with `latency_optimized`.
@@ -447,7 +447,7 @@ deepl translate report.docx --from en --to de --output report.de.docx \
 - Large documents may take several seconds to translate
 - Maximum file sizes: 30MB (document API, all formats), 100 KiB (cached text API)
 - **Document minification** (`--enable-minification`): Reduces file size for PPTX and DOCX files only. Useful for large presentations and documents.
-- **Glossaries**: `--glossary` applies to documents and is repeatable up to 5, with the same last-one-wins precedence as text translation. `--from` is required — the API rejects a document glossary without a source language ("source_lang has to be specified in order to use a glossary"). Glossary matching is context-dependent exactly as it is for text: a term may be applied in one sentence and left alone in another, and a bare newline-separated word list often gets few terms applied. `--translation-memory` remains unsupported for documents.
+- **Glossaries**: `--glossary` applies to documents and is repeatable up to 5, with the same last-one-wins precedence as text translation. A source language is required — the API rejects a document glossary without one ("source_lang has to be specified in order to use a glossary") — so pass `--from`, or set `defaults.sourceLang` and it is used automatically. Glossary matching is context-dependent exactly as it is for text: a term may be applied in one sentence and left alone in another, and a bare newline-separated word list often gets few terms applied. `--translation-memory` remains unsupported for documents.
 
 **Directory translation:**
 
@@ -665,9 +665,9 @@ deepl translate "Hello, world!" --to es,fr,de --format table
 # ┌──────────┬──────────────────────────────────────────────────────────────────────┐
 # │ Language │ Translation                                                          │
 # ├──────────┼──────────────────────────────────────────────────────────────────────┤
-# │ ES       │ ¡Hola mundo!                                                         │
-# │ FR       │ Bonjour le monde!                                                    │
-# │ DE       │ Hallo Welt!                                                          │
+# │ es       │ ¡Hola mundo!                                                         │
+# │ fr       │ Bonjour le monde!                                                    │
+# │ de       │ Hallo Welt!                                                          │
 # └──────────┴──────────────────────────────────────────────────────────────────────┘
 
 # Add --show-billed-characters to display the Characters column
@@ -675,9 +675,9 @@ deepl translate "Cost tracking" --to es,fr,de --format table --show-billed-chara
 # ┌──────────┬────────────────────────────────────────────────────────────────┬────────────┐
 # │ Language │ Translation                                                    │ Characters │
 # ├──────────┼────────────────────────────────────────────────────────────────┼────────────┤
-# │ ES       │ Seguimiento de costes                                          │ 16         │
-# │ FR       │ Suivi des coûts                                                │ 16         │
-# │ DE       │ Kostenverfolgung                                               │ 16         │
+# │ es       │ Seguimiento de costes                                          │ 16         │
+# │ fr       │ Suivi des coûts                                                │ 16         │
+# │ de       │ Kostenverfolgung                                               │ 16         │
 # └──────────┴────────────────────────────────────────────────────────────────┴────────────┘
 
 # Long translations automatically wrap in the Translation column
@@ -1122,7 +1122,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - `--formality LEVEL` - Formality level: `default`, `more`, `less`, `prefer_more`, `prefer_less`, `formal`, `informal`
 - `--preserve-code` - Preserve code blocks
 - `--preserve-formatting` - Preserve line breaks and whitespace formatting
-- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. `--from` is required, because the API refuses a glossary without a source language ("Use of a glossary requires the source_lang parameter to be specified"); omitting it exits 6 before the watcher starts rather than failing on every file change. Unlike `translate`, `watch` takes a single glossary.
+- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. A source language is required, because the API refuses a glossary without one ("Use of a glossary requires the source_lang parameter to be specified"): pass `--from`, or set `defaults.sourceLang` and it is used automatically. With neither, the command exits 6 before the watcher starts rather than failing on every file change. Unlike `translate`, `watch` takes a single glossary.
 
 **Git Integration:**
 
