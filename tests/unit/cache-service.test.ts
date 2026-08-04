@@ -105,8 +105,10 @@ describe('CacheService', () => {
     });
 
     it('should drop only translation rows when upgrading an older database', () => {
-      // Translation keys are derived differently from version 2 on, so those rows
-      // are unreachable; every other namespace keys the same way and is kept.
+      // Every translation key changed, so those rows are unreachable. write and
+      // correct keys changed only for the five recased target codes, which a hash
+      // cannot identify, so that namespace is left to its TTL rather than dropped
+      // wholesale.
       const db = (cacheService as any).db;
       db.exec('PRAGMA user_version = 1');
       cacheService.set('translation:oldhash', { text: 'unreachable' });

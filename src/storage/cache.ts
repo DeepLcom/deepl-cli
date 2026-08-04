@@ -69,8 +69,8 @@ function isCorruptionError(error: unknown): boolean {
  *
  * Version 2 marks a change in how translation cache keys are computed. Opening
  * an older DB drops the `translation:` rows -- no reader can reach them again --
- * and leaves every other namespace in place, since their keys are unchanged. The
- * table layout is identical in all versions, so nothing is migrated.
+ * and leaves every other namespace in place. The table layout is identical in all
+ * versions, so nothing is migrated.
  */
 const CACHE_SCHEMA_VERSION = 2;
 
@@ -245,12 +245,13 @@ export class CacheService {
     `);
 
     if (userVersion < CACHE_SCHEMA_VERSION) {
-      // Only the translation namespace: its key derivation changed, so those rows
-      // address entries no reader can reach again, and leaving them would let
-      // them occupy the size budget and `cache stats` until their TTL expires.
-      // Every other namespace (write, correct) keys the same way it always did
-      // and is read in place. A fresh DB has no rows, so this is a no-op on
-      // first open.
+      // Only the translation namespace. Its keys all changed, so every row is
+      // unreachable and would otherwise occupy the size budget and `cache stats`
+      // until its TTL expires. `write`/`correct` keys changed only for the five
+      // target codes whose casing moved, and a hash cannot say which rows those
+      // are -- dropping the namespace would discard far more reachable entries
+      // than it reclaimed, so those few expire on their own. A fresh DB has no
+      // rows, so this is a no-op on first open.
       this.db.exec("DELETE FROM cache WHERE key LIKE 'translation:%'");
       this.db.exec(`PRAGMA user_version = ${CACHE_SCHEMA_VERSION}`);
     }

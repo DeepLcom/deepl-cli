@@ -78,8 +78,10 @@ export class UsageCommand {
     const remaining = characterLimit - characterCount;
     const isHighUsage = characterLimit > 0 && (characterCount / characterLimit) > 0.8;
 
-    const formatNumber = (num: number): string => {
-      return num.toLocaleString('en-US');
+    // Tolerates a null the response may carry where the type says number: the
+    // alternative is `deepl usage` throwing on a field it only displays.
+    const formatNumber = (num: number | null | undefined): string => {
+      return typeof num === 'number' && Number.isFinite(num) ? num.toLocaleString('en-US') : '—';
     };
 
     const lines: string[] = [];
