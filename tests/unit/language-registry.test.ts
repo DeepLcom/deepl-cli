@@ -344,10 +344,30 @@ describe('Language Registry', () => {
       ).toEqual({ code: 'hi', name: 'Hindi', category: 'extended' });
     });
 
-    it('should treat a missing features object as extended', () => {
+    it('should classify an empty features matrix as extended, which is evidence', () => {
+      // An empty matrix says the language supports none of them, glossary
+      // included. A missing one says nothing -- see below.
+      expect(
+        deriveLanguageEntry({
+          lang: 'hi',
+          name: 'Hindi',
+          usable_as_source: true,
+          features: {},
+        }).category,
+      ).toBe('extended');
+    });
+
+    it('should not file a language with no features matrix as extended', () => {
+      // Silence about a language is not evidence that it lacks glossary support,
+      // and the extended tier is what suppresses formality and glossary locally.
+      // Tiering it by source usability instead leaves the judgement to the API,
+      // which is the same choice the --features table makes.
       expect(
         deriveLanguageEntry({ lang: 'xx', name: 'Test', usable_as_source: true }).category,
-      ).toBe('extended');
+      ).toBe('core');
+      expect(
+        deriveLanguageEntry({ lang: 'xx', name: 'Test', usable_as_source: false }).category,
+      ).toBe('regional');
     });
 
     it('should lowercase the code', () => {

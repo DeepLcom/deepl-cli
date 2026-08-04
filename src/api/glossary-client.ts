@@ -27,8 +27,10 @@ export class GlossaryClient extends HttpClient {
       { resource: 'glossary' }
     );
 
-    const sources = response.filter((lang) => lang.usable_as_source);
-    const targets = response.filter((lang) => lang.usable_as_target);
+    // `!== false`, not truthiness: an absent flag is not a denial, and the
+    // language registry reads it the same way.
+    const sources = response.filter((lang) => lang.usable_as_source !== false);
+    const targets = response.filter((lang) => lang.usable_as_target !== false);
 
     const pairs: GlossaryLanguagePair[] = [];
     for (const source of sources) {

@@ -322,7 +322,12 @@ export class TranslationClient extends HttpClient {
       const response = await this.fetchTranslateLanguages();
 
       return response
-        .filter((lang) => (type === 'source' ? lang.usable_as_source : lang.usable_as_target))
+        // `!== false`, not truthiness: an absent flag is not a denial, and the
+        // language registry reads it the same way, so a truthy filter here would
+        // drop a language the generator records as usable.
+        .filter((lang) =>
+          type === 'source' ? lang.usable_as_source !== false : lang.usable_as_target !== false,
+        )
         .map((lang) => {
           const code = this.normalizeLanguage(lang.lang);
           return {

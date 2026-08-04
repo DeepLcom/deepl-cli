@@ -67,6 +67,26 @@ describe('GlossaryClient', () => {
       );
     });
 
+    it('should treat an absent role flag as usable, matching the registry', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          { lang: 'en', name: 'English' },
+          { lang: 'de', name: 'German' },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      const pairs = await client.getGlossaryLanguages();
+
+      expect(pairs).toEqual(
+        expect.arrayContaining([
+          { sourceLang: 'en', targetLang: 'de' },
+          { sourceLang: 'de', targetLang: 'en' },
+        ]),
+      );
+    });
+
     it('should exclude identity pairs', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: [

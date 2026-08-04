@@ -32,16 +32,21 @@ export type LanguageCategory = 'core' | 'regional' | 'extended';
  *   (not as a source). Applies to regional variants like 'en-gb' and 'pt-br'.
  */
 export interface LanguageEntry {
-  code: string;
-  name: string;
-  category: LanguageCategory;
-  targetOnly?: boolean;
+  readonly code: string;
+  readonly name: string;
+  readonly category: LanguageCategory;
+  readonly targetOnly?: boolean;
 }
 
 /**
  * The snapshot as plain entries. It is generated `as const` so the `Language`
  * union can derive from its codes; the lookups below want the interface rather
  * than one literal type per language.
+ *
+ * `LanguageEntry`'s fields are `readonly` because the accessors below hand out
+ * these very objects: a caller mutating one would change the registry for the
+ * whole process, which the generated `as const` tuple forbids but a widened
+ * element type would have silently permitted.
  */
 const ENTRIES: readonly LanguageEntry[] = GENERATED_ENTRIES;
 
@@ -69,9 +74,16 @@ export interface DerivableLanguage {
 export function deriveLanguageEntry(language: DerivableLanguage): LanguageEntry {
   const code = language.lang.toLowerCase();
   const usableAsSource = language.usable_as_source !== false;
+
+  // An empty matrix is evidence — it says the language supports none of them,
+  // glossary included — while a missing one says nothing. Since the extended
+  // tier is what refuses formality and glossary before a request is sent,
+  // silence must not put a language there; tiering it by source usability
+  // leaves the judgement to the API instead.
+  const described = language.features !== undefined;
   const supportsGlossary = language.features?.['glossary'] !== undefined;
 
-  const category: LanguageCategory = !supportsGlossary
+  const category: LanguageCategory = described && !supportsGlossary
     ? 'extended'
     : usableAsSource
       ? 'core'

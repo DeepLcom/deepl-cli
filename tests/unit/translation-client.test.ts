@@ -399,6 +399,29 @@ describe('TranslationClient', () => {
   });
 
   describe('getSupportedLanguages()', () => {
+    it('should treat an absent role flag as usable, matching the registry', async () => {
+      // The registry reads `usable_as_source !== false`, so an entry with the
+      // flag absent is recorded as core there. Dropping it here instead would
+      // make `deepl languages` omit a language the generator files as usable.
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [{ lang: 'en', name: 'English' }],
+        status: 200,
+        headers: {},
+      });
+
+      await expect(client.getSupportedLanguages('source')).resolves.toHaveLength(1);
+    });
+
+    it('should still drop a language whose role flag is explicitly false', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [{ lang: 'en-gb', name: 'English (British)', usable_as_source: false }],
+        status: 200,
+        headers: {},
+      });
+
+      await expect(client.getSupportedLanguages('source')).resolves.toEqual([]);
+    });
+
     it('should return source languages', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: [
