@@ -1,6 +1,7 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 import { Logger } from '../../utils/logger.js';
 import { createVoiceCommand, type ServiceDeps } from './service-factory.js';
+import type { Language } from '../../types/index.js';
 
 function parsePositiveInt(value: string, name: string, max: number): number {
   const n = parseInt(value, 10);
@@ -72,11 +73,24 @@ Examples:
       format?: string;
     }) => {
       try {
+        // Ahead of the resolution below, which costs a glossary-list round trip:
+        // a command that fails locally must not spend one first. Imported
+        // dynamically to keep the voice module off every other command's path.
+        const { validateVoiceOptions } = await import('./voice.js');
+        const { targetLangs, sourceLang } = validateVoiceOptions(options);
+
         if (options.glossary) {
           const client = await deps.createDeepLClient();
           const { GlossaryService } = await import('../../services/glossary.js');
           const glossaryService = new GlossaryService(client);
-          options.glossary = await glossaryService.resolveGlossaryId(options.glossary);
+          // The pair lets resolution check dictionary coverage locally. Without
+          // `--from` there is no pair to check, so the API judges it instead.
+          options.glossary = await glossaryService.resolveGlossaryId(
+            options.glossary,
+            sourceLang
+              ? { from: sourceLang as Language, targets: targetLangs as unknown as Language[] }
+              : undefined,
+          );
         }
 
         const voiceCommand = await createVoiceCommand(deps.getApiKeyAndOptions);

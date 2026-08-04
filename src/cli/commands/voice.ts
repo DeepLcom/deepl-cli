@@ -60,6 +60,58 @@ const VALID_VOICE_CONTENT_TYPES: ReadonlySet<string> = new Set<VoiceSourceMediaC
   'audio/flac','audio/mpeg',
 ]);
 
+/** The canonical language pair a validated `voice` invocation will send. */
+export interface VoiceLanguagePair {
+  targetLangs: VoiceTargetLanguage[];
+  sourceLang?: VoiceSourceLanguage;
+}
+
+/**
+ * Canonicalizes and checks everything `voice` can reject without the network,
+ * returning the language pair. Exported because the registrar needs both halves
+ * before it resolves `--glossary`: resolution costs a glossary-list round trip,
+ * which must not be spent on a command that fails locally, and the coverage
+ * preflight needs the pair to check against.
+ */
+export function validateVoiceOptions(options: {
+  to: string;
+  from?: string;
+  contentType?: string;
+}): VoiceLanguagePair {
+  // Matched case-insensitively and canonicalized to the spelling the Voice API
+  // expects. The rest of the CLI accepts any casing and `deepl languages`
+  // prints these codes lowercase, so requiring `zh-HANS` would reject the
+  // spelling the CLI itself teaches.
+  const targetLangs = options.to.split(',').map((l) => {
+    const raw = l.trim();
+    const canonical = VOICE_TARGET_BY_LOWERCASE.get(raw.toLowerCase());
+    if (!canonical) {
+      throw new ValidationError(
+        `Invalid voice target language: "${raw}". Valid codes: ${Array.from(VALID_VOICE_TARGET_LANGS).sort().join(', ')}`,
+      );
+    }
+    return canonical;
+  });
+
+  let sourceLang: VoiceSourceLanguage | undefined;
+  if (options.from) {
+    sourceLang = VOICE_SOURCE_BY_LOWERCASE.get(options.from.toLowerCase());
+    if (!sourceLang) {
+      throw new ValidationError(
+        `Invalid voice source language: "${options.from}". Valid codes: ${Array.from(VALID_VOICE_SOURCE_LANGS).sort().join(', ')}`,
+      );
+    }
+  }
+
+  if (options.contentType && !VALID_VOICE_CONTENT_TYPES.has(options.contentType)) {
+    throw new ValidationError(
+      `Invalid voice content type: "${options.contentType}". Valid types: ${Array.from(VALID_VOICE_CONTENT_TYPES).sort().join(', ')}`,
+    );
+  }
+
+  return { targetLangs, sourceLang };
+}
+
 interface VoiceCommandOptions {
   to: string;
   from?: string;
@@ -149,36 +201,7 @@ export class VoiceCommand {
   }
 
   private buildOptions(options: VoiceCommandOptions): VoiceTranslateOptions {
-    // Matched case-insensitively and canonicalized to the spelling the Voice API
-    // expects. The rest of the CLI accepts any casing and `deepl languages`
-    // prints these codes lowercase, so requiring `zh-HANS` would reject the
-    // spelling the CLI itself teaches.
-    const targetLangs = options.to.split(',').map((l) => {
-      const raw = l.trim();
-      const canonical = VOICE_TARGET_BY_LOWERCASE.get(raw.toLowerCase());
-      if (!canonical) {
-        throw new ValidationError(
-          `Invalid voice target language: "${raw}". Valid codes: ${Array.from(VALID_VOICE_TARGET_LANGS).sort().join(', ')}`,
-        );
-      }
-      return canonical;
-    });
-
-    if (options.from) {
-      const canonicalSource = VOICE_SOURCE_BY_LOWERCASE.get(options.from.toLowerCase());
-      if (!canonicalSource) {
-        throw new ValidationError(
-          `Invalid voice source language: "${options.from}". Valid codes: ${Array.from(VALID_VOICE_SOURCE_LANGS).sort().join(', ')}`,
-        );
-      }
-      options.from = canonicalSource;
-    }
-
-    if (options.contentType && !VALID_VOICE_CONTENT_TYPES.has(options.contentType)) {
-      throw new ValidationError(
-        `Invalid voice content type: "${options.contentType}". Valid types: ${Array.from(VALID_VOICE_CONTENT_TYPES).sort().join(', ')}`,
-      );
-    }
+    const { targetLangs, sourceLang } = validateVoiceOptions(options);
 
     if (options.glossary && targetLangs.length > 1) {
       process.stderr.write(
@@ -191,7 +214,7 @@ export class VoiceCommand {
 
     return {
       targetLangs,
-      sourceLang: options.from as VoiceSourceLanguage | undefined,
+      sourceLang,
       sourceLanguageMode: options.sourceLanguageMode as VoiceSourceLanguageMode | undefined,
       formality: options.formality as VoiceTranslateOptions['formality'],
       glossaryId: options.glossary,

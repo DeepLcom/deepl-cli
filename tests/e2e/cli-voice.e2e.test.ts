@@ -96,6 +96,55 @@ describe('Voice CLI E2E', () => {
     });
   });
 
+  describe('Validation before the glossary round trip', () => {
+    // Resolving --glossary lists the account's glossaries, so a command that
+    // fails locally must fail before that request rather than after it. The
+    // config points at a dead port, so a regression that resolved first would
+    // report a network error instead of the local rejection.
+    const orderConfig = createTestConfigDir('voice-e2e-glossary-order');
+    const orderCLI = makeRunCLI(orderConfig.path, { noColor: true });
+
+    beforeAll(() => {
+      fs.writeFileSync(
+        path.join(orderConfig.path, 'config.json'),
+        JSON.stringify({
+          auth: { apiKey: 'mock-api-key-for-testing:fx' },
+          api: { baseUrl: 'http://127.0.0.1:9/v2', usePro: false },
+        }),
+      );
+    });
+
+    afterAll(() => {
+      orderConfig.cleanup();
+    });
+
+    it('should reject an invalid target language ahead of glossary resolution', () => {
+      const testFile = path.join(testDir, 'glossary-order.mp3');
+      fs.writeFileSync(testFile, Buffer.alloc(100));
+
+      const result = orderCLI.runCLIExpectError(
+        `deepl voice ${testFile} --to bogus --glossary my-glossary`,
+      );
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('Invalid voice target language');
+      expect(result.output).not.toMatch(/Network error/);
+    });
+
+    it('should reject an invalid content type ahead of glossary resolution', () => {
+      const testFile = path.join(testDir, 'glossary-order-ct.mp3');
+      fs.writeFileSync(testFile, Buffer.alloc(100));
+
+      const result = orderCLI.runCLIExpectError(
+        `deepl voice ${testFile} --to de --content-type audio/wav --glossary my-glossary`,
+      );
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('Invalid voice content type');
+      expect(result.output).not.toMatch(/Network error/);
+    });
+  });
+
   describe('Error messages', () => {
     it('should show clear error when API key is not set', () => {
       const testFile = path.join(testDir, 'error-msg-test.mp3');

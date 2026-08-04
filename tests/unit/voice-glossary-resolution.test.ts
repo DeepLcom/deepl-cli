@@ -90,7 +90,7 @@ describe('Voice Glossary Resolution', () => {
     await program.parseAsync(['node', 'test', 'voice', 'test.ogg', '--to', 'de', '--glossary', uuid]);
 
     expect(createDeepLClient).toHaveBeenCalled();
-    expect(mockResolveGlossaryId).toHaveBeenCalledWith(uuid);
+    expect(mockResolveGlossaryId).toHaveBeenCalledWith(uuid, undefined);
     expect(mockTranslate).toHaveBeenCalledWith(
       'test.ogg',
       expect.objectContaining({ glossary: uuid }),
@@ -105,11 +105,88 @@ describe('Voice Glossary Resolution', () => {
     await program.parseAsync(['node', 'test', 'voice', 'test.ogg', '--to', 'de', '--glossary', 'my-glossary']);
 
     expect(createDeepLClient).toHaveBeenCalled();
-    expect(mockResolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+    expect(mockResolveGlossaryId).toHaveBeenCalledWith('my-glossary', undefined);
     expect(mockTranslate).toHaveBeenCalledWith(
       'test.ogg',
       expect.objectContaining({ glossary: resolvedId }),
     );
+  });
+
+  it('should resolve with the requested pair so coverage is checked locally', async () => {
+    mockResolveGlossaryId.mockResolvedValue('aaaabbbb-cccc-dddd-eeee-ffffffffffff');
+
+    await loadAndRegister();
+    await program.parseAsync([
+      'node', 'test', 'voice', 'test.ogg',
+      '--from', 'en', '--to', 'de,fr', '--glossary', 'my-glossary',
+    ]);
+
+    expect(mockResolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
+      from: 'en',
+      targets: ['de', 'fr'],
+    });
+  });
+
+  it('should pass the canonical spellings of the pair, not what was typed', async () => {
+    mockResolveGlossaryId.mockResolvedValue('aaaabbbb-cccc-dddd-eeee-ffffffffffff');
+
+    await loadAndRegister();
+    await program.parseAsync([
+      'node', 'test', 'voice', 'test.ogg',
+      '--from', 'EN', '--to', 'zh-hans', '--glossary', 'my-glossary',
+    ]);
+
+    expect(mockResolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
+      from: 'en',
+      targets: ['zh-HANS'],
+    });
+  });
+
+  it('should resolve without a pair when --from is absent, since coverage needs both', async () => {
+    mockResolveGlossaryId.mockResolvedValue('aaaabbbb-cccc-dddd-eeee-ffffffffffff');
+
+    await loadAndRegister();
+    await program.parseAsync([
+      'node', 'test', 'voice', 'test.ogg', '--to', 'de', '--glossary', 'my-glossary',
+    ]);
+
+    expect(mockResolveGlossaryId).toHaveBeenCalledWith('my-glossary', undefined);
+  });
+
+  it('should reject an invalid target language before spending the resolution call', async () => {
+    await loadAndRegister();
+    await expect(
+      program.parseAsync([
+        'node', 'test', 'voice', 'test.ogg', '--to', 'bogus', '--glossary', 'my-glossary',
+      ]),
+    ).rejects.toThrow('Invalid voice target language');
+
+    expect(createDeepLClient).not.toHaveBeenCalled();
+    expect(mockResolveGlossaryId).not.toHaveBeenCalled();
+  });
+
+  it('should reject an invalid source language before spending the resolution call', async () => {
+    await loadAndRegister();
+    await expect(
+      program.parseAsync([
+        'node', 'test', 'voice', 'test.ogg',
+        '--to', 'de', '--from', 'bogus', '--glossary', 'my-glossary',
+      ]),
+    ).rejects.toThrow('Invalid voice source language');
+
+    expect(mockResolveGlossaryId).not.toHaveBeenCalled();
+  });
+
+  it('should reject an invalid content type before spending the resolution call', async () => {
+    await loadAndRegister();
+    await expect(
+      program.parseAsync([
+        'node', 'test', 'voice', 'test.ogg',
+        '--to', 'de', '--content-type', 'audio/wav', '--glossary', 'my-glossary',
+      ]),
+    ).rejects.toThrow('Invalid voice content type');
+
+    expect(mockResolveGlossaryId).not.toHaveBeenCalled();
   });
 
   it('should not create DeepLClient or call resolveGlossaryId when no glossary is specified', async () => {
