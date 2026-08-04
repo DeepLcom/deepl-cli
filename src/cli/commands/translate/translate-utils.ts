@@ -3,6 +3,7 @@ import * as path from 'path';
 import { Language, Formality } from '../../../types/index.js';
 import { ValidationError } from '../../../utils/errors.js';
 import { Logger } from '../../../utils/logger.js';
+import { hasGlossarySelection } from '../../../utils/glossary-params.js';
 import {
   getAllLanguageCodes,
   getExtendedLanguageCodes,
@@ -59,31 +60,94 @@ export function warnIgnoredOptions(mode: string, options: TranslateOptions, supp
 }
 
 /**
+ * Codes already deferred to the API in this process. One run validates the same
+ * target list from more than one place — the registrar's dry run, a mode's
+ * multi-target split, then its per-target pass — and the note is worth saying
+ * once, not once per call site.
+ */
+const deferredCodesWarned = new Set<string>();
+
+/**
+ * Clears the deferral-warning state. Tests asserting the warning need this in
+ * `beforeEach`: the set is module state, which clearing Jest mocks leaves alone.
+ */
+export function resetDeferredLanguageWarnings(): void {
+  deferredCodesWarned.clear();
+}
+
+/**
  * Rejects input that is not shaped like a language tag. Codes the bundled
  * snapshot does not list are passed through: GET /v3/languages is the authority
  * on which languages exist and the snapshot can lag it, so an unknown code is
  * the API's to accept or reject with a 400 of its own.
+ *
+ * `role` names the flag in the rejection, since `--from` and `--to` are rejected
+ * for the same reasons and a user needs to know which one to fix.
  */
+function validateLanguageCode(langCode: string, role: 'target' | 'source'): void {
+  if (VALID_LANGUAGES.has(langCode)) return;
+
+  if (looksLikeLanguageTag(langCode)) {
+    if (deferredCodesWarned.has(langCode)) return;
+    deferredCodesWarned.add(langCode);
+    // Said up front, before anything is sent or billed: the API answers an
+    // unknown code with a bare "target_lang not supported" that points nowhere.
+    Logger.warn(
+      `Note: "${langCode}" is not in the bundled language list; deferring to the API.\n` +
+        '      Run: deepl languages  to see the languages this build knows about.'
+    );
+    return;
+  }
+
+  throw new ValidationError(
+    `Invalid ${role} language code: "${langCode}".`,
+    'Run: deepl languages  to see all available languages'
+  );
+}
+
 export function validateLanguageCodes(langCodes: string[]): void {
   for (const lang of langCodes) {
-    if (VALID_LANGUAGES.has(lang)) continue;
-    if (looksLikeLanguageTag(lang)) {
-      // Said up front, before anything is sent or billed: the API answers an
-      // unknown code with a bare "target_lang not supported" that points nowhere.
-      Logger.warn(
-        `Note: "${lang}" is not in the bundled language list; deferring to the API.\n` +
-          '      Run: deepl languages  to see the languages this build knows about.'
-      );
-      continue;
-    }
-    throw new ValidationError(
-      `Invalid target language code: "${lang}".`,
-      'Run: deepl languages  to see all available languages'
-    );
+    validateLanguageCode(lang, 'target');
   }
 }
 
-export function validateExtendedLanguageConstraints(targetLang: string, options: TranslateOptions): void {
+/** Validates `--from`. Absent means auto-detect, which every mode allows. */
+export function validateSourceLanguage(from: string | undefined): void {
+  if (!from) return;
+  validateLanguageCode(from, 'source');
+}
+
+/**
+ * The flags whose extended-tier arms are checked below. Callers name only the
+ * flags the run will honour: the input modes disagree about which they keep, and
+ * refusing a command over a flag its mode discards contradicts that run.
+ */
+export interface ExtendedLanguageConstraints {
+  modelType?: string;
+  formality?: string;
+  glossary?: string | string[];
+}
+
+/** `ExtendedLanguageConstraints` plus the source language, for the entry point below. */
+export interface TranslationLanguageConstraints extends ExtendedLanguageConstraints {
+  from?: string;
+}
+
+/**
+ * The language gate for every translate input mode. One entry point because a
+ * mode that checked codes without the extended-tier arms accepted, and sent,
+ * commands its siblings rejected locally.
+ */
+export function validateTranslationLanguages(
+  targets: string[],
+  options: TranslationLanguageConstraints,
+): void {
+  validateSourceLanguage(options.from);
+  validateLanguageCodes(targets);
+  validateExtendedLanguageConstraints(targets.join(','), options);
+}
+
+export function validateExtendedLanguageConstraints(targetLang: string, options: ExtendedLanguageConstraints): void {
   const langs = targetLang.includes(',')
     ? targetLang.split(',').map(l => l.trim())
     : [targetLang];
@@ -101,7 +165,7 @@ export function validateExtendedLanguageConstraints(targetLang: string, options:
     throw new ValidationError(`Language(s) ${langList} do not support formality settings`);
   }
 
-  if (options.glossary) {
+  if (hasGlossarySelection(options)) {
     throw new ValidationError(`Language(s) ${langList} do not support glossaries`);
   }
 }

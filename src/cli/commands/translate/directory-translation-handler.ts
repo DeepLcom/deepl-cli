@@ -4,8 +4,25 @@ import { ValidationError } from '../../../utils/errors.js';
 import { Logger } from '../../../utils/logger.js';
 import { ExitCode } from '../../../utils/exit-codes.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
-import { warnIgnoredOptions, validateLanguageCodes } from './translate-utils.js';
+import {
+  warnIgnoredOptions,
+  validateTranslationLanguages,
+  type TranslationLanguageConstraints,
+} from './translate-utils.js';
 import { buildBaseTranslationOptions } from './translation-options-factory.js';
+
+/**
+ * The constrained flags this mode passes on to the request. `--glossary` is not
+ * one of them — directory mode announces it as ignored and resolves no glossary —
+ * so a glossary must not fail a directory run the way it fails a text one.
+ */
+function honouredConstraints(options: TranslateOptions): TranslationLanguageConstraints {
+  return {
+    from: options.from,
+    formality: options.formality,
+    modelType: options.modelType,
+  };
+}
 
 export class DirectoryTranslationHandler {
   constructor(public ctx: HandlerContext) {}
@@ -20,7 +37,7 @@ export class DirectoryTranslationHandler {
 
     if (options.to.includes(',')) {
       const targetLangs = options.to.split(',').map(lang => lang.trim());
-      validateLanguageCodes(targetLangs);
+      validateTranslationLanguages(targetLangs, honouredConstraints(options));
 
       const allOutputs: string[] = [];
 
@@ -37,7 +54,7 @@ export class DirectoryTranslationHandler {
   }
 
   private async translateSingleTarget(dirPath: string, options: TranslateOptions): Promise<string> {
-    validateLanguageCodes([options.to]);
+    validateTranslationLanguages([options.to], honouredConstraints(options));
 
     const translationOptions = buildBaseTranslationOptions(options);
 

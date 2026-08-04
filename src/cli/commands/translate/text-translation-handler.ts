@@ -4,8 +4,7 @@ import { Logger } from '../../../utils/logger.js';
 import { ValidationError, AuthError } from '../../../utils/errors.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
 import {
-  validateLanguageCodes,
-  validateExtendedLanguageConstraints,
+  validateTranslationLanguages,
   validateXmlTags,
   warnIgnoredOptions,
   MAX_CUSTOM_INSTRUCTIONS,
@@ -42,8 +41,7 @@ export class TextTranslationHandler {
       return this.translateToMultiple(text, options);
     }
 
-    validateLanguageCodes([options.to]);
-    validateExtendedLanguageConstraints(options.to, options);
+    validateTranslationLanguages([options.to], options);
 
     applyGlossarySourceLang(
       options,
@@ -167,8 +165,7 @@ export class TextTranslationHandler {
     warnIgnoredOptions('multi-target', options, supported);
 
     const targetLangs = options.to.split(',').map(lang => lang.trim());
-    validateLanguageCodes(targetLangs);
-    validateExtendedLanguageConstraints(options.to, options);
+    validateTranslationLanguages(targetLangs, options);
 
     applyGlossarySourceLang(
       options,

@@ -4,11 +4,7 @@ import { ValidationError } from '../../../utils/errors.js';
 import type { Language } from '../../../types/index.js';
 import type { DocumentTranslationOptions } from '../../../types/api.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
-import {
-  warnIgnoredOptions,
-  validateLanguageCodes,
-  validateExtendedLanguageConstraints,
-} from './translate-utils.js';
+import { warnIgnoredOptions, validateTranslationLanguages } from './translate-utils.js';
 import { buildBaseTranslationOptions, applyGlossarySelection } from './translation-options-factory.js';
 import { applyGlossarySourceLang } from '../../../utils/glossary-params.js';
 
@@ -30,10 +26,10 @@ export class DocumentTranslationHandler {
     const { modelType: _model, tagHandling: _tags, tagHandlingVersion: _version, ...rest } = options;
     options = rest;
 
-    validateLanguageCodes([options.to]);
     // Documents accept glossaries, so the extended-tier constraint applies here
-    // too: checked before the upload rather than left to the API.
-    validateExtendedLanguageConstraints(options.to, options);
+    // too: checked before the upload rather than left to the API. After the strip
+    // above, so the flags this mode discards cannot fail a command it accepts.
+    validateTranslationLanguages([options.to], options);
 
     // The API rejects a document glossary without source_lang: "source_lang has
     // to be specified in order to use a glossary."

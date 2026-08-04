@@ -2175,6 +2175,231 @@ describe('TranslateCommand', () => {
     });
   });
 
+  describe('extended-tier constraints per input mode', () => {
+    let mockFs: any;
+
+    beforeEach(() => {
+      mockFs = jest.requireActual('fs');
+      jest.spyOn(Logger, 'shouldShowSpinner').mockReturnValue(false);
+      jest.spyOn(mockFs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(mockFs, 'statSync').mockReturnValue({
+        size: 1024,
+        isDirectory: () => false,
+      } as any);
+      (safeReadFileSync as jest.Mock).mockReturnValue('Hello');
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    function fileHandler() {
+      return (translateCommand as any).fileHandler;
+    }
+
+    describe('file mode', () => {
+      it('should reject formality for an extended target', async () => {
+        await expect(
+          fileHandler().translateTextFile('/doc.txt', {
+            to: 'sw',
+            formality: 'more',
+            output: '/out.txt',
+          })
+        ).rejects.toThrow('do not support formality');
+      });
+
+      it('should reject a glossary for an extended target', async () => {
+        await expect(
+          fileHandler().translateTextFile('/doc.txt', {
+            to: 'sw',
+            from: 'en',
+            glossary: ['my-glossary'],
+            output: '/out.txt',
+          })
+        ).rejects.toThrow('do not support glossaries');
+      });
+
+      it('should reject latency_optimized for an extended target', async () => {
+        await expect(
+          fileHandler().translateTextFile('/doc.txt', {
+            to: 'sw',
+            modelType: 'latency_optimized',
+            output: '/out.txt',
+          })
+        ).rejects.toThrow('only support quality_optimized');
+      });
+
+      it('should reject formality for an extended target among several', async () => {
+        (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(false);
+
+        await expect(
+          fileHandler().translateFile('/doc.txt', {
+            to: 'es,sw',
+            formality: 'more',
+            output: '/out',
+          })
+        ).rejects.toThrow('do not support formality');
+      });
+
+      it('should reject formality for a format routed through fileTranslationService', async () => {
+        (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(false);
+        (translateCommand as any).ctx.fileTranslationService = {
+          translateFile: jest.fn().mockResolvedValue(undefined),
+          isSupportedFile: jest.fn().mockReturnValue(true),
+          translateFileToMultiple: jest.fn(),
+        };
+
+        await expect(
+          fileHandler().translateFile('/input.csv', {
+            to: 'sw',
+            formality: 'more',
+            output: '/output.csv',
+          })
+        ).rejects.toThrow('do not support formality');
+      });
+
+      it('should not reject a glossary on a path that resolves none', async () => {
+        // The csv path carries no glossary to the request, so refusing the run
+        // over one would refuse a command that works.
+        (mockDocumentTranslationService.isDocumentSupported as jest.Mock).mockReturnValue(false);
+        const mockFileService = {
+          translateFile: jest.fn().mockResolvedValue(undefined),
+          isSupportedFile: jest.fn().mockReturnValue(true),
+          translateFileToMultiple: jest.fn(),
+        };
+        (translateCommand as any).ctx.fileTranslationService = mockFileService;
+
+        await fileHandler().translateFile('/input.csv', {
+          to: 'sw',
+          from: 'en',
+          glossary: ['my-glossary'],
+          output: '/output.csv',
+        });
+
+        expect(mockFileService.translateFile).toHaveBeenCalled();
+      });
+    });
+
+    describe('directory mode', () => {
+      function directory(options: Record<string, unknown>) {
+        return (translateCommand as any).directoryHandler.translateDirectory('/src', options);
+      }
+
+      beforeEach(() => {
+        (translateCommand as any).ctx.batchTranslationService = {
+          translateDirectory: jest.fn().mockResolvedValue({
+            successful: [{ file: 'a.txt', outputPath: '/out/a.txt' }],
+            failed: [],
+            skipped: [],
+          }),
+          getStatistics: jest
+            .fn()
+            .mockReturnValue({ total: 1, successful: 1, failed: 0, skipped: 0 }),
+        };
+      });
+
+      it('should reject formality for an extended target', async () => {
+        await expect(
+          directory({ to: 'sw', formality: 'more', output: '/out' })
+        ).rejects.toThrow('do not support formality');
+      });
+
+      it('should reject latency_optimized for an extended target', async () => {
+        await expect(
+          directory({ to: 'sw', modelType: 'latency_optimized', output: '/out' })
+        ).rejects.toThrow('only support quality_optimized');
+      });
+
+      it('should reject formality for an extended target among several', async () => {
+        await expect(
+          directory({ to: 'es,sw', formality: 'more', output: '/out' })
+        ).rejects.toThrow('do not support formality');
+      });
+
+      it('should not reject a glossary it has announced as ignored', async () => {
+        const result = await directory({
+          to: 'sw',
+          from: 'en',
+          glossary: ['my-glossary'],
+          output: '/out',
+        });
+
+        expect(result).toContain('Translation Statistics');
+      });
+    });
+
+    describe('document mode', () => {
+      function document(options: Record<string, unknown>) {
+        return fileHandler().documentHandler.translateDocument('/doc.pdf', options);
+      }
+
+      it('should reject formality for an extended target', async () => {
+        await expect(document({ to: 'sw', formality: 'more', output: '/out.pdf' })).rejects.toThrow(
+          'do not support formality'
+        );
+      });
+
+      it('should reject a glossary for an extended target', async () => {
+        await expect(
+          document({ to: 'sw', from: 'en', glossary: ['my-glossary'], output: '/out.pdf' })
+        ).rejects.toThrow('do not support glossaries');
+      });
+
+      it('should not reject a model type it strips after warning', async () => {
+        (mockDocumentTranslationService.translateDocument as jest.Mock).mockResolvedValue({
+          success: true,
+          outputPath: '/out.pdf',
+        });
+
+        const result = await document({
+          to: 'sw',
+          modelType: 'latency_optimized',
+          output: '/out.pdf',
+        });
+
+        expect(result).toContain('Translated /doc.pdf');
+      });
+    });
+
+    describe('source language', () => {
+      it('should reject a malformed --from in text mode', async () => {
+        await expect(
+          translateCommand.translateText('Hello', { to: 'es', from: 'not!!a!!lang' })
+        ).rejects.toThrow('Invalid source language code');
+      });
+
+      it('should reject a malformed --from in file mode', async () => {
+        await expect(
+          fileHandler().translateTextFile('/doc.txt', {
+            to: 'es',
+            from: 'not!!a!!lang',
+            output: '/out.txt',
+          })
+        ).rejects.toThrow('Invalid source language code');
+      });
+
+      it('should reject a malformed --from in directory mode', async () => {
+        await expect(
+          (translateCommand as any).directoryHandler.translateDirectory('/src', {
+            to: 'es',
+            from: 'not!!a!!lang',
+            output: '/out',
+          })
+        ).rejects.toThrow('Invalid source language code');
+      });
+
+      it('should reject a malformed --from in document mode', async () => {
+        await expect(
+          fileHandler().documentHandler.translateDocument('/doc.pdf', {
+            to: 'es',
+            from: 'not!!a!!lang',
+            output: '/out.pdf',
+          })
+        ).rejects.toThrow('Invalid source language code');
+      });
+    });
+  });
+
   describe('tag handling version', () => {
     it('should pass tagHandlingVersion to translation service', async () => {
       mockTranslationService.translate.mockResolvedValue({

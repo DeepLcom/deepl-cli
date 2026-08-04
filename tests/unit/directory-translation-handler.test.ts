@@ -51,7 +51,7 @@ jest.mock('../../src/services/batch-translation', () => ({
 
 jest.mock('../../src/cli/commands/translate/translate-utils', () => ({
   warnIgnoredOptions: jest.fn(),
-  validateLanguageCodes: jest.fn(),
+  validateTranslationLanguages: jest.fn(),
   buildTranslationOptions: jest.fn().mockReturnValue({ targetLang: 'de' }),
 }));
 
@@ -429,11 +429,39 @@ describe('DirectoryTranslationHandler', () => {
 
       await handler.translateDirectory('/some/dir', options);
 
-      const { validateLanguageCodes } = jest.requireMock(
+      const { validateTranslationLanguages } = jest.requireMock(
         '../../src/cli/commands/translate/translate-utils'
       );
 
-      expect(validateLanguageCodes).toHaveBeenCalledWith(['de', 'fr']);
+      expect(validateTranslationLanguages).toHaveBeenCalledWith(
+        ['de', 'fr'],
+        expect.anything(),
+      );
+    });
+
+    it('should validate the flags this mode passes on, and not --glossary', async () => {
+      // Directory mode announces --glossary as ignored and resolves none, so the
+      // extended-tier glossary arm must not fail a run that would have worked.
+      const options: TranslateOptions = {
+        ...baseOptions,
+        to: 'de, fr',
+        from: 'en',
+        formality: 'more',
+        modelType: 'latency_optimized',
+        glossary: ['my-glossary'],
+      };
+
+      await handler.translateDirectory('/some/dir', options);
+
+      const { validateTranslationLanguages } = jest.requireMock(
+        '../../src/cli/commands/translate/translate-utils'
+      );
+
+      expect(validateTranslationLanguages).toHaveBeenCalledWith(['de', 'fr'], {
+        from: 'en',
+        formality: 'more',
+        modelType: 'latency_optimized',
+      });
     });
 
     it('should call buildTranslationOptions with each individual language', async () => {

@@ -7,7 +7,7 @@ import { Logger } from '../../../utils/logger.js';
 import { safeReadFileSync } from '../../../utils/safe-read-file.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
 import {
-  validateLanguageCodes,
+  validateTranslationLanguages,
   isTextBasedFile,
   isStructuredFile,
   getFileSize,
@@ -33,7 +33,7 @@ export class FileTranslationHandler {
 
     if (options.to.includes(',')) {
       const targetLangs = options.to.split(',').map(lang => lang.trim());
-      validateLanguageCodes(targetLangs);
+      validateTranslationLanguages(targetLangs, options);
 
       const validTargetLangs = targetLangs as Language[];
 
@@ -106,7 +106,13 @@ export class FileTranslationHandler {
       return this.documentHandler.translateDocument(filePath, options);
     }
 
-    validateLanguageCodes([options.to]);
+    // This path resolves no glossary, so the glossary arm is left out: rejecting
+    // over a flag the request never carries would refuse a run that works.
+    validateTranslationLanguages([options.to], {
+      from: options.from,
+      formality: options.formality,
+      modelType: options.modelType,
+    });
 
     const translationOptions = buildBaseTranslationOptions(options);
 
@@ -121,7 +127,7 @@ export class FileTranslationHandler {
   }
 
   async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
-    validateLanguageCodes([options.to]);
+    validateTranslationLanguages([options.to], options);
 
     applyGlossarySourceLang(
       options,

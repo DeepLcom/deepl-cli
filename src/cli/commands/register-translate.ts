@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createTranslateCommand, type ServiceDeps } from './service-factory.js';
+import { validateTranslationLanguages } from './translate/translate-utils.js';
 import {
   MAX_GLOSSARIES_PER_REQUEST,
   applyGlossarySourceLang,
@@ -182,15 +183,35 @@ Examples:
         }
 
         if (options.dryRun) {
-          const targetLangs = options.to!.split(',').map(l => l.trim());
+          // Normalized here because the real run lowercases inside
+          // TranslateCommand, past the point a dry run returns.
+          options.to = options.to!.toLowerCase();
+          if (options.from) {
+            options.from = options.from.toLowerCase();
+          }
+
+          const targetLangs = options.to.split(',').map(l => l.trim());
+          const isDir = !!text && fs.existsSync(text) && fs.statSync(text).isDirectory();
+          const isFile = !!text && !isDir && fs.existsSync(text) && fs.statSync(text).isFile();
+
+          // A dry run reports a command as runnable, so it rejects whatever the
+          // real run rejects locally. Which extended-tier arms hold depends on the
+          // mode that will handle this argument: directory mode ignores --glossary
+          // but sends --model-type, while a document run discards --model-type
+          // after warning, so asserting either arm for both would refuse a command
+          // that works.
+          validateTranslationLanguages(
+            targetLangs,
+            isDir
+              ? { from: options.from, formality: options.formality, modelType: options.modelType }
+              : { from: options.from, formality: options.formality, glossary: options.glossary },
+          );
+
           const lines: string[] = [
             chalk.yellow('[dry-run] No translations will be performed.'),
           ];
 
           if (text) {
-            const isDir = fs.existsSync(text) && fs.statSync(text).isDirectory();
-            const isFile = !isDir && fs.existsSync(text) && fs.statSync(text).isFile();
-
             if (isDir) {
               lines.push(chalk.yellow(`[dry-run] Would translate directory: ${text}`));
               lines.push(chalk.yellow(`[dry-run] Output directory: ${options.output ?? '<required>'}`));

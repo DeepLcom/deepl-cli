@@ -1,4 +1,8 @@
 export type { TranslateOptions, TranslationParams, HandlerContext } from './types.js';
+export type {
+  ExtendedLanguageConstraints,
+  TranslationLanguageConstraints,
+} from './translate-utils.js';
 export {
   VALID_LANGUAGES,
   EXTENDED_ONLY_LANGUAGES,
@@ -9,6 +13,9 @@ export {
   MAX_CUSTOM_INSTRUCTION_CHARS,
   warnIgnoredOptions,
   validateLanguageCodes,
+  validateSourceLanguage,
+  validateTranslationLanguages,
+  resetDeferredLanguageWarnings,
   validateExtendedLanguageConstraints,
   validateXmlTags,
   buildTranslationOptions,

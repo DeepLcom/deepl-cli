@@ -162,6 +162,49 @@ describe('CLI Success Paths E2E', () => {
     });
   });
 
+  describe('local language validation across input modes', () => {
+    it('should reject formality for an extended target before sending a file', () => {
+      const inputFile = path.join(testDir, 'extended-file.txt');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+      const outputFile = path.join(testDir, 'extended-file.af.txt');
+
+      const result = runCLIExpectError(
+        `translate "${inputFile}" --to af --formality more --output "${outputFile}"`,
+      );
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('do not support formality');
+      expect(fs.existsSync(outputFile)).toBe(false);
+    });
+
+    it('should reject formality for an extended target before scanning a directory', () => {
+      const dirPath = path.join(testDir, 'extended-dir');
+      fs.mkdirSync(dirPath, { recursive: true });
+      fs.writeFileSync(path.join(dirPath, 'a.txt'), 'Hello', 'utf-8');
+
+      const result = runCLIExpectError(
+        `translate "${dirPath}" --to af --formality more --output "${testDir}/extended-dir-out"`,
+      );
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('do not support formality');
+    });
+
+    it('should note an unknown code once per directory run, not once per call site', () => {
+      const dirPath = path.join(testDir, 'deferral-dir');
+      fs.mkdirSync(dirPath, { recursive: true });
+      fs.writeFileSync(path.join(dirPath, 'a.txt'), 'Hello', 'utf-8');
+
+      const output = runCLIAll(
+        `translate "${dirPath}" --to de,ex --output "${testDir}/deferral-dir-out"`,
+      );
+
+      const notices = output.match(/is not in the bundled language list/g) ?? [];
+      expect(notices).toHaveLength(1);
+      expect(output).toContain('"ex" is not in the bundled language list');
+    });
+  });
+
   describe('write command success paths', () => {
     it('should improve text using write command', () => {
       const output = runCLIAll('write "Their going to the store" --lang en-US');

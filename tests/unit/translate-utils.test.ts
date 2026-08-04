@@ -8,6 +8,9 @@ import {
   MAX_CUSTOM_INSTRUCTIONS,
   MAX_CUSTOM_INSTRUCTION_CHARS,
   validateLanguageCodes,
+  validateSourceLanguage,
+  validateTranslationLanguages,
+  resetDeferredLanguageWarnings,
   validateExtendedLanguageConstraints,
   validateXmlTags,
   warnIgnoredOptions,
@@ -47,6 +50,8 @@ const mockedLoggerWarn = Logger.warn as jest.MockedFunction<typeof Logger.warn>;
 describe('translate-utils', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Module state, which clearing the Logger spy does not touch.
+    resetDeferredLanguageWarnings();
   });
 
   describe('constants', () => {
@@ -163,6 +168,103 @@ describe('translate-utils', () => {
     it('should throw on first invalid code in array', () => {
       expect(() => validateLanguageCodes(['en', 'invalid', 'de'])).toThrow(/Invalid target language code: "invalid"/);
     });
+
+    it('should warn once per unknown code however many times it is validated', () => {
+      // Several input modes validate the same list on the way to one request.
+      validateLanguageCodes(['ex']);
+      validateLanguageCodes(['ex']);
+      validateLanguageCodes(['de', 'ex']);
+
+      expect(mockedLoggerWarn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should warn once for each distinct unknown code', () => {
+      validateLanguageCodes(['ex', 'zz']);
+      validateLanguageCodes(['ex', 'zz']);
+
+      const warnings = mockedLoggerWarn.mock.calls.map(call => String(call[0]));
+      expect(warnings).toHaveLength(2);
+      expect(warnings[0]).toContain('"ex"');
+      expect(warnings[1]).toContain('"zz"');
+    });
+
+    it('should warn again after the warned-code state is reset', () => {
+      validateLanguageCodes(['ex']);
+      resetDeferredLanguageWarnings();
+      validateLanguageCodes(['ex']);
+
+      expect(mockedLoggerWarn).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('validateSourceLanguage()', () => {
+    it('should accept an absent source language, which means auto-detect', () => {
+      expect(() => validateSourceLanguage(undefined)).not.toThrow();
+      expect(mockedLoggerWarn).not.toHaveBeenCalled();
+    });
+
+    it('should accept a code the snapshot lists', () => {
+      expect(() => validateSourceLanguage('en')).not.toThrow();
+      expect(mockedLoggerWarn).not.toHaveBeenCalled();
+    });
+
+    it('should reject a malformed code as a source, not a target', () => {
+      expect(() => validateSourceLanguage('not!!a!!lang')).toThrow(ValidationError);
+      expect(() => validateSourceLanguage('not!!a!!lang')).toThrow(
+        /Invalid source language code: "not!!a!!lang"/,
+      );
+    });
+
+    it('should defer a well-formed unknown code to the API with a warning', () => {
+      expect(() => validateSourceLanguage('zz')).not.toThrow();
+
+      const warning = mockedLoggerWarn.mock.calls.map(call => String(call[0])).join('\n');
+      expect(warning).toContain('"zz" is not in the bundled language list');
+    });
+
+    it('should share the warned-code state with target validation', () => {
+      validateLanguageCodes(['zz']);
+      validateSourceLanguage('zz');
+
+      expect(mockedLoggerWarn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('validateTranslationLanguages()', () => {
+    it('should reject a malformed target code', () => {
+      expect(() => validateTranslationLanguages(['not!!a!!lang'], {})).toThrow(
+        /Invalid target language code/,
+      );
+    });
+
+    it('should reject a malformed source code', () => {
+      expect(() => validateTranslationLanguages(['de'], { from: 'not!!a!!lang' })).toThrow(
+        /Invalid source language code/,
+      );
+    });
+
+    it('should enforce the extended-tier constraint over the whole target list', () => {
+      expect(() => validateTranslationLanguages(['de', 'hi'], { formality: 'more' })).toThrow(
+        /Language\(s\) hi do not support formality/,
+      );
+    });
+
+    it('should enforce the extended-tier constraint for a single target', () => {
+      expect(() =>
+        validateTranslationLanguages(['hi'], { modelType: 'latency_optimized' }),
+      ).toThrow(/only support quality_optimized/);
+    });
+
+    it('should accept a valid pair with no constrained options', () => {
+      expect(() => validateTranslationLanguages(['de', 'fr'], { from: 'en' })).not.toThrow();
+    });
+
+    it('should not enforce an arm the caller left out', () => {
+      // The input modes disagree about which flags they honour; a mode that
+      // discards a flag passes it here as absent.
+      expect(() => validateTranslationLanguages(['hi'], { formality: 'more' })).toThrow();
+      expect(() => validateTranslationLanguages(['hi'], {})).not.toThrow();
+    });
   });
 
   describe('validateExtendedLanguageConstraints()', () => {
@@ -201,10 +303,15 @@ describe('translate-utils', () => {
       ).toThrow(/do not support glossaries/);
     });
 
+    it('should not throw for an empty glossary list, which selects nothing', () => {
+      expect(() =>
+        validateExtendedLanguageConstraints('hi', { ...baseOptions, glossary: [] })
+      ).not.toThrow();
+    });
+
     it('should not throw for non-extended languages', () => {
       expect(() =>
         validateExtendedLanguageConstraints('de', {
-          to: 'de',
           modelType: 'latency_optimized',
           formality: 'more',
           glossary: ['some-glossary'],
@@ -220,7 +327,7 @@ describe('translate-utils', () => {
 
     it('should not throw when only non-extended langs in comma-separated list', () => {
       expect(() =>
-        validateExtendedLanguageConstraints('en, de', { to: 'en', modelType: 'latency_optimized' })
+        validateExtendedLanguageConstraints('en, de', { modelType: 'latency_optimized' })
       ).not.toThrow();
     });
 
