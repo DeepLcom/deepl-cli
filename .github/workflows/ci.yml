@@ -27,6 +27,10 @@ jobs:
           cache: npm
 
       - run: npm ci
+      # Ahead of lint: reformatting can move an eslint-disable directive off the
+      # line it suppresses, so drift should be reported as formatting rather
+      # than as the lint failures it goes on to cause.
+      - run: npm run format:check
       - run: npm run lint
       - run: npm run type-check
       - run: npm run check-deps

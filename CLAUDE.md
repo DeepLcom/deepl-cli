@@ -179,6 +179,7 @@ Use conventional commits:
 - Make separate commits per logical change
 - Group tests with the logic they test
 - **Run `npm run lint` and `npm run type-check` before every commit**
+- **Never silence a lint warning to get past the gate** — `lint` runs with `--max-warnings 0`, so a warning fails CI. Fix the cause; if a rule genuinely does not apply, scope a disable directive to the code it covers and say why
 
 ## Pull Request Guidelines
 
@@ -192,7 +193,8 @@ PR descriptions should include:
 ## Pre-Commit Checklist
 
 - [ ] All tests pass (`npm test`)
-- [ ] Linter passes (`npm run lint`)
+- [ ] Formatting is clean (`npm run format:check`) — the format-on-commit hook handles this if enabled; see CONTRIBUTING.md
+- [ ] Linter passes (`npm run lint`) — warnings fail the build (`--max-warnings 0`)
 - [ ] TypeScript compiles (`npm run type-check`)
 - [ ] Unit, integration, and E2E tests written for new features
 - [ ] HTTP mocking with nock for API interactions

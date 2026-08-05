@@ -36,6 +36,24 @@ npm link
 deepl --version
 ```
 
+### Enable the formatting hook
+
+CI runs `npm run format:check`, and `.git/hooks` is not version-controlled, so
+enable the format-on-commit hook once per clone. It formats only the staged
+`src/` and `tests/` TypeScript and re-stages it, so formatting is applied rather
+than something you have to remember:
+
+```bash
+cat >> .git/hooks/pre-commit <<'HOOK'
+npm run --silent format:staged || exit $?
+HOOK
+chmod +x .git/hooks/pre-commit
+```
+
+A partially staged file is reported and skipped rather than reformatted, because
+re-adding it would stage the hunks you deliberately left out. Run
+`npm run format` yourself in that case.
+
 ## Development Workflow
 
 This project follows **Test-Driven Development (TDD)**. Every change goes through the Red-Green-Refactor cycle:
