@@ -16,7 +16,7 @@ import { resolvePaths } from '../utils/paths.js';
 import type { DeepLClient } from '../api/deepl-client.js';
 import { Logger } from '../utils/logger.js';
 import { AuthError, DeepLCLIError } from '../utils/errors.js';
-import { ExitCode, getExitCodeFromError } from '../utils/exit-codes.js';
+import { ExitCode, exitCodeForError } from '../utils/exit-codes.js';
 import { isSymlink } from '../utils/safe-read-file.js';
 import { setNoInput } from '../utils/confirm.js';
 import { registerAuth } from './commands/register-auth.js';
@@ -76,10 +76,7 @@ const getCacheService = createCacheServiceGetter(() =>
  */
 function handleError(error: unknown): never {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-  const exitCode =
-    error instanceof Error
-      ? getExitCodeFromError(error)
-      : ExitCode.GeneralError;
+  const exitCode = exitCodeForError(error);
 
   Logger.error(chalk.red('Error:'), errorMessage);
 

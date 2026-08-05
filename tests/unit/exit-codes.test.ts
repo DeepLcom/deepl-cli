@@ -3,7 +3,7 @@
  * Tests for exit code classification and retry logic
  */
 
-import { ExitCode, getExitCodeFromError, isRetryableError } from '../../src/utils/exit-codes';
+import { ExitCode, exitCodeForError, isRetryableError } from '../../src/utils/exit-codes';
 import { AuthError } from '../../src/utils/errors';
 import { Logger } from '../../src/utils/logger';
 
@@ -33,7 +33,7 @@ describe('ExitCode', () => {
     });
   });
 
-  describe('getExitCodeFromError', () => {
+  describe('exitCodeForError', () => {
     it.each<[string, string, ExitCode]>([
       // AuthError classification
       ['authentication failed', 'Authentication failed', ExitCode.AuthError],
@@ -96,19 +96,19 @@ describe('ExitCode', () => {
     ])(
       'should classify %s error message "%s" → exit code %i',
       (_, message, expectedCode) => {
-        expect(getExitCodeFromError(new Error(message))).toBe(expectedCode);
+        expect(exitCodeForError(new Error(message))).toBe(expectedCode);
       },
     );
 
     describe('priority ordering', () => {
       it('should prioritize specific auth patterns over generic invalid pattern', () => {
         const error = new Error('invalid api key');
-        expect(getExitCodeFromError(error)).toBe(ExitCode.AuthError);
+        expect(exitCodeForError(error)).toBe(ExitCode.AuthError);
       });
 
       it('should classify pure config file errors correctly', () => {
         const error = new Error('Config file corrupted');
-        expect(getExitCodeFromError(error)).toBe(ExitCode.ConfigError);
+        expect(exitCodeForError(error)).toBe(ExitCode.ConfigError);
       });
     });
 
@@ -134,20 +134,20 @@ describe('ExitCode', () => {
     ])(
       'should fall back to GeneralError for %s ("%s")',
       (_, message) => {
-        expect(getExitCodeFromError(new Error(message))).toBe(ExitCode.GeneralError);
+        expect(exitCodeForError(new Error(message))).toBe(ExitCode.GeneralError);
       },
     );
 
     it('should log verbose warning when classifyByMessage is invoked', () => {
       const verboseSpy = jest.spyOn(Logger, 'verbose').mockImplementation();
-      getExitCodeFromError(new Error('some unknown error'));
+      exitCodeForError(new Error('some unknown error'));
       expect(verboseSpy).toHaveBeenCalledWith(expect.stringContaining('Untyped error'));
       verboseSpy.mockRestore();
     });
 
     it('should not log verbose warning for typed DeepLCLIError', () => {
       const verboseSpy = jest.spyOn(Logger, 'verbose').mockImplementation();
-      getExitCodeFromError(new AuthError('test'));
+      exitCodeForError(new AuthError('test'));
       expect(verboseSpy).not.toHaveBeenCalled();
       verboseSpy.mockRestore();
     });
