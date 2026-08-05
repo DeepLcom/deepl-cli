@@ -1,8 +1,15 @@
-# Build and coverage output. The format scripts only cover src/ and tests/,
-# but prettier reaches these when pointed at the repo root.
+# The format scripts only cover src/ and tests/, but prettier reaches
+# everything below when pointed at the repo root.
+
+# Build and coverage output
 dist
 coverage
 
 # Generated from GET /v3/languages; check:languages compares the raw text, so
 # reformatting it would report permanent drift.
 src/data/language-entries.ts
+
+# Fixtures are byte-exact test inputs. Some encode the very thing under test:
+# en-reserved-words.yaml quotes "yes"/"no" so YAML 1.1 cannot read them as
+# booleans, and prettier rewrites those quotes.
+tests/fixtures/
