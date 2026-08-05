@@ -175,6 +175,12 @@ function deepMergeWithDecisions(
       continue;
     }
 
+    // Both sides carry the same value, so there is nothing to resolve and
+    // nothing worth a line in the report.
+    if (ourValue === theirValue) {
+      continue;
+    }
+
     if (isTranslationEntry(ourValue) && isTranslationEntry(theirValue)) {
       const ourDate = (ourValue as Record<string, unknown>)['translated_at'] as
         string | undefined;
@@ -252,7 +258,12 @@ function deepMergeWithDecisions(
 function isTranslationEntry(obj: unknown): boolean {
   if (typeof obj !== 'object' || obj === null) return false;
   const record = obj as Record<string, unknown>;
-  return 'translated_at' in record || 'source_hash' in record;
+  if ('translated_at' in record) return true;
+  // An object holding a `translations` map is a container, not a leaf: its
+  // timestamps belong to the locales inside it, so it has to be merged one
+  // locale at a time rather than compared at this level.
+  if ('translations' in record) return false;
+  return 'source_hash' in record;
 }
 
 export async function resolveLockFile(

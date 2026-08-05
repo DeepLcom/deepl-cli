@@ -132,6 +132,100 @@ describe('resolveConflicts()', () => {
     });
   });
 
+  // The fixtures above put translated_at directly on the entry. SyncLockManager
+  // does not write that shape: the entry carries source_hash and a translations
+  // map, and translated_at sits on each locale inside it. These drive the shape
+  // that reaches the resolver after a real `git merge`.
+  describe('the lockfile shape SyncLockManager writes', () => {
+    function conflictedLock(ourStamp: string, theirStamp: string): string {
+      const entry = (hash: string, stamp: string): string =>
+        `      "greeting": { "source_hash": "185f8db32271", "source_locale": "en", "updated_at": "2026-01-01T00:00:00.000Z", "translations": { "de": { "locale": "de", "hash": "${hash}", "translated_at": "${stamp}" } } }`;
+      return [
+        '{',
+        '  "version": 1,',
+        '  "entries": {',
+        '    "locales/en.json": {',
+        '<<<<<<< HEAD',
+        entry('ours_hash', ourStamp),
+        '=======',
+        entry('theirs_hash', theirStamp),
+        '>>>>>>> feature/de-updates',
+        '    }',
+        '  }',
+        '}',
+      ].join('\n');
+    }
+
+    function survivingHash(resolved: string): string {
+      const parsed = JSON.parse(resolved) as {
+        entries: Record<
+          string,
+          Record<string, { translations: Record<string, { hash: string }> }>
+        >;
+      };
+      return parsed.entries['locales/en.json']!['greeting']!.translations['de']!
+        .hash;
+    }
+
+    it('should take theirs when their nested translation is newer', () => {
+      const { resolved, decisions } = resolveConflicts(
+        conflictedLock('2026-02-01T00:00:00.000Z', '2026-03-01T00:00:00.000Z')
+      );
+
+      expect(survivingHash(resolved)).toBe('theirs_hash');
+      expect(
+        decisions.some(
+          (d) => d.source === 'theirs' && /newer translated_at/.test(d.reason)
+        )
+      ).toBe(true);
+    });
+
+    it('should keep ours when our nested translation is newer', () => {
+      const { resolved, decisions } = resolveConflicts(
+        conflictedLock('2026-03-01T00:00:00.000Z', '2026-02-01T00:00:00.000Z')
+      );
+
+      expect(survivingHash(resolved)).toBe('ours_hash');
+      expect(
+        decisions.some(
+          (d) => d.source === 'ours' && /newer translated_at/.test(d.reason)
+        )
+      ).toBe(true);
+    });
+
+    it('should never report that neither side had a timestamp', () => {
+      const { decisions } = resolveConflicts(
+        conflictedLock('2026-02-01T00:00:00.000Z', '2026-03-01T00:00:00.000Z')
+      );
+
+      expect(
+        decisions.filter((d) => /neither side had translated_at/.test(d.reason))
+      ).toHaveLength(0);
+    });
+
+    it('should not report fields the two sides agree on as conflicts', () => {
+      const { decisions } = resolveConflicts(
+        conflictedLock('2026-02-01T00:00:00.000Z', '2026-03-01T00:00:00.000Z')
+      );
+
+      // source_hash, source_locale and updated_at are identical on both sides.
+      expect(
+        decisions.filter((d) => /scalar conflict/.test(d.reason))
+      ).toHaveLength(0);
+    });
+
+    it('should report one decision, against the nested locale key', () => {
+      const { decisions } = resolveConflicts(
+        conflictedLock('2026-02-01T00:00:00.000Z', '2026-03-01T00:00:00.000Z')
+      );
+
+      // The merge runs on the conflict fragment, so the path is relative to it
+      // rather than to the whole lockfile. One entry, because the fields the
+      // sides agree on are not reported.
+      expect(decisions.map((d) => d.key)).toEqual(['greeting.translations.de']);
+    });
+  });
+
   describe('fallback to longer side when JSON does not parse', () => {
     it('should pick the longer side when neither side is valid JSON', () => {
       const content = [
