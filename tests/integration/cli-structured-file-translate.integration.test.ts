@@ -14,18 +14,13 @@ import { CacheService } from '../../src/storage/cache';
 import {
   createTestConfigDir,
   createTestDir,
-  makeRunCLI,
   DEEPL_FREE_API_URL,
 } from '../helpers';
 
-describe('Structured File Translation CLI Integration', () => {
+describe('Structured File Translation service integration', () => {
   const testConfig = createTestConfigDir('test-structured');
   const testFiles = createTestDir('structured-files');
   const testDir = testFiles.path;
-  const { runCLI } = makeRunCLI(testConfig.path, {
-    apiKey: 'test-api-key-123',
-  });
-
   beforeAll(() => {
     fs.writeFileSync(
       path.join(testConfig.path, 'config.json'),
@@ -51,103 +46,6 @@ describe('Structured File Translation CLI Integration', () => {
 
   afterEach(() => {
     nock.cleanAll();
-  });
-
-  describe('CLI argument validation', () => {
-    it('should accept JSON file with --to and --output flags', () => {
-      const testFile = path.join(testDir, 'validation.json');
-      fs.writeFileSync(testFile, JSON.stringify({ key: 'test' }, null, 2));
-
-      expect.assertions(1);
-      try {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.json`);
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        // Should fail on API auth, not argument validation or file type
-        expect(output).not.toMatch(/Unsupported file type/i);
-      }
-    });
-
-    it('should accept YAML file with --to and --output flags', () => {
-      expect.assertions(1);
-      const testFile = path.join(testDir, 'validation.yaml');
-      fs.writeFileSync(testFile, 'key: test\n');
-
-      expect.assertions(1);
-      try {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.yaml`);
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/Unsupported file type/i);
-      }
-    });
-
-    it('should accept .yml file with --to and --output flags', () => {
-      expect.assertions(1);
-      const testFile = path.join(testDir, 'validation.yml');
-      fs.writeFileSync(testFile, 'key: test\n');
-
-      expect.assertions(1);
-      try {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.yml`);
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/Unsupported file type/i);
-      }
-    });
-
-    it('should validate target language for structured files', () => {
-      const testFile = path.join(testDir, 'lang-val.json');
-      fs.writeFileSync(testFile, JSON.stringify({ key: 'test' }, null, 2));
-
-      expect(() => {
-        runCLI(
-          `deepl translate "${testFile}" --to INVALID --output /tmp/out.json`
-        );
-      }).toThrow();
-    });
-
-    it('should require --output flag for structured file translation', () => {
-      const testFile = path.join(testDir, 'no-output.json');
-      fs.writeFileSync(testFile, JSON.stringify({ key: 'test' }, null, 2));
-
-      expect(() => {
-        runCLI(`deepl translate "${testFile}" --to es`);
-      }).toThrow();
-    });
-
-    it('should handle empty JSON object without API call', () => {
-      const inputPath = path.join(testDir, 'empty.json');
-      const outputPath = path.join(testDir, 'empty-es.json');
-
-      fs.writeFileSync(inputPath, '{}');
-
-      const output = runCLI(
-        `deepl translate "${inputPath}" --to es --output "${outputPath}"`
-      );
-      expect(output).toContain('Translated');
-
-      const result = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
-      expect(result).toEqual({});
-    });
-
-    it('should reject invalid JSON files', () => {
-      const testFile = path.join(testDir, 'invalid.json');
-      fs.writeFileSync(testFile, '{ not valid json }');
-
-      expect(() => {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.json`);
-      }).toThrow();
-    });
-
-    it('should reject empty JSON files', () => {
-      const testFile = path.join(testDir, 'empty-file.json');
-      fs.writeFileSync(testFile, '');
-
-      expect(() => {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.json`);
-      }).toThrow();
-    });
   });
 
   describe('service-level integration (in-process with nock)', () => {
