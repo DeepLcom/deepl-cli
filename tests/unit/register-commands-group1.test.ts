@@ -4,6 +4,7 @@
  */
 
 import { Command } from 'commander';
+import { Readable } from 'stream';
 
 // ── Mock chalk ──────────────────────────────────────────────────────────────
 jest.mock('chalk', () => {
@@ -525,6 +526,112 @@ describe('registerAuth', () => {
     ).rejects.toThrow('Validation failed');
 
     expect(handleError).toHaveBeenCalledWith(setKeyError);
+  });
+
+  it('auth set-key --no-verify should save without contacting the API', async () => {
+    await loadAndRegister();
+    await program.parseAsync([
+      'node',
+      'test',
+      'auth',
+      'set-key',
+      'my-api-key-12345',
+      '--no-verify',
+    ]);
+
+    expect(mockSetKey).toHaveBeenCalledWith('my-api-key-12345', {
+      verify: false,
+    });
+    expect(mockLogger.success).toHaveBeenCalledWith(
+      expect.stringContaining('saved without validation')
+    );
+  });
+
+  describe('auth set-key reading from stdin', () => {
+    /** Swap process.stdin for a readable carrying `chunks`. */
+    async function withStdin(
+      chunks: Buffer[],
+      isTTY: boolean,
+      run: () => Promise<void>
+    ): Promise<void> {
+      const original = Object.getOwnPropertyDescriptor(process, 'stdin')!;
+      const replacement = Readable.from(chunks);
+      Object.defineProperty(replacement, 'isTTY', {
+        value: isTTY,
+        configurable: true,
+      });
+      Object.defineProperty(process, 'stdin', {
+        value: replacement,
+        configurable: true,
+      });
+      try {
+        await run();
+      } finally {
+        Object.defineProperty(process, 'stdin', original);
+      }
+    }
+
+    it('should read the key from stdin and trim it', async () => {
+      await loadAndRegister();
+
+      await withStdin([Buffer.from('  piped-api-key\n')], false, async () => {
+        await program.parseAsync([
+          'node',
+          'test',
+          'auth',
+          'set-key',
+          '--from-stdin',
+        ]);
+      });
+
+      expect(mockSetKey).toHaveBeenCalledWith('piped-api-key', {
+        verify: true,
+      });
+    });
+
+    it('should read from stdin when no key is given and stdin is not a terminal', async () => {
+      await loadAndRegister();
+
+      await withStdin([Buffer.from('implicit-key')], false, async () => {
+        await program.parseAsync(['node', 'test', 'auth', 'set-key']);
+      });
+
+      expect(mockSetKey).toHaveBeenCalledWith('implicit-key', { verify: true });
+    });
+
+    it('should refuse rather than block when no key is given on a terminal', async () => {
+      await loadAndRegister();
+
+      await withStdin([], true, async () => {
+        await expect(
+          program.parseAsync(['node', 'test', 'auth', 'set-key'])
+        ).rejects.toThrow('API key required');
+      });
+
+      expect(mockSetKey).not.toHaveBeenCalled();
+    });
+
+    it('should refuse input larger than 128KB', async () => {
+      await loadAndRegister();
+
+      await withStdin(
+        [Buffer.alloc(64 * 1024, 'a'), Buffer.alloc(65 * 1024, 'b')],
+        false,
+        async () => {
+          await expect(
+            program.parseAsync([
+              'node',
+              'test',
+              'auth',
+              'set-key',
+              '--from-stdin',
+            ])
+          ).rejects.toThrow('Input exceeds maximum size of 128KB');
+        }
+      );
+
+      expect(mockSetKey).not.toHaveBeenCalled();
+    });
   });
 
   it('auth clear should remove key and report success', async () => {
