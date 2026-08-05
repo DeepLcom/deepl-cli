@@ -1,5 +1,5 @@
 /**
- * Integration Tests for --dry-run flag across CLI commands
+ * E2E Tests for the --dry-run flag across CLI commands
  * Tests that --dry-run prevents actual operations and shows descriptive messages
  */
 
@@ -8,7 +8,7 @@ import * as path from 'path';
 import { createTestConfigDir, createTestDir, makeRunCLI } from '../helpers';
 import { ExitCode } from '../../src/utils/exit-codes';
 
-describe('--dry-run CLI Integration', () => {
+describe('--dry-run CLI E2E', () => {
   const testConfig = createTestConfigDir('dryrun');
   const testFiles = createTestDir('dryrun-files');
   const { runCLI, runCLIAll, runCLIExpectError } = makeRunCLI(testConfig.path);

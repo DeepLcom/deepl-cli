@@ -1,5 +1,5 @@
 /**
- * Integration Tests for Lazy CacheService Instantiation
+ * E2E Tests for Lazy CacheService Instantiation
  * Verifies that commands not needing cache (help, version, auth, config)
  * do not trigger SQLite database creation.
  */

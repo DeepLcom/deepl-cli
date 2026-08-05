@@ -1,5 +1,5 @@
 /**
- * Integration tests for --config flag
+ * E2E tests for the --config flag
  * Tests using custom configuration files
  */
 
@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { makeRunCLI } from '../helpers';
 
-describe('CLI --config flag integration', () => {
+describe('CLI --config flag E2E', () => {
   const testDir = path.join(
     os.tmpdir(),
     `.deepl-cli-config-test-${Date.now()}`

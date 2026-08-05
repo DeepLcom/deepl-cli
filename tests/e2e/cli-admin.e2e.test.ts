@@ -1,11 +1,11 @@
 /**
- * Integration Tests for Admin CLI Command
+ * E2E Tests for Admin CLI Command
  * Tests the admin command CLI behavior, argument validation, and error handling
  */
 
 import { createTestConfigDir, makeRunCLI } from '../helpers';
 
-describe('Admin CLI Integration', () => {
+describe('Admin CLI E2E', () => {
   const testConfig = createTestConfigDir('admin');
   const { runCLI, runCLIAll } = makeRunCLI(testConfig.path);
 
