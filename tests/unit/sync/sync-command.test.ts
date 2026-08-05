@@ -1124,6 +1124,34 @@ describe('SyncCommand', () => {
       }
     }
 
+    // A watch cycle's observable effect lands several async hops after the
+    // debounce timer fires, and a cycle overlapping an in-flight sync is
+    // coalesced into `pendingRun` — its effect then arrives only once the
+    // running sync reaches its `finally` and re-dispatches. The number of hops
+    // therefore depends on real filesystem I/O timing, so a fixed drain races
+    // microsecond-scale loop iterations against millisecond-scale syscalls,
+    // exactly as phase 1 of flushWatchSetup avoids doing.
+    //
+    // Waiting on the outcome is sound rather than merely lenient: coalescing
+    // defers a cycle, it never drops one, so the expected count is always
+    // reached eventually. A genuine regression still fails, via the ceiling
+    // below rather than an off-by-one on a half-settled pipeline.
+    async function flushUntil(
+      isSettled: () => boolean,
+      what: string
+    ): Promise<void> {
+      let rounds = 0;
+      while (!isSettled()) {
+        if (rounds >= SETUP_READY_MAX_ROUNDS) {
+          throw new Error(
+            `${what} did not settle within ${SETUP_READY_MAX_ROUNDS} flush rounds`
+          );
+        }
+        await flushRound();
+        rounds++;
+      }
+    }
+
     it('should create a chokidar watcher with bucket include patterns', async () => {
       const result = makeResult();
       const mockService = createMockSyncService(result);
@@ -1263,37 +1291,36 @@ describe('SyncCommand', () => {
 
       await flushWatchSetup();
 
+      const commitCount = (): number =>
+        mockExecFile.mock.calls.filter(
+          (c: unknown[]) =>
+            Array.isArray(c[1]) && (c[1] as string[]).includes('commit')
+        ).length;
+
       // Baseline: the pre-watch initial sync should already have committed once.
-      const commitsBefore = mockExecFile.mock.calls.filter(
-        (c: unknown[]) =>
-          Array.isArray(c[1]) && (c[1] as string[]).includes('commit')
-      ).length;
+      const commitsBefore = commitCount();
       expect(commitsBefore).toBeGreaterThanOrEqual(1);
 
       // Trigger a watch cycle by firing one of the registered change handlers,
-      // then advance timers past the debounce window and flush microtasks so
-      // the queued sync + autoCommit pipeline runs to completion.
+      // then advance timers past the debounce window and wait for that cycle's
+      // commit before starting the next, so the two cycles cannot coalesce.
       expect(registeredHandlers.length).toBeGreaterThan(0);
       registeredHandlers[0]!();
       await jest.advanceTimersByTimeAsync(60);
-      await flushWatchSetup();
-
-      const commitsAfterFirstCycle = mockExecFile.mock.calls.filter(
-        (c: unknown[]) =>
-          Array.isArray(c[1]) && (c[1] as string[]).includes('commit')
-      ).length;
-      expect(commitsAfterFirstCycle).toBe(commitsBefore + 1);
+      await flushUntil(
+        () => commitCount() >= commitsBefore + 1,
+        'first watch cycle commit'
+      );
+      expect(commitCount()).toBe(commitsBefore + 1);
 
       // Second cycle — an independent edit should produce another commit.
       registeredHandlers[0]!();
       await jest.advanceTimersByTimeAsync(60);
-      await flushWatchSetup();
-
-      const commitsAfterSecondCycle = mockExecFile.mock.calls.filter(
-        (c: unknown[]) =>
-          Array.isArray(c[1]) && (c[1] as string[]).includes('commit')
-      ).length;
-      expect(commitsAfterSecondCycle).toBe(commitsBefore + 2);
+      await flushUntil(
+        () => commitCount() >= commitsBefore + 2,
+        'second watch cycle commit'
+      );
+      expect(commitCount()).toBe(commitsBefore + 2);
 
       for (const listener of sigintListeners) listener();
       await runPromise;
