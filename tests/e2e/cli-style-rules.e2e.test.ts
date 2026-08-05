@@ -1,8 +1,10 @@
 /**
  * E2E Tests for Style Rules Command
  *
- * The subcommand surface -- synopsis, description and options -- is asserted
- * from one table, so a new subcommand is covered by adding a row. Style-rule
+ * The subcommand surface -- description and options -- is asserted from one
+ * table, so a new subcommand is covered by adding a row. The declared arity
+ * itself is asserted centrally in tests/unit/docs/documented-surface.test.ts.
+ * Style-rule
  * behaviour that needs a Pro account is covered by the nock suite in
  * cli-style-rules.integration.test.ts; what belongs here is argument
  * validation and the --dry-run paths, which run without credentials.
@@ -12,61 +14,51 @@ import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
 const SUBCOMMANDS: Array<{
   name: string;
-  synopsis: string;
   description: string;
   options: string[];
 }> = [
   {
     name: 'list',
-    synopsis: 'list [options]',
     description: 'List all style rules',
     options: ['--detailed', '--page', '--page-size', '--format'],
   },
   {
     name: 'create',
-    synopsis: 'create [options]',
     description: 'Create a new style rule list',
     options: ['--name', '--language', '--rules', '--format'],
   },
   {
     name: 'show',
-    synopsis: 'show [options] <id>',
     description: 'Show a single style rule list',
     options: ['--detailed', '--format'],
   },
   {
     name: 'update',
-    synopsis: 'update [options] <id>',
     description: 'Update a style rule list',
     options: ['--name', '--rules'],
   },
   {
     name: 'delete',
-    synopsis: 'delete [options] <id>',
     description: 'Delete a style rule list',
     options: ['--yes', '--dry-run'],
   },
   {
     name: 'instructions',
-    synopsis: 'instructions [options] <style-id>',
     description: 'List custom instructions for a style rule',
     options: ['--format'],
   },
   {
     name: 'add-instruction',
-    synopsis: 'add-instruction [options] <style-id> <label> <prompt>',
     description: 'Add a custom instruction to a style rule',
     options: ['--source-language'],
   },
   {
     name: 'update-instruction',
-    synopsis: 'update-instruction [options] <style-id> <label> <prompt>',
     description: 'Update a custom instruction on a style rule',
     options: ['--source-language'],
   },
   {
     name: 'remove-instruction',
-    synopsis: 'remove-instruction [options] <style-id> <label>',
     description: 'Remove a custom instruction from a style rule',
     options: ['--yes', '--dry-run'],
   },
@@ -103,14 +95,6 @@ describe('Style Rules Command E2E', () => {
       for (const { name, description } of SUBCOMMANDS) {
         expect(output).toContain(name);
         expect(output).toContain(description);
-      }
-    });
-
-    it('should declare the required arguments of every subcommand', () => {
-      const output = runCLI('style-rules --help');
-
-      for (const { synopsis } of SUBCOMMANDS) {
-        expect(output).toContain(synopsis);
       }
     });
 

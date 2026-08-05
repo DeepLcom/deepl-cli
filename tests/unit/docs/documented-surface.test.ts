@@ -12,9 +12,47 @@ import { getAllLanguageCodes } from '../../../src/data/language-registry';
 interface DescribedCommand {
   name: string;
   aliases: string[];
+  arguments: { name: string; required: boolean }[];
   options: { flags: string }[];
   commands: DescribedCommand[];
+  hidden: boolean;
 }
+
+/**
+ * Every command taking a required positional argument, and which arguments it
+ * requires. Relaxing one to optional, or adding a new required one, changes the
+ * CLI's calling convention for anyone already scripting against it.
+ */
+const REQUIRED_ARGUMENTS: Record<string, string[]> = {
+  voice: ['file'],
+  watch: ['path'],
+  completion: ['shell'],
+  'config set': ['key', 'value'],
+  'hooks install': ['hook-type'],
+  'hooks uninstall': ['hook-type'],
+  'hooks path': ['hook-type'],
+  'glossary create': ['name', 'source-lang', 'target-lang', 'file'],
+  'glossary show': ['name-or-id'],
+  'glossary entries': ['name-or-id'],
+  'glossary delete': ['name-or-id'],
+  'glossary update': ['name-or-id'],
+  'glossary rename': ['name-or-id', 'new-name'],
+  'glossary add-entry': ['name-or-id', 'source', 'target'],
+  'glossary update-entry': ['name-or-id', 'source', 'new-target'],
+  'glossary remove-entry': ['name-or-id', 'source'],
+  'glossary replace-dictionary': ['name-or-id', 'target-lang', 'file'],
+  'glossary delete-dictionary': ['name-or-id', 'target-lang'],
+  'style-rules show': ['id'],
+  'style-rules update': ['id'],
+  'style-rules delete': ['id'],
+  'style-rules instructions': ['style-id'],
+  'style-rules add-instruction': ['style-id', 'label', 'prompt'],
+  'style-rules update-instruction': ['style-id', 'label', 'prompt'],
+  'style-rules remove-instruction': ['style-id', 'label'],
+  'admin keys deactivate': ['key-id'],
+  'admin keys rename': ['key-id', 'label'],
+  'admin keys set-limit': ['key-id', 'characters'],
+};
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const CLI_ENTRY = path.join(ROOT, 'dist', 'cli', 'index.js');
@@ -220,6 +258,80 @@ describe('documented CLI surface', () => {
       );
 
       expect(unknown).toEqual([]);
+    });
+  });
+
+  // Walks the whole tree. Hidden commands are renamed-command rejectors: part of
+  // the parsed surface but not the documented one, and _describe reports the
+  // flag so neither check below needs to know their names.
+  function eachCommand(
+    visit: (command: DescribedCommand, commandPath: string[]) => void
+  ): void {
+    const walk = (cmd: DescribedCommand, prefix: string[]): void => {
+      for (const child of cmd.commands) {
+        if (child.name === 'help' || child.hidden) continue;
+        const next = [...prefix, child.name];
+        visit(child, next);
+        walk(child, next);
+      }
+    };
+    walk(surface, []);
+  }
+
+  describe('subcommand coverage', () => {
+    it('documents an invocation of every subcommand', () => {
+      // A top-level command missing from docs/API.md's table is caught above.
+      // This catches the subcommand case, where a new `glossary` or `sync` verb
+      // can ship with no documented invocation at all.
+      const documentedPaths = new Set<string>();
+      for (const docPath of DOCS) {
+        const contents = fs.readFileSync(path.join(ROOT, docPath), 'utf-8');
+        for (const invocation of invocations(contents)) {
+          const tokens = commandTokens(invocation);
+          for (let depth = 1; depth <= tokens.length; depth++) {
+            documentedPaths.add(tokens.slice(0, depth).join(' '));
+          }
+        }
+      }
+
+      const undocumented: string[] = [];
+      eachCommand((_command, commandPath) => {
+        if (commandPath.length < 2) return;
+        const joined = commandPath.join(' ');
+        if (!documentedPaths.has(joined)) undocumented.push(joined);
+      });
+
+      expect(undocumented).toEqual([]);
+    });
+  });
+
+  describe('positional argument surface', () => {
+    it('requires exactly the arguments recorded above', () => {
+      const actual: Record<string, string[]> = {};
+      eachCommand((command, commandPath) => {
+        const required = command.arguments
+          .filter((argument) => argument.required)
+          .map((argument) => argument.name);
+        if (required.length > 0) actual[commandPath.join(' ')] = required;
+      });
+
+      expect(actual).toEqual(REQUIRED_ARGUMENTS);
+    });
+
+    it('declares optional arguments after required ones', () => {
+      // Commander cannot parse a required argument that follows an optional one,
+      // so the declaration order is a correctness constraint, not a style rule.
+      const offenders: string[] = [];
+      eachCommand((command, commandPath) => {
+        const firstOptional = command.arguments.findIndex((a) => !a.required);
+        if (firstOptional === -1) return;
+        const requiredAfter = command.arguments
+          .slice(firstOptional)
+          .some((a) => a.required);
+        if (requiredAfter) offenders.push(commandPath.join(' '));
+      });
+
+      expect(offenders).toEqual([]);
     });
   });
 

@@ -5,81 +5,68 @@
  * subcommand, so a new subcommand is covered by adding a row. Glossary
  * behaviour that needs an account -- creating, listing, entry edits -- belongs
  * to the glossary service and client unit suites; what matters here is that
- * every subcommand declares its required arguments and refuses to run without
- * them.
+ * every subcommand refuses to run when a required argument is missing. The
+ * declared arity itself is asserted centrally in
+ * tests/unit/docs/documented-surface.test.ts.
  */
 
 import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
-/** Every `glossary` subcommand, with the synopsis its help must show. */
+/** Every `glossary` subcommand, with the description its help must show. */
 const SUBCOMMANDS: Array<{
   name: string;
-  synopsis: string;
   description: string;
 }> = [
   {
     name: 'create',
-    synopsis: 'create <name> <source-lang> <target-lang> <file>',
     description: 'Create a glossary from TSV/CSV file',
   },
   {
     name: 'list',
-    synopsis: 'list [options]',
     description: 'List all glossaries',
   },
   {
     name: 'show',
-    synopsis: 'show [options] <name-or-id>',
     description: 'Show glossary details',
   },
   {
     name: 'entries',
-    synopsis: 'entries [options] <name-or-id>',
     description: 'Show glossary entries',
   },
   {
     name: 'delete',
-    synopsis: 'delete [options] <name-or-id>',
     description: 'Delete a glossary',
   },
   {
     name: 'languages',
-    synopsis: 'languages',
     description: 'List supported glossary language pairs',
   },
   {
     name: 'add-entry',
-    synopsis: 'add-entry [options] <name-or-id> <source> <target>',
     description: 'Add a new entry to a glossary',
   },
   {
     name: 'update-entry',
-    synopsis: 'update-entry [options] <name-or-id> <source> <new-target>',
     description: 'Update an existing entry in a glossary',
   },
   {
     name: 'remove-entry',
-    synopsis: 'remove-entry [options] <name-or-id> <source>',
     description: 'Remove an entry from a glossary',
   },
   {
     name: 'rename',
-    synopsis: 'rename <name-or-id> <new-name>',
     description: 'Rename a glossary',
   },
   {
     name: 'update',
-    synopsis: 'update [options] <name-or-id>',
     description: 'Update glossary name and/or dictionary entries',
   },
   {
     name: 'replace-dictionary',
-    synopsis: 'replace-dictionary <name-or-id> <target-lang> <file>',
     description: 'Replace all entries in a glossary dictionary',
   },
   {
     name: 'delete-dictionary',
-    synopsis: 'delete-dictionary [options] <name-or-id> <target-lang>',
     description: 'Delete a dictionary from a multilingual glossary',
   },
 ];
@@ -118,14 +105,6 @@ describe('Glossary Command E2E', () => {
       for (const { name, description } of SUBCOMMANDS) {
         expect(output).toContain(name);
         expect(output).toContain(description);
-      }
-    });
-
-    it('should declare the required arguments of every subcommand', () => {
-      const output = runCLI('glossary --help');
-
-      for (const { synopsis } of SUBCOMMANDS) {
-        expect(output).toContain(synopsis);
       }
     });
 

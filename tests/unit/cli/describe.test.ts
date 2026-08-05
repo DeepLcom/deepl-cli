@@ -19,12 +19,21 @@ describe('describeProgram', () => {
       .option('-t, --to <lang>', 'Target language')
       .option('-f, --from <lang>', 'Source language');
 
+    program
+      .command('show')
+      .description('Show a glossary')
+      .argument('<name-or-id>', 'Glossary name or ID')
+      .argument('[target-lang]', 'Restrict to one target language');
+
     const sync = program
       .command('sync')
       .alias('sy')
       .description('Sync translations with TMS');
     sync.command('push').description('Push translations');
     sync.command('pull').description('Pull translations');
+    sync
+      .command('legacy-name', { hidden: true })
+      .description('Renamed; kept to point callers at the new name');
   });
 
   describe('shape', () => {
@@ -80,6 +89,71 @@ describe('describeProgram', () => {
       const result = describeProgram(program);
       const translate = result.commands.find((c) => c.name === 'translate');
       expect(translate?.aliases).toEqual([]);
+    });
+  });
+
+  describe('positional arguments', () => {
+    it('reports each argument in declaration order', () => {
+      const show = describeProgram(program).commands.find(
+        (c) => c.name === 'show'
+      );
+
+      expect(show?.arguments.map((a) => a.name)).toEqual([
+        'name-or-id',
+        'target-lang',
+      ]);
+    });
+
+    it('distinguishes required from optional arguments', () => {
+      const show = describeProgram(program).commands.find(
+        (c) => c.name === 'show'
+      );
+
+      expect(show?.arguments).toEqual([
+        { name: 'name-or-id', required: true },
+        { name: 'target-lang', required: false },
+      ]);
+    });
+
+    it('reports an empty list for a command taking no arguments', () => {
+      const translate = describeProgram(program).commands.find(
+        (c) => c.name === 'translate'
+      );
+
+      expect(translate?.arguments).toEqual([]);
+    });
+  });
+
+  describe('hidden commands', () => {
+    // Hidden subcommands are usually renamed-command rejectors. They are part of
+    // the parsed surface but not of the documented one, so a consumer of
+    // _describe needs to tell them apart without hard-coding their names.
+    it('marks a hidden subcommand as hidden', () => {
+      const sync = describeProgram(program).commands.find(
+        (c) => c.name === 'sync'
+      );
+      const legacy = sync?.commands.find((c) => c.name === 'legacy-name');
+
+      expect(legacy?.hidden).toBe(true);
+    });
+
+    it('marks a visible subcommand as not hidden', () => {
+      const sync = describeProgram(program).commands.find(
+        (c) => c.name === 'sync'
+      );
+
+      expect(sync?.commands.find((c) => c.name === 'push')?.hidden).toBe(false);
+      expect(sync?.hidden).toBe(false);
+    });
+
+    it('still reports the hidden command so the surface stays complete', () => {
+      const sync = describeProgram(program).commands.find(
+        (c) => c.name === 'sync'
+      );
+
+      expect(sync?.commands.map((c) => c.name)).toEqual(
+        expect.arrayContaining(['push', 'pull', 'legacy-name'])
+      );
     });
   });
 
