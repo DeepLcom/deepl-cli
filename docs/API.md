@@ -186,7 +186,7 @@ Commands are organized into six groups, matching the `deepl --help` output:
 
 | Group              | Commands                                         | Description                                                               |
 | ------------------ | ------------------------------------------------ | ------------------------------------------------------------------------- |
-| **Core Commands**  | `translate`, `write`, `voice`                    | Translation, writing enhancement, and speech translation                  |
+| **Core Commands**  | `translate`, `write`, `correct`, `voice`         | Translation, writing enhancement, spelling and grammar correction, and speech translation |
 | **Resources**      | `glossary`, `tm`                                 | Manage translation glossaries and translation memory                      |
 | **Workflow**       | `watch`, `sync`, `hooks`                         | File watching, project sync, and git hook automation                      |
 | **Configuration**  | `init`, `auth`, `config`, `cache`, `style-rules` | Setup wizard, authentication, settings, caching, and style rules          |
@@ -251,7 +251,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--non-splitting-tags TAGS` - Comma-separated XML tags that should not be used to split sentences (requires `--tag-handling xml`)
 - `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
 - `--tag-handling-version VERSION` - Tag handling version: `v1`, `v2`. v2 improves XML/HTML structure handling (requires `--tag-handling`). **Defaults to `v2`**, sent explicitly on every `--tag-handling` request rather than left to the API's own default, which is documented as moving from v1 to v2 at some point — pinning keeps output from shifting on DeepL's timetable. Pass `--tag-handling-version v1` for the older behaviour, which DeepL documents as heading for deprecation
-- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. Repeatable, up to 5 per request; when several glossaries define the same source term, the last one given wins. Passing a 6th exits 6 (ValidationError). A source language is required, because the API rejects a glossary without one: supply `--from`, or set `defaults.sourceLang` and it is used automatically. With neither, the command exits 6 before any request.
+- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. Repeatable, up to 5 per request; entries are merged, so terms unique to each glossary all apply. When several glossaries define the same source term, which mapping wins is the API's choice and does not follow flag order, so position is not a way to override a term. Passing a 6th exits 6 (ValidationError). A source language is required, because the API rejects a glossary without one: supply `--from`, or set `defaults.sourceLang` and it is used automatically. With neither, the command exits 6 before any request.
 - `--translation-memory NAME-OR-UUID` - Use translation memory by name or UUID (forces `quality_optimized` model). Requires `--from` because TMs are pinned to a specific source→target language pair. Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--tm-threshold N` - Minimum match score 0–100 (default 75, requires `--translation-memory`). Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--custom-instruction INSTRUCTION` - Custom instruction for translation (repeatable, max 10, max 300 chars each). Forces `quality_optimized` model. Cannot be used with `latency_optimized`.
@@ -553,14 +553,12 @@ deepl translate README.md --from en --to fr --glossary abc-123-def-456 --output 
 
 **Multiple glossaries on one request:**
 
-Repeat `--glossary` to apply up to 5 glossaries to a single request. Their entries are merged, so terms unique to each glossary all apply. When more than one glossary defines the same source term, the **last** `--glossary` on the command line wins — order is significant, and reordering the flags produces a different translation (and a separate cache entry). Names and UUIDs can be mixed; each value is resolved independently. A 6th `--glossary` exits 6 (ValidationError). A name that cannot be resolved — unknown, ambiguous, or covering a different language pair than the one requested — exits 7 (ConfigError) without sending a translation request.
+Repeat `--glossary` to apply up to 5 glossaries to a single request. Their entries are merged, so terms unique to each glossary all apply. When more than one glossary defines the same source term, **which mapping wins is the API's choice and does not follow flag order** — position is not a way to override a term, so avoid relying on one glossary to shadow another. The order is still sent as given and never sorted, because it is part of the cache key: reordering the flags is a different request with its own cache entry. Names and UUIDs can be mixed; each value is resolved independently. A 6th `--glossary` exits 6 (ValidationError). A name that cannot be resolved — unknown, ambiguous, or covering a different language pair than the one requested — exits 7 (ConfigError) without sending a translation request.
 
 ```bash
-# Shared base terminology, overridden by project-specific terms
+# Shared base terminology combined with project-specific terms; terms unique
+# to each apply, and a term defined in both is resolved by the API
 deepl translate "Hello world" --from en --to de --glossary base-terms --glossary project-overrides
-
-# Reversing the order makes base-terms win any conflicting entry
-deepl translate "Hello world" --from en --to de --glossary project-overrides --glossary base-terms
 
 # Names and UUIDs can be mixed
 deepl translate README.md --from en --to fr --output README.fr.md \
@@ -1114,7 +1112,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - `--to, -t LANGS` - Target language(s), comma-separated (uses configured `defaults.targetLangs` if omitted)
 - `--output, -o DIR` - Output directory (default: `<path>/translations` for directories, same dir for files)
 - `--pattern GLOB` - File pattern filter (e.g., `*.md`, `**/*.json`)
-- `--debounce MS` - Debounce delay in milliseconds (default: 500)
+- `--debounce MS` - Debounce delay in milliseconds. The flag wins, then the configured `watch.debounceMs`, then the default of 500
 - `--concurrency NUM` - Maximum parallel translations (default: 5)
 
 **Translation Options:**
@@ -3197,6 +3195,14 @@ Route outbound DeepL API requests through an HTTPS proxy. Takes precedence over 
 
 ```bash
 export HTTPS_PROXY="http://proxy.example.com:3128"
+```
+
+### `NO_PROXY`
+
+Comma-separated list of hosts that bypass `HTTP_PROXY` / `HTTPS_PROXY`. Standard semantics apply: `*` bypasses everything, a leading dot or `*.` matches subdomains, and an entry may carry a `host:port` that must agree with the target port. Also recognized as lowercase `no_proxy`.
+
+```bash
+export NO_PROXY="localhost,127.0.0.1,.internal.example.com"
 ```
 
 ### `TMS_API_KEY`

@@ -392,6 +392,14 @@ deepl languages --source
 deepl languages --target
 ```
 
+### Unsupported Node.js version
+
+The CLI exits 6 with a single line naming the required and the running version — `requires Node.js >= 24, you are running v22.11.0. Upgrade Node.js to use the DeepL CLI.`
+
+**Cause:** The CLI requires Node.js 24 or later and checks the version at startup, before loading anything else, so an unsupported runtime gets that one line instead of an experimental-module warning or a later crash.
+
+**Solution:** upgrade Node.js — e.g. `nvm install 24 && nvm use 24`, or install Node 24 from [nodejs.org](https://nodejs.org/). Confirm with `node --version` that the runtime invoking `deepl` is the upgraded one; a globally linked CLI can otherwise still run under an older default.
+
 ---
 
 ## Cache Issues
@@ -423,11 +431,11 @@ deepl cache enable
 
 ### "Translation cache backend failed to load"
 
-**Cause:** The cache uses Node's built-in `node:sqlite` module, which requires Node.js 24 or later (the CLI's minimum supported version). On an older runtime the module doesn't exist, so caching cannot start.
+**Cause:** The cache uses Node's built-in `node:sqlite` module and the runtime could not load it. Running on Node.js older than 24 is reported earlier and separately — see [Unsupported Node.js version](#unsupported-nodejs-version) — so what reaches this message is a runtime that reports version 24 or later but still has no usable `node:sqlite`: a Node built without SQLite support, or a non-Node runtime claiming a compatible version.
 
-Translation and write commands keep working with caching disabled for the run; your cache database is not modified. `deepl cache` subcommands fail until the CLI runs on a supported Node.js version.
+Translation and write commands keep working with caching disabled for the run; your cache database is not modified. `deepl cache` subcommands fail until the module loads.
 
-**Solution:** run the CLI with Node.js 24 or later — e.g. `nvm install 24 && nvm use 24`, or install Node 24 from [nodejs.org](https://nodejs.org/).
+**Solution:** run the CLI on an official Node.js 24+ build — e.g. `nvm install 24 && nvm use 24`, or install Node 24 from [nodejs.org](https://nodejs.org/). To confirm the module is the problem, check that `node -e "require('node:sqlite')"` succeeds on the same runtime.
 
 ---
 

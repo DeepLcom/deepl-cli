@@ -149,6 +149,49 @@ describe('documented CLI surface', () => {
     });
   });
 
+  describe('command-group table in docs/API.md', () => {
+    // The table claims to match `deepl --help`, so a command missing from it
+    // reads as one the CLI does not have. `correct` was absent from the Core
+    // Commands row for a whole release while having its own reference section,
+    // which no invocation-level check can see.
+    function groupedCommands(): Set<string> {
+      const contents = fs.readFileSync(path.join(ROOT, 'docs/API.md'), 'utf-8');
+      const table = contents.slice(contents.indexOf('## Commands'));
+      const names = new Set<string>();
+
+      let started = false;
+      for (const line of table.split('\n')) {
+        const isGroupRow = line.startsWith('| **');
+        if (isGroupRow) started = true;
+        else if (started) break;
+        if (!isGroupRow) continue;
+
+        for (const cell of line.match(/`([a-z-]+)`/g) ?? []) {
+          names.add(cell.replace(/`/g, ''));
+        }
+      }
+      return names;
+    }
+
+    it('lists every command the CLI exposes in --help', () => {
+      const documented = groupedCommands();
+      const missing = surface.commands
+        .map((command) => command.name)
+        .filter((name) => !name.startsWith('_') && name !== 'help')
+        .filter((name) => !documented.has(name));
+
+      expect(missing).toEqual([]);
+    });
+
+    it('lists no command the CLI does not provide', () => {
+      const unknown = [...groupedCommands()].filter(
+        (name) => resolveCommand([name]) === undefined,
+      );
+
+      expect(unknown).toEqual([]);
+    });
+  });
+
   describe('retired endpoints', () => {
     // Language listings moved to GET /v3/languages; the v2 endpoints are
     // formally deprecated, so no doc should teach a reader to call them.

@@ -41,7 +41,7 @@ For security policy and vulnerability reporting, see [SECURITY.md](SECURITY.md).
     - [Proxy Configuration](#proxy-configuration)
     - [Retry and Timeout Configuration](#retry-and-timeout-configuration)
 - [Usage](#-usage)
-  - **Core Commands:** [Translation](#translation) | [Writing Enhancement](#writing-enhancement) | [Voice Translation](#voice-translation)
+  - **Core Commands:** [Translation](#translation) | [Writing Enhancement](#writing-enhancement) | [Spelling and Grammar Correction](#spelling-and-grammar-correction) | [Voice Translation](#voice-translation)
   - **Resources:** [Glossaries](#glossaries) | [Translation Memories](#translation-memories)
   - **Workflow:** [Continuous Localization (sync)](#continuous-localization-deepl-sync) | [Watch Mode](#watch-mode) | [Git Hooks](#git-hooks)
   - **Configuration:** [Setup Wizard](#setup-wizard) | [Authentication](#authentication) | [Configure Defaults](#configure-defaults) | [Cache Management](#cache-management) | [Style Rules](#style-rules)
@@ -1307,10 +1307,10 @@ authentication	Authentifizierung
 - **Smart defaults** - `--target` flag only required for multilingual glossaries
 - **Visual indicators** - 📖 for single-target, 📚 for multilingual glossaries
 - **Translation integration** - Use `--glossary` flag in translate and watch commands to apply glossary terms (a source language is required, since the API rejects a glossary without one: pass `--from`, or set `defaults.sourceLang`)
-- **Several glossaries at once** - Repeat `--glossary` on `translate` for up to 5 glossaries; entries are merged and the last glossary given wins any conflicting term
+- **Several glossaries at once** - Repeat `--glossary` on `translate` for up to 5 glossaries; entries are merged, and a term defined in more than one is resolved by the API, not by flag order
 
 ```bash
-# Layer project overrides on top of shared base terminology
+# Combine shared base terminology with project-specific terms
 deepl translate "Hello world" --from en --to de --glossary base-terms --glossary project-overrides
 ```
 
