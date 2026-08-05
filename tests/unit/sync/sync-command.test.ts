@@ -1126,16 +1126,9 @@ describe('SyncCommand', () => {
 
     // A watch cycle's observable effect lands several async hops after the
     // debounce timer fires, and a cycle overlapping an in-flight sync is
-    // coalesced into `pendingRun` — its effect then arrives only once the
-    // running sync reaches its `finally` and re-dispatches. The number of hops
-    // therefore depends on real filesystem I/O timing, so a fixed drain races
-    // microsecond-scale loop iterations against millisecond-scale syscalls,
-    // exactly as phase 1 of flushWatchSetup avoids doing.
-    //
-    // Waiting on the outcome is sound rather than merely lenient: coalescing
-    // defers a cycle, it never drops one, so the expected count is always
-    // reached eventually. A genuine regression still fails, via the ceiling
-    // below rather than an off-by-one on a half-settled pipeline.
+    // coalesced into `pendingRun` — its effect arrives only once the running
+    // sync reaches its `finally` and re-dispatches. Coalescing defers a cycle
+    // and never drops one, so the awaited count is always reached eventually.
     async function flushUntil(
       isSettled: () => boolean,
       what: string
