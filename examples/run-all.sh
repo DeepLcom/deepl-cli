@@ -77,6 +77,8 @@ EXAMPLES=(
   "23-sync-ci.sh"
   "24-sync-live-validation.sh"
   "25-sync-laravel-php.sh"
+  "26-sync-resolve.sh"
+  "27-sync-audit.sh"
   # Configuration
   "28-configuration.sh"
   "29-custom-config-files.sh"
@@ -128,6 +130,8 @@ if [ "$FAST_MODE" = true ]; then
     "23-sync-ci.sh"
     "24-sync-live-validation.sh"
     "25-sync-laravel-php.sh"
+    "26-sync-resolve.sh"
+    "27-sync-audit.sh"
     # Configuration
     "28-configuration.sh"
     "29-custom-config-files.sh"

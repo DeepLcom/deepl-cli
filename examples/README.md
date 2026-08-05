@@ -42,6 +42,13 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Sync — CI/CD Integration](./23-sync-ci.sh) - Using deepl sync in automated pipelines
 - [Sync — Live Validation](./24-sync-live-validation.sh) - Comprehensive end-to-end validation of all sync features
 - [Sync — Laravel PHP arrays](./25-sync-laravel-php.sh) - `laravel_php` format parser: AST allowlist, span-surgical reconstruct, pipe-pluralization warning gate, `sync.limits` caps
+- [Sync — Resolve Lockfile Conflicts](./26-sync-resolve.sh) - Auto-resolving a `.deepl-sync.lock` left conflicted by `git merge`, and previewing the decisions first
+- [Sync — Audit Translation Consistency](./27-sync-audit.sh) - Finding one source term translated two different ways across a project
+
+`deepl sync push` and `deepl sync pull` have no example script here. They need a
+reachable TMS endpoint and a `TMS_API_KEY`, so an example could not run
+unattended as part of `run-all.sh`; see [docs/SYNC.md](../docs/SYNC.md) for their
+reference documentation.
 
 ### Configuration
 
