@@ -56,6 +56,11 @@ export default {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: {
+        // tsconfig.json disables source maps to keep them out of the published
+        // package. ts-jest merges the options below over that file rather than
+        // replacing it, and istanbul needs the maps to attribute coverage to
+        // TypeScript lines instead of to positions in the emitted JavaScript.
+        sourceMap: true,
         // Relaxed settings for tests
         strict: true,
         esModuleInterop: true,
