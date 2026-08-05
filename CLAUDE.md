@@ -193,6 +193,7 @@ PR descriptions should include:
 ## Pre-Commit Checklist
 
 - [ ] All tests pass (`npm test`)
+- [ ] Coverage thresholds hold (`npm run test:coverage`) — this is what CI runs, so a change that passes `npm test` can still fail the build
 - [ ] Formatting is clean (`npm run format:check`) — the format-on-commit hook handles this if enabled; see CONTRIBUTING.md
 - [ ] Linter passes (`npm run lint`) — warnings fail the build (`--max-warnings 0`)
 - [ ] TypeScript compiles (`npm run type-check`)

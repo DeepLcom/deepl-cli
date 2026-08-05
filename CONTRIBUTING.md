@@ -196,8 +196,10 @@ Contributions must be licensed under the same license as the project:
 2. **Write tests first**, then implement the feature (TDD).
 3. **Run the full check suite** before pushing:
    ```bash
-   npm test && npm run lint && npm run type-check && npm run build
+   npm run test:coverage && npm run lint && npm run type-check && npm run build
    ```
+   `test:coverage` runs the same suite as `npm test` and additionally enforces
+   the coverage thresholds, which is what CI gates on.
 4. **Open a PR** with a clear description covering:
    - Summary of the change and motivation
    - List of specific changes
@@ -207,7 +209,7 @@ Contributions must be licensed under the same license as the project:
 
 ### PR Checklist
 
-- [ ] All tests pass (`npm test`)
+- [ ] All tests pass and coverage thresholds hold (`npm run test:coverage`)
 - [ ] Linter passes (`npm run lint`)
 - [ ] TypeScript compiles (`npm run type-check`)
 - [ ] New code includes unit, integration, and e2e tests
