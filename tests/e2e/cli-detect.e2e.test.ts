@@ -20,18 +20,20 @@ describe('Detect Command E2E', () => {
       expect(output).toContain('Usage:');
       expect(output).toContain('detect');
       expect(output).toContain('Options:');
+      expect(output).toContain('Examples:');
     });
 
     it('should describe the command', () => {
       const output = runCLI('detect --help');
 
-      expect(output).toMatch(/detect|language/i);
+      expect(output).toContain('Detect the language of text');
     });
 
-    it('should show --format option', () => {
+    it('should show --format option with its choices', () => {
       const output = runCLI('detect --help');
 
       expect(output).toContain('--format');
+      expect(output).toContain('json');
     });
 
     it('should show text argument as optional', () => {
@@ -73,7 +75,7 @@ describe('Detect Command E2E', () => {
     it('should show detect in main help with description', () => {
       const helpOutput = runCLI('--help');
 
-      expect(helpOutput).toMatch(/detect.*language/i);
+      expect(helpOutput).toContain('Detect the language of text');
     });
   });
 
