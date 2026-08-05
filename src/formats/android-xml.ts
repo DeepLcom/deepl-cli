@@ -1,4 +1,8 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  TranslatedEntry,
+} from './format.js';
 import { ValidationError } from '../utils/errors.js';
 import {
   replaceElements,
@@ -48,52 +52,82 @@ const XML_ENTITY_RE = /&(?:#x([0-9a-fA-F]+)|#(\d+)|(amp|lt|gt|quot|apos));/g;
  * `&lt;` rather than collapsing all the way to `<`.
  */
 function decodeXmlEntities(value: string): string {
-  return value.replace(XML_ENTITY_RE, (match, hex: string | undefined, dec: string | undefined, named: string | undefined) => {
-    if (hex !== undefined) {
-      const code = Number.parseInt(hex, 16);
-      return code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+  return value.replace(
+    XML_ENTITY_RE,
+    (
+      match,
+      hex: string | undefined,
+      dec: string | undefined,
+      named: string | undefined
+    ) => {
+      if (hex !== undefined) {
+        const code = Number.parseInt(hex, 16);
+        return code >= 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : match;
+      }
+      if (dec !== undefined) {
+        const code = Number.parseInt(dec, 10);
+        return code >= 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : match;
+      }
+      switch (named) {
+        case 'amp':
+          return '&';
+        case 'lt':
+          return '<';
+        case 'gt':
+          return '>';
+        case 'quot':
+          return '"';
+        case 'apos':
+          return "'";
+        default:
+          return match;
+      }
     }
-    if (dec !== undefined) {
-      const code = Number.parseInt(dec, 10);
-      return code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
-    }
-    switch (named) {
-      case 'amp': return '&';
-      case 'lt': return '<';
-      case 'gt': return '>';
-      case 'quot': return '"';
-      case 'apos': return "'";
-      default: return match;
-    }
-  });
+  );
 }
 
 function unescapeAndroid(value: string): string {
-  const withoutBackslashEscapes = value.replace(/\\(\\|'|"|n|t|r)/g, (_match, ch: string) => {
-    switch (ch) {
-      case '\\': return '\\';
-      case "'": return "'";
-      case '"': return '"';
-      case 'n': return '\n';
-      case 't': return '\t';
-      case 'r': return '\r';
-      default: return ch;
+  const withoutBackslashEscapes = value.replace(
+    /\\(\\|'|"|n|t|r)/g,
+    (_match, ch: string) => {
+      switch (ch) {
+        case '\\':
+          return '\\';
+        case "'":
+          return "'";
+        case '"':
+          return '"';
+        case 'n':
+          return '\n';
+        case 't':
+          return '\t';
+        case 'r':
+          return '\r';
+        default:
+          return ch;
+      }
     }
-  });
+  );
   return decodeXmlEntities(withoutBackslashEscapes);
 }
 
 function escapeAndroid(value: string): string {
-  return value
-    .replace(/\\/g, '\\\\')
-    .replace(/\n/g, '\\n')
-    .replace(/'/g, "\\'")
-    .replace(/"/g, '\\"')
-    // & must precede < and >, or the entities produced below get re-escaped
-    // into &amp;lt; — which compounds on every subsequent sync run.
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return (
+    value
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      // & must precede < and >, or the entities produced below get re-escaped
+      // into &amp;lt; — which compounds on every subsequent sync run.
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  );
 }
 
 /**
@@ -107,7 +141,7 @@ function assertNoCdataBreakout(value: string): void {
   if (value.includes(']]>')) {
     throw new ValidationError(
       'Android CDATA values containing "]]>" are not supported.',
-      'Remove the "]]>" sequence from the text, or drop the <![CDATA[...]]> wrapper in the source file so the value is entity-escaped instead.',
+      'Remove the "]]>" sequence from the text, or drop the <![CDATA[...]]> wrapper in the source file so the value is entity-escaped instead.'
     );
   }
 }
@@ -146,7 +180,9 @@ export class AndroidXmlFormatParser implements FormatParser {
         const arrayName = entry.key.substring(0, lastDot);
         const index = parseInt(entry.key.substring(lastDot + 1), 10);
         arrayNames ??= new Set(
-          scanElements(originalContent, STRING_ARRAY_EL).map((el) => el.groups[0]!),
+          scanElements(originalContent, STRING_ARRAY_EL).map(
+            (el) => el.groups[0]!
+          )
         );
 
         if (!isNaN(index) && arrayNames.has(arrayName)) {
@@ -171,7 +207,10 @@ export class AndroidXmlFormatParser implements FormatParser {
       if (translation === undefined) {
         return null;
       }
-      return this.rewriteInner(el, this.escapeForReconstruct(el.inner, translation));
+      return this.rewriteInner(
+        el,
+        this.escapeForReconstruct(el.inner, translation)
+      );
     });
 
     result = replaceElements(result, PLURALS_EL, (el) => {
@@ -184,7 +223,10 @@ export class AndroidXmlFormatParser implements FormatParser {
         if (translation === undefined) {
           return item.text;
         }
-        return this.rewriteInner(item, this.escapeForReconstruct(item.inner, translation));
+        return this.rewriteInner(
+          item,
+          this.escapeForReconstruct(item.inner, translation)
+        );
       });
       return this.rewriteInner(el, inner);
     });
@@ -201,7 +243,10 @@ export class AndroidXmlFormatParser implements FormatParser {
         if (translation === undefined) {
           return item.text;
         }
-        return this.rewriteInner(item, this.escapeForReconstruct(item.inner, translation));
+        return this.rewriteInner(
+          item,
+          this.escapeForReconstruct(item.inner, translation)
+        );
       });
       return this.rewriteInner(el, inner);
     });
@@ -224,12 +269,15 @@ export class AndroidXmlFormatParser implements FormatParser {
 
   private extractPlurals(content: string, entries: ExtractedEntry[]): void {
     for (const el of scanElements(content, PLURALS_EL)) {
-      const plurals: PluralItem[] = scanElements(el.inner, PLURAL_ITEM_EL).map((item) => ({
-        quantity: item.groups[0]!,
-        value: this.decodeValue(item.inner),
-      }));
+      const plurals: PluralItem[] = scanElements(el.inner, PLURAL_ITEM_EL).map(
+        (item) => ({
+          quantity: item.groups[0]!,
+          value: this.decodeValue(item.inner),
+        })
+      );
 
-      const defaultItem = plurals.find(p => p.quantity === 'other') ?? plurals[0];
+      const defaultItem =
+        plurals.find((p) => p.quantity === 'other') ?? plurals[0];
       entries.push({
         key: el.groups[0]!,
         value: defaultItem?.value ?? '',
@@ -238,12 +286,18 @@ export class AndroidXmlFormatParser implements FormatParser {
     }
   }
 
-  private extractStringArrays(content: string, entries: ExtractedEntry[]): void {
+  private extractStringArrays(
+    content: string,
+    entries: ExtractedEntry[]
+  ): void {
     for (const el of scanElements(content, STRING_ARRAY_EL)) {
       const name = el.groups[0]!;
       let index = 0;
       for (const item of scanElements(el.inner, ARRAY_ITEM_EL)) {
-        entries.push({ key: `${name}.${index}`, value: this.decodeValue(item.inner) });
+        entries.push({
+          key: `${name}.${index}`,
+          value: this.decodeValue(item.inner),
+        });
         index++;
       }
     }
@@ -266,7 +320,10 @@ export class AndroidXmlFormatParser implements FormatParser {
     return unescapeAndroid(raw);
   }
 
-  private escapeForReconstruct(originalInner: string, translation: string): string {
+  private escapeForReconstruct(
+    originalInner: string,
+    translation: string
+  ): string {
     if (originalInner.startsWith('<![CDATA[')) {
       assertNoCdataBreakout(translation);
       return `<![CDATA[${translation}]]>`;

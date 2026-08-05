@@ -29,7 +29,11 @@ function renderHelp(name: 'push' | 'pull'): string {
   const sub = sync.commands.find((c) => c.name() === name);
   if (!sub) throw new Error(`sync ${name} command not registered`);
   let captured = '';
-  sub.configureOutput({ writeOut: (s: string) => { captured += s; } });
+  sub.configureOutput({
+    writeOut: (s: string) => {
+      captured += s;
+    },
+  });
   sub.outputHelp();
   return captured;
 }

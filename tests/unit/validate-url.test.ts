@@ -3,7 +3,9 @@ import { validateApiUrl } from '../../src/utils/validate-url';
 describe('validateApiUrl', () => {
   describe('HTTPS URLs (accepted)', () => {
     it('should accept https://api-free.deepl.com/v2', () => {
-      expect(() => validateApiUrl('https://api-free.deepl.com/v2')).not.toThrow();
+      expect(() =>
+        validateApiUrl('https://api-free.deepl.com/v2')
+      ).not.toThrow();
     });
 
     it('should accept https://api.deepl.com/v2', () => {
@@ -11,7 +13,9 @@ describe('validateApiUrl', () => {
     });
 
     it('should accept any HTTPS URL', () => {
-      expect(() => validateApiUrl('https://custom-proxy.example.com/deepl')).not.toThrow();
+      expect(() =>
+        validateApiUrl('https://custom-proxy.example.com/deepl')
+      ).not.toThrow();
     });
 
     it('should accept HTTPS URL with port', () => {
@@ -41,25 +45,35 @@ describe('validateApiUrl', () => {
     });
 
     it('should accept http://127.0.0.1 with path', () => {
-      expect(() => validateApiUrl('http://127.0.0.1:9090/api/v2')).not.toThrow();
+      expect(() =>
+        validateApiUrl('http://127.0.0.1:9090/api/v2')
+      ).not.toThrow();
     });
   });
 
   describe('HTTP remote URLs (rejected)', () => {
     it('should reject http://api-free.deepl.com', () => {
-      expect(() => validateApiUrl('http://api-free.deepl.com')).toThrow(/Insecure HTTP URL rejected/);
+      expect(() => validateApiUrl('http://api-free.deepl.com')).toThrow(
+        /Insecure HTTP URL rejected/
+      );
     });
 
     it('should reject http://api.deepl.com/v2', () => {
-      expect(() => validateApiUrl('http://api.deepl.com/v2')).toThrow(/Insecure HTTP URL rejected/);
+      expect(() => validateApiUrl('http://api.deepl.com/v2')).toThrow(
+        /Insecure HTTP URL rejected/
+      );
     });
 
     it('should reject http://example.com', () => {
-      expect(() => validateApiUrl('http://example.com')).toThrow(/Insecure HTTP URL rejected/);
+      expect(() => validateApiUrl('http://example.com')).toThrow(
+        /Insecure HTTP URL rejected/
+      );
     });
 
     it('should reject http://evil-server.com/steal-keys', () => {
-      expect(() => validateApiUrl('http://evil-server.com/steal-keys')).toThrow(/Insecure HTTP URL rejected/);
+      expect(() => validateApiUrl('http://evil-server.com/steal-keys')).toThrow(
+        /Insecure HTTP URL rejected/
+      );
     });
 
     it('should include guidance about HTTPS in error message', () => {
@@ -67,7 +81,9 @@ describe('validateApiUrl', () => {
     });
 
     it('should mention credential exposure in error message', () => {
-      expect(() => validateApiUrl('http://example.com')).toThrow(/credential exposure/);
+      expect(() => validateApiUrl('http://example.com')).toThrow(
+        /credential exposure/
+      );
     });
 
     it('should mention localhost exception in error message', () => {
@@ -87,11 +103,15 @@ describe('validateApiUrl', () => {
 
   describe('unsupported protocols (rejected)', () => {
     it('should reject ftp:// URLs', () => {
-      expect(() => validateApiUrl('ftp://example.com')).toThrow(/Unsupported protocol/);
+      expect(() => validateApiUrl('ftp://example.com')).toThrow(
+        /Unsupported protocol/
+      );
     });
 
     it('should reject file:// URLs', () => {
-      expect(() => validateApiUrl('file:///etc/passwd')).toThrow(/Unsupported protocol/);
+      expect(() => validateApiUrl('file:///etc/passwd')).toThrow(
+        /Unsupported protocol/
+      );
     });
   });
 });

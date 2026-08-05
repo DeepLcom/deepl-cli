@@ -13,7 +13,9 @@ describe('DeepLClient', () => {
   const baseUrl = 'https://api-free.deepl.com';
 
   beforeEach(() => {
-    jest.spyOn(HttpClient.prototype, 'sleep' as any).mockResolvedValue(undefined);
+    jest
+      .spyOn(HttpClient.prototype, 'sleep' as any)
+      .mockResolvedValue(undefined);
     client = new DeepLClient(apiKey);
     nock.cleanAll();
   });
@@ -68,7 +70,9 @@ describe('DeepLClient', () => {
     });
 
     it('should include cli version and node version in User-Agent', () => {
-      expect(USER_AGENT).toMatch(/^deepl-cli\/\d+\.\d+\.\d+ node\/\d+\.\d+\.\d+$/);
+      expect(USER_AGENT).toMatch(
+        /^deepl-cli\/\d+\.\d+\.\d+ node\/\d+\.\d+\.\d+$/
+      );
     });
   });
 
@@ -96,7 +100,6 @@ describe('DeepLClient', () => {
     it('should include source language when specified', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.source_lang === 'EN';
         })
         .reply(200, {
@@ -119,7 +122,6 @@ describe('DeepLClient', () => {
     it('should handle formality parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.formality === 'more';
         })
         .reply(200, {
@@ -137,7 +139,6 @@ describe('DeepLClient', () => {
     it('should handle glossary parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.glossary_id === 'glossary-123';
         })
         .reply(200, {
@@ -155,7 +156,6 @@ describe('DeepLClient', () => {
     it('should handle preserve_formatting option', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.preserve_formatting === '1';
         })
         .reply(200, {
@@ -173,7 +173,6 @@ describe('DeepLClient', () => {
     it('should handle context parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.context === 'API documentation';
         })
         .reply(200, {
@@ -191,7 +190,6 @@ describe('DeepLClient', () => {
     it('should handle split_sentences parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.split_sentences === 'nonewlines';
         })
         .reply(200, {
@@ -209,7 +207,6 @@ describe('DeepLClient', () => {
     it('should map split_sentences "on" to API value "1"', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.split_sentences === '1';
         })
         .reply(200, {
@@ -227,7 +224,6 @@ describe('DeepLClient', () => {
     it('should map split_sentences "off" to API value "0"', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.split_sentences === '0';
         })
         .reply(200, {
@@ -245,7 +241,6 @@ describe('DeepLClient', () => {
     it('should handle tag_handling parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.tag_handling === 'xml';
         })
         .reply(200, {
@@ -263,7 +258,6 @@ describe('DeepLClient', () => {
     it('should send show_billed_characters parameter when enabled', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.show_billed_characters === '1';
         })
         .reply(200, {
@@ -309,7 +303,6 @@ describe('DeepLClient', () => {
     it('should not send show_billed_characters when not requested', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.show_billed_characters === undefined;
         })
         .reply(200, {
@@ -331,7 +324,6 @@ describe('DeepLClient', () => {
     it('should never send the retired enable_beta_languages parameter', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.enable_beta_languages === undefined;
         })
         .reply(200, {
@@ -353,7 +345,6 @@ describe('DeepLClient', () => {
     it('should send outline_detection parameter when set to true', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.outline_detection === '1';
         })
         .reply(200, {
@@ -372,7 +363,6 @@ describe('DeepLClient', () => {
     it('should send outline_detection parameter when set to false', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.outline_detection === '0';
         })
         .reply(200, {
@@ -391,7 +381,6 @@ describe('DeepLClient', () => {
     it('should send splitting_tags parameter as comma-separated string', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.splitting_tags === 'br,hr,div';
         })
         .reply(200, {
@@ -410,7 +399,6 @@ describe('DeepLClient', () => {
     it('should send non_splitting_tags parameter as comma-separated string', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.non_splitting_tags === 'code,pre,kbd';
         })
         .reply(200, {
@@ -429,7 +417,6 @@ describe('DeepLClient', () => {
     it('should send ignore_tags parameter as comma-separated string', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.ignore_tags === 'script,style,noscript';
         })
         .reply(200, {
@@ -448,14 +435,12 @@ describe('DeepLClient', () => {
     it('should send all XML tag handling parameters together', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
-          return body.outline_detection === '0' &&
-             
+          return (
+            body.outline_detection === '0' &&
             body.splitting_tags === 'br,hr' &&
-             
             body.non_splitting_tags === 'code,pre' &&
-             
-            body.ignore_tags === 'script,style';
+            body.ignore_tags === 'script,style'
+          );
         })
         .reply(200, {
           translations: [{ text: '<p>Hola</p>' }],
@@ -476,14 +461,12 @@ describe('DeepLClient', () => {
     it('should send custom_instructions parameter as array', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
-          return Array.isArray(body.custom_instructions) &&
-             
+          return (
+            Array.isArray(body.custom_instructions) &&
             body.custom_instructions.length === 2 &&
-             
             body.custom_instructions[0] === 'Use informal tone' &&
-             
-            body.custom_instructions[1] === 'Preserve brand names';
+            body.custom_instructions[1] === 'Preserve brand names'
+          );
         })
         .reply(200, {
           translations: [{ text: 'Hola mundo' }],
@@ -500,7 +483,6 @@ describe('DeepLClient', () => {
     it('should not send custom_instructions when not specified', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.custom_instructions === undefined;
         })
         .reply(200, {
@@ -517,18 +499,14 @@ describe('DeepLClient', () => {
     it('should send custom_instructions in batch translation', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
-          return Array.isArray(body.custom_instructions) &&
-             
+          return (
+            Array.isArray(body.custom_instructions) &&
             body.custom_instructions[0] === 'Keep it short' &&
-             
-            body.custom_instructions[1] === 'Preserve names';
+            body.custom_instructions[1] === 'Preserve names'
+          );
         })
         .reply(200, {
-          translations: [
-            { text: 'Hola' },
-            { text: 'Mundo' },
-          ],
+          translations: [{ text: 'Hola' }, { text: 'Mundo' }],
         });
 
       await client.translateBatch(['Hello', 'World'], {
@@ -541,11 +519,9 @@ describe('DeepLClient', () => {
 
     it('should throw error for invalid target language', async () => {
       await expect(
-         
         client.translate('Hello', { targetLang: 'invalid' as any })
       ).rejects.toThrow();
     });
-
   });
 
   describe('error handling', () => {
@@ -576,9 +552,7 @@ describe('DeepLClient', () => {
       });
 
       it('should handle 456 quota exceeded error', async () => {
-        nock(baseUrl)
-          .post(path)
-          .reply(456, { message: 'Quota exceeded' });
+        nock(baseUrl).post(path).reply(456, { message: 'Quota exceeded' });
 
         await expect(call(client)).rejects.toThrow('Quota exceeded');
       });
@@ -597,24 +571,22 @@ describe('DeepLClient', () => {
           .post(path)
           .reply(503, { message: 'Service temporarily unavailable' });
 
-        await expect(call(client)).rejects.toThrow('Service temporarily unavailable');
+        await expect(call(client)).rejects.toThrow(
+          'Service temporarily unavailable'
+        );
       });
 
       it('should handle network errors', async () => {
-        nock(baseUrl)
-          .post(path)
-          .replyWithError('Network error');
+        nock(baseUrl).post(path).replyWithError('Network error');
 
         await expect(call(client)).rejects.toThrow();
       });
     });
 
     it('should throw classified AuthError for 403, not raw AxiosError', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .reply(403, {
-          message: 'Forbidden',
-        });
+      nock(baseUrl).post('/v2/translate').reply(403, {
+        message: 'Forbidden',
+      });
 
       try {
         await client.translate('Hello', { targetLang: 'es' });
@@ -635,8 +607,12 @@ describe('DeepLClient', () => {
       const maliciousBody = { message: '\x1b[2J\x1b[0;0HCredentials stolen' };
       nock(baseUrl).post('/v2/translate').reply(400, maliciousBody);
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
-        expect.objectContaining({ message: expect.not.stringContaining('\x1b') }),
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.not.stringContaining('\x1b'),
+        })
       );
     });
 
@@ -644,8 +620,12 @@ describe('DeepLClient', () => {
       const maliciousBody = { message: '\x1b[31mInternal failure\x1b[0m' };
       nock(baseUrl).post('/v2/translate').reply(500, maliciousBody);
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
-        expect.objectContaining({ message: expect.not.stringContaining('\x1b') }),
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.not.stringContaining('\x1b'),
+        })
       );
     });
 
@@ -653,17 +633,19 @@ describe('DeepLClient', () => {
       const maliciousBody = { message: 'OK\u202EStolen' };
       nock(baseUrl).post('/v2/translate').reply(400, maliciousBody);
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
-        expect.objectContaining({ message: expect.not.stringContaining('\u202E') }),
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.not.stringContaining('\u202E'),
+        })
       );
     });
 
     it('should throw classified QuotaError for 456, not raw AxiosError', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .reply(456, {
-          message: 'Quota exceeded',
-        });
+      nock(baseUrl).post('/v2/translate').reply(456, {
+        message: 'Quota exceeded',
+      });
 
       try {
         await client.translate('Hello', { targetLang: 'es' });
@@ -674,12 +656,9 @@ describe('DeepLClient', () => {
     });
 
     it('should throw classified RateLimitError for 429, not raw AxiosError', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .times(4)
-        .reply(429, {
-          message: 'Too many requests',
-        });
+      nock(baseUrl).post('/v2/translate').times(4).reply(429, {
+        message: 'Too many requests',
+      });
 
       try {
         await client.translate('Hello', { targetLang: 'es' });
@@ -690,9 +669,7 @@ describe('DeepLClient', () => {
     });
 
     it('should handle invalid JSON response', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .reply(200, 'Invalid JSON');
+      nock(baseUrl).post('/v2/translate').reply(200, 'Invalid JSON');
 
       await expect(
         client.translate('Hello', { targetLang: 'es' })
@@ -700,9 +677,7 @@ describe('DeepLClient', () => {
     });
 
     it('should handle missing translations in response', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .reply(200, {});
+      nock(baseUrl).post('/v2/translate').reply(200, {});
 
       await expect(
         client.translate('Hello', { targetLang: 'es' })
@@ -712,12 +687,10 @@ describe('DeepLClient', () => {
 
   describe('getUsage()', () => {
     it('should return usage statistics', async () => {
-      nock(baseUrl)
-        .get('/v2/usage')
-        .reply(200, {
-          character_count: 12345,
-          character_limit: 500000,
-        });
+      nock(baseUrl).get('/v2/usage').reply(200, {
+        character_count: 12345,
+        character_limit: 500000,
+      });
 
       const usage = await client.getUsage();
 
@@ -726,22 +699,18 @@ describe('DeepLClient', () => {
     });
 
     it('should handle usage API errors', async () => {
-      nock(baseUrl)
-        .get('/v2/usage')
-        .reply(403);
+      nock(baseUrl).get('/v2/usage').reply(403);
 
       await expect(client.getUsage()).rejects.toThrow();
     });
 
     it('should ignore the deprecated speech_to_text_milliseconds_* fields', async () => {
-      nock(baseUrl)
-        .get('/v2/usage')
-        .reply(200, {
-          character_count: 12345,
-          character_limit: 500000,
-          speech_to_text_milliseconds_count: 0,
-          speech_to_text_milliseconds_limit: 0,
-        });
+      nock(baseUrl).get('/v2/usage').reply(200, {
+        character_count: 12345,
+        character_limit: 500000,
+        speech_to_text_milliseconds_count: 0,
+        speech_to_text_milliseconds_limit: 0,
+      });
 
       const usage = await client.getUsage();
 
@@ -757,8 +726,17 @@ describe('DeepLClient', () => {
           character_count: 12345,
           character_limit: 500000,
           products: [
-            { product_type: 'translate', character_count: 10000, api_key_character_count: 10000 },
-            { product_type: 'speech_to_text', character_count: 120000, api_key_character_count: 120000, billing_unit: 'milliseconds' },
+            {
+              product_type: 'translate',
+              character_count: 10000,
+              api_key_character_count: 10000,
+            },
+            {
+              product_type: 'speech_to_text',
+              character_count: 120000,
+              api_key_character_count: 120000,
+              billing_unit: 'milliseconds',
+            },
           ],
         });
 
@@ -770,7 +748,6 @@ describe('DeepLClient', () => {
       expect(products[1]!.productType).toBe('speech_to_text');
       expect(products[1]!.billingUnit).toBe('milliseconds');
     });
-
   });
 
   describe('getSupportedLanguages()', () => {
@@ -779,9 +756,24 @@ describe('DeepLClient', () => {
         .get('/v3/languages')
         .query({ resource: 'translate_text' })
         .reply(200, [
-          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
-          { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
-          { lang: 'en-gb', name: 'English (British)', usable_as_source: false, usable_as_target: true },
+          {
+            lang: 'en',
+            name: 'English',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'es',
+            name: 'Spanish',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'en-gb',
+            name: 'English (British)',
+            usable_as_source: false,
+            usable_as_target: true,
+          },
         ]);
 
       const languages = await client.getSupportedLanguages('source');
@@ -797,8 +789,18 @@ describe('DeepLClient', () => {
         .get('/v3/languages')
         .query({ resource: 'translate_text' })
         .reply(200, [
-          { lang: 'es', name: 'Spanish', usable_as_source: true, usable_as_target: true },
-          { lang: 'fr', name: 'French', usable_as_source: true, usable_as_target: true },
+          {
+            lang: 'es',
+            name: 'Spanish',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'fr',
+            name: 'French',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
         ]);
 
       const languages = await client.getSupportedLanguages('target');
@@ -812,8 +814,18 @@ describe('DeepLClient', () => {
         .get('/v3/languages')
         .query({ resource: 'translate_text' })
         .reply(200, [
-          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
-          { lang: 'xx', name: 'Source Only', usable_as_source: true, usable_as_target: false },
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'xx',
+            name: 'Source Only',
+            usable_as_source: true,
+            usable_as_target: false,
+          },
         ]);
 
       const languages = await client.getSupportedLanguages('target');
@@ -852,9 +864,15 @@ describe('DeepLClient', () => {
 
       const languages = await client.getSupportedLanguages('target');
 
-      expect(languages.find(l => l.language === 'de')?.supportsFormality).toBe(true);
-      expect(languages.find(l => l.language === 'ja')?.supportsFormality).toBe(true);
-      expect(languages.find(l => l.language === 'ko')?.supportsFormality).toBe(false);
+      expect(
+        languages.find((l) => l.language === 'de')?.supportsFormality
+      ).toBe(true);
+      expect(
+        languages.find((l) => l.language === 'ja')?.supportsFormality
+      ).toBe(true);
+      expect(
+        languages.find((l) => l.language === 'ko')?.supportsFormality
+      ).toBe(false);
     });
 
     it('should report formality for every target the response describes', async () => {
@@ -864,8 +882,18 @@ describe('DeepLClient', () => {
         .get('/v3/languages')
         .query({ resource: 'translate_text' })
         .reply(200, [
-          { lang: 'de', name: 'German', usable_as_target: true, features: { formality: { status: 'stable' } } },
-          { lang: 'sw', name: 'Swahili', usable_as_target: true, features: { tag_handling: { status: 'stable' } } },
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_target: true,
+            features: { formality: { status: 'stable' } },
+          },
+          {
+            lang: 'sw',
+            name: 'Swahili',
+            usable_as_target: true,
+            features: { tag_handling: { status: 'stable' } },
+          },
         ]);
 
       const languages = await client.getSupportedLanguages('target');
@@ -882,9 +910,7 @@ describe('DeepLClient', () => {
       nock(baseUrl)
         .get('/v3/languages')
         .query({ resource: 'translate_text' })
-        .reply(200, [
-          { lang: 'de', name: 'German', usable_as_target: true },
-        ]);
+        .reply(200, [{ lang: 'de', name: 'German', usable_as_target: true }]);
 
       const languages = await client.getSupportedLanguages('target');
 
@@ -896,7 +922,12 @@ describe('DeepLClient', () => {
         .get('/v3/languages')
         .query({ resource: 'translate_text' })
         .reply(200, [
-          { lang: 'de', name: 'German', usable_as_source: true, features: { formality: { status: 'stable' } } },
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            features: { formality: { status: 'stable' } },
+          },
         ]);
 
       const languages = await client.getSupportedLanguages('source');
@@ -910,9 +941,7 @@ describe('DeepLClient', () => {
         .query({ resource: 'translate_text' })
         .reply(500);
 
-      await expect(
-        client.getSupportedLanguages('source')
-      ).rejects.toThrow();
+      await expect(client.getSupportedLanguages('source')).rejects.toThrow();
     });
   });
 
@@ -943,10 +972,7 @@ describe('DeepLClient', () => {
     });
 
     it('should give up after max retries', async () => {
-      nock(baseUrl)
-        .get('/v2/usage')
-        .times(4)
-        .reply(503);
+      nock(baseUrl).get('/v2/usage').times(4).reply(503);
 
       await expect(client.getUsage()).rejects.toThrow();
     });
@@ -1103,7 +1129,9 @@ describe('DeepLClient', () => {
       nock('https://custom.api.com')
         .post('/v2/translate')
         .reply(200, { translations: [{ text: 'Hola' }] });
-      const result = await customClient.translate('Hello', { targetLang: 'es' });
+      const result = await customClient.translate('Hello', {
+        targetLang: 'es',
+      });
       expect(result.text).toBe('Hola');
     });
 
@@ -1172,7 +1200,7 @@ describe('DeepLClient', () => {
           },
         });
         expect(warnSpy).toHaveBeenCalledWith(
-          expect.stringMatching(/routing HTTPS traffic.*via HTTP proxy/i),
+          expect.stringMatching(/routing HTTPS traffic.*via HTTP proxy/i)
         );
       } finally {
         warnSpy.mockRestore();
@@ -1190,7 +1218,7 @@ describe('DeepLClient', () => {
           },
         });
         expect(warnSpy).not.toHaveBeenCalledWith(
-          expect.stringMatching(/routing HTTPS traffic.*via HTTP proxy/i),
+          expect.stringMatching(/routing HTTPS traffic.*via HTTP proxy/i)
         );
       } finally {
         warnSpy.mockRestore();
@@ -1304,7 +1332,6 @@ describe('DeepLClient', () => {
       it('should apply simple writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.writing_style === 'simple';
           })
           .reply(200, {
@@ -1328,7 +1355,6 @@ describe('DeepLClient', () => {
       it('should apply business writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.writing_style === 'business';
           })
           .reply(200, {
@@ -1352,7 +1378,6 @@ describe('DeepLClient', () => {
       it('should apply academic writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.writing_style === 'academic';
           })
           .reply(200, {
@@ -1376,7 +1401,6 @@ describe('DeepLClient', () => {
       it('should apply casual writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.writing_style === 'casual';
           })
           .reply(200, {
@@ -1402,7 +1426,6 @@ describe('DeepLClient', () => {
       it('should apply enthusiastic tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.tone === 'enthusiastic';
           })
           .reply(200, {
@@ -1426,7 +1449,6 @@ describe('DeepLClient', () => {
       it('should apply friendly tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.tone === 'friendly';
           })
           .reply(200, {
@@ -1450,7 +1472,6 @@ describe('DeepLClient', () => {
       it('should apply confident tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.tone === 'confident';
           })
           .reply(200, {
@@ -1474,7 +1495,6 @@ describe('DeepLClient', () => {
       it('should apply diplomatic tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.tone === 'diplomatic';
           })
           .reply(200, {
@@ -1500,7 +1520,6 @@ describe('DeepLClient', () => {
       it('should work with only target language', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return !body.writing_style && !body.tone;
           })
           .reply(200, {
@@ -1665,7 +1684,6 @@ describe('DeepLClient', () => {
       it('should apply prefer_simple writing style', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.writing_style === 'prefer_simple';
           })
           .reply(200, {
@@ -1689,7 +1707,6 @@ describe('DeepLClient', () => {
       it('should apply prefer_enthusiastic tone', async () => {
         nock(baseUrl)
           .post('/v2/write/rephrase', (body) => {
-             
             return body.tone === 'prefer_enthusiastic';
           })
           .reply(200, {
@@ -1717,7 +1734,7 @@ describe('DeepLClient', () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
           // Verify multiple text parameters are sent
-           
+
           return Array.isArray(body.text) && body.text.length === 3;
         })
         .reply(200, {
@@ -1777,18 +1794,14 @@ describe('DeepLClient', () => {
     it('should include all translation options in batch request', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
-          return body.source_lang === 'EN' &&
-             
+          return (
+            body.source_lang === 'EN' &&
             body.formality === 'more' &&
-             
-            body.glossary_id === 'test-glossary';
+            body.glossary_id === 'test-glossary'
+          );
         })
         .reply(200, {
-          translations: [
-            { text: 'Hola' },
-            { text: 'Adiós' },
-          ],
+          translations: [{ text: 'Hola' }, { text: 'Adiós' }],
         });
 
       await client.translateBatch(['Hello', 'Goodbye'], {
@@ -1802,11 +1815,9 @@ describe('DeepLClient', () => {
     });
 
     it('should handle API errors in batch translation', async () => {
-      nock(baseUrl)
-        .post('/v2/translate')
-        .reply(403, {
-          message: 'Authorization failed',
-        });
+      nock(baseUrl).post('/v2/translate').reply(403, {
+        message: 'Authorization failed',
+      });
 
       await expect(
         client.translateBatch(['Hello', 'Goodbye'], { targetLang: 'es' })
@@ -1871,7 +1882,6 @@ describe('DeepLClient', () => {
     it('should send show_billed_characters in batch translation', async () => {
       nock(baseUrl)
         .post('/v2/translate', (body) => {
-           
           return body.show_billed_characters === '1';
         })
         .reply(200, {
@@ -1932,9 +1942,24 @@ describe('DeepLClient', () => {
         .get('/v3/languages')
         .query({ resource: 'glossary' })
         .reply(200, [
-          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
-          { lang: 'de', name: 'German', usable_as_source: true, usable_as_target: true },
-          { lang: 'fr', name: 'French', usable_as_source: true, usable_as_target: true },
+          {
+            lang: 'en',
+            name: 'English',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'fr',
+            name: 'French',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
         ]);
 
       const pairs = await client.getGlossaryLanguages();
@@ -1952,8 +1977,18 @@ describe('DeepLClient', () => {
         .get('/v3/languages')
         .query({ resource: 'glossary' })
         .reply(200, [
-          { lang: 'en', name: 'English', usable_as_source: true, usable_as_target: true },
-          { lang: 'xx', name: 'Target Only', usable_as_source: false, usable_as_target: true },
+          {
+            lang: 'en',
+            name: 'English',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'xx',
+            name: 'Target Only',
+            usable_as_source: false,
+            usable_as_target: true,
+          },
         ]);
 
       const pairs = await client.getGlossaryLanguages();
@@ -1966,8 +2001,18 @@ describe('DeepLClient', () => {
         .get('/v3/languages')
         .query({ resource: 'glossary' })
         .reply(200, [
-          { lang: 'EN', name: 'English', usable_as_source: true, usable_as_target: false },
-          { lang: 'DE', name: 'German', usable_as_source: false, usable_as_target: true },
+          {
+            lang: 'EN',
+            name: 'English',
+            usable_as_source: true,
+            usable_as_target: false,
+          },
+          {
+            lang: 'DE',
+            name: 'German',
+            usable_as_source: false,
+            usable_as_target: true,
+          },
         ]);
 
       const pairs = await client.getGlossaryLanguages();
@@ -1994,7 +2039,9 @@ describe('DeepLClient', () => {
           message: 'Authentication failed',
         });
 
-      await expect(client.getGlossaryLanguages()).rejects.toThrow('Authentication failed');
+      await expect(client.getGlossaryLanguages()).rejects.toThrow(
+        'Authentication failed'
+      );
     });
 
     it('should handle network errors', async () => {
@@ -2105,9 +2152,15 @@ describe('DeepLClient', () => {
               version: 1,
               creation_time: '2024-01-01T00:00:00Z',
               updated_time: '2024-01-02T00:00:00Z',
-              configured_rules: { punctuation: { quotation_mark: 'use_guillemets' } },
+              configured_rules: {
+                punctuation: { quotation_mark: 'use_guillemets' },
+              },
               custom_instructions: [
-                { label: 'Instruction 1', prompt: 'Do this', source_language: 'en' },
+                {
+                  label: 'Instruction 1',
+                  prompt: 'Do this',
+                  source_language: 'en',
+                },
               ],
             },
           ],
@@ -2117,7 +2170,9 @@ describe('DeepLClient', () => {
 
       expect(rules).toHaveLength(1);
       const detailed = rules[0] as any;
-      expect(detailed.configuredRules).toEqual({ punctuation: { quotation_mark: 'use_guillemets' } });
+      expect(detailed.configuredRules).toEqual({
+        punctuation: { quotation_mark: 'use_guillemets' },
+      });
       expect(detailed.customInstructions).toEqual([
         { label: 'Instruction 1', prompt: 'Do this', sourceLanguage: 'en' },
       ]);
@@ -2137,11 +2192,9 @@ describe('DeepLClient', () => {
     });
 
     it('should handle empty results', async () => {
-      nock(baseUrl)
-        .get('/v3/style_rules')
-        .reply(200, {
-          style_rules: [],
-        });
+      nock(baseUrl).get('/v3/style_rules').reply(200, {
+        style_rules: [],
+      });
 
       const rules = await client.getStyleRules();
 
@@ -2149,13 +2202,13 @@ describe('DeepLClient', () => {
     });
 
     it('should handle API errors', async () => {
-      nock(baseUrl)
-        .get('/v3/style_rules')
-        .reply(403, {
-          message: 'Authentication failed',
-        });
+      nock(baseUrl).get('/v3/style_rules').reply(403, {
+        message: 'Authentication failed',
+      });
 
-      await expect(client.getStyleRules()).rejects.toThrow('Authentication failed');
+      await expect(client.getStyleRules()).rejects.toThrow(
+        'Authentication failed'
+      );
     });
   });
 
@@ -2167,7 +2220,9 @@ describe('DeepLClient', () => {
           return params.get('tag_handling_version') === 'v2';
         })
         .reply(200, {
-          translations: [{ text: '<p>Hola</p>', detected_source_language: 'EN' }],
+          translations: [
+            { text: '<p>Hola</p>', detected_source_language: 'EN' },
+          ],
         });
 
       await client.translate('<p>Hello</p>', {
@@ -2201,7 +2256,9 @@ describe('DeepLClient', () => {
           return params.get('tag_handling_version') === 'v2';
         })
         .reply(200, {
-          translations: [{ text: '<p>Hola</p>', detected_source_language: 'EN' }],
+          translations: [
+            { text: '<p>Hola</p>', detected_source_language: 'EN' },
+          ],
         });
 
       await client.translate('<p>Hello</p>', {
@@ -2219,7 +2276,9 @@ describe('DeepLClient', () => {
           return params.get('tag_handling_version') === 'v1';
         })
         .reply(200, {
-          translations: [{ text: '<p>Hola</p>', detected_source_language: 'EN' }],
+          translations: [
+            { text: '<p>Hola</p>', detected_source_language: 'EN' },
+          ],
         });
 
       await client.translate('<p>Hello</p>', {
@@ -2260,9 +2319,7 @@ describe('DeepLClient', () => {
       });
 
       it('should handle empty list', async () => {
-        nock(baseUrl)
-          .get('/v2/admin/developer-keys')
-          .reply(200, []);
+        nock(baseUrl).get('/v2/admin/developer-keys').reply(200, []);
 
         const keys = await client.listApiKeys();
         expect(keys).toHaveLength(0);
@@ -2273,7 +2330,9 @@ describe('DeepLClient', () => {
           .get('/v2/admin/developer-keys')
           .reply(403, { message: 'Authentication failed' });
 
-        await expect(client.listApiKeys()).rejects.toThrow('Authentication failed');
+        await expect(client.listApiKeys()).rejects.toThrow(
+          'Authentication failed'
+        );
       });
     });
 
@@ -2294,14 +2353,12 @@ describe('DeepLClient', () => {
       });
 
       it('should create a key without label', async () => {
-        nock(baseUrl)
-          .post('/v2/admin/developer-keys', {})
-          .reply(200, {
-            key_id: 'key-new',
-            label: '',
-            creation_time: '2024-01-01T00:00:00Z',
-            is_deactivated: false,
-          });
+        nock(baseUrl).post('/v2/admin/developer-keys', {}).reply(200, {
+          key_id: 'key-new',
+          label: '',
+          creation_time: '2024-01-01T00:00:00Z',
+          is_deactivated: false,
+        });
 
         const key = await client.createApiKey();
         expect(key.keyId).toBe('key-new');
@@ -2321,28 +2378,43 @@ describe('DeepLClient', () => {
     describe('renameApiKey', () => {
       it('should rename a key', async () => {
         nock(baseUrl)
-          .put('/v2/admin/developer-keys/label', { key_id: 'key-1', label: 'New Name' })
+          .put('/v2/admin/developer-keys/label', {
+            key_id: 'key-1',
+            label: 'New Name',
+          })
           .reply(204);
 
-        await expect(client.renameApiKey('key-1', 'New Name')).resolves.toBeUndefined();
+        await expect(
+          client.renameApiKey('key-1', 'New Name')
+        ).resolves.toBeUndefined();
       });
     });
 
     describe('setApiKeyLimit', () => {
       it('should set a character limit', async () => {
         nock(baseUrl)
-          .put('/v2/admin/developer-keys/limits', { key_id: 'key-1', characters: 500000 })
+          .put('/v2/admin/developer-keys/limits', {
+            key_id: 'key-1',
+            characters: 500000,
+          })
           .reply(204);
 
-        await expect(client.setApiKeyLimit('key-1', 500000)).resolves.toBeUndefined();
+        await expect(
+          client.setApiKeyLimit('key-1', 500000)
+        ).resolves.toBeUndefined();
       });
 
       it('should remove limit with null', async () => {
         nock(baseUrl)
-          .put('/v2/admin/developer-keys/limits', { key_id: 'key-1', characters: null })
+          .put('/v2/admin/developer-keys/limits', {
+            key_id: 'key-1',
+            characters: null,
+          })
           .reply(204);
 
-        await expect(client.setApiKeyLimit('key-1', null)).resolves.toBeUndefined();
+        await expect(
+          client.setApiKeyLimit('key-1', null)
+        ).resolves.toBeUndefined();
       });
     });
 
@@ -2381,7 +2453,11 @@ describe('DeepLClient', () => {
       it('should pass group_by parameter', async () => {
         nock(baseUrl)
           .get('/v2/admin/analytics')
-          .query({ start_date: '2024-01-01', end_date: '2024-01-31', group_by: 'key' })
+          .query({
+            start_date: '2024-01-01',
+            end_date: '2024-01-31',
+            group_by: 'key',
+          })
           .reply(200, {
             usage_report: {
               total_usage: {

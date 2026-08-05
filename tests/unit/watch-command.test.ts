@@ -78,9 +78,9 @@ describe('WatchCommand', () => {
 
     mockFileTranslationService = createMockFileTranslationService();
 
-    (FileTranslationService as jest.MockedClass<typeof FileTranslationService>).mockImplementation(
-      () => mockFileTranslationService
-    );
+    (
+      FileTranslationService as jest.MockedClass<typeof FileTranslationService>
+    ).mockImplementation(() => mockFileTranslationService);
 
     mockWatchService = createMockWatchService({
       getStats: jest.fn().mockReturnValue({
@@ -97,7 +97,10 @@ describe('WatchCommand', () => {
     jest.spyOn(console, 'log').mockImplementation();
     jest.spyOn(console, 'error').mockImplementation();
 
-    watchCommand = new WatchCommand(mockTranslationService, mockGlossaryService);
+    watchCommand = new WatchCommand(
+      mockTranslationService,
+      mockGlossaryService
+    );
   });
 
   afterEach(() => {
@@ -107,7 +110,9 @@ describe('WatchCommand', () => {
   describe('constructor', () => {
     it('should create WatchCommand with TranslationService and GlossaryService', () => {
       expect(watchCommand).toBeInstanceOf(WatchCommand);
-      expect(FileTranslationService).toHaveBeenCalledWith(mockTranslationService);
+      expect(FileTranslationService).toHaveBeenCalledWith(
+        mockTranslationService
+      );
     });
   });
 
@@ -138,7 +143,9 @@ describe('WatchCommand', () => {
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
 
       // Create a Promise that rejects immediately to avoid hanging
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -160,7 +167,9 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -181,9 +190,13 @@ describe('WatchCommand', () => {
 
     it('should create translations subdirectory for directory input', async () => {
       expect.assertions(1);
-      (fs.existsSync as jest.Mock).mockReturnValueOnce(true).mockReturnValueOnce(false);
+      (fs.existsSync as jest.Mock)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => true });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/dir', {
@@ -202,7 +215,9 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/dir/file.md', {
@@ -224,7 +239,9 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -247,7 +264,9 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', { to: 'es' });
@@ -267,14 +286,18 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       const configured = new WatchCommand(
         mockTranslationService,
         mockGlossaryService,
         createMockConfigService({
-          getValue: jest.fn((key: string) => (key === 'watch.debounceMs' ? 1200 : undefined)),
-        }),
+          getValue: jest.fn((key: string) =>
+            key === 'watch.debounceMs' ? 1200 : undefined
+          ),
+        })
       );
 
       try {
@@ -295,14 +318,18 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       const configured = new WatchCommand(
         mockTranslationService,
         mockGlossaryService,
         createMockConfigService({
-          getValue: jest.fn((key: string) => (key === 'watch.debounceMs' ? 1200 : undefined)),
-        }),
+          getValue: jest.fn((key: string) =>
+            key === 'watch.debounceMs' ? 1200 : undefined
+          ),
+        })
       );
 
       try {
@@ -323,7 +350,9 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/dir', {
@@ -346,7 +375,9 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -374,7 +405,9 @@ describe('WatchCommand', () => {
       expect.assertions(2);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -399,7 +432,9 @@ describe('WatchCommand', () => {
       expect.assertions(2);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -414,8 +449,16 @@ describe('WatchCommand', () => {
 
       // Test the callback with array result
       await watchOptions.onTranslate!('/test/file.md', [
-        { targetLang: 'es', text: 'translated text', outputPath: '/test/file.es.md' },
-        { targetLang: 'fr', text: 'translated text', outputPath: '/test/file.fr.md' },
+        {
+          targetLang: 'es',
+          text: 'translated text',
+          outputPath: '/test/file.es.md',
+        },
+        {
+          targetLang: 'fr',
+          text: 'translated text',
+          outputPath: '/test/file.fr.md',
+        },
       ]);
 
       expect(mockLogger.success).toHaveBeenCalled();
@@ -425,7 +468,9 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -451,7 +496,9 @@ describe('WatchCommand', () => {
       expect.assertions(2);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -482,14 +529,18 @@ describe('WatchCommand', () => {
     describe('--glossary without --from', () => {
       it('should reject before starting a watcher', async () => {
         (fs.existsSync as jest.Mock).mockReturnValue(true);
-        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+        (fs.statSync as jest.Mock).mockReturnValue({
+          isDirectory: () => false,
+        });
 
         await expect(
           watchCommand.watch('/some/file.md', {
             to: 'es',
             glossary: 'my-glossary',
           })
-        ).rejects.toThrow('Source language (--from) is required when using a glossary');
+        ).rejects.toThrow(
+          'Source language (--from) is required when using a glossary'
+        );
 
         expect(mockWatchService.watch).not.toHaveBeenCalled();
       });
@@ -497,7 +548,9 @@ describe('WatchCommand', () => {
       it('should reject with a ValidationError carrying a watch example', async () => {
         expect.assertions(3);
         (fs.existsSync as jest.Mock).mockReturnValue(true);
-        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+        (fs.statSync as jest.Mock).mockReturnValue({
+          isDirectory: () => false,
+        });
 
         try {
           await watchCommand.watch('/some/file.md', {
@@ -507,13 +560,17 @@ describe('WatchCommand', () => {
         } catch (error) {
           expect(error).toBeInstanceOf(ValidationError);
           expect((error as ValidationError).exitCode).toBe(6);
-          expect((error as ValidationError).suggestion).toContain('deepl watch');
+          expect((error as ValidationError).suggestion).toContain(
+            'deepl watch'
+          );
         }
       });
 
       it('should not resolve the glossary name, which would call the API', async () => {
         (fs.existsSync as jest.Mock).mockReturnValue(true);
-        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+        (fs.statSync as jest.Mock).mockReturnValue({
+          isDirectory: () => false,
+        });
 
         await expect(
           watchCommand.watch('/some/file.md', {
@@ -530,56 +587,80 @@ describe('WatchCommand', () => {
         // WatchCommand call has to read the configured default the same way the
         // CLI path does, or the two disagree about what is runnable.
         (fs.existsSync as jest.Mock).mockReturnValue(true);
-        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+        (fs.statSync as jest.Mock).mockReturnValue({
+          isDirectory: () => false,
+        });
         mockGlossaryService.resolveGlossaryId.mockResolvedValue('glossary-123');
         // Thrown so the watcher does not keep the test open, as elsewhere here.
-        mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+        mockWatchService.watch.mockImplementation(() => {
+          throw new Error('Test complete');
+        });
 
         const configured = new WatchCommand(
           mockTranslationService,
           mockGlossaryService,
           createMockConfigService({
             getValue: jest.fn((key: string) =>
-              key === 'defaults.sourceLang' ? 'en' : undefined,
+              key === 'defaults.sourceLang' ? 'en' : undefined
             ),
-          }),
+          })
         );
 
         await expect(
-          configured.watch('/some/file.md', { to: 'es', glossary: 'my-glossary' }),
+          configured.watch('/some/file.md', {
+            to: 'es',
+            glossary: 'my-glossary',
+          })
         ).rejects.toThrow('Test complete');
 
-        expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
-          from: 'en',
-          targets: ['es'],
-        });
+        expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith(
+          'my-glossary',
+          {
+            from: 'en',
+            targets: ['es'],
+          }
+        );
         expect(mockWatchService.watch).toHaveBeenCalledWith(
           '/some/file.md',
-          expect.objectContaining({ glossaryId: 'glossary-123', sourceLang: 'en' }),
+          expect.objectContaining({
+            glossaryId: 'glossary-123',
+            sourceLang: 'en',
+          })
         );
       });
 
       it('should still reject when the configured default is absent too', async () => {
         (fs.existsSync as jest.Mock).mockReturnValue(true);
-        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+        (fs.statSync as jest.Mock).mockReturnValue({
+          isDirectory: () => false,
+        });
 
         const configured = new WatchCommand(
           mockTranslationService,
           mockGlossaryService,
-          createMockConfigService({ getValue: jest.fn(() => undefined) }),
+          createMockConfigService({ getValue: jest.fn(() => undefined) })
         );
 
         await expect(
-          configured.watch('/some/file.md', { to: 'es', glossary: 'my-glossary' }),
-        ).rejects.toThrow('Source language (--from) is required when using a glossary');
+          configured.watch('/some/file.md', {
+            to: 'es',
+            glossary: 'my-glossary',
+          })
+        ).rejects.toThrow(
+          'Source language (--from) is required when using a glossary'
+        );
       });
 
       it('should accept --glossary when --from is provided', async () => {
         expect.assertions(1);
         (fs.existsSync as jest.Mock).mockReturnValue(true);
-        (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+        (fs.statSync as jest.Mock).mockReturnValue({
+          isDirectory: () => false,
+        });
         mockGlossaryService.resolveGlossaryId.mockResolvedValue('resolved-id');
-        mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+        mockWatchService.watch.mockImplementation(() => {
+          throw new Error('Test complete');
+        });
 
         try {
           await watchCommand.watch('/some/file.md', {
@@ -593,10 +674,13 @@ describe('WatchCommand', () => {
 
         // The pair goes with it so coverage is checked at launch, not once per
         // file change.
-        expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
-          from: 'en',
-          targets: ['es'],
-        });
+        expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith(
+          'my-glossary',
+          {
+            from: 'en',
+            targets: ['es'],
+          }
+        );
       });
     });
 
@@ -616,13 +700,23 @@ describe('WatchCommand', () => {
       });
 
       // Wait a bit for Logger statements to execute
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      expect(mockLogger.success).toHaveBeenCalledWith(expect.stringContaining('Watching for changes'));
-      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Path: /some/file.md'));
-      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Targets: es, fr'));
-      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Pattern: *.md'));
-      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Auto-commit enabled'));
+      expect(mockLogger.success).toHaveBeenCalledWith(
+        expect.stringContaining('Watching for changes')
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Path: /some/file.md')
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Targets: es, fr')
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Pattern: *.md')
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Auto-commit enabled')
+      );
 
       // Don't wait for the promise to resolve (it won't due to infinite Promise)
     }, 1000);
@@ -631,7 +725,9 @@ describe('WatchCommand', () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('file.md', {
@@ -669,10 +765,13 @@ describe('WatchCommand', () => {
 
     it('should auto-commit translations when autoCommit is enabled for multiple languages', async () => {
       expect.assertions(1);
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       // Mock exec to simulate git commands
-      const mockExecAsync = jest.fn()
+      const mockExecAsync = jest
+        .fn()
         .mockResolvedValueOnce({ stdout: '.git', stderr: '' }) // git rev-parse check
         .mockResolvedValue({ stdout: '', stderr: '' }); // git add and commit
 
@@ -706,7 +805,9 @@ describe('WatchCommand', () => {
 
     it('should auto-commit translations when autoCommit is enabled for single language', async () => {
       expect.assertions(1);
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -731,7 +832,9 @@ describe('WatchCommand', () => {
 
     it('should handle auto-commit when not in git repository', async () => {
       expect.assertions(1);
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -757,7 +860,9 @@ describe('WatchCommand', () => {
 
     it('should handle auto-commit with no output files', async () => {
       expect.assertions(1);
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -782,7 +887,9 @@ describe('WatchCommand', () => {
 
     it('should handle auto-commit errors gracefully', async () => {
       expect.assertions(1);
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -819,7 +926,9 @@ describe('WatchCommand', () => {
       expect.assertions(2);
       const stagedSet = new Set(['/abs/file1.txt']);
       jest.spyOn(watchCommand, 'getStagedFiles').mockResolvedValue(stagedSet);
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/dir', {
@@ -847,7 +956,9 @@ describe('WatchCommand', () => {
         gitStaged: true,
       });
 
-      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('No git-staged files found'));
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('No git-staged files found')
+      );
       expect(WatchService).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ stagedFiles: expect.anything() })
@@ -855,9 +966,9 @@ describe('WatchCommand', () => {
     });
 
     it('should propagate error when not in a git repo', async () => {
-      jest.spyOn(watchCommand, 'getStagedFiles').mockRejectedValue(
-        new Error('--git-staged requires a git repository')
-      );
+      jest
+        .spyOn(watchCommand, 'getStagedFiles')
+        .mockRejectedValue(new Error('--git-staged requires a git repository'));
 
       await expect(
         watchCommand.watch('/some/dir', {
@@ -870,7 +981,9 @@ describe('WatchCommand', () => {
     it('should not call getStagedFiles when gitStaged is not set', async () => {
       expect.assertions(1);
       jest.spyOn(watchCommand, 'getStagedFiles');
-      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
 
       try {
         await watchCommand.watch('/some/file.md', {

@@ -1,4 +1,8 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  TranslatedEntry,
+} from './format.js';
 import { PendingCommentBuffer } from './pending-comment-buffer.js';
 
 const ENTRY_RE = /^([^=:#!\s][^=:]*?)\s*[=:]\s*(.*)/;
@@ -119,13 +123,34 @@ export class PropertiesFormatParser implements FormatParser {
       if (s[i] === '\\' && i + 1 < s.length) {
         const next = s[i + 1]!;
         switch (next) {
-          case 'n': result += '\n'; i += 2; break;
-          case 't': result += '\t'; i += 2; break;
-          case 'r': result += '\r'; i += 2; break;
-          case '\\': result += '\\'; i += 2; break;
-          case '=': result += '='; i += 2; break;
-          case ':': result += ':'; i += 2; break;
-          case ' ': result += ' '; i += 2; break;
+          case 'n':
+            result += '\n';
+            i += 2;
+            break;
+          case 't':
+            result += '\t';
+            i += 2;
+            break;
+          case 'r':
+            result += '\r';
+            i += 2;
+            break;
+          case '\\':
+            result += '\\';
+            i += 2;
+            break;
+          case '=':
+            result += '=';
+            i += 2;
+            break;
+          case ':':
+            result += ':';
+            i += 2;
+            break;
+          case ' ':
+            result += ' ';
+            i += 2;
+            break;
           case 'u': {
             const hex = s.slice(i + 2, i + 6);
             if (hex.length === 4 && /^[0-9a-fA-F]{4}$/.test(hex)) {
@@ -162,10 +187,18 @@ export class PropertiesFormatParser implements FormatParser {
     let result = leading ? '\\ '.repeat(leading[0].length) : '';
     for (const ch of s.slice(leading ? leading[0].length : 0)) {
       switch (ch) {
-        case '\n': result += '\\n'; break;
-        case '\t': result += '\\t'; break;
-        case '\r': result += '\\r'; break;
-        case '\\': result += '\\\\'; break;
+        case '\n':
+          result += '\\n';
+          break;
+        case '\t':
+          result += '\\t';
+          break;
+        case '\r':
+          result += '\\r';
+          break;
+        case '\\':
+          result += '\\\\';
+          break;
         default: {
           if (ch.codePointAt(0)! > 0x7e) {
             // Emit every UTF-16 code unit: an astral character such as an

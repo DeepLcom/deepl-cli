@@ -67,9 +67,10 @@ export class CacheCommand {
     const totalSizeMB = (stats.totalSize / (1024 * 1024)).toFixed(2);
     const maxSizeMB = (stats.maxSize / (1024 * 1024)).toFixed(2);
     const status = stats.enabled ? 'enabled' : 'disabled';
-    const percentUsed = stats.maxSize > 0
-      ? ((stats.totalSize / stats.maxSize) * 100).toFixed(1)
-      : '0.0';
+    const percentUsed =
+      stats.maxSize > 0
+        ? ((stats.totalSize / stats.maxSize) * 100).toFixed(1)
+        : '0.0';
 
     return [
       `Cache Status: ${status}`,
@@ -82,9 +83,10 @@ export class CacheCommand {
   formatStatsTable(stats: CacheStats): string {
     const totalSizeMB = (stats.totalSize / (1024 * 1024)).toFixed(2);
     const maxSizeMB = (stats.maxSize / (1024 * 1024)).toFixed(2);
-    const percentUsed = stats.maxSize > 0
-      ? ((stats.totalSize / stats.maxSize) * 100).toFixed(1)
-      : '0.0';
+    const percentUsed =
+      stats.maxSize > 0
+        ? ((stats.totalSize / stats.maxSize) * 100).toFixed(1)
+        : '0.0';
     const colorDisabled = !isColorEnabled();
 
     const table = new Table({
@@ -99,7 +101,7 @@ export class CacheCommand {
       ['Entries', String(stats.entries)],
       ['Used', `${totalSizeMB} MB`],
       ['Limit', `${maxSizeMB} MB`],
-      ['Usage', `${percentUsed}%`],
+      ['Usage', `${percentUsed}%`]
     );
 
     return table.toString();

@@ -13,7 +13,10 @@
  */
 
 import { parseIcu } from '../utils/icu-preservation.js';
-import { preserveVariables, restorePlaceholders } from '../utils/text-preservation.js';
+import {
+  preserveVariables,
+  restorePlaceholders,
+} from '../utils/text-preservation.js';
 import type { TranslationService } from '../services/translation.js';
 import type { TranslationOptions } from '../types/api.js';
 import type { TranslationResult } from '../api/translation-client.js';
@@ -33,7 +36,7 @@ export interface IcuMapping {
 
 export function expandPlurals(
   textsToTranslate: string[],
-  localeDiffs: SyncDiff[],
+  localeDiffs: SyncDiff[]
 ): { extendedTexts: string[]; pluralSlots: PluralSlot[] } {
   const pluralSlots: PluralSlot[] = [];
   const extendedTexts = [...textsToTranslate];
@@ -42,18 +45,29 @@ export function expandPlurals(
     const diff = localeDiffs[di]!;
     if (!diff.metadata) continue;
 
-    const androidPlurals = diff.metadata['plurals'] as Array<{quantity: string; value: string}> | undefined;
+    const androidPlurals = diff.metadata['plurals'] as
+      Array<{ quantity: string; value: string }> | undefined;
     if (androidPlurals) {
       for (const p of androidPlurals) {
         if (p.value === diff.value) continue;
-        pluralSlots.push({ diffIndex: di, format: 'android', slotKey: p.quantity, textIndex: extendedTexts.length });
+        pluralSlots.push({
+          diffIndex: di,
+          format: 'android',
+          slotKey: p.quantity,
+          textIndex: extendedTexts.length,
+        });
         extendedTexts.push(p.value);
       }
     }
 
     const msgidPlural = diff.metadata['msgid_plural'] as string | undefined;
     if (msgidPlural && msgidPlural !== diff.value) {
-      pluralSlots.push({ diffIndex: di, format: 'po', slotKey: 'msgid_plural', textIndex: extendedTexts.length });
+      pluralSlots.push({
+        diffIndex: di,
+        format: 'po',
+        slotKey: 'msgid_plural',
+        textIndex: extendedTexts.length,
+      });
       extendedTexts.push(msgidPlural);
     }
   }
@@ -61,9 +75,10 @@ export function expandPlurals(
   return { extendedTexts, pluralSlots };
 }
 
-export function detectIcu(
-  extendedTexts: string[],
-): { extendedTexts: string[]; icuMappings: IcuMapping[] } {
+export function detectIcu(extendedTexts: string[]): {
+  extendedTexts: string[];
+  icuMappings: IcuMapping[];
+} {
   const icuMappings: IcuMapping[] = [];
   const out = [...extendedTexts];
 
@@ -83,10 +98,10 @@ export async function reassembleIcu(
   translationService: TranslationService,
   results: (TranslationResult | null)[],
   icuMappings: IcuMapping[],
-  baseOpts: TranslationOptions,
+  baseOpts: TranslationOptions
 ): Promise<void> {
   for (const icu of icuMappings) {
-    const segTexts = icu.icuResult.segments.map(seg => {
+    const segTexts = icu.icuResult.segments.map((seg) => {
       let text = seg.text;
       const pMap = new Map<string, string>();
       if (seg.isPluralBranch) {
@@ -101,15 +116,16 @@ export async function reassembleIcu(
     });
 
     const segResults = await translationService.translateBatch(
-      segTexts.map(s => s.text),
-      { ...baseOpts },
+      segTexts.map((s) => s.text),
+      { ...baseOpts }
     );
 
     // Every segment must come back. Substituting the source segment for a failed
     // one would emit a part-source message reported as successfully translated,
     // so leave the result unset — the message is marked failed and retried.
     const anySegmentFailed =
-      segResults.length !== segTexts.length || segResults.some((sr) => !sr?.text);
+      segResults.length !== segTexts.length ||
+      segResults.some((sr) => !sr?.text);
     if (anySegmentFailed) {
       results[icu.textIndex] = null;
       continue;
@@ -125,7 +141,10 @@ export async function reassembleIcu(
     const reassembled = icu.icuResult.reassemble(translatedSegments);
     results[icu.textIndex] = {
       text: reassembled,
-      billedCharacters: segResults.reduce((s, r) => s + (r?.billedCharacters ?? 0), 0),
+      billedCharacters: segResults.reduce(
+        (s, r) => s + (r?.billedCharacters ?? 0),
+        0
+      ),
     };
   }
 }
@@ -133,7 +152,7 @@ export async function reassembleIcu(
 export function writebackPlurals(
   results: (TranslationResult | null)[],
   pluralSlots: PluralSlot[],
-  localeDiffs: SyncDiff[],
+  localeDiffs: SyncDiff[]
 ): void {
   for (const slot of pluralSlots) {
     const result = results[slot.textIndex];
@@ -142,16 +161,24 @@ export function writebackPlurals(
     if (!diff.metadata) continue;
 
     if (slot.format === 'android') {
-      const plurals = diff.metadata['plurals'] as Array<{quantity: string; value: string}>;
-      const item = plurals.find(p => p.quantity === slot.slotKey);
+      const plurals = diff.metadata['plurals'] as Array<{
+        quantity: string;
+        value: string;
+      }>;
+      const item = plurals.find((p) => p.quantity === slot.slotKey);
       if (item) item.value = result.text;
     }
 
     if (slot.format === 'po' && slot.slotKey === 'msgid_plural') {
-      const forms = (diff.metadata['plural_forms'] as Record<string, string>) ?? {};
+      const forms =
+        (diff.metadata['plural_forms'] as Record<string, string>) ?? {};
       forms['msgstr[1]'] = result.text;
       for (const key of Object.keys(forms)) {
-        if (/^msgstr\[\d+]$/.test(key) && key !== 'msgstr[0]' && key !== 'msgstr[1]') {
+        if (
+          /^msgstr\[\d+]$/.test(key) &&
+          key !== 'msgstr[0]' &&
+          key !== 'msgstr[1]'
+        ) {
           forms[key] = result.text;
         }
       }

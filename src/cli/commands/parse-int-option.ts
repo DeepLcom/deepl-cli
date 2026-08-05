@@ -8,11 +8,15 @@ import { InvalidArgumentError } from 'commander';
  * the worker-pool sizing and silently produced zero workers. Rejecting at the
  * boundary means the user is told instead.
  */
-export function parsePositiveIntOption(value: string, name: string, max: number): number {
+export function parsePositiveIntOption(
+  value: string,
+  name: string,
+  max: number
+): number {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed <= 0 || parsed > max) {
     throw new InvalidArgumentError(
-      `--${name} must be an integer between 1 and ${max}, got '${value}'`,
+      `--${name} must be an integer between 1 and ${max}, got '${value}'`
     );
   }
   return parsed;

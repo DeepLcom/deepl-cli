@@ -1,4 +1,8 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  TranslatedEntry,
+} from './format.js';
 import { detectIndent } from './util/detect-indent.js';
 
 /** JSON.parse rejects a leading BOM, which editors on Windows add routinely. */
@@ -100,5 +104,4 @@ export class ArbFormatParser implements FormatParser {
     }
     return undefined;
   }
-
 }

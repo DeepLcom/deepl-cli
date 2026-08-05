@@ -1,5 +1,9 @@
 import * as fs from 'fs';
-import { hasConflictMarkers, resolveConflicts, resolveLockFile } from '../../../src/sync/sync-resolve';
+import {
+  hasConflictMarkers,
+  resolveConflicts,
+  resolveLockFile,
+} from '../../../src/sync/sync-resolve';
 import type { ResolveDecision } from '../../../src/sync/sync-resolve';
 
 jest.mock('fs', () => {
@@ -14,8 +18,12 @@ jest.mock('fs', () => {
   };
 });
 
-const mockReadFile = fs.promises.readFile as jest.MockedFunction<typeof fs.promises.readFile>;
-const mockWriteFile = fs.promises.writeFile as jest.MockedFunction<typeof fs.promises.writeFile>;
+const mockReadFile = fs.promises.readFile as jest.MockedFunction<
+  typeof fs.promises.readFile
+>;
+const mockWriteFile = fs.promises.writeFile as jest.MockedFunction<
+  typeof fs.promises.writeFile
+>;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -23,7 +31,8 @@ beforeEach(() => {
 
 describe('hasConflictMarkers()', () => {
   it('should return true when content starts with <<<<<<< marker', () => {
-    const content = '<<<<<<< HEAD\nsome content\n=======\nother content\n>>>>>>> branch';
+    const content =
+      '<<<<<<< HEAD\nsome content\n=======\nother content\n>>>>>>> branch';
     expect(hasConflictMarkers(content)).toBe(true);
   });
 
@@ -250,7 +259,11 @@ describe('resolveLockFile()', () => {
     expect(result.entriesMerged).toBe(1);
 
     expect(mockReadFile).toHaveBeenCalledWith(lockPath, 'utf-8');
-    expect(mockWriteFile).toHaveBeenCalledWith(lockPath, expect.any(String), 'utf-8');
+    expect(mockWriteFile).toHaveBeenCalledWith(
+      lockPath,
+      expect.any(String),
+      'utf-8'
+    );
 
     const writtenContent = mockWriteFile.mock.calls[0]![1] as string;
     const parsed = JSON.parse(writtenContent);
@@ -346,7 +359,9 @@ describe('per-entry decision report', () => {
     const { decisions } = resolveConflicts(content);
     expect(Array.isArray(decisions)).toBe(true);
 
-    const byKey = new Map<string, ResolveDecision>(decisions.map((d) => [d.key, d]));
+    const byKey = new Map<string, ResolveDecision>(
+      decisions.map((d) => [d.key, d])
+    );
 
     const ours = byKey.get('kept_ours');
     expect(ours).toBeDefined();
@@ -362,7 +377,9 @@ describe('per-entry decision report', () => {
   it('tags a decision as length-heuristic when JSON.parse fails without logging itself', () => {
     // The command layer prints the warning once from the decision; the
     // library must stay silent so it is not printed twice.
-    const warnSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const warnSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     try {
       const content = [
         'prefix line',
@@ -374,7 +391,9 @@ describe('per-entry decision report', () => {
         'suffix line',
       ].join('\n');
 
-      const { decisions } = resolveConflicts(content, { file: 'locales/de/app.json' });
+      const { decisions } = resolveConflicts(content, {
+        file: 'locales/de/app.json',
+      });
 
       const fallback = decisions.find((d) => d.source === 'length-heuristic');
       expect(fallback).toBeDefined();
@@ -383,7 +402,9 @@ describe('per-entry decision report', () => {
       expect(fallback!.reason.length).toBeGreaterThan(0);
 
       const warned = warnSpy.mock.calls.some((args) => {
-        const joined = args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+        const joined = args
+          .map((a) => (typeof a === 'string' ? a : JSON.stringify(a)))
+          .join(' ');
         return /parse-error fallback/i.test(joined);
       });
       expect(warned).toBe(false);
@@ -426,7 +447,9 @@ describe('per-entry decision report', () => {
     mockReadFile.mockResolvedValue(content);
     mockWriteFile.mockResolvedValue(undefined);
 
-    const result = await resolveLockFile('/tmp/test-sync/.deepl-sync.lock', { dryRun: true });
+    const result = await resolveLockFile('/tmp/test-sync/.deepl-sync.lock', {
+      dryRun: true,
+    });
     expect(result.hadConflicts).toBe(true);
     expect(result.resolved).toBe(true);
     expect(mockWriteFile).not.toHaveBeenCalled();
@@ -440,10 +463,12 @@ describe('prototype pollution hardening', () => {
     // Canary: trip loud on any future cross-talk that leaks through the merge helpers.
     /* eslint-disable jest/no-standalone-expect */
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
-    expect(((Object.prototype as unknown) as Record<string, unknown>)['polluted']).toBeUndefined();
+    expect(
+      (Object.prototype as unknown as Record<string, unknown>)['polluted']
+    ).toBeUndefined();
     /* eslint-enable jest/no-standalone-expect */
     // Remove the key so a leak in one test cannot poison later ones.
-    delete ((Object.prototype as unknown) as Record<string, unknown>)['polluted'];
+    delete (Object.prototype as unknown as Record<string, unknown>)['polluted'];
   });
 
   it('should not pollute Object.prototype via __proto__ key in conflict fragment', () => {
@@ -460,7 +485,9 @@ describe('prototype pollution hardening', () => {
     resolveConflicts(content);
 
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
-    expect(((Object.prototype as unknown) as Record<string, unknown>)['polluted']).toBeUndefined();
+    expect(
+      (Object.prototype as unknown as Record<string, unknown>)['polluted']
+    ).toBeUndefined();
   });
 
   it('should not pollute Object.prototype via constructor.prototype in conflict fragment', () => {
@@ -477,7 +504,9 @@ describe('prototype pollution hardening', () => {
     resolveConflicts(content);
 
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
-    expect(((Object.prototype as unknown) as Record<string, unknown>)['polluted']).toBeUndefined();
+    expect(
+      (Object.prototype as unknown as Record<string, unknown>)['polluted']
+    ).toBeUndefined();
   });
 
   it('should not pollute Object.prototype when __proto__ appears on the ours side', () => {
@@ -494,7 +523,9 @@ describe('prototype pollution hardening', () => {
     resolveConflicts(content);
 
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
-    expect(((Object.prototype as unknown) as Record<string, unknown>)['polluted']).toBeUndefined();
+    expect(
+      (Object.prototype as unknown as Record<string, unknown>)['polluted']
+    ).toBeUndefined();
   });
 
   it('should not pollute Object.prototype via prototype key in conflict fragment', () => {
@@ -510,7 +541,9 @@ describe('prototype pollution hardening', () => {
 
     resolveConflicts(content);
 
-    expect(((Object.prototype as unknown) as Record<string, unknown>)['polluted']).toBeUndefined();
+    expect(
+      (Object.prototype as unknown as Record<string, unknown>)['polluted']
+    ).toBeUndefined();
   });
 
   it('should drop __proto__/constructor/prototype keys entirely from merged output', () => {
@@ -530,9 +563,15 @@ describe('prototype pollution hardening', () => {
     const { resolved } = resolveConflicts(content);
     const parsed = JSON.parse(resolved);
 
-    expect(Object.prototype.hasOwnProperty.call(parsed, '__proto__')).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(parsed, 'constructor')).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(parsed, 'prototype')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(parsed, '__proto__')).toBe(
+      false
+    );
+    expect(Object.prototype.hasOwnProperty.call(parsed, 'constructor')).toBe(
+      false
+    );
+    expect(Object.prototype.hasOwnProperty.call(parsed, 'prototype')).toBe(
+      false
+    );
     expect(parsed.legit).toBeDefined();
     expect(parsed.safe).toBeDefined();
   });

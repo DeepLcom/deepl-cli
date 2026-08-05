@@ -22,7 +22,7 @@ export class TmCommand {
       return 'No translation memories found';
     }
     return tms
-      .map(tm => {
+      .map((tm) => {
         const src = tm.source_language;
         const targets = tm.target_languages.join(', ');
         return `${sanitizeName(tm.name)} (${src} \u2192 ${targets})`;

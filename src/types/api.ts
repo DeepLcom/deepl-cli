@@ -6,9 +6,7 @@ import { Language, Formality } from './common.js';
 import { WRITE_TARGET_LANGUAGES } from '../data/language-entries.js';
 
 export type ModelType =
-  | 'quality_optimized'
-  | 'prefer_quality_optimized'
-  | 'latency_optimized';
+  'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
 
 export interface TranslationOptions {
   sourceLang?: Language;
@@ -95,11 +93,13 @@ export interface WriteImprovement {
   detectedSourceLanguage?: string;
 }
 
-export function isWriteImprovementArray(data: unknown): data is WriteImprovement[] {
+export function isWriteImprovementArray(
+  data: unknown
+): data is WriteImprovement[] {
   if (!Array.isArray(data)) {
     return false;
   }
-  return data.every(item => {
+  return data.every((item) => {
     if (item === null || typeof item !== 'object') {
       return false;
     }
@@ -125,7 +125,17 @@ export interface DocumentStatus {
   errorMessage?: string;
 }
 
-export type DocumentOutputFormat = 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
+export type DocumentOutputFormat =
+  | 'pdf'
+  | 'docx'
+  | 'pptx'
+  | 'xlsx'
+  | 'html'
+  | 'htm'
+  | 'txt'
+  | 'srt'
+  | 'xlf'
+  | 'xliff';
 
 export interface DocumentTranslationOptions {
   sourceLang?: Language;

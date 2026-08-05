@@ -9,27 +9,43 @@ function filesystemSafeTimestamp(): string {
   return new Date().toISOString().replace(/:/g, '-').replace(/\.\d+/, '');
 }
 
-function backupLockFile(lockFilePath: string, raw: string, tag: string): string | null {
+function backupLockFile(
+  lockFilePath: string,
+  raw: string,
+  tag: string
+): string | null {
   const backupPath = `${lockFilePath}.bak-${tag}-${filesystemSafeTimestamp()}`;
   try {
     fs.writeFileSync(backupPath, raw, 'utf-8');
     return backupPath;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    Logger.warn(`Failed to write lock file backup to ${backupPath}: ${message}`);
+    Logger.warn(
+      `Failed to write lock file backup to ${backupPath}: ${message}`
+    );
     return null;
   }
 }
 
-export function computeSourceHash(text: string, metadata?: Record<string, unknown>): string {
+export function computeSourceHash(
+  text: string,
+  metadata?: Record<string, unknown>
+): string {
   let input = text;
   if (metadata) {
-    const plurals = metadata['plurals'] ?? metadata['msgid_plural'] ?? metadata['plural_forms'];
+    const plurals =
+      metadata['plurals'] ??
+      metadata['msgid_plural'] ??
+      metadata['plural_forms'];
     if (plurals) {
       input += '\0' + JSON.stringify(plurals);
     }
   }
-  return crypto.createHash('sha256').update(input, 'utf-8').digest('hex').substring(0, 12);
+  return crypto
+    .createHash('sha256')
+    .update(input, 'utf-8')
+    .digest('hex')
+    .substring(0, 12);
 }
 
 export function createEmptyLockFile(sourceLocale: string): SyncLockFile {
@@ -72,7 +88,10 @@ export function sortedKeysReplacer(_key: string, value: unknown): unknown {
   // Null-prototype: `out['__proto__'] = v` on a plain object invokes the
   // prototype setter, so an i18n key of that name would vanish from the
   // serialized lockfile on every write.
-  const out: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  const out: Record<string, unknown> = Object.create(null) as Record<
+    string,
+    unknown
+  >;
   for (const k of sortedKeys) {
     out[k] = src[k];
   }
@@ -85,7 +104,10 @@ export function sortedKeysReplacer(_key: string, value: unknown): unknown {
 const lockFileMutationVersion = new WeakMap<SyncLockFile, number>();
 
 function bumpMutationVersion(lockFile: SyncLockFile): void {
-  lockFileMutationVersion.set(lockFile, (lockFileMutationVersion.get(lockFile) ?? 0) + 1);
+  lockFileMutationVersion.set(
+    lockFile,
+    (lockFileMutationVersion.get(lockFile) ?? 0) + 1
+  );
 }
 
 function recomputeStats(lockFile: SyncLockFile): void {
@@ -121,7 +143,9 @@ export class SyncLockManager {
       parsed = JSON.parse(raw);
     } catch {
       const backup = backupLockFile(this.lockFilePath, raw, 'corrupt');
-      const suffix = backup ? ` Previous lock file backed up to ${backup}.` : '';
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
       Logger.warn(`Lock file corrupted, performing full sync.${suffix}`);
       return createEmptyLockFile('');
     }
@@ -129,22 +153,35 @@ export class SyncLockManager {
     const obj = parsed as Record<string, unknown>;
     if (obj['version'] === undefined) {
       const backup = backupLockFile(this.lockFilePath, raw, 'v-unknown');
-      const suffix = backup ? ` Previous lock file backed up to ${backup}.` : '';
-      Logger.warn(`Lock file corrupted (missing version), performing full sync.${suffix}`);
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
+      Logger.warn(
+        `Lock file corrupted (missing version), performing full sync.${suffix}`
+      );
       return createEmptyLockFile('');
     }
     if (obj['version'] !== LOCK_FILE_VERSION) {
-      const versionTag = typeof obj['version'] === 'number' ? `v${obj['version']}` : 'v-unknown';
+      const versionTag =
+        typeof obj['version'] === 'number' ? `v${obj['version']}` : 'v-unknown';
       const backup = backupLockFile(this.lockFilePath, raw, versionTag);
-      const suffix = backup ? ` Previous lock file backed up to ${backup}.` : '';
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
       Logger.warn(
-        `Unsupported lock file version ${obj['version']} (expected ${LOCK_FILE_VERSION}), performing full sync.${suffix}`,
+        `Unsupported lock file version ${obj['version']} (expected ${LOCK_FILE_VERSION}), performing full sync.${suffix}`
       );
       return createEmptyLockFile('');
     }
     if (!obj['entries'] || typeof obj['entries'] !== 'object') {
-      const backup = backupLockFile(this.lockFilePath, raw, `v${LOCK_FILE_VERSION}-no-entries`);
-      const suffix = backup ? ` Previous lock file backed up to ${backup}.` : '';
+      const backup = backupLockFile(
+        this.lockFilePath,
+        raw,
+        `v${LOCK_FILE_VERSION}-no-entries`
+      );
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
       Logger.warn(`Lock file missing entries, performing full sync.${suffix}`);
       return createEmptyLockFile('');
     }
@@ -167,7 +204,11 @@ export class SyncLockManager {
     await atomicWriteFile(this.lockFilePath, serialized, 'utf-8');
   }
 
-  async updateEntry(filePath: string, key: string, entry: SyncLockEntry): Promise<void> {
+  async updateEntry(
+    filePath: string,
+    key: string,
+    entry: SyncLockEntry
+  ): Promise<void> {
     const lockFile = await this.read();
     lockFile.entries[filePath] ??= {};
     lockFile.entries[filePath][key] = entry;

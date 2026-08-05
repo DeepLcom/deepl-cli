@@ -49,7 +49,7 @@ describe('Document Translation E2E', () => {
       const out = path.join(testDir, 'glossary-doc.de.pdf');
 
       const result = run(
-        `translate "${file}" --to de --output "${out}" --glossary my-glossary --api-url ${DEAD_URL}`,
+        `translate "${file}" --to de --output "${out}" --glossary my-glossary --api-url ${DEAD_URL}`
       );
 
       expect(result.status).toBeGreaterThan(0);
@@ -62,7 +62,7 @@ describe('Document Translation E2E', () => {
       const out = path.join(testDir, 'glossary-doc.de2.pdf');
 
       const result = run(
-        `translate "${file}" --from en --to de --output "${out}" --glossary my-glossary --api-url ${DEAD_URL}`,
+        `translate "${file}" --from en --to de --output "${out}" --glossary my-glossary --api-url ${DEAD_URL}`
       );
 
       expect(result.output).not.toMatch(/does not support/i);
@@ -74,7 +74,7 @@ describe('Document Translation E2E', () => {
 
       const result = run(
         `translate "${file}" --from en --to de --output "${out}" ` +
-          `--glossary base-terms --glossary project-overrides --api-url ${DEAD_URL}`,
+          `--glossary base-terms --glossary project-overrides --api-url ${DEAD_URL}`
       );
 
       expect(result.output).not.toMatch(/unknown option/i);
@@ -87,7 +87,7 @@ describe('Document Translation E2E', () => {
 
       const result = run(
         `translate "${file}" --from en --to de --output "${out}" ` +
-          `--glossary a --glossary b --glossary c --glossary d --glossary e --glossary f`,
+          `--glossary a --glossary b --glossary c --glossary d --glossary e --glossary f`
       );
 
       expect(result.status).toBeGreaterThan(0);

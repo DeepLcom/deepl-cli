@@ -18,9 +18,13 @@ jest.mock('fs', () => {
 });
 
 const mockedFg = fg as jest.MockedFunction<typeof fg>;
-const mockedReadFile = fs.promises.readFile as jest.MockedFunction<typeof fs.promises.readFile>;
+const mockedReadFile = fs.promises.readFile as jest.MockedFunction<
+  typeof fs.promises.readFile
+>;
 
-function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -50,7 +54,9 @@ describe('exportTranslations()', () => {
 
   it('should produce valid XLIFF with trans-unit elements containing source text', async () => {
     mockedFg.mockResolvedValue(['/project/locales/en/common.json'] as never);
-    mockedReadFile.mockResolvedValue(JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }));
+    mockedReadFile.mockResolvedValue(
+      JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' })
+    );
 
     const result = await exportTranslations(makeConfig(), makeRegistry());
 
@@ -68,7 +74,9 @@ describe('exportTranslations()', () => {
 
     const result = await exportTranslations(makeConfig(), makeRegistry());
 
-    expect(result.content).toContain('<note from="location">locales/en/common.json</note>');
+    expect(result.content).toContain(
+      '<note from="location">locales/en/common.json</note>'
+    );
   });
 
   it('should respect locale filter (only generates <file> for filtered locales)', async () => {

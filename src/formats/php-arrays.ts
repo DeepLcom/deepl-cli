@@ -1,4 +1,8 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  TranslatedEntry,
+} from './format.js';
 import { ValidationError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 import { requireModule } from './php-parser-bridge.js';
@@ -122,14 +126,14 @@ export class PhpArraysFormatParser implements FormatParser {
 
     const ast = getEngine().parseCode(clean);
     const returnNode = (ast.children ?? []).find(
-      (c): c is PhpReturn => c.kind === 'return',
+      (c): c is PhpReturn => c.kind === 'return'
     );
     if (!returnNode?.expr) return [];
 
     if (returnNode.expr.kind !== 'array') {
       throw new ValidationError(
         `Laravel PHP file must return an array literal (got '${returnNode.expr.kind}').`,
-        ALLOWLIST_HINT,
+        ALLOWLIST_HINT
       );
     }
 
@@ -138,7 +142,11 @@ export class PhpArraysFormatParser implements FormatParser {
     return entries;
   }
 
-  reconstruct(content: string, entries: TranslatedEntry[], _locale?: string): string {
+  reconstruct(
+    content: string,
+    entries: TranslatedEntry[],
+    _locale?: string
+  ): string {
     if (entries.length === 0) return content;
 
     const hadBom = content.startsWith('\uFEFF');
@@ -146,12 +154,12 @@ export class PhpArraysFormatParser implements FormatParser {
 
     const ast = getEngine().parseCode(body);
     const returnNode = (ast.children ?? []).find(
-      (c): c is PhpReturn => c.kind === 'return',
+      (c): c is PhpReturn => c.kind === 'return'
     );
     if (returnNode?.expr?.kind !== 'array') {
       throw new ValidationError(
         'Cannot reconstruct: file must return an array literal.',
-        ALLOWLIST_HINT,
+        ALLOWLIST_HINT
       );
     }
 
@@ -189,7 +197,11 @@ interface StringLoc {
   readonly isDoubleQuote: boolean;
 }
 
-function collectStringLocs(arr: PhpArray, prefix: string, out: Map<string, StringLoc>): void {
+function collectStringLocs(
+  arr: PhpArray,
+  prefix: string,
+  out: Map<string, StringLoc>
+): void {
   for (const item of arr.items) {
     if (item.kind !== 'entry' || item.key?.kind !== 'string') continue;
     const keyStr = (item.key as PhpString).value;
@@ -239,24 +251,24 @@ function walkArray(
   prefix: string,
   out: ExtractedEntry[],
   depth: number,
-  maxDepth: number,
+  maxDepth: number
 ): void {
   if (depth > maxDepth) {
     throw new PhpArraysCapExceededError(
-      `Laravel PHP: max nesting depth ${maxDepth} exceeded at '${prefix || '<root>'}'.`,
+      `Laravel PHP: max nesting depth ${maxDepth} exceeded at '${prefix || '<root>'}'.`
     );
   }
   for (const item of arr.items) {
     if (item.kind !== 'entry') {
       throw new ValidationError(
         `Unsupported array item kind '${item.kind}' at '${prefix || '<root>'}'.`,
-        ALLOWLIST_HINT,
+        ALLOWLIST_HINT
       );
     }
     if (item.key?.kind !== 'string') {
       throw new ValidationError(
         `Unsupported array key kind '${item.key?.kind ?? 'none'}' at '${prefix || '<root>'}' (string keys required).`,
-        ALLOWLIST_HINT,
+        ALLOWLIST_HINT
       );
     }
     const keyStr = (item.key as PhpString).value;
@@ -268,9 +280,11 @@ function walkArray(
         const stringValue = (val as PhpString).value;
         const entry: ExtractedEntry = { key: dotPath, value: stringValue };
         if (PIPE_PLURALIZATION_REGEX.test(stringValue)) {
-          entry.metadata = { skipped: { reason: SKIP_REASON_PIPE_PLURALIZATION } };
+          entry.metadata = {
+            skipped: { reason: SKIP_REASON_PIPE_PLURALIZATION },
+          };
           Logger.warn(
-            `Laravel PHP: skipping pipe-pluralization value at '${dotPath}' — preserved verbatim, not sent for translation.`,
+            `Laravel PHP: skipping pipe-pluralization value at '${dotPath}' — preserved verbatim, not sent for translation.`
           );
         }
         out.push(entry);
@@ -286,7 +300,7 @@ function walkArray(
       default:
         throw new ValidationError(
           `Unsupported value kind '${val.kind}' at key '${dotPath}'.`,
-          ALLOWLIST_HINT,
+          ALLOWLIST_HINT
         );
     }
   }

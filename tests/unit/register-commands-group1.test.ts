@@ -3,8 +3,6 @@
  *   register-auth, register-usage, register-completion, register-style-rules
  */
 
- 
-
 import { Command } from 'commander';
 
 // ── Mock chalk ──────────────────────────────────────────────────────────────
@@ -140,7 +138,10 @@ function resetAllMockImplementations() {
   mockClearKey.mockResolvedValue(undefined);
 
   // Usage mock functions
-  mockUsageGetUsage.mockResolvedValue({ characterCount: 100, characterLimit: 500000 });
+  mockUsageGetUsage.mockResolvedValue({
+    characterCount: 100,
+    characterLimit: 500000,
+  });
   mockUsageFormatUsage.mockReturnValue('Usage: 100/500000');
 
   // Style rules mock functions
@@ -161,8 +162,12 @@ function resetAllMockImplementations() {
   const { TranslationService } = require('../../src/services/translation');
   TranslationService.mockImplementation(() => mockTranslationServiceObj);
 
-  const { DocumentTranslationService } = require('../../src/services/document-translation');
-  DocumentTranslationService.mockImplementation(() => mockDocTranslationServiceObj);
+  const {
+    DocumentTranslationService,
+  } = require('../../src/services/document-translation');
+  DocumentTranslationService.mockImplementation(
+    () => mockDocTranslationServiceObj
+  );
 
   const { AdminService } = require('../../src/services/admin');
   AdminService.mockImplementation(() => mockAdminServiceObj);
@@ -248,7 +253,8 @@ describe('service-factory', () => {
   });
 
   it('createGlossaryCommand should create client, GlossaryService, and GlossaryCommand', async () => {
-    const { createGlossaryCommand } = await import('../../src/cli/commands/service-factory');
+    const { createGlossaryCommand } =
+      await import('../../src/cli/commands/service-factory');
     const cmd = await createGlossaryCommand(createDeepLClient);
 
     expect(createDeepLClient).toHaveBeenCalledWith();
@@ -260,7 +266,8 @@ describe('service-factory', () => {
   });
 
   it('createAdminCommand should create client, AdminService, and AdminCommand', async () => {
-    const { createAdminCommand } = await import('../../src/cli/commands/service-factory');
+    const { createAdminCommand } =
+      await import('../../src/cli/commands/service-factory');
     const cmd = await createAdminCommand(createDeepLClient);
 
     expect(createDeepLClient).toHaveBeenCalledWith();
@@ -272,7 +279,8 @@ describe('service-factory', () => {
   });
 
   it('createWriteCommand should create client, WriteService, and WriteCommand', async () => {
-    const { createWriteCommand } = await import('../../src/cli/commands/service-factory');
+    const { createWriteCommand } =
+      await import('../../src/cli/commands/service-factory');
     const cmd = await createWriteCommand({
       createDeepLClient,
       getConfigService: () => mockConfigService as any,
@@ -281,14 +289,19 @@ describe('service-factory', () => {
 
     expect(createDeepLClient).toHaveBeenCalledWith();
     const { WriteService } = require('../../src/services/write');
-    expect(WriteService).toHaveBeenCalledWith(mockClient, mockConfigService, mockCacheService);
+    expect(WriteService).toHaveBeenCalledWith(
+      mockClient,
+      mockConfigService,
+      mockCacheService
+    );
     const { WriteCommand } = require('../../src/cli/commands/write');
     expect(WriteCommand).toHaveBeenCalledWith(mockWriteServiceObj);
     expect(cmd).toBe(mockWriteCmdObj);
   });
 
   it('createStyleRulesCommand should create client, StyleRulesService, and StyleRulesCommand', async () => {
-    const { createStyleRulesCommand } = await import('../../src/cli/commands/service-factory');
+    const { createStyleRulesCommand } =
+      await import('../../src/cli/commands/service-factory');
     const cmd = await createStyleRulesCommand(createDeepLClient);
 
     expect(createDeepLClient).toHaveBeenCalledWith();
@@ -300,7 +313,8 @@ describe('service-factory', () => {
   });
 
   it('createUsageCommand should create client, UsageService, and UsageCommand', async () => {
-    const { createUsageCommand } = await import('../../src/cli/commands/service-factory');
+    const { createUsageCommand } =
+      await import('../../src/cli/commands/service-factory');
     const cmd = await createUsageCommand(createDeepLClient);
 
     expect(createDeepLClient).toHaveBeenCalledWith();
@@ -315,7 +329,8 @@ describe('service-factory', () => {
     const getConfigService = jest.fn().mockReturnValue(mockConfigService);
     const getCacheService = jest.fn().mockResolvedValue(mockCacheService);
 
-    const { createTranslateCommand } = await import('../../src/cli/commands/service-factory');
+    const { createTranslateCommand } =
+      await import('../../src/cli/commands/service-factory');
     const cmd = await createTranslateCommand({
       createDeepLClient,
       getConfigService,
@@ -326,8 +341,14 @@ describe('service-factory', () => {
     expect(getConfigService).toHaveBeenCalled();
     expect(getCacheService).toHaveBeenCalled();
     const { TranslationService } = require('../../src/services/translation');
-    expect(TranslationService).toHaveBeenCalledWith(mockClient, mockConfigService, mockCacheService);
-    const { DocumentTranslationService } = require('../../src/services/document-translation');
+    expect(TranslationService).toHaveBeenCalledWith(
+      mockClient,
+      mockConfigService,
+      mockCacheService
+    );
+    const {
+      DocumentTranslationService,
+    } = require('../../src/services/document-translation');
     expect(DocumentTranslationService).toHaveBeenCalledWith(mockClient);
     const { GlossaryService } = require('../../src/services/glossary');
     expect(GlossaryService).toHaveBeenCalledWith(mockClient);
@@ -336,20 +357,21 @@ describe('service-factory', () => {
       mockTranslationServiceObj,
       mockDocTranslationServiceObj,
       mockGlossaryServiceObj,
-      mockConfigService,
+      mockConfigService
     );
     expect(cmd).toBe(mockTranslateCmdObj);
   });
 
   it('createTranslateCommand should forward overrideBaseUrl', async () => {
-    const { createTranslateCommand } = await import('../../src/cli/commands/service-factory');
+    const { createTranslateCommand } =
+      await import('../../src/cli/commands/service-factory');
     await createTranslateCommand(
       {
         createDeepLClient,
         getConfigService: jest.fn().mockReturnValue(mockConfigService),
         getCacheService: jest.fn().mockResolvedValue(mockCacheService),
       },
-      'http://localhost:9999',
+      'http://localhost:9999'
     );
 
     expect(createDeepLClient).toHaveBeenCalledWith('http://localhost:9999');
@@ -359,7 +381,8 @@ describe('service-factory', () => {
     const getConfigService = jest.fn().mockReturnValue(mockConfigService);
     const getCacheService = jest.fn().mockResolvedValue(mockCacheService);
 
-    const { createWatchCommand } = await import('../../src/cli/commands/service-factory');
+    const { createWatchCommand } =
+      await import('../../src/cli/commands/service-factory');
     const cmd = await createWatchCommand({
       createDeepLClient,
       getConfigService,
@@ -368,7 +391,11 @@ describe('service-factory', () => {
 
     expect(createDeepLClient).toHaveBeenCalledWith();
     const { TranslationService } = require('../../src/services/translation');
-    expect(TranslationService).toHaveBeenCalledWith(mockClient, mockConfigService, mockCacheService);
+    expect(TranslationService).toHaveBeenCalledWith(
+      mockClient,
+      mockConfigService,
+      mockCacheService
+    );
     const { GlossaryService } = require('../../src/services/glossary');
     expect(GlossaryService).toHaveBeenCalledWith(mockClient);
     const { WatchCommand } = require('../../src/cli/commands/watch');
@@ -377,14 +404,17 @@ describe('service-factory', () => {
     expect(WatchCommand).toHaveBeenCalledWith(
       mockTranslationServiceObj,
       mockGlossaryServiceObj,
-      mockConfigService,
+      mockConfigService
     );
     expect(cmd).toBe(mockWatchCmdObj);
   });
 
   it('createVoiceCommand should wire up VoiceClient, VoiceService, and VoiceCommand', async () => {
-    const getApiKeyAndOptions = jest.fn().mockReturnValue({ apiKey: 'test-key', options: { usePro: true } });
-    const { createVoiceCommand } = await import('../../src/cli/commands/service-factory');
+    const getApiKeyAndOptions = jest
+      .fn()
+      .mockReturnValue({ apiKey: 'test-key', options: { usePro: true } });
+    const { createVoiceCommand } =
+      await import('../../src/cli/commands/service-factory');
     const cmd = await createVoiceCommand(getApiKeyAndOptions);
 
     expect(getApiKeyAndOptions).toHaveBeenCalled();
@@ -429,7 +459,8 @@ describe('registerAuth', () => {
   });
 
   async function loadAndRegister() {
-    const { registerAuth } = await import('../../src/cli/commands/register-auth');
+    const { registerAuth } =
+      await import('../../src/cli/commands/register-auth');
     registerAuth(program, { getConfigService, handleError } as any);
   }
 
@@ -461,15 +492,27 @@ describe('registerAuth', () => {
     await loadAndRegister();
     await program.parseAsync(['node', 'test', 'auth', 'show']);
 
-    expect(mockLogger.output).toHaveBeenCalledWith(expect.stringContaining('No API key set'));
+    expect(mockLogger.output).toHaveBeenCalledWith(
+      expect.stringContaining('No API key set')
+    );
   });
 
   it('auth set-key should save and report success', async () => {
     await loadAndRegister();
-    await program.parseAsync(['node', 'test', 'auth', 'set-key', 'my-api-key-12345']);
+    await program.parseAsync([
+      'node',
+      'test',
+      'auth',
+      'set-key',
+      'my-api-key-12345',
+    ]);
 
-    expect(mockSetKey).toHaveBeenCalledWith('my-api-key-12345', { verify: true });
-    expect(mockLogger.success).toHaveBeenCalledWith(expect.stringContaining('API key saved'));
+    expect(mockSetKey).toHaveBeenCalledWith('my-api-key-12345', {
+      verify: true,
+    });
+    expect(mockLogger.success).toHaveBeenCalledWith(
+      expect.stringContaining('API key saved')
+    );
   });
 
   it('auth set-key should call handleError on failure', async () => {
@@ -478,7 +521,7 @@ describe('registerAuth', () => {
 
     await loadAndRegister();
     await expect(
-      program.parseAsync(['node', 'test', 'auth', 'set-key', 'bad-key']),
+      program.parseAsync(['node', 'test', 'auth', 'set-key', 'bad-key'])
     ).rejects.toThrow('Validation failed');
 
     expect(handleError).toHaveBeenCalledWith(setKeyError);
@@ -489,7 +532,9 @@ describe('registerAuth', () => {
     await program.parseAsync(['node', 'test', 'auth', 'clear']);
 
     expect(mockClearKey).toHaveBeenCalled();
-    expect(mockLogger.success).toHaveBeenCalledWith(expect.stringContaining('API key removed'));
+    expect(mockLogger.success).toHaveBeenCalledWith(
+      expect.stringContaining('API key removed')
+    );
   });
 
   it('auth clear should call handleError on failure', async () => {
@@ -498,7 +543,7 @@ describe('registerAuth', () => {
 
     await loadAndRegister();
     await expect(
-      program.parseAsync(['node', 'test', 'auth', 'clear']),
+      program.parseAsync(['node', 'test', 'auth', 'clear'])
     ).rejects.toThrow('Config write failure');
 
     expect(handleError).toHaveBeenCalledWith(clearError);
@@ -510,7 +555,7 @@ describe('registerAuth', () => {
 
     await loadAndRegister();
     await expect(
-      program.parseAsync(['node', 'test', 'auth', 'show']),
+      program.parseAsync(['node', 'test', 'auth', 'show'])
     ).rejects.toThrow('Read failure');
 
     expect(handleError).toHaveBeenCalledWith(showError);
@@ -538,7 +583,8 @@ describe('registerUsage', () => {
   });
 
   async function loadAndRegister() {
-    const { registerUsage } = await import('../../src/cli/commands/register-usage');
+    const { registerUsage } =
+      await import('../../src/cli/commands/register-usage');
     registerUsage(program, { createDeepLClient, handleError } as any);
   }
 
@@ -547,7 +593,10 @@ describe('registerUsage', () => {
     await program.parseAsync(['node', 'test', 'usage']);
 
     expect(mockUsageGetUsage).toHaveBeenCalled();
-    expect(mockUsageFormatUsage).toHaveBeenCalledWith({ characterCount: 100, characterLimit: 500000 });
+    expect(mockUsageFormatUsage).toHaveBeenCalledWith({
+      characterCount: 100,
+      characterLimit: 500000,
+    });
     expect(mockLogger.output).toHaveBeenCalledWith('Usage: 100/500000');
   });
 
@@ -556,9 +605,9 @@ describe('registerUsage', () => {
     mockUsageGetUsage.mockRejectedValue(usageError);
 
     await loadAndRegister();
-    await expect(
-      program.parseAsync(['node', 'test', 'usage']),
-    ).rejects.toThrow('API unavailable');
+    await expect(program.parseAsync(['node', 'test', 'usage'])).rejects.toThrow(
+      'API unavailable'
+    );
 
     expect(handleError).toHaveBeenCalledWith(usageError);
   });
@@ -583,17 +632,21 @@ describe('registerCompletion', () => {
   });
 
   async function loadAndRegister() {
-    const { registerCompletion } = await import('../../src/cli/commands/register-completion');
+    const { registerCompletion } =
+      await import('../../src/cli/commands/register-completion');
     registerCompletion(program, { handleError } as any);
   }
 
-  it.each(['bash', 'zsh', 'fish'])('should generate completion script for %s', async (shell) => {
-    await loadAndRegister();
-    await program.parseAsync(['node', 'test', 'completion', shell]);
+  it.each(['bash', 'zsh', 'fish'])(
+    'should generate completion script for %s',
+    async (shell) => {
+      await loadAndRegister();
+      await program.parseAsync(['node', 'test', 'completion', shell]);
 
-    expect(mockCompletionGenerate).toHaveBeenCalledWith(shell);
-    expect(mockLogger.output).toHaveBeenCalledWith('# completion script');
-  });
+      expect(mockCompletionGenerate).toHaveBeenCalledWith(shell);
+      expect(mockLogger.output).toHaveBeenCalledWith('# completion script');
+    }
+  );
 
   it('should handle case-insensitive shell names', async () => {
     await loadAndRegister();
@@ -606,11 +659,13 @@ describe('registerCompletion', () => {
   it('should call handleError for unsupported shell', async () => {
     await loadAndRegister();
     await expect(
-      program.parseAsync(['node', 'test', 'completion', 'powershell']),
+      program.parseAsync(['node', 'test', 'completion', 'powershell'])
     ).rejects.toThrow('Unsupported shell');
 
     expect(handleError).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringContaining('Unsupported shell') }),
+      expect.objectContaining({
+        message: expect.stringContaining('Unsupported shell'),
+      })
     );
   });
 
@@ -652,7 +707,8 @@ describe('registerStyleRules', () => {
   });
 
   async function loadAndRegister() {
-    const { registerStyleRules } = await import('../../src/cli/commands/register-style-rules');
+    const { registerStyleRules } =
+      await import('../../src/cli/commands/register-style-rules');
     registerStyleRules(program, { createDeepLClient, handleError } as any);
   }
 
@@ -667,7 +723,14 @@ describe('registerStyleRules', () => {
 
   it('style-rules list --format json should display JSON output', async () => {
     await loadAndRegister();
-    await program.parseAsync(['node', 'test', 'style-rules', 'list', '--format', 'json']);
+    await program.parseAsync([
+      'node',
+      'test',
+      'style-rules',
+      'list',
+      '--format',
+      'json',
+    ]);
 
     expect(mockStyleRulesList).toHaveBeenCalled();
     expect(mockStyleRulesFormatJson).toHaveBeenCalledWith([]);
@@ -676,23 +739,34 @@ describe('registerStyleRules', () => {
 
   it('style-rules list --detailed should pass detailed option', async () => {
     await loadAndRegister();
-    await program.parseAsync(['node', 'test', 'style-rules', 'list', '--detailed']);
+    await program.parseAsync([
+      'node',
+      'test',
+      'style-rules',
+      'list',
+      '--detailed',
+    ]);
 
     expect(mockStyleRulesList).toHaveBeenCalledWith(
-      expect.objectContaining({ detailed: true }),
+      expect.objectContaining({ detailed: true })
     );
   });
 
   it('style-rules list should pass pagination options', async () => {
     await loadAndRegister();
     await program.parseAsync([
-      'node', 'test', 'style-rules', 'list',
-      '--page', '2',
-      '--page-size', '10',
+      'node',
+      'test',
+      'style-rules',
+      'list',
+      '--page',
+      '2',
+      '--page-size',
+      '10',
     ]);
 
     expect(mockStyleRulesList).toHaveBeenCalledWith(
-      expect.objectContaining({ page: 2, pageSize: 10 }),
+      expect.objectContaining({ page: 2, pageSize: 10 })
     );
   });
 
@@ -702,7 +776,7 @@ describe('registerStyleRules', () => {
 
     await loadAndRegister();
     await expect(
-      program.parseAsync(['node', 'test', 'style-rules', 'list']),
+      program.parseAsync(['node', 'test', 'style-rules', 'list'])
     ).rejects.toThrow('Pro API required');
 
     expect(handleError).toHaveBeenCalledWith(apiError);

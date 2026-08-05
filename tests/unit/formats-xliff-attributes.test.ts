@@ -50,7 +50,10 @@ describe('XLIFF elements with attributes', () => {
     it('should not delete the unit on reconstruct', () => {
       const parser = new XliffFormatParser();
       const entries = parser.extract(V20_WITH_STATE);
-      const translated = entries.map((e) => ({ ...e, translation: 'Guten Tag' }));
+      const translated = entries.map((e) => ({
+        ...e,
+        translation: 'Guten Tag',
+      }));
 
       const out = parser.reconstruct(V20_WITH_STATE, translated);
 
@@ -65,7 +68,7 @@ describe('XLIFF elements with attributes', () => {
 
       const out = parser.reconstruct(
         V20_WITH_STATE,
-        entries.map((e) => ({ ...e, translation: 'Guten Tag' })),
+        entries.map((e) => ({ ...e, translation: 'Guten Tag' }))
       );
 
       expect(out).toContain('state="initial"');
@@ -79,7 +82,7 @@ describe('XLIFF elements with attributes', () => {
 
       const out = parser.reconstruct(
         V12_WITH_STATE,
-        entries.map((e) => ({ ...e, translation: 'Guten Tag' })),
+        entries.map((e) => ({ ...e, translation: 'Guten Tag' }))
       );
 
       const targetOpenTags = out.match(/<target[\s>]/g) ?? [];
@@ -94,7 +97,7 @@ describe('XLIFF elements with attributes', () => {
 
       const out = parser.reconstruct(
         V12_WITH_STATE,
-        entries.map((e) => ({ ...e, translation: 'Guten Tag' })),
+        entries.map((e) => ({ ...e, translation: 'Guten Tag' }))
       );
 
       expect(out).toContain('state="needs-translation"');

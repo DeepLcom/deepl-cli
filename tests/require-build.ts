@@ -14,7 +14,17 @@ const SRC = path.join(ROOT, 'src');
 
 function fail(reason: string, detail: string): never {
   throw new Error(
-    ['', reason, '', detail, '', 'Run:', '', '  npm run build && npm test', ''].join('\n'),
+    [
+      '',
+      reason,
+      '',
+      detail,
+      '',
+      'Run:',
+      '',
+      '  npm run build && npm test',
+      '',
+    ].join('\n')
   );
 }
 
@@ -36,7 +46,7 @@ export default function requireBuild(): void {
   if (!fs.existsSync(CLI_ENTRY)) {
     fail(
       'Tests require a build, but dist/cli/index.js does not exist.',
-      `  Expected: ${CLI_ENTRY}\n\ndist/ is gitignored, so a fresh checkout or a pull has no built output.`,
+      `  Expected: ${CLI_ENTRY}\n\ndist/ is gitignored, so a fresh checkout or a pull has no built output.`
     );
   }
 
@@ -46,7 +56,7 @@ export default function requireBuild(): void {
   if (sourceChangedAt > builtAt) {
     fail(
       'Tests require a current build, but src/ is newer than dist/.',
-      'The suites execute dist/cli/index.js, so they would test the previously\nbuilt CLI and report results that do not describe your changes.',
+      'The suites execute dist/cli/index.js, so they would test the previously\nbuilt CLI and report results that do not describe your changes.'
     );
   }
 }

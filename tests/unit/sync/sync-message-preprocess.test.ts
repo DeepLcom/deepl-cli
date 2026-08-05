@@ -1,4 +1,8 @@
-import { expandPlurals, detectIcu, writebackPlurals } from '../../../src/sync/sync-message-preprocess';
+import {
+  expandPlurals,
+  detectIcu,
+  writebackPlurals,
+} from '../../../src/sync/sync-message-preprocess';
 import type { SyncDiff } from '../../../src/sync/types';
 import type { TranslationResult } from '../../../src/api/translation-client';
 
@@ -26,7 +30,7 @@ describe('expandPlurals', () => {
 
     const { extendedTexts, pluralSlots } = expandPlurals(
       ['{count, plural, other {# apples}}'],
-      [diff],
+      [diff]
     );
 
     expect(extendedTexts).toHaveLength(2);
@@ -98,14 +102,22 @@ describe('writebackPlurals', () => {
       { text: '1 Artikel', billedCharacters: 9 },
     ];
     const slots = [
-      { diffIndex: 0, format: 'android' as const, slotKey: 'one', textIndex: 1 },
+      {
+        diffIndex: 0,
+        format: 'android' as const,
+        slotKey: 'one',
+        textIndex: 1,
+      },
     ];
 
     writebackPlurals(results, slots, [diff]);
 
-    const plurals = diff.metadata!['plurals'] as Array<{ quantity: string; value: string }>;
-    expect(plurals.find(p => p.quantity === 'one')!.value).toBe('1 Artikel');
-    expect(plurals.find(p => p.quantity === 'other')!.value).toBe('%d items'); // untouched
+    const plurals = diff.metadata!['plurals'] as Array<{
+      quantity: string;
+      value: string;
+    }>;
+    expect(plurals.find((p) => p.quantity === 'one')!.value).toBe('1 Artikel');
+    expect(plurals.find((p) => p.quantity === 'other')!.value).toBe('%d items'); // untouched
   });
 
   it('writes msgstr[1] for PO msgid_plural slots and propagates to higher msgstr[N]', () => {
@@ -121,7 +133,12 @@ describe('writebackPlurals', () => {
       { text: 'Artikel (pl)', billedCharacters: 12 },
     ];
     const slots = [
-      { diffIndex: 0, format: 'po' as const, slotKey: 'msgid_plural', textIndex: 1 },
+      {
+        diffIndex: 0,
+        format: 'po' as const,
+        slotKey: 'msgid_plural',
+        textIndex: 1,
+      },
     ];
 
     writebackPlurals(results, slots, [diff]);
@@ -138,12 +155,20 @@ describe('writebackPlurals', () => {
     });
     const results: (TranslationResult | null)[] = [null, null];
     const slots = [
-      { diffIndex: 0, format: 'android' as const, slotKey: 'one', textIndex: 1 },
+      {
+        diffIndex: 0,
+        format: 'android' as const,
+        slotKey: 'one',
+        textIndex: 1,
+      },
     ];
 
     writebackPlurals(results, slots, [diff]);
 
-    const plurals = diff.metadata!['plurals'] as Array<{ quantity: string; value: string }>;
+    const plurals = diff.metadata!['plurals'] as Array<{
+      quantity: string;
+      value: string;
+    }>;
     expect(plurals[0]!.value).toBe('original');
   });
 });

@@ -51,7 +51,10 @@ const SQLITE_NOTADB = 26;
 // in a jest test context).
 function isCorruptionError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
-  const { errcode, message } = error as { errcode?: unknown; message?: unknown };
+  const { errcode, message } = error as {
+    errcode?: unknown;
+    message?: unknown;
+  };
   if (typeof errcode === 'number') {
     const primary = errcode & 0xff;
     return primary === SQLITE_CORRUPT || primary === SQLITE_NOTADB;
@@ -120,7 +123,7 @@ export class CacheService {
       const suffix = `.corrupt-${Date.now()}`;
       Logger.warn(
         `Cache database corrupted, backing up and recreating: ${(error as Error).message}. ` +
-        `Previous contents preserved at ${path.basename(dbPath)}${suffix} (and ${path.basename(dbPath)}${suffix}-wal / -shm if present).`,
+          `Previous contents preserved at ${path.basename(dbPath)}${suffix} (and ${path.basename(dbPath)}${suffix}-wal / -shm if present).`
       );
       try {
         // Sidecars must be preserved BEFORE closing the failed handle —
@@ -158,12 +161,15 @@ export class CacheService {
     try {
       const dir = path.dirname(dbPath);
       const prefix = `${path.basename(dbPath)}.corrupt-`;
-      const stamps = [...new Set(
-        fs.readdirSync(dir)
-          .filter((f) => f.startsWith(prefix))
-          .map((f) => /\.corrupt-(\d+)/.exec(f)?.[1])
-          .filter((s): s is string => s !== undefined),
-      )].sort((a, b) => Number(b) - Number(a));
+      const stamps = [
+        ...new Set(
+          fs
+            .readdirSync(dir)
+            .filter((f) => f.startsWith(prefix))
+            .map((f) => /\.corrupt-(\d+)/.exec(f)?.[1])
+            .filter((s): s is string => s !== undefined)
+        ),
+      ].sort((a, b) => Number(b) - Number(a));
       for (const stamp of stamps.slice(CORRUPT_BACKUPS_TO_KEEP)) {
         for (const suffix of ['', '-wal', '-shm']) {
           fs.rmSync(`${dbPath}.corrupt-${stamp}${suffix}`, { force: true });
@@ -186,8 +192,10 @@ export class CacheService {
   }
 
   static getInstance(options?: CacheServiceOptions): CacheService {
-    const needsNewInstance = !CacheService.instance || CacheService.instance.isClosed;
-    const needsHandlerRegistration = needsNewInstance && !CacheService.handlersRegistered;
+    const needsNewInstance =
+      !CacheService.instance || CacheService.instance.isClosed;
+    const needsHandlerRegistration =
+      needsNewInstance && !CacheService.handlersRegistered;
 
     if (needsHandlerRegistration) {
       CacheService.handlersRegistered = true;
@@ -230,7 +238,7 @@ export class CacheService {
       .get() as { user_version: number };
     if (userVersion > CACHE_SCHEMA_VERSION) {
       throw new ConfigError(
-        `Cache DB schema version ${userVersion} is newer than this CLI supports (${CACHE_SCHEMA_VERSION}). Upgrade the CLI, or delete the cache DB to start fresh.`,
+        `Cache DB schema version ${userVersion} is newer than this CLI supports (${CACHE_SCHEMA_VERSION}). Upgrade the CLI, or delete the cache DB to start fresh.`
       );
     }
 
@@ -283,7 +291,9 @@ export class CacheService {
     // Clean up expired entries first
     this.cleanupExpired();
 
-    const stmt = this.db.prepare('SELECT value, timestamp FROM cache WHERE key = ?');
+    const stmt = this.db.prepare(
+      'SELECT value, timestamp FROM cache WHERE key = ?'
+    );
     const row = stmt.get(key) as CacheRow | undefined;
 
     if (!row) {
@@ -302,7 +312,9 @@ export class CacheService {
 
       if (guard && !guard(parsed)) {
         const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;
-        Logger.warn(`Cache type mismatch for key "${truncatedKey}". Removing entry.`);
+        Logger.warn(
+          `Cache type mismatch for key "${truncatedKey}". Removing entry.`
+        );
         this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
         return null;
       }
@@ -310,7 +322,9 @@ export class CacheService {
       return parsed as T;
     } catch (error) {
       const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;
-      Logger.warn(`Cache corruption detected for key "${truncatedKey}": ${errorMessage(error)}. Removing entry.`);
+      Logger.warn(
+        `Cache corruption detected for key "${truncatedKey}": ${errorMessage(error)}. Removing entry.`
+      );
       this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
       return null;
     }
@@ -333,7 +347,7 @@ export class CacheService {
     // evicting everything else first — skip it rather than wipe the cache.
     if (size > this.maxSize) {
       Logger.verbose(
-        `Skipping cache write: entry of ${size} bytes exceeds the ${this.maxSize}-byte cache size limit.`,
+        `Skipping cache write: entry of ${size} bytes exceeds the ${this.maxSize}-byte cache size limit.`
       );
       return;
     }
@@ -342,7 +356,9 @@ export class CacheService {
     this.cleanupExpired();
 
     // Check if key already exists and get its size
-    const existingStmt = this.db.prepare('SELECT size FROM cache WHERE key = ?');
+    const existingStmt = this.db.prepare(
+      'SELECT size FROM cache WHERE key = ?'
+    );
     const existing = existingStmt.get(key) as { size: number } | undefined;
     const existingSize = existing?.size ?? 0;
 
@@ -434,7 +450,9 @@ export class CacheService {
     }
     this.lastCleanupTime = now;
 
-    this.db.prepare('DELETE FROM cache WHERE timestamp < ?').run(now - this.ttl);
+    this.db
+      .prepare('DELETE FROM cache WHERE timestamp < ?')
+      .run(now - this.ttl);
   }
 
   private evictIfNeeded(newEntrySize: number): void {
@@ -444,7 +462,9 @@ export class CacheService {
     // estimate from the average row size under-evicts whenever sizes are
     // skewed, leaving the cache over its cap.
     while (excess > 0) {
-      const deleted = this.db.prepare(`
+      const deleted = this.db
+        .prepare(
+          `
         DELETE FROM cache
         WHERE key IN (
           SELECT key FROM cache
@@ -452,7 +472,9 @@ export class CacheService {
           LIMIT ${EVICTION_BATCH}
         )
         RETURNING size
-      `).all() as { size: number }[];
+      `
+        )
+        .all() as { size: number }[];
 
       if (deleted.length === 0) {
         return;

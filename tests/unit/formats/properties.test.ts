@@ -15,15 +15,15 @@ describe('PropertiesFormatParser', () => {
       const content = 'greeting=Hello\nfarewell=Goodbye\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
-      expect(entries.find(e => e.key === 'farewell')!.value).toBe('Goodbye');
-      expect(entries.find(e => e.key === 'greeting')!.value).toBe('Hello');
+      expect(entries.find((e) => e.key === 'farewell')!.value).toBe('Goodbye');
+      expect(entries.find((e) => e.key === 'greeting')!.value).toBe('Hello');
     });
 
     it('should handle key: value separator', () => {
       const content = 'greeting: Hello\nfarewell: Goodbye\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
-      expect(entries.find(e => e.key === 'farewell')!.value).toBe('Goodbye');
+      expect(entries.find((e) => e.key === 'farewell')!.value).toBe('Goodbye');
     });
 
     it('should handle spaces around separator', () => {
@@ -34,7 +34,8 @@ describe('PropertiesFormatParser', () => {
     });
 
     it('should skip comment lines', () => {
-      const content = '# This is a comment\ngreeting=Hello\n! Another comment\nfarewell=Goodbye\n';
+      const content =
+        '# This is a comment\ngreeting=Hello\n! Another comment\nfarewell=Goodbye\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
     });
@@ -132,7 +133,7 @@ describe('PropertiesFormatParser', () => {
       const result = parser.reconstruct(content, entries);
       expect(result).toContain('greeting=Hallo Welt');
       const lines = result.split('\n');
-      const greetingLine = lines.find(l => l.startsWith('greeting='));
+      const greetingLine = lines.find((l) => l.startsWith('greeting='));
       expect(greetingLine).toBe('greeting=Hallo Welt');
     });
 
@@ -197,7 +198,11 @@ describe('PropertiesFormatParser', () => {
     it('should handle line continuations in reconstruct', () => {
       const content = 'long=This is \\\n    a continued \\\n    line\n';
       const entries: TranslatedEntry[] = [
-        { key: 'long', value: 'This is a continued line', translation: 'Translated' },
+        {
+          key: 'long',
+          value: 'This is a continued line',
+          translation: 'Translated',
+        },
       ];
       const result = parser.reconstruct(content, entries);
       expect(result).toContain('long=Translated');

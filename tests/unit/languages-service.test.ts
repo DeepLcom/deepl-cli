@@ -39,11 +39,15 @@ describe('LanguagesService', () => {
 
   it('should propagate errors from client', async () => {
     const mockClient = createMockDeepLClient({
-      getSupportedLanguages: jest.fn().mockRejectedValue(new Error('API error')),
+      getSupportedLanguages: jest
+        .fn()
+        .mockRejectedValue(new Error('API error')),
     });
     const service = new LanguagesService(mockClient);
 
-    await expect(service.getSupportedLanguages('source')).rejects.toThrow('API error');
+    await expect(service.getSupportedLanguages('source')).rejects.toThrow(
+      'API error'
+    );
   });
 
   it('should report hasClient correctly', () => {

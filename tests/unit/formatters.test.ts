@@ -442,22 +442,14 @@ describe('formatters', () => {
     });
 
     it('should set changes to 0 when text is unchanged', () => {
-      const output = formatWriteJson(
-        'This is good.',
-        'This is good.',
-        'en-US'
-      );
+      const output = formatWriteJson('This is good.', 'This is good.', 'en-US');
       const parsed = JSON.parse(output);
 
       expect(parsed.changes).toBe(0);
     });
 
     it('should set changes to 1 when text is changed', () => {
-      const output = formatWriteJson(
-        'Original',
-        'Improved',
-        'en-US'
-      );
+      const output = formatWriteJson('Original', 'Improved', 'en-US');
       const parsed = JSON.parse(output);
 
       expect(parsed.changes).toBe(1);

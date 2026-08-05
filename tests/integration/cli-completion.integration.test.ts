@@ -2,7 +2,9 @@ import { createTestConfigDir, makeRunCLI } from '../helpers';
 
 describe('Completion CLI Integration', () => {
   const testConfig = createTestConfigDir('completion');
-  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path, { excludeApiKey: true });
+  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path, {
+    excludeApiKey: true,
+  });
 
   afterAll(() => {
     testConfig.cleanup();
@@ -20,9 +22,19 @@ describe('Completion CLI Integration', () => {
     it('should include all registered top-level commands', () => {
       const output = runCLI('deepl completion bash');
       const expectedCommands = [
-        'translate', 'auth', 'usage', 'languages', 'watch',
-        'write', 'config', 'cache', 'glossary', 'hooks',
-        'style-rules', 'admin', 'completion',
+        'translate',
+        'auth',
+        'usage',
+        'languages',
+        'watch',
+        'write',
+        'config',
+        'cache',
+        'glossary',
+        'hooks',
+        'style-rules',
+        'admin',
+        'completion',
       ];
       for (const cmd of expectedCommands) {
         expect(output).toContain(cmd);

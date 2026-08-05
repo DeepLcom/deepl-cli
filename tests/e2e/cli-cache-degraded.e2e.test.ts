@@ -34,10 +34,13 @@ describe('CLI with unavailable cache backend E2E', () => {
   let preloadPath: string;
   let cacheDbPath: string;
 
-  let runCLIAll: (command: string, options?: { env?: Record<string, string | undefined> }) => string;
+  let runCLIAll: (
+    command: string,
+    options?: { env?: Record<string, string | undefined> }
+  ) => string;
   let runCLIExpectError: (
     command: string,
-    options?: { env?: Record<string, string | undefined> },
+    options?: { env?: Record<string, string | undefined> }
   ) => { status: number; output: string };
 
   function brokenEnv(): { env: Record<string, string> } {
@@ -70,12 +73,18 @@ describe('CLI with unavailable cache backend E2E', () => {
         }
       });
 
-      setTimeout(() => reject(new Error('Mock server did not start within 15s')), 15000).unref();
+      setTimeout(
+        () => reject(new Error('Mock server did not start within 15s')),
+        15000
+      ).unref();
     });
   }
 
   beforeAll(async () => {
-    const helpers = makeNodeRunCLI(testConfig.path, { noColor: true, timeout: 15000 });
+    const helpers = makeNodeRunCLI(testConfig.path, {
+      noColor: true,
+      timeout: 15000,
+    });
     runCLIAll = helpers.runCLIAll;
     runCLIExpectError = helpers.runCLIExpectError;
 
@@ -88,11 +97,18 @@ describe('CLI with unavailable cache backend E2E', () => {
     const config = {
       auth: { apiKey: 'mock-api-key-for-testing:fx' },
       api: { baseUrl, usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: true,
+      },
       cache: { enabled: true, maxSize: 1048576, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: false },
     };
-    fs.writeFileSync(path.join(testConfig.path, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(testConfig.path, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
 
     // Populate a healthy cache database with a working backend first.
     cacheDbPath = path.join(testConfig.path, 'cache.db');
@@ -111,7 +127,9 @@ describe('CLI with unavailable cache backend E2E', () => {
   });
 
   function listCorruptFiles(): string[] {
-    return fs.readdirSync(testConfig.path).filter((f) => f.includes('.corrupt-'));
+    return fs
+      .readdirSync(testConfig.path)
+      .filter((f) => f.includes('.corrupt-'));
   }
 
   it('translate succeeds with exit code 0 and exactly one warning', () => {
@@ -120,7 +138,8 @@ describe('CLI with unavailable cache backend E2E', () => {
     const output = runCLIAll('translate "Hello world" --to es', brokenEnv());
 
     expect(output).toContain('Hola mundo');
-    const warnings = output.split('Caching is disabled for this run').length - 1;
+    const warnings =
+      output.split('Caching is disabled for this run').length - 1;
     expect(warnings).toBe(1);
 
     // The healthy database was not quarantined or modified.

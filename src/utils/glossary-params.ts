@@ -15,7 +15,9 @@ export interface GlossarySourceLangSelection {
 }
 
 /** Whether `--glossary` names anything; `[]` is truthy but selects nothing. */
-export function hasGlossarySelection(selection: GlossarySourceLangSelection): boolean {
+export function hasGlossarySelection(
+  selection: GlossarySourceLangSelection
+): boolean {
   const { glossary } = selection;
   return Array.isArray(glossary) ? glossary.length > 0 : !!glossary;
 }
@@ -33,7 +35,7 @@ export function hasGlossarySelection(selection: GlossarySourceLangSelection): bo
 export function applyGlossarySourceLang(
   selection: GlossarySourceLangSelection,
   configuredSourceLang: string | undefined,
-  example: string,
+  example: string
 ): void {
   if (!hasGlossarySelection(selection) || selection.from) {
     return;
@@ -42,12 +44,14 @@ export function applyGlossarySourceLang(
     selection.from = configuredSourceLang.toLowerCase();
     return;
   }
-  throw new ValidationError('Source language (--from) is required when using a glossary', example);
+  throw new ValidationError(
+    'Source language (--from) is required when using a glossary',
+    example
+  );
 }
 
 export type GlossaryWireParams =
-  | { glossary_id: string }
-  | { glossary_ids: string[] };
+  { glossary_id: string } | { glossary_ids: string[] };
 
 /**
  * Pick the glossary parameter to send for a resolved glossary selection.
@@ -63,14 +67,14 @@ export type GlossaryWireParams =
  * position in this list.
  */
 export function resolveGlossaryWireParams(
-  selection: GlossarySelection,
+  selection: GlossarySelection
 ): GlossaryWireParams | undefined {
   const ids = selection.glossaryIds;
 
   if (selection.glossaryId && ids && ids.length > 0) {
     throw new ValidationError(
       'Cannot combine glossaryId with glossaryIds',
-      'Pass every glossary through glossaryIds; a single entry is sent as glossary_id automatically.',
+      'Pass every glossary through glossaryIds; a single entry is sent as glossary_id automatically.'
     );
   }
 
@@ -85,7 +89,7 @@ export function resolveGlossaryWireParams(
   if (ids.length > MAX_GLOSSARIES_PER_REQUEST) {
     throw new ValidationError(
       `A maximum of ${MAX_GLOSSARIES_PER_REQUEST} glossaries can be used per request, got ${ids.length}`,
-      'Merge entries into fewer glossaries, or pass fewer --glossary flags.',
+      'Merge entries into fewer glossaries, or pass fewer --glossary flags.'
     );
   }
 

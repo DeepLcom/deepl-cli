@@ -43,7 +43,7 @@ function featureLabel(key: string): string {
   // The key is a response field, so it is sanitized before it is displayed.
   return sanitizeForTerminal(key)
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
@@ -115,7 +115,7 @@ export function partitionFeatureKeys(entries: LanguageDisplayEntry[]): {
   const uniform: Array<{ key: string; cell: string }> = [];
   for (const key of allKeys) {
     const first = featureCell(described[0]!, key);
-    if (described.some(entry => featureCell(entry, key) !== first)) {
+    if (described.some((entry) => featureCell(entry, key) !== first)) {
       columns.push(key);
     } else {
       uniform.push({ key, cell: first });
@@ -124,8 +124,8 @@ export function partitionFeatureKeys(entries: LanguageDisplayEntry[]): {
 
   return {
     columns: sortFeatureKeys(columns),
-    uniform: sortFeatureKeys(uniform.map(u => u.key)).map(
-      key => uniform.find(u => u.key === key)!,
+    uniform: sortFeatureKeys(uniform.map((u) => u.key)).map((key) =>
+      uniform.find((u) => u.key === key)!
     ),
   };
 }
@@ -144,8 +144,8 @@ function featureList(entry: LanguageDisplayEntry, keys: string[]): string {
   if (!hasFeatureData(entry)) return 'no feature data';
   if (keys.length === 0) return '';
   const supported = keys
-    .filter(key => featureCell(entry, key) !== '—')
-    .map(key => {
+    .filter((key) => featureCell(entry, key) !== '—')
+    .map((key) => {
       const cell = featureCell(entry, key);
       const label = featureLabel(key).toLowerCase();
       return cell === 'yes' ? label : `${label} (${cell})`;
@@ -164,12 +164,14 @@ function featureList(entry: LanguageDisplayEntry, keys: string[]): string {
  */
 function uniformNote(
   uniform: Array<{ key: string; cell: string }>,
-  entries: LanguageDisplayEntry[],
+  entries: LanguageDisplayEntry[]
 ): string | undefined {
-  const supported = uniform.filter(u => u.cell !== '—' && u.cell !== UNKNOWN_CELL);
+  const supported = uniform.filter(
+    (u) => u.cell !== '—' && u.cell !== UNKNOWN_CELL
+  );
   if (supported.length === 0) return undefined;
   const list = supported
-    .map(u => {
+    .map((u) => {
       const label = featureLabel(u.key).toLowerCase();
       return u.cell === 'yes' ? label : `${label} (${u.cell})`;
     })
@@ -213,22 +215,25 @@ export class LanguagesCommand {
       apiMap.set(lang.language.toLowerCase(), lang);
     }
 
-    const registryEntries = type === 'source'
-      ? getRegistrySourceLanguages()
-      : getRegistryTargetLanguages();
+    const registryEntries =
+      type === 'source'
+        ? getRegistrySourceLanguages()
+        : getRegistryTargetLanguages();
 
-    const merged = registryEntries.map(entry => {
+    const merged = registryEntries.map((entry) => {
       const apiLang = apiMap.get(entry.code);
       return {
         code: entry.code,
         name: apiLang?.name ?? entry.name,
         category: entry.category,
-        ...(apiLang?.supportsFormality !== undefined && { supportsFormality: apiLang.supportsFormality }),
+        ...(apiLang?.supportsFormality !== undefined && {
+          supportsFormality: apiLang.supportsFormality,
+        }),
         ...(apiLang?.features && { features: apiLang.features }),
       };
     });
 
-    const known = new Set(registryEntries.map(entry => entry.code));
+    const known = new Set(registryEntries.map((entry) => entry.code));
     for (const lang of apiLanguages) {
       const code = lang.language.toLowerCase();
       if (known.has(code)) continue;
@@ -237,7 +242,11 @@ export class LanguagesCommand {
       // always carries a subtag, which is the stable signal available here; core
       // and regional render in the same section anyway, and regenerating the
       // snapshot replaces the guess with the API's own answer.
-      const { code: derivedCode, name, category } = deriveLanguageEntry({
+      const {
+        code: derivedCode,
+        name,
+        category,
+      } = deriveLanguageEntry({
         lang: code,
         name: lang.name,
         usable_as_source: !code.includes('-'),
@@ -247,7 +256,9 @@ export class LanguagesCommand {
         code: derivedCode,
         name,
         category,
-        ...(lang.supportsFormality !== undefined && { supportsFormality: lang.supportsFormality }),
+        ...(lang.supportsFormality !== undefined && {
+          supportsFormality: lang.supportsFormality,
+        }),
         ...(lang.features && { features: lang.features }),
       });
     }
@@ -259,11 +270,12 @@ export class LanguagesCommand {
    * Get display entries from registry only (no API call).
    */
   getRegistryLanguages(type: 'source' | 'target'): LanguageDisplayEntry[] {
-    const entries = type === 'source'
-      ? getRegistrySourceLanguages()
-      : getRegistryTargetLanguages();
+    const entries =
+      type === 'source'
+        ? getRegistrySourceLanguages()
+        : getRegistryTargetLanguages();
 
-    return entries.map(entry => ({
+    return entries.map((entry) => ({
       code: entry.code,
       name: entry.name,
       category: entry.category,
@@ -290,13 +302,16 @@ export class LanguagesCommand {
     showFeatures = false
   ): string {
     const lines: string[] = [];
-    const header = type === 'source' ? 'Source Languages:' : 'Target Languages:';
+    const header =
+      type === 'source' ? 'Source Languages:' : 'Target Languages:';
     const renderFeatures = showFeatures && hasAnyFeatures(entries);
     // Formality is one of the feature columns, so the [F] shorthand would say it
     // twice. `=== true` because a language the response did not describe carries
     // no answer, and a legend with no [F] beneath it reads as "none support it".
     const showFormality =
-      !renderFeatures && type === 'target' && entries.some(e => e.supportsFormality === true);
+      !renderFeatures &&
+      type === 'target' &&
+      entries.some((e) => e.supportsFormality === true);
 
     lines.push(chalk.bold(header));
 
@@ -305,11 +320,13 @@ export class LanguagesCommand {
       return lines.join('\n');
     }
 
-    const coreAndRegional = entries.filter(e => e.category === 'core' || e.category === 'regional');
-    const extended = entries.filter(e => e.category === 'extended');
+    const coreAndRegional = entries.filter(
+      (e) => e.category === 'core' || e.category === 'regional'
+    );
+    const extended = entries.filter((e) => e.category === 'extended');
 
     const allEntries = [...coreAndRegional, ...extended];
-    const maxCodeLength = Math.max(...allEntries.map(e => e.code.length));
+    const maxCodeLength = Math.max(...allEntries.map((e) => e.code.length));
     const { columns, uniform } = renderFeatures
       ? partitionFeatureKeys(entries)
       : { columns: [], uniform: [] };
@@ -319,18 +336,27 @@ export class LanguagesCommand {
       return list ? chalk.gray(` — ${list}`) : '';
     };
 
-    coreAndRegional.forEach(entry => {
+    coreAndRegional.forEach((entry) => {
       const code = entry.code.padEnd(maxCodeLength + 2);
-      const formalityMarker = showFormality && entry.supportsFormality ? chalk.green(' [F]') : '';
-      lines.push(`  ${chalk.cyan(code)} ${sanitizeForTerminal(entry.name)}${formalityMarker}${suffix(entry)}`);
+      const formalityMarker =
+        showFormality && entry.supportsFormality ? chalk.green(' [F]') : '';
+      lines.push(
+        `  ${chalk.cyan(code)} ${sanitizeForTerminal(entry.name)}${formalityMarker}${suffix(entry)}`
+      );
     });
 
     if (extended.length > 0) {
       lines.push('');
-      lines.push(chalk.gray('  Extended Languages (quality_optimized only, no formality/glossary):'));
-      extended.forEach(entry => {
+      lines.push(
+        chalk.gray(
+          '  Extended Languages (quality_optimized only, no formality/glossary):'
+        )
+      );
+      extended.forEach((entry) => {
         const code = entry.code.padEnd(maxCodeLength + 2);
-        lines.push(`  ${chalk.gray(code)} ${chalk.gray(sanitizeForTerminal(entry.name))}${suffix(entry)}`);
+        lines.push(
+          `  ${chalk.gray(code)} ${chalk.gray(sanitizeForTerminal(entry.name))}${suffix(entry)}`
+        );
       });
     }
 
@@ -353,8 +379,16 @@ export class LanguagesCommand {
     targetLanguages: LanguageInfo[],
     showFeatures = false
   ): string {
-    const sourcePart = this.formatLanguages(sourceLanguages, 'source', showFeatures);
-    const targetPart = this.formatLanguages(targetLanguages, 'target', showFeatures);
+    const sourcePart = this.formatLanguages(
+      sourceLanguages,
+      'source',
+      showFeatures
+    );
+    const targetPart = this.formatLanguages(
+      targetLanguages,
+      'target',
+      showFeatures
+    );
 
     return `${sourcePart}\n\n${targetPart}`;
   }
@@ -365,9 +399,10 @@ export class LanguagesCommand {
     type: 'source' | 'target',
     showFeatures = false
   ): string {
-    const entries = languages.length === 0 && !this.service.hasClient()
-      ? this.getRegistryLanguages(type)
-      : this.mergeWithRegistry(languages, type);
+    const entries =
+      languages.length === 0 && !this.service.hasClient()
+        ? this.getRegistryLanguages(type)
+        : this.mergeWithRegistry(languages, type);
 
     return this.formatDisplayEntriesTable(entries, type, showFeatures);
   }
@@ -392,7 +427,7 @@ export class LanguagesCommand {
     const showFormality =
       (!renderFeatures || columns.length === 0) &&
       type === 'target' &&
-      entries.some(e => e.supportsFormality === true);
+      entries.some((e) => e.supportsFormality === true);
 
     const head = ['Code', 'Name', 'Category'];
     const colWidths = [10, renderFeatures ? 24 : showFormality ? 30 : 36, 12];
@@ -414,7 +449,11 @@ export class LanguagesCommand {
     });
 
     for (const entry of entries) {
-      const row: string[] = [entry.code, sanitizeForTerminal(entry.name), entry.category];
+      const row: string[] = [
+        entry.code,
+        sanitizeForTerminal(entry.name),
+        entry.category,
+      ];
       if (showFormality) {
         row.push(entry.supportsFormality ? 'yes' : '—');
       }
@@ -425,8 +464,14 @@ export class LanguagesCommand {
     }
 
     const notes: string[] = [];
-    if (renderFeatures && columns.length > 0 && entries.some(e => !hasFeatureData(e))) {
-      notes.push(`${UNKNOWN_CELL} = the API response did not describe this language`);
+    if (
+      renderFeatures &&
+      columns.length > 0 &&
+      entries.some((e) => !hasFeatureData(e))
+    ) {
+      notes.push(
+        `${UNKNOWN_CELL} = the API response did not describe this language`
+      );
     }
     const note = renderFeatures ? uniformNote(uniform, entries) : undefined;
     if (note) notes.push(note);

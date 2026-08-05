@@ -29,7 +29,9 @@ describe('--no-input flag', () => {
 
   describe('write --interactive --no-input', () => {
     it('should error with exit code 6', () => {
-      const result = runCLIExpectError('deepl --no-input write "test text" --interactive');
+      const result = runCLIExpectError(
+        'deepl --no-input write "test text" --interactive'
+      );
 
       expect(result.status).toBe(6);
       expect(result.output).toContain('requires an interactive terminal');

@@ -77,18 +77,28 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'exit-code-nokey.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
+      const cleanEnv: Record<string, string | undefined> = {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+      };
       delete cleanEnv['DEEPL_API_KEY'];
 
       try {
-        execSync('deepl auth clear', { encoding: 'utf-8', env: cleanEnv, stdio: 'pipe' });
+        execSync('deepl auth clear', {
+          encoding: 'utf-8',
+          env: cleanEnv,
+          stdio: 'pipe',
+        });
       } catch {
         // Ignore
       }
 
       expect.assertions(1);
       try {
-        execSync(`deepl voice ${testFile} --to de`, { encoding: 'utf-8', env: cleanEnv });
+        execSync(`deepl voice ${testFile} --to de`, {
+          encoding: 'utf-8',
+          env: cleanEnv,
+        });
         throw new Error('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
@@ -110,7 +120,7 @@ describe('Voice CLI E2E', () => {
         JSON.stringify({
           auth: { apiKey: 'mock-api-key-for-testing:fx' },
           api: { baseUrl: 'http://127.0.0.1:9/v2', usePro: false },
-        }),
+        })
       );
     });
 
@@ -123,7 +133,7 @@ describe('Voice CLI E2E', () => {
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
       const result = orderCLI.runCLIExpectError(
-        `deepl voice ${testFile} --to bogus --glossary my-glossary`,
+        `deepl voice ${testFile} --to bogus --glossary my-glossary`
       );
 
       expect(result.status).toBe(6);
@@ -136,7 +146,7 @@ describe('Voice CLI E2E', () => {
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
       const result = orderCLI.runCLIExpectError(
-        `deepl voice ${testFile} --to de --content-type audio/wav --glossary my-glossary`,
+        `deepl voice ${testFile} --to de --content-type audio/wav --glossary my-glossary`
       );
 
       expect(result.status).toBe(6);
@@ -150,7 +160,10 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'error-msg-test.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
+      const cleanEnv: Record<string, string | undefined> = {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+      };
       delete cleanEnv['DEEPL_API_KEY'];
 
       try {
@@ -197,7 +210,10 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'format-text.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
+      const cleanEnv: Record<string, string | undefined> = {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+      };
       delete cleanEnv['DEEPL_API_KEY'];
 
       expect.assertions(1);
@@ -219,7 +235,10 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'format-json.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
+      const cleanEnv: Record<string, string | undefined> = {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+      };
       delete cleanEnv['DEEPL_API_KEY'];
 
       expect.assertions(1);

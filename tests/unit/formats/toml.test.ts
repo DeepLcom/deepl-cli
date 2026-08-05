@@ -15,15 +15,18 @@ describe('TomlFormatParser', () => {
       const content = 'greeting = "Hello"\nfarewell = "Goodbye"\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
-      expect(entries.find(e => e.key === 'greeting')!.value).toBe('Hello');
-      expect(entries.find(e => e.key === 'farewell')!.value).toBe('Goodbye');
+      expect(entries.find((e) => e.key === 'greeting')!.value).toBe('Hello');
+      expect(entries.find((e) => e.key === 'farewell')!.value).toBe('Goodbye');
     });
 
     it('should extract nested table keys with dot paths', () => {
       const content = '[nav]\nhome = "Home"\nabout = "About"\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
-      expect(entries.map(e => e.key).sort()).toEqual(['nav.about', 'nav.home']);
+      expect(entries.map((e) => e.key).sort()).toEqual([
+        'nav.about',
+        'nav.home',
+      ]);
     });
 
     it('should skip non-string values', () => {
@@ -39,17 +42,22 @@ describe('TomlFormatParser', () => {
     });
 
     it('should handle go-i18n style deeply nested tables', () => {
-      const content = [
-        '[messages]',
-        '[messages.greeting]',
-        'other = "Hello, {{.Name}}!"',
-        '[messages.farewell]',
-        'other = "Goodbye"',
-      ].join('\n') + '\n';
+      const content =
+        [
+          '[messages]',
+          '[messages.greeting]',
+          'other = "Hello, {{.Name}}!"',
+          '[messages.farewell]',
+          'other = "Goodbye"',
+        ].join('\n') + '\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
-      expect(entries.find(e => e.key === 'messages.greeting.other')!.value).toBe('Hello, {{.Name}}!');
-      expect(entries.find(e => e.key === 'messages.farewell.other')!.value).toBe('Goodbye');
+      expect(
+        entries.find((e) => e.key === 'messages.greeting.other')!.value
+      ).toBe('Hello, {{.Name}}!');
+      expect(
+        entries.find((e) => e.key === 'messages.farewell.other')!.value
+      ).toBe('Goodbye');
     });
   });
 
@@ -132,23 +140,21 @@ describe('TomlFormatParser', () => {
         { key: 'home.title', value: 'Home', translation: 'Startseite' },
         { key: 'about.title', value: 'About', translation: 'Über uns' },
       ]);
-      expect(result).toBe([
-        '[home]',
-        'title = "Startseite"',
-        '',
-        '',
-        '[about]',
-        'title = "Über uns"',
-        '',
-      ].join('\n'));
+      expect(result).toBe(
+        [
+          '[home]',
+          'title = "Startseite"',
+          '',
+          '',
+          '[about]',
+          'title = "Über uns"',
+          '',
+        ].join('\n')
+      );
     });
 
     it('preserves double-quoted vs literal (single-quoted) values per-entry', () => {
-      const content = [
-        'dq = "double"',
-        "lit = 'literal'",
-        '',
-      ].join('\n');
+      const content = ['dq = "double"', "lit = 'literal'", ''].join('\n');
       const result = parser.reconstruct(content, [
         { key: 'dq', value: 'double', translation: 'doppel' },
         { key: 'lit', value: 'literal', translation: 'wörtlich' },
@@ -194,7 +200,7 @@ describe('TomlFormatParser', () => {
       expect(result).toBe('msg = "She said \\"hello\\""\n');
     });
 
-    it('falls back from literal to double-quoted when translation contains `\\\'`', () => {
+    it("falls back from literal to double-quoted when translation contains `\\'`", () => {
       const content = "msg = 'hi'\n";
       const result = parser.reconstruct(content, [
         { key: 'msg', value: 'hi', translation: "It's fine" },
@@ -247,7 +253,9 @@ describe('TomlFormatParser', () => {
       expect(result).toContain('existing = "a"');
       expect(result).toContain('brand_new = "neu"');
       // New key appears AFTER the existing entry, not before.
-      expect(result.indexOf('existing')).toBeLessThan(result.indexOf('brand_new'));
+      expect(result.indexOf('existing')).toBeLessThan(
+        result.indexOf('brand_new')
+      );
     });
 
     it('is byte-equal when reconstruct keeps values identical to extract', () => {

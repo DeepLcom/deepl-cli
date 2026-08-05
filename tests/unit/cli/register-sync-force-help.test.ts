@@ -28,8 +28,11 @@ function getForceOption() {
   registerSync(program, makeDeps());
   const sync = program.commands.find((c) => c.name() === 'sync');
   if (!sync) throw new Error('sync command not registered');
-  const opts = (sync as unknown as { options: Array<{ flags: string; description: string }> })
-    .options;
+  const opts = (
+    sync as unknown as {
+      options: Array<{ flags: string; description: string }>;
+    }
+  ).options;
   const opt = opts.find((o) => o.flags === '--force');
   if (!opt) throw new Error('--force option not found');
   return opt;

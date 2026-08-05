@@ -14,7 +14,10 @@ import { JsonFormatParser } from '../../src/formats/json';
 import { loadSyncConfig } from '../../src/sync/sync-config';
 import { ValidationError } from '../../src/utils/errors';
 import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers/nock-setup';
-import { createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
+import {
+  createMockConfigService,
+  createMockCacheService,
+} from '../helpers/mock-factories';
 
 function createServices(): { client: DeepLClient; syncService: SyncService } {
   const client = new DeepLClient(TEST_API_KEY, { maxRetries: 0 });
@@ -22,7 +25,11 @@ function createServices(): { client: DeepLClient; syncService: SyncService } {
     get: jest.fn(() => ({
       auth: {},
       api: { baseUrl: '', usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: false,
+      },
       cache: { enabled: false },
       output: { format: 'text', color: true },
       proxy: {},
@@ -30,11 +37,19 @@ function createServices(): { client: DeepLClient; syncService: SyncService } {
     getValue: jest.fn(() => false),
   });
   const mockCache = createMockCacheService();
-  const translationService = new TranslationService(client, mockConfig, mockCache);
+  const translationService = new TranslationService(
+    client,
+    mockConfig,
+    mockCache
+  );
   const glossaryService = new GlossaryService(client);
   const registry = new FormatRegistry();
   registry.register(new JsonFormatParser());
-  const syncService = new SyncService(translationService, glossaryService, registry);
+  const syncService = new SyncService(
+    translationService,
+    glossaryService,
+    registry
+  );
   return { client, syncService };
 }
 
@@ -92,7 +107,7 @@ describe('sync-service scan_paths: bounded walk prevents DoS on huge source tree
       fs.writeFileSync(
         path.join(srcDir, `File${i}.tsx`),
         `export const k${i} = 'v${i}';\n`,
-        'utf-8',
+        'utf-8'
       );
     }
     const localePath = path.join(tmpDir, 'locales', 'en.json');
@@ -102,7 +117,9 @@ describe('sync-service scan_paths: bounded walk prevents DoS on huge source tree
     nock(DEEPL_FREE_API_URL)
       .persist()
       .post('/v2/translate')
-      .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+      .reply(200, {
+        translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+      });
 
     const config = await loadSyncConfig(configPath, {});
 

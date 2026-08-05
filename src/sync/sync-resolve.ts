@@ -7,7 +7,8 @@ const CONFLICT_END = /^>{7}/m;
 const MAX_REASON_LEN = 80;
 const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
-export type DecisionSource = 'ours' | 'theirs' | 'length-heuristic' | 'unresolved';
+export type DecisionSource =
+  'ours' | 'theirs' | 'length-heuristic' | 'unresolved';
 
 export interface ResolveDecision {
   file?: string;
@@ -37,7 +38,7 @@ export function hasConflictMarkers(content: string): boolean {
 
 export function resolveConflicts(
   content: string,
-  options: ResolveConflictsOptions = {},
+  options: ResolveConflictsOptions = {}
 ): { resolved: string; mergeCount: number; decisions: ResolveDecision[] } {
   const lines = content.split('\n');
   const result: string[] = [];
@@ -64,7 +65,7 @@ export function resolveConflicts(
       const { merged, decisions: sectionDecisions } = mergeConflictSections(
         oursLines.join('\n'),
         theirsLines.join('\n'),
-        options.file,
+        options.file
       );
       result.push(merged);
       decisions.push(...sectionDecisions);
@@ -86,7 +87,7 @@ export function resolveConflicts(
 function mergeConflictSections(
   ours: string,
   theirs: string,
-  file?: string,
+  file?: string
 ): { merged: string; decisions: ResolveDecision[] } {
   let oursObj: Record<string, unknown> | undefined;
   let theirsObj: Record<string, unknown> | undefined;
@@ -107,7 +108,12 @@ function mergeConflictSections(
   }
 
   if (oursObj && theirsObj) {
-    const { merged, decisions } = deepMergeWithDecisions(oursObj, theirsObj, file, '');
+    const { merged, decisions } = deepMergeWithDecisions(
+      oursObj,
+      theirsObj,
+      file,
+      ''
+    );
     const json = JSON.stringify(merged, null, 2);
     return { merged: json.slice(2, -2), decisions };
   }
@@ -119,14 +125,18 @@ function mergeConflictSections(
 
   // The decision below carries the warning; the command layer prints it once
   // with a project-relative path.
-  const winningSide: 'ours' | 'theirs' = ours.length >= theirs.length ? 'ours' : 'theirs';
+  const winningSide: 'ours' | 'theirs' =
+    ours.length >= theirs.length ? 'ours' : 'theirs';
   const decision: ResolveDecision = {
     file,
     key: '<conflict-region>',
     source: 'length-heuristic',
     reason: reasonMsg,
   };
-  return { merged: winningSide === 'ours' ? ours : theirs, decisions: [decision] };
+  return {
+    merged: winningSide === 'ours' ? ours : theirs,
+    decisions: [decision],
+  };
 }
 
 function truncate(s: string, max: number): string {
@@ -137,9 +147,12 @@ function deepMergeWithDecisions(
   ours: Record<string, unknown>,
   theirs: Record<string, unknown>,
   file: string | undefined,
-  keyPath: string,
+  keyPath: string
 ): { merged: Record<string, unknown>; decisions: ResolveDecision[] } {
-  const merged: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  const merged: Record<string, unknown> = Object.create(null) as Record<
+    string,
+    unknown
+  >;
   for (const [key, value] of Object.entries(ours)) {
     if (FORBIDDEN_KEYS.has(key)) continue;
     merged[key] = value;
@@ -163,8 +176,11 @@ function deepMergeWithDecisions(
     }
 
     if (isTranslationEntry(ourValue) && isTranslationEntry(theirValue)) {
-      const ourDate = (ourValue as Record<string, unknown>)['translated_at'] as string | undefined;
-      const theirDate = (theirValue as Record<string, unknown>)['translated_at'] as string | undefined;
+      const ourDate = (ourValue as Record<string, unknown>)['translated_at'] as
+        string | undefined;
+      const theirDate = (theirValue as Record<string, unknown>)[
+        'translated_at'
+      ] as string | undefined;
       if (ourDate && theirDate) {
         if (ourDate >= theirDate) {
           merged[key] = ourValue;
@@ -210,12 +226,13 @@ function deepMergeWithDecisions(
       !Array.isArray(ourValue) &&
       !Array.isArray(theirValue)
     ) {
-      const { merged: childMerged, decisions: childDecisions } = deepMergeWithDecisions(
-        ourValue as Record<string, unknown>,
-        theirValue as Record<string, unknown>,
-        file,
-        childPath,
-      );
+      const { merged: childMerged, decisions: childDecisions } =
+        deepMergeWithDecisions(
+          ourValue as Record<string, unknown>,
+          theirValue as Record<string, unknown>,
+          file,
+          childPath
+        );
       merged[key] = childMerged;
       decisions.push(...childDecisions);
       continue;
@@ -240,7 +257,7 @@ function isTranslationEntry(obj: unknown): boolean {
 
 export async function resolveLockFile(
   lockPath: string,
-  options: ResolveLockFileOptions = {},
+  options: ResolveLockFileOptions = {}
 ): Promise<ResolveResult> {
   let content: string;
   try {
@@ -253,7 +270,9 @@ export async function resolveLockFile(
     return { hadConflicts: false, resolved: false, entriesMerged: 0 };
   }
 
-  const { resolved, mergeCount, decisions } = resolveConflicts(content, { file: lockPath });
+  const { resolved, mergeCount, decisions } = resolveConflicts(content, {
+    file: lockPath,
+  });
 
   try {
     JSON.parse(resolved) as SyncLockFile;
@@ -264,5 +283,10 @@ export async function resolveLockFile(
   if (!options.dryRun) {
     await fs.promises.writeFile(lockPath, resolved, 'utf-8');
   }
-  return { hadConflicts: true, resolved: true, entriesMerged: mergeCount, decisions };
+  return {
+    hadConflicts: true,
+    resolved: true,
+    entriesMerged: mergeCount,
+    decisions,
+  };
 }

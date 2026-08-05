@@ -1,4 +1,8 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  TranslatedEntry,
+} from './format.js';
 
 interface PoEntry {
   translatorComments: string[];
@@ -14,11 +18,7 @@ interface PoEntry {
 }
 
 type ParseTarget =
-  | 'msgctxt'
-  | 'msgid'
-  | 'msgid_plural'
-  | 'msgstr'
-  | `msgstr[${number}]`;
+  'msgctxt' | 'msgid' | 'msgid_plural' | 'msgstr' | `msgstr[${number}]`;
 
 function unquote(line: string): string {
   const trimmed = line.trim();
@@ -27,11 +27,16 @@ function unquote(line: string): string {
       .slice(1, -1)
       .replace(/\\(\\|"|n|t)/g, (_match, ch: string) => {
         switch (ch) {
-          case '\\': return '\\';
-          case '"': return '"';
-          case 'n': return '\n';
-          case 't': return '\t';
-          default: return ch;
+          case '\\':
+            return '\\';
+          case '"':
+            return '"';
+          case 'n':
+            return '\n';
+          case 't':
+            return '\t';
+          default:
+            return ch;
         }
       });
   }
@@ -72,7 +77,9 @@ function quoteLong(value: string): string {
 }
 
 function isHeaderEntry(entry: PoEntry): boolean {
-  return entry.msgid === '' && entry.msgstr.length > 0 && entry.msgstr[0] !== '';
+  return (
+    entry.msgid === '' && entry.msgstr.length > 0 && entry.msgstr[0] !== ''
+  );
 }
 
 const CONTEXT_SEPARATOR = '\x04';
@@ -123,7 +130,9 @@ function parseEntries(content: string): PoEntry[] {
       continue;
     }
     if (line.startsWith('# ') || line === '#') {
-      current.translatorComments.push(line.startsWith('# ') ? line.slice(2) : '');
+      current.translatorComments.push(
+        line.startsWith('# ') ? line.slice(2) : ''
+      );
       continue;
     }
     if (line.startsWith('#~ ')) {
@@ -240,7 +249,11 @@ export class PoFormatParser implements FormatParser {
         continue;
       }
 
-      if (pe.msgid === '' && pe.msgstr.length === 0 && pe.msgstrPlural.size === 0) {
+      if (
+        pe.msgid === '' &&
+        pe.msgstr.length === 0 &&
+        pe.msgstrPlural.size === 0
+      ) {
         continue;
       }
 
@@ -429,7 +442,11 @@ export class PoFormatParser implements FormatParser {
       result.splice(commentStart, commentLines.length);
       for (const cl of commentLines) {
         if (/^#,/.test(cl)) {
-          const flags = cl.slice(2).trim().split(/,\s*/).filter(f => f !== 'fuzzy');
+          const flags = cl
+            .slice(2)
+            .trim()
+            .split(/,\s*/)
+            .filter((f) => f !== 'fuzzy');
           if (flags.length > 0) {
             result.push(`#, ${flags.join(', ')}`);
           }
@@ -439,10 +456,8 @@ export class PoFormatParser implements FormatParser {
       }
 
       const translation = translatedEntry.translation;
-      const pluralTranslations =
-        translatedEntry.metadata?.['plural_forms'] as
-          | Record<string, string>
-          | undefined;
+      const pluralTranslations = translatedEntry.metadata?.['plural_forms'] as
+        Record<string, string> | undefined;
 
       let inMsgstr = false;
       let inMsgstrPlural = false;

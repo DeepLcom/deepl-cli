@@ -1,4 +1,8 @@
-import type { FormatParser, ExtractedEntry, TranslatedEntry } from './format.js';
+import type {
+  FormatParser,
+  ExtractedEntry,
+  TranslatedEntry,
+} from './format.js';
 import { detectIndent } from './util/detect-indent.js';
 
 interface StringUnit {
@@ -46,20 +50,26 @@ export class XcstringsFormatParser implements FormatParser {
       entries.push({
         key,
         value: localization.stringUnit.value,
-        ...(def.comment ? { context: def.comment, metadata: { comment: def.comment } } : {}),
+        ...(def.comment
+          ? { context: def.comment, metadata: { comment: def.comment } }
+          : {}),
       });
     }
 
     return entries;
   }
 
-  reconstruct(content: string, entries: TranslatedEntry[], locale?: string): string {
+  reconstruct(
+    content: string,
+    entries: TranslatedEntry[],
+    locale?: string
+  ): string {
     if (!locale) return content;
     const data = JSON.parse(content) as XcstringsFile;
     const hadTrailingNewline = content.endsWith('\n');
 
     for (const entry of entries) {
-      const def = data.strings[entry.key] ??= {} as StringDefinition;
+      const def = (data.strings[entry.key] ??= {} as StringDefinition);
       def.localizations ??= {};
       const existing = def.localizations[locale];
       // Replacing the whole localization discarded plural `variations`, which
@@ -84,5 +94,4 @@ export class XcstringsFormatParser implements FormatParser {
     }
     return result;
   }
-
 }

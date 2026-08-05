@@ -18,7 +18,9 @@ import { readStdin } from '../../src/utils/read-stdin';
 
 const mockedReadStdin = readStdin as jest.MockedFunction<typeof readStdin>;
 
-function defaultOptions(overrides: Partial<TranslateOptions> = {}): TranslateOptions {
+function defaultOptions(
+  overrides: Partial<TranslateOptions> = {}
+): TranslateOptions {
   return { to: 'de', cache: true, ...overrides };
 }
 
@@ -42,27 +44,38 @@ describe('StdinTranslationHandler', () => {
       const result = await handler.translateFromStdin(defaultOptions());
 
       expect(mockedReadStdin).toHaveBeenCalled();
-      expect(mockTextHandler.translateText).toHaveBeenCalledWith('Hello from stdin', defaultOptions());
+      expect(mockTextHandler.translateText).toHaveBeenCalledWith(
+        'Hello from stdin',
+        defaultOptions()
+      );
       expect(result).toBe('translated');
     });
 
     it('should throw ValidationError for empty stdin', async () => {
       mockedReadStdin.mockResolvedValue('');
 
-      await expect(handler.translateFromStdin(defaultOptions())).rejects.toThrow(ValidationError);
-      await expect(handler.translateFromStdin(defaultOptions())).rejects.toThrow('No input provided from stdin');
+      await expect(
+        handler.translateFromStdin(defaultOptions())
+      ).rejects.toThrow(ValidationError);
+      await expect(
+        handler.translateFromStdin(defaultOptions())
+      ).rejects.toThrow('No input provided from stdin');
     });
 
     it('should throw ValidationError for whitespace-only stdin', async () => {
       mockedReadStdin.mockResolvedValue('   \n  \t  ');
 
-      await expect(handler.translateFromStdin(defaultOptions())).rejects.toThrow(ValidationError);
+      await expect(
+        handler.translateFromStdin(defaultOptions())
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should throw ValidationError for null stdin', async () => {
       mockedReadStdin.mockResolvedValue(null as unknown as string);
 
-      await expect(handler.translateFromStdin(defaultOptions())).rejects.toThrow(ValidationError);
+      await expect(
+        handler.translateFromStdin(defaultOptions())
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should pass options through to textHandler', async () => {

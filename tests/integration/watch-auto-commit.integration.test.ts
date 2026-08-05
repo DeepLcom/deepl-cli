@@ -54,16 +54,22 @@ describe('Watch auto-commit integration', () => {
 
     // Init a real git repo
     execSync('git init', { cwd: tmpDir, stdio: 'ignore' });
-    execSync('git config user.email "test@test.com"', { cwd: tmpDir, stdio: 'ignore' });
+    execSync('git config user.email "test@test.com"', {
+      cwd: tmpDir,
+      stdio: 'ignore',
+    });
     execSync('git config user.name "Test"', { cwd: tmpDir, stdio: 'ignore' });
 
     // Create an initial commit so HEAD exists
     fs.writeFileSync(path.join(tmpDir, 'README.md'), 'init');
-    execSync('git add . && git commit -m "init"', { cwd: tmpDir, stdio: 'ignore' });
+    execSync('git add . && git commit -m "init"', {
+      cwd: tmpDir,
+      stdio: 'ignore',
+    });
 
     watchCommand = new WatchCommand(
       createMockTranslationService(),
-      createMockGlossaryService(),
+      createMockGlossaryService()
     );
   });
 
@@ -96,10 +102,13 @@ describe('Watch auto-commit integration', () => {
     }
 
     // Verify git log shows the commit
-    const log = execSync('git log --oneline -1', { cwd: tmpDir, encoding: 'utf-8' });
+    const log = execSync('git log --oneline -1', {
+      cwd: tmpDir,
+      encoding: 'utf-8',
+    });
     expect(log).toContain('chore(i18n): auto-translate file.md to es');
-    expect((Logger.success as jest.Mock)).toHaveBeenCalledWith(
-      expect.stringContaining('Auto-committed'),
+    expect(Logger.success as jest.Mock).toHaveBeenCalledWith(
+      expect.stringContaining('Auto-committed')
     );
   });
 
@@ -120,7 +129,10 @@ describe('Watch auto-commit integration', () => {
       process.chdir(origCwd);
     }
 
-    const log = execSync('git log --oneline -1', { cwd: tmpDir, encoding: 'utf-8' });
+    const log = execSync('git log --oneline -1', {
+      cwd: tmpDir,
+      encoding: 'utf-8',
+    });
     expect(log).toContain('chore(i18n): auto-translate file.md to es, fr');
 
     // Both files should be in the commit
@@ -149,8 +161,8 @@ describe('Watch auto-commit integration', () => {
       process.chdir(origCwd);
     }
 
-    expect((Logger.warn as jest.Mock)).toHaveBeenCalledWith(
-      expect.stringContaining('Not a git repository'),
+    expect(Logger.warn as jest.Mock).toHaveBeenCalledWith(
+      expect.stringContaining('Not a git repository')
     );
 
     fs.rmSync(nonGitDir, { recursive: true, force: true });
@@ -170,7 +182,10 @@ describe('Watch auto-commit integration', () => {
     }
 
     // Should only have the initial commit
-    const count = execSync('git rev-list --count HEAD', { cwd: tmpDir, encoding: 'utf-8' }).trim();
+    const count = execSync('git rev-list --count HEAD', {
+      cwd: tmpDir,
+      encoding: 'utf-8',
+    }).trim();
     expect(count).toBe('1');
   });
 
@@ -188,9 +203,9 @@ describe('Watch auto-commit integration', () => {
       process.chdir(origCwd);
     }
 
-    expect((Logger.error as jest.Mock)).toHaveBeenCalledWith(
+    expect(Logger.error as jest.Mock).toHaveBeenCalledWith(
       expect.stringContaining('Auto-commit failed'),
-      expect.any(String),
+      expect.any(String)
     );
   });
 });

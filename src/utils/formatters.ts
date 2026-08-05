@@ -87,14 +87,22 @@ export function formatTranslationJson(
  * Format multiple translation results as JSON
  */
 export function formatMultiTranslationJson(
-  results: Array<{ targetLang: Language; text: string; detectedSourceLang?: Language; billedCharacters?: number; modelTypeUsed?: string }>
+  results: Array<{
+    targetLang: Language;
+    text: string;
+    detectedSourceLang?: Language;
+    billedCharacters?: number;
+    modelTypeUsed?: string;
+  }>
 ): string {
   const output: MultiTranslateJsonOutput = {
-    translations: results.map(r => ({
+    translations: results.map((r) => ({
       targetLang: r.targetLang,
       text: r.text,
       detectedSourceLang: r.detectedSourceLang,
-      ...(r.billedCharacters !== undefined && { billedCharacters: r.billedCharacters }),
+      ...(r.billedCharacters !== undefined && {
+        billedCharacters: r.billedCharacters,
+      }),
       ...(r.modelTypeUsed && { modelTypeUsed: r.modelTypeUsed }),
     })),
   };
@@ -134,21 +142,20 @@ export function formatMultiTranslationTable(
   }>
 ): string {
   // Check if any result has billedCharacters - if so, show the Characters column
-  const showCharacters = results.some(r => r.billedCharacters !== undefined);
+  const showCharacters = results.some((r) => r.billedCharacters !== undefined);
   const colorDisabled = !isColorEnabled();
 
   const table = new Table({
-    head: showCharacters ? ['Language', 'Translation', 'Characters'] : ['Language', 'Translation'],
+    head: showCharacters
+      ? ['Language', 'Translation', 'Characters']
+      : ['Language', 'Translation'],
     colWidths: showCharacters ? [10, 60, 12] : [10, 70],
     wordWrap: true,
     ...(colorDisabled && { style: { head: [], border: [] } }),
   });
 
   results.forEach((result) => {
-    const row = [
-      result.targetLang,
-      result.text,
-    ];
+    const row = [result.targetLang, result.text];
 
     if (showCharacters) {
       row.push(result.billedCharacters?.toLocaleString() ?? 'N/A');

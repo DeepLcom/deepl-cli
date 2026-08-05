@@ -45,8 +45,18 @@ describe('TmCommand', () => {
 
     it('renders name and language pair per TM', () => {
       const tms: TranslationMemory[] = [
-        { translation_memory_id: 'a', name: 'brand-terms', source_language: 'en', target_languages: ['de', 'fr'] },
-        { translation_memory_id: 'b', name: 'legal-phrases', source_language: 'en', target_languages: ['fr'] },
+        {
+          translation_memory_id: 'a',
+          name: 'brand-terms',
+          source_language: 'en',
+          target_languages: ['de', 'fr'],
+        },
+        {
+          translation_memory_id: 'b',
+          name: 'legal-phrases',
+          source_language: 'en',
+          target_languages: ['fr'],
+        },
       ];
       const out = tmCommand.formatList(tms);
       expect(out).toContain('brand-terms');
@@ -57,7 +67,12 @@ describe('TmCommand', () => {
 
     it('strips ASCII control chars from the name column so a malicious TM cannot corrupt the terminal', () => {
       const tms: TranslationMemory[] = [
-        { translation_memory_id: 'a', name: 'evil\x1b[2Jname\x07', source_language: 'en', target_languages: ['de'] },
+        {
+          translation_memory_id: 'a',
+          name: 'evil\x1b[2Jname\x07',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
       ];
       const out = tmCommand.formatList(tms);
       expect(out).not.toContain('\x1b[');
@@ -68,7 +83,12 @@ describe('TmCommand', () => {
 
     it('strips zero-width codepoints from the name column', () => {
       const tms: TranslationMemory[] = [
-        { translation_memory_id: 'a', name: 'prod\u200Btm', source_language: 'en', target_languages: ['de'] },
+        {
+          translation_memory_id: 'a',
+          name: 'prod\u200Btm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
       ];
       const out = tmCommand.formatList(tms);
       expect(out).not.toContain('\u200B');

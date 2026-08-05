@@ -4,7 +4,12 @@
  */
 
 import type { AdminService } from '../../services/admin.js';
-import { AdminApiKey, AdminUsageOptions, AdminUsageReport, UsageBreakdown } from '../../types/index.js';
+import {
+  AdminApiKey,
+  AdminUsageOptions,
+  AdminUsageReport,
+  UsageBreakdown,
+} from '../../types/index.js';
 
 /**
  * Manages DeepL admin API operations for team accounts.
@@ -42,7 +47,11 @@ export class AdminCommand {
    * @param characters - Maximum characters allowed, or null for unlimited.
    * @param sttLimit - Optional speech-to-text milliseconds limit.
    */
-  async setKeyLimit(keyId: string, characters: number | null, sttLimit?: number | null): Promise<void> {
+  async setKeyLimit(
+    keyId: string,
+    characters: number | null,
+    sttLimit?: number | null
+  ): Promise<void> {
     return this.service.setApiKeyLimit(keyId, characters, sttLimit);
   }
 
@@ -69,15 +78,17 @@ export class AdminCommand {
       lines.push(`    ID:      ${key.keyId}`);
       lines.push(`    Created: ${key.creationTime}`);
       if (key.usageLimits?.characters !== undefined) {
-        const limit = key.usageLimits.characters === null
-          ? 'unlimited'
-          : key.usageLimits.characters.toLocaleString();
+        const limit =
+          key.usageLimits.characters === null
+            ? 'unlimited'
+            : key.usageLimits.characters.toLocaleString();
         lines.push(`    Limit:   ${limit} characters`);
       }
       if (key.usageLimits?.speechToTextMilliseconds !== undefined) {
-        const sttLimit = key.usageLimits.speechToTextMilliseconds === null
-          ? 'unlimited'
-          : this.formatMilliseconds(key.usageLimits.speechToTextMilliseconds);
+        const sttLimit =
+          key.usageLimits.speechToTextMilliseconds === null
+            ? 'unlimited'
+            : this.formatMilliseconds(key.usageLimits.speechToTextMilliseconds);
         lines.push(`    STT Limit: ${sttLimit}`);
       }
       lines.push('');
@@ -98,15 +109,17 @@ export class AdminCommand {
     lines.push(`  Status:  ${status}`);
     lines.push(`  Created: ${key.creationTime}`);
     if (key.usageLimits?.characters !== undefined) {
-      const limit = key.usageLimits.characters === null
-        ? 'unlimited'
-        : key.usageLimits.characters.toLocaleString();
+      const limit =
+        key.usageLimits.characters === null
+          ? 'unlimited'
+          : key.usageLimits.characters.toLocaleString();
       lines.push(`  Limit:   ${limit} characters`);
     }
     if (key.usageLimits?.speechToTextMilliseconds !== undefined) {
-      const sttLimit = key.usageLimits.speechToTextMilliseconds === null
-        ? 'unlimited'
-        : this.formatMilliseconds(key.usageLimits.speechToTextMilliseconds);
+      const sttLimit =
+        key.usageLimits.speechToTextMilliseconds === null
+          ? 'unlimited'
+          : this.formatMilliseconds(key.usageLimits.speechToTextMilliseconds);
       lines.push(`  STT Limit: ${sttLimit}`);
     }
     return lines.join('\n');
@@ -115,11 +128,21 @@ export class AdminCommand {
   /** Format a per-product usage breakdown (translation, documents, write, voice). */
   private formatBreakdown(usage: UsageBreakdown, indent = '  '): string[] {
     const lines: string[] = [];
-    lines.push(`${indent}Total:       ${usage.totalCharacters.toLocaleString()}`);
-    lines.push(`${indent}Translation: ${usage.textTranslationCharacters.toLocaleString()}`);
-    lines.push(`${indent}Documents:   ${usage.documentTranslationCharacters.toLocaleString()}`);
-    lines.push(`${indent}Write:       ${usage.textImprovementCharacters.toLocaleString()}`);
-    lines.push(`${indent}Voice:       ${this.formatMilliseconds(usage.speechToTextMilliseconds)}`);
+    lines.push(
+      `${indent}Total:       ${usage.totalCharacters.toLocaleString()}`
+    );
+    lines.push(
+      `${indent}Translation: ${usage.textTranslationCharacters.toLocaleString()}`
+    );
+    lines.push(
+      `${indent}Documents:   ${usage.documentTranslationCharacters.toLocaleString()}`
+    );
+    lines.push(
+      `${indent}Write:       ${usage.textImprovementCharacters.toLocaleString()}`
+    );
+    lines.push(
+      `${indent}Voice:       ${this.formatMilliseconds(usage.speechToTextMilliseconds)}`
+    );
     return lines;
   }
 

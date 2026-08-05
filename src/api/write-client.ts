@@ -1,5 +1,9 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { WriteOptions, CorrectOptions, WriteImprovement } from '../types/index.js';
+import {
+  WriteOptions,
+  CorrectOptions,
+  WriteImprovement,
+} from '../types/index.js';
 import { NetworkError, ValidationError } from '../utils/errors.js';
 
 interface DeepLWriteResponse {
@@ -87,7 +91,7 @@ export class WriteClient extends HttpClient {
       throw new NetworkError('No improvements returned');
     }
 
-    return response.improvements.map(improvement => ({
+    return response.improvements.map((improvement) => ({
       text: improvement.text,
       targetLanguage: improvement.target_language,
       detectedSourceLanguage: improvement.detected_source_language,

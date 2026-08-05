@@ -15,7 +15,9 @@ describe('sync-options', () => {
 
   describe('resolveLocale', () => {
     it('prefers the subcommand value', () => {
-      expect(resolveLocale({ locale: 'de' }, childOf({ locale: 'fr' }))).toBe('de');
+      expect(resolveLocale({ locale: 'de' }, childOf({ locale: 'fr' }))).toBe(
+        'de'
+      );
     });
 
     it('falls back to the parent value', () => {
@@ -29,13 +31,18 @@ describe('sync-options', () => {
 
   describe('resolveSyncConfig', () => {
     it('prefers the subcommand value', () => {
-      expect(resolveSyncConfig({ syncConfig: 'a.yaml' }, childOf({ syncConfig: 'b.yaml' }))).toBe(
-        'a.yaml',
-      );
+      expect(
+        resolveSyncConfig(
+          { syncConfig: 'a.yaml' },
+          childOf({ syncConfig: 'b.yaml' })
+        )
+      ).toBe('a.yaml');
     });
 
     it('falls back to the parent value', () => {
-      expect(resolveSyncConfig({}, childOf({ syncConfig: 'b.yaml' }))).toBe('b.yaml');
+      expect(resolveSyncConfig({}, childOf({ syncConfig: 'b.yaml' }))).toBe(
+        'b.yaml'
+      );
     });
 
     it('returns undefined when neither scope has a value', () => {

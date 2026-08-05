@@ -1,4 +1,8 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  TranslatedEntry,
+} from './format.js';
 
 const ENTRY_RE = /^\s*"((?:[^"\\]|\\.)*)"\s*=\s*"((?:[^"\\]|\\.)*)"\s*;\s*$/;
 
@@ -44,7 +48,10 @@ export class IosStringsFormatParser implements FormatParser {
             break;
           }
         }
-        const inner = commentBody.replace(/^\/\*/, '').replace(/\*\/$/, '').trim();
+        const inner = commentBody
+          .replace(/^\/\*/, '')
+          .replace(/\*\/$/, '')
+          .trim();
         pendingComment = inner;
         continue;
       }
@@ -97,7 +104,7 @@ export class IosStringsFormatParser implements FormatParser {
           const escapedValue = this.escape(translation);
           const newLine = line.replace(
             /=\s*"(?:[^"\\]|\\.)*"\s*;/,
-            () => `= "${escapedValue}";`,
+            () => `= "${escapedValue}";`
           );
           result.push(newLine);
         } else {
@@ -131,12 +138,30 @@ export class IosStringsFormatParser implements FormatParser {
       if (s[i] === '\\' && i + 1 < s.length) {
         const next = s[i + 1]!;
         switch (next) {
-          case '"': result += '"'; i += 2; break;
-          case '\\': result += '\\'; i += 2; break;
-          case 'n': result += '\n'; i += 2; break;
-          case 't': result += '\t'; i += 2; break;
-          case 'r': result += '\r'; i += 2; break;
-          case '0': result += '\0'; i += 2; break;
+          case '"':
+            result += '"';
+            i += 2;
+            break;
+          case '\\':
+            result += '\\';
+            i += 2;
+            break;
+          case 'n':
+            result += '\n';
+            i += 2;
+            break;
+          case 't':
+            result += '\t';
+            i += 2;
+            break;
+          case 'r':
+            result += '\r';
+            i += 2;
+            break;
+          case '0':
+            result += '\0';
+            i += 2;
+            break;
           case 'U':
           case 'u': {
             const hex = s.slice(i + 2, i + 6);
@@ -167,13 +192,27 @@ export class IosStringsFormatParser implements FormatParser {
     for (let i = 0; i < s.length; i++) {
       const ch = s[i]!;
       switch (ch) {
-        case '"': result += '\\"'; break;
-        case '\\': result += '\\\\'; break;
-        case '\n': result += '\\n'; break;
-        case '\t': result += '\\t'; break;
-        case '\r': result += '\\r'; break;
-        case '\0': result += '\\0'; break;
-        default: result += ch; break;
+        case '"':
+          result += '\\"';
+          break;
+        case '\\':
+          result += '\\\\';
+          break;
+        case '\n':
+          result += '\\n';
+          break;
+        case '\t':
+          result += '\\t';
+          break;
+        case '\r':
+          result += '\\r';
+          break;
+        case '\0':
+          result += '\\0';
+          break;
+        default:
+          result += ch;
+          break;
       }
     }
     return result;

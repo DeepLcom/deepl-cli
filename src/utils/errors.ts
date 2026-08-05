@@ -21,28 +21,44 @@ export abstract class DeepLCLIError extends Error {
 export class AuthError extends DeepLCLIError {
   readonly exitCode = 2;
   constructor(message: string, suggestion?: string) {
-    super(message, suggestion ?? 'Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>');
+    super(
+      message,
+      suggestion ??
+        'Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>'
+    );
   }
 }
 
 export class RateLimitError extends DeepLCLIError {
   readonly exitCode = 3;
   constructor(message: string, suggestion?: string) {
-    super(message, suggestion ?? 'Wait a moment and retry, or reduce concurrency with --concurrency flag');
+    super(
+      message,
+      suggestion ??
+        'Wait a moment and retry, or reduce concurrency with --concurrency flag'
+    );
   }
 }
 
 export class QuotaError extends DeepLCLIError {
   readonly exitCode = 4;
   constructor(message: string, suggestion?: string) {
-    super(message, suggestion ?? 'Run: deepl usage to check your limits, or upgrade your plan at https://www.deepl.com/pro');
+    super(
+      message,
+      suggestion ??
+        'Run: deepl usage to check your limits, or upgrade your plan at https://www.deepl.com/pro'
+    );
   }
 }
 
 export class NetworkError extends DeepLCLIError {
   readonly exitCode = 5;
   constructor(message: string, suggestion?: string) {
-    super(message, suggestion ?? 'Check your internet connection and proxy settings (HTTPS_PROXY or HTTP_PROXY environment variable)');
+    super(
+      message,
+      suggestion ??
+        'Check your internet connection and proxy settings (HTTPS_PROXY or HTTP_PROXY environment variable)'
+    );
   }
 }
 
@@ -57,7 +73,11 @@ export class ConfigError extends DeepLCLIError {
 export class VoiceError extends DeepLCLIError {
   readonly exitCode = 9;
   constructor(message: string, suggestion?: string) {
-    super(message, suggestion ?? 'The Voice API requires a DeepL Pro or Enterprise plan. Visit https://www.deepl.com/pro to upgrade.');
+    super(
+      message,
+      suggestion ??
+        'The Voice API requires a DeepL Pro or Enterprise plan. Visit https://www.deepl.com/pro to upgrade.'
+    );
   }
 }
 
@@ -74,7 +94,7 @@ export class SyncConflictError extends DeepLCLIError {
     super(
       message,
       suggestion ??
-        'Edit .deepl-sync.lock to resolve conflict markers manually, then run `deepl sync` to fill gaps.',
+        'Edit .deepl-sync.lock to resolve conflict markers manually, then run `deepl sync` to fill gaps.'
     );
     // Preserve the existing JSON error-envelope code "SyncConflict" (the
     // class-name-based default would emit "SyncConflictError" and break the
@@ -89,7 +109,7 @@ export class SyncPartialFailureError extends DeepLCLIError {
     super(
       message,
       suggestion ??
-        'Inspect the per-locale error report in the sync output, then re-run `deepl sync --locale <failed>` to retry just the failed locales.',
+        'Inspect the per-locale error report in the sync output, then re-run `deepl sync --locale <failed>` to retry just the failed locales.'
     );
     // Match the SyncConflictError envelope-naming pattern so the JSON
     // error envelope emits `code: "SyncPartialFailure"` rather than

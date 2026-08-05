@@ -47,7 +47,6 @@ describe('Config CLI Integration', () => {
         autoCommit: false,
         pattern: '**/*',
       },
-
     };
 
     fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
@@ -200,7 +199,10 @@ describe('Config CLI Integration', () => {
     const ANSI_REGEX = /\x1b\[/;
 
     // Success messages go to stderr via Logger.success, so redirect stderr to stdout
-    const runCLIWithStderr = (command: string, extraEnv?: Record<string, string>): string => {
+    const runCLIWithStderr = (
+      command: string,
+      extraEnv?: Record<string, string>
+    ): string => {
       return execSync(`${command} 2>&1`, {
         encoding: 'utf-8',
         env: { ...process.env, DEEPL_CONFIG_DIR: testConfigDir, ...extraEnv },
@@ -224,7 +226,9 @@ describe('Config CLI Integration', () => {
       // Run a command that produces colored output
       // Force color output by setting FORCE_COLOR=1 (chalk respects this)
       // Capture stderr where Logger.success writes
-      const output = runCLIWithStderr('deepl config set cache.enabled true', { FORCE_COLOR: '1' });
+      const output = runCLIWithStderr('deepl config set cache.enabled true', {
+        FORCE_COLOR: '1',
+      });
 
       expect(output).toMatch(ANSI_REGEX);
     });

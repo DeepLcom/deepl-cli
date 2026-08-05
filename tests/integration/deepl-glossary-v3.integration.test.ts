@@ -14,7 +14,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
   const clients: DeepLClient[] = [];
 
   afterEach(() => {
-    clients.forEach(c => c.destroy());
+    clients.forEach((c) => c.destroy());
     clients.length = 0;
     nock.cleanAll();
   });
@@ -48,7 +48,12 @@ describe('DeepLClient v3 Glossary Integration', () => {
           creation_time: '2025-10-13T10:00:00Z',
         });
 
-      const result = await client.createGlossary('Test Glossary', 'en', ['es'], 'Hello\tHola');
+      const result = await client.createGlossary(
+        'Test Glossary',
+        'en',
+        ['es'],
+        'Hello\tHola'
+      );
 
       expect(result.glossary_id).toBe('glossary-123');
       expect(result.name).toBe('Test Glossary');
@@ -127,7 +132,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
-          'authorization': `DeepL-Auth-Key ${API_KEY}`,
+          authorization: `DeepL-Auth-Key ${API_KEY}`,
         },
       })
         .post('/v3/glossaries')
@@ -136,7 +141,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
           name: 'Test',
           source_lang: 'en',
           target_langs: ['es'],
-          dictionaries: [{ source_lang: 'en', target_lang: 'es', entry_count: 1 }],
+          dictionaries: [
+            { source_lang: 'en', target_lang: 'es', entry_count: 1 },
+          ],
           creation_time: '2025-10-13T10:00:00Z',
         });
 
@@ -157,7 +164,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
         .reply(200, {
           glossary_id: 'glossary-123',
           name: 'Test',
-          dictionaries: [{ source_lang: 'en', target_lang: 'es', entry_count: 1 }],
+          dictionaries: [
+            { source_lang: 'en', target_lang: 'es', entry_count: 1 },
+          ],
           creation_time: '2025-10-13T10:00:00Z',
         });
 
@@ -206,7 +215,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
               name: 'Glossary 1',
               source_lang: 'en',
               target_langs: ['es'],
-              dictionaries: [{ source_lang: 'en', target_lang: 'es', entry_count: 10 }],
+              dictionaries: [
+                { source_lang: 'en', target_lang: 'es', entry_count: 10 },
+              ],
               creation_time: '2025-10-13T10:00:00Z',
             },
             {
@@ -237,9 +248,7 @@ describe('DeepLClient v3 Glossary Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .get('/v3/glossaries')
-        .reply(200, { glossaries: [] });
+      nock(FREE_API_URL).get('/v3/glossaries').reply(200, { glossaries: [] });
 
       const result = await client.listGlossaries();
 
@@ -254,7 +263,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
         .get('/v3/glossaries')
         .reply(403, { message: 'Invalid API key' });
 
-      await expect(client.listGlossaries()).rejects.toThrow('Authentication failed');
+      await expect(client.listGlossaries()).rejects.toThrow(
+        'Authentication failed'
+      );
     });
   });
 
@@ -270,7 +281,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
           name: 'Test Glossary',
           source_lang: 'en',
           target_langs: ['es'],
-          dictionaries: [{ source_lang: 'en', target_lang: 'es', entry_count: 15 }],
+          dictionaries: [
+            { source_lang: 'en', target_lang: 'es', entry_count: 15 },
+          ],
           creation_time: '2025-10-13T10:00:00Z',
         });
 
@@ -291,7 +304,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
         .get('/v3/glossaries/nonexistent')
         .reply(404, { message: 'Glossary not found' });
 
-      await expect(client.getGlossary('nonexistent')).rejects.toThrow('API error');
+      await expect(client.getGlossary('nonexistent')).rejects.toThrow(
+        'API error'
+      );
     });
   });
 
@@ -317,7 +332,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
         .delete('/v3/glossaries/nonexistent')
         .reply(404, { message: 'Glossary not found' });
 
-      await expect(client.deleteGlossary('nonexistent')).rejects.toThrow('API error');
+      await expect(client.deleteGlossary('nonexistent')).rejects.toThrow(
+        'API error'
+      );
     });
   });
 
@@ -343,7 +360,11 @@ describe('DeepLClient v3 Glossary Integration', () => {
           ],
         });
 
-      const result = await client.getGlossaryEntries('glossary-123', 'en', 'es');
+      const result = await client.getGlossaryEntries(
+        'glossary-123',
+        'en',
+        'es'
+      );
 
       expect(result).toBe('Hello\tHola\nWorld\tMundo');
       expect(scope.isDone()).toBe(true);
@@ -367,7 +388,11 @@ describe('DeepLClient v3 Glossary Integration', () => {
           ],
         });
 
-      const result = await client.getGlossaryEntries('glossary-123', 'en', 'es');
+      const result = await client.getGlossaryEntries(
+        'glossary-123',
+        'en',
+        'es'
+      );
       expect(result).toBe('Test\tPrueba');
       expect(scope.isDone()).toBe(true);
     });
@@ -438,13 +463,20 @@ describe('DeepLClient v3 Glossary Integration', () => {
           expect(body.dictionaries).toHaveLength(1);
           expect(body.dictionaries[0].source_lang).toBe('EN');
           expect(body.dictionaries[0].target_lang).toBe('ES');
-          expect(body.dictionaries[0].entries).toBe('Hello\tHola\nWorld\tMundo');
+          expect(body.dictionaries[0].entries).toBe(
+            'Hello\tHola\nWorld\tMundo'
+          );
           expect(body.dictionaries[0].entries_format).toBe('tsv');
           return true;
         })
         .reply(204);
 
-      await client.updateGlossaryEntries('glossary-123', 'en', 'es', 'Hello\tHola\nWorld\tMundo');
+      await client.updateGlossaryEntries(
+        'glossary-123',
+        'en',
+        'es',
+        'Hello\tHola\nWorld\tMundo'
+      );
 
       expect(scope.isDone()).toBe(true);
     });
@@ -461,7 +493,12 @@ describe('DeepLClient v3 Glossary Integration', () => {
         .patch('/v3/glossaries/glossary-123')
         .reply(204);
 
-      await client.updateGlossaryEntries('glossary-123', 'en', 'es', 'Test\tPrueba');
+      await client.updateGlossaryEntries(
+        'glossary-123',
+        'en',
+        'es',
+        'Test\tPrueba'
+      );
       expect(scope.isDone()).toBe(true);
     });
 
@@ -505,7 +542,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
         })
         .reply(204);
 
-      await client.updateGlossary('glossary-123', { name: 'New Glossary Name' });
+      await client.updateGlossary('glossary-123', {
+        name: 'New Glossary Name',
+      });
 
       expect(scope.isDone()).toBe(true);
     });
@@ -527,12 +566,14 @@ describe('DeepLClient v3 Glossary Integration', () => {
         .reply(204);
 
       await client.updateGlossary('glossary-123', {
-        dictionaries: [{
-          source_lang: 'EN',
-          target_lang: 'ES',
-          entries: 'Hello\tHola',
-          entries_format: 'tsv',
-        }],
+        dictionaries: [
+          {
+            source_lang: 'EN',
+            target_lang: 'ES',
+            entries: 'Hello\tHola',
+            entries_format: 'tsv',
+          },
+        ],
       });
 
       expect(scope.isDone()).toBe(true);
@@ -556,12 +597,14 @@ describe('DeepLClient v3 Glossary Integration', () => {
 
       await client.updateGlossary('glossary-123', {
         name: 'Updated Name',
-        dictionaries: [{
-          source_lang: 'EN',
-          target_lang: 'DE',
-          entries: 'Hello\tHallo',
-          entries_format: 'tsv',
-        }],
+        dictionaries: [
+          {
+            source_lang: 'EN',
+            target_lang: 'DE',
+            entries: 'Hello\tHallo',
+            entries_format: 'tsv',
+          },
+        ],
       });
 
       expect(scope.isDone()).toBe(true);
@@ -587,9 +630,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      await expect(
-        client.updateGlossary('glossary-123', {})
-      ).rejects.toThrow('At least one of name or dictionaries must be provided');
+      await expect(client.updateGlossary('glossary-123', {})).rejects.toThrow(
+        'At least one of name or dictionaries must be provided'
+      );
     });
 
     it('should handle 404 glossary not found errors', async () => {
@@ -659,7 +702,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
       clients.push(client);
 
       const scope = nock(FREE_API_URL)
-        .delete('/v3/glossaries/glossary-123/dictionaries?source_lang=EN&target_lang=ES')
+        .delete(
+          '/v3/glossaries/glossary-123/dictionaries?source_lang=EN&target_lang=ES'
+        )
         .reply(204);
 
       await client.deleteGlossaryDictionary('glossary-123', 'en', 'es');
@@ -672,7 +717,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
       clients.push(client);
 
       const scope = nock(FREE_API_URL)
-        .delete('/v3/glossaries/glossary-456/dictionaries?source_lang=EN&target_lang=FR')
+        .delete(
+          '/v3/glossaries/glossary-456/dictionaries?source_lang=EN&target_lang=FR'
+        )
         .reply(204);
 
       await client.deleteGlossaryDictionary('glossary-456', 'en', 'fr');
@@ -685,7 +732,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
       clients.push(client);
 
       nock(FREE_API_URL)
-        .delete('/v3/glossaries/nonexistent/dictionaries?source_lang=EN&target_lang=ES')
+        .delete(
+          '/v3/glossaries/nonexistent/dictionaries?source_lang=EN&target_lang=ES'
+        )
         .reply(404, { message: 'Glossary not found' });
 
       await expect(
@@ -698,7 +747,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
       clients.push(client);
 
       nock(FREE_API_URL)
-        .delete('/v3/glossaries/glossary-123/dictionaries?source_lang=EN&target_lang=FR')
+        .delete(
+          '/v3/glossaries/glossary-123/dictionaries?source_lang=EN&target_lang=FR'
+        )
         .reply(404, { message: 'Dictionary not found in glossary' });
 
       await expect(
@@ -711,7 +762,9 @@ describe('DeepLClient v3 Glossary Integration', () => {
       clients.push(client);
 
       nock(FREE_API_URL)
-        .delete('/v3/glossaries/glossary-123/dictionaries?source_lang=EN&target_lang=ES')
+        .delete(
+          '/v3/glossaries/glossary-123/dictionaries?source_lang=EN&target_lang=ES'
+        )
         .reply(400, { message: 'Cannot delete last dictionary' });
 
       await expect(
@@ -735,7 +788,12 @@ describe('DeepLClient v3 Glossary Integration', () => {
         })
         .reply(204);
 
-      await client.replaceGlossaryDictionary('glossary-123', 'en', 'es', 'hello\thola');
+      await client.replaceGlossaryDictionary(
+        'glossary-123',
+        'en',
+        'es',
+        'hello\thola'
+      );
       expect(scope.isDone()).toBe(true);
     });
 
@@ -751,7 +809,12 @@ describe('DeepLClient v3 Glossary Integration', () => {
         })
         .reply(204);
 
-      await client.replaceGlossaryDictionary('glossary-456', 'en', 'fr', 'hello\tbonjour');
+      await client.replaceGlossaryDictionary(
+        'glossary-456',
+        'en',
+        'fr',
+        'hello\tbonjour'
+      );
       expect(scope.isDone()).toBe(true);
     });
 
@@ -764,7 +827,12 @@ describe('DeepLClient v3 Glossary Integration', () => {
         .reply(404, { message: 'Glossary not found' });
 
       await expect(
-        client.replaceGlossaryDictionary('nonexistent', 'en', 'es', 'hello\thola')
+        client.replaceGlossaryDictionary(
+          'nonexistent',
+          'en',
+          'es',
+          'hello\thola'
+        )
       ).rejects.toThrow();
     });
 
@@ -777,7 +845,12 @@ describe('DeepLClient v3 Glossary Integration', () => {
         .reply(404, { message: 'Dictionary not found' });
 
       await expect(
-        client.replaceGlossaryDictionary('glossary-123', 'en', 'zh', 'hello\t你好')
+        client.replaceGlossaryDictionary(
+          'glossary-123',
+          'en',
+          'zh',
+          'hello\t你好'
+        )
       ).rejects.toThrow();
     });
   });

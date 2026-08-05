@@ -20,13 +20,21 @@ export interface FileTranslationResult {
   outputPath?: string;
 }
 
-export type WatchTranslationResult = FileTranslationResult | FileTranslationResult[];
+export type WatchTranslationResult =
+  FileTranslationResult | FileTranslationResult[];
 
 export interface WatchOptions {
   targetLangs: readonly Language[];
   outputDir: string;
   sourceLang?: Language;
-  formality?: 'default' | 'more' | 'less' | 'prefer_more' | 'prefer_less' | 'formal' | 'informal';
+  formality?:
+    | 'default'
+    | 'more'
+    | 'less'
+    | 'prefer_more'
+    | 'prefer_less'
+    | 'formal'
+    | 'informal';
   glossaryId?: string;
   preserveCode?: boolean;
   pattern?: string;
@@ -129,7 +137,10 @@ export class WatchService {
       try {
         this.handleFileChange(filePath);
       } catch (error) {
-        Logger.error(`Error handling file change for ${filePath}:`, errorMessage(error));
+        Logger.error(
+          `Error handling file change for ${filePath}:`,
+          errorMessage(error)
+        );
       }
     });
 
@@ -138,7 +149,10 @@ export class WatchService {
       try {
         this.handleFileChange(filePath);
       } catch (error) {
-        Logger.error(`Error handling file add for ${filePath}:`, errorMessage(error));
+        Logger.error(
+          `Error handling file add for ${filePath}:`,
+          errorMessage(error)
+        );
       }
     });
 
@@ -201,7 +215,10 @@ export class WatchService {
     }
 
     // Check if file is in the git-staged set
-    if (this.options.stagedFiles && !this.options.stagedFiles.has(path.resolve(filePath))) {
+    if (
+      this.options.stagedFiles &&
+      !this.options.stagedFiles.has(path.resolve(filePath))
+    ) {
       return;
     }
 
@@ -242,7 +259,10 @@ export class WatchService {
           if (this.watchOptions?.onError) {
             this.watchOptions.onError(filePath, error as Error);
           }
-          Logger.error(`Translation failed for ${filePath}:`, errorMessage(error));
+          Logger.error(
+            `Translation failed for ${filePath}:`,
+            errorMessage(error)
+          );
         }
       })();
     }, this.options.debounceMs);
@@ -270,7 +290,7 @@ export class WatchService {
     // Check any segment between the first and last could be a target language code
     for (let i = 1; i < parts.length - 1; i++) {
       const segment = parts[i]!.toLowerCase();
-      if (targetLangs.some(lang => lang.toLowerCase() === segment)) {
+      if (targetLangs.some((lang) => lang.toLowerCase() === segment)) {
         return true;
       }
     }
@@ -286,7 +306,14 @@ export class WatchService {
       throw new ValidationError('Watch not started');
     }
 
-    const { targetLangs, outputDir, sourceLang, formality, glossaryId, preserveCode } = this.watchOptions;
+    const {
+      targetLangs,
+      outputDir,
+      sourceLang,
+      formality,
+      glossaryId,
+      preserveCode,
+    } = this.watchOptions;
 
     // Build translation options base (targetLang will be set per operation)
     const baseOptions: Partial<TranslationOptions> = {};
@@ -310,7 +337,10 @@ export class WatchService {
     if (targetLangs.length === 1) {
       // Single target language (length === 1 guarantees targetLangs[0] exists)
       const targetLang = targetLangs[0]!;
-      const outputPath = path.join(outputDir, `${fileName}.${targetLang}${ext}`);
+      const outputPath = path.join(
+        outputDir,
+        `${fileName}.${targetLang}${ext}`
+      );
 
       await this.fileTranslationService.translateFile(
         filePath,
@@ -322,7 +352,11 @@ export class WatchService {
       this.stats.translationsCount++;
 
       if (this.watchOptions.onTranslate) {
-        this.watchOptions.onTranslate(filePath, { text: '', outputPath, targetLang });
+        this.watchOptions.onTranslate(filePath, {
+          text: '',
+          outputPath,
+          targetLang,
+        });
       }
     } else {
       // Multiple target languages

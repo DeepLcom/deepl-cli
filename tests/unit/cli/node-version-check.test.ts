@@ -34,7 +34,9 @@ describe('node-version-check', () => {
       const exitSpy = jest
         .spyOn(process, 'exit')
         .mockImplementation((() => undefined) as never);
-      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
 
       assertSupportedNodeVersion('22.0.0');
 

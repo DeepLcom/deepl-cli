@@ -1,5 +1,8 @@
 import { TextTranslationHandler } from '../../src/cli/commands/translate/text-translation-handler';
-import type { HandlerContext, TranslateOptions } from '../../src/cli/commands/translate/types';
+import type {
+  HandlerContext,
+  TranslateOptions,
+} from '../../src/cli/commands/translate/types';
 import { ValidationError, AuthError } from '../../src/utils/errors';
 import {
   createMockTranslationService,
@@ -25,33 +28,48 @@ jest.mock('../../src/utils/logger', () => ({
   },
 }));
 
-function createMockContext(overrides: {
-  translationService?: jest.Mocked<TranslationService>;
-  fileTranslationService?: jest.Mocked<FileTranslationService>;
-  documentTranslationService?: jest.Mocked<DocumentTranslationService>;
-  glossaryService?: jest.Mocked<GlossaryService>;
-  config?: jest.Mocked<ConfigService>;
-} = {}): { ctx: HandlerContext; mocks: {
-  translationService: jest.Mocked<TranslationService>;
-  fileTranslationService: jest.Mocked<FileTranslationService>;
-  batchTranslationService: jest.Mocked<BatchTranslationService>;
-  documentTranslationService: jest.Mocked<DocumentTranslationService>;
-  glossaryService: jest.Mocked<GlossaryService>;
-  config: jest.Mocked<ConfigService>;
-}} {
-  const translationService = overrides.translationService ?? createMockTranslationService({
-    translate: jest.fn().mockResolvedValue({ text: 'translated', detectedSourceLang: 'en' }),
-  });
-  const fileTranslationService = overrides.fileTranslationService ?? createMockFileTranslationService();
+function createMockContext(
+  overrides: {
+    translationService?: jest.Mocked<TranslationService>;
+    fileTranslationService?: jest.Mocked<FileTranslationService>;
+    documentTranslationService?: jest.Mocked<DocumentTranslationService>;
+    glossaryService?: jest.Mocked<GlossaryService>;
+    config?: jest.Mocked<ConfigService>;
+  } = {}
+): {
+  ctx: HandlerContext;
+  mocks: {
+    translationService: jest.Mocked<TranslationService>;
+    fileTranslationService: jest.Mocked<FileTranslationService>;
+    batchTranslationService: jest.Mocked<BatchTranslationService>;
+    documentTranslationService: jest.Mocked<DocumentTranslationService>;
+    glossaryService: jest.Mocked<GlossaryService>;
+    config: jest.Mocked<ConfigService>;
+  };
+} {
+  const translationService =
+    overrides.translationService ??
+    createMockTranslationService({
+      translate: jest
+        .fn()
+        .mockResolvedValue({ text: 'translated', detectedSourceLang: 'en' }),
+    });
+  const fileTranslationService =
+    overrides.fileTranslationService ?? createMockFileTranslationService();
   const batchTranslationService = {} as jest.Mocked<BatchTranslationService>;
-  const documentTranslationService = overrides.documentTranslationService ?? createMockDocumentTranslationService();
-  const glossaryService = overrides.glossaryService ?? createMockGlossaryService();
-  const config = overrides.config ?? createMockConfigService({
-    getValue: jest.fn((key: string) => {
-      if (key === 'auth.apiKey') return 'test-api-key';
-      return undefined;
-    }),
-  });
+  const documentTranslationService =
+    overrides.documentTranslationService ??
+    createMockDocumentTranslationService();
+  const glossaryService =
+    overrides.glossaryService ?? createMockGlossaryService();
+  const config =
+    overrides.config ??
+    createMockConfigService({
+      getValue: jest.fn((key: string) => {
+        if (key === 'auth.apiKey') return 'test-api-key';
+        return undefined;
+      }),
+    });
 
   const ctx: HandlerContext = {
     translationService,
@@ -62,10 +80,22 @@ function createMockContext(overrides: {
     config,
   };
 
-  return { ctx, mocks: { translationService, fileTranslationService, batchTranslationService, documentTranslationService, glossaryService, config } };
+  return {
+    ctx,
+    mocks: {
+      translationService,
+      fileTranslationService,
+      batchTranslationService,
+      documentTranslationService,
+      glossaryService,
+      config,
+    },
+  };
 }
 
-function defaultOptions(overrides: Partial<TranslateOptions> = {}): TranslateOptions {
+function defaultOptions(
+  overrides: Partial<TranslateOptions> = {}
+): TranslateOptions {
   return { to: 'de', cache: true, ...overrides };
 }
 
@@ -97,12 +127,18 @@ describe('TextTranslationHandler', () => {
 
   describe('translateText()', () => {
     it('should throw ValidationError for empty text', async () => {
-      await expect(handler.translateText('', defaultOptions())).rejects.toThrow(ValidationError);
-      await expect(handler.translateText('', defaultOptions())).rejects.toThrow('Text cannot be empty');
+      await expect(handler.translateText('', defaultOptions())).rejects.toThrow(
+        ValidationError
+      );
+      await expect(handler.translateText('', defaultOptions())).rejects.toThrow(
+        'Text cannot be empty'
+      );
     });
 
     it('should throw ValidationError for whitespace-only text', async () => {
-      await expect(handler.translateText('   ', defaultOptions())).rejects.toThrow(ValidationError);
+      await expect(
+        handler.translateText('   ', defaultOptions())
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should throw AuthError when no API key is configured', async () => {
@@ -112,7 +148,9 @@ describe('TextTranslationHandler', () => {
         }),
       });
       const h = new TextTranslationHandler(ctx);
-      await expect(h.translateText('Hello', defaultOptions())).rejects.toThrow(AuthError);
+      await expect(h.translateText('Hello', defaultOptions())).rejects.toThrow(
+        AuthError
+      );
     });
 
     it('should not throw AuthError when DEEPL_API_KEY env var is set', async () => {
@@ -143,7 +181,10 @@ describe('TextTranslationHandler', () => {
         { targetLang: 'fr', text: 'Bonjour' },
       ]);
 
-      const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr' }));
+      const result = await handler.translateText(
+        'Hello',
+        defaultOptions({ to: 'de,fr' })
+      );
       expect(mocks.translationService.translateToMultiple).toHaveBeenCalled();
       expect(result).toContain('[de]');
       expect(result).toContain('[fr]');
@@ -151,63 +192,114 @@ describe('TextTranslationHandler', () => {
 
     describe('custom instructions validation', () => {
       it('should throw ValidationError when >10 custom instructions', async () => {
-        const instructions = Array.from({ length: 11 }, (_, i) => `instruction ${i}`);
+        const instructions = Array.from(
+          { length: 11 },
+          (_, i) => `instruction ${i}`
+        );
         await expect(
-          handler.translateText('Hello', defaultOptions({ customInstruction: instructions }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ customInstruction: instructions })
+          )
         ).rejects.toThrow(ValidationError);
         await expect(
-          handler.translateText('Hello', defaultOptions({ customInstruction: instructions }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ customInstruction: instructions })
+          )
         ).rejects.toThrow('Maximum 10 custom instructions allowed');
       });
 
       it('should throw ValidationError when instruction exceeds 300 chars', async () => {
         const longInstruction = 'x'.repeat(301);
         await expect(
-          handler.translateText('Hello', defaultOptions({ customInstruction: [longInstruction] }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ customInstruction: [longInstruction] })
+          )
         ).rejects.toThrow(ValidationError);
         await expect(
-          handler.translateText('Hello', defaultOptions({ customInstruction: [longInstruction] }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ customInstruction: [longInstruction] })
+          )
         ).rejects.toThrow('character limit');
       });
 
       it('should throw ValidationError when custom instructions used with latency_optimized', async () => {
         await expect(
-          handler.translateText('Hello', defaultOptions({ customInstruction: ['Be formal'], modelType: 'latency_optimized' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({
+              customInstruction: ['Be formal'],
+              modelType: 'latency_optimized',
+            })
+          )
         ).rejects.toThrow(ValidationError);
         await expect(
-          handler.translateText('Hello', defaultOptions({ customInstruction: ['Be formal'], modelType: 'latency_optimized' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({
+              customInstruction: ['Be formal'],
+              modelType: 'latency_optimized',
+            })
+          )
         ).rejects.toThrow('cannot be used with latency_optimized');
       });
     });
 
     it('should throw ValidationError when styleId used with latency_optimized', async () => {
       await expect(
-        handler.translateText('Hello', defaultOptions({ styleId: 'some-style', modelType: 'latency_optimized' }))
+        handler.translateText(
+          'Hello',
+          defaultOptions({
+            styleId: 'some-style',
+            modelType: 'latency_optimized',
+          })
+        )
       ).rejects.toThrow(ValidationError);
       await expect(
-        handler.translateText('Hello', defaultOptions({ styleId: 'some-style', modelType: 'latency_optimized' }))
+        handler.translateText(
+          'Hello',
+          defaultOptions({
+            styleId: 'some-style',
+            modelType: 'latency_optimized',
+          })
+        )
       ).rejects.toThrow('Style ID cannot be used with latency_optimized');
     });
 
     describe('XML parameters without --tag-handling xml', () => {
       it('should throw ValidationError for --outline-detection without --tag-handling xml', async () => {
         await expect(
-          handler.translateText('Hello', defaultOptions({ outlineDetection: 'true' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ outlineDetection: 'true' })
+          )
         ).rejects.toThrow(ValidationError);
         await expect(
-          handler.translateText('Hello', defaultOptions({ outlineDetection: 'true' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ outlineDetection: 'true' })
+          )
         ).rejects.toThrow('require --tag-handling xml');
       });
 
       it('should throw ValidationError for --splitting-tags without --tag-handling xml', async () => {
         await expect(
-          handler.translateText('Hello', defaultOptions({ splittingTags: 'p,div' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ splittingTags: 'p,div' })
+          )
         ).rejects.toThrow(ValidationError);
       });
 
       it('should throw ValidationError for --non-splitting-tags without --tag-handling xml', async () => {
         await expect(
-          handler.translateText('Hello', defaultOptions({ nonSplittingTags: 'span' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ nonSplittingTags: 'span' })
+          )
         ).rejects.toThrow(ValidationError);
       });
 
@@ -220,29 +312,47 @@ describe('TextTranslationHandler', () => {
 
     it('should throw ValidationError for invalid outlineDetection value', async () => {
       await expect(
-        handler.translateText('Hello', defaultOptions({ outlineDetection: 'yes', tagHandling: 'xml' }))
+        handler.translateText(
+          'Hello',
+          defaultOptions({ outlineDetection: 'yes', tagHandling: 'xml' })
+        )
       ).rejects.toThrow(ValidationError);
       await expect(
-        handler.translateText('Hello', defaultOptions({ outlineDetection: 'yes', tagHandling: 'xml' }))
+        handler.translateText(
+          'Hello',
+          defaultOptions({ outlineDetection: 'yes', tagHandling: 'xml' })
+        )
       ).rejects.toThrow('must be "true" or "false"');
     });
 
     describe('tagHandlingVersion validation', () => {
       it('should throw ValidationError without --tag-handling', async () => {
         await expect(
-          handler.translateText('Hello', defaultOptions({ tagHandlingVersion: 'v1' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ tagHandlingVersion: 'v1' })
+          )
         ).rejects.toThrow(ValidationError);
         await expect(
-          handler.translateText('Hello', defaultOptions({ tagHandlingVersion: 'v1' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ tagHandlingVersion: 'v1' })
+          )
         ).rejects.toThrow('requires --tag-handling to be set');
       });
 
       it('should throw ValidationError for invalid version value', async () => {
         await expect(
-          handler.translateText('Hello', defaultOptions({ tagHandlingVersion: 'v3', tagHandling: 'xml' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ tagHandlingVersion: 'v3', tagHandling: 'xml' })
+          )
         ).rejects.toThrow(ValidationError);
         await expect(
-          handler.translateText('Hello', defaultOptions({ tagHandlingVersion: 'v3', tagHandling: 'xml' }))
+          handler.translateText(
+            'Hello',
+            defaultOptions({ tagHandlingVersion: 'v3', tagHandling: 'xml' })
+          )
         ).rejects.toThrow('must be "v1" or "v2"');
       });
     });
@@ -250,10 +360,16 @@ describe('TextTranslationHandler', () => {
     it('should throw ValidationError for glossary without --from', async () => {
       mocks.glossaryService.resolveGlossaryId.mockResolvedValue('glossary-123');
       await expect(
-        handler.translateText('Hello', defaultOptions({ glossary: ['my-glossary'] }))
+        handler.translateText(
+          'Hello',
+          defaultOptions({ glossary: ['my-glossary'] })
+        )
       ).rejects.toThrow(ValidationError);
       await expect(
-        handler.translateText('Hello', defaultOptions({ glossary: ['my-glossary'] }))
+        handler.translateText(
+          'Hello',
+          defaultOptions({ glossary: ['my-glossary'] })
+        )
       ).rejects.toThrow('Source language (--from) is required');
     });
 
@@ -262,34 +378,57 @@ describe('TextTranslationHandler', () => {
 
       it('throws ValidationError (exit 6) when --translation-memory used without --from', async () => {
         const err = await handler
-          .translateText('Hello', defaultOptions({ translationMemory: 'my-tm' }))
-          .catch(e => e);
+          .translateText(
+            'Hello',
+            defaultOptions({ translationMemory: 'my-tm' })
+          )
+          .catch((e) => e);
         expect(err).toBeInstanceOf(ValidationError);
         expect((err as ValidationError).exitCode).toBe(6);
-        expect((err as Error).message).toContain('--from is required when using --translation-memory');
+        expect((err as Error).message).toContain(
+          '--from is required when using --translation-memory'
+        );
       });
 
       it('throws ValidationError (exit 6) when combined with latency_optimized', async () => {
         const err = await handler
-          .translateText('Hello', defaultOptions({
-            from: 'en', translationMemory: 'my-tm', modelType: 'latency_optimized',
-          }))
-          .catch(e => e);
+          .translateText(
+            'Hello',
+            defaultOptions({
+              from: 'en',
+              translationMemory: 'my-tm',
+              modelType: 'latency_optimized',
+            })
+          )
+          .catch((e) => e);
         expect(err).toBeInstanceOf(ValidationError);
         expect((err as ValidationError).exitCode).toBe(6);
-        expect((err as Error).message).toContain('requires quality_optimized model type');
+        expect((err as Error).message).toContain(
+          'requires quality_optimized model type'
+        );
       });
 
       it('resolves TM name via listTranslationMemories and passes resolved UUID to translate()', async () => {
         mocks.translationService.listTranslationMemories.mockResolvedValue([
-          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+          {
+            translation_memory_id: TM_UUID,
+            name: 'my-tm',
+            source_language: 'en',
+            target_languages: ['de'],
+          },
         ]);
 
-        await handler.translateText('Hello', defaultOptions({
-          from: 'en', translationMemory: 'my-tm',
-        }));
+        await handler.translateText(
+          'Hello',
+          defaultOptions({
+            from: 'en',
+            translationMemory: 'my-tm',
+          })
+        );
 
-        expect(mocks.translationService.listTranslationMemories).toHaveBeenCalledTimes(1);
+        expect(
+          mocks.translationService.listTranslationMemories
+        ).toHaveBeenCalledTimes(1);
         expect(mocks.translationService.translate).toHaveBeenCalledWith(
           'Hello',
           expect.objectContaining({
@@ -303,12 +442,22 @@ describe('TextTranslationHandler', () => {
 
       it('passes --tm-threshold through as translationMemoryThreshold', async () => {
         mocks.translationService.listTranslationMemories.mockResolvedValue([
-          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+          {
+            translation_memory_id: TM_UUID,
+            name: 'my-tm',
+            source_language: 'en',
+            target_languages: ['de'],
+          },
         ]);
 
-        await handler.translateText('Hello', defaultOptions({
-          from: 'en', translationMemory: 'my-tm', tmThreshold: 85,
-        }));
+        await handler.translateText(
+          'Hello',
+          defaultOptions({
+            from: 'en',
+            translationMemory: 'my-tm',
+            tmThreshold: 85,
+          })
+        );
 
         expect(mocks.translationService.translate).toHaveBeenCalledWith(
           'Hello',
@@ -318,11 +467,17 @@ describe('TextTranslationHandler', () => {
       });
 
       it('UUID fast-path: does NOT call listTranslationMemories when a UUID is passed', async () => {
-        await handler.translateText('Hello', defaultOptions({
-          from: 'en', translationMemory: TM_UUID,
-        }));
+        await handler.translateText(
+          'Hello',
+          defaultOptions({
+            from: 'en',
+            translationMemory: TM_UUID,
+          })
+        );
 
-        expect(mocks.translationService.listTranslationMemories).not.toHaveBeenCalled();
+        expect(
+          mocks.translationService.listTranslationMemories
+        ).not.toHaveBeenCalled();
         expect(mocks.translationService.translate).toHaveBeenCalledWith(
           'Hello',
           expect.objectContaining({ translationMemoryId: TM_UUID }),
@@ -332,12 +487,21 @@ describe('TextTranslationHandler', () => {
 
       it('forces modelType=quality_optimized when --translation-memory set and no --model-type given', async () => {
         mocks.translationService.listTranslationMemories.mockResolvedValue([
-          { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+          {
+            translation_memory_id: TM_UUID,
+            name: 'my-tm',
+            source_language: 'en',
+            target_languages: ['de'],
+          },
         ]);
 
-        await handler.translateText('Hello', defaultOptions({
-          from: 'en', translationMemory: 'my-tm',
-        }));
+        await handler.translateText(
+          'Hello',
+          defaultOptions({
+            from: 'en',
+            translationMemory: 'my-tm',
+          })
+        );
 
         expect(mocks.translationService.translate).toHaveBeenCalledWith(
           'Hello',
@@ -349,7 +513,12 @@ describe('TextTranslationHandler', () => {
       describe('multi-target', () => {
         it('lists translation memories exactly once regardless of target count', async () => {
           mocks.translationService.listTranslationMemories.mockResolvedValue([
-            { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+            {
+              translation_memory_id: TM_UUID,
+              name: 'my-tm',
+              source_language: 'en',
+              target_languages: ['de'],
+            },
           ]);
           mocks.translationService.translateToMultiple.mockResolvedValue([
             { targetLang: 'de', text: 'Hallo' },
@@ -357,12 +526,21 @@ describe('TextTranslationHandler', () => {
             { targetLang: 'de', text: 'Hallo' },
           ]);
 
-          await handler.translateText('Hello', defaultOptions({
-            from: 'en', to: 'de,de,de', translationMemory: 'my-tm',
-          }));
+          await handler.translateText(
+            'Hello',
+            defaultOptions({
+              from: 'en',
+              to: 'de,de,de',
+              translationMemory: 'my-tm',
+            })
+          );
 
-          expect(mocks.translationService.listTranslationMemories).toHaveBeenCalledTimes(1);
-          expect(mocks.translationService.translateToMultiple).toHaveBeenCalledWith(
+          expect(
+            mocks.translationService.listTranslationMemories
+          ).toHaveBeenCalledTimes(1);
+          expect(
+            mocks.translationService.translateToMultiple
+          ).toHaveBeenCalledWith(
             'Hello',
             ['de', 'de', 'de'],
             expect.objectContaining({
@@ -375,35 +553,60 @@ describe('TextTranslationHandler', () => {
         it('does NOT warn about --translation-memory or --tm-threshold as ignored options', async () => {
           const { Logger } = jest.requireMock('../../src/utils/logger');
           mocks.translationService.listTranslationMemories.mockResolvedValue([
-            { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+            {
+              translation_memory_id: TM_UUID,
+              name: 'my-tm',
+              source_language: 'en',
+              target_languages: ['de'],
+            },
           ]);
           mocks.translationService.translateToMultiple.mockResolvedValue([
             { targetLang: 'de', text: 'Hallo' },
           ]);
 
-          await handler.translateText('Hello', defaultOptions({
-            from: 'en', to: 'de,de', translationMemory: 'my-tm', tmThreshold: 80,
-          }));
+          await handler.translateText(
+            'Hello',
+            defaultOptions({
+              from: 'en',
+              to: 'de,de',
+              translationMemory: 'my-tm',
+              tmThreshold: 80,
+            })
+          );
 
-          const warnCalls = (Logger.warn as jest.Mock).mock.calls.map(c => c[0] as string);
-          expect(warnCalls.some(m => m.includes('--translation-memory'))).toBe(false);
-          expect(warnCalls.some(m => m.includes('--tm-threshold'))).toBe(false);
+          const warnCalls = (Logger.warn as jest.Mock).mock.calls.map(
+            (c) => c[0] as string
+          );
+          expect(
+            warnCalls.some((m) => m.includes('--translation-memory'))
+          ).toBe(false);
+          expect(warnCalls.some((m) => m.includes('--tm-threshold'))).toBe(
+            false
+          );
         });
 
         it('throws ValidationError when --translation-memory used without --from in multi-target', async () => {
           const err = await handler
-            .translateText('Hello', defaultOptions({ to: 'de,fr', translationMemory: 'my-tm' }))
-            .catch(e => e);
+            .translateText(
+              'Hello',
+              defaultOptions({ to: 'de,fr', translationMemory: 'my-tm' })
+            )
+            .catch((e) => e);
           expect(err).toBeInstanceOf(ValidationError);
           expect((err as ValidationError).exitCode).toBe(6);
-          expect((err as Error).message).toContain('--from is required when using --translation-memory');
+          expect((err as Error).message).toContain(
+            '--from is required when using --translation-memory'
+          );
         });
       });
     });
 
     describe('format output', () => {
       it('should return JSON string for format=json', async () => {
-        const result = await handler.translateText('Hello', defaultOptions({ format: 'json' }));
+        const result = await handler.translateText(
+          'Hello',
+          defaultOptions({ format: 'json' })
+        );
         const parsed = JSON.parse(result);
         expect(parsed).toHaveProperty('text', 'translated');
       });
@@ -415,7 +618,10 @@ describe('TextTranslationHandler', () => {
           cached: false,
         });
 
-        const result = await handler.translateText('Hello', defaultOptions({ format: 'json' }));
+        const result = await handler.translateText(
+          'Hello',
+          defaultOptions({ format: 'json' })
+        );
 
         expect(JSON.parse(result).cached).toBe(false);
       });
@@ -427,13 +633,19 @@ describe('TextTranslationHandler', () => {
           cached: true,
         });
 
-        const result = await handler.translateText('Hello', defaultOptions({ format: 'json' }));
+        const result = await handler.translateText(
+          'Hello',
+          defaultOptions({ format: 'json' })
+        );
 
         expect(JSON.parse(result).cached).toBe(true);
       });
 
       it('should default cached to false when the service omits the flag', async () => {
-        const result = await handler.translateText('Hello', defaultOptions({ format: 'json' }));
+        const result = await handler.translateText(
+          'Hello',
+          defaultOptions({ format: 'json' })
+        );
 
         expect(JSON.parse(result).cached).toBe(false);
       });
@@ -451,7 +663,10 @@ describe('TextTranslationHandler', () => {
             { targetLang: 'fr', text: 'Bonjour' },
           ]);
 
-          const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
+          const result = await handler.translateText(
+            'Hello',
+            defaultOptions({ to: 'de,fr', format: 'table' })
+          );
           expect(result).toContain('de');
           expect(result).toContain('fr');
         } finally {
@@ -476,7 +691,10 @@ describe('TextTranslationHandler', () => {
             { targetLang: 'fr', text: 'Bonjour' },
           ]);
 
-          const result = await handler.translateText('Hello', defaultOptions({ to: 'de,fr', format: 'table' }));
+          const result = await handler.translateText(
+            'Hello',
+            defaultOptions({ to: 'de,fr', format: 'table' })
+          );
           expect(result).toBe('[de] Hallo\n[fr] Bonjour');
         } finally {
           Object.defineProperty(process.stdout, 'isTTY', {
@@ -516,16 +734,24 @@ describe('TextTranslationHandler', () => {
         { targetLang: 'de', text: 'Hallo' },
       ]);
 
-      await handler.translateText('Hello', defaultOptions({
-        to: 'de,fr',
-        splitSentences: 'on',
-      }));
+      await handler.translateText(
+        'Hello',
+        defaultOptions({
+          to: 'de,fr',
+          splitSentences: 'on',
+        })
+      );
 
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('multi-target'));
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('multi-target')
+      );
     });
 
     it('should lowercase target and source language codes', async () => {
-      await handler.translateText('Hello', defaultOptions({ to: 'DE', from: 'EN' }));
+      await handler.translateText(
+        'Hello',
+        defaultOptions({ to: 'DE', from: 'EN' })
+      );
       expect(mocks.translationService.translate).toHaveBeenCalledWith(
         'Hello',
         expect.objectContaining({ targetLang: 'de', sourceLang: 'en' }),

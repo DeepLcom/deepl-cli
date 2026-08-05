@@ -21,20 +21,26 @@ describe('Xcode String Catalog localizations', () => {
             de: {
               variations: {
                 plural: {
-                  one: { stringUnit: { state: 'translated', value: '%lld Artikel' } },
-                  other: { stringUnit: { state: 'translated', value: '%lld Artikel' } },
+                  one: {
+                    stringUnit: { state: 'translated', value: '%lld Artikel' },
+                  },
+                  other: {
+                    stringUnit: { state: 'translated', value: '%lld Artikel' },
+                  },
                 },
               },
             },
           },
         },
         greeting: {
-          localizations: { en: { stringUnit: { state: 'translated', value: 'Hello' } } },
+          localizations: {
+            en: { stringUnit: { state: 'translated', value: 'Hello' } },
+          },
         },
       },
     },
     null,
-    2,
+    2
   );
 
   it('should not destroy plural variations of the key being translated', () => {
@@ -45,13 +51,18 @@ describe('Xcode String Catalog localizations', () => {
     const out = parser.reconstruct(
       withVariations,
       [{ key: 'item_count', value: '%lld items', translation: '%lld Artikel' }],
-      'de',
+      'de'
     );
 
     const parsed = JSON.parse(out) as {
-      strings: Record<string, { localizations?: Record<string, Record<string, unknown>> }>;
+      strings: Record<
+        string,
+        { localizations?: Record<string, Record<string, unknown>> }
+      >;
     };
-    expect(parsed.strings['item_count']?.localizations?.['de']?.['variations']).toBeDefined();
+    expect(
+      parsed.strings['item_count']?.localizations?.['de']?.['variations']
+    ).toBeDefined();
   });
 
   it('should not destroy variations of an untranslated key', () => {
@@ -60,13 +71,18 @@ describe('Xcode String Catalog localizations', () => {
     const out = parser.reconstruct(
       withVariations,
       [{ key: 'greeting', value: 'Hello', translation: 'Hallo' }],
-      'de',
+      'de'
     );
 
     const parsed = JSON.parse(out) as {
-      strings: Record<string, { localizations?: Record<string, Record<string, unknown>> }>;
+      strings: Record<
+        string,
+        { localizations?: Record<string, Record<string, unknown>> }
+      >;
     };
-    expect(parsed.strings['item_count']?.localizations?.['de']?.['variations']).toBeDefined();
+    expect(
+      parsed.strings['item_count']?.localizations?.['de']?.['variations']
+    ).toBeDefined();
   });
 
   it('should still write the translation for the requested key', () => {
@@ -75,7 +91,7 @@ describe('Xcode String Catalog localizations', () => {
     const out = parser.reconstruct(
       withVariations,
       [{ key: 'greeting', value: 'Hello', translation: 'Hallo' }],
-      'de',
+      'de'
     );
 
     const parsed = JSON.parse(out) as {
@@ -84,7 +100,9 @@ describe('Xcode String Catalog localizations', () => {
         { localizations?: Record<string, { stringUnit?: { value?: string } }> }
       >;
     };
-    expect(parsed.strings['greeting']?.localizations?.['de']?.stringUnit?.value).toBe('Hallo');
+    expect(
+      parsed.strings['greeting']?.localizations?.['de']?.stringUnit?.value
+    ).toBe('Hallo');
   });
 
   it('should leave other locales untouched', () => {
@@ -93,7 +111,7 @@ describe('Xcode String Catalog localizations', () => {
     const out = parser.reconstruct(
       withVariations,
       [{ key: 'greeting', value: 'Hello', translation: 'Hallo' }],
-      'de',
+      'de'
     );
 
     const parsed = JSON.parse(out) as {
@@ -102,12 +120,18 @@ describe('Xcode String Catalog localizations', () => {
         { localizations?: Record<string, { stringUnit?: { value?: string } }> }
       >;
     };
-    expect(parsed.strings['greeting']?.localizations?.['en']?.stringUnit?.value).toBe('Hello');
+    expect(
+      parsed.strings['greeting']?.localizations?.['en']?.stringUnit?.value
+    ).toBe('Hello');
   });
 });
 
 describe('ARB byte-order mark', () => {
-  const body = JSON.stringify({ greeting: 'Hello', '@greeting': { description: 'A greeting' } }, null, 2);
+  const body = JSON.stringify(
+    { greeting: 'Hello', '@greeting': { description: 'A greeting' } },
+    null,
+    2
+  );
 
   it('should extract from a BOM-prefixed file', () => {
     const entries = new ArbFormatParser().extract('﻿' + body);
@@ -131,7 +155,9 @@ describe('ARB byte-order mark', () => {
     const parser = new ArbFormatParser();
 
     const withoutBom = parser.extract(body).map((e) => `${e.key}=${e.value}`);
-    const withBom = parser.extract('﻿' + body).map((e) => `${e.key}=${e.value}`);
+    const withBom = parser
+      .extract('﻿' + body)
+      .map((e) => `${e.key}=${e.value}`);
 
     expect(withBom).toEqual(withoutBom);
   });

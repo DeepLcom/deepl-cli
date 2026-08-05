@@ -41,7 +41,8 @@ export class FileTranslationService {
 
   private async getStructuredService(): Promise<StructuredFileTranslationService> {
     if (!this.structuredService) {
-      const { StructuredFileTranslationService: Cls } = await import('./structured-file-translation.js');
+      const { StructuredFileTranslationService: Cls } =
+        await import('./structured-file-translation.js');
       this.structuredService = new Cls(this.translationService);
     }
     return this.structuredService;
@@ -151,14 +152,15 @@ export class FileTranslationService {
     }
 
     // Translate to multiple languages
-    const translationResults = await this.translationService.translateToMultiple(
-      content,
-      targetLangs,
-      options
-    );
+    const translationResults =
+      await this.translationService.translateToMultiple(
+        content,
+        targetLangs,
+        options
+      );
 
     // Convert to FileMultiTargetResult
-    const results: FileMultiTargetResult[] = translationResults.map(r => ({
+    const results: FileMultiTargetResult[] = translationResults.map((r) => ({
       targetLang: r.targetLang,
       text: r.text,
     }));

@@ -95,10 +95,13 @@ describe('--dry-run CLI Integration', () => {
     // A dry run reports a command as runnable, so it has to reject whatever the
     // real run rejects locally, with the same message and exit code.
     it('should reject a malformed target language code', () => {
-      const result = runCLIExpectError(`deepl translate "Hi" --to 'not!!a!!lang' --dry-run`, {
-        excludeApiKey: true,
-        noColor: true,
-      });
+      const result = runCLIExpectError(
+        `deepl translate "Hi" --to 'not!!a!!lang' --dry-run`,
+        {
+          excludeApiKey: true,
+          noColor: true,
+        }
+      );
 
       expect(result.status).toBe(ExitCode.InvalidInput);
       expect(result.output).toContain('Invalid target language code');
@@ -108,7 +111,7 @@ describe('--dry-run CLI Integration', () => {
     it('should reject a malformed source language code', () => {
       const result = runCLIExpectError(
         `deepl translate "Hi" --to de --from 'not!!a!!lang' --dry-run`,
-        { excludeApiKey: true, noColor: true },
+        { excludeApiKey: true, noColor: true }
       );
 
       expect(result.status).toBe(ExitCode.InvalidInput);
@@ -116,10 +119,13 @@ describe('--dry-run CLI Integration', () => {
     });
 
     it('should reject formality for an extended-tier target', () => {
-      const result = runCLIExpectError(`deepl translate "Hi" --to af --formality more --dry-run`, {
-        excludeApiKey: true,
-        noColor: true,
-      });
+      const result = runCLIExpectError(
+        `deepl translate "Hi" --to af --formality more --dry-run`,
+        {
+          excludeApiKey: true,
+          noColor: true,
+        }
+      );
 
       expect(result.status).toBe(ExitCode.InvalidInput);
       expect(result.output).toContain('do not support formality');
@@ -128,7 +134,7 @@ describe('--dry-run CLI Integration', () => {
     it('should reject a glossary for an extended-tier target', () => {
       const result = runCLIExpectError(
         `deepl translate "Hi" --to af --from en --glossary my-glossary --dry-run`,
-        { excludeApiKey: true, noColor: true },
+        { excludeApiKey: true, noColor: true }
       );
 
       expect(result.status).toBe(ExitCode.InvalidInput);
@@ -141,7 +147,7 @@ describe('--dry-run CLI Integration', () => {
 
       const output = runCLI(
         `deepl translate "${testFile}" --to af --model-type latency_optimized --output "${testFiles.path}/out.pdf" --dry-run`,
-        { excludeApiKey: true, noColor: true },
+        { excludeApiKey: true, noColor: true }
       );
 
       expect(output).toContain('Would translate file');
@@ -154,7 +160,7 @@ describe('--dry-run CLI Integration', () => {
 
       const output = runCLI(
         `deepl translate "${dirPath}" --to af --from en --glossary my-glossary --output "${testFiles.path}/out-gdir" --dry-run`,
-        { excludeApiKey: true, noColor: true },
+        { excludeApiKey: true, noColor: true }
       );
 
       expect(output).toContain('Would translate directory');
@@ -166,25 +172,32 @@ describe('--dry-run CLI Integration', () => {
         noColor: true,
       });
 
-      const notices = output.match(/is not in the bundled language list/g) ?? [];
+      const notices =
+        output.match(/is not in the bundled language list/g) ?? [];
       expect(notices).toHaveLength(1);
       expect(output).toContain('"ex" is not in the bundled language list');
     });
 
     it('should warn about an unknown source language too', () => {
-      const output = runCLIAll(`deepl translate "Hi" --to de --from zz --dry-run`, {
-        excludeApiKey: true,
-        noColor: true,
-      });
+      const output = runCLIAll(
+        `deepl translate "Hi" --to de --from zz --dry-run`,
+        {
+          excludeApiKey: true,
+          noColor: true,
+        }
+      );
 
       expect(output).toContain('"zz" is not in the bundled language list');
     });
 
     it('should lowercase language codes the way the real run does', () => {
-      const output = runCLI(`deepl translate "Hi" --to DE --from EN --dry-run`, {
-        excludeApiKey: true,
-        noColor: true,
-      });
+      const output = runCLI(
+        `deepl translate "Hi" --to DE --from EN --dry-run`,
+        {
+          excludeApiKey: true,
+          noColor: true,
+        }
+      );
 
       expect(output).toContain('Target language(s): de');
       expect(output).toContain('Source language: en');
@@ -261,9 +274,7 @@ describe('--dry-run CLI Integration', () => {
         fs.mkdirSync(watchDir, { recursive: true });
       }
 
-      const output = runCLI(
-        `deepl watch "${watchDir}" --to es,fr --dry-run`
-      );
+      const output = runCLI(`deepl watch "${watchDir}" --to es,fr --dry-run`);
 
       expect(output).toContain('[dry-run]');
       expect(output).toContain('Watch mode will not be started');
@@ -306,9 +317,7 @@ describe('--dry-run CLI Integration', () => {
         fs.mkdirSync(watchDir, { recursive: true });
       }
 
-      const output = runCLI(
-        `deepl watch "${watchDir}" --to ja --dry-run`
-      );
+      const output = runCLI(`deepl watch "${watchDir}" --to ja --dry-run`);
 
       expect(output).toContain('[dry-run]');
       expect(output).not.toContain('API key');

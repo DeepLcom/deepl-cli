@@ -11,7 +11,9 @@ describe('Structured File Translation E2E', () => {
   const testConfig = createTestConfigDir('structured-e2e-config');
   const testFiles = createTestDir('structured-e2e');
   const testDir = testFiles.path;
-  const { runCLI } = makeRunCLI(testConfig.path, { apiKey: 'fake-key-for-e2e' });
+  const { runCLI } = makeRunCLI(testConfig.path, {
+    apiKey: 'fake-key-for-e2e',
+  });
 
   afterAll(() => {
     testFiles.cleanup();
@@ -27,7 +29,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, JSON.stringify({ key: 'Hello' }, null, 2));
 
       try {
-        runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+        runCLI(
+          `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+        );
       } catch (error: any) {
         const output = error.stderr ?? error.stdout ?? '';
         // Should NOT fail with "Unsupported file type"
@@ -41,7 +45,9 @@ describe('Structured File Translation E2E', () => {
 
       fs.writeFileSync(inputPath, '{}');
 
-      const output = runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+      const output = runCLI(
+        `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+      );
       expect(output).toContain('Translated');
 
       const result = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
@@ -55,7 +61,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, '{ not: valid }');
 
       try {
-        runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+        runCLI(
+          `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+        );
         fail('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
@@ -69,7 +77,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, '');
 
       try {
-        runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+        runCLI(
+          `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+        );
         fail('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
@@ -81,9 +91,14 @@ describe('Structured File Translation E2E', () => {
       const outputPath = path.join(testDir, 'indent-e2e-es.json');
 
       // Write an empty nested object — will be translated without API since no strings
-      fs.writeFileSync(inputPath, JSON.stringify({ nested: { count: 42 } }, null, 4));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify({ nested: { count: 42 } }, null, 4)
+      );
 
-      const output = runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+      const output = runCLI(
+        `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+      );
       expect(output).toContain('Translated');
 
       const raw = fs.readFileSync(outputPath, 'utf-8');
@@ -114,7 +129,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, 'key: Hello\n');
 
       try {
-        runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+        runCLI(
+          `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+        );
       } catch (error: any) {
         const output = error.stderr ?? error.stdout ?? '';
         expect(output).not.toContain('Unsupported file type');
@@ -129,7 +146,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, 'key: Hello\n');
 
       try {
-        runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+        runCLI(
+          `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+        );
       } catch (error: any) {
         const output = error.stderr ?? error.stdout ?? '';
         expect(output).not.toContain('Unsupported file type');
@@ -143,7 +162,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, '');
 
       try {
-        runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+        runCLI(
+          `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+        );
         fail('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
@@ -159,7 +180,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, '{}');
 
       // Should not throw (exit code 0)
-      const output = runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+      const output = runCLI(
+        `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+      );
       expect(output).toContain('Translated');
     });
 
@@ -170,7 +193,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, 'NOT JSON');
 
       try {
-        runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+        runCLI(
+          `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+        );
         fail('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
@@ -184,7 +209,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, JSON.stringify({ key: 'test' }, null, 2));
 
       try {
-        runCLI(`deepl translate "${inputPath}" --to INVALID --output "${outputPath}"`);
+        runCLI(
+          `deepl translate "${inputPath}" --to INVALID --output "${outputPath}"`
+        );
         fail('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
@@ -200,7 +227,9 @@ describe('Structured File Translation E2E', () => {
       fs.writeFileSync(inputPath, '{}');
 
       // This should succeed (no API needed for empty object)
-      const output = runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+      const output = runCLI(
+        `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+      );
       expect(output).toContain('Translated');
     });
 
@@ -213,7 +242,9 @@ describe('Structured File Translation E2E', () => {
 
       fs.writeFileSync(inputPath, '{}');
 
-      const output = runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
+      const output = runCLI(
+        `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+      );
       expect(output).toContain('Translated');
     });
 

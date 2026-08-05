@@ -59,7 +59,10 @@ describe('CLI Sync TMS E2E', () => {
 
       child.stderr.on('data', (data: Buffer) => {
         const msg = data.toString();
-        if (!msg.includes('ExperimentalWarning') && !msg.includes('--experimental')) {
+        if (
+          !msg.includes('ExperimentalWarning') &&
+          !msg.includes('--experimental')
+        ) {
           process.stderr.write(`[mock-server stderr] ${msg}`);
         }
       });
@@ -71,7 +74,10 @@ describe('CLI Sync TMS E2E', () => {
         }
       });
 
-      setTimeout(() => reject(new Error('Mock server did not start within 15s')), 15000);
+      setTimeout(
+        () => reject(new Error('Mock server did not start within 15s')),
+        15000
+      );
     });
   }
 
@@ -79,12 +85,19 @@ describe('CLI Sync TMS E2E', () => {
     const config = {
       auth: { apiKey: 'mock-api-key-for-testing:fx' },
       api: { baseUrl: apiUrl, usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: true,
+      },
       cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
     };
-    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(configDir, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
   }
 
   function writeSyncYaml(
@@ -92,7 +105,7 @@ describe('CLI Sync TMS E2E', () => {
       targetLocales?: string[];
       includeTmsBlock?: boolean;
       tmsApiKey?: string;
-    } = {},
+    } = {}
   ): void {
     const tms = opts.includeTmsBlock
       ? {
@@ -110,19 +123,32 @@ describe('CLI Sync TMS E2E', () => {
     fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.yaml'), yaml);
   }
 
-  function writeSource(keys: Record<string, string> = { greeting: 'Hello', farewell: 'Goodbye' }): void {
+  function writeSource(
+    keys: Record<string, string> = { greeting: 'Hello', farewell: 'Goodbye' }
+  ): void {
     const dir = path.join(testFiles.path, 'locales');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'en.json'), JSON.stringify(keys, null, 2) + '\n');
+    fs.writeFileSync(
+      path.join(dir, 'en.json'),
+      JSON.stringify(keys, null, 2) + '\n'
+    );
   }
 
-  function writeTargetLocale(locale: string, keys: Record<string, string>): void {
+  function writeTargetLocale(
+    locale: string,
+    keys: Record<string, string>
+  ): void {
     const dir = path.join(testFiles.path, 'locales');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, `${locale}.json`), JSON.stringify(keys, null, 2) + '\n');
+    fs.writeFileSync(
+      path.join(dir, `${locale}.json`),
+      JSON.stringify(keys, null, 2) + '\n'
+    );
   }
 
-  function buildEnv(extra: Record<string, string> = {}): Record<string, string | undefined> {
+  function buildEnv(
+    extra: Record<string, string> = {}
+  ): Record<string, string | undefined> {
     return {
       ...process.env,
       DEEPL_CONFIG_DIR: testConfig.path,
@@ -133,7 +159,10 @@ describe('CLI Sync TMS E2E', () => {
 
   // Note: execSync is used here intentionally for E2E CLI testing -- the input
   // is fully controlled test data with no user-supplied values.
-  function runSyncAll(args: string, extraEnv: Record<string, string> = {}): string {
+  function runSyncAll(
+    args: string,
+    extraEnv: Record<string, string> = {}
+  ): string {
     return execSync(`node ${CLI_PATH} sync ${args} 2>&1`, {
       encoding: 'utf-8',
       shell: '/bin/sh',
@@ -145,7 +174,7 @@ describe('CLI Sync TMS E2E', () => {
 
   function runSyncExpectError(
     args: string,
-    extraEnv: Record<string, string> = {},
+    extraEnv: Record<string, string> = {}
   ): { status: number; output: string } {
     try {
       const output = execSync(`node ${CLI_PATH} sync ${args} 2>&1`, {
@@ -157,7 +186,11 @@ describe('CLI Sync TMS E2E', () => {
       });
       return { status: 0, output };
     } catch (error: unknown) {
-      const err = error as { status?: number; stderr?: string; stdout?: string };
+      const err = error as {
+        status?: number;
+        stderr?: string;
+        stdout?: string;
+      };
       return {
         status: err.status ?? 1,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty stderr should fall through to stdout
@@ -235,7 +268,10 @@ describe('CLI Sync TMS E2E', () => {
       expect(req.authHeader).toBe('ApiKey e2e-key');
     }
     expect(state.pushed['de']).toBeDefined();
-    expect(Object.keys(state.pushed['de']!).sort()).toEqual(['farewell', 'greeting']);
+    expect(Object.keys(state.pushed['de']!).sort()).toEqual([
+      'farewell',
+      'greeting',
+    ]);
     expect(state.pushed['de']!['greeting']).toBe('Hallo');
     expect(state.pushed['de']!['farewell']).toBe('Auf Wiedersehen');
   });
@@ -257,12 +293,19 @@ describe('CLI Sync TMS E2E', () => {
 
     const targetFile = path.join(testFiles.path, 'locales', 'de.json');
     expect(fs.existsSync(targetFile)).toBe(true);
-    const parsed = JSON.parse(fs.readFileSync(targetFile, 'utf-8')) as Record<string, string>;
+    const parsed = JSON.parse(fs.readFileSync(targetFile, 'utf-8')) as Record<
+      string,
+      string
+    >;
     expect(parsed['greeting']).toBe('Hallo (approved)');
     expect(parsed['farewell']).toBe('Tschuess (approved)');
 
     const state = await inspectMockServer();
-    expect(state.requests.some((r) => r.method === 'GET' && r.url.includes('locale=de'))).toBe(true);
+    expect(
+      state.requests.some(
+        (r) => r.method === 'GET' && r.url.includes('locale=de')
+      )
+    ).toBe(true);
   });
 
   // ---- Case 11: missing tms: block ----
@@ -278,7 +321,10 @@ describe('CLI Sync TMS E2E', () => {
 
   // ---- Case 12: wrong credentials surface an actionable auth error ----
   it('push with wrong credentials: exits non-zero, stderr names TMS_API_KEY and references 401', async () => {
-    await configureMockServer({ forceStatus: 401, forceBody: { error: 'Unauthorized' } });
+    await configureMockServer({
+      forceStatus: 401,
+      forceBody: { error: 'Unauthorized' },
+    });
 
     writeSyncYaml({ includeTmsBlock: true });
     writeSource({ k: 'Hello' });

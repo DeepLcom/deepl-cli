@@ -18,7 +18,10 @@ function productDisplayName(productType: string): string {
 }
 
 function isDurationBilled(product: ProductUsage): boolean {
-  return product.billingUnit !== undefined && DURATION_BILLING_UNITS.has(product.billingUnit);
+  return (
+    product.billingUnit !== undefined &&
+    DURATION_BILLING_UNITS.has(product.billingUnit)
+  );
 }
 
 /**
@@ -41,12 +44,20 @@ function productDurationsMs(product: ProductUsage): {
   const perMinute = product.billingUnit === 'minutes';
   const scale = perMinute ? 60_000 : 1;
   const duration = (value: number | null | undefined): number | undefined =>
-    typeof value === 'number' && Number.isFinite(value) ? value * scale : undefined;
-  const accountFallback = perMinute ? undefined : duration(product.characterCount);
-  const apiKeyFallback = perMinute ? undefined : duration(product.apiKeyCharacterCount);
+    typeof value === 'number' && Number.isFinite(value)
+      ? value * scale
+      : undefined;
+  const accountFallback = perMinute
+    ? undefined
+    : duration(product.characterCount);
+  const apiKeyFallback = perMinute
+    ? undefined
+    : duration(product.apiKeyCharacterCount);
   return {
     accountUsed:
-      duration(product.unitCount) ?? duration(product.accountUnitCount) ?? accountFallback,
+      duration(product.unitCount) ??
+      duration(product.accountUnitCount) ??
+      accountFallback,
     apiKeyUsed: duration(product.apiKeyUnitCount) ?? apiKeyFallback,
   };
 }
@@ -71,29 +82,37 @@ export class UsageCommand {
   formatUsage(usage: UsageInfo): string {
     const { characterCount, characterLimit } = usage;
 
-    const percentage = characterLimit > 0
-      ? ((characterCount / characterLimit) * 100).toFixed(1)
-      : '0.0';
+    const percentage =
+      characterLimit > 0
+        ? ((characterCount / characterLimit) * 100).toFixed(1)
+        : '0.0';
 
     const remaining = characterLimit - characterCount;
-    const isHighUsage = characterLimit > 0 && (characterCount / characterLimit) > 0.8;
+    const isHighUsage =
+      characterLimit > 0 && characterCount / characterLimit > 0.8;
 
     // Tolerates a null the response may carry where the type says number: the
     // alternative is `deepl usage` throwing on a field it only displays.
     const formatNumber = (num: number | null | undefined): string => {
-      return typeof num === 'number' && Number.isFinite(num) ? num.toLocaleString('en-US') : '—';
+      return typeof num === 'number' && Number.isFinite(num)
+        ? num.toLocaleString('en-US')
+        : '—';
     };
 
     const lines: string[] = [];
     lines.push(chalk.bold('Character Usage:'));
 
     const usageColor = isHighUsage ? chalk.yellow : chalk.green;
-    lines.push(`  Used: ${usageColor(formatNumber(characterCount))} / ${formatNumber(characterLimit)} (${usageColor(percentage + '%')})`);
+    lines.push(
+      `  Used: ${usageColor(formatNumber(characterCount))} / ${formatNumber(characterLimit)} (${usageColor(percentage + '%')})`
+    );
     lines.push(`  Remaining: ${formatNumber(remaining)}`);
 
     if (isHighUsage) {
       lines.push('');
-      lines.push(chalk.yellow('⚠ Warning: You are approaching your character limit'));
+      lines.push(
+        chalk.yellow('⚠ Warning: You are approaching your character limit')
+      );
     }
 
     if (usage.startTime || usage.endTime) {
@@ -108,23 +127,32 @@ export class UsageCommand {
       lines.push('');
       lines.push(chalk.bold('Account Unit Usage:'));
       const unitLimit = usage.accountUnitLimit ?? 0;
-      const unitLimitStr = unitLimit === 0 ? 'unlimited' : formatNumber(unitLimit);
-      lines.push(`  Used: ${formatNumber(usage.accountUnitCount)} / ${unitLimitStr} units`);
+      const unitLimitStr =
+        unitLimit === 0 ? 'unlimited' : formatNumber(unitLimit);
+      lines.push(
+        `  Used: ${formatNumber(usage.accountUnitCount)} / ${unitLimitStr} units`
+      );
     }
 
     if (usage.apiKeyUnitCount !== undefined) {
       lines.push('');
       lines.push(chalk.bold('API Key Unit Usage:'));
       const unitLimit = usage.apiKeyUnitLimit ?? 0;
-      const unitLimitStr = unitLimit === 0 ? 'unlimited' : formatNumber(unitLimit);
-      lines.push(`  Used: ${formatNumber(usage.apiKeyUnitCount)} / ${unitLimitStr} units`);
+      const unitLimitStr =
+        unitLimit === 0 ? 'unlimited' : formatNumber(unitLimit);
+      lines.push(
+        `  Used: ${formatNumber(usage.apiKeyUnitCount)} / ${unitLimitStr} units`
+      );
     } else if (usage.apiKeyCharacterCount !== undefined) {
       lines.push('');
       lines.push(chalk.bold('API Key Usage:'));
-      const limitStr = usage.apiKeyCharacterLimit === 0
-        ? 'unlimited'
-        : formatNumber(usage.apiKeyCharacterLimit ?? 0);
-      lines.push(`  Used: ${formatNumber(usage.apiKeyCharacterCount)} / ${limitStr}`);
+      const limitStr =
+        usage.apiKeyCharacterLimit === 0
+          ? 'unlimited'
+          : formatNumber(usage.apiKeyCharacterLimit ?? 0);
+      lines.push(
+        `  Used: ${formatNumber(usage.apiKeyCharacterCount)} / ${limitStr}`
+      );
     }
 
     if (usage.products && usage.products.length > 0) {
@@ -134,8 +162,14 @@ export class UsageCommand {
         const name = productDisplayName(product.productType);
         if (isDurationBilled(product)) {
           const { accountUsed, apiKeyUsed } = productDurationsMs(product);
-          const account = accountUsed === undefined ? undefined : this.formatMilliseconds(accountUsed);
-          const apiKey = apiKeyUsed === undefined ? undefined : this.formatMilliseconds(apiKeyUsed);
+          const account =
+            accountUsed === undefined
+              ? undefined
+              : this.formatMilliseconds(accountUsed);
+          const apiKey =
+            apiKeyUsed === undefined
+              ? undefined
+              : this.formatMilliseconds(apiKeyUsed);
           if (account !== undefined && apiKey !== undefined) {
             lines.push(`  ${name}: ${account} (API key: ${apiKey})`);
           } else if (apiKey !== undefined) {
@@ -144,12 +178,17 @@ export class UsageCommand {
             lines.push(`  ${name}: ${account ?? 'not reported'}`);
           }
         } else if (product.unitCount !== undefined) {
-          const apiKeyPart = product.apiKeyUnitCount !== undefined
-            ? ` (API key: ${formatNumber(product.apiKeyUnitCount)} units)`
-            : ` (API key: ${formatNumber(product.apiKeyCharacterCount)} characters)`;
-          lines.push(`  ${name}: ${formatNumber(product.unitCount)} units${apiKeyPart}`);
+          const apiKeyPart =
+            product.apiKeyUnitCount !== undefined
+              ? ` (API key: ${formatNumber(product.apiKeyUnitCount)} units)`
+              : ` (API key: ${formatNumber(product.apiKeyCharacterCount)} characters)`;
+          lines.push(
+            `  ${name}: ${formatNumber(product.unitCount)} units${apiKeyPart}`
+          );
         } else {
-          lines.push(`  ${name}: ${formatNumber(product.characterCount)} characters (API key: ${formatNumber(product.apiKeyCharacterCount)})`);
+          lines.push(
+            `  ${name}: ${formatNumber(product.characterCount)} characters (API key: ${formatNumber(product.apiKeyCharacterCount)})`
+          );
         }
       }
     }
@@ -233,13 +272,18 @@ export class UsageCommand {
           const { accountUsed, apiKeyUsed } = productDurationsMs(product);
           productTable.push([
             name,
-            accountUsed === undefined ? '—' : this.formatMilliseconds(accountUsed),
-            apiKeyUsed === undefined ? '—' : this.formatMilliseconds(apiKeyUsed),
+            accountUsed === undefined
+              ? '—'
+              : this.formatMilliseconds(accountUsed),
+            apiKeyUsed === undefined
+              ? '—'
+              : this.formatMilliseconds(apiKeyUsed),
           ]);
         } else if (product.unitCount !== undefined) {
-          const apiKeyVal = product.apiKeyUnitCount !== undefined
-            ? `${formatNumber(product.apiKeyUnitCount)} units`
-            : `${formatNumber(product.apiKeyCharacterCount)} chars`;
+          const apiKeyVal =
+            product.apiKeyUnitCount !== undefined
+              ? `${formatNumber(product.apiKeyUnitCount)} units`
+              : `${formatNumber(product.apiKeyCharacterCount)} chars`;
           productTable.push([
             name,
             `${formatNumber(product.unitCount)} units`,

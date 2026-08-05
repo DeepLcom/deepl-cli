@@ -40,7 +40,10 @@ describe('CLI Success Paths E2E', () => {
 
       child.stderr.on('data', (data: Buffer) => {
         const msg = data.toString();
-        if (!msg.includes('ExperimentalWarning') && !msg.includes('--experimental')) {
+        if (
+          !msg.includes('ExperimentalWarning') &&
+          !msg.includes('--experimental')
+        ) {
           process.stderr.write(`[mock-server stderr] ${msg}`);
         }
       });
@@ -52,7 +55,10 @@ describe('CLI Success Paths E2E', () => {
         }
       });
 
-      setTimeout(() => reject(new Error('Mock server did not start within 15s')), 15000);
+      setTimeout(
+        () => reject(new Error('Mock server did not start within 15s')),
+        15000
+      );
     });
   }
 
@@ -68,24 +74,33 @@ describe('CLI Success Paths E2E', () => {
       cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-
     };
-    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(configDir, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
   }
 
   let runCLI: (command: string) => string;
   let runCLIAll: (command: string) => string;
   let runCLIPipe: (stdin: string, command: string) => string;
-  let runCLIExpectError: (command: string) => { status: number; output: string };
+  let runCLIExpectError: (command: string) => {
+    status: number;
+    output: string;
+  };
 
   beforeAll(async () => {
     testConfigDir = testConfig.path;
     testDir = testFiles.path;
 
-    const helpers = makeNodeRunCLI(testConfigDir, { noColor: true, timeout: 15000 });
+    const helpers = makeNodeRunCLI(testConfigDir, {
+      noColor: true,
+      timeout: 15000,
+    });
     runCLI = (command: string) => helpers.runCLI(command);
     runCLIAll = (command: string) => helpers.runCLIAll(command);
-    runCLIPipe = (stdin: string, command: string) => helpers.runCLIPipe(stdin, command);
+    runCLIPipe = (stdin: string, command: string) =>
+      helpers.runCLIPipe(stdin, command);
     runCLIExpectError = (command: string) => helpers.runCLIExpectError(command);
 
     mockPort = await startMockServer();
@@ -119,7 +134,10 @@ describe('CLI Success Paths E2E', () => {
     });
 
     it('should translate text from stdin pipe', () => {
-      const output = runCLIPipe('Translate me', `translate --to es --api-url ${baseUrl}`);
+      const output = runCLIPipe(
+        'Translate me',
+        `translate --to es --api-url ${baseUrl}`
+      );
       expect(output.trim().split('\n')[0]).toBe('Traduceme');
     });
 
@@ -134,7 +152,9 @@ describe('CLI Success Paths E2E', () => {
     it('should still reject a target that is not shaped like a language tag', () => {
       const result = runCLIExpectError('translate "Hello" --to notalanguage');
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/Invalid target language code: "notalanguage"/);
+      expect(result.output).toMatch(
+        /Invalid target language code: "notalanguage"/
+      );
     });
 
     it('should translate a file and write to output', () => {
@@ -169,7 +189,7 @@ describe('CLI Success Paths E2E', () => {
       const outputFile = path.join(testDir, 'extended-file.af.txt');
 
       const result = runCLIExpectError(
-        `translate "${inputFile}" --to af --formality more --output "${outputFile}"`,
+        `translate "${inputFile}" --to af --formality more --output "${outputFile}"`
       );
 
       expect(result.status).toBe(6);
@@ -183,7 +203,7 @@ describe('CLI Success Paths E2E', () => {
       fs.writeFileSync(path.join(dirPath, 'a.txt'), 'Hello', 'utf-8');
 
       const result = runCLIExpectError(
-        `translate "${dirPath}" --to af --formality more --output "${testDir}/extended-dir-out"`,
+        `translate "${dirPath}" --to af --formality more --output "${testDir}/extended-dir-out"`
       );
 
       expect(result.status).toBe(6);
@@ -196,10 +216,11 @@ describe('CLI Success Paths E2E', () => {
       fs.writeFileSync(path.join(dirPath, 'a.txt'), 'Hello', 'utf-8');
 
       const output = runCLIAll(
-        `translate "${dirPath}" --to de,ex --output "${testDir}/deferral-dir-out"`,
+        `translate "${dirPath}" --to de,ex --output "${testDir}/deferral-dir-out"`
       );
 
-      const notices = output.match(/is not in the bundled language list/g) ?? [];
+      const notices =
+        output.match(/is not in the bundled language list/g) ?? [];
       expect(notices).toHaveLength(1);
       expect(output).toContain('"ex" is not in the bundled language list');
     });
@@ -277,7 +298,9 @@ describe('CLI Success Paths E2E', () => {
       // the same objects and is stripped without --features, so the two must not
       // be confused: this field stays.
       const output = runCLI('languages --target --format json');
-      const parsed = JSON.parse(output.trim()) as Array<Record<string, unknown>>;
+      const parsed = JSON.parse(output.trim()) as Array<
+        Record<string, unknown>
+      >;
 
       expect(parsed.length).toBeGreaterThan(0);
       for (const entry of parsed) {
@@ -285,13 +308,19 @@ describe('CLI Success Paths E2E', () => {
         expect(typeof entry['supportsFormality']).toBe('boolean');
         expect(entry).not.toHaveProperty('features');
       }
-      expect(parsed.find(e => e['language'] === 'de')?.['supportsFormality']).toBe(true);
-      expect(parsed.find(e => e['language'] === 'en')?.['supportsFormality']).toBe(false);
+      expect(
+        parsed.find((e) => e['language'] === 'de')?.['supportsFormality']
+      ).toBe(true);
+      expect(
+        parsed.find((e) => e['language'] === 'en')?.['supportsFormality']
+      ).toBe(false);
     });
 
     it('should omit supportsFormality from source languages in --format json', () => {
       const output = runCLI('languages --source --format json');
-      const parsed = JSON.parse(output.trim()) as Array<Record<string, unknown>>;
+      const parsed = JSON.parse(output.trim()) as Array<
+        Record<string, unknown>
+      >;
 
       expect(parsed.length).toBeGreaterThan(0);
       for (const entry of parsed) {
@@ -301,9 +330,13 @@ describe('CLI Success Paths E2E', () => {
 
     it('should include the features matrix only with --features', () => {
       const output = runCLI('languages --target --features --format json');
-      const parsed = JSON.parse(output.trim()) as Array<Record<string, unknown>>;
+      const parsed = JSON.parse(output.trim()) as Array<
+        Record<string, unknown>
+      >;
 
-      expect(parsed.find(e => e['language'] === 'de')).toHaveProperty('features');
+      expect(parsed.find((e) => e['language'] === 'de')).toHaveProperty(
+        'features'
+      );
     });
   });
 });

@@ -22,11 +22,21 @@ describe('resolveTagHandlingVersion', () => {
   });
 
   it('should honour an explicit v1 over the pinned default', () => {
-    expect(resolveTagHandlingVersion({ tagHandling: 'xml', tagHandlingVersion: 'v1' })).toBe('v1');
+    expect(
+      resolveTagHandlingVersion({
+        tagHandling: 'xml',
+        tagHandlingVersion: 'v1',
+      })
+    ).toBe('v1');
   });
 
   it('should honour an explicit v2', () => {
-    expect(resolveTagHandlingVersion({ tagHandling: 'html', tagHandlingVersion: 'v2' })).toBe('v2');
+    expect(
+      resolveTagHandlingVersion({
+        tagHandling: 'html',
+        tagHandlingVersion: 'v2',
+      })
+    ).toBe('v2');
   });
 
   it('should keep an explicit version that arrived without tag handling', () => {

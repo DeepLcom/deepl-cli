@@ -197,7 +197,9 @@ export const HARD_MAX_SYNC_LIMITS: Required<SyncLimits> = {
   max_source_files: 1_000_000,
 };
 
-export function resolveSyncLimits(config: { sync?: SyncBehavior }): Required<SyncLimits> {
+export function resolveSyncLimits(config: {
+  sync?: SyncBehavior;
+}): Required<SyncLimits> {
   const user = config.sync?.limits;
   return {
     max_entries_per_file:

@@ -25,7 +25,10 @@ import { FormatRegistry } from '../../src/formats/index';
 import { JsonFormatParser } from '../../src/formats/json';
 import { ValidationError } from '../../src/utils/errors';
 import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers/nock-setup';
-import { createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
+import {
+  createMockConfigService,
+  createMockCacheService,
+} from '../helpers/mock-factories';
 
 function gitAvailable(): boolean {
   try {
@@ -37,7 +40,11 @@ function gitAvailable(): boolean {
 }
 
 function git(cwd: string, args: string[]): string {
-  return execFileSync('git', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf-8' });
+  return execFileSync('git', args, {
+    cwd,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf-8',
+  });
 }
 
 function initRepo(cwd: string): void {
@@ -53,7 +60,11 @@ function createServices() {
     get: jest.fn(() => ({
       auth: {},
       api: { baseUrl: '', usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: false,
+      },
       cache: { enabled: false },
       output: { format: 'text', color: true },
       proxy: {},
@@ -61,11 +72,19 @@ function createServices() {
     getValue: jest.fn(() => false),
   });
   const mockCache = createMockCacheService();
-  const translationService = new TranslationService(client, mockConfig, mockCache);
+  const translationService = new TranslationService(
+    client,
+    mockConfig,
+    mockCache
+  );
   const glossaryService = new GlossaryService(client);
   const registry = new FormatRegistry();
   registry.register(new JsonFormatParser());
-  const syncService = new SyncService(translationService, glossaryService, registry);
+  const syncService = new SyncService(
+    translationService,
+    glossaryService,
+    registry
+  );
   return { client, syncService };
 }
 
@@ -95,7 +114,11 @@ function seedRepo(tmpDir: string): void {
   initRepo(tmpDir);
   fs.writeFileSync(path.join(tmpDir, '.deepl-sync.yaml'), SYNC_YAML, 'utf-8');
   fs.mkdirSync(path.join(tmpDir, 'locales'), { recursive: true });
-  fs.writeFileSync(path.join(tmpDir, 'locales', 'en.json'), SOURCE_JSON, 'utf-8');
+  fs.writeFileSync(
+    path.join(tmpDir, 'locales', 'en.json'),
+    SOURCE_JSON,
+    'utf-8'
+  );
   fs.writeFileSync(path.join(tmpDir, 'README.md'), '# test\n', 'utf-8');
   git(tmpDir, ['add', '.']);
   git(tmpDir, ['commit', '-q', '-m', 'initial']);
@@ -137,15 +160,24 @@ describeIfGit('SyncCommand auto-commit preflight', () => {
     expect(scope.isDone()).toBe(true);
 
     const head = git(tmpDir, ['rev-parse', 'HEAD']);
-    const firstCommit = git(tmpDir, ['rev-list', '--max-parents=0', 'HEAD']).trim();
+    const firstCommit = git(tmpDir, [
+      'rev-list',
+      '--max-parents=0',
+      'HEAD',
+    ]).trim();
     expect(head.trim()).not.toBe(firstCommit);
 
     const branch = git(tmpDir, ['symbolic-ref', '--short', 'HEAD']).trim();
     expect(branch).toBe('main');
 
-    const changedFiles = git(tmpDir, ['show', '--name-only', '--pretty=format:', 'HEAD'])
+    const changedFiles = git(tmpDir, [
+      'show',
+      '--name-only',
+      '--pretty=format:',
+      'HEAD',
+    ])
       .split('\n')
-      .map(s => s.trim())
+      .map((s) => s.trim())
       .filter(Boolean)
       .sort();
     expect(changedFiles).toEqual(['.deepl-sync.lock', 'locales/de.json']);
@@ -164,7 +196,9 @@ describeIfGit('SyncCommand auto-commit preflight', () => {
 
     const command = new SyncCommand(syncService);
 
-    await expect(command.run({ autoCommit: true })).rejects.toThrow(ValidationError);
+    await expect(command.run({ autoCommit: true })).rejects.toThrow(
+      ValidationError
+    );
     try {
       await command.run({ autoCommit: true });
     } catch (err) {
@@ -187,16 +221,24 @@ describeIfGit('SyncCommand auto-commit preflight', () => {
     // Simulate a mid-rebase repo by writing the rebase-merge directory.
     const rebaseDir = path.join(tmpDir, '.git', 'rebase-merge');
     fs.mkdirSync(rebaseDir, { recursive: true });
-    fs.writeFileSync(path.join(rebaseDir, 'head-name'), 'refs/heads/main\n', 'utf-8');
+    fs.writeFileSync(
+      path.join(rebaseDir, 'head-name'),
+      'refs/heads/main\n',
+      'utf-8'
+    );
     seedTranslateMock();
 
     const command = new SyncCommand(syncService);
-    await expect(command.run({ autoCommit: true })).rejects.toThrow(ValidationError);
+    await expect(command.run({ autoCommit: true })).rejects.toThrow(
+      ValidationError
+    );
     try {
       await command.run({ autoCommit: true });
     } catch (err) {
       expect((err as Error).message).toMatch(/Refusing to auto-commit/i);
-      expect((err as Error).message).toMatch(/rebase|merge|cherry-pick|in progress/i);
+      expect((err as Error).message).toMatch(
+        /rebase|merge|cherry-pick|in progress/i
+      );
     }
   });
 
@@ -212,7 +254,9 @@ describeIfGit('SyncCommand auto-commit preflight', () => {
     seedTranslateMock();
 
     const command = new SyncCommand(syncService);
-    await expect(command.run({ autoCommit: true })).rejects.toThrow(ValidationError);
+    await expect(command.run({ autoCommit: true })).rejects.toThrow(
+      ValidationError
+    );
     try {
       await command.run({ autoCommit: true });
     } catch (err) {
@@ -231,12 +275,16 @@ describeIfGit('SyncCommand auto-commit preflight', () => {
     scope.persist();
 
     const command = new SyncCommand(syncService);
-    await expect(command.run({ autoCommit: true })).rejects.toThrow(ValidationError);
+    await expect(command.run({ autoCommit: true })).rejects.toThrow(
+      ValidationError
+    );
 
     // Written before the refusal, so the retry finds nothing to translate.
     expect(fs.existsSync(path.join(tmpDir, 'locales', 'de.json'))).toBe(true);
 
-    await expect(command.run({ autoCommit: true })).rejects.toThrow(/Refusing to auto-commit/i);
+    await expect(command.run({ autoCommit: true })).rejects.toThrow(
+      /Refusing to auto-commit/i
+    );
 
     nock.cleanAll();
     expect(git(tmpDir, ['log', '-1', '--pretty=%s']).trim()).toBe('initial');
@@ -252,7 +300,9 @@ describeIfGit('SyncCommand auto-commit preflight', () => {
     scope.persist();
 
     const command = new SyncCommand(syncService);
-    await expect(command.run({ autoCommit: true })).rejects.toThrow(ValidationError);
+    await expect(command.run({ autoCommit: true })).rejects.toThrow(
+      ValidationError
+    );
     expect(fs.existsSync(path.join(tmpDir, 'locales', 'de.json'))).toBe(true);
 
     // Deal with the unrelated change; the leftover translation remains.
@@ -261,7 +311,9 @@ describeIfGit('SyncCommand auto-commit preflight', () => {
     await command.run({ autoCommit: true });
 
     nock.cleanAll();
-    expect(git(tmpDir, ['log', '-1', '--pretty=%s']).trim()).toContain('chore(i18n)');
+    expect(git(tmpDir, ['log', '-1', '--pretty=%s']).trim()).toContain(
+      'chore(i18n)'
+    );
     expect(git(tmpDir, ['status', '--porcelain']).trim()).toBe('');
   });
 
@@ -275,8 +327,12 @@ describeIfGit('SyncCommand auto-commit preflight', () => {
     scope.persist();
 
     const command = new SyncCommand(syncService);
-    await expect(command.run({ autoCommit: true })).rejects.toThrow(/Refusing to auto-commit/i);
-    await expect(command.run({ autoCommit: true })).rejects.toThrow(/Refusing to auto-commit/i);
+    await expect(command.run({ autoCommit: true })).rejects.toThrow(
+      /Refusing to auto-commit/i
+    );
+    await expect(command.run({ autoCommit: true })).rejects.toThrow(
+      /Refusing to auto-commit/i
+    );
 
     // Nothing left to commit: neither throws nor commits.
     fs.unlinkSync(path.join(tmpDir, 'src.ts'));

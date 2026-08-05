@@ -22,7 +22,10 @@ import { FormatRegistry } from '../../src/formats/index';
 import { PhpArraysFormatParser } from '../../src/formats/php-arrays';
 import type { ResolvedSyncConfig } from '../../src/sync/sync-config';
 
-const CORPUS_DIR = path.resolve(__dirname, '../fixtures/sync/formats/laravel-php');
+const CORPUS_DIR = path.resolve(
+  __dirname,
+  '../fixtures/sync/formats/laravel-php'
+);
 
 function makeRegistry(): FormatRegistry {
   const registry = new FormatRegistry();
@@ -30,7 +33,10 @@ function makeRegistry(): FormatRegistry {
   return registry;
 }
 
-function makeConfig(projectRoot: string, overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  projectRoot: string,
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -72,7 +78,10 @@ describe('sync-php-arrays corpus integration', () => {
   beforeEach(() => {
     projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-laravel-'));
     for (const name of ACCEPT_FIXTURES) {
-      fs.copyFileSync(path.join(CORPUS_DIR, name), path.join(projectRoot, name));
+      fs.copyFileSync(
+        path.join(CORPUS_DIR, name),
+        path.join(projectRoot, name)
+      );
     }
   });
 
@@ -83,7 +92,9 @@ describe('sync-php-arrays corpus integration', () => {
   });
 
   it('walks the full accept corpus through walkBuckets with no extract errors', async () => {
-    const result = await collect(walkBuckets(makeConfig(projectRoot), makeRegistry()));
+    const result = await collect(
+      walkBuckets(makeConfig(projectRoot), makeRegistry())
+    );
     expect(result).toHaveLength(ACCEPT_FIXTURES.length);
     for (const walked of result) {
       expect(walked.bucket).toBe('laravel_php');
@@ -92,15 +103,24 @@ describe('sync-php-arrays corpus integration', () => {
   });
 
   it('byte-equal reconstruct on every walked file when translations equal source', async () => {
-    const result = await collect(walkBuckets(makeConfig(projectRoot), makeRegistry()));
+    const result = await collect(
+      walkBuckets(makeConfig(projectRoot), makeRegistry())
+    );
     for (const walked of result) {
-      const translations = walked.entries.map((e) => ({ ...e, translation: e.value }));
-      expect(walked.parser.reconstruct(walked.content, translations)).toBe(walked.content);
+      const translations = walked.entries.map((e) => ({
+        ...e,
+        translation: e.value,
+      }));
+      expect(walked.parser.reconstruct(walked.content, translations)).toBe(
+        walked.content
+      );
     }
   });
 
   it('tags no entries as skipped for any corpus fixture (no pipe-pluralization in 01-15)', async () => {
-    const result = await collect(walkBuckets(makeConfig(projectRoot), makeRegistry()));
+    const result = await collect(
+      walkBuckets(makeConfig(projectRoot), makeRegistry())
+    );
     for (const walked of result) {
       expect(walked.skippedEntries).toEqual([]);
     }
@@ -112,7 +132,7 @@ describe('sync-php-arrays corpus integration', () => {
     fs.writeFileSync(
       bigPath,
       `<?php\n// ${padding}\nreturn ['a' => 'Hello'];\n`,
-      'utf-8',
+      'utf-8'
     );
 
     const config = makeConfig(projectRoot, {
@@ -148,7 +168,7 @@ describe('sync-php-arrays corpus integration', () => {
         '12-escaped-dollar.php',
         '13-utf8-bom.php',
         '14-literal-pipe-in-prose.php',
-      ].sort(),
+      ].sort()
     );
   });
 });

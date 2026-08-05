@@ -29,9 +29,10 @@ const mockWatcher = {
 };
 
 const getWatcherHandler = (event: string): ((...args: unknown[]) => void) =>
-  mockWatcher.on.mock.calls.find(call => call[0] === event)?.[1];
+  mockWatcher.on.mock.calls.find((call) => call[0] === event)?.[1];
 
-const flushPromises = () => new Promise<void>(resolve => process.nextTick(resolve));
+const flushPromises = () =>
+  new Promise<void>((resolve) => process.nextTick(resolve));
 
 describe('WatchService', () => {
   let watchService: WatchService;
@@ -149,10 +150,13 @@ describe('WatchService', () => {
       await watchService.watch(testDir, options);
 
       expect(watchService.isWatching()).toBe(true);
-      expect(chokidar.watch).toHaveBeenCalledWith(testDir, expect.objectContaining({
-        persistent: true,
-        ignoreInitial: true,
-      }));
+      expect(chokidar.watch).toHaveBeenCalledWith(
+        testDir,
+        expect.objectContaining({
+          persistent: true,
+          ignoreInitial: true,
+        })
+      );
     });
 
     it('should watch a single file', async () => {
@@ -327,7 +331,9 @@ describe('WatchService', () => {
       jest.advanceTimersByTime(350);
       await flushPromises();
 
-      expect(mockFileTranslationService.translateFileToMultiple).toHaveBeenCalled();
+      expect(
+        mockFileTranslationService.translateFileToMultiple
+      ).toHaveBeenCalled();
     });
   });
 
@@ -414,7 +420,9 @@ describe('WatchService', () => {
       await watchService.watch(testDir, options);
       await watchService.handleFileChange(testFile);
 
-      expect(onChange).toHaveBeenCalledWith(expect.stringContaining('test.txt'));
+      expect(onChange).toHaveBeenCalledWith(
+        expect.stringContaining('test.txt')
+      );
     });
 
     it('should call onTranslate callback after translation', async () => {
@@ -674,8 +682,8 @@ describe('WatchService', () => {
 
       // Test the ignored function
       const ignored = watchCall[1].ignored;
-      expect(ignored('/path/to/file.txt')).toBe(true);  // Should ignore .txt
-      expect(ignored('/path/to/file.md')).toBe(false);   // Should not ignore .md
+      expect(ignored('/path/to/file.txt')).toBe(true); // Should ignore .txt
+      expect(ignored('/path/to/file.md')).toBe(false); // Should not ignore .md
     });
 
     it('should not filter when no pattern is specified', async () => {
@@ -724,9 +732,9 @@ describe('WatchService', () => {
       const ignored = watchCall[1].ignored;
 
       // Should only match readme.md
-      expect(ignored('/path/to/readme.md')).toBe(false);   // Should NOT ignore readme.md
-      expect(ignored('/path/to/README.md')).toBe(true);    // Should ignore README.md (case sensitive)
-      expect(ignored('/path/to/other.md')).toBe(true);     // Should ignore other.md
+      expect(ignored('/path/to/readme.md')).toBe(false); // Should NOT ignore readme.md
+      expect(ignored('/path/to/README.md')).toBe(true); // Should ignore README.md (case sensitive)
+      expect(ignored('/path/to/other.md')).toBe(true); // Should ignore other.md
     });
 
     it('should handle prefix wildcard pattern (Issue #6)', async () => {
@@ -742,10 +750,10 @@ describe('WatchService', () => {
       const ignored = watchCall[1].ignored;
 
       // Should match files starting with "test"
-      expect(ignored('/path/to/test.txt')).toBe(false);     // Should NOT ignore test.txt
+      expect(ignored('/path/to/test.txt')).toBe(false); // Should NOT ignore test.txt
       expect(ignored('/path/to/test-file.md')).toBe(false); // Should NOT ignore test-file.md
-      expect(ignored('/path/to/testing.js')).toBe(false);   // Should NOT ignore testing.js
-      expect(ignored('/path/to/mytest.txt')).toBe(true);    // Should ignore mytest.txt
+      expect(ignored('/path/to/testing.js')).toBe(false); // Should NOT ignore testing.js
+      expect(ignored('/path/to/mytest.txt')).toBe(true); // Should ignore mytest.txt
     });
 
     it('should handle complex glob patterns (Issue #6)', async () => {
@@ -761,9 +769,9 @@ describe('WatchService', () => {
       const ignored = watchCall[1].ignored;
 
       // Should match .md or .txt files
-      expect(ignored('/path/to/file.md')).toBe(false);  // Should NOT ignore .md
+      expect(ignored('/path/to/file.md')).toBe(false); // Should NOT ignore .md
       expect(ignored('/path/to/file.txt')).toBe(false); // Should NOT ignore .txt
-      expect(ignored('/path/to/file.js')).toBe(true);   // Should ignore .js
+      expect(ignored('/path/to/file.js')).toBe(true); // Should ignore .js
     });
 
     it('should handle case-insensitive patterns (Issue #6)', async () => {
@@ -779,8 +787,8 @@ describe('WatchService', () => {
       const ignored = watchCall[1].ignored;
 
       // Should match README.md exactly (case-sensitive by default)
-      expect(ignored('/path/to/README.md')).toBe(false);  // Should NOT ignore README.md
-      expect(ignored('/path/to/readme.md')).toBe(true);   // Should ignore readme.md
+      expect(ignored('/path/to/README.md')).toBe(false); // Should NOT ignore README.md
+      expect(ignored('/path/to/readme.md')).toBe(true); // Should ignore readme.md
     });
   });
 
@@ -895,7 +903,7 @@ describe('WatchService', () => {
 
       // Get the 'change' event handler
       const changeHandler = mockWatcher.on.mock.calls.find(
-        call => call[0] === 'change'
+        (call) => call[0] === 'change'
       )?.[1];
 
       expect(changeHandler).toBeDefined();
@@ -927,7 +935,7 @@ describe('WatchService', () => {
 
       // Get the 'add' event handler
       const addHandler = mockWatcher.on.mock.calls.find(
-        call => call[0] === 'add'
+        (call) => call[0] === 'add'
       )?.[1];
 
       expect(addHandler).toBeDefined();
@@ -949,7 +957,9 @@ describe('WatchService', () => {
       fs.writeFileSync(testFile, 'Hello');
 
       // Don't start watch, just call handleFileChange
-      expect(() => watchService.handleFileChange(testFile)).toThrow('Watch not started');
+      expect(() => watchService.handleFileChange(testFile)).toThrow(
+        'Watch not started'
+      );
     });
   });
 
@@ -1214,7 +1224,9 @@ describe('WatchService', () => {
 
       // Try to trigger file change after stop
       // Should not throw, but also should not schedule translation
-      expect(() => watchService.handleFileChange(testFile)).toThrow('Watch not started');
+      expect(() => watchService.handleFileChange(testFile)).toThrow(
+        'Watch not started'
+      );
     });
 
     it('should handle rapid start/stop cycles without orphaned timers', async () => {
@@ -1390,7 +1402,9 @@ describe('WatchService', () => {
       fs.writeFileSync(testFile, 'Hello');
 
       const translationError = new Error('Network timeout');
-      mockFileTranslationService.translateFile.mockRejectedValue(translationError);
+      mockFileTranslationService.translateFile.mockRejectedValue(
+        translationError
+      );
 
       const options = {
         targetLangs: ['es' as const],

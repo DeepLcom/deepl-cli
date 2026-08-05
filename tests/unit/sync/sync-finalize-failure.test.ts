@@ -74,7 +74,13 @@ describe('finalizeSyncResult failure reporting', () => {
   it('should report success when a locale had nothing to do', () => {
     // translated 0 with no failures is an up-to-date locale, not a failure.
     const result = finalize([
-      fileResult({ locale: 'de', translated: 0, failed: 0, skipped: 2, written: false }),
+      fileResult({
+        locale: 'de',
+        translated: 0,
+        failed: 0,
+        skipped: 2,
+        written: false,
+      }),
       fileResult({ locale: 'fr', translated: 2, written: true }),
     ]);
 

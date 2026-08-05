@@ -6,9 +6,17 @@
 import { randomBytes } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { DeepLConfig, Formality, Language, OutputFormat } from '../types/index.js';
+import {
+  DeepLConfig,
+  Formality,
+  Language,
+  OutputFormat,
+} from '../types/index.js';
 import { resolvePaths } from '../utils/paths.js';
-import { isValidLanguage, looksLikeLanguageTag } from '../data/language-registry.js';
+import {
+  isValidLanguage,
+  looksLikeLanguageTag,
+} from '../data/language-registry.js';
 import { ConfigError } from '../utils/errors.js';
 import { validateApiUrl } from '../utils/validate-url.js';
 import { Logger } from '../utils/logger.js';
@@ -39,7 +47,11 @@ const BOOLEAN_CONFIG_PATHS = [
 
 // Path segments that would walk or rewrite the prototype chain instead of
 // plain config data (prototype pollution).
-const FORBIDDEN_KEY_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+const FORBIDDEN_KEY_SEGMENTS = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+]);
 
 const DEFAULT_CACHE_SIZE = 1024 * 1024 * 1024; // 1GB
 const DEFAULT_CACHE_TTL = 30 * 24 * 60 * 60; // 30 days in seconds
@@ -58,7 +70,9 @@ function normalizeLanguageValue(path: string, value: unknown): unknown {
     return value.toLowerCase();
   }
   if (path === 'defaults.targetLangs' && Array.isArray(value)) {
-    return value.map(lang => (typeof lang === 'string' ? lang.toLowerCase() : lang));
+    return value.map((lang) =>
+      typeof lang === 'string' ? lang.toLowerCase() : lang
+    );
   }
   return value;
 }
@@ -68,8 +82,7 @@ export class ConfigService {
   private configPath: string;
 
   constructor(configPath?: string) {
-    this.configPath =
-      configPath ?? resolvePaths().configFile;
+    this.configPath = configPath ?? resolvePaths().configFile;
     this.config = this.load();
   }
 
@@ -91,7 +104,10 @@ export class ConfigService {
     this.validatePath(keys, value);
     value = normalizeLanguageValue(keys.join('.'), value);
 
-    let current: Record<string, unknown> = this.config as unknown as Record<string, unknown>;
+    let current: Record<string, unknown> = this.config as unknown as Record<
+      string,
+      unknown
+    >;
     for (let i = 0; i < keys.length - 1; i++) {
       const k = keys[i];
       if (!k || !Object.hasOwn(current, k)) {
@@ -163,7 +179,10 @@ export class ConfigService {
   delete(key: string): void {
     const keys = key.split('.');
     this.validateSegments(keys);
-    let current: Record<string, unknown> = this.config as unknown as Record<string, unknown>;
+    let current: Record<string, unknown> = this.config as unknown as Record<
+      string,
+      unknown
+    >;
 
     for (let i = 0; i < keys.length - 1; i++) {
       const k = keys[i];
@@ -244,7 +263,10 @@ export class ConfigService {
         return merged;
       }
     } catch (error) {
-      Logger.warn('Failed to load config, using defaults:', errorMessage(error));
+      Logger.warn(
+        'Failed to load config, using defaults:',
+        errorMessage(error)
+      );
     }
 
     return ConfigService.getDefaults();
@@ -263,14 +285,15 @@ export class ConfigService {
     }
     if (config.defaults?.sourceLang) {
       this.validateLanguage(config.defaults.sourceLang, 'defaults.sourceLang');
-      config.defaults.sourceLang = config.defaults.sourceLang.toLowerCase() as Language;
+      config.defaults.sourceLang =
+        config.defaults.sourceLang.toLowerCase() as Language;
     }
     if (config.defaults?.targetLangs) {
       for (const lang of config.defaults.targetLangs) {
         this.validateLanguage(lang, 'defaults.targetLangs');
       }
       config.defaults.targetLangs = config.defaults.targetLangs.map(
-        lang => lang.toLowerCase() as Language,
+        (lang) => lang.toLowerCase() as Language
       );
     }
     if (config.defaults?.formality) {
@@ -292,16 +315,20 @@ export class ConfigService {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
       }
-      fs.writeFileSync(
-        tmpPath,
-        JSON.stringify(this.config, null, 2),
-        { encoding: 'utf-8', mode: 0o600, flag: 'wx' }
-      );
+      fs.writeFileSync(tmpPath, JSON.stringify(this.config, null, 2), {
+        encoding: 'utf-8',
+        mode: 0o600,
+        flag: 'wx',
+      });
       // The mode above is masked by the umask at creation; chmod is not.
       fs.chmodSync(tmpPath, 0o600);
       fs.renameSync(tmpPath, this.configPath);
     } catch (error) {
-      try { fs.unlinkSync(tmpPath); } catch { /* ignore cleanup errors */ }
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {
+        /* ignore cleanup errors */
+      }
       throw new ConfigError(`Failed to save config: ${errorMessage(error)}`);
     }
   }
@@ -396,13 +423,22 @@ export class ConfigService {
       try {
         validateApiUrl(value as string);
       } catch {
-        throw new ConfigError('Invalid API base URL: must be HTTPS (or http://localhost for testing)');
+        throw new ConfigError(
+          'Invalid API base URL: must be HTTPS (or http://localhost for testing)'
+        );
       }
     }
 
     // Validate boolean fields
-    if (BOOLEAN_CONFIG_PATHS.includes(path as typeof BOOLEAN_CONFIG_PATHS[number]) && typeof value !== 'boolean') {
-      throw new ConfigError(`Expected boolean for "${path}". Use true or false.`);
+    if (
+      BOOLEAN_CONFIG_PATHS.includes(
+        path as (typeof BOOLEAN_CONFIG_PATHS)[number]
+      ) &&
+      typeof value !== 'boolean'
+    ) {
+      throw new ConfigError(
+        `Expected boolean for "${path}". Use true or false.`
+      );
     }
   }
 
@@ -416,13 +452,19 @@ export class ConfigService {
    *   the bundled snapshot. Only the write path announces: every command loads
    *   the config, and a note on each invocation is noise, not guidance.
    */
-  private validateLanguage(lang: string, key?: string, announceUnknown = false): void {
+  private validateLanguage(
+    lang: string,
+    key?: string,
+    announceUnknown = false
+  ): void {
     // Lowercased first: the translate paths lowercase their flags before use, and
     // the tag pattern below is lowercase-only, so `DE` is as valid as `de` here.
     const normalized = typeof lang === 'string' ? lang.toLowerCase() : lang;
     if (!isValidLanguage(normalized) && !looksLikeLanguageTag(normalized)) {
       const context = key ? ` for "${key}"` : '';
-      throw new ConfigError(`Invalid language code "${lang}"${context}. Run: deepl languages to see valid codes`);
+      throw new ConfigError(
+        `Invalid language code "${lang}"${context}. Run: deepl languages to see valid codes`
+      );
     }
     if (announceUnknown && !isValidLanguage(normalized)) {
       // Stored anyway, since the snapshot can lag the API -- but flagged as it is
@@ -442,7 +484,9 @@ export class ConfigService {
   private validateFormality(formality: string, key?: string): void {
     if (!VALID_FORMALITY.includes(formality as Formality)) {
       const context = key ? ` for "${key}"` : '';
-      throw new ConfigError(`Invalid formality "${formality}"${context}. Valid values: ${VALID_FORMALITY.join(', ')}`);
+      throw new ConfigError(
+        `Invalid formality "${formality}"${context}. Valid values: ${VALID_FORMALITY.join(', ')}`
+      );
     }
   }
 
@@ -452,7 +496,9 @@ export class ConfigService {
   private validateOutputFormat(format: string, key?: string): void {
     if (!VALID_OUTPUT_FORMATS.includes(format as OutputFormat)) {
       const context = key ? ` for "${key}"` : '';
-      throw new ConfigError(`Invalid output format "${format}"${context}. Valid values: ${VALID_OUTPUT_FORMATS.join(', ')}`);
+      throw new ConfigError(
+        `Invalid output format "${format}"${context}. Valid values: ${VALID_OUTPUT_FORMATS.join(', ')}`
+      );
     }
   }
 

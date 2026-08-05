@@ -42,7 +42,9 @@ import { createAdminCommand } from '../../src/cli/commands/service-factory';
 import { confirm } from '../../src/utils/confirm';
 
 const mockLogger = Logger as jest.Mocked<typeof Logger>;
-const mockCreateAdmin = createAdminCommand as jest.MockedFunction<typeof createAdminCommand>;
+const mockCreateAdmin = createAdminCommand as jest.MockedFunction<
+  typeof createAdminCommand
+>;
 const mockConfirm = confirm as jest.MockedFunction<typeof confirm>;
 
 describe('registerAdmin', () => {
@@ -84,7 +86,15 @@ describe('registerAdmin', () => {
       const keys = [{ keyId: 'k1' }];
       mockAdmin.listKeys.mockResolvedValue(keys);
 
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'list', '--format', 'json']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'list',
+        '--format',
+        'json',
+      ]);
 
       expect(mockAdmin.formatJson).toHaveBeenCalledWith(keys);
       expect(mockLogger.output).toHaveBeenCalledWith('{"json":true}');
@@ -117,7 +127,15 @@ describe('registerAdmin', () => {
       const key = { keyId: 'new-key', label: 'My Key' };
       mockAdmin.createKey.mockResolvedValue(key);
 
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'create', '--label', 'My Key']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'create',
+        '--label',
+        'My Key',
+      ]);
 
       expect(mockAdmin.createKey).toHaveBeenCalledWith('My Key');
     });
@@ -126,7 +144,15 @@ describe('registerAdmin', () => {
       const key = { keyId: 'new-key' };
       mockAdmin.createKey.mockResolvedValue(key);
 
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'create', '--format', 'json']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'create',
+        '--format',
+        'json',
+      ]);
 
       expect(mockAdmin.formatJson).toHaveBeenCalledWith(key);
       expect(mockLogger.output).toHaveBeenCalledWith('{"json":true}');
@@ -145,7 +171,15 @@ describe('registerAdmin', () => {
 
   describe('admin keys deactivate', () => {
     it('should deactivate key with --yes flag (skip confirmation)', async () => {
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'deactivate', 'key-99', '--yes']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'deactivate',
+        'key-99',
+        '--yes',
+      ]);
 
       expect(mockAdmin.deactivateKey).toHaveBeenCalledWith('key-99');
       expect(mockLogger.success).toHaveBeenCalled();
@@ -154,7 +188,14 @@ describe('registerAdmin', () => {
     it('should deactivate key after user confirms', async () => {
       mockConfirm.mockResolvedValue(true);
 
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'deactivate', 'key-42']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'deactivate',
+        'key-42',
+      ]);
 
       expect(mockConfirm).toHaveBeenCalledWith({
         message: 'Deactivate API key "key-42"? This action is permanent.',
@@ -165,7 +206,14 @@ describe('registerAdmin', () => {
     it('should abort when user declines confirmation', async () => {
       mockConfirm.mockResolvedValue(false);
 
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'deactivate', 'key-42']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'deactivate',
+        'key-42',
+      ]);
 
       expect(mockLogger.info).toHaveBeenCalledWith('Aborted.');
       expect(mockAdmin.deactivateKey).not.toHaveBeenCalled();
@@ -175,7 +223,15 @@ describe('registerAdmin', () => {
       const err = new Error('deactivate failed');
       mockAdmin.deactivateKey.mockRejectedValue(err);
 
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'deactivate', 'key-1', '-y']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'deactivate',
+        'key-1',
+        '-y',
+      ]);
 
       expect(handleError).toHaveBeenCalledWith(err);
     });
@@ -183,7 +239,15 @@ describe('registerAdmin', () => {
 
   describe('admin keys rename', () => {
     it('should rename a key', async () => {
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'rename', 'key-5', 'New Label']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'rename',
+        'key-5',
+        'New Label',
+      ]);
 
       expect(mockCreateAdmin).toHaveBeenCalledWith(mockCreateDeepLClient);
       expect(mockAdmin.renameKey).toHaveBeenCalledWith('key-5', 'New Label');
@@ -194,7 +258,15 @@ describe('registerAdmin', () => {
       const err = new Error('rename failed');
       mockAdmin.renameKey.mockRejectedValue(err);
 
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'rename', 'key-5', 'label']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'rename',
+        'key-5',
+        'label',
+      ]);
 
       expect(handleError).toHaveBeenCalledWith(err);
     });
@@ -202,24 +274,58 @@ describe('registerAdmin', () => {
 
   describe('admin keys set-limit', () => {
     it('should set a numeric character limit', async () => {
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'set-limit', 'key-7', '500000']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'set-limit',
+        'key-7',
+        '500000',
+      ]);
 
-      expect(mockAdmin.setKeyLimit).toHaveBeenCalledWith('key-7', 500000, undefined);
+      expect(mockAdmin.setKeyLimit).toHaveBeenCalledWith(
+        'key-7',
+        500000,
+        undefined
+      );
       expect(mockLogger.success).toHaveBeenCalled();
     });
 
     it('should set unlimited limit', async () => {
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'set-limit', 'key-7', 'unlimited']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'set-limit',
+        'key-7',
+        'unlimited',
+      ]);
 
-      expect(mockAdmin.setKeyLimit).toHaveBeenCalledWith('key-7', null, undefined);
+      expect(mockAdmin.setKeyLimit).toHaveBeenCalledWith(
+        'key-7',
+        null,
+        undefined
+      );
       expect(mockLogger.success).toHaveBeenCalled();
     });
 
     it('should call handleError for non-numeric characters value', async () => {
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'set-limit', 'key-7', 'abc']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'set-limit',
+        'key-7',
+        'abc',
+      ]);
 
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Characters must be a number or "unlimited"' }),
+        expect.objectContaining({
+          message: 'Characters must be a number or "unlimited"',
+        })
       );
     });
 
@@ -227,7 +333,15 @@ describe('registerAdmin', () => {
       const err = new Error('set-limit failed');
       mockAdmin.setKeyLimit.mockRejectedValue(err);
 
-      await program.parseAsync(['node', 'test', 'admin', 'keys', 'set-limit', 'key-7', '100']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'admin',
+        'keys',
+        'set-limit',
+        'key-7',
+        '100',
+      ]);
 
       expect(handleError).toHaveBeenCalledWith(err);
     });
@@ -239,8 +353,14 @@ describe('registerAdmin', () => {
       mockAdmin.getUsage.mockResolvedValue(report);
 
       await program.parseAsync([
-        'node', 'test', 'admin', 'usage',
-        '--start', '2024-01-01', '--end', '2024-01-31',
+        'node',
+        'test',
+        'admin',
+        'usage',
+        '--start',
+        '2024-01-01',
+        '--end',
+        '2024-01-31',
       ]);
 
       expect(mockCreateAdmin).toHaveBeenCalledWith(mockCreateDeepLClient);
@@ -258,9 +378,16 @@ describe('registerAdmin', () => {
       mockAdmin.getUsage.mockResolvedValue(report);
 
       await program.parseAsync([
-        'node', 'test', 'admin', 'usage',
-        '--start', '2024-02-01', '--end', '2024-02-28',
-        '--format', 'json',
+        'node',
+        'test',
+        'admin',
+        'usage',
+        '--start',
+        '2024-02-01',
+        '--end',
+        '2024-02-28',
+        '--format',
+        'json',
       ]);
 
       expect(mockAdmin.formatJson).toHaveBeenCalledWith(report);
@@ -271,13 +398,20 @@ describe('registerAdmin', () => {
       mockAdmin.getUsage.mockResolvedValue({});
 
       await program.parseAsync([
-        'node', 'test', 'admin', 'usage',
-        '--start', '2024-01-01', '--end', '2024-01-31',
-        '--group-by', 'key',
+        'node',
+        'test',
+        'admin',
+        'usage',
+        '--start',
+        '2024-01-01',
+        '--end',
+        '2024-01-31',
+        '--group-by',
+        'key',
       ]);
 
       expect(mockAdmin.getUsage).toHaveBeenCalledWith(
-        expect.objectContaining({ groupBy: 'key' }),
+        expect.objectContaining({ groupBy: 'key' })
       );
     });
 
@@ -286,8 +420,14 @@ describe('registerAdmin', () => {
       mockAdmin.getUsage.mockRejectedValue(err);
 
       await program.parseAsync([
-        'node', 'test', 'admin', 'usage',
-        '--start', '2024-01-01', '--end', '2024-01-31',
+        'node',
+        'test',
+        'admin',
+        'usage',
+        '--start',
+        '2024-01-01',
+        '--end',
+        '2024-01-31',
       ]);
 
       expect(handleError).toHaveBeenCalledWith(err);

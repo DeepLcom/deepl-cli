@@ -11,7 +11,10 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve, isAbsolute, extname } from 'path';
 import { ConfigService } from '../storage/config.js';
-import { createCacheServiceGetter, resolveCacheOptions } from './cache-loader.js';
+import {
+  createCacheServiceGetter,
+  resolveCacheOptions,
+} from './cache-loader.js';
 import { resolvePaths } from '../utils/paths.js';
 import type { DeepLClient } from '../api/deepl-client.js';
 import { Logger } from '../utils/logger.js';
@@ -68,7 +71,7 @@ let configService = new ConfigService(paths.configFile);
 let httpOptions: { timeout?: number; maxRetries?: number } = {};
 
 const getCacheService = createCacheServiceGetter(() =>
-  resolveCacheOptions(configService, paths.cacheFile),
+  resolveCacheOptions(configService, paths.cacheFile)
 );
 
 /**
@@ -377,7 +380,12 @@ program.on('command:*', (operands: string[]) => {
   const candidates = program
     .createHelp()
     .visibleCommands(program)
-    .flatMap((cmd) => [cmd.name(), ...cmd.aliases()].map((name) => ({ name, target: cmd.name() })));
+    .flatMap((cmd) =>
+      [cmd.name(), ...cmd.aliases()].map((name) => ({
+        name,
+        target: cmd.name(),
+      }))
+    );
 
   let bestMatch = '';
   let bestDistance = Infinity;

@@ -58,7 +58,7 @@ describe('ConfigService', () => {
 
       // This would be a TypeScript error: Cannot assign to 'targetLangs' because it is a read-only property
       // But in JavaScript runtime, the object is still mutable
-       
+
       (config1 as any).defaults.targetLangs.push('es');
 
       const config2 = configService.get();
@@ -66,7 +66,7 @@ describe('ConfigService', () => {
       expect(config2.defaults.targetLangs).toEqual(['es']);
 
       // Clean up for other tests
-       
+
       (config2 as any).defaults.targetLangs.pop();
     });
   });
@@ -240,13 +240,17 @@ describe('ConfigService', () => {
     it('should validate formality values', () => {
       expect(() => {
         configService.set('defaults.formality', 'invalid');
-      }).toThrow(/Invalid formality "invalid" for "defaults\.formality"\. Valid values:/);
+      }).toThrow(
+        /Invalid formality "invalid" for "defaults\.formality"\. Valid values:/
+      );
     });
 
     it('should validate output format', () => {
       expect(() => {
         configService.set('output.format', 'invalid');
-      }).toThrow(/Invalid output format "invalid" for "output\.format"\. Valid values:/);
+      }).toThrow(
+        /Invalid output format "invalid" for "output\.format"\. Valid values:/
+      );
     });
 
     it('should validate cache size is positive', () => {
@@ -257,7 +261,6 @@ describe('ConfigService', () => {
 
     it('should validate boolean values', () => {
       expect(() => {
-
         configService.set('cache.enabled', 'yes');
       }).toThrow(/Expected boolean for "cache\.enabled"\. Use true or false\./);
     });
@@ -332,7 +335,10 @@ describe('ConfigService', () => {
     });
 
     it('should write config file with mode 0o600', () => {
-      const uniqueDir = path.join(os.tmpdir(), `deepl-perm-test-file-${Date.now()}`);
+      const uniqueDir = path.join(
+        os.tmpdir(),
+        `deepl-perm-test-file-${Date.now()}`
+      );
       const configPath = path.join(uniqueDir, 'config.json');
 
       const service = new ConfigService(configPath);
@@ -350,7 +356,9 @@ describe('ConfigService', () => {
       // The API key is written in plaintext, so the intermediate file must not
       // land on a path anyone else could have prepared in advance.
       it('should not write through a symlink planted at the predictable temp path', () => {
-        const uniqueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-tmp-safety-'));
+        const uniqueDir = fs.mkdtempSync(
+          path.join(os.tmpdir(), 'deepl-tmp-safety-')
+        );
         const configPath = path.join(uniqueDir, 'config.json');
         const stolenPath = path.join(uniqueDir, 'stolen.txt');
         fs.symlinkSync(stolenPath, `${configPath}.tmp`);
@@ -360,13 +368,17 @@ describe('ConfigService', () => {
 
         expect(fs.existsSync(stolenPath)).toBe(false);
         expect(fs.lstatSync(configPath).isSymbolicLink()).toBe(false);
-        expect(fs.readFileSync(configPath, 'utf-8')).toContain('secret-key-value');
+        expect(fs.readFileSync(configPath, 'utf-8')).toContain(
+          'secret-key-value'
+        );
 
         fs.rmSync(uniqueDir, { recursive: true, force: true });
       });
 
       it('should not write to the predictable temp path even when it is free', () => {
-        const uniqueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-tmp-unique-'));
+        const uniqueDir = fs.mkdtempSync(
+          path.join(os.tmpdir(), 'deepl-tmp-unique-')
+        );
         const configPath = path.join(uniqueDir, 'config.json');
         const predictablePath = `${configPath}.tmp`;
         fs.writeFileSync(predictablePath, 'planted', 'utf-8');
@@ -382,7 +394,9 @@ describe('ConfigService', () => {
       });
 
       it('should leave no temp file behind after a successful write', () => {
-        const uniqueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-tmp-clean-'));
+        const uniqueDir = fs.mkdtempSync(
+          path.join(os.tmpdir(), 'deepl-tmp-clean-')
+        );
         const configPath = path.join(uniqueDir, 'config.json');
 
         const service = new ConfigService(configPath);
@@ -401,7 +415,11 @@ describe('ConfigService', () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
       // Write invalid JSON to a config file so loading fails during JSON.parse
-      const badConfigPath = path.join(os.tmpdir(), `deepl-bad-config-${Date.now()}`, 'config.json');
+      const badConfigPath = path.join(
+        os.tmpdir(),
+        `deepl-bad-config-${Date.now()}`,
+        'config.json'
+      );
       const badConfigDir = path.dirname(badConfigPath);
       fs.mkdirSync(badConfigDir, { recursive: true });
       fs.writeFileSync(badConfigPath, '{ invalid json !!!');
@@ -548,8 +566,12 @@ describe('ConfigService', () => {
     });
 
     it('delete() should reject constructor and prototype segments', () => {
-      expect(() => configService.delete('constructor.polluted')).toThrow('Invalid path');
-      expect(() => configService.delete('auth.prototype')).toThrow('Invalid path');
+      expect(() => configService.delete('constructor.polluted')).toThrow(
+        'Invalid path'
+      );
+      expect(() => configService.delete('auth.prototype')).toThrow(
+        'Invalid path'
+      );
     });
 
     it('delete() should not walk inherited properties', () => {

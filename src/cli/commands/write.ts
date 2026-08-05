@@ -45,15 +45,27 @@ export class WriteCommand {
     const serviceOptions = { skipCache: options.noCache };
 
     if (options.showAlternatives) {
-      const improvements = await this.fetchImprovements(text, options, serviceOptions);
-      return this.formatAlternatives(improvements.map(i => i.text));
+      const improvements = await this.fetchImprovements(
+        text,
+        options,
+        serviceOptions
+      );
+      return this.formatAlternatives(improvements.map((i) => i.text));
     }
 
-    const improvement = await this.fetchBestImprovement(text, options, serviceOptions);
+    const improvement = await this.fetchBestImprovement(
+      text,
+      options,
+      serviceOptions
+    );
 
     // Format output based on format option
     if (options.format === 'json') {
-      return formatWriteJson(text, improvement.text, options.lang ?? 'auto-detected');
+      return formatWriteJson(
+        text,
+        improvement.text,
+        options.lang ?? 'auto-detected'
+      );
     }
 
     return improvement.text;
@@ -68,9 +80,17 @@ export class WriteCommand {
     serviceOptions: { skipCache?: boolean }
   ) {
     if (options.correct) {
-      return this.writeService.correct(text, this.toCorrectOptions(options), serviceOptions);
+      return this.writeService.correct(
+        text,
+        this.toCorrectOptions(options),
+        serviceOptions
+      );
     }
-    return this.writeService.improve(text, this.toWriteOptions(options), serviceOptions);
+    return this.writeService.improve(
+      text,
+      this.toWriteOptions(options),
+      serviceOptions
+    );
   }
 
   private fetchBestImprovement(
@@ -79,9 +99,17 @@ export class WriteCommand {
     serviceOptions: { skipCache?: boolean }
   ) {
     if (options.correct) {
-      return this.writeService.getBestCorrection(text, this.toCorrectOptions(options), serviceOptions);
+      return this.writeService.getBestCorrection(
+        text,
+        this.toCorrectOptions(options),
+        serviceOptions
+      );
     }
-    return this.writeService.getBestImprovement(text, this.toWriteOptions(options), serviceOptions);
+    return this.writeService.getBestImprovement(
+      text,
+      this.toWriteOptions(options),
+      serviceOptions
+    );
   }
 
   private toWriteOptions(options: WriteOptions): {
@@ -96,7 +124,9 @@ export class WriteCommand {
     };
   }
 
-  private toCorrectOptions(options: WriteOptions): { targetLang?: WriteLanguage } {
+  private toCorrectOptions(options: WriteOptions): {
+    targetLang?: WriteLanguage;
+  } {
     return options.lang ? { targetLang: options.lang } : {};
   }
 
@@ -204,7 +234,7 @@ export class WriteCommand {
 
     // Count the number of changes using diff
     const patches = Diff.diffWords(text, improvedText);
-    const changes = patches.filter(p => p.added || p.removed).length;
+    const changes = patches.filter((p) => p.added || p.removed).length;
 
     return {
       needsImprovement: changes > 0,
@@ -294,14 +324,21 @@ export class WriteCommand {
    * Improve text interactively - show alternatives and let user choose
    * Generates multiple alternatives by calling the API with different styles/tones
    */
-  async improveInteractive(text: string, options: WriteOptions): Promise<string> {
+  async improveInteractive(
+    text: string,
+    options: WriteOptions
+  ): Promise<string> {
     const { select } = await import('@inquirer/prompts');
     const serviceOptions = { skipCache: options.noCache };
 
     // A single result is offered when the user pinned the request down to one
     // variant: an explicit style or tone, or correct mode (which has no styles).
     if (options.style || options.tone || options.correct) {
-      const improvements = await this.fetchImprovements(text, options, serviceOptions);
+      const improvements = await this.fetchImprovements(
+        text,
+        options,
+        serviceOptions
+      );
 
       const maxLen = this.getPreviewWidth();
       const choices = [
@@ -318,7 +355,9 @@ export class WriteCommand {
       ];
 
       const selection = await select({
-        message: options.correct ? 'Choose a correction:' : 'Choose an improvement:',
+        message: options.correct
+          ? 'Choose a correction:'
+          : 'Choose an improvement:',
         choices,
       });
 
@@ -332,10 +371,14 @@ export class WriteCommand {
     // Call API for each style
     for (const style of styles) {
       try {
-        const improvements = await this.writeService.improve(text, {
-          ...(options.lang ? { targetLang: options.lang } : {}),
-          writingStyle: style,
-        }, serviceOptions);
+        const improvements = await this.writeService.improve(
+          text,
+          {
+            ...(options.lang ? { targetLang: options.lang } : {}),
+            writingStyle: style,
+          },
+          serviceOptions
+        );
 
         if (improvements.length > 0 && improvements[0]) {
           allImprovements.push({
@@ -355,7 +398,7 @@ export class WriteCommand {
     // Remove duplicates (same text with different styles)
     const uniqueImprovements = allImprovements.filter(
       (improvement, index, self) =>
-        index === self.findIndex(t => t.text === improvement.text)
+        index === self.findIndex((t) => t.text === improvement.text)
     );
 
     // Create choices with style labels
@@ -404,8 +447,10 @@ export class WriteCommand {
 
     const content = await this.readFileContent(filePath);
 
-    const improvements = await this.fetchImprovements(content, options, { skipCache: options.noCache });
-    const alternatives = improvements.map(i => i.text);
+    const improvements = await this.fetchImprovements(content, options, {
+      skipCache: options.noCache,
+    });
+    const alternatives = improvements.map((i) => i.text);
 
     // Interactive selection
     const selected = await this.improveInteractive(content, options);
@@ -423,7 +468,10 @@ export class WriteCommand {
     try {
       return await safeReadFile(absolutePath, 'utf-8');
     } catch (error) {
-      if (error instanceof Error && error.message.includes('Symlinks are not supported')) {
+      if (
+        error instanceof Error &&
+        error.message.includes('Symlinks are not supported')
+      ) {
         throw error;
       }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -461,6 +509,8 @@ export class WriteCommand {
    * Format alternatives with numbering
    */
   private formatAlternatives(alternatives: string[]): string {
-    return alternatives.map((alt, index) => `${index + 1}. ${alt}`).join('\n\n');
+    return alternatives
+      .map((alt, index) => `${index + 1}. ${alt}`)
+      .join('\n\n');
   }
 }

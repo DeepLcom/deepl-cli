@@ -40,9 +40,9 @@ describe('HooksCommand', () => {
     } as any;
 
     // Mock the constructor to return our mock service
-    (GitHooksService as jest.MockedClass<typeof GitHooksService>).mockImplementation(
-      () => mockGitHooksService
-    );
+    (
+      GitHooksService as jest.MockedClass<typeof GitHooksService>
+    ).mockImplementation(() => mockGitHooksService);
   });
 
   describe('constructor', () => {
@@ -95,7 +95,9 @@ describe('HooksCommand', () => {
 
       const result = command.install('pre-commit');
 
-      expect(result).toContain('backed up to: /path/to/.git/hooks/pre-commit.backup');
+      expect(result).toContain(
+        'backed up to: /path/to/.git/hooks/pre-commit.backup'
+      );
     });
 
     it('should install pre-push hook', () => {
@@ -233,18 +235,24 @@ describe('HooksCommand', () => {
 
   describe('showPath()', () => {
     it('should show pre-commit hook path', () => {
-      mockGitHooksService.getHookPath.mockReturnValue('/path/to/.git/hooks/pre-commit');
+      mockGitHooksService.getHookPath.mockReturnValue(
+        '/path/to/.git/hooks/pre-commit'
+      );
       const command = new HooksCommand('/path/to/.git');
 
       const result = command.showPath('pre-commit');
 
-      expect(mockGitHooksService.getHookPath).toHaveBeenCalledWith('pre-commit');
+      expect(mockGitHooksService.getHookPath).toHaveBeenCalledWith(
+        'pre-commit'
+      );
       expect(result).toContain('Hook path:');
       expect(result).toContain('/path/to/.git/hooks/pre-commit');
     });
 
     it('should show pre-push hook path', () => {
-      mockGitHooksService.getHookPath.mockReturnValue('/path/to/.git/hooks/pre-push');
+      mockGitHooksService.getHookPath.mockReturnValue(
+        '/path/to/.git/hooks/pre-push'
+      );
       const command = new HooksCommand('/path/to/.git');
 
       const result = command.showPath('pre-push');
@@ -260,7 +268,9 @@ describe('HooksCommand', () => {
 
       const command = new HooksCommand();
 
-      expect(() => command.showPath('pre-commit')).toThrow('Not in a git repository');
+      expect(() => command.showPath('pre-commit')).toThrow(
+        'Not in a git repository'
+      );
     });
 
     it('should propagate errors from GitHooksService', () => {
@@ -269,7 +279,9 @@ describe('HooksCommand', () => {
       });
       const command = new HooksCommand('/path/to/.git');
 
-      expect(() => command.showPath('pre-commit' as any)).toThrow('Invalid hook type');
+      expect(() => command.showPath('pre-commit' as any)).toThrow(
+        'Invalid hook type'
+      );
     });
   });
 

@@ -74,7 +74,10 @@ describe('SyncPartialFailureError', () => {
   });
 
   it('exposes the custom suggestion when provided', () => {
-    const err = new SyncPartialFailureError('some locales failed', 'do the thing');
+    const err = new SyncPartialFailureError(
+      'some locales failed',
+      'do the thing'
+    );
     expect(err.suggestion).toBe('do the thing');
   });
 

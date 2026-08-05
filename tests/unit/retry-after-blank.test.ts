@@ -27,9 +27,12 @@ describe('parseRetryAfter', () => {
     ['empty string', ''],
     ['single space', ' '],
     ['whitespace only', '   \t '],
-  ])('should treat a %s header as absent so jitter backoff applies', (_label, headerValue) => {
-    expect(client.parse(headerValue)).toBeUndefined();
-  });
+  ])(
+    'should treat a %s header as absent so jitter backoff applies',
+    (_label, headerValue) => {
+      expect(client.parse(headerValue)).toBeUndefined();
+    }
+  );
 
   it('should treat a missing header as absent', () => {
     expect(client.parse(undefined)).toBeUndefined();

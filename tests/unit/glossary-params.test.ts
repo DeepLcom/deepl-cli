@@ -25,15 +25,21 @@ describe('resolveGlossaryWireParams', () => {
   });
 
   it('should send a lone glossaryId as glossary_id', () => {
-    expect(resolveGlossaryWireParams({ glossaryId: A })).toEqual({ glossary_id: A });
+    expect(resolveGlossaryWireParams({ glossaryId: A })).toEqual({
+      glossary_id: A,
+    });
   });
 
   it('should send a single-entry glossaryIds list as glossary_id', () => {
-    expect(resolveGlossaryWireParams({ glossaryIds: [A] })).toEqual({ glossary_id: A });
+    expect(resolveGlossaryWireParams({ glossaryIds: [A] })).toEqual({
+      glossary_id: A,
+    });
   });
 
   it('should send two or more IDs as glossary_ids', () => {
-    expect(resolveGlossaryWireParams({ glossaryIds: [A, B] })).toEqual({ glossary_ids: [A, B] });
+    expect(resolveGlossaryWireParams({ glossaryIds: [A, B] })).toEqual({
+      glossary_ids: [A, B],
+    });
   });
 
   it('should preserve the caller order rather than sorting it', () => {
@@ -45,26 +51,32 @@ describe('resolveGlossaryWireParams', () => {
   it('should accept exactly the maximum number of glossaries', () => {
     const ids = [A, B, C, A, B];
     expect(ids).toHaveLength(MAX_GLOSSARIES_PER_REQUEST);
-    expect(resolveGlossaryWireParams({ glossaryIds: ids })).toEqual({ glossary_ids: ids });
+    expect(resolveGlossaryWireParams({ glossaryIds: ids })).toEqual({
+      glossary_ids: ids,
+    });
   });
 
   it('should reject more than the maximum number of glossaries', () => {
     expect.assertions(3);
     const ids = [A, B, C, A, B, C];
-    expect(() => resolveGlossaryWireParams({ glossaryIds: ids })).toThrow(ValidationError);
+    expect(() => resolveGlossaryWireParams({ glossaryIds: ids })).toThrow(
+      ValidationError
+    );
     try {
       resolveGlossaryWireParams({ glossaryIds: ids });
     } catch (error) {
-      expect((error as ValidationError).message).toContain('maximum of 5 glossaries');
+      expect((error as ValidationError).message).toContain(
+        'maximum of 5 glossaries'
+      );
       expect((error as ValidationError).message).toContain('got 6');
     }
   });
 
   it('should reject glossaryId combined with glossaryIds, which the API refuses', () => {
     expect.assertions(2);
-    expect(() => resolveGlossaryWireParams({ glossaryId: A, glossaryIds: [B] })).toThrow(
-      ValidationError,
-    );
+    expect(() =>
+      resolveGlossaryWireParams({ glossaryId: A, glossaryIds: [B] })
+    ).toThrow(ValidationError);
     try {
       resolveGlossaryWireParams({ glossaryId: A, glossaryIds: [B] });
     } catch (error) {
@@ -73,7 +85,9 @@ describe('resolveGlossaryWireParams', () => {
   });
 
   it('should ignore an empty glossaryIds list alongside glossaryId', () => {
-    expect(resolveGlossaryWireParams({ glossaryId: A, glossaryIds: [] })).toEqual({
+    expect(
+      resolveGlossaryWireParams({ glossaryId: A, glossaryIds: [] })
+    ).toEqual({
       glossary_id: A,
     });
   });
@@ -101,7 +115,8 @@ describe('hasGlossarySelection', () => {
 });
 
 describe('applyGlossarySourceLang', () => {
-  const example = 'Example: deepl translate --from en --to es --glossary g "Hello"';
+  const example =
+    'Example: deepl translate --from en --to es --glossary g "Hello"';
 
   it('should leave an explicit --from alone', () => {
     const options = { glossary: ['terms'], from: 'de' };
@@ -112,23 +127,27 @@ describe('applyGlossarySourceLang', () => {
   it('should fall back to the configured source language', () => {
     // The request carries source_lang either way, so a missing flag is not on
     // its own a reason to reject.
-    const options: { glossary: string[]; from?: string } = { glossary: ['terms'] };
+    const options: { glossary: string[]; from?: string } = {
+      glossary: ['terms'],
+    };
     applyGlossarySourceLang(options, 'EN', example);
     expect(options.from).toBe('en');
   });
 
   it('should throw only when neither the flag nor the config supplies one', () => {
-    expect(() => applyGlossarySourceLang({ glossary: ['terms'] }, undefined, example)).toThrow(
-      ValidationError,
-    );
-    expect(() => applyGlossarySourceLang({ glossary: ['terms'] }, undefined, example)).toThrow(
-      'Source language (--from) is required when using a glossary',
-    );
+    expect(() =>
+      applyGlossarySourceLang({ glossary: ['terms'] }, undefined, example)
+    ).toThrow(ValidationError);
+    expect(() =>
+      applyGlossarySourceLang({ glossary: ['terms'] }, undefined, example)
+    ).toThrow('Source language (--from) is required when using a glossary');
   });
 
   it('should do nothing when no glossary is selected', () => {
     const options: { glossary?: string[]; from?: string } = { glossary: [] };
-    expect(() => applyGlossarySourceLang(options, undefined, example)).not.toThrow();
+    expect(() =>
+      applyGlossarySourceLang(options, undefined, example)
+    ).not.toThrow();
     expect(options.from).toBeUndefined();
   });
 

@@ -10,7 +10,16 @@ import { Logger } from '../utils/logger.js';
 export const MAX_INSTRUCTIONS = 5;
 export const MAX_INSTRUCTION_LENGTH = 2000;
 
-const SUPPORTED_BASE_LOCALES = new Set(['de', 'en', 'es', 'fr', 'it', 'ja', 'ko', 'zh']);
+const SUPPORTED_BASE_LOCALES = new Set([
+  'de',
+  'en',
+  'es',
+  'fr',
+  'it',
+  'ja',
+  'ko',
+  'zh',
+]);
 
 export const CUSTOM_INSTRUCTION_LOCALES: Set<string> = SUPPORTED_BASE_LOCALES;
 
@@ -44,7 +53,7 @@ export const DEFAULT_INSTRUCTION_TEMPLATES: Record<string, string> = {
 
 export function generateElementInstruction(
   elementType: string | null | undefined,
-  userTemplates?: Record<string, string>,
+  userTemplates?: Record<string, string>
 ): string | undefined {
   if (elementType === null || elementType === undefined) return undefined;
 
@@ -57,7 +66,7 @@ export function generateElementInstruction(
 
 export function mergeInstructions(
   userInstructions: string[] | undefined,
-  autoInstruction: string | undefined,
+  autoInstruction: string | undefined
 ): string[] | undefined {
   const parts: string[] = [];
 
@@ -72,7 +81,7 @@ export function mergeInstructions(
   if (parts.length === 0) return undefined;
 
   let truncatedLength = false;
-  const capped = parts.map(instruction => {
+  const capped = parts.map((instruction) => {
     if (instruction.length > MAX_INSTRUCTION_LENGTH) {
       truncatedLength = true;
       return instruction.slice(0, MAX_INSTRUCTION_LENGTH);
@@ -81,11 +90,15 @@ export function mergeInstructions(
   });
 
   if (truncatedLength) {
-    Logger.warn(`One or more instructions exceeded ${MAX_INSTRUCTION_LENGTH} characters and were truncated.`);
+    Logger.warn(
+      `One or more instructions exceeded ${MAX_INSTRUCTION_LENGTH} characters and were truncated.`
+    );
   }
 
   if (capped.length > MAX_INSTRUCTIONS) {
-    Logger.warn(`Instructions count (${capped.length}) exceeds maximum of ${MAX_INSTRUCTIONS}; extra instructions dropped.`);
+    Logger.warn(
+      `Instructions count (${capped.length}) exceeds maximum of ${MAX_INSTRUCTIONS}; extra instructions dropped.`
+    );
     return capped.slice(0, MAX_INSTRUCTIONS);
   }
 
@@ -99,15 +112,30 @@ export function mergeInstructions(
 // Industry-standard approximations (IBM, W3C localization guidelines).
 // Not calculated from our data. Users can override via length_limits.expansion_factors.
 export const DEFAULT_EXPANSION_FACTORS: Record<string, number> = {
-  de: 1.3, es: 1.25, fr: 1.3, it: 1.25,
-  'pt-br': 1.25, 'pt-pt': 1.25,
-  ja: 0.5, ko: 0.7, zh: 0.5,
-  ar: 1.2, he: 1.0, nl: 1.1,
-  pl: 1.1, ru: 1.1, tr: 1.1,
+  de: 1.3,
+  es: 1.25,
+  fr: 1.3,
+  it: 1.25,
+  'pt-br': 1.25,
+  'pt-pt': 1.25,
+  ja: 0.5,
+  ko: 0.7,
+  zh: 0.5,
+  ar: 1.2,
+  he: 1.0,
+  nl: 1.1,
+  pl: 1.1,
+  ru: 1.1,
+  tr: 1.1,
 };
 
 export const LENGTH_CONSTRAINED_ELEMENTS: Set<string> = new Set([
-  'button', 'th', 'label', 'option', 'input', 'title',
+  'button',
+  'th',
+  'label',
+  'option',
+  'input',
+  'title',
 ]);
 
 const MIN_LENGTH_CHARS = 5;
@@ -116,7 +144,7 @@ export function generateLengthInstruction(
   sourceText: string,
   elementType: string | null | undefined,
   locale: string,
-  config?: { expansion_factors?: Record<string, number> },
+  config?: { expansion_factors?: Record<string, number> }
 ): string | undefined {
   if (elementType === null || elementType === undefined) return undefined;
   if (!LENGTH_CONSTRAINED_ELEMENTS.has(elementType)) return undefined;
@@ -126,7 +154,8 @@ export function generateLengthInstruction(
     : DEFAULT_EXPANSION_FACTORS;
 
   const normalizedLocale = locale.toLowerCase();
-  const factor = factors[normalizedLocale] ?? factors[extractBaseLocale(normalizedLocale)];
+  const factor =
+    factors[normalizedLocale] ?? factors[extractBaseLocale(normalizedLocale)];
   if (factor === undefined) return undefined;
 
   const max = Math.ceil(sourceText.length * factor * 1.1);

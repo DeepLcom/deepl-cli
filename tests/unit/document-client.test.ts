@@ -25,7 +25,9 @@ describe('DocumentClient', () => {
     jest.spyOn(axios, 'isAxiosError').mockReturnValue(false);
 
     client = new DocumentClient('test-api-key');
-    jest.spyOn(HttpClient.prototype, 'sleep' as any).mockResolvedValue(undefined);
+    jest
+      .spyOn(HttpClient.prototype, 'sleep' as any)
+      .mockResolvedValue(undefined);
   });
 
   afterAll(() => {
@@ -45,7 +47,7 @@ describe('DocumentClient', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
           baseURL: 'https://api-free.deepl.com',
-        }),
+        })
       );
     });
 
@@ -54,7 +56,7 @@ describe('DocumentClient', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
           baseURL: 'https://api.deepl.com',
-        }),
+        })
       );
     });
   });
@@ -81,7 +83,7 @@ describe('DocumentClient', () => {
         expect.objectContaining({
           method: 'POST',
           url: '/v2/document',
-        }),
+        })
       );
     });
 
@@ -135,10 +137,15 @@ describe('DocumentClient', () => {
 
       const getMultipartBody = (): string => {
         const call = mockAxiosInstance.request.mock.calls[0]?.[0];
-        return (call?.data?.getBuffer?.() as Buffer | undefined)?.toString('utf8') ?? '';
+        return (
+          (call?.data?.getBuffer?.() as Buffer | undefined)?.toString('utf8') ??
+          ''
+        );
       };
 
-      const upload = async (options: Record<string, unknown>): Promise<void> => {
+      const upload = async (
+        options: Record<string, unknown>
+      ): Promise<void> => {
         await client.uploadDocument(Buffer.from('content'), {
           targetLang: 'de',
           filename: 'doc.txt',
@@ -187,13 +194,15 @@ describe('DocumentClient', () => {
 
       it('should reject more than five glossaries before uploading', async () => {
         await expect(
-          upload({ glossaryIds: [A, B, A, B, A, B] }),
+          upload({ glossaryIds: [A, B, A, B, A, B] })
         ).rejects.toThrow(/maximum of 5 glossaries/);
         expect(mockAxiosInstance.request).not.toHaveBeenCalled();
       });
 
       it('should reject glossaryId combined with glossaryIds', async () => {
-        await expect(upload({ glossaryId: A, glossaryIds: [B] })).rejects.toThrow(/Cannot combine/);
+        await expect(
+          upload({ glossaryId: A, glossaryIds: [B] })
+        ).rejects.toThrow(/Cannot combine/);
         expect(mockAxiosInstance.request).not.toHaveBeenCalled();
       });
     });
@@ -284,7 +293,11 @@ describe('DocumentClient', () => {
     it('should handle API errors', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 429, data: { message: 'Too many requests' }, headers: {} },
+        response: {
+          status: 429,
+          data: { message: 'Too many requests' },
+          headers: {},
+        },
         message: 'Rate limited',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
@@ -315,14 +328,18 @@ describe('DocumentClient', () => {
         expect.objectContaining({
           method: 'POST',
           url: '/v2/document/doc-123/result',
-        }),
+        })
       );
     });
 
     it('should handle API errors during download', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 503, data: { message: 'Service unavailable' }, headers: {} },
+        response: {
+          status: 503,
+          data: { message: 'Service unavailable' },
+          headers: {},
+        },
         message: 'Unavailable',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
@@ -377,25 +394,33 @@ describe('DocumentClient', () => {
         headers: {},
       });
 
-      await client.downloadDocument({ documentId: 'doc-1', documentKey: 'key-1' });
+      await client.downloadDocument({
+        documentId: 'doc-1',
+        documentKey: 'key-1',
+      });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({ timeout: 300000 }),
+        expect.objectContaining({ timeout: 300000 })
       );
     });
 
     it('should honour an explicitly configured timeout larger than the transfer default', async () => {
-      const slowClient = new DocumentClient('test-api-key', { timeout: 600000 });
+      const slowClient = new DocumentClient('test-api-key', {
+        timeout: 600000,
+      });
       mockAxiosInstance.request.mockResolvedValue({
         data: Buffer.from('content'),
         status: 200,
         headers: {},
       });
 
-      await slowClient.downloadDocument({ documentId: 'doc-1', documentKey: 'key-1' });
+      await slowClient.downloadDocument({
+        documentId: 'doc-1',
+        documentKey: 'key-1',
+      });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({ timeout: 600000 }),
+        expect.objectContaining({ timeout: 600000 })
       );
       slowClient.destroy();
     });
@@ -407,10 +432,13 @@ describe('DocumentClient', () => {
         headers: {},
       });
 
-      await client.getDocumentStatus({ documentId: 'doc-1', documentKey: 'key-1' });
+      await client.getDocumentStatus({
+        documentId: 'doc-1',
+        documentKey: 'key-1',
+      });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({ timeout: 30000 }),
+        expect.objectContaining({ timeout: 30000 })
       );
     });
   });

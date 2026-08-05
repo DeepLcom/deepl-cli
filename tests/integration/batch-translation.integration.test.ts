@@ -26,7 +26,12 @@ import { FileTranslationService } from '../../src/services/file-translation.js';
 import { TranslationService } from '../../src/services/translation.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
-import { TEST_API_KEY, createMockConfigService, createMockCacheService, DEEPL_FREE_API_URL } from '../helpers';
+import {
+  TEST_API_KEY,
+  createMockConfigService,
+  createMockCacheService,
+  DEEPL_FREE_API_URL,
+} from '../helpers';
 
 describe('Batch Translation Service Integration', () => {
   const API_KEY = TEST_API_KEY;
@@ -47,7 +52,11 @@ describe('Batch Translation Service Integration', () => {
       get: jest.fn(() => ({
         auth: {},
         api: { baseUrl: '', usePro: false },
-        defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+        defaults: {
+          targetLangs: [],
+          formality: 'default',
+          preserveFormatting: false,
+        },
         cache: { enabled: true },
         output: { format: 'text', color: true },
         proxy: {},
@@ -75,7 +84,9 @@ describe('Batch Translation Service Integration', () => {
     });
 
     it('should create service with custom concurrency', () => {
-      const service = new BatchTranslationService(fileTranslationService, { concurrency: 10 });
+      const service = new BatchTranslationService(fileTranslationService, {
+        concurrency: 10,
+      });
       expect(service).toBeInstanceOf(BatchTranslationService);
     });
 
@@ -87,24 +98,32 @@ describe('Batch Translation Service Integration', () => {
 
     it('should throw error for concurrency greater than 100', () => {
       expect(() => {
-        new BatchTranslationService(fileTranslationService, { concurrency: 101 });
+        new BatchTranslationService(fileTranslationService, {
+          concurrency: 101,
+        });
       }).toThrow('Concurrency cannot exceed 100');
     });
 
     it('should accept concurrency of 1', () => {
-      const service = new BatchTranslationService(fileTranslationService, { concurrency: 1 });
+      const service = new BatchTranslationService(fileTranslationService, {
+        concurrency: 1,
+      });
       expect(service).toBeInstanceOf(BatchTranslationService);
     });
 
     it('should accept concurrency of 100', () => {
-      const service = new BatchTranslationService(fileTranslationService, { concurrency: 100 });
+      const service = new BatchTranslationService(fileTranslationService, {
+        concurrency: 100,
+      });
       expect(service).toBeInstanceOf(BatchTranslationService);
     });
   });
 
   describe('translateFiles', () => {
     it('should return empty result for empty file list', async () => {
-      const result = await batchService.translateFiles([], { targetLang: 'es' });
+      const result = await batchService.translateFiles([], {
+        targetLang: 'es',
+      });
 
       expect(result.successful).toHaveLength(0);
       expect(result.failed).toHaveLength(0);
@@ -163,7 +182,8 @@ describe('Batch Translation Service Integration', () => {
       fs.writeFileSync(file2, 'World');
 
       // First translation succeeds, second fails
-      jest.spyOn(translationService, 'translate')
+      jest
+        .spyOn(translationService, 'translate')
         .mockResolvedValueOnce({ text: 'Hola' })
         .mockRejectedValueOnce(new Error('API error'));
 
@@ -188,7 +208,11 @@ describe('Batch Translation Service Integration', () => {
         text: 'Hola',
       });
 
-      const progressCalls: Array<{ completed: number; total: number; current?: string }> = [];
+      const progressCalls: Array<{
+        completed: number;
+        total: number;
+        current?: string;
+      }> = [];
       const onProgress = jest.fn((progress) => {
         progressCalls.push(progress);
       });
@@ -221,7 +245,9 @@ describe('Batch Translation Service Integration', () => {
       );
 
       expect(result.successful).toHaveLength(1);
-      expect(result.successful[0]?.outputPath).toBe(path.join(tmpDir, 'test.es.txt'));
+      expect(result.successful[0]?.outputPath).toBe(
+        path.join(tmpDir, 'test.es.txt')
+      );
     });
 
     it('should use custom output pattern', async () => {
@@ -239,7 +265,9 @@ describe('Batch Translation Service Integration', () => {
       );
 
       expect(result.successful).toHaveLength(1);
-      expect(result.successful[0]?.outputPath).toBe(path.join(tmpDir, 'test-es.txt'));
+      expect(result.successful[0]?.outputPath).toBe(
+        path.join(tmpDir, 'test-es.txt')
+      );
     });
 
     it('should preserve directory structure when baseDir is provided', async () => {
@@ -418,9 +446,15 @@ describe('Batch Translation Service Integration', () => {
   describe('getStatistics', () => {
     it('should calculate statistics correctly', () => {
       const result = {
-        successful: [{ file: 'a', outputPath: 'a.es' }, { file: 'b', outputPath: 'b.es' }],
+        successful: [
+          { file: 'a', outputPath: 'a.es' },
+          { file: 'b', outputPath: 'b.es' },
+        ],
         failed: [{ file: 'c', error: 'Error' }],
-        skipped: [{ file: 'd', reason: 'Unsupported' }, { file: 'e', reason: 'Unsupported' }],
+        skipped: [
+          { file: 'd', reason: 'Unsupported' },
+          { file: 'e', reason: 'Unsupported' },
+        ],
       };
 
       const stats = batchService.getStatistics(result);
@@ -452,7 +486,11 @@ describe('Batch Translation Service Integration', () => {
 
     beforeEach(() => {
       const mockCache = createMockCacheService();
-      const isolatedTranslationService = new TranslationService(client, mockConfig, mockCache);
+      const isolatedTranslationService = new TranslationService(
+        client,
+        mockConfig,
+        mockCache
+      );
       batchServiceWithTranslation = new BatchTranslationService(
         new FileTranslationService(isolatedTranslationService),
         { concurrency: 5, translationService: isolatedTranslationService }
@@ -477,10 +515,12 @@ describe('Batch Translation Service Integration', () => {
           return Array.isArray(texts) && texts.length === 5;
         })
         .reply(200, {
-          translations: Array(5).fill(null).map((_, i) => ({
-            text: `Texto número ${i}`,
-            detected_source_language: 'EN',
-          })),
+          translations: Array(5)
+            .fill(null)
+            .map((_, i) => ({
+              text: `Texto número ${i}`,
+              detected_source_language: 'EN',
+            })),
         });
 
       const result = await batchServiceWithTranslation.translateDirectory(
@@ -519,9 +559,7 @@ describe('Batch Translation Service Integration', () => {
       const jsonScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
-          translations: [
-            { text: 'Hola', detected_source_language: 'EN' },
-          ],
+          translations: [{ text: 'Hola', detected_source_language: 'EN' }],
         });
 
       const result = await batchServiceWithTranslation.translateDirectory(

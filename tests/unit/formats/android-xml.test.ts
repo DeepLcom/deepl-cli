@@ -22,7 +22,11 @@ describe('android-xml parser', () => {
       expect(entries[0]!.value).toBe('C:\\Users\\test');
 
       const translated: TranslatedEntry[] = [
-        { key: 'path', value: 'C:\\Users\\test', translation: 'C:\\Users\\test' },
+        {
+          key: 'path',
+          value: 'C:\\Users\\test',
+          translation: 'C:\\Users\\test',
+        },
       ];
       const result = parser.reconstruct(xml, translated);
       expect(result).toContain('C:\\\\Users\\\\test');
@@ -173,8 +177,12 @@ describe('android-xml parser', () => {
       ];
 
       const result = parser.reconstruct(xml, translated);
-      expect(result).toContain('<item quantity="one"><![CDATA[1 < Element]]></item>');
-      expect(result).toContain('<item quantity="other"><![CDATA[%d < Elemente]]></item>');
+      expect(result).toContain(
+        '<item quantity="one"><![CDATA[1 < Element]]></item>'
+      );
+      expect(result).toContain(
+        '<item quantity="other"><![CDATA[%d < Elemente]]></item>'
+      );
     });
 
     it('should preserve CDATA wrappers for string-array items during extract and reconstruct', () => {
@@ -193,8 +201,16 @@ describe('android-xml parser', () => {
       ]);
 
       const translated: TranslatedEntry[] = [
-        { key: 'labels.0', value: 'Less < More', translation: 'Weniger < Mehr' },
-        { key: 'labels.1', value: 'Rock & Roll', translation: 'Rock & Roll DE' },
+        {
+          key: 'labels.0',
+          value: 'Less < More',
+          translation: 'Weniger < Mehr',
+        },
+        {
+          key: 'labels.1',
+          value: 'Rock & Roll',
+          translation: 'Rock & Roll DE',
+        },
       ];
 
       const result = parser.reconstruct(xml, translated);
@@ -343,7 +359,9 @@ describe('android-xml parser', () => {
       const head = '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n';
       const opener =
         '    <string name="k">v\n    <plurals name="p">\n    <string-array name="a">\n';
-      return head + opener.repeat(Math.ceil((bytes - head.length) / opener.length));
+      return (
+        head + opener.repeat(Math.ceil((bytes - head.length) / opener.length))
+      );
     }
 
     const content = unclosedOpeners(4 * 1024 * 1024);

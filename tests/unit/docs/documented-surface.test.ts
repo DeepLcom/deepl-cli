@@ -18,10 +18,21 @@ interface DescribedCommand {
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const CLI_ENTRY = path.join(ROOT, 'dist', 'cli', 'index.js');
-const DOCS = ['README.md', 'docs/API.md', 'docs/SYNC.md', 'docs/TROUBLESHOOTING.md'];
+const DOCS = [
+  'README.md',
+  'docs/API.md',
+  'docs/SYNC.md',
+  'docs/TROUBLESHOOTING.md',
+];
 
 /** Deliberate misspellings used to demonstrate did-you-mean suggestions. */
-const TYPO_EXAMPLES = new Set(['transalte', 'translte', 'glossry', 'conifg', 'descibe']);
+const TYPO_EXAMPLES = new Set([
+  'transalte',
+  'translte',
+  'glossry',
+  'conifg',
+  'descibe',
+]);
 
 const LANGUAGE_CODES = getAllLanguageCodes();
 
@@ -30,9 +41,13 @@ function longFlags(options: { flags: string }[]): string[] {
 }
 
 function describeSurface(): DescribedCommand {
-  const raw = execFileSync(process.execPath, [CLI_ENTRY, '_describe', '--format', 'json'], {
-    encoding: 'utf-8',
-  });
+  const raw = execFileSync(
+    process.execPath,
+    [CLI_ENTRY, '_describe', '--format', 'json'],
+    {
+      encoding: 'utf-8',
+    }
+  );
   return JSON.parse(raw) as DescribedCommand;
 }
 
@@ -42,14 +57,19 @@ describe('documented CLI surface', () => {
 
   beforeAll(() => {
     surface = describeSurface();
-    globalFlags = new Set([...longFlags(surface.options), '--help', '--version']);
+    globalFlags = new Set([
+      ...longFlags(surface.options),
+      '--help',
+      '--version',
+    ]);
   });
 
   function resolveCommand(tokens: string[]): DescribedCommand | undefined {
     let current: DescribedCommand | undefined = surface;
     for (const token of tokens) {
       current = current?.commands.find(
-        (candidate) => candidate.name === token || candidate.aliases.includes(token),
+        (candidate) =>
+          candidate.name === token || candidate.aliases.includes(token)
       );
       if (!current) return undefined;
     }
@@ -78,7 +98,9 @@ describe('documented CLI surface', () => {
     let documented: string[];
 
     beforeAll(() => {
-      documented = invocations(fs.readFileSync(path.join(ROOT, docPath), 'utf-8'));
+      documented = invocations(
+        fs.readFileSync(path.join(ROOT, docPath), 'utf-8')
+      );
     });
 
     it('documents at least one invocation', () => {
@@ -89,7 +111,10 @@ describe('documented CLI surface', () => {
       const unknown = documented.filter((invocation) => {
         const tokens = commandTokens(invocation);
         if (tokens.length === 0 || TYPO_EXAMPLES.has(tokens[0]!)) return false;
-        return resolveCommand(tokens) === undefined && resolveCommand([tokens[0]!]) === undefined;
+        return (
+          resolveCommand(tokens) === undefined &&
+          resolveCommand([tokens[0]!]) === undefined
+        );
       });
 
       expect(unknown).toEqual([]);
@@ -105,12 +130,16 @@ describe('documented CLI surface', () => {
         const command = resolveCommand(tokens) ?? resolveCommand([tokens[0]!]);
         if (!command) continue;
 
-        const accepted = new Set([...longFlags(command.options), ...globalFlags]);
+        const accepted = new Set([
+          ...longFlags(command.options),
+          ...globalFlags,
+        ]);
         // A flag may belong to a subcommand named after the first flag-free
         // tokens, so accept anything the parent chain declares too.
         for (let depth = 1; depth < tokens.length; depth++) {
           const ancestor = resolveCommand(tokens.slice(0, depth));
-          if (ancestor) longFlags(ancestor.options).forEach((flag) => accepted.add(flag));
+          if (ancestor)
+            longFlags(ancestor.options).forEach((flag) => accepted.add(flag));
         }
 
         for (const flag of invocation.match(/--[a-z0-9-]+/g) ?? []) {
@@ -129,7 +158,9 @@ describe('documented CLI surface', () => {
       // and copying it into a script that compares codes gives a wrong answer.
       // Matched against the registry so markdown badges like `[![CI](...)]` and
       // labels that are not languages are left alone.
-      const lines = fs.readFileSync(path.join(ROOT, docPath), 'utf-8').split('\n');
+      const lines = fs
+        .readFileSync(path.join(ROOT, docPath), 'utf-8')
+        .split('\n');
       const offenders: string[] = [];
 
       for (const line of lines) {
@@ -185,7 +216,7 @@ describe('documented CLI surface', () => {
 
     it('lists no command the CLI does not provide', () => {
       const unknown = [...groupedCommands()].filter(
-        (name) => resolveCommand([name]) === undefined,
+        (name) => resolveCommand([name]) === undefined
       );
 
       expect(unknown).toEqual([]);

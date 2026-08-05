@@ -74,7 +74,12 @@ describe('registerWrite', () => {
     createDeepLClient = jest.fn();
     getConfigService = jest.fn();
     getCacheService = jest.fn();
-    registerWrite(program, { createDeepLClient, getConfigService, getCacheService, handleError });
+    registerWrite(program, {
+      createDeepLClient,
+      getConfigService,
+      getCacheService,
+      handleError,
+    });
   });
 
   afterEach(() => {
@@ -83,14 +88,17 @@ describe('registerWrite', () => {
 
   describe('alias', () => {
     it('registers w as an alias of write', () => {
-      const writeCmd = program.commands.find(c => c.name() === 'write')!;
+      const writeCmd = program.commands.find((c) => c.name() === 'write')!;
       expect(writeCmd.aliases()).toContain('w');
     });
 
     it('dispatches w to the write action', async () => {
       mockWriteCommand.improve.mockResolvedValue('Improved text');
       await program.parseAsync(['node', 'test', 'w', 'Hello world']);
-      expect(mockWriteCommand.improve).toHaveBeenCalledWith('Hello world', expect.any(Object));
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+        'Hello world',
+        expect.any(Object)
+      );
       expect(Logger.output).toHaveBeenCalledWith('Improved text');
     });
   });
@@ -99,71 +107,129 @@ describe('registerWrite', () => {
     it('should improve text and output result', async () => {
       mockWriteCommand.improve.mockResolvedValue('Improved text');
       await program.parseAsync(['node', 'test', 'write', 'Hello world']);
-      expect(mockWriteCommand.improve).toHaveBeenCalledWith('Hello world', expect.any(Object));
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+        'Hello world',
+        expect.any(Object)
+      );
       expect(Logger.output).toHaveBeenCalledWith('Improved text');
     });
 
     it('should pass lang option via --lang', async () => {
       mockWriteCommand.improve.mockResolvedValue('Hallo');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--lang',
+        'de',
+      ]);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'de' }),
+        expect.objectContaining({ lang: 'de' })
       );
     });
 
     it('should pass style option', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--style', 'business']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--style',
+        'business',
+      ]);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ style: 'business' }),
+        expect.objectContaining({ style: 'business' })
       );
     });
 
     it('should pass tone option', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--tone', 'friendly']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--tone',
+        'friendly',
+      ]);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ tone: 'friendly' }),
+        expect.objectContaining({ tone: 'friendly' })
       );
     });
 
     it('should map -l short flag to --lang', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '-l', 'en-US']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '-l',
+        'en-US',
+      ]);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'en-us' }),
+        expect.objectContaining({ lang: 'en-us' })
       );
     });
 
     it('should accept --to as a long-only alias of --lang', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--to',
+        'de',
+      ]);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'de' }),
+        expect.objectContaining({ lang: 'de' })
       );
     });
 
     it('should accept --to and --lang when they carry the same value', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'de', '--lang', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--to',
+        'de',
+        '--lang',
+        'de',
+      ]);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'de' }),
+        expect.objectContaining({ lang: 'de' })
       );
       expect(handleError).not.toHaveBeenCalled();
     });
 
     it('should reject --to and --lang when they carry different values', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'de', '--lang', 'fr']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--to',
+        'de',
+        '--lang',
+        'fr',
+      ]);
       expect(handleError).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: expect.stringContaining('Cannot specify both --to and --lang with different values'),
-        }),
+          message: expect.stringContaining(
+            'Cannot specify both --to and --lang with different values'
+          ),
+        })
       );
     });
 
@@ -171,45 +237,79 @@ describe('registerWrite', () => {
       // write does not own -t; commander should leave it unparsed or reject it,
       // not treat it as an alias for --to. If this test starts passing with
       // lang='en', it means we accidentally bound -t here.
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '-t', 'en']).catch(() => undefined);
+      await program
+        .parseAsync(['node', 'test', 'write', 'Hello', '-t', 'en'])
+        .catch(() => undefined);
       expect(mockWriteCommand.improve).not.toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'en' }),
+        expect.objectContaining({ lang: 'en' })
       );
     });
 
     it('should accept --tone as long flag only', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--tone', 'friendly']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--tone',
+        'friendly',
+      ]);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ tone: 'friendly' }),
+        expect.objectContaining({ tone: 'friendly' })
       );
     });
   });
 
   describe('validation', () => {
     it('should reject a code that is not shaped like a language tag', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'de_ch']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--lang',
+        'de_ch',
+      ]);
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('Invalid language code') }),
+        expect.objectContaining({
+          message: expect.stringContaining('Invalid language code'),
+        })
       );
     });
 
     it('should defer a well-formed code the bundled list does not have', async () => {
       // The bundled list is a snapshot, so a well-formed code it does not list
       // goes through with a warning that still names the bundled set.
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'xx']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--lang',
+        'xx',
+      ]);
 
       expect(handleError).not.toHaveBeenCalled();
       expect(mockWriteCommand.improve).toHaveBeenCalled();
-      const warning = (Logger.warn as jest.Mock).mock.calls.map(c => String(c[0])).join('\n');
+      const warning = (Logger.warn as jest.Mock).mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(warning).toContain('not in the bundled Write language list');
       expect(warning).toContain(WRITE_TARGET_LANGUAGES.join(', '));
     });
 
     it('should enumerate every supported language when rejecting malformed input', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', 'nope_nope']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--lang',
+        'nope_nope',
+      ]);
       const error = handleError.mock.calls[0]?.[0] as Error;
       // Asserted as the joined list: individual codes like 'de' occur inside
       // ordinary words in the message, so per-code checks cannot fail.
@@ -221,21 +321,38 @@ describe('registerWrite', () => {
         jest.clearAllMocks();
         mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
         mockWriteCommand.improve.mockResolvedValue('ok');
-        await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', code]);
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'Hello',
+          '--lang',
+          code,
+        ]);
         expect(handleError).not.toHaveBeenCalled();
       }
     });
 
-    it.each(['ja', 'ko', 'zh', 'zh-hans'])('should accept new target language %s', async (lang) => {
-      mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
-      mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', lang]);
-      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
-        'Hello',
-        expect.objectContaining({ lang }),
-      );
-      expect(handleError).not.toHaveBeenCalled();
-    });
+    it.each(['ja', 'ko', 'zh', 'zh-hans'])(
+      'should accept new target language %s',
+      async (lang) => {
+        mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
+        mockWriteCommand.improve.mockResolvedValue('ok');
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'Hello',
+          '--lang',
+          lang,
+        ]);
+        expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+          'Hello',
+          expect.objectContaining({ lang })
+        );
+        expect(handleError).not.toHaveBeenCalled();
+      }
+    );
 
     // `deepl languages` prints lowercase codes and `translate --to` lowercases
     // before validating, so write rejecting them made the CLI's own output
@@ -247,94 +364,201 @@ describe('registerWrite', () => {
       ['pt-br', 'pt-br'],
       ['zh-Hans', 'zh-hans'],
       ['DE', 'de'],
-    ])('should accept --lang %s and normalize it to %s', async (input, canonical) => {
-      mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
-      mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--lang', input]);
-      expect(handleError).not.toHaveBeenCalled();
-      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
-        'Hello',
-        expect.objectContaining({ lang: canonical }),
-      );
-    });
+    ])(
+      'should accept --lang %s and normalize it to %s',
+      async (input, canonical) => {
+        mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
+        mockWriteCommand.improve.mockResolvedValue('ok');
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'Hello',
+          '--lang',
+          input,
+        ]);
+        expect(handleError).not.toHaveBeenCalled();
+        expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+          'Hello',
+          expect.objectContaining({ lang: canonical })
+        );
+      }
+    );
 
     it('should accept the same casing via --to as via --lang', async () => {
       mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--to', 'pt-br']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--to',
+        'pt-br',
+      ]);
       expect(handleError).not.toHaveBeenCalled();
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'pt-br' }),
+        expect.objectContaining({ lang: 'pt-br' })
       );
     });
 
     it('should reject both --style and --tone', async () => {
       await program.parseAsync([
-        'node', 'test', 'write', 'Hello', '--style', 'business', '--tone', 'friendly',
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--style',
+        'business',
+        '--tone',
+        'friendly',
       ]);
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('Cannot specify both') }),
+        expect.objectContaining({
+          message: expect.stringContaining('Cannot specify both'),
+        })
       );
     });
 
     it('should reject invalid style value', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--style', 'fancy']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--style',
+        'fancy',
+      ]);
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('Invalid writing style: fancy') }),
+        expect.objectContaining({
+          message: expect.stringContaining('Invalid writing style: fancy'),
+        })
       );
     });
 
     it('should accept all valid style values', async () => {
-      const validStyles = ['default', 'simple', 'business', 'academic', 'casual', 'prefer_simple', 'prefer_business', 'prefer_academic', 'prefer_casual'];
+      const validStyles = [
+        'default',
+        'simple',
+        'business',
+        'academic',
+        'casual',
+        'prefer_simple',
+        'prefer_business',
+        'prefer_academic',
+        'prefer_casual',
+      ];
       for (const style of validStyles) {
         jest.clearAllMocks();
         mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
         mockWriteCommand.improve.mockResolvedValue('ok');
-        await program.parseAsync(['node', 'test', 'write', 'Hello', '--style', style]);
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'Hello',
+          '--style',
+          style,
+        ]);
         expect(handleError).not.toHaveBeenCalled();
       }
     });
 
     it('should reject invalid tone value', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--tone', 'angry']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--tone',
+        'angry',
+      ]);
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('Invalid tone: angry') }),
+        expect.objectContaining({
+          message: expect.stringContaining('Invalid tone: angry'),
+        })
       );
     });
 
     it('should accept all valid tone values', async () => {
-      const validTones = ['default', 'enthusiastic', 'friendly', 'confident', 'diplomatic', 'prefer_enthusiastic', 'prefer_friendly', 'prefer_confident', 'prefer_diplomatic'];
+      const validTones = [
+        'default',
+        'enthusiastic',
+        'friendly',
+        'confident',
+        'diplomatic',
+        'prefer_enthusiastic',
+        'prefer_friendly',
+        'prefer_confident',
+        'prefer_diplomatic',
+      ];
       for (const tone of validTones) {
         jest.clearAllMocks();
         mockCreateWriteCommand.mockResolvedValue(mockWriteCommand);
         mockWriteCommand.improve.mockResolvedValue('ok');
-        await program.parseAsync(['node', 'test', 'write', 'Hello', '--tone', tone]);
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'Hello',
+          '--tone',
+          tone,
+        ]);
         expect(handleError).not.toHaveBeenCalled();
       }
     });
 
     it('should warn when --backup is used without --fix', async () => {
       mockWriteCommand.improve.mockResolvedValue('Improved text');
-      await program.parseAsync(['node', 'test', 'write', 'Some text', '--backup']);
-      expect(Logger.warn).toHaveBeenCalledWith('--backup has no effect without --fix');
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Some text',
+        '--backup',
+      ]);
+      expect(Logger.warn).toHaveBeenCalledWith(
+        '--backup has no effect without --fix'
+      );
     });
 
     it('should reject unsupported format', async () => {
       await expect(
-        program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'table']),
+        program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'Hello',
+          '--format',
+          'table',
+        ])
       ).rejects.toThrow(/invalid.*Allowed choices are text, json/);
     });
 
     it('should reject unknown format values', async () => {
       await expect(
-        program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'xml']),
+        program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'Hello',
+          '--format',
+          'xml',
+        ])
       ).rejects.toThrow(/invalid.*Allowed choices are text, json/);
     });
 
     it('should accept json format', async () => {
       mockWriteCommand.improve.mockResolvedValue('{"result": "ok"}');
-      await program.parseAsync(['node', 'test', 'write', 'Hello', '--format', 'json']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello',
+        '--format',
+        'json',
+      ]);
       expect(handleError).not.toHaveBeenCalled();
       expect(mockWriteCommand.improve).toHaveBeenCalled();
     });
@@ -345,39 +569,80 @@ describe('registerWrite', () => {
       mockExistsSync.mockReturnValue(true);
       mockWriteCommand.improveFile.mockResolvedValue('Improved file text');
       await program.parseAsync(['node', 'test', 'write', 'file.txt']);
-      expect(mockWriteCommand.improveFile).toHaveBeenCalledWith('file.txt', expect.any(Object));
+      expect(mockWriteCommand.improveFile).toHaveBeenCalledWith(
+        'file.txt',
+        expect.any(Object)
+      );
       expect(Logger.output).toHaveBeenCalledWith('Improved file text');
     });
   });
 
   describe('--check mode', () => {
     it('should set exitCode 8 when text needs improvement', async () => {
-      mockWriteCommand.checkText.mockResolvedValue({ needsImprovement: true, changes: 3 });
-      await program.parseAsync(['node', 'test', 'write', 'bad text', '--check']);
-      expect(mockWriteCommand.checkText).toHaveBeenCalledWith('bad text', expect.any(Object));
+      mockWriteCommand.checkText.mockResolvedValue({
+        needsImprovement: true,
+        changes: 3,
+      });
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'bad text',
+        '--check',
+      ]);
+      expect(mockWriteCommand.checkText).toHaveBeenCalledWith(
+        'bad text',
+        expect.any(Object)
+      );
       expect(Logger.warn).toHaveBeenCalled();
       expect(process.exitCode).toBe(8);
     });
 
     it('should not set exitCode when text is clean', async () => {
-      mockWriteCommand.checkText.mockResolvedValue({ needsImprovement: false, changes: 0 });
-      await program.parseAsync(['node', 'test', 'write', 'good text', '--check']);
+      mockWriteCommand.checkText.mockResolvedValue({
+        needsImprovement: false,
+        changes: 0,
+      });
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'good text',
+        '--check',
+      ]);
       expect(Logger.success).toHaveBeenCalled();
       expect(process.exitCode).toBeUndefined();
     });
 
     it('should check file when path exists', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockWriteCommand.checkFile.mockResolvedValue({ needsImprovement: true, changes: 2 });
-      await program.parseAsync(['node', 'test', 'write', 'file.txt', '--check']);
-      expect(mockWriteCommand.checkFile).toHaveBeenCalledWith('file.txt', expect.any(Object));
+      mockWriteCommand.checkFile.mockResolvedValue({
+        needsImprovement: true,
+        changes: 2,
+      });
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'file.txt',
+        '--check',
+      ]);
+      expect(mockWriteCommand.checkFile).toHaveBeenCalledWith(
+        'file.txt',
+        expect.any(Object)
+      );
       expect(Logger.info).toHaveBeenCalled();
       expect(process.exitCode).toBe(8);
     });
 
     it('should return normally without calling process.exit()', async () => {
-      const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as never);
-      mockWriteCommand.checkText.mockResolvedValue({ needsImprovement: true, changes: 1 });
+      const exitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+      mockWriteCommand.checkText.mockResolvedValue({
+        needsImprovement: true,
+        changes: 1,
+      });
       await program.parseAsync(['node', 'test', 'write', 'text', '--check']);
       expect(exitSpy).not.toHaveBeenCalled();
       exitSpy.mockRestore();
@@ -386,35 +651,69 @@ describe('registerWrite', () => {
 
   describe('--fix mode', () => {
     it('should error when input is not a file', async () => {
-      await program.parseAsync(['node', 'test', 'write', 'not-a-file', '--fix']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'not-a-file',
+        '--fix',
+      ]);
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('--fix requires a file path') }),
+        expect.objectContaining({
+          message: expect.stringContaining('--fix requires a file path'),
+        })
       );
     });
 
     it('should fix file and report success', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockWriteCommand.autoFixFile.mockResolvedValue({ fixed: true, changes: 5, backupPath: 'file.txt.bak' });
+      mockWriteCommand.autoFixFile.mockResolvedValue({
+        fixed: true,
+        changes: 5,
+        backupPath: 'file.txt.bak',
+      });
       await program.parseAsync(['node', 'test', 'write', 'file.txt', '--fix']);
-      expect(mockWriteCommand.autoFixFile).toHaveBeenCalledWith('file.txt', expect.any(Object));
-      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('File improved'));
-      expect(Logger.info).toHaveBeenCalledWith(expect.stringContaining('Backup'));
+      expect(mockWriteCommand.autoFixFile).toHaveBeenCalledWith(
+        'file.txt',
+        expect.any(Object)
+      );
+      expect(Logger.success).toHaveBeenCalledWith(
+        expect.stringContaining('File improved')
+      );
+      expect(Logger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Backup')
+      );
     });
 
     it('should report no improvements needed', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockWriteCommand.autoFixFile.mockResolvedValue({ fixed: false, changes: 0 });
+      mockWriteCommand.autoFixFile.mockResolvedValue({
+        fixed: false,
+        changes: 0,
+      });
       await program.parseAsync(['node', 'test', 'write', 'file.txt', '--fix']);
-      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('No improvements needed'));
+      expect(Logger.success).toHaveBeenCalledWith(
+        expect.stringContaining('No improvements needed')
+      );
     });
 
     it('should pass backup option', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockWriteCommand.autoFixFile.mockResolvedValue({ fixed: true, changes: 1 });
-      await program.parseAsync(['node', 'test', 'write', 'file.txt', '--fix', '--backup']);
+      mockWriteCommand.autoFixFile.mockResolvedValue({
+        fixed: true,
+        changes: 1,
+      });
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'file.txt',
+        '--fix',
+        '--backup',
+      ]);
       expect(mockWriteCommand.autoFixFile).toHaveBeenCalledWith(
         'file.txt',
-        expect.objectContaining({ createBackup: true }),
+        expect.objectContaining({ createBackup: true })
       );
     });
   });
@@ -426,9 +725,20 @@ describe('registerWrite', () => {
         improved: 'new',
         diff: '-old\n+new',
       });
-      await program.parseAsync(['node', 'test', 'write', 'some text', '--diff']);
-      expect(mockWriteCommand.improveWithDiff).toHaveBeenCalledWith('some text', expect.any(Object));
-      expect(Logger.output).toHaveBeenCalledWith(expect.stringContaining('Original'));
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'some text',
+        '--diff',
+      ]);
+      expect(mockWriteCommand.improveWithDiff).toHaveBeenCalledWith(
+        'some text',
+        expect.any(Object)
+      );
+      expect(Logger.output).toHaveBeenCalledWith(
+        expect.stringContaining('Original')
+      );
     });
 
     it('should show diff for file input', async () => {
@@ -439,7 +749,10 @@ describe('registerWrite', () => {
         diff: '-old\n+new',
       });
       await program.parseAsync(['node', 'test', 'write', 'file.txt', '--diff']);
-      expect(mockWriteCommand.improveFileWithDiff).toHaveBeenCalledWith('file.txt', expect.any(Object));
+      expect(mockWriteCommand.improveFileWithDiff).toHaveBeenCalledWith(
+        'file.txt',
+        expect.any(Object)
+      );
     });
   });
 
@@ -465,31 +778,68 @@ describe('registerWrite', () => {
     it('should run interactive mode for text', async () => {
       mockWriteCommand.improveInteractive.mockResolvedValue('selected text');
       await program.parseAsync(['node', 'test', 'write', 'some text', '-i']);
-      expect(mockWriteCommand.improveInteractive).toHaveBeenCalledWith('some text', expect.any(Object));
+      expect(mockWriteCommand.improveInteractive).toHaveBeenCalledWith(
+        'some text',
+        expect.any(Object)
+      );
       expect(Logger.output).toHaveBeenCalledWith('selected text');
     });
 
     it('should run interactive mode for file', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockWriteCommand.improveFileInteractive.mockResolvedValue({ selected: 'improved' });
+      mockWriteCommand.improveFileInteractive.mockResolvedValue({
+        selected: 'improved',
+      });
       await program.parseAsync(['node', 'test', 'write', 'file.txt', '-i']);
-      expect(mockWriteCommand.improveFileInteractive).toHaveBeenCalledWith('file.txt', expect.any(Object));
+      expect(mockWriteCommand.improveFileInteractive).toHaveBeenCalledWith(
+        'file.txt',
+        expect.any(Object)
+      );
       expect(Logger.output).toHaveBeenCalledWith('improved');
     });
 
     it('should write to output file in interactive file mode', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockWriteCommand.improveFileInteractive.mockResolvedValue({ selected: 'improved' });
-      await program.parseAsync(['node', 'test', 'write', 'file.txt', '-i', '-o', 'out.txt']);
-      expect(mockWriteFile).toHaveBeenCalledWith('out.txt', 'improved', 'utf-8');
-      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('Saved to out.txt'));
+      mockWriteCommand.improveFileInteractive.mockResolvedValue({
+        selected: 'improved',
+      });
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'file.txt',
+        '-i',
+        '-o',
+        'out.txt',
+      ]);
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        'out.txt',
+        'improved',
+        'utf-8'
+      );
+      expect(Logger.success).toHaveBeenCalledWith(
+        expect.stringContaining('Saved to out.txt')
+      );
     });
 
     it('should write in-place in interactive file mode', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockWriteCommand.improveFileInteractive.mockResolvedValue({ selected: 'improved' });
-      await program.parseAsync(['node', 'test', 'write', 'file.txt', '-i', '--in-place']);
-      expect(mockWriteFile).toHaveBeenCalledWith('file.txt', 'improved', 'utf-8');
+      mockWriteCommand.improveFileInteractive.mockResolvedValue({
+        selected: 'improved',
+      });
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'file.txt',
+        '-i',
+        '--in-place',
+      ]);
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        'file.txt',
+        'improved',
+        'utf-8'
+      );
     });
 
     it('should reject --interactive when stdin is not a TTY', async () => {
@@ -501,8 +851,10 @@ describe('registerWrite', () => {
       await program.parseAsync(['node', 'test', 'write', 'some text', '-i']);
       expect(handleError).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: expect.stringContaining('--interactive requires an interactive terminal'),
-        }),
+          message: expect.stringContaining(
+            '--interactive requires an interactive terminal'
+          ),
+        })
       );
       expect(mockWriteCommand.improveInteractive).not.toHaveBeenCalled();
     });
@@ -511,10 +863,26 @@ describe('registerWrite', () => {
   describe('--output with text input', () => {
     it('should write result to output file when --output is specified with text input', async () => {
       mockWriteCommand.improve.mockResolvedValue('Improved text');
-      await program.parseAsync(['node', 'test', 'write', 'Hello world', '-o', '/tmp/out.txt']);
-      expect(mockWriteCommand.improve).toHaveBeenCalledWith('Hello world', expect.any(Object));
-      expect(mockWriteFile).toHaveBeenCalledWith('/tmp/out.txt', 'Improved text', 'utf-8');
-      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('Saved to /tmp/out.txt'));
+      await program.parseAsync([
+        'node',
+        'test',
+        'write',
+        'Hello world',
+        '-o',
+        '/tmp/out.txt',
+      ]);
+      expect(mockWriteCommand.improve).toHaveBeenCalledWith(
+        'Hello world',
+        expect.any(Object)
+      );
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        '/tmp/out.txt',
+        'Improved text',
+        'utf-8'
+      );
+      expect(Logger.success).toHaveBeenCalledWith(
+        expect.stringContaining('Saved to /tmp/out.txt')
+      );
     });
 
     it('should still output to stdout when --output is not specified with text input', async () => {
@@ -529,7 +897,9 @@ describe('registerWrite', () => {
     it('should call handleError on unexpected errors', async () => {
       mockWriteCommand.improve.mockRejectedValue(new Error('API error'));
       await program.parseAsync(['node', 'test', 'write', 'Hello']);
-      expect(handleError).toHaveBeenCalledWith(expect.objectContaining({ message: 'API error' }));
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'API error' })
+      );
     });
   });
 });

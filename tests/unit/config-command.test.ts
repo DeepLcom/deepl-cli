@@ -2,8 +2,6 @@
  * Tests for Config Command
  */
 
- 
-
 import { ConfigCommand } from '../../src/cli/commands/config';
 import { ConfigService } from '../../src/storage/config';
 import { createMockConfigService } from '../helpers/mock-factories';
@@ -30,7 +28,9 @@ describe('ConfigCommand', () => {
       const value = await configCommand.get('defaults.sourceLang');
 
       expect(value).toBe('es');
-      expect(mockConfigService.getValue).toHaveBeenCalledWith('defaults.sourceLang');
+      expect(mockConfigService.getValue).toHaveBeenCalledWith(
+        'defaults.sourceLang'
+      );
     });
 
     it('should return undefined for non-existent key', async () => {
@@ -52,7 +52,6 @@ describe('ConfigCommand', () => {
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-
       });
 
       const config = await configCommand.get();
@@ -66,14 +65,18 @@ describe('ConfigCommand', () => {
       (mockConfigService.get as jest.Mock).mockReturnValueOnce({
         auth: { apiKey: 'super-secret-key-123' },
         api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
-        defaults: { sourceLang: undefined, targetLangs: [], formality: 'default', preserveFormatting: true },
+        defaults: {
+          sourceLang: undefined,
+          targetLangs: [],
+          formality: 'default',
+          preserveFormatting: true,
+        },
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-
       });
 
-      const config = await configCommand.get() as Record<string, unknown>;
+      const config = (await configCommand.get()) as Record<string, unknown>;
 
       expect(JSON.stringify(config)).not.toContain('super-secret-key-123');
       const auth = config['auth'] as Record<string, unknown>;
@@ -85,19 +88,28 @@ describe('ConfigCommand', () => {
     it('should set config value', async () => {
       await configCommand.set('defaults.sourceLang', 'en');
 
-      expect(mockConfigService.set).toHaveBeenCalledWith('defaults.sourceLang', 'en');
+      expect(mockConfigService.set).toHaveBeenCalledWith(
+        'defaults.sourceLang',
+        'en'
+      );
     });
 
     it('should set array values', async () => {
       await configCommand.set('defaults.targetLangs', 'es,fr,de');
 
-      expect(mockConfigService.set).toHaveBeenCalledWith('defaults.targetLangs', ['es', 'fr', 'de']);
+      expect(mockConfigService.set).toHaveBeenCalledWith(
+        'defaults.targetLangs',
+        ['es', 'fr', 'de']
+      );
     });
 
     it('should set boolean values', async () => {
       await configCommand.set('cache.enabled', 'false');
 
-      expect(mockConfigService.set).toHaveBeenCalledWith('cache.enabled', false);
+      expect(mockConfigService.set).toHaveBeenCalledWith(
+        'cache.enabled',
+        false
+      );
     });
 
     it('should coerce "true" to boolean true for known boolean keys', async () => {
@@ -146,7 +158,10 @@ describe('ConfigCommand', () => {
 
     it('should not coerce "false" to boolean for non-boolean keys', async () => {
       await configCommand.set('auth.apiKey', 'false');
-      expect(mockConfigService.set).toHaveBeenCalledWith('auth.apiKey', 'false');
+      expect(mockConfigService.set).toHaveBeenCalledWith(
+        'auth.apiKey',
+        'false'
+      );
     });
 
     it('should set number values', async () => {
@@ -167,24 +182,36 @@ describe('ConfigCommand', () => {
 
     it('should not coerce numeric strings for non-numeric keys', async () => {
       await configCommand.set('auth.apiKey', '12345');
-      expect(mockConfigService.set).toHaveBeenCalledWith('auth.apiKey', '12345');
+      expect(mockConfigService.set).toHaveBeenCalledWith(
+        'auth.apiKey',
+        '12345'
+      );
     });
 
     it('should pass non-boolean strings through for boolean keys', async () => {
       await configCommand.set('cache.enabled', 'yes');
-      expect(mockConfigService.set).toHaveBeenCalledWith('cache.enabled', 'yes');
+      expect(mockConfigService.set).toHaveBeenCalledWith(
+        'cache.enabled',
+        'yes'
+      );
     });
 
     it('should throw error for invalid key', async () => {
-      (mockConfigService.set as jest.Mock).mockImplementationOnce(() => { throw new Error('Invalid config key'); });
+      (mockConfigService.set as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('Invalid config key');
+      });
 
-      await expect(
-        configCommand.set('invalid.key', 'value')
-      ).rejects.toThrow('Invalid config key');
+      await expect(configCommand.set('invalid.key', 'value')).rejects.toThrow(
+        'Invalid config key'
+      );
     });
 
     it('should throw error for invalid value', async () => {
-      (mockConfigService.set as jest.Mock).mockImplementationOnce(() => { throw new Error('Invalid language code "invalid" for "defaults.sourceLang". Run: deepl languages to see valid codes'); });
+      (mockConfigService.set as jest.Mock).mockImplementationOnce(() => {
+        throw new Error(
+          'Invalid language code "invalid" for "defaults.sourceLang". Run: deepl languages to see valid codes'
+        );
+      });
 
       await expect(
         configCommand.set('defaults.sourceLang', 'invalid')
@@ -206,7 +233,6 @@ describe('ConfigCommand', () => {
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-
       });
 
       const config = await configCommand.list();
@@ -229,7 +255,6 @@ describe('ConfigCommand', () => {
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-
       });
 
       const config = await configCommand.list();
@@ -250,7 +275,6 @@ describe('ConfigCommand', () => {
         cache: { enabled: true, maxSize: 1024, ttl: 2592000 },
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-
       });
 
       const config = await configCommand.list();
@@ -267,7 +291,10 @@ describe('ConfigCommand', () => {
     });
 
     it('should show (not set) for undefined value', () => {
-      const result = configCommand.formatValue('defaults.sourceLang', undefined);
+      const result = configCommand.formatValue(
+        'defaults.sourceLang',
+        undefined
+      );
       expect(result).toBe('defaults.sourceLang = (not set)');
     });
 
@@ -319,7 +346,9 @@ describe('ConfigCommand', () => {
     });
 
     it('should handle reset errors', async () => {
-      (mockConfigService.clear as jest.Mock).mockImplementationOnce(() => { throw new Error('Failed to reset'); });
+      (mockConfigService.clear as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('Failed to reset');
+      });
 
       await expect(configCommand.reset()).rejects.toThrow('Failed to reset');
     });

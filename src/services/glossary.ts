@@ -4,7 +4,12 @@
  */
 
 import { DeepLClient } from '../api/deepl-client.js';
-import { GlossaryInfo, GlossaryLanguagePair, Language, isMultilingual } from '../types/index.js';
+import {
+  GlossaryInfo,
+  GlossaryLanguagePair,
+  Language,
+  isMultilingual,
+} from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { baseLanguage } from '../data/language-registry.js';
 import { ValidationError, ConfigError } from '../utils/errors.js';
@@ -47,7 +52,7 @@ function assertNoSeparatorChars(label: string, text: string): void {
   if (found) {
     throw new ValidationError(
       `${label} cannot contain a ${found} character`,
-      'Glossary entries are stored as tab-separated rows; split the term into separate entries instead.',
+      'Glossary entries are stored as tab-separated rows; split the term into separate entries instead.'
     );
   }
 }
@@ -102,7 +107,12 @@ export class GlossaryService {
     const tsv = GlossaryService.entriesToTSV(entries);
 
     // Create glossary via API
-    const result = await this.client.createGlossary(name, sourceLang, targetLangs, tsv);
+    const result = await this.client.createGlossary(
+      name,
+      sourceLang,
+      targetLangs,
+      tsv
+    );
     this.invalidateResolutionCache();
     return result;
   }
@@ -128,7 +138,12 @@ export class GlossaryService {
       throw new ValidationError('Glossary entries cannot be empty');
     }
 
-    const result = await this.client.createGlossary(name, sourceLang, targetLangs, tsv);
+    const result = await this.client.createGlossary(
+      name,
+      sourceLang,
+      targetLangs,
+      tsv
+    );
     this.invalidateResolutionCache();
     return result;
   }
@@ -152,11 +167,13 @@ export class GlossaryService {
    */
   async getGlossaryByName(name: string): Promise<GlossaryInfo | null> {
     const glossaries = await this.getCachedGlossaryList();
-    const match = glossaries.find(g => g.name === name) ?? null;
+    const match = glossaries.find((g) => g.name === name) ?? null;
     // List normalization suppresses this warning for unrelated glossaries;
     // surface it here only for the glossary actually being operated on.
     if (match?.dictionaries.length === 0) {
-      Logger.warn('Glossary has empty dictionaries; defaulting source language to "en"');
+      Logger.warn(
+        'Glossary has empty dictionaries; defaulting source language to "en"'
+      );
     }
     return match;
   }
@@ -181,31 +198,39 @@ export class GlossaryService {
    */
   async resolveGlossaryId(
     nameOrId: string,
-    expected?: { from: Language; targets: Language[] },
+    expected?: { from: Language; targets: Language[] }
   ): Promise<string> {
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nameOrId)) {
+    if (
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        nameOrId
+      )
+    ) {
       return nameOrId;
     }
     const cacheKey = expected
-      ? `${nameOrId}|${expected.from.toLowerCase()}|${expected.targets.map(t => t.toLowerCase()).join(',')}`
+      ? `${nameOrId}|${expected.from.toLowerCase()}|${expected.targets.map((t) => t.toLowerCase()).join(',')}`
       : nameOrId;
     const cached = this.resolutionCache.get(cacheKey);
     if (cached !== undefined) {
-      Logger.verbose(`[verbose] Glossary cache hit: "${nameOrId}" -> ${cached}`);
+      Logger.verbose(
+        `[verbose] Glossary cache hit: "${nameOrId}" -> ${cached}`
+      );
       return cached;
     }
     const glossaries = await this.getCachedGlossaryList();
-    const candidates = glossaries.filter(g => !hasSuspiciousChars(g.name));
-    const matches = candidates.filter(g => g.name === nameOrId);
+    const candidates = glossaries.filter((g) => !hasSuspiciousChars(g.name));
+    const matches = candidates.filter((g) => g.name === nameOrId);
     if (matches.length > 1) {
       throw new ConfigError(
         `Multiple glossaries share the name "${sanitizeForError(nameOrId)}"`,
-        'Pass the UUID directly to disambiguate.',
+        'Pass the UUID directly to disambiguate.'
       );
     }
     const match = matches[0];
     if (!match) {
-      throw new ConfigError(`Glossary "${sanitizeForError(nameOrId)}" not found`);
+      throw new ConfigError(
+        `Glossary "${sanitizeForError(nameOrId)}" not found`
+      );
     }
 
     // An empty dictionary list says nothing about coverage, so leave the
@@ -219,16 +244,19 @@ export class GlossaryService {
       // let a `pt-br` dictionary satisfy `pt-pt`, a different pair.
       const matches = (dictionaryLang: string, requested: string): boolean => {
         const dictionary = dictionaryLang.toLowerCase();
-        return dictionary === requested.toLowerCase() || dictionary === baseLanguage(requested);
+        return (
+          dictionary === requested.toLowerCase() ||
+          dictionary === baseLanguage(requested)
+        );
       };
       const covered = (target: string): boolean =>
         match.dictionaries.some(
-          d => matches(d.source_lang, from) && matches(d.target_lang, target),
+          (d) => matches(d.source_lang, from) && matches(d.target_lang, target)
         );
-      const missing = expected.targets.filter(target => !covered(target));
+      const missing = expected.targets.filter((target) => !covered(target));
       if (missing.length > 0) {
         const allPairs = match.dictionaries.map(
-          d => `${d.source_lang.toLowerCase()}→${d.target_lang.toLowerCase()}`,
+          (d) => `${d.source_lang.toLowerCase()}→${d.target_lang.toLowerCase()}`
         );
         // A multilingual glossary can hold dozens of dictionaries; the whole
         // cross-product on one line stops being a suggestion.
@@ -238,13 +266,15 @@ export class GlossaryService {
             : allPairs.join(', ');
         throw new ConfigError(
           `Glossary "${sanitizeForError(nameOrId)}" does not support the requested language pair`,
-          `Glossary covers ${pairs}; requested ${from}→${missing.map(t => t.toLowerCase()).join(',')}.`,
+          `Glossary covers ${pairs}; requested ${from}→${missing.map((t) => t.toLowerCase()).join(',')}.`
         );
       }
     }
 
     this.resolutionCache.set(cacheKey, match.glossary_id);
-    Logger.verbose(`[verbose] Resolved glossary "${nameOrId}" -> ${match.glossary_id}`);
+    Logger.verbose(
+      `[verbose] Resolved glossary "${nameOrId}" -> ${match.glossary_id}`
+    );
     return match.glossary_id;
   }
 
@@ -264,7 +294,11 @@ export class GlossaryService {
     sourceLang: Language,
     targetLang: Language
   ): Promise<Record<string, string>> {
-    const tsv = await this.client.getGlossaryEntries(glossaryId, sourceLang, targetLang);
+    const tsv = await this.client.getGlossaryEntries(
+      glossaryId,
+      sourceLang,
+      targetLang
+    );
     return GlossaryService.tsvToEntries(tsv);
   }
 
@@ -295,7 +329,9 @@ export class GlossaryService {
     assertNoSeparatorChars('Target text', targetText);
     await this.mutateEntries(glossaryId, sourceLang, targetLang, (entries) => {
       if (entries[sourceText] !== undefined) {
-        throw new ValidationError(`Entry "${sourceText}" already exists in glossary`);
+        throw new ValidationError(
+          `Entry "${sourceText}" already exists in glossary`
+        );
       }
       entries[sourceText] = targetText;
     });
@@ -344,7 +380,9 @@ export class GlossaryService {
         throw new ConfigError(`Entry "${sourceText}" not found in glossary`);
       }
       if (Object.keys(entries).length === 1) {
-        throw new ValidationError('Cannot remove last entry from glossary. Delete the glossary instead.');
+        throw new ValidationError(
+          'Cannot remove last entry from glossary. Delete the glossary instead.'
+        );
       }
       delete entries[sourceText];
     });
@@ -356,10 +394,19 @@ export class GlossaryService {
     targetLang: Language,
     mutate: (entries: Record<string, string>) => void
   ): Promise<void> {
-    const entries = await this.getGlossaryEntries(glossaryId, sourceLang, targetLang);
+    const entries = await this.getGlossaryEntries(
+      glossaryId,
+      sourceLang,
+      targetLang
+    );
     mutate(entries);
     const tsv = GlossaryService.entriesToTSV(entries);
-    await this.client.updateGlossaryEntries(glossaryId, sourceLang, targetLang, tsv);
+    await this.client.updateGlossaryEntries(
+      glossaryId,
+      sourceLang,
+      targetLang,
+      tsv
+    );
   }
 
   /**
@@ -377,18 +424,25 @@ export class GlossaryService {
       }>;
     }
   ): Promise<void> {
-    if (options.name !== undefined && (!options.name || options.name.trim() === '')) {
+    if (
+      options.name !== undefined &&
+      (!options.name || options.name.trim() === '')
+    ) {
       throw new ValidationError('New glossary name cannot be empty');
     }
 
     if (!options.name && !options.dictionaries) {
-      throw new ValidationError('At least one of name or dictionaries must be provided');
+      throw new ValidationError(
+        'At least one of name or dictionaries must be provided'
+      );
     }
 
     if (options.name) {
       const glossary = await this.client.getGlossary(glossaryId);
       if (glossary.name === options.name) {
-        throw new ValidationError('New name must be different from current name');
+        throw new ValidationError(
+          'New name must be different from current name'
+        );
       }
     }
 
@@ -407,7 +461,7 @@ export class GlossaryService {
     }
 
     if (options.dictionaries) {
-      updates.dictionaries = options.dictionaries.map(dict => ({
+      updates.dictionaries = options.dictionaries.map((dict) => ({
         source_lang: dict.sourceLang.toUpperCase(),
         target_lang: dict.targetLang.toUpperCase(),
         entries: GlossaryService.entriesToTSV(dict.entries),
@@ -424,10 +478,7 @@ export class GlossaryService {
   /**
    * Rename a glossary (v3 API - uses PATCH endpoint)
    */
-  async renameGlossary(
-    glossaryId: string,
-    newName: string
-  ): Promise<void> {
+  async renameGlossary(glossaryId: string, newName: string): Promise<void> {
     return this.updateGlossary(glossaryId, { name: newName });
   }
 
@@ -447,7 +498,12 @@ export class GlossaryService {
     }
 
     const tsv = GlossaryService.entriesToTSV(entries);
-    await this.client.replaceGlossaryDictionary(glossaryId, sourceLang, targetLang, tsv);
+    await this.client.replaceGlossaryDictionary(
+      glossaryId,
+      sourceLang,
+      targetLang,
+      tsv
+    );
   }
 
   /**
@@ -464,26 +520,37 @@ export class GlossaryService {
 
     // Check if glossary has multiple dictionaries
     if (!isMultilingual(glossary)) {
-      throw new ValidationError('Cannot delete dictionary from single-language glossary. Delete the entire glossary instead.');
+      throw new ValidationError(
+        'Cannot delete dictionary from single-language glossary. Delete the entire glossary instead.'
+      );
     }
 
     // Check if this would be the last dictionary
     if (glossary.dictionaries.length === 1) {
-      throw new ValidationError('Cannot delete last dictionary from glossary. Delete the entire glossary instead.');
+      throw new ValidationError(
+        'Cannot delete last dictionary from glossary. Delete the entire glossary instead.'
+      );
     }
 
     // Validate the dictionary exists
     const dictionaryExists = glossary.dictionaries.some(
-      dict => dict.source_lang.toUpperCase() === sourceLang.toUpperCase() &&
-              dict.target_lang.toUpperCase() === targetLang.toUpperCase()
+      (dict) =>
+        dict.source_lang.toUpperCase() === sourceLang.toUpperCase() &&
+        dict.target_lang.toUpperCase() === targetLang.toUpperCase()
     );
 
     if (!dictionaryExists) {
-      throw new ValidationError(`Dictionary ${sourceLang}-${targetLang} not found in glossary`);
+      throw new ValidationError(
+        `Dictionary ${sourceLang}-${targetLang} not found in glossary`
+      );
     }
 
     // Delete the dictionary using v3 DELETE endpoint
-    await this.client.deleteGlossaryDictionary(glossaryId, sourceLang, targetLang);
+    await this.client.deleteGlossaryDictionary(
+      glossaryId,
+      sourceLang,
+      targetLang
+    );
   }
 
   /**
@@ -504,18 +571,22 @@ export class GlossaryService {
     // "__proto__", which on a plain object would read as an existing entry
     // (false duplicate warning) or, for __proto__, be swallowed by the
     // prototype setter instead of stored.
-    const entries: Record<string, string> = Object.create(null) as Record<string, string>;
+    const entries: Record<string, string> = Object.create(null) as Record<
+      string,
+      string
+    >;
 
     // Remove UTF-8 BOM if present (0xFEFF)
     let content = tsv;
-    if (content.charCodeAt(0) === 0xFEFF) {
+    if (content.charCodeAt(0) === 0xfeff) {
       content = content.slice(1);
     }
 
     const lines = content.split('\n');
     // Pick the dialect once for the whole file. Sniffing per line tab-splits a
     // quoted CSV field that happens to contain a tab into garbage columns.
-    const firstDataLine = lines.map(line => line.trim()).find(line => line !== '') ?? '';
+    const firstDataLine =
+      lines.map((line) => line.trim()).find((line) => line !== '') ?? '';
     const isTabSeparated = firstDataLine.includes('\t');
     let lineNumber = 0;
 
@@ -537,19 +608,25 @@ export class GlossaryService {
         parts = GlossaryService.parseCsvLine(trimmed);
       } else {
         // Line has no separator - skip it
-        Logger.warn(`Line ${lineNumber}: No tab or comma separator found, skipping`);
+        Logger.warn(
+          `Line ${lineNumber}: No tab or comma separator found, skipping`
+        );
         continue;
       }
 
       // Validate we have at least 2 columns
       if (parts.length < 2) {
-        Logger.warn(`Line ${lineNumber}: Expected 2 columns, found ${parts.length}, skipping`);
+        Logger.warn(
+          `Line ${lineNumber}: Expected 2 columns, found ${parts.length}, skipping`
+        );
         continue;
       }
 
       // Warn if more than 2 columns (extra data will be ignored)
       if (parts.length > 2) {
-        Logger.warn(`Line ${lineNumber}: Found ${parts.length} columns, expected 2. Using first 2 columns.`);
+        Logger.warn(
+          `Line ${lineNumber}: Found ${parts.length} columns, expected 2. Using first 2 columns.`
+        );
       }
 
       const source = parts[0]?.trim();
@@ -565,13 +642,17 @@ export class GlossaryService {
       // cannot represent; keeping it would corrupt every following entry.
       const separator = findSeparatorChar(source) ?? findSeparatorChar(target);
       if (separator) {
-        Logger.warn(`Line ${lineNumber}: Source or target contains a ${separator} character, skipping`);
+        Logger.warn(
+          `Line ${lineNumber}: Source or target contains a ${separator} character, skipping`
+        );
         continue;
       }
 
       // Add to entries (duplicates will overwrite earlier entries)
       if (Object.hasOwn(entries, source)) {
-        Logger.warn(`Line ${lineNumber}: Duplicate source "${source}", overwriting previous entry`);
+        Logger.warn(
+          `Line ${lineNumber}: Duplicate source "${source}", overwriting previous entry`
+        );
       }
 
       entries[source] = target;

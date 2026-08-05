@@ -24,7 +24,10 @@ describe('isStandardDeepLUrl', () => {
     ['pro with path', 'https://api.deepl.com/v2/translate'],
     ['free bare', 'https://api-free.deepl.com'],
     ['free with path', 'https://api-free.deepl.com/v3/voice'],
-    ['uppercase hostname (URL normalizes to lowercase)', 'https://API.DEEPL.COM/v2'],
+    [
+      'uppercase hostname (URL normalizes to lowercase)',
+      'https://API.DEEPL.COM/v2',
+    ],
     ['explicit port 443 (stripped by URL parser)', 'https://api.deepl.com:443'],
   ])('standard: %s → true', (_label, url) => {
     expect(isStandardDeepLUrl(url)).toBe(true);
@@ -47,7 +50,12 @@ describe('resolveEndpoint', () => {
   it.each<[string, Parameters<typeof resolveEndpoint>[0], string]>([
     [
       'P1: apiUrlOverride wins over everything',
-      { apiKey: 'k:fx', configBaseUrl: 'https://api-jp.deepl.com', usePro: true, apiUrlOverride: 'https://override.test' },
+      {
+        apiKey: 'k:fx',
+        configBaseUrl: 'https://api-jp.deepl.com',
+        usePro: true,
+        apiUrlOverride: 'https://override.test',
+      },
       'https://override.test',
     ],
     [
@@ -60,26 +68,14 @@ describe('resolveEndpoint', () => {
       { apiKey: 'k:fx', configBaseUrl: 'https://api.deepl.com', usePro: true },
       FREE,
     ],
-    [
-      'P3: :fx key → free when config is missing',
-      { apiKey: 'k:fx' },
-      FREE,
-    ],
-    [
-      'P3: :fx key beats usePro: true',
-      { apiKey: 'k:fx', usePro: true },
-      FREE,
-    ],
+    ['P3: :fx key → free when config is missing', { apiKey: 'k:fx' }, FREE],
+    ['P3: :fx key beats usePro: true', { apiKey: 'k:fx', usePro: true }, FREE],
     [
       'P4: non-:fx key + usePro false → free',
       { apiKey: 'k-pro', usePro: false },
       FREE,
     ],
-    [
-      'P5: non-:fx key defaults to pro',
-      { apiKey: 'k-pro' },
-      PRO,
-    ],
+    ['P5: non-:fx key defaults to pro', { apiKey: 'k-pro' }, PRO],
     [
       'P5: standard config URL is ignored (treated as default)',
       { apiKey: 'k-pro', configBaseUrl: 'https://api.deepl.com', usePro: true },

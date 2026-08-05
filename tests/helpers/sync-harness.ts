@@ -31,9 +31,16 @@ import { IosStringsFormatParser } from '../../src/formats/ios-strings';
 import { PropertiesFormatParser } from '../../src/formats/properties';
 import type { FormatParser } from '../../src/formats/index';
 import type { SyncLockFile, SyncLockEntry } from '../../src/sync/types';
-import { LOCK_FILE_NAME, LOCK_FILE_VERSION, LOCK_FILE_COMMENT } from '../../src/sync/types';
+import {
+  LOCK_FILE_NAME,
+  LOCK_FILE_VERSION,
+  LOCK_FILE_COMMENT,
+} from '../../src/sync/types';
 import { TEST_API_KEY } from './nock-setup';
-import { createMockConfigService, createMockCacheService } from './mock-factories';
+import {
+  createMockConfigService,
+  createMockCacheService,
+} from './mock-factories';
 
 export type SupportedParser =
   | 'json'
@@ -54,13 +61,21 @@ export interface SyncHarness {
   cleanup: () => void;
 }
 
-export function createSyncHarness(opts: { parsers?: SupportedParser[]; maxRetries?: number } = {}): SyncHarness {
-  const client = new DeepLClient(TEST_API_KEY, { maxRetries: opts.maxRetries ?? 0 });
+export function createSyncHarness(
+  opts: { parsers?: SupportedParser[]; maxRetries?: number } = {}
+): SyncHarness {
+  const client = new DeepLClient(TEST_API_KEY, {
+    maxRetries: opts.maxRetries ?? 0,
+  });
   const mockConfig = createMockConfigService({
     get: jest.fn(() => ({
       auth: {},
       api: { baseUrl: '', usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: false,
+      },
       cache: { enabled: false },
       output: { format: 'text', color: true },
       proxy: {},
@@ -68,28 +83,46 @@ export function createSyncHarness(opts: { parsers?: SupportedParser[]; maxRetrie
     getValue: jest.fn(() => false),
   });
   const mockCache = createMockCacheService();
-  const translationService = new TranslationService(client, mockConfig, mockCache);
+  const translationService = new TranslationService(
+    client,
+    mockConfig,
+    mockCache
+  );
   const glossaryService = new GlossaryService(client);
   const registry = new FormatRegistry();
   for (const name of opts.parsers ?? ['json']) {
     registry.register(parserFor(name));
   }
-  const syncService = new SyncService(translationService, glossaryService, registry);
+  const syncService = new SyncService(
+    translationService,
+    glossaryService,
+    registry
+  );
   return { client, syncService, registry, cleanup: () => client.destroy() };
 }
 
 function parserFor(name: SupportedParser): FormatParser {
   switch (name) {
-    case 'json': return new JsonFormatParser();
-    case 'yaml': return new YamlFormatParser();
-    case 'android_xml': return new AndroidXmlFormatParser();
-    case 'xliff': return new XliffFormatParser();
-    case 'xcstrings': return new XcstringsFormatParser();
-    case 'po': return new PoFormatParser();
-    case 'toml': return new TomlFormatParser();
-    case 'arb': return new ArbFormatParser();
-    case 'ios_strings': return new IosStringsFormatParser();
-    case 'properties': return new PropertiesFormatParser();
+    case 'json':
+      return new JsonFormatParser();
+    case 'yaml':
+      return new YamlFormatParser();
+    case 'android_xml':
+      return new AndroidXmlFormatParser();
+    case 'xliff':
+      return new XliffFormatParser();
+    case 'xcstrings':
+      return new XcstringsFormatParser();
+    case 'po':
+      return new PoFormatParser();
+    case 'toml':
+      return new TomlFormatParser();
+    case 'arb':
+      return new ArbFormatParser();
+    case 'ios_strings':
+      return new IosStringsFormatParser();
+    case 'properties':
+      return new PropertiesFormatParser();
   }
 }
 
@@ -121,7 +154,10 @@ export function buildSyncConfigYaml(opts: SyncConfigYamlOpts = {}): string {
   return YAML.stringify(config);
 }
 
-export function writeSyncConfig(dir: string, opts: SyncConfigYamlOpts = {}): string {
+export function writeSyncConfig(
+  dir: string,
+  opts: SyncConfigYamlOpts = {}
+): string {
   const yaml = buildSyncConfigYaml(opts);
   const filePath = path.join(dir, '.deepl-sync.yaml');
   fs.writeFileSync(filePath, yaml, 'utf-8');
@@ -150,7 +186,15 @@ export function seedLockFile(dir: string, opts: SeedLockOpts): void {
     generated_at: now,
     source_locale: sourceLocale,
     entries: opts.entries,
-    stats: { total_keys: totalKeys, total_translations: totalTranslations, last_sync: now },
+    stats: {
+      total_keys: totalKeys,
+      total_translations: totalTranslations,
+      last_sync: now,
+    },
   };
-  fs.writeFileSync(path.join(dir, LOCK_FILE_NAME), JSON.stringify(lockFile, null, 2) + '\n', 'utf-8');
+  fs.writeFileSync(
+    path.join(dir, LOCK_FILE_NAME),
+    JSON.stringify(lockFile, null, 2) + '\n',
+    'utf-8'
+  );
 }

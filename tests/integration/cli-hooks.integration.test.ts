@@ -239,7 +239,12 @@ describe('Git Hooks Service Integration', () => {
     });
 
     it('should return correct path for all hook types', () => {
-      const hookTypes: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
+      const hookTypes: HookType[] = [
+        'pre-commit',
+        'pre-push',
+        'commit-msg',
+        'post-commit',
+      ];
 
       for (const hookType of hookTypes) {
         const hookPath = hooksService.getHookPath(hookType);

@@ -74,7 +74,12 @@ describe('registerCorrect', () => {
     createDeepLClient = jest.fn();
     getConfigService = jest.fn();
     getCacheService = jest.fn();
-    registerCorrect(program, { createDeepLClient, getConfigService, getCacheService, handleError });
+    registerCorrect(program, {
+      createDeepLClient,
+      getConfigService,
+      getCacheService,
+      handleError,
+    });
   });
 
   afterEach(() => {
@@ -83,22 +88,31 @@ describe('registerCorrect', () => {
 
   describe('registration', () => {
     it('registers correct with c as an alias', () => {
-      const correctCmd = program.commands.find(c => c.name() === 'correct')!;
+      const correctCmd = program.commands.find((c) => c.name() === 'correct')!;
       expect(correctCmd).toBeDefined();
       expect(correctCmd.aliases()).toContain('c');
     });
 
     it('does not register --style or --tone', () => {
-      const correctCmd = program.commands.find(c => c.name() === 'correct')!;
-      const longFlags = correctCmd.options.map(o => o.long);
+      const correctCmd = program.commands.find((c) => c.name() === 'correct')!;
+      const longFlags = correctCmd.options.map((o) => o.long);
       expect(longFlags).not.toContain('--style');
       expect(longFlags).not.toContain('--tone');
-      expect(longFlags).toEqual(expect.arrayContaining(['--lang', '--check', '--fix', '--diff']));
+      expect(longFlags).toEqual(
+        expect.arrayContaining(['--lang', '--check', '--fix', '--diff'])
+      );
     });
 
     it('rejects --style as an unknown option', async () => {
       await expect(
-        program.parseAsync(['node', 'test', 'correct', 'Hello', '--style', 'business'])
+        program.parseAsync([
+          'node',
+          'test',
+          'correct',
+          'Hello',
+          '--style',
+          'business',
+        ])
       ).rejects.toThrow(/unknown option/i);
     });
   });
@@ -109,7 +123,11 @@ describe('registerCorrect', () => {
       await program.parseAsync(['node', 'test', 'correct', 'This is an test.']);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'This is an test.',
-        expect.objectContaining({ correct: true, style: undefined, tone: undefined }),
+        expect.objectContaining({
+          correct: true,
+          style: undefined,
+          tone: undefined,
+        })
       );
       expect(Logger.output).toHaveBeenCalledWith('This is a test.');
     });
@@ -119,64 +137,122 @@ describe('registerCorrect', () => {
       await program.parseAsync(['node', 'test', 'c', 'Hello']);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ correct: true }),
+        expect.objectContaining({ correct: true })
       );
     });
 
     it('normalizes --lang casing to the canonical code', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'correct', 'Hello', '--lang', 'EN-us']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'correct',
+        'Hello',
+        '--lang',
+        'EN-us',
+      ]);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'en-us' }),
+        expect.objectContaining({ lang: 'en-us' })
       );
     });
 
     it('accepts --to as an alias of --lang', async () => {
       mockWriteCommand.improve.mockResolvedValue('ok');
-      await program.parseAsync(['node', 'test', 'correct', 'Hello', '--to', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'correct',
+        'Hello',
+        '--to',
+        'de',
+      ]);
       expect(mockWriteCommand.improve).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ lang: 'de' }),
+        expect.objectContaining({ lang: 'de' })
       );
     });
   });
 
   describe('validation', () => {
     it('rejects an invalid language code', async () => {
-      await program.parseAsync(['node', 'test', 'correct', 'Hello', '--lang', 'invalid']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'correct',
+        'Hello',
+        '--lang',
+        'invalid',
+      ]);
       expect(handleError).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockWriteCommand.improve).not.toHaveBeenCalled();
     });
 
     it('rejects conflicting --to and --lang values', async () => {
-      await program.parseAsync(['node', 'test', 'correct', 'Hello', '--to', 'de', '--lang', 'fr']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'correct',
+        'Hello',
+        '--to',
+        'de',
+        '--lang',
+        'fr',
+      ]);
       expect(handleError).toHaveBeenCalledWith(expect.any(ValidationError));
     });
 
     it('requires a file path for --fix', async () => {
       mockExistsSync.mockReturnValue(false);
-      await program.parseAsync(['node', 'test', 'correct', 'not-a-file', '--fix']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'correct',
+        'not-a-file',
+        '--fix',
+      ]);
       expect(handleError).toHaveBeenCalledWith(expect.any(ValidationError));
     });
   });
 
   describe('--check', () => {
     it('sets exit code 8 and reports correction needed', async () => {
-      mockWriteCommand.checkText.mockResolvedValue({ needsImprovement: true, changes: 2 });
-      await program.parseAsync(['node', 'test', 'correct', 'This is an test.', '--check']);
+      mockWriteCommand.checkText.mockResolvedValue({
+        needsImprovement: true,
+        changes: 2,
+      });
+      await program.parseAsync([
+        'node',
+        'test',
+        'correct',
+        'This is an test.',
+        '--check',
+      ]);
       expect(mockWriteCommand.checkText).toHaveBeenCalledWith(
         'This is an test.',
-        expect.objectContaining({ correct: true }),
+        expect.objectContaining({ correct: true })
       );
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('needs correction'));
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('needs correction')
+      );
       expect(process.exitCode).toBe(8);
     });
 
     it('exits clean when no corrections are needed', async () => {
-      mockWriteCommand.checkText.mockResolvedValue({ needsImprovement: false, changes: 0 });
-      await program.parseAsync(['node', 'test', 'correct', 'This is a test.', '--check']);
-      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('Text looks good'));
+      mockWriteCommand.checkText.mockResolvedValue({
+        needsImprovement: false,
+        changes: 0,
+      });
+      await program.parseAsync([
+        'node',
+        'test',
+        'correct',
+        'This is a test.',
+        '--check',
+      ]);
+      expect(Logger.success).toHaveBeenCalledWith(
+        expect.stringContaining('Text looks good')
+      );
       expect(process.exitCode).toBeUndefined();
     });
   });
@@ -184,20 +260,32 @@ describe('registerCorrect', () => {
   describe('--fix', () => {
     it('reports corrected file on fix', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockWriteCommand.autoFixFile.mockResolvedValue({ fixed: true, filePath: '/tmp/f.txt', changes: 3 });
+      mockWriteCommand.autoFixFile.mockResolvedValue({
+        fixed: true,
+        filePath: '/tmp/f.txt',
+        changes: 3,
+      });
       await program.parseAsync(['node', 'test', 'correct', 'f.txt', '--fix']);
       expect(mockWriteCommand.autoFixFile).toHaveBeenCalledWith(
         'f.txt',
-        expect.objectContaining({ correct: true }),
+        expect.objectContaining({ correct: true })
       );
-      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('File corrected'));
+      expect(Logger.success).toHaveBeenCalledWith(
+        expect.stringContaining('File corrected')
+      );
     });
 
     it('reports when no corrections are needed', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockWriteCommand.autoFixFile.mockResolvedValue({ fixed: false, filePath: '/tmp/f.txt', changes: 0 });
+      mockWriteCommand.autoFixFile.mockResolvedValue({
+        fixed: false,
+        filePath: '/tmp/f.txt',
+        changes: 0,
+      });
       await program.parseAsync(['node', 'test', 'correct', 'f.txt', '--fix']);
-      expect(Logger.success).toHaveBeenCalledWith(expect.stringContaining('No corrections needed'));
+      expect(Logger.success).toHaveBeenCalledWith(
+        expect.stringContaining('No corrections needed')
+      );
     });
   });
 });

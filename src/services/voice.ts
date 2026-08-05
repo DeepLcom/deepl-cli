@@ -20,16 +20,17 @@ const MAX_TARGET_LANGS = 5;
 const DEFAULT_CHUNK_SIZE = 6400;
 const DEFAULT_CHUNK_INTERVAL = 200;
 
-const EXTENSION_CONTENT_TYPE_MAP: Record<string, VoiceSourceMediaContentType> = {
-  '.ogg': 'audio/opus;container=ogg',
-  '.opus': 'audio/opus;container=ogg',
-  '.webm': 'audio/opus;container=webm',
-  '.mka': 'audio/opus;container=matroska',
-  '.flac': 'audio/flac',
-  '.mp3': 'audio/mpeg',
-  '.pcm': 'audio/pcm;encoding=s16le;rate=16000',
-  '.raw': 'audio/pcm;encoding=s16le;rate=16000',
-};
+const EXTENSION_CONTENT_TYPE_MAP: Record<string, VoiceSourceMediaContentType> =
+  {
+    '.ogg': 'audio/opus;container=ogg',
+    '.opus': 'audio/opus;container=ogg',
+    '.webm': 'audio/opus;container=webm',
+    '.mka': 'audio/opus;container=matroska',
+    '.flac': 'audio/flac',
+    '.mp3': 'audio/mpeg',
+    '.pcm': 'audio/pcm;encoding=s16le;rate=16000',
+    '.raw': 'audio/pcm;encoding=s16le;rate=16000',
+  };
 
 export class VoiceService {
   private client: VoiceClient;
@@ -49,22 +50,23 @@ export class VoiceService {
   async translateFile(
     filePath: string,
     options: VoiceTranslateOptions,
-    callbacks?: VoiceStreamCallbacks,
+    callbacks?: VoiceStreamCallbacks
   ): Promise<VoiceSessionResult> {
     this.validateOptions(options);
 
     const resolvedPath = resolve(filePath);
-    const contentType = options.contentType ?? this.detectContentType(resolvedPath);
+    const contentType =
+      options.contentType ?? this.detectContentType(resolvedPath);
     if (!contentType) {
       throw new ValidationError(
-        `Cannot detect audio format for "${resolvedPath}". Use --content-type to specify explicitly.`,
+        `Cannot detect audio format for "${resolvedPath}". Use --content-type to specify explicitly.`
       );
     }
 
     const fileStat = await lstat(resolvedPath);
     if (fileStat.isSymbolicLink()) {
       throw new ValidationError(
-        `Symlinks are not supported for security reasons: ${resolvedPath}`,
+        `Symlinks are not supported for security reasons: ${resolvedPath}`
       );
     }
 
@@ -76,19 +78,19 @@ export class VoiceService {
       contentType,
       options,
       chunkInterval,
-      callbacks,
+      callbacks
     );
   }
 
   async translateStdin(
     options: VoiceTranslateOptions,
-    callbacks?: VoiceStreamCallbacks,
+    callbacks?: VoiceStreamCallbacks
   ): Promise<VoiceSessionResult> {
     this.validateOptions(options);
 
     if (!options.contentType) {
       throw new ValidationError(
-        'Content type is required when reading from stdin. Use --content-type to specify the audio format.',
+        'Content type is required when reading from stdin. Use --content-type to specify the audio format.'
       );
     }
 
@@ -100,7 +102,7 @@ export class VoiceService {
       options.contentType,
       options,
       chunkInterval,
-      callbacks,
+      callbacks
     );
   }
 
@@ -116,7 +118,7 @@ export class VoiceService {
 
     if (options.targetLangs.length > MAX_TARGET_LANGS) {
       throw new ValidationError(
-        `Maximum ${MAX_TARGET_LANGS} target languages allowed, got ${options.targetLangs.length}.`,
+        `Maximum ${MAX_TARGET_LANGS} target languages allowed, got ${options.targetLangs.length}.`
       );
     }
   }
@@ -126,7 +128,7 @@ export class VoiceService {
     contentType: VoiceSourceMediaContentType,
     options: VoiceTranslateOptions,
     chunkInterval: number,
-    callbacks?: VoiceStreamCallbacks,
+    callbacks?: VoiceStreamCallbacks
   ): Promise<VoiceSessionResult> {
     const session = await this.client.createSession({
       source_language: options.sourceLang,
@@ -137,7 +139,12 @@ export class VoiceService {
       glossary_id: options.glossaryId,
     });
 
-    const streamSession = new VoiceStreamSession(this.client, session, options, callbacks);
+    const streamSession = new VoiceStreamSession(
+      this.client,
+      session,
+      options,
+      callbacks
+    );
     this.activeSession = streamSession;
     try {
       return await streamSession.run(this.paceChunks(chunks, chunkInterval));
@@ -146,7 +153,10 @@ export class VoiceService {
     }
   }
 
-  private async *readFileInChunks(filePath: string, chunkSize: number): AsyncGenerator<Buffer> {
+  private async *readFileInChunks(
+    filePath: string,
+    chunkSize: number
+  ): AsyncGenerator<Buffer> {
     const stream = createReadStream(filePath, { highWaterMark: chunkSize });
     for await (const chunk of stream) {
       yield Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
@@ -187,7 +197,10 @@ export class VoiceService {
     }
   }
 
-  private async *paceChunks(chunks: AsyncGenerator<Buffer>, intervalMs: number): AsyncGenerator<Buffer> {
+  private async *paceChunks(
+    chunks: AsyncGenerator<Buffer>,
+    intervalMs: number
+  ): AsyncGenerator<Buffer> {
     for await (const chunk of chunks) {
       yield chunk;
       if (intervalMs > 0) {

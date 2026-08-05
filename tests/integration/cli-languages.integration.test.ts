@@ -69,7 +69,9 @@ describe('Languages CLI Integration', () => {
 
       // Languages command should be listed in main help
       expect(helpOutput).toContain('languages');
-      expect(helpOutput).toContain('List supported source and target languages');
+      expect(helpOutput).toContain(
+        'List supported source and target languages'
+      );
     });
 
     it('should support --source flag', () => {

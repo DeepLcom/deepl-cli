@@ -61,8 +61,14 @@ describe('sync push/pull (TMS integration)', () => {
   // ---- Case 1: push happy path ----
   it('push: sends PUT per source key with ApiKey auth, returns pushed count', async () => {
     writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
-    writeJson(tmpDir, 'locales/en.json', { greeting: 'Hello', farewell: 'Goodbye' });
-    writeJson(tmpDir, 'locales/de.json', { greeting: 'Hallo', farewell: 'Auf Wiedersehen' });
+    writeJson(tmpDir, 'locales/en.json', {
+      greeting: 'Hello',
+      farewell: 'Goodbye',
+    });
+    writeJson(tmpDir, 'locales/de.json', {
+      greeting: 'Hallo',
+      farewell: 'Auf Wiedersehen',
+    });
 
     process.env['TMS_API_KEY'] = 'env-key';
 
@@ -70,7 +76,9 @@ describe('sync push/pull (TMS integration)', () => {
     const client = createTmsClient(config.tms!);
 
     const scopes = [
-      expectTmsPush('farewell', 'de', 'Auf Wiedersehen', { auth: { apiKey: 'env-key' } }),
+      expectTmsPush('farewell', 'de', 'Auf Wiedersehen', {
+        auth: { apiKey: 'env-key' },
+      }),
       expectTmsPush('greeting', 'de', 'Hallo', { auth: { apiKey: 'env-key' } }),
     ];
 
@@ -85,8 +93,14 @@ describe('sync push/pull (TMS integration)', () => {
   // ---- Case 2: pull happy path ----
   it('pull: fetches translations, writes target file, updates lockfile with review_status=human_reviewed', async () => {
     writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
-    writeJson(tmpDir, 'locales/en.json', { greeting: 'Hello', farewell: 'Goodbye' });
-    writeJson(tmpDir, 'locales/de.json', { greeting: 'OLD', farewell: 'STALE' });
+    writeJson(tmpDir, 'locales/en.json', {
+      greeting: 'Hello',
+      farewell: 'Goodbye',
+    });
+    writeJson(tmpDir, 'locales/de.json', {
+      greeting: 'OLD',
+      farewell: 'STALE',
+    });
 
     process.env['TMS_API_KEY'] = 'env-key';
 
@@ -96,7 +110,7 @@ describe('sync push/pull (TMS integration)', () => {
     const pullScope = expectTmsPull(
       'de',
       { greeting: 'Hallo (approved)', farewell: 'Tschüss (approved)' },
-      { auth: { apiKey: 'env-key' } },
+      { auth: { apiKey: 'env-key' } }
     );
 
     const result = await pullTranslations(config, client, harness.registry);
@@ -105,18 +119,37 @@ describe('sync push/pull (TMS integration)', () => {
     expect(pullScope.isDone()).toBe(true);
 
     const targetContent = JSON.parse(
-      fs.readFileSync(path.join(tmpDir, 'locales/de.json'), 'utf-8'),
+      fs.readFileSync(path.join(tmpDir, 'locales/de.json'), 'utf-8')
     ) as Record<string, string>;
     expect(targetContent['greeting']).toBe('Hallo (approved)');
     expect(targetContent['farewell']).toBe('Tschüss (approved)');
 
     const lockContent = JSON.parse(
-      fs.readFileSync(path.join(tmpDir, LOCK_FILE_NAME), 'utf-8'),
-    ) as { entries: Record<string, Record<string, { translations: Record<string, { review_status: string; translated_at: string; status: string }> }>> };
+      fs.readFileSync(path.join(tmpDir, LOCK_FILE_NAME), 'utf-8')
+    ) as {
+      entries: Record<
+        string,
+        Record<
+          string,
+          {
+            translations: Record<
+              string,
+              { review_status: string; translated_at: string; status: string }
+            >;
+          }
+        >
+      >;
+    };
     const bucketEntries = lockContent.entries['locales/en.json']!;
-    expect(bucketEntries['greeting']!.translations['de']!.review_status).toBe('human_reviewed');
-    expect(bucketEntries['greeting']!.translations['de']!.status).toBe('translated');
-    expect(typeof bucketEntries['greeting']!.translations['de']!.translated_at).toBe('string');
+    expect(bucketEntries['greeting']!.translations['de']!.review_status).toBe(
+      'human_reviewed'
+    );
+    expect(bucketEntries['greeting']!.translations['de']!.status).toBe(
+      'translated'
+    );
+    expect(
+      typeof bucketEntries['greeting']!.translations['de']!.translated_at
+    ).toBe('string');
   });
 
   // ---- Case 3: TMS_API_KEY env var precedence over config ----
@@ -130,7 +163,9 @@ describe('sync push/pull (TMS integration)', () => {
     const config = await loadSyncConfig(tmpDir);
     const client = createTmsClient(config.tms!);
 
-    const scope = expectTmsPush('k', 'de', 'Hallo', { auth: { apiKey: 'from-env' } });
+    const scope = expectTmsPush('k', 'de', 'Hallo', {
+      auth: { apiKey: 'from-env' },
+    });
 
     await pushTranslations(config, client, harness.registry);
     expect(scope.isDone()).toBe(true);
@@ -147,7 +182,9 @@ describe('sync push/pull (TMS integration)', () => {
     const config = await loadSyncConfig(tmpDir);
     const client = createTmsClient(config.tms!);
 
-    const scope = expectTmsPush('k', 'de', 'Hallo', { auth: { token: 'the-token' } });
+    const scope = expectTmsPush('k', 'de', 'Hallo', {
+      auth: { token: 'the-token' },
+    });
 
     await pushTranslations(config, client, harness.registry);
     expect(scope.isDone()).toBe(true);
@@ -157,12 +194,14 @@ describe('sync push/pull (TMS integration)', () => {
   it('credential resolution: emits a stderr warning when api_key is sourced from .deepl-sync.yaml', async () => {
     writeSyncConfig(tmpDir, { tms: tmsConfig({ api_key: 'in-config' }) });
 
-    const warn = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const warn = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     try {
       const config = await loadSyncConfig(tmpDir);
       createTmsClient(config.tms!);
       expect(warn).toHaveBeenCalledWith(
-        expect.stringMatching(/TMS API key found in config file.*TMS_API_KEY/),
+        expect.stringMatching(/TMS API key found in config file.*TMS_API_KEY/)
       );
     } finally {
       warn.mockRestore();
@@ -180,7 +219,9 @@ describe('sync push/pull (TMS integration)', () => {
       .put(`/api/projects/${TMS_PROJECT}/keys/greeting`)
       .reply(200, {});
 
-    await expect(client.pushKey('greeting', 'de', 'Hallo')).resolves.toBeUndefined();
+    await expect(
+      client.pushKey('greeting', 'de', 'Hallo')
+    ).resolves.toBeUndefined();
     expect(scope.isDone()).toBe(true);
   });
 
@@ -211,11 +252,15 @@ describe('sync push/pull (TMS integration)', () => {
       .put(new RegExp(`/api/projects/${TMS_PROJECT}/keys/.+`))
       .reply(401, { error: 'Unauthorized' });
 
-    await expect(pushTranslations(config, client, harness.registry)).rejects.toThrow(ConfigError);
+    await expect(
+      pushTranslations(config, client, harness.registry)
+    ).rejects.toThrow(ConfigError);
     // Arm the nock scope again (the previous call consumed it) for the second assertion
     nock(TMS_BASE)
       .put(new RegExp(`/api/projects/${TMS_PROJECT}/keys/.+`))
       .reply(401, { error: 'Unauthorized' });
-    await expect(pushTranslations(config, client, harness.registry)).rejects.toThrow(/TMS authentication failed \(401/);
+    await expect(
+      pushTranslations(config, client, harness.registry)
+    ).rejects.toThrow(/TMS authentication failed \(401/);
   });
 });

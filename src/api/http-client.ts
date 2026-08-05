@@ -102,7 +102,10 @@ export interface RequestPolicy {
  * and passes it straight to `sleep()`.
  */
 export function computeBackoffWithJitter(attempt: number): number {
-  const cap = Math.min(RETRY_INITIAL_DELAY_MS * 2 ** attempt, RETRY_MAX_DELAY_MS);
+  const cap = Math.min(
+    RETRY_INITIAL_DELAY_MS * 2 ** attempt,
+    RETRY_MAX_DELAY_MS
+  );
   return Math.floor(Math.random() * cap);
 }
 
@@ -158,7 +161,9 @@ export class HttpClient {
       });
   }
 
-  private static parseProxyFromEnv(targetUrl?: string): ProxyConfig | undefined {
+  private static parseProxyFromEnv(
+    targetUrl?: string
+  ): ProxyConfig | undefined {
     if (targetUrl !== undefined && HttpClient.isProxyBypassed(targetUrl)) {
       return undefined;
     }
@@ -257,8 +262,8 @@ export class HttpClient {
       if (proxyConfig.protocol === 'http' && baseURL.startsWith('https:')) {
         Logger.warn(
           `Warning: routing HTTPS traffic to ${baseURL} via HTTP proxy ${proxyConfig.host}:${proxyConfig.port}. ` +
-          `TLS is tunneled end-to-end via CONNECT, but a malicious proxy that terminates TLS would see the Authorization header. ` +
-          `Set HTTPS_PROXY to an https:// URL if possible, or unset it if the proxy isn't required.`,
+            `TLS is tunneled end-to-end via CONNECT, but a malicious proxy that terminates TLS would see the Authorization header. ` +
+            `Set HTTPS_PROXY to an https:// URL if possible, or unset it if the proxy isn't required.`
         );
       }
       axiosConfig['proxy'] = {
@@ -275,8 +280,7 @@ export class HttpClient {
   destroy(): void {
     const httpAgent = this.client.defaults?.httpAgent as http.Agent | undefined;
     const httpsAgent = this.client.defaults?.httpsAgent as
-      | https.Agent
-      | undefined;
+      https.Agent | undefined;
     httpAgent?.destroy();
     httpsAgent?.destroy();
   }
@@ -391,8 +395,7 @@ export class HttpClient {
         );
 
         const responseTraceId = response.headers?.['x-trace-id'] as
-          | string
-          | undefined;
+          string | undefined;
         if (responseTraceId) {
           this._lastTraceId = responseTraceId;
         }
@@ -404,8 +407,7 @@ export class HttpClient {
 
         if (this.isAxiosError(error)) {
           const responseTraceId = error.response?.headers?.['x-trace-id'] as
-            | string
-            | undefined;
+            string | undefined;
           if (responseTraceId) {
             traceId = responseTraceId;
             this._lastTraceId = responseTraceId;
@@ -420,8 +422,7 @@ export class HttpClient {
             // backoff with full jitter. Jitter prevents concurrent sync
             // buckets that all 429 at the same moment from forming a
             // thundering herd on the next attempt.
-            const delay =
-              retryAfterDelay ?? computeBackoffWithJitter(attempt);
+            const delay = retryAfterDelay ?? computeBackoffWithJitter(attempt);
             Logger.verbose(
               `[verbose] HTTP ${method} ${path} retry ${attempt + 1}/${maxRetries} in ${delay}ms (status 429${retryAfterDelay !== null && retryAfterDelay !== undefined ? ', Retry-After' : ', jitter backoff'})`
             );
@@ -439,7 +440,9 @@ export class HttpClient {
           this.isReplayable(method, error)
         ) {
           const delay = computeBackoffWithJitter(attempt);
-          const status = this.isAxiosError(error) ? error.response?.status : undefined;
+          const status = this.isAxiosError(error)
+            ? error.response?.status
+            : undefined;
           Logger.verbose(
             `[verbose] HTTP ${method} ${path} retry ${attempt + 1}/${maxRetries} in ${delay}ms (${status ? `status ${status}` : 'network error'}, jitter backoff)`
           );
@@ -500,15 +503,16 @@ export class HttpClient {
     if (this.isAxiosError(error)) {
       const status = error.response?.status;
       const responseData = error.response?.data as
-        | { message?: string }
-        | undefined;
+        { message?: string } | undefined;
       // Sanitize the server-returned message before any interpolation into
       // user-facing error strings. Defense-in-depth against a malicious or
       // buggy server scribbling ANSI escape codes / control chars on the
       // user's terminal, matching the sanitization in tms-client.ts.
       // Coalesce to '' before sanitizing — some axios error shapes have no
       // `.message` field, and sanitizeForTerminal expects a string.
-      const message = sanitizeForTerminal(responseData?.message ?? error.message ?? '');
+      const message = sanitizeForTerminal(
+        responseData?.message ?? error.message ?? ''
+      );
 
       switch (status) {
         case 401:

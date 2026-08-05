@@ -27,7 +27,7 @@ let _warnedNoScope = false;
  */
 export function bucketSweepRoots(
   projectRoot: string,
-  buckets: Record<string, { include: string[] }>,
+  buckets: Record<string, { include: string[] }>
 ): string[] {
   const roots = new Set<string>();
   const rootPrefix = path.resolve(projectRoot) + path.sep;
@@ -35,13 +35,20 @@ export function bucketSweepRoots(
     for (const glob of bucket.include) {
       const specialIdx = glob.search(/[*?{[]/);
       const literal = specialIdx === -1 ? glob : glob.slice(0, specialIdx);
-      const dir = literal.endsWith('/') ? literal.slice(0, -1) : path.dirname(literal);
+      const dir = literal.endsWith('/')
+        ? literal.slice(0, -1)
+        : path.dirname(literal);
       const abs = path.resolve(projectRoot, dir);
       // Defence in depth. validateSyncConfig rejects traversing includes, but
       // this sweep deletes and re-creates files, so it must never accept a
       // root outside the project even if it is reached another way.
-      if (abs !== path.resolve(projectRoot) && !(abs + path.sep).startsWith(rootPrefix)) {
-        Logger.warn(`Ignoring stale-backup sweep root outside the project: ${abs}`);
+      if (
+        abs !== path.resolve(projectRoot) &&
+        !(abs + path.sep).startsWith(rootPrefix)
+      ) {
+        Logger.warn(
+          `Ignoring stale-backup sweep root outside the project: ${abs}`
+        );
         continue;
       }
       roots.add(abs);
@@ -67,7 +74,7 @@ export function bucketSweepRoots(
 export async function sweepStaleBackups(
   projectRoot: string,
   maxAgeMs: number,
-  buckets?: Record<string, { include: string[] }>,
+  buckets?: Record<string, { include: string[] }>
 ): Promise<void> {
   const threshold = Date.now() - maxAgeMs;
   const visited = new Set<string>();
@@ -76,7 +83,9 @@ export async function sweepStaleBackups(
     roots = bucketSweepRoots(projectRoot, buckets);
   } else {
     if (!_warnedNoScope) {
-      Logger.warn('sweepStaleBackups: no bucket config provided, falling back to full project tree sweep.');
+      Logger.warn(
+        'sweepStaleBackups: no bucket config provided, falling back to full project tree sweep.'
+      );
       _warnedNoScope = true;
     }
     roots = [projectRoot];
@@ -86,9 +95,17 @@ export async function sweepStaleBackups(
   }
 }
 
-async function sweepDir(dir: string, visited: Set<string>, threshold: number): Promise<void> {
+async function sweepDir(
+  dir: string,
+  visited: Set<string>,
+  threshold: number
+): Promise<void> {
   const real = (() => {
-    try { return fs.realpathSync(dir); } catch { return dir; }
+    try {
+      return fs.realpathSync(dir);
+    } catch {
+      return dir;
+    }
   })();
   if (visited.has(real)) return;
   visited.add(real);
@@ -142,7 +159,9 @@ async function sweepDir(dir: string, visited: Set<string>, threshold: number): P
  * route through this so the guard against non-positive values stays in one
  * place.
  */
-export function resolveBakSweepAgeMs(configuredSeconds: number | undefined): number {
+export function resolveBakSweepAgeMs(
+  configuredSeconds: number | undefined
+): number {
   if (configuredSeconds === undefined || configuredSeconds <= 0) {
     return DEFAULT_BAK_SWEEP_MAX_AGE_SECONDS * 1000;
   }

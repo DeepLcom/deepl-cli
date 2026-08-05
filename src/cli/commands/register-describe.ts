@@ -10,20 +10,26 @@ export function registerDescribe(
   program: Command,
   deps: {
     handleError: (error: unknown) => never;
-  },
+  }
 ): void {
   const { handleError } = deps;
 
   program
     .command('_describe', { hidden: true })
-    .description('Emit CLI subcommand tree and flag vocabulary (operator tooling)')
-    .option('--format <format>', `Output format (${SUPPORTED_FORMATS.join(', ')})`, 'json')
+    .description(
+      'Emit CLI subcommand tree and flag vocabulary (operator tooling)'
+    )
+    .option(
+      '--format <format>',
+      `Output format (${SUPPORTED_FORMATS.join(', ')})`,
+      'json'
+    )
     .action((opts: { format?: string }) => {
       try {
         const format = (opts.format ?? 'json').toLowerCase().trim();
         if (!SUPPORTED_FORMATS.includes(format as DescribeFormat)) {
           throw new ValidationError(
-            `Unsupported --format: "${opts.format ?? ''}". Supported: ${SUPPORTED_FORMATS.join(', ')}`,
+            `Unsupported --format: "${opts.format ?? ''}". Supported: ${SUPPORTED_FORMATS.join(', ')}`
           );
         }
         const tree = describeProgram(program);

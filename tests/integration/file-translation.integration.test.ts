@@ -27,9 +27,17 @@ describe('FileTranslation Integration', () => {
     fs.mkdirSync(configDir, { recursive: true });
 
     client = new DeepLClient(TEST_API_KEY);
-    const configService = new ConfigService(path.join(configDir, 'config.json'));
-    const cacheService = new CacheService({ dbPath: path.join(configDir, 'cache.db') });
-    const translationService = new TranslationService(client, configService, cacheService);
+    const configService = new ConfigService(
+      path.join(configDir, 'config.json')
+    );
+    const cacheService = new CacheService({
+      dbPath: path.join(configDir, 'cache.db'),
+    });
+    const translationService = new TranslationService(
+      client,
+      configService,
+      cacheService
+    );
     service = new FileTranslationService(translationService);
   });
 
@@ -57,7 +65,9 @@ describe('FileTranslation Integration', () => {
           return true;
         })
         .reply(200, {
-          translations: [{ text: 'Hola mundo', detected_source_language: 'EN' }],
+          translations: [
+            { text: 'Hola mundo', detected_source_language: 'EN' },
+          ],
         });
 
       await service.translateFile(inputPath, outputPath, { targetLang: 'es' });
@@ -74,7 +84,12 @@ describe('FileTranslation Integration', () => {
       nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
-          translations: [{ text: '# Hallo\n\nDas ist ein Test.', detected_source_language: 'EN' }],
+          translations: [
+            {
+              text: '# Hallo\n\nDas ist ein Test.',
+              detected_source_language: 'EN',
+            },
+          ],
         });
 
       await service.translateFile(inputPath, outputPath, { targetLang: 'de' });
@@ -164,9 +179,13 @@ describe('FileTranslation Integration', () => {
 
       nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body) => body.target_lang === 'DE')
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] })
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        })
         .post('/v2/translate', (body) => body.target_lang === 'FR')
-        .reply(200, { translations: [{ text: 'Bonjour', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Bonjour', detected_source_language: 'EN' }],
+        });
 
       const results = await service.translateFileToMultiple(
         inputPath,

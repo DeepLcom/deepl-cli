@@ -7,7 +7,9 @@ import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
 describe('Cache Command E2E', () => {
   const testConfig = createTestConfigDir('e2e-cache');
-  const { runCLI, runCLIAll, runCLIExpectError } = makeNodeRunCLI(testConfig.path);
+  const { runCLI, runCLIAll, runCLIExpectError } = makeNodeRunCLI(
+    testConfig.path
+  );
 
   afterAll(() => {
     testConfig.cleanup();
@@ -48,7 +50,9 @@ describe('Cache Command E2E', () => {
       toggle.runCLIAll('cache enable --max-size 100M');
 
       expect(toggle.runCLI('config get cache.enabled').trim()).toBe('true');
-      expect(toggle.runCLI('config get cache.maxSize').trim()).toBe(String(100 * 1024 * 1024));
+      expect(toggle.runCLI('config get cache.maxSize').trim()).toBe(
+        String(100 * 1024 * 1024)
+      );
     });
   });
 
@@ -56,7 +60,9 @@ describe('Cache Command E2E', () => {
     it('should prefix the non-TTY table fallback warning with WARN', () => {
       const output = runCLIAll('cache stats --format table');
 
-      expect(output).toContain('WARN  --format table is not supported in non-TTY output; falling back to plain text');
+      expect(output).toContain(
+        'WARN  --format table is not supported in non-TTY output; falling back to plain text'
+      );
     });
   });
 

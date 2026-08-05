@@ -1,5 +1,9 @@
 import * as TOML from 'smol-toml';
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  TranslatedEntry,
+} from './format.js';
 import { PendingCommentBuffer } from './pending-comment-buffer.js';
 
 // `[section]` or `[a.b.c]` — captures the path. Matches only at the start of a
@@ -111,12 +115,16 @@ export class TomlFormatParser implements FormatParser {
               if (bodyLine.includes(delimiter)) break;
             }
           }
-          const multilineKey = currentSection ? `${currentSection}.${keyPart}` : keyPart;
+          const multilineKey = currentSection
+            ? `${currentSection}.${keyPart}`
+            : keyPart;
           usedKeys.add(multilineKey);
           continue;
         }
 
-        const fullKey = currentSection ? `${currentSection}.${keyPart}` : keyPart;
+        const fullKey = currentSection
+          ? `${currentSection}.${keyPart}`
+          : keyPart;
         const stringMatch = valuePart.match(STRING_VALUE_RE);
 
         if (stringMatch) {
@@ -127,7 +135,10 @@ export class TomlFormatParser implements FormatParser {
 
           if (translation !== undefined) {
             pending.flushToOutput(out);
-            const newValue = encodeTomlString(translation.translation, useDoubleQuote);
+            const newValue = encodeTomlString(
+              translation.translation,
+              useDoubleQuote
+            );
             out.push(`${indent}${keyPart}${equals}${newValue}${trailing}`);
             usedKeys.add(fullKey);
             continue;
@@ -189,7 +200,10 @@ export class TomlFormatParser implements FormatParser {
     }
 
     // Group by section so each section is touched once.
-    const bySection = new Map<string, { leaf: string; entry: TranslatedEntry }[]>();
+    const bySection = new Map<
+      string,
+      { leaf: string; entry: TranslatedEntry }[]
+    >();
     for (const entry of newEntries) {
       const lastDot = entry.key.lastIndexOf('.');
       const section = lastDot === -1 ? '' : entry.key.slice(0, lastDot);
@@ -206,8 +220,14 @@ export class TomlFormatParser implements FormatParser {
 
     for (const [section, group] of existing) {
       const at = sectionEnd.get(section)!;
-      out.splice(at, 0, ...group.map(({ leaf, entry }) =>
-        `${leaf} = ${encodeTomlString(entry.translation, true)}`));
+      out.splice(
+        at,
+        0,
+        ...group.map(
+          ({ leaf, entry }) =>
+            `${leaf} = ${encodeTomlString(entry.translation, true)}`
+        )
+      );
     }
 
     // Sections not present in the file get appended with a header.
@@ -221,7 +241,11 @@ export class TomlFormatParser implements FormatParser {
     }
   }
 
-  private walk(obj: Record<string, unknown>, prefix: string, entries: ExtractedEntry[]): void {
+  private walk(
+    obj: Record<string, unknown>,
+    prefix: string,
+    entries: ExtractedEntry[]
+  ): void {
     for (const [prop, val] of Object.entries(obj)) {
       const key = prefix ? `${prefix}.${prop}` : prop;
       if (typeof val === 'string') {

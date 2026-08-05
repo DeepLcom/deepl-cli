@@ -210,7 +210,9 @@ describe('DeepLClient - Document Translation', () => {
           targetLang: 'es',
           // filename missing
         } as any)
-      ).rejects.toThrow('filename is required when uploading document as Buffer');
+      ).rejects.toThrow(
+        'filename is required when uploading document as Buffer'
+      );
     });
 
     it('should throw error if file is empty', async () => {

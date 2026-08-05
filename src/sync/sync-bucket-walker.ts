@@ -1,7 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import fg from 'fast-glob';
-import type { ExtractedEntry, FormatParser, FormatRegistry } from '../formats/index.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  FormatRegistry,
+} from '../formats/index.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncBucketConfig } from './types.js';
 import { resolveSyncLimits, DEFAULT_SYNC_LIMITS } from './types.js';
@@ -72,11 +76,12 @@ export function partitionEntries(all: ExtractedEntry[]): {
 export function extractTranslatable(
   parser: FormatParser,
   content: string,
-  locale?: string,
+  locale?: string
 ): ExtractedEntry[] {
-  const raw = parser.multiLocale && locale
-    ? parser.extract(content, locale)
-    : parser.extract(content);
+  const raw =
+    parser.multiLocale && locale
+      ? parser.extract(content, locale)
+      : parser.extract(content);
   return partitionEntries(raw).entries;
 }
 
@@ -93,7 +98,7 @@ export interface WalkBucketsOptions {
 export async function* walkBuckets(
   config: ResolvedSyncConfig,
   registry: FormatRegistry,
-  opts: WalkBucketsOptions = {},
+  opts: WalkBucketsOptions = {}
 ): AsyncIterable<WalkedBucketFile> {
   const limits = resolveSyncLimits(config);
 
@@ -115,7 +120,10 @@ export async function* walkBuckets(
         ? new PhpArraysFormatParser({ maxDepth: limits.max_depth })
         : registeredParser;
 
-    const ignorePatterns = [...(bucketConfig.exclude ?? []), ...(config.ignore ?? [])];
+    const ignorePatterns = [
+      ...(bucketConfig.exclude ?? []),
+      ...(config.ignore ?? []),
+    ];
     const sourceFiles = await fg(bucketConfig.include, {
       cwd: config.projectRoot,
       ignore: ignorePatterns,
@@ -124,13 +132,15 @@ export async function* walkBuckets(
     });
 
     if (sourceFiles.length === 0) {
-      Logger.warn(`Bucket "${bucket}": glob pattern matched no files (include: ${bucketConfig.include.join(', ')})`);
+      Logger.warn(
+        `Bucket "${bucket}": glob pattern matched no files (include: ${bucketConfig.include.join(', ')})`
+      );
     }
 
     if (sourceFiles.length > limits.max_source_files) {
       Logger.warn(
         `Skipping bucket "${bucket}": glob matched ${sourceFiles.length} files, exceeding sync.limits.max_source_files (${limits.max_source_files}). ` +
-        `Narrow the include pattern or raise the cap in .deepl-sync.yaml.`,
+          `Narrow the include pattern or raise the cap in .deepl-sync.yaml.`
       );
       continue;
     }
@@ -149,7 +159,7 @@ export async function* walkBuckets(
           if (stat.size > limits.max_file_bytes) {
             Logger.warn(
               `Skipping ${path.relative(config.projectRoot, sourceFile)}: ` +
-              `file size ${stat.size} bytes exceeds sync.limits.max_file_bytes (${limits.max_file_bytes}).`,
+                `file size ${stat.size} bytes exceeds sync.limits.max_file_bytes (${limits.max_file_bytes}).`
             );
             continue;
           }
@@ -172,7 +182,7 @@ export async function* walkBuckets(
       } catch (err) {
         if (err instanceof PhpArraysCapExceededError) {
           Logger.warn(
-            `Skipping ${path.relative(config.projectRoot, sourceFile)}: ${err.message}`,
+            `Skipping ${path.relative(config.projectRoot, sourceFile)}: ${err.message}`
           );
           continue;
         }
@@ -185,7 +195,7 @@ export async function* walkBuckets(
       if (rawEntries.length > limits.max_entries_per_file) {
         Logger.warn(
           `Skipping ${path.relative(config.projectRoot, sourceFile)}: ` +
-          `${rawEntries.length} entries exceeds sync.limits.max_entries_per_file (${limits.max_entries_per_file}).`,
+            `${rawEntries.length} entries exceeds sync.limits.max_entries_per_file (${limits.max_entries_per_file}).`
         );
         continue;
       }

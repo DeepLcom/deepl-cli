@@ -4,25 +4,32 @@ import { createTmCommand, type ServiceDeps } from './service-factory.js';
 
 export function registerTm(
   program: Command,
-  deps: Pick<ServiceDeps, 'createDeepLClient' | 'handleError'>,
+  deps: Pick<ServiceDeps, 'createDeepLClient' | 'handleError'>
 ): void {
   const { createDeepLClient, handleError } = deps;
 
   program
     .command('tm')
     .description('Manage translation memories')
-    .addHelpText('after', `
+    .addHelpText(
+      'after',
+      `
 Examples:
   $ deepl tm list
   $ deepl tm list --format json
 
 Pass a listed UUID or name to 'deepl translate --translation-memory' and
 'deepl sync' (via .deepl-sync.yaml translation.translation_memory).
-`)
+`
+    )
     .addCommand(
       new Command('list')
         .description('List all translation memories on the account')
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
+        .addOption(
+          new Option('--format <format>', 'Output format')
+            .choices(['text', 'json'])
+            .default('text')
+        )
         .action(async (options: { format?: string }) => {
           try {
             const tmCommand = await createTmCommand(createDeepLClient);
@@ -35,6 +42,6 @@ Pass a listed UUID or name to 'deepl translate --translation-memory' and
           } catch (error) {
             handleError(error);
           }
-        }),
+        })
     );
 }

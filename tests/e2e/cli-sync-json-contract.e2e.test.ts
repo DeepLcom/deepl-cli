@@ -5,7 +5,12 @@
  * produces a parseable file. Progress events and diagnostic logs remain on stderr.
  */
 
-import { spawn, ChildProcess, spawnSync, SpawnSyncReturns } from 'child_process';
+import {
+  spawn,
+  ChildProcess,
+  spawnSync,
+  SpawnSyncReturns,
+} from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import nock from 'nock';
@@ -40,7 +45,10 @@ describe('CLI Sync --format json stdout contract', () => {
 
       child.stderr.on('data', (data: Buffer) => {
         const msg = data.toString();
-        if (!msg.includes('ExperimentalWarning') && !msg.includes('--experimental')) {
+        if (
+          !msg.includes('ExperimentalWarning') &&
+          !msg.includes('--experimental')
+        ) {
           process.stderr.write(`[mock-server stderr] ${msg}`);
         }
       });
@@ -52,7 +60,10 @@ describe('CLI Sync --format json stdout contract', () => {
         }
       });
 
-      setTimeout(() => reject(new Error('Mock server did not start within 15s')), 15000);
+      setTimeout(
+        () => reject(new Error('Mock server did not start within 15s')),
+        15000
+      );
     });
   }
 
@@ -69,30 +80,44 @@ describe('CLI Sync --format json stdout contract', () => {
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
     };
-    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(configDir, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
   }
 
-  function writeSyncConfig(projectDir: string, locales: string[] = ['de']): void {
-    const yaml = [
-      'version: 1',
-      'source_locale: en',
-      'target_locales:',
-      ...locales.map((l) => `  - ${l}`),
-      'buckets:',
-      '  json:',
-      '    include:',
-      '      - "locales/en.json"',
-    ].join('\n') + '\n';
+  function writeSyncConfig(
+    projectDir: string,
+    locales: string[] = ['de']
+  ): void {
+    const yaml =
+      [
+        'version: 1',
+        'source_locale: en',
+        'target_locales:',
+        ...locales.map((l) => `  - ${l}`),
+        'buckets:',
+        '  json:',
+        '    include:',
+        '      - "locales/en.json"',
+      ].join('\n') + '\n';
     fs.writeFileSync(path.join(projectDir, '.deepl-sync.yaml'), yaml);
   }
 
   function writeSourceFile(projectDir: string): void {
     const dir = path.join(projectDir, 'locales');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'en.json'), JSON.stringify({
-      greeting: 'Hello',
-      farewell: 'Goodbye',
-    }, null, 2) + '\n');
+    fs.writeFileSync(
+      path.join(dir, 'en.json'),
+      JSON.stringify(
+        {
+          greeting: 'Hello',
+          farewell: 'Goodbye',
+        },
+        null,
+        2
+      ) + '\n'
+    );
   }
 
   function buildEnv(): NodeJS.ProcessEnv {
@@ -118,7 +143,7 @@ describe('CLI Sync --format json stdout contract', () => {
         cwd: testFiles.path,
         env: buildEnv(),
         timeout: 15000,
-      },
+      }
     );
     return {
       status: result.status ?? 1,
@@ -157,7 +182,9 @@ describe('CLI Sync --format json stdout contract', () => {
   function parseFinalJson(stdout: string): Record<string, unknown> {
     const trimmed = stdout.trim();
     if (trimmed.length === 0) {
-      throw new Error('stdout is empty; success JSON payload not routed to stdout');
+      throw new Error(
+        'stdout is empty; success JSON payload not routed to stdout'
+      );
     }
     const match = trimmed.match(/\{[\s\S]*\}\s*$/);
     if (!match) {

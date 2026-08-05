@@ -3,7 +3,10 @@ import type { GlossaryService } from '../../../services/glossary.js';
 import type { TranslationService } from '../../../services/translation.js';
 import { resolveTranslationMemoryId } from '../../../services/translation-memory.js';
 import type { TranslateOptions, TranslationParams } from './types.js';
-import { buildTranslationOptions as buildBaseLegacy, resolveGlossaryId } from './translate-utils.js';
+import {
+  buildTranslationOptions as buildBaseLegacy,
+  resolveGlossaryId,
+} from './translate-utils.js';
 
 /**
  * Single source of truth for the *base* TranslateOptions mapping from CLI
@@ -24,7 +27,9 @@ import { buildTranslationOptions as buildBaseLegacy, resolveGlossaryId } from '.
  *  - XML tag-handling parameters (`outlineDetection`, `splittingTags`, etc.)
  *    are text-handler-specific.
  */
-export function buildBaseTranslationOptions(options: TranslateOptions): TranslationParams {
+export function buildBaseTranslationOptions(
+  options: TranslateOptions
+): TranslationParams {
   return buildBaseLegacy(options);
 }
 
@@ -44,7 +49,7 @@ export async function applyGlossarySelection<
   base: T,
   options: TranslateOptions,
   glossaryService: GlossaryService,
-  targets?: Language[],
+  targets?: Language[]
 ): Promise<void> {
   if (!options.glossary || options.glossary.length === 0) {
     return;
@@ -123,9 +128,14 @@ export async function applySharedTmAndGlossary<
 >(
   base: T,
   options: TranslateOptions,
-  deps: SharedTmAndGlossaryDeps,
+  deps: SharedTmAndGlossaryDeps
 ): Promise<void> {
-  await applyGlossarySelection(base, options, deps.glossaryService, deps.targets);
+  await applyGlossarySelection(
+    base,
+    options,
+    deps.glossaryService,
+    deps.targets
+  );
 
   if (options.translationMemory) {
     const cache = deps.tmCache ?? new Map<string, string>();
@@ -133,7 +143,7 @@ export async function applySharedTmAndGlossary<
       deps.translationService,
       options.translationMemory,
       cache,
-      { from: options.from as Language, targets: deps.targets },
+      { from: options.from as Language, targets: deps.targets }
     );
     if (options.tmThreshold !== undefined) {
       base.translationMemoryThreshold = options.tmThreshold;

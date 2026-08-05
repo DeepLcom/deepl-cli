@@ -1,5 +1,9 @@
 import * as YAML from 'yaml';
-import type { FormatParser, ExtractedEntry, TranslatedEntry } from './format.js';
+import type {
+  FormatParser,
+  ExtractedEntry,
+  TranslatedEntry,
+} from './format.js';
 
 type StringSlot =
   | { path: string[]; value: string; parent: YAML.YAMLMap; pair: YAML.Pair }
@@ -18,7 +22,7 @@ export class YamlFormatParser implements FormatParser {
     const doc = YAML.parseDocument(content);
 
     if (doc.errors.length > 0) {
-      const messages = doc.errors.map(e => e.message).join('; ');
+      const messages = doc.errors.map((e) => e.message).join('; ');
       throw new Error(`YAML parse error: ${messages}`);
     }
 
@@ -30,7 +34,7 @@ export class YamlFormatParser implements FormatParser {
       return [{ key: '', value: doc.contents.value }];
     }
 
-    return this.collectStringSlots(doc).map(slot => ({
+    return this.collectStringSlots(doc).map((slot) => ({
       key: slot.path.join('\0'),
       value: slot.value,
     }));
@@ -86,7 +90,7 @@ export class YamlFormatParser implements FormatParser {
     }
 
     for (const [map, pairs] of mapRemovals) {
-      map.items = map.items.filter(pair => !pairs.has(pair));
+      map.items = map.items.filter((pair) => !pairs.has(pair));
     }
     for (const [seq, indices] of seqRemovals) {
       seq.items = seq.items.filter((_, i) => !indices.has(i));
@@ -141,18 +145,30 @@ export class YamlFormatParser implements FormatParser {
     const visit = (node: unknown, path: string[]): void => {
       if (YAML.isMap(node)) {
         for (const pair of node.items) {
-          const key = String(YAML.isScalar(pair.key) ? pair.key.value : pair.key);
+          const key = String(
+            YAML.isScalar(pair.key) ? pair.key.value : pair.key
+          );
           const childPath = [...path, key];
           const value = pair.value;
           recordAnchor(value);
           if (YAML.isScalar(value) && typeof value.value === 'string') {
-            slots.push({ path: childPath, value: value.value, parent: node, pair });
+            slots.push({
+              path: childPath,
+              value: value.value,
+              parent: node,
+              pair,
+            });
           } else if (YAML.isMap(value) || YAML.isSeq(value)) {
             visit(value, childPath);
           } else if (YAML.isAlias(value)) {
             const resolved = resolveAliasString(value);
             if (resolved !== undefined) {
-              slots.push({ path: childPath, value: resolved, parent: node, pair });
+              slots.push({
+                path: childPath,
+                value: resolved,
+                parent: node,
+                pair,
+              });
             }
           }
         }
@@ -162,13 +178,23 @@ export class YamlFormatParser implements FormatParser {
           const childPath = [...path, String(i)];
           recordAnchor(item);
           if (YAML.isScalar(item) && typeof item.value === 'string') {
-            slots.push({ path: childPath, value: item.value, parent: node, index: i });
+            slots.push({
+              path: childPath,
+              value: item.value,
+              parent: node,
+              index: i,
+            });
           } else if (YAML.isMap(item) || YAML.isSeq(item)) {
             visit(item, childPath);
           } else if (YAML.isAlias(item)) {
             const resolved = resolveAliasString(item);
             if (resolved !== undefined) {
-              slots.push({ path: childPath, value: resolved, parent: node, index: i });
+              slots.push({
+                path: childPath,
+                value: resolved,
+                parent: node,
+                index: i,
+              });
             }
           }
         }

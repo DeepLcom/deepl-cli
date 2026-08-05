@@ -1,4 +1,7 @@
-import { buildBaseTranslationOptions, applySharedTmAndGlossary } from '../../src/cli/commands/translate/translation-options-factory';
+import {
+  buildBaseTranslationOptions,
+  applySharedTmAndGlossary,
+} from '../../src/cli/commands/translate/translation-options-factory';
 import type { TranslateOptions } from '../../src/cli/commands/translate/types';
 import type { GlossaryService } from '../../src/services/glossary';
 import type { TranslationService } from '../../src/services/translation';
@@ -17,37 +20,58 @@ describe('translation-options-factory', () => {
     });
 
     it('maps formality', () => {
-      const result = buildBaseTranslationOptions({ to: 'de', formality: 'more' });
+      const result = buildBaseTranslationOptions({
+        to: 'de',
+        formality: 'more',
+      });
       expect(result.formality).toBe('more');
     });
 
     it('maps glossary into options.glossary but does NOT set glossaryId (resolution is async)', () => {
-      const result = buildBaseTranslationOptions({ to: 'de', glossary: ['my-glossary'] });
+      const result = buildBaseTranslationOptions({
+        to: 'de',
+        glossary: ['my-glossary'],
+      });
       expect(result.glossaryId).toBeUndefined();
     });
 
     it('maps modelType', () => {
-      const result = buildBaseTranslationOptions({ to: 'de', modelType: 'quality_optimized' });
+      const result = buildBaseTranslationOptions({
+        to: 'de',
+        modelType: 'quality_optimized',
+      });
       expect(result.modelType).toBe('quality_optimized');
     });
 
     it('maps preserveFormatting=true', () => {
-      const result = buildBaseTranslationOptions({ to: 'de', preserveFormatting: true });
+      const result = buildBaseTranslationOptions({
+        to: 'de',
+        preserveFormatting: true,
+      });
       expect(result.preserveFormatting).toBe(true);
     });
 
     it('maps preserveFormatting=false', () => {
-      const result = buildBaseTranslationOptions({ to: 'de', preserveFormatting: false });
+      const result = buildBaseTranslationOptions({
+        to: 'de',
+        preserveFormatting: false,
+      });
       expect(result.preserveFormatting).toBe(false);
     });
 
     it('maps context string', () => {
-      const result = buildBaseTranslationOptions({ to: 'de', context: 'product ui' });
+      const result = buildBaseTranslationOptions({
+        to: 'de',
+        context: 'product ui',
+      });
       expect(result.context).toBe('product ui');
     });
 
     it('maps showBilledCharacters', () => {
-      const result = buildBaseTranslationOptions({ to: 'de', showBilledCharacters: true });
+      const result = buildBaseTranslationOptions({
+        to: 'de',
+        showBilledCharacters: true,
+      });
       expect(result.showBilledCharacters).toBe(true);
     });
 
@@ -57,7 +81,13 @@ describe('translation-options-factory', () => {
     });
 
     it('produces identical output for the same inputs across invocations (stability)', () => {
-      const opts: TranslateOptions = { to: 'de', from: 'en', formality: 'more', modelType: 'quality_optimized', preserveFormatting: true };
+      const opts: TranslateOptions = {
+        to: 'de',
+        from: 'en',
+        formality: 'more',
+        modelType: 'quality_optimized',
+        preserveFormatting: true,
+      };
       const a = buildBaseTranslationOptions(opts);
       const b = buildBaseTranslationOptions(opts);
       expect(a).toEqual(b);
@@ -74,7 +104,13 @@ describe('translation-options-factory', () => {
       } as unknown as jest.Mocked<GlossaryService>;
       translationSvc = {
         listTranslationMemories: jest.fn().mockResolvedValue([
-          { translation_memory_id: 'tm-uuid-1', name: 'my-tm', source_language: 'en', target_languages: ['de'], ready: true },
+          {
+            translation_memory_id: 'tm-uuid-1',
+            name: 'my-tm',
+            source_language: 'en',
+            target_languages: ['de'],
+            ready: true,
+          },
         ]),
       } as unknown as jest.Mocked<TranslationService>;
     });
@@ -82,102 +118,158 @@ describe('translation-options-factory', () => {
     it('resolves glossaryId when options.glossary is set', async () => {
       glossarySvc.resolveGlossaryId.mockResolvedValue('glos-123');
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', glossary: ['my-glossary'] }, {
-        glossaryService: glossarySvc,
-        translationService: translationSvc,
-        targets: ['de'],
-      });
+      await applySharedTmAndGlossary(
+        base,
+        { to: 'de', glossary: ['my-glossary'] },
+        {
+          glossaryService: glossarySvc,
+          translationService: translationSvc,
+          targets: ['de'],
+        }
+      );
       expect(base['glossaryId']).toBe('glos-123');
       // No `from` in these options, so there is no pair to preflight against.
-      expect(glossarySvc.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', undefined);
+      expect(glossarySvc.resolveGlossaryId).toHaveBeenCalledWith(
+        'my-glossary',
+        undefined
+      );
     });
 
     it('passes the requested language pair when from and targets are known', async () => {
       glossarySvc.resolveGlossaryId.mockResolvedValue('glos-123');
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de,fr', from: 'en', glossary: ['my-glossary'] }, {
-        glossaryService: glossarySvc,
-        translationService: translationSvc,
-        targets: ['de', 'fr'],
-      });
-      expect(glossarySvc.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
-        from: 'en',
-        targets: ['de', 'fr'],
-      });
+      await applySharedTmAndGlossary(
+        base,
+        { to: 'de,fr', from: 'en', glossary: ['my-glossary'] },
+        {
+          glossaryService: glossarySvc,
+          translationService: translationSvc,
+          targets: ['de', 'fr'],
+        }
+      );
+      expect(glossarySvc.resolveGlossaryId).toHaveBeenCalledWith(
+        'my-glossary',
+        {
+          from: 'en',
+          targets: ['de', 'fr'],
+        }
+      );
     });
 
     it('skips glossary resolution when options.glossary is absent', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de' }, {
-        glossaryService: glossarySvc,
-        translationService: translationSvc,
-        targets: ['de'],
-      });
+      await applySharedTmAndGlossary(
+        base,
+        { to: 'de' },
+        {
+          glossaryService: glossarySvc,
+          translationService: translationSvc,
+          targets: ['de'],
+        }
+      );
       expect(base['glossaryId']).toBeUndefined();
       expect(glossarySvc.resolveGlossaryId).not.toHaveBeenCalled();
     });
 
     it('resolves TM id and sets threshold when options.translationMemory is set', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm', tmThreshold: 80 }, {
-        glossaryService: glossarySvc,
-        translationService: translationSvc,
-        targets: ['de'],
-      });
+      await applySharedTmAndGlossary(
+        base,
+        { to: 'de', from: 'en', translationMemory: 'my-tm', tmThreshold: 80 },
+        {
+          glossaryService: glossarySvc,
+          translationService: translationSvc,
+          targets: ['de'],
+        }
+      );
       expect(base['translationMemoryId']).toBe('tm-uuid-1');
       expect(base['translationMemoryThreshold']).toBe(80);
     });
 
     it('defaults modelType to quality_optimized when TM is set and modelType was absent', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm' }, {
-        glossaryService: glossarySvc,
-        translationService: translationSvc,
-        targets: ['de'],
-      });
+      await applySharedTmAndGlossary(
+        base,
+        { to: 'de', from: 'en', translationMemory: 'my-tm' },
+        {
+          glossaryService: glossarySvc,
+          translationService: translationSvc,
+          targets: ['de'],
+        }
+      );
       expect(base['modelType']).toBe('quality_optimized');
     });
 
     it('preserves an already-set modelType when TM is also set', async () => {
-      const base: Record<string, unknown> = { targetLang: 'de', modelType: 'quality_optimized' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm', modelType: 'quality_optimized' }, {
-        glossaryService: glossarySvc,
-        translationService: translationSvc,
-        targets: ['de'],
-      });
+      const base: Record<string, unknown> = {
+        targetLang: 'de',
+        modelType: 'quality_optimized',
+      };
+      await applySharedTmAndGlossary(
+        base,
+        {
+          to: 'de',
+          from: 'en',
+          translationMemory: 'my-tm',
+          modelType: 'quality_optimized',
+        },
+        {
+          glossaryService: glossarySvc,
+          translationService: translationSvc,
+          targets: ['de'],
+        }
+      );
       expect(base['modelType']).toBe('quality_optimized');
     });
 
     it('omits translationMemoryThreshold when tmThreshold is undefined', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'my-tm' }, {
-        glossaryService: glossarySvc,
-        translationService: translationSvc,
-        targets: ['de'],
-      });
+      await applySharedTmAndGlossary(
+        base,
+        { to: 'de', from: 'en', translationMemory: 'my-tm' },
+        {
+          glossaryService: glossarySvc,
+          translationService: translationSvc,
+          targets: ['de'],
+        }
+      );
       expect(base['translationMemoryThreshold']).toBeUndefined();
     });
 
     it('resolves TM for a multi-target list of languages', async () => {
       translationSvc.listTranslationMemories = jest.fn().mockResolvedValue([
-        { translation_memory_id: 'tm-multi', name: 'multi-tm', source_language: 'en', target_languages: ['de'], ready: true },
+        {
+          translation_memory_id: 'tm-multi',
+          name: 'multi-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+          ready: true,
+        },
       ]) as never;
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de', from: 'en', translationMemory: 'multi-tm' }, {
-        glossaryService: glossarySvc,
-        translationService: translationSvc,
-        targets: ['de'], // single-pair TMs for each target — here one target matches
-      });
+      await applySharedTmAndGlossary(
+        base,
+        { to: 'de', from: 'en', translationMemory: 'multi-tm' },
+        {
+          glossaryService: glossarySvc,
+          translationService: translationSvc,
+          targets: ['de'], // single-pair TMs for each target — here one target matches
+        }
+      );
       expect(base['translationMemoryId']).toBe('tm-multi');
     });
 
     it('skips TM block when options.translationMemory is absent', async () => {
       const base: Record<string, unknown> = { targetLang: 'de' };
-      await applySharedTmAndGlossary(base, { to: 'de' }, {
-        glossaryService: glossarySvc,
-        translationService: translationSvc,
-        targets: ['de'],
-      });
+      await applySharedTmAndGlossary(
+        base,
+        { to: 'de' },
+        {
+          glossaryService: glossarySvc,
+          translationService: translationSvc,
+          targets: ['de'],
+        }
+      );
       expect(base['translationMemoryId']).toBeUndefined();
       expect(base['translationMemoryThreshold']).toBeUndefined();
     });
@@ -236,7 +328,13 @@ describe('translation-options-factory', () => {
       } as unknown as jest.Mocked<GlossaryService>;
       const translationSvc = {
         listTranslationMemories: jest.fn().mockResolvedValue([
-          { translation_memory_id: 'tm-1', name: 'my-tm', source_language: 'en', target_languages: ['de'], ready: true },
+          {
+            translation_memory_id: 'tm-1',
+            name: 'my-tm',
+            source_language: 'en',
+            target_languages: ['de'],
+            ready: true,
+          },
         ]),
       } as unknown as jest.Mocked<TranslationService>;
 

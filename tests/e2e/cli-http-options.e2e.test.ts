@@ -37,7 +37,10 @@ describe('CLI HTTP options E2E', () => {
       });
 
       child.on('error', reject);
-      setTimeout(() => reject(new Error('Stall server did not start within 15s')), 15000);
+      setTimeout(
+        () => reject(new Error('Stall server did not start within 15s')),
+        15000
+      );
     });
   }
 
@@ -61,7 +64,7 @@ describe('CLI HTTP options E2E', () => {
   it('exits 5 (network error) on a client-side timeout instead of 6', () => {
     const result = runner.runCLIExpectError(
       `--timeout 500 translate "Hello" --to es --api-url ${baseUrl}`,
-      { timeout: 30000 },
+      { timeout: 30000 }
     );
 
     expect(result.status).toBe(5);
@@ -73,7 +76,7 @@ describe('CLI HTTP options E2E', () => {
 
     runner.runCLIExpectError(
       `--timeout 500 translate "Bonjour" --to es --api-url ${baseUrl}`,
-      { timeout: 30000 },
+      { timeout: 30000 }
     );
 
     expect(requestCount() - before).toBe(1);
@@ -83,7 +86,7 @@ describe('CLI HTTP options E2E', () => {
     const start = Date.now();
     const result = runner.runCLIExpectError(
       `--timeout 500 --max-retries 0 translate "Guten Tag" --to es --api-url ${baseUrl}`,
-      { timeout: 30000 },
+      { timeout: 30000 }
     );
     const elapsed = Date.now() - start;
 
@@ -92,14 +95,18 @@ describe('CLI HTTP options E2E', () => {
   });
 
   it('rejects a non-numeric --timeout with exit 6', () => {
-    const result = runner.runCLIExpectError('--timeout abc translate "Hello" --to es');
+    const result = runner.runCLIExpectError(
+      '--timeout abc translate "Hello" --to es'
+    );
 
     expect(result.status).toBe(6);
     expect(result.output).toMatch(/--timeout/);
   });
 
   it('rejects a negative --max-retries with exit 6', () => {
-    const result = runner.runCLIExpectError('--max-retries -1 translate "Hello" --to es');
+    const result = runner.runCLIExpectError(
+      '--max-retries -1 translate "Hello" --to es'
+    );
 
     expect(result.status).toBe(6);
     expect(result.output).toMatch(/--max-retries/);

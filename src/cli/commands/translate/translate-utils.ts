@@ -14,16 +14,32 @@ import type { GlossaryService } from '../../../services/glossary.js';
 import type { TranslateOptions, TranslationParams } from './types.js';
 
 export const VALID_LANGUAGES: ReadonlySet<string> = getAllLanguageCodes();
-export const EXTENDED_ONLY_LANGUAGES: ReadonlySet<string> = getExtendedLanguageCodes();
+export const EXTENDED_ONLY_LANGUAGES: ReadonlySet<string> =
+  getExtendedLanguageCodes();
 
-export const TEXT_BASED_EXTENSIONS = ['.txt', '.md', '.html', '.htm', '.srt', '.xlf', '.xliff', '.json', '.yaml', '.yml'];
+export const TEXT_BASED_EXTENSIONS = [
+  '.txt',
+  '.md',
+  '.html',
+  '.htm',
+  '.srt',
+  '.xlf',
+  '.xliff',
+  '.json',
+  '.yaml',
+  '.yml',
+];
 export const STRUCTURED_EXTENSIONS = ['.json', '.yaml', '.yml'];
 export const SAFE_TEXT_SIZE_LIMIT = 100 * 1024; // 100 KiB (safe threshold, API limit is 128 KiB)
 
 export const MAX_CUSTOM_INSTRUCTIONS = 10;
 export const MAX_CUSTOM_INSTRUCTION_CHARS = 300;
 
-export function warnIgnoredOptions(mode: string, options: TranslateOptions, supportedKeys: Set<string>): void {
+export function warnIgnoredOptions(
+  mode: string,
+  options: TranslateOptions,
+  supportedKeys: Set<string>
+): void {
   const optionLabels: Record<string, string> = {
     splitSentences: '--split-sentences',
     tagHandling: '--tag-handling',
@@ -49,13 +65,19 @@ export function warnIgnoredOptions(mode: string, options: TranslateOptions, supp
   for (const [key, flag] of Object.entries(optionLabels)) {
     if (supportedKeys.has(key)) continue;
     const val = options[key as keyof TranslateOptions];
-    if (val !== undefined && val !== false && !(Array.isArray(val) && val.length === 0)) {
+    if (
+      val !== undefined &&
+      val !== false &&
+      !(Array.isArray(val) && val.length === 0)
+    ) {
       ignored.push(flag);
     }
   }
 
   if (ignored.length > 0) {
-    Logger.warn(`Warning: ${mode} mode does not support ${ignored.join(', ')}; these options will be ignored.`);
+    Logger.warn(
+      `Warning: ${mode} mode does not support ${ignored.join(', ')}; these options will be ignored.`
+    );
   }
 }
 
@@ -84,7 +106,10 @@ export function resetDeferredLanguageWarnings(): void {
  * `role` names the flag in the rejection, since `--from` and `--to` are rejected
  * for the same reasons and a user needs to know which one to fix.
  */
-function validateLanguageCode(langCode: string, role: 'target' | 'source'): void {
+function validateLanguageCode(
+  langCode: string,
+  role: 'target' | 'source'
+): void {
   if (VALID_LANGUAGES.has(langCode)) return;
 
   if (looksLikeLanguageTag(langCode)) {
@@ -140,33 +165,42 @@ export interface TranslationLanguageConstraints extends ExtendedLanguageConstrai
  */
 export function validateTranslationLanguages(
   targets: string[],
-  options: TranslationLanguageConstraints,
+  options: TranslationLanguageConstraints
 ): void {
   validateSourceLanguage(options.from);
   validateLanguageCodes(targets);
   validateExtendedLanguageConstraints(targets.join(','), options);
 }
 
-export function validateExtendedLanguageConstraints(targetLang: string, options: ExtendedLanguageConstraints): void {
+export function validateExtendedLanguageConstraints(
+  targetLang: string,
+  options: ExtendedLanguageConstraints
+): void {
   const langs = targetLang.includes(',')
-    ? targetLang.split(',').map(l => l.trim())
+    ? targetLang.split(',').map((l) => l.trim())
     : [targetLang];
 
-  const extendedLangs = langs.filter(l => EXTENDED_ONLY_LANGUAGES.has(l));
+  const extendedLangs = langs.filter((l) => EXTENDED_ONLY_LANGUAGES.has(l));
   if (extendedLangs.length === 0) return;
 
   const langList = extendedLangs.join(', ');
 
   if (options.modelType === 'latency_optimized') {
-    throw new ValidationError(`Language(s) ${langList} only support quality_optimized model type, not latency_optimized`);
+    throw new ValidationError(
+      `Language(s) ${langList} only support quality_optimized model type, not latency_optimized`
+    );
   }
 
   if (options.formality && options.formality !== 'default') {
-    throw new ValidationError(`Language(s) ${langList} do not support formality settings`);
+    throw new ValidationError(
+      `Language(s) ${langList} do not support formality settings`
+    );
   }
 
   if (hasGlossarySelection(options)) {
-    throw new ValidationError(`Language(s) ${langList} do not support glossaries`);
+    throw new ValidationError(
+      `Language(s) ${langList} do not support glossaries`
+    );
   }
 }
 
@@ -179,11 +213,15 @@ export function validateXmlTags(tags: string[], paramName: string): void {
     }
 
     if (tag.toLowerCase().startsWith('xml')) {
-      throw new ValidationError(`${paramName}: Tag name "${tag}" cannot start with "xml" (reserved)`);
+      throw new ValidationError(
+        `${paramName}: Tag name "${tag}" cannot start with "xml" (reserved)`
+      );
     }
 
     if (!xmlNamePattern.test(tag)) {
-      throw new ValidationError(`${paramName}: Invalid XML tag name "${tag}". Tags must start with a letter or underscore and contain only letters, digits, hyphens, underscores, or periods.`);
+      throw new ValidationError(
+        `${paramName}: Invalid XML tag name "${tag}". Tags must start with a letter or underscore and contain only letters, digits, hyphens, underscores, or periods.`
+      );
     }
   }
 }
@@ -194,19 +232,26 @@ export function validateXmlTags(tags: string[], paramName: string): void {
  * dropped the flag would send v2 to a caller who asked for v1.
  */
 export function validateTagHandlingVersion(
-  options: TranslateOptions,
+  options: TranslateOptions
 ): TranslationParams['tagHandlingVersion'] {
   if (!options.tagHandlingVersion) return undefined;
   if (!options.tagHandling) {
-    throw new ValidationError('--tag-handling-version requires --tag-handling to be set (xml or html)');
+    throw new ValidationError(
+      '--tag-handling-version requires --tag-handling to be set (xml or html)'
+    );
   }
-  if (options.tagHandlingVersion !== 'v1' && options.tagHandlingVersion !== 'v2') {
+  if (
+    options.tagHandlingVersion !== 'v1' &&
+    options.tagHandlingVersion !== 'v2'
+  ) {
     throw new ValidationError('--tag-handling-version must be "v1" or "v2"');
   }
   return options.tagHandlingVersion;
 }
 
-export function buildTranslationOptions(options: TranslateOptions): TranslationParams {
+export function buildTranslationOptions(
+  options: TranslateOptions
+): TranslationParams {
   const result: TranslationParams = {
     targetLang: options.to as Language,
   };
@@ -214,12 +259,18 @@ export function buildTranslationOptions(options: TranslateOptions): TranslationP
   if (options.from) result.sourceLang = options.from as Language;
   if (options.formality) result.formality = options.formality as Formality;
   if (options.context) result.context = options.context;
-  if (options.splitSentences) result.splitSentences = options.splitSentences as TranslationParams['splitSentences'];
-  if (options.tagHandling) result.tagHandling = options.tagHandling as TranslationParams['tagHandling'];
+  if (options.splitSentences)
+    result.splitSentences =
+      options.splitSentences as TranslationParams['splitSentences'];
+  if (options.tagHandling)
+    result.tagHandling =
+      options.tagHandling as TranslationParams['tagHandling'];
   const tagHandlingVersion = validateTagHandlingVersion(options);
   if (tagHandlingVersion) result.tagHandlingVersion = tagHandlingVersion;
-  if (options.modelType) result.modelType = options.modelType as TranslationParams['modelType'];
-  if (options.preserveFormatting !== undefined) result.preserveFormatting = options.preserveFormatting;
+  if (options.modelType)
+    result.modelType = options.modelType as TranslationParams['modelType'];
+  if (options.preserveFormatting !== undefined)
+    result.preserveFormatting = options.preserveFormatting;
   if (options.showBilledCharacters) result.showBilledCharacters = true;
 
   return result;
@@ -228,12 +279,16 @@ export function buildTranslationOptions(options: TranslateOptions): TranslationP
 export async function resolveGlossaryId(
   glossaryService: GlossaryService,
   nameOrId: string,
-  expected?: { from: Language; targets: Language[] },
+  expected?: { from: Language; targets: Language[] }
 ): Promise<string> {
   return glossaryService.resolveGlossaryId(nameOrId, expected);
 }
 
-export function isFilePath(input: string, cachedStats: fs.Stats | null | undefined, fileTranslationService: FileTranslationService): boolean {
+export function isFilePath(
+  input: string,
+  cachedStats: fs.Stats | null | undefined,
+  fileTranslationService: FileTranslationService
+): boolean {
   if (cachedStats?.isFile()) {
     return true;
   }
@@ -246,9 +301,8 @@ export function isFilePath(input: string, cachedStats: fs.Stats | null | undefin
     return false;
   }
 
-  const hasPathSep = input.includes(path.sep) ||
-                     input.includes('/') ||
-                     input.includes('\\');
+  const hasPathSep =
+    input.includes(path.sep) || input.includes('/') || input.includes('\\');
 
   return hasPathSep && fileTranslationService.isSupportedFile(input);
 }

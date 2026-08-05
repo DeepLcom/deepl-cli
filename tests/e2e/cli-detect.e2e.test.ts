@@ -43,7 +43,9 @@ describe('Detect Command E2E', () => {
 
   describe('detect without API key', () => {
     it('should require API key', () => {
-      const result = runCLIExpectError('detect "Bonjour le monde"', { apiKey: '' });
+      const result = runCLIExpectError('detect "Bonjour le monde"', {
+        apiKey: '',
+      });
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toMatch(/api key/i);
@@ -52,7 +54,9 @@ describe('Detect Command E2E', () => {
 
   describe('detect with invalid API key', () => {
     it('should fail with authentication error', () => {
-      const result = runCLIExpectError('detect "Hallo Welt"', { apiKey: 'invalid-key-123:fx' });
+      const result = runCLIExpectError('detect "Hallo Welt"', {
+        apiKey: 'invalid-key-123:fx',
+      });
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toMatch(/error|authentication|invalid|api/i);

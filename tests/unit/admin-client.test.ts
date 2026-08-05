@@ -45,14 +45,12 @@ describe('AdminClient', () => {
     });
 
     it('should handle response without a key field', async () => {
-      nock(baseUrl)
-        .post('/v2/admin/developer-keys')
-        .reply(200, {
-          key_id: 'existing-key-id',
-          label: 'Some Key',
-          creation_time: '2024-06-01T12:00:00Z',
-          is_deactivated: false,
-        });
+      nock(baseUrl).post('/v2/admin/developer-keys').reply(200, {
+        key_id: 'existing-key-id',
+        label: 'Some Key',
+        creation_time: '2024-06-01T12:00:00Z',
+        is_deactivated: false,
+      });
 
       const result = await client.createApiKey('Some Key');
       expect(result.key).toBeUndefined();
@@ -63,7 +61,10 @@ describe('AdminClient', () => {
   describe('setApiKeyLimit', () => {
     it('should send characters-only limit when STT is not specified', async () => {
       const scope = nock(baseUrl)
-        .put('/v2/admin/developer-keys/limits', { key_id: 'key-1', characters: 1000000 })
+        .put('/v2/admin/developer-keys/limits', {
+          key_id: 'key-1',
+          characters: 1000000,
+        })
         .reply(200);
 
       await client.setApiKeyLimit('key-1', 1000000);
@@ -126,7 +127,10 @@ describe('AdminClient', () => {
             label: 'Voice Key',
             creation_time: '2024-01-01T00:00:00Z',
             is_deactivated: false,
-            usage_limits: { characters: null, speech_to_text_milliseconds: 7200000 },
+            usage_limits: {
+              characters: null,
+              speech_to_text_milliseconds: 7200000,
+            },
           },
         ]);
 

@@ -26,12 +26,18 @@ describe('TmsClient', () => {
     await client.pushKey('greeting', 'de', 'Hallo');
     expect(mockFetch).toHaveBeenCalledWith(
       'https://tms.example.com/api/projects/proj-123/keys/greeting',
-      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ locale: 'de', value: 'Hallo' }) }),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ locale: 'de', value: 'Hallo' }),
+      })
     );
   });
 
   it('should send GET and parse JSON for pullKeys', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: 'Hallo' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: 'Hallo' }),
+    });
     const result = await client.pullKeys('de');
     expect(result).toEqual({ greeting: 'Hallo' });
   });
@@ -39,40 +45,73 @@ describe('TmsClient', () => {
   it('should use ApiKey auth header', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await client.pushKey('k', 'de', 'v');
-    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<string, string>;
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<
+      string,
+      string
+    >;
     expect(headers?.['Authorization']).toBe('ApiKey test-key');
   });
 
   it('should use Bearer auth when token configured', async () => {
-    const tokenClient = new TmsClient({ serverUrl: 'https://s.com', projectId: 'p', token: 'tok' });
+    const tokenClient = new TmsClient({
+      serverUrl: 'https://s.com',
+      projectId: 'p',
+      token: 'tok',
+    });
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await tokenClient.pushKey('k', 'de', 'v');
-    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<string, string>;
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<
+      string,
+      string
+    >;
     expect(headers?.['Authorization']).toBe('Bearer tok');
   });
 
   it('should throw ConfigError with remediation hint on 401', async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 401, statusText: 'Unauthorized' });
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(ConfigError);
-    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(/TMS authentication failed \(401/);
+    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(
+      /TMS authentication failed \(401/
+    );
   });
 
   it('should throw ConfigError with remediation hint on 403', async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 403, statusText: 'Forbidden' });
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+    });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(ConfigError);
-    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(/TMS authentication failed \(403/);
+    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(
+      /TMS authentication failed \(403/
+    );
   });
 
   it('should throw generic Error on non-auth HTTP failures (e.g. 500)', async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Server Error' });
-    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(/TMS API error: 500/);
-    await expect(client.pushKey('k', 'de', 'v')).rejects.not.toThrow(ConfigError);
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    });
+    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(
+      /TMS API error: 500/
+    );
+    await expect(client.pushKey('k', 'de', 'v')).rejects.not.toThrow(
+      ConfigError
+    );
   });
 
   it('should encode key paths', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await client.pushKey('nav/home', 'de', 'v');
-    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('nav%2Fhome'), expect.anything());
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('nav%2Fhome'),
+      expect.anything()
+    );
   });
 });
 
@@ -86,7 +125,9 @@ describe('TmsClient HTTPS validation', () => {
       apiKey: 'key',
     });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(ConfigError);
-    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow('TMS server URL must use HTTPS');
+    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(
+      'TMS server URL must use HTTPS'
+    );
   });
 
   it('should accept https:// URLs', async () => {
@@ -124,40 +165,53 @@ describe('TmsClient URL construction', () => {
   beforeEach(() => mockFetch.mockReset());
 
   function clientFor(serverUrl: string): TmsClient {
-    return new TmsClient({ serverUrl, projectId: 'proj-1', apiKey: 'key', fetch: mockFetch });
+    return new TmsClient({
+      serverUrl,
+      projectId: 'proj-1',
+      apiKey: 'key',
+      fetch: mockFetch,
+    });
   }
 
   it('should not double the separator when the server URL has a trailing slash', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
-    await clientFor('https://tms.example.com/').pushKey('greeting', 'de', 'Hallo');
+    await clientFor('https://tms.example.com/').pushKey(
+      'greeting',
+      'de',
+      'Hallo'
+    );
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://tms.example.com/api/projects/proj-1/keys/greeting',
-      expect.anything(),
+      expect.anything()
     );
   });
 
   it('should preserve a base path on the server URL', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
-    await clientFor('https://tms.example.com/tms/').pushKey('greeting', 'de', 'Hallo');
+    await clientFor('https://tms.example.com/tms/').pushKey(
+      'greeting',
+      'de',
+      'Hallo'
+    );
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://tms.example.com/tms/api/projects/proj-1/keys/greeting',
-      expect.anything(),
+      expect.anything()
     );
   });
 
   it('should reject a server URL carrying a query string instead of truncating the path', async () => {
-    await expect(clientFor('https://tms.example.com/?token=abc').pushKey('k', 'de', 'v')).rejects.toThrow(
-      ConfigError,
-    );
+    await expect(
+      clientFor('https://tms.example.com/?token=abc').pushKey('k', 'de', 'v')
+    ).rejects.toThrow(ConfigError);
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('should reject a server URL carrying a fragment', async () => {
-    await expect(clientFor('https://tms.example.com/#frag').pushKey('k', 'de', 'v')).rejects.toThrow(
-      ConfigError,
-    );
+    await expect(
+      clientFor('https://tms.example.com/#frag').pushKey('k', 'de', 'v')
+    ).rejects.toThrow(ConfigError);
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -167,7 +221,7 @@ describe('TmsClient URL construction', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://tms.example.com/api/projects/proj-1/keys/export?format=json&locale=de',
-      expect.anything(),
+      expect.anything()
     );
   });
 });
@@ -178,15 +232,17 @@ describe('TmsClient error message redaction', () => {
   it('should redact credentials embedded in the server URL from timeout messages', async () => {
     jest.useFakeTimers();
     try {
-      const stubFetch = jest.fn().mockImplementation((_url: string, init?: RequestInit) => {
-        return new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => {
-            const err = new Error('aborted');
-            err.name = 'AbortError';
-            reject(err);
+      const stubFetch = jest
+        .fn()
+        .mockImplementation((_url: string, init?: RequestInit) => {
+          return new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => {
+              const err = new Error('aborted');
+              err.name = 'AbortError';
+              reject(err);
+            });
           });
         });
-      });
       const client = new TmsClient({
         serverUrl: 'https://alice:s3cret@tms.example.com',
         projectId: 'p',
@@ -201,7 +257,9 @@ describe('TmsClient error message redaction', () => {
       await jest.advanceTimersByTimeAsync(1001);
 
       await expect(promise).rejects.toThrow(
-        expect.objectContaining({ message: expect.not.stringContaining('s3cret') }),
+        expect.objectContaining({
+          message: expect.not.stringContaining('s3cret'),
+        })
       );
     } finally {
       jest.useRealTimers();
@@ -217,15 +275,21 @@ describe('TmsClient error message redaction', () => {
     });
 
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(
-      expect.objectContaining({ message: expect.not.stringContaining('s3cret') }),
+      expect.objectContaining({
+        message: expect.not.stringContaining('s3cret'),
+      })
     );
   });
 });
 
 describe('TmsTimeoutError classification', () => {
   it('should exit with the network error code', () => {
-    expect(exitCodeForError(new TmsTimeoutError('TMS request timed out'))).toBe(ExitCode.NetworkError);
-    expect(exitCodeForError(new TmsTimeoutError('TMS request timed out'))).toBe(5);
+    expect(exitCodeForError(new TmsTimeoutError('TMS request timed out'))).toBe(
+      ExitCode.NetworkError
+    );
+    expect(exitCodeForError(new TmsTimeoutError('TMS request timed out'))).toBe(
+      5
+    );
   });
 });
 
@@ -241,7 +305,9 @@ describe('TmsClient.pullKeys response size cap', () => {
   it('should reject a response whose declared content-length exceeds the cap', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      headers: new Headers({ 'content-length': String(MAX_PULL_BODY_BYTES + 1) }),
+      headers: new Headers({
+        'content-length': String(MAX_PULL_BODY_BYTES + 1),
+      }),
       json: async () => ({}),
     });
 
@@ -291,7 +357,9 @@ describe('TmsClient fetch injection', () => {
   beforeEach(() => mockFetch.mockReset());
 
   it('should call the injected fetch instead of global fetch', async () => {
-    const stubFetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    const stubFetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({}) });
     const client = new TmsClient({
       serverUrl: 'https://tms.example.com',
       projectId: 'proj-1',
@@ -323,15 +391,17 @@ describe('TmsClient timeout', () => {
 
   it('should reject with a timeout error after the configured duration when fetch never resolves', async () => {
     jest.useFakeTimers();
-    const stubFetch = jest.fn().mockImplementation((_url: string, init?: RequestInit) => {
-      return new Promise((_resolve, reject) => {
-        init?.signal?.addEventListener('abort', () => {
-          const err = new Error('aborted');
-          err.name = 'AbortError';
-          reject(err);
+    const stubFetch = jest
+      .fn()
+      .mockImplementation((_url: string, init?: RequestInit) => {
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            const err = new Error('aborted');
+            err.name = 'AbortError';
+            reject(err);
+          });
         });
       });
-    });
     const client = new TmsClient({
       serverUrl: 'https://tms.example.com',
       projectId: 'p',
@@ -353,9 +423,20 @@ describe('TmsClient retry', () => {
   beforeEach(() => mockFetch.mockReset());
 
   it('should retry once on 429 and succeed on the second attempt', async () => {
-    const stubFetch = jest.fn()
-      .mockResolvedValueOnce({ ok: false, status: 429, statusText: 'Too Many Requests', text: async () => '' })
-      .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK', json: async () => ({}) });
+    const stubFetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        text: async () => '',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({}),
+      });
     const client = new TmsClient({
       serverUrl: 'https://tms.example.com',
       projectId: 'p',
@@ -440,7 +521,7 @@ describe('TmsClient error body', () => {
       retry: { maxAttempts: 1 },
     });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(
-      expect.objectContaining({ message: expect.not.stringContaining('\x1b') }),
+      expect.objectContaining({ message: expect.not.stringContaining('\x1b') })
     );
   });
 
@@ -460,7 +541,9 @@ describe('TmsClient error body', () => {
       retry: { maxAttempts: 1 },
     });
     await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(
-      expect.objectContaining({ message: expect.not.stringContaining('\u202E') }),
+      expect.objectContaining({
+        message: expect.not.stringContaining('\u202E'),
+      })
     );
   });
 });
@@ -474,7 +557,9 @@ describe('resolveTmsCredentials', () => {
     delete process.env['TMS_TOKEN'];
   });
 
-  afterEach(() => { process.env = envSnapshot; });
+  afterEach(() => {
+    process.env = envSnapshot;
+  });
 
   it('should prefer env var over config api_key', () => {
     process.env['TMS_API_KEY'] = 'env-key';
@@ -504,7 +589,9 @@ describe('createTmsClient', () => {
     mockFetch.mockReset();
   });
 
-  afterEach(() => { process.env = envSnapshot; });
+  afterEach(() => {
+    process.env = envSnapshot;
+  });
 
   const baseConfig: SyncTmsConfig = {
     enabled: true,
@@ -518,7 +605,10 @@ describe('createTmsClient', () => {
 
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await client.pushKey('k', 'de', 'v');
-    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<string, string>;
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<
+      string,
+      string
+    >;
     expect(headers?.['Authorization']).toBe('ApiKey env-key');
   });
 
@@ -528,7 +618,10 @@ describe('createTmsClient', () => {
 
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await client.pushKey('k', 'de', 'v');
-    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<string, string>;
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<
+      string,
+      string
+    >;
     expect(headers?.['Authorization']).toBe('Bearer env-token');
   });
 
@@ -537,19 +630,26 @@ describe('createTmsClient', () => {
 
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await client.pushKey('k', 'de', 'v');
-    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<string, string>;
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<
+      string,
+      string
+    >;
     expect(headers?.['Authorization']).toBe('ApiKey config-key');
   });
 
   it('should pass server URL and project_id to the constructed client', async () => {
     process.env['TMS_API_KEY'] = 'env-key';
-    const client = createTmsClient({ ...baseConfig, server: 'https://custom.example.com', project_id: 'custom-proj' });
+    const client = createTmsClient({
+      ...baseConfig,
+      server: 'https://custom.example.com',
+      project_id: 'custom-proj',
+    });
 
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await client.pushKey('greeting', 'de', 'Hallo');
     expect(mockFetch).toHaveBeenCalledWith(
       'https://custom.example.com/api/projects/custom-proj/keys/greeting',
-      expect.anything(),
+      expect.anything()
     );
   });
 });
@@ -564,63 +664,100 @@ describe('TmsClient.pullKeys response validation', () => {
   beforeEach(() => mockFetch.mockReset());
 
   it('should reject response with non-string value', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: 42 }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: 42 }),
+    });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
-    await expect(client.pullKeys('de')).rejects.toThrow(/non-string|not a string|must be a string/i);
+    await expect(client.pullKeys('de')).rejects.toThrow(
+      /non-string|not a string|must be a string/i
+    );
   });
 
   it('should reject response with nested-object value', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: { nested: 'x' } }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: { nested: 'x' } }),
+    });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
   });
 
   it('should reject response with null value', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: null }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: null }),
+    });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
   });
 
   it('should reject response when the payload itself is not an object', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => 'not-an-object' });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => 'not-an-object',
+    });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
   });
 
   it('should reject key containing forward-slash path separator', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ 'nav/home': 'Home' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ 'nav/home': 'Home' }),
+    });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
     await expect(client.pullKeys('de')).rejects.toThrow(/key|separator/i);
   });
 
   it('should reject key containing backslash path separator', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ 'nav\\home': 'Home' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ 'nav\\home': 'Home' }),
+    });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
   });
 
   it('should reject key containing NUL byte', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ 'bad\x00key': 'value' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ 'bad\x00key': 'value' }),
+    });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
   });
 
   it('should reject key containing ASCII control chars', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ 'bad\x1bkey': 'value' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ 'bad\x1bkey': 'value' }),
+    });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
   });
 
   it('should reject per-value length over 64KiB', async () => {
     const oversized = 'a'.repeat(64 * 1024 + 1);
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: oversized }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: oversized }),
+    });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
-    await expect(client.pullKeys('de')).rejects.toThrow(/64|size|length|large/i);
+    await expect(client.pullKeys('de')).rejects.toThrow(
+      /64|size|length|large/i
+    );
   });
 
   it('should accept per-value length exactly at 64KiB', async () => {
     const atLimit = 'a'.repeat(64 * 1024);
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: atLimit }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: atLimit }),
+    });
     const result = await client.pullKeys('de');
     expect(result['greeting']).toBe(atLimit);
   });
 
   it('should strip ASCII control chars from accepted values', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: 'Hal\x00lo\x1bWorld\x7f' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: 'Hal\x00lo\x1bWorld\x7f' }),
+    });
     const result = await client.pullKeys('de');
     expect(result['greeting']).toBe('HalloWorld');
   });
@@ -629,21 +766,30 @@ describe('TmsClient.pullKeys response validation', () => {
     // Tabs (\x09), line feeds (\x0a), carriage returns (\x0d) are control chars
     // per the spec but common in translation values; stripping them is the
     // documented behavior (fail-closed on format-breaking bytes).
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: 'line1\nline2\tend' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: 'line1\nline2\tend' }),
+    });
     const result = await client.pullKeys('de');
     // The regex [\x00-\x1f\x7f] matches \n and \t. Expect both stripped.
     expect(result['greeting']).toBe('line1line2end');
   });
 
   it('should pass through normal payloads unchanged', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: 'Hallo', farewell: 'Tschüss' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: 'Hallo', farewell: 'Tschüss' }),
+    });
     const result = await client.pullKeys('de');
     expect(result).toEqual({ greeting: 'Hallo', farewell: 'Tschüss' });
   });
 
   it('should include an actionable suggestion string on the ValidationError', async () => {
     expect.assertions(2);
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ greeting: 42 }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ greeting: 42 }),
+    });
     try {
       await client.pullKeys('de');
     } catch (err) {
@@ -657,7 +803,9 @@ describe('TmsClient.pullKeys response validation', () => {
     for (let i = 0; i < 50001; i++) oversized[`key${i}`] = 'value';
     mockFetch.mockResolvedValue({ ok: true, json: async () => oversized });
     await expect(client.pullKeys('de')).rejects.toThrow(ValidationError);
-    await expect(client.pullKeys('de')).rejects.toThrow(/MAX_PULL_KEY_COUNT \(50000\)/);
+    await expect(client.pullKeys('de')).rejects.toThrow(
+      /MAX_PULL_KEY_COUNT \(50000\)/
+    );
   });
 
   it('should succeed when response has exactly 50,000 keys', async () => {

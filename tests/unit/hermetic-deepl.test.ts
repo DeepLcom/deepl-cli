@@ -16,13 +16,15 @@ describe('hermetic deepl shim', () => {
       shell: '/bin/sh',
     }).trim();
 
-    expect(resolved).toBe(path.join(process.env['DEEPL_CLI_TEST_SHIM']!, 'deepl'));
+    expect(resolved).toBe(
+      path.join(process.env['DEEPL_CLI_TEST_SHIM']!, 'deepl')
+    );
   });
 
   it('executes the built CLI from this tree', () => {
     const version = execSync('deepl --version', { encoding: 'utf-8' }).trim();
     const pkg = JSON.parse(
-      fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8'),
+      fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')
     ) as { version: string };
 
     expect(version).toBe(pkg.version);
@@ -35,7 +37,7 @@ describe('hermetic deepl shim', () => {
       'does not carry %s in the inherited environment',
       (name) => {
         expect(process.env[name]).toBeUndefined();
-      },
+      }
     );
 
     it('points DEEPL_CONFIG_DIR at a temporary directory, not the real one', () => {

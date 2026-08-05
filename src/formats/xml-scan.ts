@@ -39,7 +39,11 @@ export interface ScannedElement {
   groups: (string | undefined)[];
 }
 
-function matchAt(content: string, index: number, sticky: RegExp): RegExpExecArray | null {
+function matchAt(
+  content: string,
+  index: number,
+  sticky: RegExp
+): RegExpExecArray | null {
   sticky.lastIndex = index;
   return sticky.exec(content);
 }
@@ -57,7 +61,7 @@ function isCloseTagStart(content: string, lt: number): boolean {
 function findClose(
   content: string,
   from: number,
-  close: RegExp,
+  close: RegExp
 ): { index: number; length: number } | undefined {
   let pos = from;
   while (pos < content.length) {
@@ -81,7 +85,7 @@ function findClose(
 function nextElement(
   content: string,
   cursor: number,
-  pattern: ElementPattern,
+  pattern: ElementPattern
 ): ScannedElement | undefined {
   let pos = cursor;
 
@@ -120,7 +124,10 @@ function nextElement(
 }
 
 /** Every non-overlapping element matching `pattern`, in document order. */
-export function scanElements(content: string, pattern: ElementPattern): ScannedElement[] {
+export function scanElements(
+  content: string,
+  pattern: ElementPattern
+): ScannedElement[] {
   const elements: ScannedElement[] = [];
   let cursor = 0;
 
@@ -133,7 +140,10 @@ export function scanElements(content: string, pattern: ElementPattern): ScannedE
 }
 
 /** The first element matching `pattern`, or undefined. */
-export function findElement(content: string, pattern: ElementPattern): ScannedElement | undefined {
+export function findElement(
+  content: string,
+  pattern: ElementPattern
+): ScannedElement | undefined {
   return nextElement(content, 0, pattern);
 }
 
@@ -144,7 +154,7 @@ export function findElement(content: string, pattern: ElementPattern): ScannedEl
 export function replaceElements(
   content: string,
   pattern: ElementPattern,
-  replace: (element: ScannedElement) => string | null,
+  replace: (element: ScannedElement) => string | null
 ): string {
   const elements = scanElements(content, pattern);
   if (elements.length === 0) return content;
@@ -156,7 +166,11 @@ export function replaceElements(
     const replacement = replace(element);
     if (replacement === null) {
       let from = element.start;
-      while (from > copied && (content[from - 1] === ' ' || content[from - 1] === '\t')) from--;
+      while (
+        from > copied &&
+        (content[from - 1] === ' ' || content[from - 1] === '\t')
+      )
+        from--;
       let to = element.end;
       while (to < content.length && WHITESPACE_RE.test(content[to]!)) to++;
       parts.push(content.slice(copied, from));

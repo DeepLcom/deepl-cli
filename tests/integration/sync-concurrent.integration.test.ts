@@ -15,7 +15,10 @@ import { loadSyncConfig } from '../../src/sync/sync-config';
 import { ConfigError } from '../../src/utils/errors';
 import { PROCESS_LOCK_FILE_NAME } from '../../src/sync/sync-process-lock';
 import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers/nock-setup';
-import { createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
+import {
+  createMockConfigService,
+  createMockCacheService,
+} from '../helpers/mock-factories';
 import { handleSyncPull } from '../../src/cli/commands/sync/register-sync-pull';
 
 function createServices(): { client: DeepLClient; syncService: SyncService } {
@@ -24,7 +27,11 @@ function createServices(): { client: DeepLClient; syncService: SyncService } {
     get: jest.fn(() => ({
       auth: {},
       api: { baseUrl: '', usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: false,
+      },
       cache: { enabled: false },
       output: { format: 'text', color: true },
       proxy: {},
@@ -32,11 +39,19 @@ function createServices(): { client: DeepLClient; syncService: SyncService } {
     getValue: jest.fn(() => false),
   });
   const mockCache = createMockCacheService();
-  const translationService = new TranslationService(client, mockConfig, mockCache);
+  const translationService = new TranslationService(
+    client,
+    mockConfig,
+    mockCache
+  );
   const glossaryService = new GlossaryService(client);
   const registry = new FormatRegistry();
   registry.register(new JsonFormatParser());
-  const syncService = new SyncService(translationService, glossaryService, registry);
+  const syncService = new SyncService(
+    translationService,
+    glossaryService,
+    registry
+  );
   return { client, syncService };
 }
 
@@ -90,7 +105,11 @@ describe('Sync Concurrent Runs Integration', () => {
       .post('/v2/translate')
       .reply(200, {
         translations: [
-          { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
+          {
+            text: 'Hallo',
+            detected_source_language: 'EN',
+            billed_characters: 5,
+          },
         ],
       });
 
@@ -118,8 +137,11 @@ describe('Sync Concurrent Runs Integration', () => {
     const stalePid = findDeadPid();
     fs.writeFileSync(
       pidFile,
-      JSON.stringify({ pid: stalePid, startedAt: new Date(Date.now() - 60_000).toISOString() }),
-      'utf-8',
+      JSON.stringify({
+        pid: stalePid,
+        startedAt: new Date(Date.now() - 60_000).toISOString(),
+      }),
+      'utf-8'
     );
 
     const warnSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -128,7 +150,11 @@ describe('Sync Concurrent Runs Integration', () => {
       .post('/v2/translate')
       .reply(200, {
         translations: [
-          { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
+          {
+            text: 'Hallo',
+            detected_source_language: 'EN',
+            billed_characters: 5,
+          },
         ],
       });
 
@@ -138,7 +164,9 @@ describe('Sync Concurrent Runs Integration', () => {
       expect(result.success).toBe(true);
       expect(fs.existsSync(pidFile)).toBe(false);
 
-      const warnCalls = warnSpy.mock.calls.map(args => args.join(' ')).join('\n');
+      const warnCalls = warnSpy.mock.calls
+        .map((args) => args.join(' '))
+        .join('\n');
       expect(warnCalls.toLowerCase()).toContain('stale');
     } finally {
       warnSpy.mockRestore();
@@ -153,7 +181,7 @@ describe('Sync Concurrent Runs Integration', () => {
     fs.writeFileSync(
       pidFile,
       JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }),
-      'utf-8',
+      'utf-8'
     );
 
     const config = await loadSyncConfig(tmpDir);
@@ -212,7 +240,11 @@ tms:
     fs.writeFileSync(path.join(tmpDir, '.deepl-sync.yaml'), TMS_YAML, 'utf-8');
     const localesDir = path.join(tmpDir, 'locales');
     fs.mkdirSync(localesDir, { recursive: true });
-    fs.writeFileSync(path.join(localesDir, 'en.json'), JSON.stringify({ hello: 'Hello' }, null, 2) + '\n', 'utf-8');
+    fs.writeFileSync(
+      path.join(localesDir, 'en.json'),
+      JSON.stringify({ hello: 'Hello' }, null, 2) + '\n',
+      'utf-8'
+    );
     process.env['TMS_API_KEY'] = 'test-key';
   });
 
@@ -229,13 +261,18 @@ tms:
     fs.writeFileSync(
       pidFile,
       JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }),
-      'utf-8',
+      'utf-8'
     );
 
-    const handleError = jest.fn((err: Error) => { throw err; });
+    const handleError = jest.fn((err: Error) => {
+      throw err;
+    });
 
     await expect(
-      handleSyncPull({ syncConfig: path.join(tmpDir, '.deepl-sync.yaml'), format: 'text' }, handleError),
+      handleSyncPull(
+        { syncConfig: path.join(tmpDir, '.deepl-sync.yaml'), format: 'text' },
+        handleError
+      )
     ).rejects.toMatchObject({
       name: 'ConfigError',
       exitCode: 7,

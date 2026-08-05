@@ -21,7 +21,7 @@ describe('sync-instructions', () => {
       'should return true for supported base locale %s',
       (locale) => {
         expect(supportsCustomInstructions(locale)).toBe(true);
-      },
+      }
     );
 
     it.each(['DE', 'EN'])('should handle uppercase locale %s', (locale) => {
@@ -32,14 +32,14 @@ describe('sync-instructions', () => {
       'should handle regional variant %s',
       (locale) => {
         expect(supportsCustomInstructions(locale)).toBe(true);
-      },
+      }
     );
 
     it.each(['ar', 'he', 'pt-BR', 'nl', 'ru', 'tr', 'pl'])(
       'should return false for unsupported locale %s',
       (locale) => {
         expect(supportsCustomInstructions(locale)).toBe(false);
-      },
+      }
     );
 
     it('should return false for empty string', () => {
@@ -72,7 +72,7 @@ describe('sync-instructions', () => {
 
     it('should include button template', () => {
       expect(DEFAULT_INSTRUCTION_TEMPLATES['button']).toBe(
-        'Keep translation concise, maximum 3 words.',
+        'Keep translation concise, maximum 3 words.'
       );
     });
   });
@@ -83,12 +83,14 @@ describe('sync-instructions', () => {
   describe('generateElementInstruction', () => {
     it('should return the default instruction for a known element type', () => {
       expect(generateElementInstruction('button')).toBe(
-        'Keep translation concise, maximum 3 words.',
+        'Keep translation concise, maximum 3 words.'
       );
     });
 
     it('should return the correct instruction for each default template', () => {
-      for (const [element, expected] of Object.entries(DEFAULT_INSTRUCTION_TEMPLATES)) {
+      for (const [element, expected] of Object.entries(
+        DEFAULT_INSTRUCTION_TEMPLATES
+      )) {
         expect(generateElementInstruction(element)).toBe(expected);
       }
     });
@@ -108,18 +110,22 @@ describe('sync-instructions', () => {
 
     it('should use user templates to override defaults', () => {
       const userTemplates = { button: 'Max 2 words.' };
-      expect(generateElementInstruction('button', userTemplates)).toBe('Max 2 words.');
+      expect(generateElementInstruction('button', userTemplates)).toBe(
+        'Max 2 words.'
+      );
     });
 
     it('should allow user templates for types not in defaults', () => {
       const userTemplates = { div: 'Keep it short.' };
-      expect(generateElementInstruction('div', userTemplates)).toBe('Keep it short.');
+      expect(generateElementInstruction('div', userTemplates)).toBe(
+        'Keep it short.'
+      );
     });
 
     it('should not affect other types when user overrides one', () => {
       const userTemplates = { button: 'Max 2 words.' };
       expect(generateElementInstruction('a', userTemplates)).toBe(
-        DEFAULT_INSTRUCTION_TEMPLATES['a'],
+        DEFAULT_INSTRUCTION_TEMPLATES['a']
       );
     });
   });
@@ -129,15 +135,23 @@ describe('sync-instructions', () => {
   // -------------------------------------------------------------------
   describe('mergeInstructions', () => {
     it('should return user instructions only when no auto instruction', () => {
-      expect(mergeInstructions(['instruction1'], undefined)).toEqual(['instruction1']);
+      expect(mergeInstructions(['instruction1'], undefined)).toEqual([
+        'instruction1',
+      ]);
     });
 
     it('should return auto instruction only when no user instructions', () => {
-      expect(mergeInstructions(undefined, 'auto instruction')).toEqual(['auto instruction']);
+      expect(mergeInstructions(undefined, 'auto instruction')).toEqual([
+        'auto instruction',
+      ]);
     });
 
     it('should append auto instruction after user instructions', () => {
-      expect(mergeInstructions(['user1', 'user2'], 'auto')).toEqual(['user1', 'user2', 'auto']);
+      expect(mergeInstructions(['user1', 'user2'], 'auto')).toEqual([
+        'user1',
+        'user2',
+        'auto',
+      ]);
     });
 
     it('should return undefined when both inputs are undefined', () => {
@@ -149,7 +163,10 @@ describe('sync-instructions', () => {
     });
 
     it('should preserve empty strings in user instructions', () => {
-      expect(mergeInstructions(['', 'valid'], undefined)).toEqual(['', 'valid']);
+      expect(mergeInstructions(['', 'valid'], undefined)).toEqual([
+        '',
+        'valid',
+      ]);
     });
 
     it('should return empty array contents when user passes empty array and no auto', () => {
@@ -157,7 +174,12 @@ describe('sync-instructions', () => {
     });
 
     it('should handle multiple user instructions with auto', () => {
-      expect(mergeInstructions(['a', 'b', 'c'], 'auto')).toEqual(['a', 'b', 'c', 'auto']);
+      expect(mergeInstructions(['a', 'b', 'c'], 'auto')).toEqual([
+        'a',
+        'b',
+        'c',
+        'auto',
+      ]);
     });
 
     it('should cap at MAX_INSTRUCTIONS when more than 5 instructions provided', () => {
@@ -166,7 +188,9 @@ describe('sync-instructions', () => {
       const result = mergeInstructions(instructions, undefined);
       expect(result).toHaveLength(MAX_INSTRUCTIONS);
       expect(result).toEqual(['a', 'b', 'c', 'd', 'e']);
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('exceeds maximum'));
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('exceeds maximum')
+      );
       warnSpy.mockRestore();
     });
 
@@ -176,16 +200,22 @@ describe('sync-instructions', () => {
       const result = mergeInstructions([longInstruction], undefined);
       expect(result).toHaveLength(1);
       expect(result![0]).toHaveLength(MAX_INSTRUCTION_LENGTH);
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('truncated'));
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('truncated')
+      );
       warnSpy.mockRestore();
     });
 
     it('should both truncate and cap when needed', () => {
       const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
-      const instructions = Array.from({ length: 7 }, (_, i) => 'y'.repeat(MAX_INSTRUCTION_LENGTH + i + 1));
+      const instructions = Array.from({ length: 7 }, (_, i) =>
+        'y'.repeat(MAX_INSTRUCTION_LENGTH + i + 1)
+      );
       const result = mergeInstructions(instructions, undefined);
       expect(result).toHaveLength(MAX_INSTRUCTIONS);
-      expect(result!.every(i => i.length === MAX_INSTRUCTION_LENGTH)).toBe(true);
+      expect(result!.every((i) => i.length === MAX_INSTRUCTION_LENGTH)).toBe(
+        true
+      );
       expect(warnSpy).toHaveBeenCalledTimes(2);
       warnSpy.mockRestore();
     });
@@ -219,14 +249,14 @@ describe('sync-instructions', () => {
       'should include %s',
       (element) => {
         expect(LENGTH_CONSTRAINED_ELEMENTS.has(element)).toBe(true);
-      },
+      }
     );
 
     it.each(['a', 'h1', 'h2', 'p', 'div'])(
       'should not include %s',
       (element) => {
         expect(LENGTH_CONSTRAINED_ELEMENTS.has(element)).toBe(false);
-      },
+      }
     );
   });
 
@@ -244,7 +274,9 @@ describe('sync-instructions', () => {
     });
 
     it('should return undefined for non-length-constrained element', () => {
-      expect(generateLengthInstruction('Click here', 'p', 'de')).toBeUndefined();
+      expect(
+        generateLengthInstruction('Click here', 'p', 'de')
+      ).toBeUndefined();
       expect(generateLengthInstruction('Heading', 'div', 'de')).toBeUndefined();
     });
 
@@ -253,7 +285,9 @@ describe('sync-instructions', () => {
     });
 
     it('should return undefined for undefined elementType', () => {
-      expect(generateLengthInstruction('text', undefined, 'de')).toBeUndefined();
+      expect(
+        generateLengthInstruction('text', undefined, 'de')
+      ).toBeUndefined();
     });
 
     it('should return undefined for locale without expansion factor', () => {

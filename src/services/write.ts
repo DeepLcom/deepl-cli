@@ -7,7 +7,12 @@ import * as crypto from 'crypto';
 import { DeepLClient } from '../api/deepl-client.js';
 import { ConfigService } from '../storage/config.js';
 import type { CacheService } from '../storage/cache.js';
-import { WriteOptions, CorrectOptions, WriteImprovement, isWriteImprovementArray } from '../types/index.js';
+import {
+  WriteOptions,
+  CorrectOptions,
+  WriteImprovement,
+  isWriteImprovementArray,
+} from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError, ConfigError } from '../utils/errors.js';
 
@@ -22,7 +27,11 @@ export class WriteService {
   // cache backend is unavailable (see cli/cache-loader.ts).
   private cache?: CacheService;
 
-  constructor(client: DeepLClient, config: ConfigService, cache?: CacheService) {
+  constructor(
+    client: DeepLClient,
+    config: ConfigService,
+    cache?: CacheService
+  ) {
     if (!client) {
       throw new ConfigError('DeepL client is required');
     }
@@ -49,7 +58,9 @@ export class WriteService {
     }
 
     if (options.writingStyle && options.tone) {
-      throw new ValidationError('Cannot specify both --style and --tone in a single request');
+      throw new ValidationError(
+        'Cannot specify both --style and --tone in a single request'
+      );
     }
 
     return this.requestWithCache(

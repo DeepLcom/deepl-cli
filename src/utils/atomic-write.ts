@@ -82,9 +82,14 @@ export function __getInFlightTmpCount(): number {
 export async function atomicWriteFile(
   filePath: string,
   content: string | Buffer,
-  encoding?: BufferEncoding,
+  encoding?: BufferEncoding
 ): Promise<void> {
-  const tmpPath = filePath + '.tmp.' + process.pid + '.' + Math.random().toString(36).slice(2, 8);
+  const tmpPath =
+    filePath +
+    '.tmp.' +
+    process.pid +
+    '.' +
+    Math.random().toString(36).slice(2, 8);
   let existingMode: number | undefined;
   try {
     existingMode = (await fs.promises.stat(filePath)).mode & 0o7777;
@@ -93,13 +98,21 @@ export async function atomicWriteFile(
   }
   registerTmp(tmpPath);
   try {
-    await fs.promises.writeFile(tmpPath, content, encoding ? { encoding } : undefined);
+    await fs.promises.writeFile(
+      tmpPath,
+      content,
+      encoding ? { encoding } : undefined
+    );
     if (existingMode !== undefined) {
       await fs.promises.chmod(tmpPath, existingMode);
     }
     await fs.promises.rename(tmpPath, filePath);
   } catch (error) {
-    try { await fs.promises.unlink(tmpPath); } catch { /* ignore cleanup errors */ }
+    try {
+      await fs.promises.unlink(tmpPath);
+    } catch {
+      /* ignore cleanup errors */
+    }
     throw error;
   } finally {
     unregisterTmp(tmpPath);
@@ -112,9 +125,14 @@ export async function atomicWriteFile(
 export function atomicWriteFileSync(
   filePath: string,
   content: string | Buffer,
-  encoding?: BufferEncoding,
+  encoding?: BufferEncoding
 ): void {
-  const tmpPath = filePath + '.tmp.' + process.pid + '.' + Math.random().toString(36).slice(2, 8);
+  const tmpPath =
+    filePath +
+    '.tmp.' +
+    process.pid +
+    '.' +
+    Math.random().toString(36).slice(2, 8);
   let existingMode: number | undefined;
   try {
     existingMode = fs.statSync(filePath).mode & 0o7777;
@@ -129,7 +147,11 @@ export function atomicWriteFileSync(
     }
     fs.renameSync(tmpPath, filePath);
   } catch (error) {
-    try { fs.unlinkSync(tmpPath); } catch { /* ignore cleanup errors */ }
+    try {
+      fs.unlinkSync(tmpPath);
+    } catch {
+      /* ignore cleanup errors */
+    }
     throw error;
   } finally {
     unregisterTmp(tmpPath);

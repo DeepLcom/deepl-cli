@@ -33,11 +33,26 @@ describe('GitHooksService', () => {
   describe('invalid hook type', () => {
     it.each([
       { method: 'install', invoke: (svc: any) => svc.install('invalid-hook') },
-      { method: 'uninstall', invoke: (svc: any) => svc.uninstall('invalid-hook') },
-      { method: 'isInstalled', invoke: (svc: any) => svc.isInstalled('invalid-hook') },
-      { method: 'getHookPath', invoke: (svc: any) => svc.getHookPath('invalid-hook') },
-      { method: 'generateHookContent', invoke: (svc: any) => svc.generateHookContent('invalid') },
-      { method: 'verifyIntegrity', invoke: (svc: any) => svc.verifyIntegrity('invalid-hook') },
+      {
+        method: 'uninstall',
+        invoke: (svc: any) => svc.uninstall('invalid-hook'),
+      },
+      {
+        method: 'isInstalled',
+        invoke: (svc: any) => svc.isInstalled('invalid-hook'),
+      },
+      {
+        method: 'getHookPath',
+        invoke: (svc: any) => svc.getHookPath('invalid-hook'),
+      },
+      {
+        method: 'generateHookContent',
+        invoke: (svc: any) => svc.generateHookContent('invalid'),
+      },
+      {
+        method: 'verifyIntegrity',
+        invoke: (svc: any) => svc.verifyIntegrity('invalid-hook'),
+      },
     ])('$method should throw error for invalid hook type', ({ invoke }) => {
       expect(() => invoke(gitHooksService)).toThrow('Invalid hook type');
     });
@@ -51,7 +66,9 @@ describe('GitHooksService', () => {
     it('should throw error for non-existent git directory', () => {
       const nonExistentDir = path.join(os.tmpdir(), 'non-existent-git');
 
-      expect(() => new GitHooksService(nonExistentDir)).toThrow('Git directory not found');
+      expect(() => new GitHooksService(nonExistentDir)).toThrow(
+        'Git directory not found'
+      );
     });
   });
 
@@ -59,17 +76,28 @@ describe('GitHooksService', () => {
     // Generated hook content must only ever name the published package,
     // @deepl/cli — an unpublished name emits a broken install instruction
     // into every generated hook.
-    const hookTypes = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'] as const;
+    const hookTypes = [
+      'pre-commit',
+      'pre-push',
+      'commit-msg',
+      'post-commit',
+    ] as const;
 
-    it.each(hookTypes)('%s output never references an unpublished package name', (hookType) => {
-      gitHooksService.install(hookType);
+    it.each(hookTypes)(
+      '%s output never references an unpublished package name',
+      (hookType) => {
+        gitHooksService.install(hookType);
 
-      const content = fs.readFileSync(path.join(testHooksDir, hookType), 'utf-8');
-      expect(content).not.toMatch(/install\s+-g\s+deepl-cli\b/);
-      if (/npm install/.test(content)) {
-        expect(content).toContain('npm install -g @deepl/cli');
+        const content = fs.readFileSync(
+          path.join(testHooksDir, hookType),
+          'utf-8'
+        );
+        expect(content).not.toMatch(/install\s+-g\s+deepl-cli\b/);
+        if (/npm install/.test(content)) {
+          expect(content).toContain('npm install -g @deepl/cli');
+        }
       }
-    });
+    );
   });
 
   describe('install()', () => {
@@ -87,7 +115,10 @@ describe('GitHooksService', () => {
     it('pre-commit hook invokes the CLI to validate translations', () => {
       gitHooksService.install('pre-commit');
 
-      const content = fs.readFileSync(path.join(testHooksDir, 'pre-commit'), 'utf-8');
+      const content = fs.readFileSync(
+        path.join(testHooksDir, 'pre-commit'),
+        'utf-8'
+      );
       expect(content).toContain('command -v deepl');
       expect(content).toContain('deepl sync validate');
       expect(content).toContain('.deepl-sync.yaml');
@@ -99,7 +130,10 @@ describe('GitHooksService', () => {
     it('pre-commit hook blocks the commit when validation fails', () => {
       gitHooksService.install('pre-commit');
 
-      const content = fs.readFileSync(path.join(testHooksDir, 'pre-commit'), 'utf-8');
+      const content = fs.readFileSync(
+        path.join(testHooksDir, 'pre-commit'),
+        'utf-8'
+      );
       expect(content).toContain('exit 1');
     });
 
@@ -192,7 +226,6 @@ describe('GitHooksService', () => {
       const backupPath = hookPath + '.backup';
       expect(fs.existsSync(backupPath)).toBe(false);
     });
-
   });
 
   describe('uninstall()', () => {
@@ -246,7 +279,6 @@ describe('GitHooksService', () => {
         'Hook is not a DeepL CLI hook'
       );
     });
-
   });
 
   describe('isInstalled()', () => {
@@ -270,7 +302,6 @@ describe('GitHooksService', () => {
 
       expect(gitHooksService.isInstalled('pre-commit')).toBe(false);
     });
-
   });
 
   describe('list()', () => {
@@ -342,7 +373,6 @@ describe('GitHooksService', () => {
 
       expect(hookPath).toBe(path.join(testHooksDir, 'post-commit'));
     });
-
   });
 
   describe('findGitRoot()', () => {
@@ -397,10 +427,13 @@ describe('GitHooksService', () => {
   });
 
   describe('hook content generation', () => {
-    const MARKER_PATTERN = /^# DeepL CLI Hook v(\d+) \[sha256:([a-f0-9]{64})\]$/m;
+    const MARKER_PATTERN =
+      /^# DeepL CLI Hook v(\d+) \[sha256:([a-f0-9]{64})\]$/m;
 
     it('should generate valid pre-commit hook content', () => {
-      const content = (gitHooksService as any).generateHookContent('pre-commit');
+      const content = (gitHooksService as any).generateHookContent(
+        'pre-commit'
+      );
 
       expect(content).toContain('#!/bin/sh');
       expect(content).toMatch(MARKER_PATTERN);
@@ -418,7 +451,9 @@ describe('GitHooksService', () => {
     });
 
     it('should generate valid commit-msg hook content', () => {
-      const content = (gitHooksService as any).generateHookContent('commit-msg');
+      const content = (gitHooksService as any).generateHookContent(
+        'commit-msg'
+      );
 
       expect(content).toContain('#!/bin/sh');
       expect(content).toMatch(MARKER_PATTERN);
@@ -429,7 +464,9 @@ describe('GitHooksService', () => {
     });
 
     it('should generate valid post-commit hook content', () => {
-      const content = (gitHooksService as any).generateHookContent('post-commit');
+      const content = (gitHooksService as any).generateHookContent(
+        'post-commit'
+      );
 
       expect(content).toContain('#!/bin/sh');
       expect(content).toMatch(MARKER_PATTERN);
@@ -440,7 +477,9 @@ describe('GitHooksService', () => {
     });
 
     it('should embed correct SHA-256 hash of the hook body', () => {
-      const content = (gitHooksService as any).generateHookContent('pre-commit');
+      const content = (gitHooksService as any).generateHookContent(
+        'pre-commit'
+      );
       const match = content.match(MARKER_PATTERN);
       expect(match).not.toBeNull();
 
@@ -452,20 +491,28 @@ describe('GitHooksService', () => {
     });
 
     it('should use marker version 1', () => {
-      const content = (gitHooksService as any).generateHookContent('pre-commit');
+      const content = (gitHooksService as any).generateHookContent(
+        'pre-commit'
+      );
       const match = content.match(MARKER_PATTERN);
       expect(match).not.toBeNull();
       expect(match![1]).toBe('1');
     });
 
     it('should produce consistent hash for same hook type', () => {
-      const content1 = (gitHooksService as any).generateHookContent('pre-commit');
-      const content2 = (gitHooksService as any).generateHookContent('pre-commit');
+      const content1 = (gitHooksService as any).generateHookContent(
+        'pre-commit'
+      );
+      const content2 = (gitHooksService as any).generateHookContent(
+        'pre-commit'
+      );
       expect(content1).toBe(content2);
     });
 
     it('should produce different hashes for different hook types', () => {
-      const content1 = (gitHooksService as any).generateHookContent('pre-commit');
+      const content1 = (gitHooksService as any).generateHookContent(
+        'pre-commit'
+      );
       const content2 = (gitHooksService as any).generateHookContent('pre-push');
 
       const hash1 = content1.match(MARKER_PATTERN)![2];
@@ -473,7 +520,6 @@ describe('GitHooksService', () => {
 
       expect(hash1).not.toBe(hash2);
     });
-
   });
 
   describe('isDeepLHook()', () => {
@@ -510,7 +556,10 @@ describe('GitHooksService', () => {
     });
 
     it('should match known SHA-256 value', () => {
-      const expected = crypto.createHash('sha256').update('hello', 'utf-8').digest('hex');
+      const expected = crypto
+        .createHash('sha256')
+        .update('hello', 'utf-8')
+        .digest('hex');
       expect(GitHooksService.computeHash('hello')).toBe(expected);
     });
 
@@ -578,7 +627,10 @@ describe('GitHooksService', () => {
 
     it('should return legacy marker version for old-style hooks', () => {
       const hookPath = path.join(testHooksDir, 'pre-commit');
-      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old style"');
+      fs.writeFileSync(
+        hookPath,
+        '#!/bin/sh\n# DeepL CLI Hook\necho "old style"'
+      );
 
       const result = gitHooksService.verifyIntegrity('pre-commit');
       expect(result.installed).toBe(true);
@@ -627,9 +679,9 @@ describe('GitHooksService', () => {
     });
 
     it('should verify integrity for all hook types', () => {
-      const hookTypes: Array<'pre-commit' | 'pre-push' | 'commit-msg' | 'post-commit'> = [
-        'pre-commit', 'pre-push', 'commit-msg', 'post-commit'
-      ];
+      const hookTypes: Array<
+        'pre-commit' | 'pre-push' | 'commit-msg' | 'post-commit'
+      > = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
 
       for (const hookType of hookTypes) {
         gitHooksService.install(hookType);
@@ -639,7 +691,6 @@ describe('GitHooksService', () => {
         expect(result.hashMatch).toBe(true);
       }
     });
-
   });
 
   describe('backward compatibility', () => {
@@ -649,14 +700,20 @@ describe('GitHooksService', () => {
 
     it('should detect old-style marker as installed', () => {
       const hookPath = path.join(testHooksDir, 'pre-commit');
-      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"');
+      fs.writeFileSync(
+        hookPath,
+        '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"'
+      );
 
       expect(gitHooksService.isInstalled('pre-commit')).toBe(true);
     });
 
     it('should allow uninstalling old-style hook', () => {
       const hookPath = path.join(testHooksDir, 'pre-commit');
-      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"');
+      fs.writeFileSync(
+        hookPath,
+        '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"'
+      );
 
       gitHooksService.uninstall('pre-commit');
       expect(fs.existsSync(hookPath)).toBe(false);
@@ -664,7 +721,10 @@ describe('GitHooksService', () => {
 
     it('should not backup old-style hook when reinstalling', () => {
       const hookPath = path.join(testHooksDir, 'pre-commit');
-      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"');
+      fs.writeFileSync(
+        hookPath,
+        '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"'
+      );
 
       gitHooksService.install('pre-commit');
 
@@ -677,7 +737,10 @@ describe('GitHooksService', () => {
 
     it('should upgrade old-style hook to versioned format on reinstall', () => {
       const hookPath = path.join(testHooksDir, 'pre-commit');
-      fs.writeFileSync(hookPath, '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"');
+      fs.writeFileSync(
+        hookPath,
+        '#!/bin/sh\n# DeepL CLI Hook\necho "old hook"'
+      );
 
       gitHooksService.install('pre-commit');
 

@@ -1,7 +1,11 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { sweepStaleBackups, bucketSweepRoots, DEFAULT_BAK_SWEEP_MAX_AGE_SECONDS } from '../../../src/sync/sync-bak-cleanup';
+import {
+  sweepStaleBackups,
+  bucketSweepRoots,
+  DEFAULT_BAK_SWEEP_MAX_AGE_SECONDS,
+} from '../../../src/sync/sync-bak-cleanup';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // bucketSweepRoots()
@@ -11,7 +15,9 @@ describe('bucketSweepRoots()', () => {
   const root = '/project';
 
   it('returns the literal directory prefix for a simple glob', () => {
-    const result = bucketSweepRoots(root, { json: { include: ['locales/**/*.json'] } });
+    const result = bucketSweepRoots(root, {
+      json: { include: ['locales/**/*.json'] },
+    });
     expect(result).toEqual([path.resolve(root, 'locales')]);
   });
 
@@ -21,7 +27,9 @@ describe('bucketSweepRoots()', () => {
   });
 
   it('handles a trailing-slash prefix (directory glob)', () => {
-    const result = bucketSweepRoots(root, { json: { include: ['src/locales/'] } });
+    const result = bucketSweepRoots(root, {
+      json: { include: ['src/locales/'] },
+    });
     expect(result).toContain(path.resolve(root, 'src/locales'));
   });
 
@@ -44,12 +52,16 @@ describe('bucketSweepRoots()', () => {
   });
 
   it('handles a glob with a {brace} wildcard', () => {
-    const result = bucketSweepRoots(root, { json: { include: ['src/{en,de}/**/*.json'] } });
+    const result = bucketSweepRoots(root, {
+      json: { include: ['src/{en,de}/**/*.json'] },
+    });
     expect(result).toEqual([path.resolve(root, 'src')]);
   });
 
   it('handles a glob with a ? wildcard', () => {
-    const result = bucketSweepRoots(root, { json: { include: ['loc?les/**/*.json'] } });
+    const result = bucketSweepRoots(root, {
+      json: { include: ['loc?les/**/*.json'] },
+    });
     expect(result).toEqual([root]);
   });
 });
@@ -96,7 +108,9 @@ describe('sweepStaleBackups() with bucket config', () => {
     expect(fs.existsSync(staleBak)).toBe(false);
 
     // No readdir call should have touched outsideDir
-    const readdirCalls: string[] = readdirSpy.mock.calls.map((c: unknown[]) => c[0] as string);
+    const readdirCalls: string[] = readdirSpy.mock.calls.map(
+      (c: unknown[]) => c[0] as string
+    );
     expect(readdirCalls.some((p) => p.startsWith(outsideDir))).toBe(false);
   });
 
@@ -109,7 +123,9 @@ describe('sweepStaleBackups() with bucket config', () => {
     const tenMinAgo = new Date(Date.now() - 10 * 60_000);
     fs.utimesSync(staleBak, tenMinAgo, tenMinAgo);
 
-    await sweepStaleBackups(tmpDir, 5 * 60_000, { json: { include: ['locales/**/*.json'] } });
+    await sweepStaleBackups(tmpDir, 5 * 60_000, {
+      json: { include: ['locales/**/*.json'] },
+    });
     expect(fs.existsSync(staleBak)).toBe(false);
   });
 
@@ -120,7 +136,9 @@ describe('sweepStaleBackups() with bucket config', () => {
     const freshBak = path.join(localesDir, 'en.json.deepl.bak');
     fs.writeFileSync(freshBak, 'fresh', 'utf-8');
 
-    await sweepStaleBackups(tmpDir, 5 * 60_000, { json: { include: ['locales/**/*.json'] } });
+    await sweepStaleBackups(tmpDir, 5 * 60_000, {
+      json: { include: ['locales/**/*.json'] },
+    });
     expect(fs.existsSync(freshBak)).toBe(true);
   });
 
@@ -134,7 +152,9 @@ describe('sweepStaleBackups() with bucket config', () => {
     fs.utimesSync(userBak, tenMinAgo, tenMinAgo);
     const sibling = path.join(localesDir, 'my-important-notes');
 
-    await sweepStaleBackups(tmpDir, 5 * 60_000, { json: { include: ['locales/**/*.json'] } });
+    await sweepStaleBackups(tmpDir, 5 * 60_000, {
+      json: { include: ['locales/**/*.json'] },
+    });
 
     expect(fs.existsSync(userBak)).toBe(true);
     expect(fs.readFileSync(userBak, 'utf-8')).toBe('user data');
@@ -152,7 +172,9 @@ describe('sweepStaleBackups() with bucket config', () => {
     fs.utimesSync(bakFile, tenMinAgo, tenMinAgo);
     // sibling does not exist
 
-    await sweepStaleBackups(tmpDir, 5 * 60_000, { json: { include: ['locales/**/*.json'] } });
+    await sweepStaleBackups(tmpDir, 5 * 60_000, {
+      json: { include: ['locales/**/*.json'] },
+    });
 
     expect(fs.existsSync(sibling)).toBe(false);
     expect(fs.existsSync(bakFile)).toBe(false);
@@ -169,7 +191,9 @@ describe('sweepStaleBackups() with bucket config', () => {
     const tenMinAgo = new Date(Date.now() - 10 * 60_000);
     fs.utimesSync(bakFile, tenMinAgo, tenMinAgo);
 
-    await sweepStaleBackups(tmpDir, 5 * 60_000, { json: { include: ['locales/**/*.json'] } });
+    await sweepStaleBackups(tmpDir, 5 * 60_000, {
+      json: { include: ['locales/**/*.json'] },
+    });
 
     expect(fs.readFileSync(sibling, 'utf-8')).toBe('{"key":"value"}');
     expect(fs.existsSync(bakFile)).toBe(false);
@@ -186,7 +210,9 @@ describe('sweepStaleBackups() with bucket config', () => {
     const tenMinAgo = new Date(Date.now() - 10 * 60_000);
     fs.utimesSync(bakFile, tenMinAgo, tenMinAgo);
 
-    await sweepStaleBackups(tmpDir, 5 * 60_000, { json: { include: ['locales/**/*.json'] } });
+    await sweepStaleBackups(tmpDir, 5 * 60_000, {
+      json: { include: ['locales/**/*.json'] },
+    });
 
     expect(fs.readFileSync(sibling, 'utf-8')).toBe('{"current":"content"}');
     expect(fs.existsSync(bakFile)).toBe(false);
@@ -203,7 +229,9 @@ describe('sweepStaleBackups() with bucket config', () => {
     const buckets = { json: { include: ['locales/**/*.json'] } };
     await sweepStaleBackups(tmpDir, 5 * 60_000, buckets);
 
-    const readdirCalls: string[] = readdirSpy.mock.calls.map((c: unknown[]) => c[0] as string);
+    const readdirCalls: string[] = readdirSpy.mock.calls.map(
+      (c: unknown[]) => c[0] as string
+    );
     // Only locales (and any of its subdirs) should be visited — not the 5 other* dirs
     for (let i = 0; i < 5; i++) {
       expect(readdirCalls.some((p) => p.includes(`other${i}`))).toBe(false);

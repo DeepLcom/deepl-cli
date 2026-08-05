@@ -10,7 +10,9 @@ import { createTestConfigDir, makeRunCLI } from '../helpers';
 describe('Auth CLI Integration', () => {
   const testConfig = createTestConfigDir('auth');
   const configPath = path.join(testConfig.path, 'config.json');
-  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path, { excludeApiKey: true });
+  const { runCLI, runCLIAll } = makeRunCLI(testConfig.path, {
+    excludeApiKey: true,
+  });
 
   afterAll(() => {
     testConfig.cleanup();
@@ -29,7 +31,9 @@ describe('Auth CLI Integration', () => {
       try {
         runCLI('deepl auth set-key ""');
       } catch (error: any) {
-        expect(error.stderr ?? error.stdout).toContain('API key cannot be empty');
+        expect(error.stderr ?? error.stdout).toContain(
+          'API key cannot be empty'
+        );
       }
     });
 

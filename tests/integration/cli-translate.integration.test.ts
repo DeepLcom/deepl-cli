@@ -23,7 +23,10 @@ import { DeepLClient } from '../../src/api/deepl-client';
 import { TranslationService } from '../../src/services/translation';
 import { GlossaryService } from '../../src/services/glossary';
 import { TextTranslationHandler } from '../../src/cli/commands/translate/text-translation-handler';
-import type { HandlerContext, TranslateOptions } from '../../src/cli/commands/translate/types';
+import type {
+  HandlerContext,
+  TranslateOptions,
+} from '../../src/cli/commands/translate/types';
 import type { BatchTranslationService } from '../../src/services/batch-translation';
 
 describe('Translate CLI Integration', () => {
@@ -759,7 +762,10 @@ describe('Translate CLI Integration', () => {
     it('should require API key for style-rules list', () => {
       expect.assertions(1);
       try {
-        runCLI('deepl style-rules list', { stdio: 'pipe', excludeApiKey: true });
+        runCLI('deepl style-rules list', {
+          stdio: 'pipe',
+          excludeApiKey: true,
+        });
       } catch (error: any) {
         const output = error.stderr ?? error.stdout;
         expect(output).toMatch(/API key|auth/i);
@@ -1070,7 +1076,11 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
       get: jest.fn(() => ({
         auth: {},
         api: { baseUrl: DEEPL_FREE_API_URL, usePro: false },
-        defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+        defaults: {
+          targetLangs: [],
+          formality: 'default',
+          preserveFormatting: false,
+        },
         cache: { enabled: false },
         output: { format: 'text', color: false },
         proxy: {},
@@ -1084,7 +1094,11 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
     const mockCache = createMockCacheService();
 
     client = new DeepLClient(TEST_API_KEY, { maxRetries: 0 });
-    const translationService = new TranslationService(client, mockConfig, mockCache);
+    const translationService = new TranslationService(
+      client,
+      mockConfig,
+      mockCache
+    );
     const glossaryService = new GlossaryService(client);
 
     const ctx: HandlerContext = {
@@ -1122,7 +1136,12 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
         .get('/v3/translation_memories')
         .reply(200, {
           translation_memories: [
-            { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+            {
+              translation_memory_id: TM_UUID,
+              name: 'my-tm',
+              source_language: 'en',
+              target_languages: ['de'],
+            },
           ],
         });
 
@@ -1132,7 +1151,9 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
           expect(body['translation_memory_threshold']).toBe('75');
           return true;
         })
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        });
 
       const options: TranslateOptions = {
         to: 'de',
@@ -1157,7 +1178,9 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
           expect(body['translation_memory_threshold']).toBe('80');
           return true;
         })
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        });
 
       const options: TranslateOptions = {
         to: 'de',
@@ -1170,7 +1193,7 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
       await handler.translateText('Hi', options);
 
       expect(nock.pendingMocks()).not.toContain(
-        `GET ${DEEPL_FREE_API_URL}:443/v3/translation_memories`,
+        `GET ${DEEPL_FREE_API_URL}:443/v3/translation_memories`
       );
       expect(translateScope.isDone()).toBe(true);
       expect(nock.isDone()).toBe(true);
@@ -1185,7 +1208,9 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
           expect(body['translation_memory_threshold']).toBeUndefined();
           return true;
         })
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        });
 
       const options: TranslateOptions = {
         to: 'de',
@@ -1222,7 +1247,12 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
         .get('/v3/translation_memories')
         .reply(200, {
           translation_memories: [
-            { translation_memory_id: TM_UUID, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+            {
+              translation_memory_id: TM_UUID,
+              name: 'my-tm',
+              source_language: 'en',
+              target_languages: ['de'],
+            },
           ],
         });
 
@@ -1233,7 +1263,9 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
           expect(body['translation_memory_threshold']).toBe('75');
           return true;
         })
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        });
 
       const options: TranslateOptions = {
         to: 'de',
@@ -1265,14 +1297,18 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
               name: 'base-terms',
               ready: true,
               creation_time: '2026-04-19T00:00:00Z',
-              dictionaries: [{ source_lang: 'EN', target_lang: 'DE', entry_count: 1 }],
+              dictionaries: [
+                { source_lang: 'EN', target_lang: 'DE', entry_count: 1 },
+              ],
             },
             {
               glossary_id: SECOND_GLOSSARY_UUID,
               name: 'project-overrides',
               ready: true,
               creation_time: '2026-04-19T00:00:00Z',
-              dictionaries: [{ source_lang: 'EN', target_lang: 'DE', entry_count: 1 }],
+              dictionaries: [
+                { source_lang: 'EN', target_lang: 'DE', entry_count: 1 },
+              ],
             },
           ],
         });
@@ -1282,11 +1318,16 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
 
       const translateScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
-          expect(body['glossary_ids']).toEqual([GLOSSARY_UUID, SECOND_GLOSSARY_UUID]);
+          expect(body['glossary_ids']).toEqual([
+            GLOSSARY_UUID,
+            SECOND_GLOSSARY_UUID,
+          ]);
           expect(body['glossary_id']).toBeUndefined();
           return true;
         })
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        });
 
       const options: TranslateOptions = {
         to: 'de',
@@ -1307,10 +1348,15 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
 
       const translateScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
-          expect(body['glossary_ids']).toEqual([SECOND_GLOSSARY_UUID, GLOSSARY_UUID]);
+          expect(body['glossary_ids']).toEqual([
+            SECOND_GLOSSARY_UUID,
+            GLOSSARY_UUID,
+          ]);
           return true;
         })
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        });
 
       const options: TranslateOptions = {
         to: 'de',
@@ -1335,7 +1381,9 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
           expect(body['glossary_ids']).toBeUndefined();
           return true;
         })
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        });
 
       const options: TranslateOptions = {
         to: 'de',
@@ -1356,10 +1404,15 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
 
       const translateScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
-          expect(body['glossary_ids']).toEqual([SECOND_GLOSSARY_UUID, GLOSSARY_UUID]);
+          expect(body['glossary_ids']).toEqual([
+            SECOND_GLOSSARY_UUID,
+            GLOSSARY_UUID,
+          ]);
           return true;
         })
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        });
 
       const options: TranslateOptions = {
         to: 'de',
@@ -1385,7 +1438,9 @@ describe('Translate CLI --translation-memory integration (nock)', () => {
         cache: false,
       };
 
-      await expect(handler.translateText('Hi', options)).rejects.toThrow(/no-such-glossary/);
+      await expect(handler.translateText('Hi', options)).rejects.toThrow(
+        /no-such-glossary/
+      );
       expect(glossaryListScope.isDone()).toBe(true);
     });
   });

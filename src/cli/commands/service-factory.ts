@@ -15,8 +15,13 @@ import type { DetectCommand } from './detect.js';
 import type { LanguagesCommand } from './languages.js';
 import type { SyncCommand } from './sync-command.js';
 
-export type CreateDeepLClient = (overrideBaseUrl?: string) => Promise<DeepLClient>;
-export type GetApiKeyAndOptions = () => { apiKey: string; options: DeepLClientOptions };
+export type CreateDeepLClient = (
+  overrideBaseUrl?: string
+) => Promise<DeepLClient>;
+export type GetApiKeyAndOptions = () => {
+  apiKey: string;
+  options: DeepLClientOptions;
+};
 
 export interface ServiceDeps {
   createDeepLClient: CreateDeepLClient;
@@ -27,7 +32,7 @@ export interface ServiceDeps {
 }
 
 export async function createGlossaryCommand(
-  createDeepLClient: CreateDeepLClient,
+  createDeepLClient: CreateDeepLClient
 ): Promise<GlossaryCommand> {
   const client = await createDeepLClient();
   const { GlossaryService } = await import('../../services/glossary.js');
@@ -37,7 +42,7 @@ export async function createGlossaryCommand(
 }
 
 export async function createTmCommand(
-  createDeepLClient: CreateDeepLClient,
+  createDeepLClient: CreateDeepLClient
 ): Promise<TmCommand> {
   const client = await createDeepLClient();
   const { TmCommand: TmCmd } = await import('./tm.js');
@@ -46,7 +51,7 @@ export async function createTmCommand(
 
 export async function createAdminCommand(
   createDeepLClient: CreateDeepLClient,
-  getApiKeyAndOptions?: GetApiKeyAndOptions,
+  getApiKeyAndOptions?: GetApiKeyAndOptions
 ): Promise<AdminCommand> {
   const client = await createDeepLClient();
   const { AdminService } = await import('../../services/admin.js');
@@ -56,18 +61,25 @@ export async function createAdminCommand(
 }
 
 export async function createWriteCommand(
-  deps: Pick<ServiceDeps, 'createDeepLClient' | 'getConfigService' | 'getCacheService'>,
+  deps: Pick<
+    ServiceDeps,
+    'createDeepLClient' | 'getConfigService' | 'getCacheService'
+  >
 ): Promise<WriteCommand> {
   const client = await deps.createDeepLClient();
   const { WriteService } = await import('../../services/write.js');
   const { WriteCommand: WriteCmd } = await import('./write.js');
   const configService = deps.getConfigService();
-  const writeService = new WriteService(client, configService, await deps.getCacheService());
+  const writeService = new WriteService(
+    client,
+    configService,
+    await deps.getCacheService()
+  );
   return new WriteCmd(writeService);
 }
 
 export async function createStyleRulesCommand(
-  createDeepLClient: CreateDeepLClient,
+  createDeepLClient: CreateDeepLClient
 ): Promise<StyleRulesCommand> {
   const client = await createDeepLClient();
   const { StyleRulesService } = await import('../../services/style-rules.js');
@@ -77,7 +89,7 @@ export async function createStyleRulesCommand(
 }
 
 export async function createUsageCommand(
-  createDeepLClient: CreateDeepLClient,
+  createDeepLClient: CreateDeepLClient
 ): Promise<UsageCommand> {
   const client = await createDeepLClient();
   const { UsageService } = await import('../../services/usage.js');
@@ -87,35 +99,59 @@ export async function createUsageCommand(
 }
 
 export async function createTranslateCommand(
-  deps: Pick<ServiceDeps, 'createDeepLClient' | 'getConfigService' | 'getCacheService'>,
-  overrideBaseUrl?: string,
+  deps: Pick<
+    ServiceDeps,
+    'createDeepLClient' | 'getConfigService' | 'getCacheService'
+  >,
+  overrideBaseUrl?: string
 ): Promise<TranslateCommand> {
   const client = await deps.createDeepLClient(overrideBaseUrl);
   const { TranslationService } = await import('../../services/translation.js');
-  const { DocumentTranslationService } = await import('../../services/document-translation.js');
+  const { DocumentTranslationService } =
+    await import('../../services/document-translation.js');
   const { GlossaryService } = await import('../../services/glossary.js');
   const { TranslateCommand: TranslateCmd } = await import('./translate.js');
   const configService = deps.getConfigService();
-  const translationService = new TranslationService(client, configService, await deps.getCacheService());
+  const translationService = new TranslationService(
+    client,
+    configService,
+    await deps.getCacheService()
+  );
   const documentTranslationService = new DocumentTranslationService(client);
   const glossaryService = new GlossaryService(client);
-  return new TranslateCmd(translationService, documentTranslationService, glossaryService, configService);
+  return new TranslateCmd(
+    translationService,
+    documentTranslationService,
+    glossaryService,
+    configService
+  );
 }
 
 export async function createWatchCommand(
-  deps: Pick<ServiceDeps, 'createDeepLClient' | 'getConfigService' | 'getCacheService'>,
+  deps: Pick<
+    ServiceDeps,
+    'createDeepLClient' | 'getConfigService' | 'getCacheService'
+  >
 ): Promise<WatchCommand> {
   const client = await deps.createDeepLClient();
   const { TranslationService } = await import('../../services/translation.js');
   const { GlossaryService } = await import('../../services/glossary.js');
   const { WatchCommand: WatchCmd } = await import('./watch.js');
-  const translationService = new TranslationService(client, deps.getConfigService(), await deps.getCacheService());
+  const translationService = new TranslationService(
+    client,
+    deps.getConfigService(),
+    await deps.getCacheService()
+  );
   const glossaryService = new GlossaryService(client);
-  return new WatchCmd(translationService, glossaryService, deps.getConfigService());
+  return new WatchCmd(
+    translationService,
+    glossaryService,
+    deps.getConfigService()
+  );
 }
 
 export async function createDetectCommand(
-  createDeepLClient: CreateDeepLClient,
+  createDeepLClient: CreateDeepLClient
 ): Promise<DetectCommand> {
   const client = await createDeepLClient();
   const { DetectService } = await import('../../services/detect.js');
@@ -125,7 +161,7 @@ export async function createDetectCommand(
 }
 
 export async function createLanguagesCommand(
-  client: DeepLClient | null,
+  client: DeepLClient | null
 ): Promise<LanguagesCommand> {
   const { LanguagesService } = await import('../../services/languages.js');
   const { LanguagesCommand: LanguagesCmd } = await import('./languages.js');
@@ -134,7 +170,7 @@ export async function createLanguagesCommand(
 }
 
 export async function createVoiceCommand(
-  getApiKeyAndOptions: GetApiKeyAndOptions,
+  getApiKeyAndOptions: GetApiKeyAndOptions
 ): Promise<VoiceCommand> {
   const { apiKey, options } = getApiKeyAndOptions();
   if (options.baseUrl) {
@@ -150,7 +186,10 @@ export async function createVoiceCommand(
 }
 
 export async function createSyncCommand(
-  deps: Pick<ServiceDeps, 'createDeepLClient' | 'getConfigService' | 'getCacheService'>,
+  deps: Pick<
+    ServiceDeps,
+    'createDeepLClient' | 'getConfigService' | 'getCacheService'
+  >
 ): Promise<SyncCommand> {
   const client = await deps.createDeepLClient();
   const { TranslationService } = await import('../../services/translation.js');
@@ -160,9 +199,17 @@ export async function createSyncCommand(
   const { createDefaultRegistry } = await import('../../formats/index.js');
 
   const configService = deps.getConfigService();
-  const translationService = new TranslationService(client, configService, await deps.getCacheService());
+  const translationService = new TranslationService(
+    client,
+    configService,
+    await deps.getCacheService()
+  );
   const glossaryService = new GlossaryService(client);
   const formatRegistry = await createDefaultRegistry();
-  const syncService = new SyncService(translationService, glossaryService, formatRegistry);
+  const syncService = new SyncService(
+    translationService,
+    glossaryService,
+    formatRegistry
+  );
   return new SyncCmd(syncService);
 }

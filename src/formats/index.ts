@@ -68,7 +68,12 @@ export async function createDefaultRegistry(): Promise<FormatRegistry> {
  * the default registry. Adding a parser + registering it automatically
  * surfaces the new format in CLI choices — no parallel arrays to maintain.
  */
-export const SUPPORTED_FORMAT_KEYS: readonly string[] =
-  Object.freeze(buildDefaultRegistry().getFormatKeys());
+export const SUPPORTED_FORMAT_KEYS: readonly string[] = Object.freeze(
+  buildDefaultRegistry().getFormatKeys()
+);
 
-export type { FormatParser, ExtractedEntry, TranslatedEntry } from './format.js';
+export type {
+  FormatParser,
+  ExtractedEntry,
+  TranslatedEntry,
+} from './format.js';

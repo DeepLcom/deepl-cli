@@ -17,25 +17,27 @@ interface StatusOptions {
 
 export function registerSyncStatus(
   parent: Command,
-  deps: Pick<ServiceDeps, 'handleError'>,
+  deps: Pick<ServiceDeps, 'handleError'>
 ): Command {
   return parent
     .command('status')
     .description('Show translation coverage status')
     .option('--locale <locales>', 'Filter by locale (comma-separated)')
     .addOption(
-      new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'),
+      new Option('--format <format>', 'Output format')
+        .choices(['text', 'json'])
+        .default('text')
     )
     .option('--sync-config <path>', 'Path to .deepl-sync.yaml')
     .action((options: StatusOptions, command: Command) =>
-      handleSyncStatus(options, command, deps),
+      handleSyncStatus(options, command, deps)
     );
 }
 
 async function handleSyncStatus(
   options: StatusOptions,
   command: Command,
-  deps: Pick<ServiceDeps, 'handleError'>,
+  deps: Pick<ServiceDeps, 'handleError'>
 ): Promise<void> {
   options.format = resolveFormat(options, command);
   try {
@@ -56,18 +58,23 @@ async function handleSyncStatus(
       : status.locales;
 
     if (options.format === 'json') {
-      process.stdout.write(JSON.stringify({ ...status, locales }, null, 2) + '\n');
+      process.stdout.write(
+        JSON.stringify({ ...status, locales }, null, 2) + '\n'
+      );
     } else {
-      const skippedSuffix = status.skippedKeys > 0
-        ? `, ${status.skippedKeys} skipped (pipe pluralization)`
-        : '';
-      Logger.output(`Source: ${status.sourceLocale} (${status.totalKeys} keys${skippedSuffix})\n`);
+      const skippedSuffix =
+        status.skippedKeys > 0
+          ? `, ${status.skippedKeys} skipped (pipe pluralization)`
+          : '';
+      Logger.output(
+        `Source: ${status.sourceLocale} (${status.totalKeys} keys${skippedSuffix})\n`
+      );
       for (const locale of locales) {
         const bar = `${'#'.repeat(Math.floor(locale.coverage / 5))}${'.'.repeat(
-          20 - Math.floor(locale.coverage / 5),
+          20 - Math.floor(locale.coverage / 5)
         )}`;
         Logger.output(
-          `  ${locale.locale}  [${bar}] ${locale.coverage}%  (${locale.missing} missing, ${locale.outdated} outdated)`,
+          `  ${locale.locale}  [${bar}] ${locale.coverage}%  (${locale.missing} missing, ${locale.outdated} outdated)`
         );
       }
     }

@@ -7,7 +7,11 @@ import { DeepLClient } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
 import { CacheService } from '../../src/storage/cache.js';
 import { WriteImprovement } from '../../src/types/index.js';
-import { createMockDeepLClient, createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
+import {
+  createMockDeepLClient,
+  createMockConfigService,
+  createMockCacheService,
+} from '../helpers/mock-factories';
 
 describe('WriteService', () => {
   let writeService: WriteService;
@@ -25,7 +29,11 @@ describe('WriteService', () => {
 
     mockCacheService = createMockCacheService();
 
-    writeService = new WriteService(mockClient, mockConfigService, mockCacheService);
+    writeService = new WriteService(
+      mockClient,
+      mockConfigService,
+      mockCacheService
+    );
   });
 
   describe('initialization', () => {
@@ -35,13 +43,21 @@ describe('WriteService', () => {
 
     it('should throw error if client is not provided', () => {
       expect(() => {
-        new WriteService(null as unknown as DeepLClient, mockConfigService, mockCacheService);
+        new WriteService(
+          null as unknown as DeepLClient,
+          mockConfigService,
+          mockCacheService
+        );
       }).toThrow('DeepL client is required');
     });
 
     it('should throw error if config service is not provided', () => {
       expect(() => {
-        new WriteService(mockClient, null as unknown as ConfigService, mockCacheService);
+        new WriteService(
+          mockClient,
+          null as unknown as ConfigService,
+          mockCacheService
+        );
       }).toThrow('Config service is required');
     });
   });
@@ -65,9 +81,12 @@ describe('WriteService', () => {
 
         expect(result).toHaveLength(1);
         expect(result[0]?.text).toBe('This is a well-written sentence.');
-        expect(mockClient.improveText).toHaveBeenCalledWith('This is a sentence.', {
-          targetLang: 'en-us',
-        });
+        expect(mockClient.improveText).toHaveBeenCalledWith(
+          'This is a sentence.',
+          {
+            targetLang: 'en-us',
+          }
+        );
       });
 
       it('should throw error for empty text', async () => {
@@ -116,10 +135,13 @@ describe('WriteService', () => {
         });
 
         expect(result[0]?.text).toBe('This is easy to read.');
-        expect(mockClient.improveText).toHaveBeenCalledWith('This is a sentence.', {
-          targetLang: 'en-us',
-          writingStyle: 'simple',
-        });
+        expect(mockClient.improveText).toHaveBeenCalledWith(
+          'This is a sentence.',
+          {
+            targetLang: 'en-us',
+            writingStyle: 'simple',
+          }
+        );
       });
 
       it('should apply business writing style', async () => {
@@ -453,7 +475,9 @@ describe('WriteService', () => {
     it('should return cached result on hit without calling API', async () => {
       mockCacheService.get.mockReturnValue(mockImprovements);
 
-      const result = await writeService.improve('Test', { targetLang: 'en-us' });
+      const result = await writeService.improve('Test', {
+        targetLang: 'en-us',
+      });
 
       expect(result).toEqual(mockImprovements);
       expect(mockClient.improveText).not.toHaveBeenCalled();
@@ -474,7 +498,11 @@ describe('WriteService', () => {
     it('should skip cache when skipCache is true', async () => {
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      await writeService.improve('Test', { targetLang: 'en-us' }, { skipCache: true });
+      await writeService.improve(
+        'Test',
+        { targetLang: 'en-us' },
+        { skipCache: true }
+      );
 
       expect(mockCacheService.get).not.toHaveBeenCalled();
       expect(mockCacheService.set).not.toHaveBeenCalled();
@@ -484,8 +512,14 @@ describe('WriteService', () => {
     it('should produce different cache keys for different options', async () => {
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'business' });
-      await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'casual' });
+      await writeService.improve('Test', {
+        targetLang: 'en-us',
+        writingStyle: 'business',
+      });
+      await writeService.improve('Test', {
+        targetLang: 'en-us',
+        writingStyle: 'casual',
+      });
 
       const key1 = mockCacheService.set.mock.calls[0]![0];
       const key2 = mockCacheService.set.mock.calls[1]![0];
@@ -495,8 +529,14 @@ describe('WriteService', () => {
     it('should produce same cache key for same options (deterministic)', async () => {
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'business' });
-      await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'business' });
+      await writeService.improve('Test', {
+        targetLang: 'en-us',
+        writingStyle: 'business',
+      });
+      await writeService.improve('Test', {
+        targetLang: 'en-us',
+        writingStyle: 'business',
+      });
 
       const key1 = mockCacheService.set.mock.calls[0]![0];
       const key2 = mockCacheService.set.mock.calls[1]![0];
@@ -506,7 +546,9 @@ describe('WriteService', () => {
     it('should benefit getBestImprovement from cache', async () => {
       mockCacheService.get.mockReturnValue(mockImprovements);
 
-      const result = await writeService.getBestImprovement('Test', { targetLang: 'en-us' });
+      const result = await writeService.getBestImprovement('Test', {
+        targetLang: 'en-us',
+      });
 
       expect(result.text).toBe('Improved text.');
       expect(mockClient.improveText).not.toHaveBeenCalled();
@@ -525,16 +567,24 @@ describe('WriteService', () => {
     it('should correct text via client.correctText', async () => {
       mockClient.correctText.mockResolvedValue(mockCorrections);
 
-      const result = await writeService.correct('This is an test.', { targetLang: 'en-us' });
+      const result = await writeService.correct('This is an test.', {
+        targetLang: 'en-us',
+      });
 
       expect(result).toEqual(mockCorrections);
-      expect(mockClient.correctText).toHaveBeenCalledWith('This is an test.', { targetLang: 'en-us' });
+      expect(mockClient.correctText).toHaveBeenCalledWith('This is an test.', {
+        targetLang: 'en-us',
+      });
       expect(mockClient.improveText).not.toHaveBeenCalled();
     });
 
     it('should throw ValidationError for empty text', async () => {
-      await expect(writeService.correct('', {})).rejects.toThrow('Text cannot be empty');
-      await expect(writeService.correct('   ', {})).rejects.toThrow('Text cannot be empty');
+      await expect(writeService.correct('', {})).rejects.toThrow(
+        'Text cannot be empty'
+      );
+      await expect(writeService.correct('   ', {})).rejects.toThrow(
+        'Text cannot be empty'
+      );
       expect(mockClient.correctText).not.toHaveBeenCalled();
     });
 
@@ -553,7 +603,9 @@ describe('WriteService', () => {
     it('should return cached result on hit without calling API', async () => {
       mockCacheService.get.mockReturnValue(mockCorrections);
 
-      const result = await writeService.correct('Test', { targetLang: 'en-us' });
+      const result = await writeService.correct('Test', {
+        targetLang: 'en-us',
+      });
 
       expect(result).toEqual(mockCorrections);
       expect(mockClient.correctText).not.toHaveBeenCalled();
@@ -563,7 +615,11 @@ describe('WriteService', () => {
     it('should skip cache when skipCache is true', async () => {
       mockClient.correctText.mockResolvedValue(mockCorrections);
 
-      await writeService.correct('Test', { targetLang: 'en-us' }, { skipCache: true });
+      await writeService.correct(
+        'Test',
+        { targetLang: 'en-us' },
+        { skipCache: true }
+      );
 
       expect(mockCacheService.get).not.toHaveBeenCalled();
       expect(mockCacheService.set).not.toHaveBeenCalled();
@@ -601,7 +657,9 @@ describe('WriteService', () => {
         { text: 'Second.', targetLanguage: 'en-US' },
       ]);
 
-      const result = await writeService.getBestCorrection('Test', { targetLang: 'en-us' });
+      const result = await writeService.getBestCorrection('Test', {
+        targetLang: 'en-us',
+      });
 
       expect(result.text).toBe('First.');
     });
@@ -618,7 +676,18 @@ describe('WriteService', () => {
 
   describe('supported languages', () => {
     it('should work with all supported Write languages', async () => {
-      const languages: Array<'de' | 'en' | 'en-gb' | 'en-us' | 'es' | 'fr' | 'it' | 'pt' | 'pt-br' | 'pt-pt'> = [
+      const languages: Array<
+        | 'de'
+        | 'en'
+        | 'en-gb'
+        | 'en-us'
+        | 'es'
+        | 'fr'
+        | 'it'
+        | 'pt'
+        | 'pt-br'
+        | 'pt-pt'
+      > = [
         'de',
         'en',
         'en-gb',
@@ -658,7 +727,9 @@ describe('WriteService', () => {
       ];
       mockClient.improveText.mockResolvedValue(mockImprovements);
 
-      const result = await cachelessService.improve('Test', { targetLang: 'en-us' });
+      const result = await cachelessService.improve('Test', {
+        targetLang: 'en-us',
+      });
 
       expect(result).toHaveLength(1);
       expect(mockClient.improveText).toHaveBeenCalledTimes(1);

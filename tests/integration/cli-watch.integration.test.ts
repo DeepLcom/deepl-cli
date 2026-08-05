@@ -92,7 +92,9 @@ describe('Watch Service Integration', () => {
     });
 
     it('should accept custom debounce time', () => {
-      const service = new WatchService(fileTranslationService, { debounceMs: 500 });
+      const service = new WatchService(fileTranslationService, {
+        debounceMs: 500,
+      });
       expect(service).toBeDefined();
     });
   });
@@ -203,7 +205,9 @@ describe('Watch Service Integration', () => {
       fs.writeFileSync(testFile, 'Hello');
 
       // Mock translation service to throw error
-      jest.spyOn(fileTranslationService, 'translateFile').mockRejectedValue(new Error('API error'));
+      jest
+        .spyOn(fileTranslationService, 'translateFile')
+        .mockRejectedValue(new Error('API error'));
 
       const callbackPromise = new Promise<void>((resolve) => {
         const onErrorMock = jest.fn((filePath: string, error: Error) => {
@@ -238,14 +242,14 @@ describe('Watch Service Integration', () => {
     const waitForFilesWatched = async (
       expected: number,
       nudge?: () => void,
-      timeoutMs = 5000,
+      timeoutMs = 5000
     ): Promise<void> => {
       const start = Date.now();
       let lastNudge = start;
       while (watchService.getStats().filesWatched !== expected) {
         if (Date.now() - start > timeoutMs) {
           throw new Error(
-            `Timed out waiting for filesWatched === ${expected}, last saw ${watchService.getStats().filesWatched}`,
+            `Timed out waiting for filesWatched === ${expected}, last saw ${watchService.getStats().filesWatched}`
           );
         }
         await new Promise((resolve) => setTimeout(resolve, 25));
@@ -296,7 +300,9 @@ describe('Watch Service Integration', () => {
     });
 
     it('should track files added and removed while watching', async () => {
-      jest.spyOn(fileTranslationService, 'translateFile').mockResolvedValue(undefined);
+      jest
+        .spyOn(fileTranslationService, 'translateFile')
+        .mockResolvedValue(undefined);
       fs.writeFileSync(path.join(tmpDir, 'a.txt'), 'Hello');
 
       await new Promise<void>((resolve) => {
@@ -310,7 +316,9 @@ describe('Watch Service Integration', () => {
 
       const newFile = path.join(tmpDir, 'b.txt');
       fs.writeFileSync(newFile, 'World');
-      await waitForFilesWatched(2, () => fs.writeFileSync(newFile, 'World again'));
+      await waitForFilesWatched(2, () =>
+        fs.writeFileSync(newFile, 'World again')
+      );
 
       fs.unlinkSync(newFile);
       await waitForFilesWatched(1);
@@ -320,7 +328,9 @@ describe('Watch Service Integration', () => {
       const testFile = path.join(tmpDir, 'test.txt');
       fs.writeFileSync(testFile, 'Hello');
 
-      jest.spyOn(fileTranslationService, 'translateFile').mockRejectedValue(new Error('Fail'));
+      jest
+        .spyOn(fileTranslationService, 'translateFile')
+        .mockRejectedValue(new Error('Fail'));
 
       const callbackPromise = new Promise<void>((resolve) => {
         watchService.watch(testFile, {
@@ -468,8 +478,15 @@ describe('Watch Service Integration', () => {
   });
 
   describe('--git-staged', () => {
-    const CLI_PATH = path.join(__dirname, '..', '..', 'dist', 'cli', 'index.js');
-     
+    const CLI_PATH = path.join(
+      __dirname,
+      '..',
+      '..',
+      'dist',
+      'cli',
+      'index.js'
+    );
+
     const { execSync: execSyncChild } = require('child_process');
 
     it('should accept --git-staged flag in help text', () => {
@@ -482,15 +499,20 @@ describe('Watch Service Integration', () => {
     });
 
     it('should show git-staged error when used outside a git repo', () => {
-      const nonGitDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-non-git-'));
+      const nonGitDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'deepl-non-git-')
+      );
       fs.writeFileSync(path.join(nonGitDir, 'test.txt'), 'Hello');
 
       try {
-        execSyncChild(`node ${CLI_PATH} watch ${nonGitDir} --to es --git-staged`, {
-          encoding: 'utf-8',
-          cwd: nonGitDir,
-          env: { ...process.env, DEEPL_API_KEY: 'test-key:fx' },
-        });
+        execSyncChild(
+          `node ${CLI_PATH} watch ${nonGitDir} --to es --git-staged`,
+          {
+            encoding: 'utf-8',
+            cwd: nonGitDir,
+            env: { ...process.env, DEEPL_API_KEY: 'test-key:fx' },
+          }
+        );
         fail('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
@@ -503,16 +525,30 @@ describe('Watch Service Integration', () => {
   });
 
   describe('getStagedFiles()', () => {
-    const WATCH_MODULE_PATH = path.join(__dirname, '..', '..', 'dist', 'cli', 'commands', 'watch.js');
-     
+    const WATCH_MODULE_PATH = path.join(
+      __dirname,
+      '..',
+      '..',
+      'dist',
+      'cli',
+      'commands',
+      'watch.js'
+    );
+
     const { execSync: execSyncChild } = require('child_process');
     let gitDir: string;
 
     beforeEach(() => {
       gitDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-git-staged-test-'));
       execSyncChild('git init', { cwd: gitDir, stdio: 'ignore' });
-      execSyncChild('git config user.email "test@test.com"', { cwd: gitDir, stdio: 'ignore' });
-      execSyncChild('git config user.name "Test"', { cwd: gitDir, stdio: 'ignore' });
+      execSyncChild('git config user.email "test@test.com"', {
+        cwd: gitDir,
+        stdio: 'ignore',
+      });
+      execSyncChild('git config user.name "Test"', {
+        cwd: gitDir,
+        stdio: 'ignore',
+      });
     });
 
     afterEach(() => {
@@ -544,35 +580,48 @@ ${body}
       fs.writeFileSync(path.join(gitDir, 'file2.txt'), 'World');
       execSyncChild('git add file1.txt', { cwd: gitDir, stdio: 'ignore' });
 
-      const output = runScript(gitDir, `
+      const output = runScript(
+        gitDir,
+        `
 const result = await cmd.getStagedFiles();
 console.log(JSON.stringify({ size: result.size, files: [...result] }));
-`);
+`
+      );
 
       const parsed = JSON.parse(output.trim());
       expect(parsed.size).toBe(1);
-      expect(parsed.files[0]).toBe(path.resolve(fs.realpathSync(gitDir), 'file1.txt'));
+      expect(parsed.files[0]).toBe(
+        path.resolve(fs.realpathSync(gitDir), 'file1.txt')
+      );
     });
 
     it('should return empty set when no files are staged', () => {
       fs.writeFileSync(path.join(gitDir, 'file1.txt'), 'Hello');
 
-      const output = runScript(gitDir, `
+      const output = runScript(
+        gitDir,
+        `
 const result = await cmd.getStagedFiles();
 console.log(JSON.stringify({ size: result.size }));
-`);
+`
+      );
 
       const parsed = JSON.parse(output.trim());
       expect(parsed.size).toBe(0);
     });
 
     it('should throw error when not in a git repository', () => {
-      const nonGitDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-non-git-'));
+      const nonGitDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'deepl-non-git-')
+      );
 
       try {
-        runScript(nonGitDir, `
+        runScript(
+          nonGitDir,
+          `
 await cmd.getStagedFiles();
-`);
+`
+        );
         fail('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);

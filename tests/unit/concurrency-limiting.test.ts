@@ -14,7 +14,7 @@ import { mapWithConcurrency } from '../../src/utils/concurrency';
 /** Runs `total` tasks through `schedule` and reports the peak overlap. */
 async function measurePeakConcurrency(
   total: number,
-  schedule: (task: () => Promise<void>) => Promise<unknown>,
+  schedule: (task: () => Promise<void>) => Promise<unknown>
 ): Promise<number> {
   let active = 0;
   let peak = 0;
@@ -42,13 +42,16 @@ describe('concurrency limiting', () => {
       expect(() => pLimit(NaN)).toThrow();
     });
 
-    it.each([1, 2, 3])('should never exceed a concurrency of %i', async (concurrency) => {
-      const limit = pLimit(concurrency);
+    it.each([1, 2, 3])(
+      'should never exceed a concurrency of %i',
+      async (concurrency) => {
+        const limit = pLimit(concurrency);
 
-      const peak = await measurePeakConcurrency(9, (task) => limit(task));
+        const peak = await measurePeakConcurrency(9, (task) => limit(task));
 
-      expect(peak).toBeLessThanOrEqual(concurrency);
-    });
+        expect(peak).toBeLessThanOrEqual(concurrency);
+      }
+    );
   });
 
   describe('fast-glob is the real implementation', () => {
@@ -83,7 +86,7 @@ describe('concurrency limiting', () => {
           await new Promise((resolve) => setTimeout(resolve, 10));
           active--;
         },
-        3,
+        3
       );
 
       expect(peak).toBeLessThanOrEqual(3);
@@ -98,21 +101,32 @@ describe('concurrency limiting', () => {
       ['negative', -3],
       ['NaN', NaN],
       ['fractional', 0.5],
-    ])('should still process every item when concurrency is %s', async (_label, concurrency) => {
-      const items = [1, 2, 3, 4];
-      let processed = 0;
+    ])(
+      'should still process every item when concurrency is %s',
+      async (_label, concurrency) => {
+        const items = [1, 2, 3, 4];
+        let processed = 0;
 
-      const result = await mapWithConcurrency(items, async (n) => {
-        processed++;
-        return n * 2;
-      }, concurrency);
+        const result = await mapWithConcurrency(
+          items,
+          async (n) => {
+            processed++;
+            return n * 2;
+          },
+          concurrency
+        );
 
-      expect(processed).toBe(items.length);
-      expect(result).toEqual([2, 4, 6, 8]);
-    });
+        expect(processed).toBe(items.length);
+        expect(result).toEqual([2, 4, 6, 8]);
+      }
+    );
 
     it('should treat a huge concurrency as bounded by the item count', async () => {
-      const result = await mapWithConcurrency([1, 2], async (n) => n, Number.MAX_SAFE_INTEGER);
+      const result = await mapWithConcurrency(
+        [1, 2],
+        async (n) => n,
+        Number.MAX_SAFE_INTEGER
+      );
 
       expect(result).toEqual([1, 2]);
     });
@@ -121,9 +135,13 @@ describe('concurrency limiting', () => {
       const boom = new Error('worker failed');
 
       await expect(
-        mapWithConcurrency([1, 2, 3], async () => {
-          throw boom;
-        }, 2),
+        mapWithConcurrency(
+          [1, 2, 3],
+          async () => {
+            throw boom;
+          },
+          2
+        )
       ).rejects.toThrow('worker failed');
     });
   });

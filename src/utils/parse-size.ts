@@ -38,7 +38,9 @@ export function parseSize(size: string): number {
   const match = trimmed.match(/^(\d+(?:\.\d+)?)\s*([KMGT]B?)$/);
 
   if (!match) {
-    throw new ValidationError(`Invalid size format: ${size}. Use formats like: 100, 100K, 100MB, 1G`);
+    throw new ValidationError(
+      `Invalid size format: ${size}. Use formats like: 100, 100K, 100MB, 1G`
+    );
   }
 
   const value = parseFloat(match[1]!);
@@ -50,14 +52,14 @@ export function parseSize(size: string): number {
 
   // Convert to bytes based on unit
   const multipliers: Record<string, number> = {
-    'K': 1024,
-    'KB': 1024,
-    'M': 1024 * 1024,
-    'MB': 1024 * 1024,
-    'G': 1024 * 1024 * 1024,
-    'GB': 1024 * 1024 * 1024,
-    'T': 1024 * 1024 * 1024 * 1024,
-    'TB': 1024 * 1024 * 1024 * 1024,
+    K: 1024,
+    KB: 1024,
+    M: 1024 * 1024,
+    MB: 1024 * 1024,
+    G: 1024 * 1024 * 1024,
+    GB: 1024 * 1024 * 1024,
+    T: 1024 * 1024 * 1024 * 1024,
+    TB: 1024 * 1024 * 1024 * 1024,
   };
 
   const multiplier = multipliers[unit];

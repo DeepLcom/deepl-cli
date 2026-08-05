@@ -1,5 +1,11 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { Language, GlossaryInfo, GlossaryLanguagePair, normalizeGlossaryInfo, GlossaryApiResponse } from '../types/index.js';
+import {
+  Language,
+  GlossaryInfo,
+  GlossaryLanguagePair,
+  normalizeGlossaryInfo,
+  GlossaryApiResponse,
+} from '../types/index.js';
 import { ValidationError } from '../utils/errors.js';
 
 interface DeepLV3GlossaryLanguageResponse {
@@ -58,7 +64,7 @@ export class GlossaryClient extends HttpClient {
       throw new ValidationError('At least one target language is required');
     }
 
-    const dictionaries = targetLangs.map(targetLang => ({
+    const dictionaries = targetLangs.map((targetLang) => ({
       source_lang: sourceLang.toUpperCase(),
       target_lang: targetLang.toUpperCase(),
       entries,
@@ -66,7 +72,8 @@ export class GlossaryClient extends HttpClient {
     }));
 
     const response = await this.makeJsonRequest<GlossaryApiResponse>(
-      'POST', '/v3/glossaries',
+      'POST',
+      '/v3/glossaries',
       { name, dictionaries }
     );
 
@@ -75,13 +82,12 @@ export class GlossaryClient extends HttpClient {
 
   async listGlossaries(): Promise<GlossaryInfo[]> {
     try {
-      const response = await this.makeRequest<{ glossaries: GlossaryApiResponse[] }>(
-        'GET',
-        '/v3/glossaries'
-      );
+      const response = await this.makeRequest<{
+        glossaries: GlossaryApiResponse[];
+      }>('GET', '/v3/glossaries');
 
       return (response.glossaries || []).map((g) =>
-        normalizeGlossaryInfo(g, { warnOnEmpty: false }),
+        normalizeGlossaryInfo(g, { warnOnEmpty: false })
       );
     } catch (error) {
       throw this.handleError(error, 'listGlossaries');
@@ -100,10 +106,7 @@ export class GlossaryClient extends HttpClient {
 
   async deleteGlossary(glossaryId: string): Promise<void> {
     this.validateGlossaryId(glossaryId);
-    await this.makeRequest<void>(
-      'DELETE',
-      `/v3/glossaries/${glossaryId}`
-    );
+    await this.makeRequest<void>('DELETE', `/v3/glossaries/${glossaryId}`);
   }
 
   async getGlossaryEntries(
@@ -143,18 +146,16 @@ export class GlossaryClient extends HttpClient {
     entries: string
   ): Promise<void> {
     this.validateGlossaryId(glossaryId);
-    await this.makeJsonRequest<void>(
-      'PATCH',
-      `/v3/glossaries/${glossaryId}`,
-      {
-        dictionaries: [{
+    await this.makeJsonRequest<void>('PATCH', `/v3/glossaries/${glossaryId}`, {
+      dictionaries: [
+        {
           source_lang: sourceLang.toUpperCase(),
           target_lang: targetLang.toUpperCase(),
           entries,
           entries_format: 'tsv',
-        }],
-      }
-    );
+        },
+      ],
+    });
   }
 
   async replaceGlossaryDictionary(
@@ -190,7 +191,9 @@ export class GlossaryClient extends HttpClient {
   ): Promise<void> {
     this.validateGlossaryId(glossaryId);
     if (!updates.name && !updates.dictionaries) {
-      throw new ValidationError('At least one of name or dictionaries must be provided');
+      throw new ValidationError(
+        'At least one of name or dictionaries must be provided'
+      );
     }
     await this.makeJsonRequest<void>(
       'PATCH',

@@ -3,7 +3,10 @@
  * Preserves code blocks and variables during translation by replacing them with placeholders
  */
 
-export function preserveCodeBlocks(text: string, preservationMap: Map<string, string>): string {
+export function preserveCodeBlocks(
+  text: string,
+  preservationMap: Map<string, string>
+): string {
   let processed = text;
   let counter = 0;
 
@@ -24,17 +27,20 @@ export function preserveCodeBlocks(text: string, preservationMap: Map<string, st
   return processed;
 }
 
-export function preserveVariables(text: string, preservationMap: Map<string, string>): string {
+export function preserveVariables(
+  text: string,
+  preservationMap: Map<string, string>
+): string {
   let processed = text;
   let counter = 0;
 
   // Preserve various variable formats (order matters - longest match first)
   const patterns = [
-    /\$\{[\p{L}\p{N}_]+\}/gu,       // ${name}, ${имя}
-    /\{\{[\p{L}\p{N}_]+\}\}/gu,     // {{name}}, {{имя}} — must precede {name}
-    /\{[\p{L}\p{N}_]+\}/gu,         // {name}, {名前}, {0}
-    /%\d+\$[sdfu@]/g,               // %1$s, %2$d
-    /%[sdfu@]/g,                     // %s, %d, %f, %u, %@
+    /\$\{[\p{L}\p{N}_]+\}/gu, // ${name}, ${имя}
+    /\{\{[\p{L}\p{N}_]+\}\}/gu, // {{name}}, {{имя}} — must precede {name}
+    /\{[\p{L}\p{N}_]+\}/gu, // {name}, {名前}, {0}
+    /%\d+\$[sdfu@]/g, // %1$s, %2$d
+    /%[sdfu@]/g, // %s, %d, %f, %u, %@
   ];
 
   for (const pattern of patterns) {
@@ -48,7 +54,10 @@ export function preserveVariables(text: string, preservationMap: Map<string, str
   return processed;
 }
 
-export function restorePlaceholders(text: string, preservationMap: Map<string, string>): string {
+export function restorePlaceholders(
+  text: string,
+  preservationMap: Map<string, string>
+): string {
   let restored = text;
   for (const [placeholder, original] of preservationMap.entries()) {
     // Single pass per placeholder: `original` may itself contain the

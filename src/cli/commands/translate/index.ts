@@ -1,4 +1,8 @@
-export type { TranslateOptions, TranslationParams, HandlerContext } from './types.js';
+export type {
+  TranslateOptions,
+  TranslationParams,
+  HandlerContext,
+} from './types.js';
 export type {
   ExtendedLanguageConstraints,
   TranslationLanguageConstraints,
@@ -30,4 +34,7 @@ export { StdinTranslationHandler } from './stdin-translation-handler.js';
 export { FileTranslationHandler } from './file-translation-handler.js';
 export { DocumentTranslationHandler } from './document-translation-handler.js';
 export { DirectoryTranslationHandler } from './directory-translation-handler.js';
-export { buildBaseTranslationOptions, applySharedTmAndGlossary } from './translation-options-factory.js';
+export {
+  buildBaseTranslationOptions,
+  applySharedTmAndGlossary,
+} from './translation-options-factory.js';

@@ -24,25 +24,13 @@ describe('CompletionCommand', () => {
     const authCmd = program
       .command('auth')
       .description('Manage authentication');
-    authCmd
-      .command('set-key')
-      .description('Set API key');
-    authCmd
-      .command('show')
-      .description('Show current API key');
-    authCmd
-      .command('clear')
-      .description('Remove API key');
+    authCmd.command('set-key').description('Set API key');
+    authCmd.command('show').description('Show current API key');
+    authCmd.command('clear').description('Remove API key');
 
-    const cacheCmd = program
-      .command('cache')
-      .description('Manage cache');
-    cacheCmd
-      .command('stats')
-      .description('Show cache statistics');
-    cacheCmd
-      .command('clear')
-      .description('Clear cached translations');
+    const cacheCmd = program.command('cache').description('Manage cache');
+    cacheCmd.command('stats').description('Show cache statistics');
+    cacheCmd.command('clear').description('Clear cached translations');
 
     completionCommand = new CompletionCommand(program);
   });
@@ -168,9 +156,15 @@ describe('CompletionCommand', () => {
   describe('fish completion', () => {
     it('should include top-level commands', () => {
       const script = completionCommand.generate('fish');
-      expect(script).toContain("complete -c deepl -n '__fish_use_subcommand' -a 'translate'");
-      expect(script).toContain("complete -c deepl -n '__fish_use_subcommand' -a 'auth'");
-      expect(script).toContain("complete -c deepl -n '__fish_use_subcommand' -a 'cache'");
+      expect(script).toContain(
+        "complete -c deepl -n '__fish_use_subcommand' -a 'translate'"
+      );
+      expect(script).toContain(
+        "complete -c deepl -n '__fish_use_subcommand' -a 'auth'"
+      );
+      expect(script).toContain(
+        "complete -c deepl -n '__fish_use_subcommand' -a 'cache'"
+      );
     });
 
     it('should include command descriptions', () => {
@@ -194,7 +188,7 @@ describe('CompletionCommand', () => {
 
     it('should include subcommands scoped to parent command', () => {
       const script = completionCommand.generate('fish');
-      expect(script).toContain("__fish_seen_subcommand_from auth");
+      expect(script).toContain('__fish_seen_subcommand_from auth');
       expect(script).toContain("-a 'set-key'");
       expect(script).toContain("-a 'show'");
     });
@@ -280,17 +274,20 @@ describe('CompletionCommand', () => {
   describe('hidden commands', () => {
     // Hidden commands are internal surface; offering them in tab-completion
     // publishes them to end users.
-    it.each(['bash', 'zsh', 'fish'] as const)('omits hidden commands from %s completions', (shell) => {
-      const program = new Command();
-      program.name('deepl');
-      program.command('translate').description('Translate text');
-      program.command('_internal', { hidden: true }).description('Internal');
+    it.each(['bash', 'zsh', 'fish'] as const)(
+      'omits hidden commands from %s completions',
+      (shell) => {
+        const program = new Command();
+        program.name('deepl');
+        program.command('translate').description('Translate text');
+        program.command('_internal', { hidden: true }).description('Internal');
 
-      const script = new CompletionCommand(program).generate(shell);
+        const script = new CompletionCommand(program).generate(shell);
 
-      expect(script).toContain('translate');
-      expect(script).not.toContain('_internal');
-    });
+        expect(script).toContain('translate');
+        expect(script).not.toContain('_internal');
+      }
+    );
 
     it('omits hidden subcommands', () => {
       const program = new Command();

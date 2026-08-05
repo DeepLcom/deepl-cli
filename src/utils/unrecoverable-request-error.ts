@@ -35,5 +35,5 @@ export function isUnrecoverableRequestError(error: unknown): boolean {
     return false;
   }
   const message = errorMessage(error).toLowerCase();
-  return REJECTED_REQUEST_PATTERNS.some(pattern => message.includes(pattern));
+  return REJECTED_REQUEST_PATTERNS.some((pattern) => message.includes(pattern));
 }

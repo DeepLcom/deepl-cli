@@ -17,20 +17,20 @@ export interface ExportResult {
 export async function exportTranslations(
   config: ResolvedSyncConfig,
   registry: FormatRegistry,
-  options?: ExportOptions,
+  options?: ExportOptions
 ): Promise<ExportResult> {
   try {
     await sweepStaleBackups(
       config.projectRoot,
       resolveBakSweepAgeMs(config.sync?.bak_sweep_max_age_seconds),
-      config.buckets,
+      config.buckets
     );
   } catch {
     /* best-effort */
   }
 
   const locales = options?.localeFilter?.length
-    ? config.target_locales.filter(l => options.localeFilter!.includes(l))
+    ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
     : config.target_locales;
 
   const units: string[] = [];
@@ -42,10 +42,12 @@ export async function exportTranslations(
       const escaped = escapeXml(entry.value);
       units.push(
         `    <trans-unit id="${escapeXml(entry.key)}" resname="${escapeXml(entry.key)}">` +
-        `\n      <source>${escaped}</source>` +
-        (entry.context ? `\n      <note>${escapeXml(entry.context)}</note>` : '') +
-        `\n      <note from="location">${escapeXml(walked.relPath)}</note>` +
-        `\n    </trans-unit>`,
+          `\n      <source>${escaped}</source>` +
+          (entry.context
+            ? `\n      <note>${escapeXml(entry.context)}</note>`
+            : '') +
+          `\n      <note from="location">${escapeXml(walked.relPath)}</note>` +
+          `\n    </trans-unit>`
       );
     }
   }
@@ -53,10 +55,11 @@ export async function exportTranslations(
   const xliff = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">',
-    ...locales.map(locale =>
-      `  <file source-language="${escapeXml(config.source_locale)}" target-language="${escapeXml(locale)}" datatype="plaintext">` +
-      `\n    <body>\n${units.join('\n')}\n    </body>` +
-      `\n  </file>`,
+    ...locales.map(
+      (locale) =>
+        `  <file source-language="${escapeXml(config.source_locale)}" target-language="${escapeXml(locale)}" datatype="plaintext">` +
+        `\n    <body>\n${units.join('\n')}\n    </body>` +
+        `\n  </file>`
     ),
     '</xliff>',
     '',

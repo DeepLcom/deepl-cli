@@ -28,13 +28,18 @@ export interface SyncStatusResult {
 
 export async function computeSyncStatus(
   config: ResolvedSyncConfig,
-  formatRegistry: FormatRegistry,
+  formatRegistry: FormatRegistry
 ): Promise<SyncStatusResult> {
-  const lockManager = new SyncLockManager(path.join(config.projectRoot, LOCK_FILE_NAME));
+  const lockManager = new SyncLockManager(
+    path.join(config.projectRoot, LOCK_FILE_NAME)
+  );
   const lockFile = await lockManager.read();
   let totalKeys = 0;
   let skippedKeys = 0;
-  const localeStats = new Map<string, { complete: number; missing: number; outdated: number }>();
+  const localeStats = new Map<
+    string,
+    { complete: number; missing: number; outdated: number }
+  >();
 
   for (const locale of config.target_locales) {
     localeStats.set(locale, { complete: 0, missing: 0, outdated: 0 });
@@ -63,7 +68,8 @@ export async function computeSyncStatus(
         const localeOutdated =
           lockEntry !== undefined &&
           translation !== undefined &&
-          (translation.status === 'failed' || translation.hash !== lockEntry.source_hash);
+          (translation.status === 'failed' ||
+            translation.hash !== lockEntry.source_hash);
 
         if (diff.status === 'new' || !hasTranslation) {
           stats.missing++;
@@ -77,11 +83,20 @@ export async function computeSyncStatus(
   }
 
   const locales: LocaleStatus[] = config.target_locales.map((locale) => {
-    const stats = localeStats.get(locale) ?? { complete: 0, missing: 0, outdated: 0 };
+    const stats = localeStats.get(locale) ?? {
+      complete: 0,
+      missing: 0,
+      outdated: 0,
+    };
     const total = stats.complete + stats.missing + stats.outdated;
     const coverage = total > 0 ? Math.round((stats.complete / total) * 100) : 0;
     return { locale, ...stats, coverage };
   });
 
-  return { sourceLocale: config.source_locale, totalKeys, skippedKeys, locales };
+  return {
+    sourceLocale: config.source_locale,
+    totalKeys,
+    skippedKeys,
+    locales,
+  };
 }

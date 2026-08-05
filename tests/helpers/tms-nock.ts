@@ -18,9 +18,7 @@ export const TMS_API_KEY = 'tms-test-api-key';
 export const TMS_TOKEN = 'tms-test-token';
 
 export type AuthExpectation =
-  | { apiKey: string }
-  | { token: string }
-  | { none: true };
+  { apiKey: string } | { token: string } | { none: true };
 
 function authHeader(auth: AuthExpectation | undefined): string | undefined {
   if (!auth) return undefined;
@@ -33,12 +31,15 @@ export function expectTmsPush(
   key: string,
   locale: string,
   value: string,
-  opts: { auth?: AuthExpectation; status?: number } = {},
+  opts: { auth?: AuthExpectation; status?: number } = {}
 ): nock.Scope {
   const scope = nock(TMS_BASE);
   const expectedBody = { locale, value };
   const encoded = encodeURIComponent(key);
-  let interceptor = scope.put(`/api/projects/${TMS_PROJECT}/keys/${encoded}`, expectedBody);
+  let interceptor = scope.put(
+    `/api/projects/${TMS_PROJECT}/keys/${encoded}`,
+    expectedBody
+  );
   const header = authHeader(opts.auth);
   if (header !== undefined) {
     interceptor = interceptor.matchHeader('authorization', header);
@@ -49,7 +50,7 @@ export function expectTmsPush(
 export function expectTmsPull(
   locale: string,
   response: Record<string, string>,
-  opts: { auth?: AuthExpectation; status?: number } = {},
+  opts: { auth?: AuthExpectation; status?: number } = {}
 ): nock.Scope {
   const scope = nock(TMS_BASE);
   let interceptor = scope
@@ -66,20 +67,26 @@ export function expectTmsError(
   method: 'put' | 'get',
   pathSuffix: string,
   status: number,
-  body: Record<string, unknown> = {},
+  body: Record<string, unknown> = {}
 ): nock.Scope {
   const scope = nock(TMS_BASE);
   if (method === 'put') {
-    return scope.put(new RegExp(`/api/projects/${TMS_PROJECT}/keys/.+`)).reply(status, body);
+    return scope
+      .put(new RegExp(`/api/projects/${TMS_PROJECT}/keys/.+`))
+      .reply(status, body);
   }
-  return scope.get(new RegExp(`/api/projects/${TMS_PROJECT}${pathSuffix}.*`)).reply(status, body);
+  return scope
+    .get(new RegExp(`/api/projects/${TMS_PROJECT}${pathSuffix}.*`))
+    .reply(status, body);
 }
 
 /**
  * Standard `tms:` config block pointing at the nock-mocked TMS_BASE/TMS_PROJECT.
  * Spread extra overrides (e.g. token) into the second arg.
  */
-export function tmsConfig(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+export function tmsConfig(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
   return {
     enabled: true,
     server: TMS_BASE,

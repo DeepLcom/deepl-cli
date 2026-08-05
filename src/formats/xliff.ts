@@ -1,4 +1,8 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  TranslatedEntry,
+} from './format.js';
 import { ValidationError } from '../utils/errors.js';
 import {
   findElement,
@@ -67,18 +71,22 @@ const XML_ENTITY_RE = /&(?:(amp|lt|gt|quot|apos)|#(x[0-9a-fA-F]+|[0-9]+));/g;
  * payloads that carry literal entities.
  */
 function unescapeXml(value: string): string {
-  return value.replace(XML_ENTITY_RE, (match, named: string | undefined, numeric: string | undefined) => {
-    if (named) return NAMED_ENTITIES[named] ?? match;
-    if (numeric) {
-      const code = numeric.startsWith('x') || numeric.startsWith('X')
-        ? parseInt(numeric.slice(1), 16)
-        : parseInt(numeric, 10);
-      return Number.isFinite(code) && code >= 0 && code <= 0x10FFFF
-        ? String.fromCodePoint(code)
-        : match;
+  return value.replace(
+    XML_ENTITY_RE,
+    (match, named: string | undefined, numeric: string | undefined) => {
+      if (named) return NAMED_ENTITIES[named] ?? match;
+      if (numeric) {
+        const code =
+          numeric.startsWith('x') || numeric.startsWith('X')
+            ? parseInt(numeric.slice(1), 16)
+            : parseInt(numeric, 10);
+        return Number.isFinite(code) && code >= 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : match;
+      }
+      return match;
     }
-    return match;
-  });
+  );
 }
 
 /**
@@ -96,7 +104,7 @@ function assertNoCdataInTranslatable(content: string): void {
     if (element.inner.includes('<![CDATA[')) {
       throw new ValidationError(
         'XLIFF <source> / <target> elements containing CDATA sections are not supported.',
-        'Inline the literal text without the <![CDATA[...]]> wrapper, or preprocess the file to entity-escape CDATA content before syncing.',
+        'Inline the literal text without the <![CDATA[...]]> wrapper, or preprocess the file to entity-escape CDATA content before syncing.'
       );
     }
   }
@@ -192,7 +200,9 @@ export class XliffFormatParser implements FormatParser {
     for (const element of scanElements(content, TRANS_UNIT_EL)) {
       const source = findElement(element.inner, SOURCE_EL);
       if (!source) continue;
-      entries.push(this.toEntry(element.groups[0]!, source.inner, element.inner));
+      entries.push(
+        this.toEntry(element.groups[0]!, source.inner, element.inner)
+      );
     }
   }
 
@@ -203,11 +213,17 @@ export class XliffFormatParser implements FormatParser {
 
       const source = findElement(segment.inner, SOURCE_EL);
       if (!source) continue;
-      entries.push(this.toEntry(element.groups[0]!, source.inner, element.inner));
+      entries.push(
+        this.toEntry(element.groups[0]!, source.inner, element.inner)
+      );
     }
   }
 
-  private toEntry(id: string, rawSource: string, block: string): ExtractedEntry {
+  private toEntry(
+    id: string,
+    rawSource: string,
+    block: string
+  ): ExtractedEntry {
     const entry: ExtractedEntry = { key: id, value: unescapeXml(rawSource) };
     const note = findElement(block, NOTE_EL);
     if (note) {
@@ -216,16 +232,25 @@ export class XliffFormatParser implements FormatParser {
     return entry;
   }
 
-  private reconstructV12(content: string, translations: Map<string, string>): string {
+  private reconstructV12(
+    content: string,
+    translations: Map<string, string>
+  ): string {
     const result = replaceElements(content, TRANS_UNIT_EL, (element) => {
       const translation = translations.get(element.groups[0]!);
       if (translation === undefined) return '';
-      return rewriteInner(element, applyTarget(element.inner, escapeXml(translation)));
+      return rewriteInner(
+        element,
+        applyTarget(element.inner, escapeXml(translation))
+      );
     });
     return result.replace(/\n{3,}/g, '\n\n');
   }
 
-  private reconstructV2(content: string, translations: Map<string, string>): string {
+  private reconstructV2(
+    content: string,
+    translations: Map<string, string>
+  ): string {
     const result = replaceElements(content, UNIT_EL, (element) => {
       const translation = translations.get(element.groups[0]!);
       if (translation === undefined) return '';
@@ -235,7 +260,10 @@ export class XliffFormatParser implements FormatParser {
 
       const inner =
         element.inner.slice(0, segment.start) +
-        rewriteInner(segment, applyTarget(segment.inner, escapeXml(translation))) +
+        rewriteInner(
+          segment,
+          applyTarget(segment.inner, escapeXml(translation))
+        ) +
         element.inner.slice(segment.end);
       return rewriteInner(element, inner);
     });

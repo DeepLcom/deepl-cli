@@ -6,16 +6,21 @@ const parser = new JsonFormatParser();
 describe('JsonFormatParser', () => {
   describe('extract()', () => {
     it('should extract flat key-value pairs', () => {
-      const result = parser.extract('{"greeting":"Hello","farewell":"Goodbye"}');
+      const result = parser.extract(
+        '{"greeting":"Hello","farewell":"Goodbye"}'
+      );
       expect(result).toHaveLength(2);
-      expect(result.find(e => e.key === 'farewell')!.value).toBe('Goodbye');
-      expect(result.find(e => e.key === 'greeting')!.value).toBe('Hello');
+      expect(result.find((e) => e.key === 'farewell')!.value).toBe('Goodbye');
+      expect(result.find((e) => e.key === 'greeting')!.value).toBe('Hello');
     });
 
     it('should extract nested objects with dot-path keys', () => {
       const result = parser.extract('{"nav":{"home":"Home","about":"About"}}');
       expect(result).toHaveLength(2);
-      expect(result.map(e => e.key).sort()).toEqual(['nav.about', 'nav.home']);
+      expect(result.map((e) => e.key).sort()).toEqual([
+        'nav.about',
+        'nav.home',
+      ]);
     });
 
     it('should skip non-string values', () => {
@@ -28,14 +33,18 @@ describe('JsonFormatParser', () => {
   describe('reconstruct()', () => {
     it('should replace values with translations', () => {
       const original = '{\n  "greeting": "Hello"\n}\n';
-      const entries: TranslatedEntry[] = [{ key: 'greeting', value: 'Hello', translation: 'Hallo' }];
+      const entries: TranslatedEntry[] = [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+      ];
       const result = parser.reconstruct(original, entries);
       expect(JSON.parse(result)).toEqual({ greeting: 'Hallo' });
     });
 
     it('should preserve indentation', () => {
       const original = '{\n  "key": "value"\n}\n';
-      const entries: TranslatedEntry[] = [{ key: 'key', value: 'value', translation: 'valor' }];
+      const entries: TranslatedEntry[] = [
+        { key: 'key', value: 'value', translation: 'valor' },
+      ];
       const result = parser.reconstruct(original, entries);
       expect(result).toBe('{\n  "key": "valor"\n}\n');
     });
@@ -60,7 +69,9 @@ describe('JsonFormatParser', () => {
       ];
       const result = parser.reconstruct(original, entries);
       const parsed = JSON.parse(result) as Record<string, unknown>;
-      expect((parsed['nav'] as Record<string, string>)['about']).toBe('Uber uns');
+      expect((parsed['nav'] as Record<string, string>)['about']).toBe(
+        'Uber uns'
+      );
     });
 
     it('should REMOVE deleted keys not in entries', () => {
@@ -117,15 +128,20 @@ describe('JsonFormatParser', () => {
     });
 
     it('should remove nested keys and clean up empty parent objects', () => {
-      const original = JSON.stringify({
-        nav: {
-          home: 'Home',
-          about: 'About',
-        },
-        footer: {
-          copyright: 'Copyright',
-        },
-      }, null, 2) + '\n';
+      const original =
+        JSON.stringify(
+          {
+            nav: {
+              home: 'Home',
+              about: 'About',
+            },
+            footer: {
+              copyright: 'Copyright',
+            },
+          },
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'nav.home', value: 'Home', translation: 'Startseite' },
@@ -140,13 +156,18 @@ describe('JsonFormatParser', () => {
     });
 
     it('should remove only the deleted key and keep siblings', () => {
-      const original = JSON.stringify({
-        nav: {
-          home: 'Home',
-          about: 'About',
-          contact: 'Contact',
-        },
-      }, null, 2) + '\n';
+      const original =
+        JSON.stringify(
+          {
+            nav: {
+              home: 'Home',
+              about: 'About',
+              contact: 'Contact',
+            },
+          },
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'nav.home', value: 'Home', translation: 'Inicio' },
@@ -172,7 +193,10 @@ describe('JsonFormatParser', () => {
     it('should preserve content with identity translations', () => {
       const original = '{\n  "a": "Hello",\n  "b": "World"\n}\n';
       const entries = parser.extract(original);
-      const translated: TranslatedEntry[] = entries.map(e => ({ ...e, translation: e.value }));
+      const translated: TranslatedEntry[] = entries.map((e) => ({
+        ...e,
+        translation: e.value,
+      }));
       const result = parser.reconstruct(original, translated);
       expect(result).toBe(original);
     });
@@ -213,10 +237,10 @@ describe('JsonFormatParser', () => {
       const result = parser.extract(json);
 
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('duplicate keys: greeting'),
+        expect.stringContaining('duplicate keys: greeting')
       );
       expect(result).toHaveLength(2);
-      expect(result.find(e => e.key === 'greeting')!.value).toBe('Hi');
+      expect(result.find((e) => e.key === 'greeting')!.value).toBe('Hi');
     });
 
     it('should warn on duplicate keys in nested objects', () => {
@@ -224,7 +248,7 @@ describe('JsonFormatParser', () => {
       parser.extract(json);
 
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('duplicate keys: home'),
+        expect.stringContaining('duplicate keys: home')
       );
     });
 
@@ -254,7 +278,7 @@ describe('JsonFormatParser', () => {
       parser.extract(json);
 
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('duplicate keys'),
+        expect.stringContaining('duplicate keys')
       );
     });
 
@@ -343,7 +367,12 @@ describe('JsonFormatParser', () => {
     });
 
     it('should apply translations to nested objects inside arrays', () => {
-      const original = JSON.stringify({ list: [{ name: 'Alice' }, { name: 'Bob' }] }, null, 2) + '\n';
+      const original =
+        JSON.stringify(
+          { list: [{ name: 'Alice' }, { name: 'Bob' }] },
+          null,
+          2
+        ) + '\n';
       const entries: TranslatedEntry[] = [
         { key: 'list.0.name', value: 'Alice', translation: 'Alicia' },
         { key: 'list.1.name', value: 'Bob', translation: 'Roberto' },
@@ -355,7 +384,8 @@ describe('JsonFormatParser', () => {
     });
 
     it('should not apply translation to array string item when not in translations', () => {
-      const original = JSON.stringify({ items: ['keep', 'also_keep'] }, null, 2) + '\n';
+      const original =
+        JSON.stringify({ items: ['keep', 'also_keep'] }, null, 2) + '\n';
       const entries: TranslatedEntry[] = [
         { key: 'items.0', value: 'keep', translation: 'kept' },
       ];
@@ -368,14 +398,19 @@ describe('JsonFormatParser', () => {
 
   describe('reconstruct() removeDeletedKeys nested cleanup', () => {
     it('should remove deeply nested empty parent objects after key removal', () => {
-      const original = JSON.stringify({
-        a: {
-          b: {
-            c: 'deep value',
+      const original =
+        JSON.stringify(
+          {
+            a: {
+              b: {
+                c: 'deep value',
+              },
+            },
+            keep: 'yes',
           },
-        },
-        keep: 'yes',
-      }, null, 2) + '\n';
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'keep', value: 'yes', translation: 'ja' },
@@ -388,10 +423,15 @@ describe('JsonFormatParser', () => {
     });
 
     it('should not remove array values via removeDeletedKeys', () => {
-      const original = JSON.stringify({
-        items: ['one', 'two'],
-        label: 'test',
-      }, null, 2) + '\n';
+      const original =
+        JSON.stringify(
+          {
+            items: ['one', 'two'],
+            label: 'test',
+          },
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'items.0', value: 'one', translation: 'uno' },
@@ -417,9 +457,14 @@ describe('JsonFormatParser', () => {
     });
 
     it('should handle setKey where intermediate path already exists as object', () => {
-      const original = JSON.stringify({
-        nav: { home: 'Home' },
-      }, null, 2) + '\n';
+      const original =
+        JSON.stringify(
+          {
+            nav: { home: 'Home' },
+          },
+          null,
+          2
+        ) + '\n';
       const entries: TranslatedEntry[] = [
         { key: 'nav.home', value: 'Home', translation: 'Inicio' },
         { key: 'nav.about', value: 'About', translation: 'Acerca' },
@@ -445,7 +490,8 @@ describe('JsonFormatParser', () => {
     });
 
     it('should handle setKey when intermediate path is null', () => {
-      const original = JSON.stringify({ parent: null, other: 'val' }, null, 2) + '\n';
+      const original =
+        JSON.stringify({ parent: null, other: 'val' }, null, 2) + '\n';
       const entries: TranslatedEntry[] = [
         { key: 'other', value: 'val', translation: 'valor' },
         { key: 'parent.child', value: 'x', translation: 'y' },
@@ -489,7 +535,8 @@ describe('JsonFormatParser', () => {
     });
 
     it('should apply translations to top-level array with nested objects', () => {
-      const original = JSON.stringify([{ name: 'Alice' }, { name: 'Bob' }], null, 2) + '\n';
+      const original =
+        JSON.stringify([{ name: 'Alice' }, { name: 'Bob' }], null, 2) + '\n';
       const entries: TranslatedEntry[] = [
         { key: '0.name', value: 'Alice', translation: 'Alicia' },
         { key: '1.name', value: 'Bob', translation: 'Roberto' },
@@ -525,19 +572,24 @@ describe('JsonFormatParser', () => {
     });
 
     it('should reconstruct flat dotted keys without nesting', () => {
-      const original = '{\n  "section.key": "Value",\n  "section.other": "Other"\n}\n';
+      const original =
+        '{\n  "section.key": "Value",\n  "section.other": "Other"\n}\n';
       const entries: TranslatedEntry[] = [
         { key: 'section.key', value: 'Value', translation: 'Wert' },
         { key: 'section.other', value: 'Other', translation: 'Andere' },
       ];
       const result = parser.reconstruct(original, entries);
       const parsed = JSON.parse(result);
-      expect(parsed).toEqual({ 'section.key': 'Wert', 'section.other': 'Andere' });
+      expect(parsed).toEqual({
+        'section.key': 'Wert',
+        'section.other': 'Andere',
+      });
       expect(parsed).not.toHaveProperty('section');
     });
 
     it('should preserve nested keys as nested', () => {
-      const original = JSON.stringify({ section: { key: 'Value' } }, null, 2) + '\n';
+      const original =
+        JSON.stringify({ section: { key: 'Value' } }, null, 2) + '\n';
       const entries: TranslatedEntry[] = [
         { key: 'section.key', value: 'Value', translation: 'Wert' },
       ];
@@ -548,13 +600,22 @@ describe('JsonFormatParser', () => {
     });
 
     it('should handle mixed flat and nested keys', () => {
-      const original = JSON.stringify({
-        'flat.key': 'Flat Value',
-        nested: { key: 'Nested Value' },
-      }, null, 2) + '\n';
+      const original =
+        JSON.stringify(
+          {
+            'flat.key': 'Flat Value',
+            nested: { key: 'Nested Value' },
+          },
+          null,
+          2
+        ) + '\n';
       const entries: TranslatedEntry[] = [
         { key: 'flat.key', value: 'Flat Value', translation: 'Flacher Wert' },
-        { key: 'nested.key', value: 'Nested Value', translation: 'Verschachtelter Wert' },
+        {
+          key: 'nested.key',
+          value: 'Nested Value',
+          translation: 'Verschachtelter Wert',
+        },
       ];
       const result = parser.reconstruct(original, entries);
       const parsed = JSON.parse(result);
@@ -564,9 +625,13 @@ describe('JsonFormatParser', () => {
     });
 
     it('should round-trip flat dotted keys with identity translations', () => {
-      const original = '{\n  "app.title": "My App",\n  "app.version": "1.0"\n}\n';
+      const original =
+        '{\n  "app.title": "My App",\n  "app.version": "1.0"\n}\n';
       const entries = parser.extract(original);
-      const translated: TranslatedEntry[] = entries.map(e => ({ ...e, translation: e.value }));
+      const translated: TranslatedEntry[] = entries.map((e) => ({
+        ...e,
+        translation: e.value,
+      }));
       const result = parser.reconstruct(original, translated);
       expect(result).toBe(original);
     });
@@ -585,7 +650,8 @@ describe('JsonFormatParser', () => {
     });
 
     it('should remove deleted flat dotted keys', () => {
-      const original = '{\n  "section.keep": "Keep",\n  "section.remove": "Remove"\n}\n';
+      const original =
+        '{\n  "section.keep": "Keep",\n  "section.remove": "Remove"\n}\n';
       const entries: TranslatedEntry[] = [
         { key: 'section.keep', value: 'Keep', translation: 'Behalten' },
       ];
@@ -596,9 +662,14 @@ describe('JsonFormatParser', () => {
     });
 
     it('should handle flat dotted keys inside nested objects', () => {
-      const original = JSON.stringify({
-        outer: { 'inner.key': 'Value' },
-      }, null, 2) + '\n';
+      const original =
+        JSON.stringify(
+          {
+            outer: { 'inner.key': 'Value' },
+          },
+          null,
+          2
+        ) + '\n';
       const entries: TranslatedEntry[] = [
         { key: 'outer.inner.key', value: 'Value', translation: 'Wert' },
       ];

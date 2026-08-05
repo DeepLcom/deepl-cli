@@ -14,7 +14,7 @@ import { computeSourceHash } from './sync-lock.js';
 function hasOutdatedLocale(
   lockEntry: SyncLockEntry,
   sourceHash: string,
-  targetLocales: readonly string[],
+  targetLocales: readonly string[]
 ): boolean {
   return targetLocales.some((locale) => {
     const translation = lockEntry.translations[locale];
@@ -31,7 +31,7 @@ function hasOutdatedLocale(
 export function computeDiff(
   lockEntries: Record<string, SyncLockEntry>,
   currentEntries: ExtractedEntry[],
-  targetLocales?: readonly string[],
+  targetLocales?: readonly string[]
 ): SyncDiff[] {
   const currentKeys = new Set(currentEntries.map((e) => e.key));
   const currentMap = new Map(currentEntries.map((e) => [e.key, e]));
@@ -40,19 +40,39 @@ export function computeDiff(
   for (const [key, entry] of currentMap) {
     const lockEntry = lockEntries[key];
     if (!lockEntry) {
-      diffs.push({ key, status: 'new', value: entry.value, metadata: entry.metadata });
-    } else if (computeSourceHash(entry.value, entry.metadata) === lockEntry.source_hash) {
+      diffs.push({
+        key,
+        status: 'new',
+        value: entry.value,
+        metadata: entry.metadata,
+      });
+    } else if (
+      computeSourceHash(entry.value, entry.metadata) === lockEntry.source_hash
+    ) {
       // Scope the check to the configured target locales when they are known: a
       // whole-entry `some(failed)` check would mark the key stale for EVERY
       // locale as soon as one had failed, re-translating locales that are already
       // fine and overwriting human-edited files.
       const needsWork = targetLocales
         ? hasOutdatedLocale(lockEntry, lockEntry.source_hash, targetLocales)
-        : Object.values(lockEntry.translations).some(t => t.status === 'failed');
+        : Object.values(lockEntry.translations).some(
+            (t) => t.status === 'failed'
+          );
       if (needsWork) {
-        diffs.push({ key, status: 'stale', value: entry.value, previous_hash: lockEntry.source_hash, metadata: entry.metadata });
+        diffs.push({
+          key,
+          status: 'stale',
+          value: entry.value,
+          previous_hash: lockEntry.source_hash,
+          metadata: entry.metadata,
+        });
       } else {
-        diffs.push({ key, status: 'current', value: entry.value, metadata: entry.metadata });
+        diffs.push({
+          key,
+          status: 'current',
+          value: entry.value,
+          metadata: entry.metadata,
+        });
       }
     } else {
       diffs.push({
@@ -69,7 +89,11 @@ export function computeDiff(
     if (!currentKeys.has(key)) {
       const lockEntry = lockEntries[key];
       if (lockEntry) {
-        diffs.push({ key, status: 'deleted', previous_hash: lockEntry.source_hash });
+        diffs.push({
+          key,
+          status: 'deleted',
+          previous_hash: lockEntry.source_hash,
+        });
       }
     }
   }

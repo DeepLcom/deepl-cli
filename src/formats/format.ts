@@ -26,7 +26,11 @@ export interface FormatParser {
   /** Extract translatable entries from file content. For multi-locale formats, locale scopes extraction. */
   extract(content: string, locale?: string): ExtractedEntry[];
   /** Reconstruct file content with translated entries applied. For multi-locale formats, locale scopes the update. */
-  reconstruct(content: string, entries: TranslatedEntry[], locale?: string): string;
+  reconstruct(
+    content: string,
+    entries: TranslatedEntry[],
+    locale?: string
+  ): string;
   /** Optional: extract context for a specific key from file content */
   extractContext?(content: string, key: string): string | undefined;
 }

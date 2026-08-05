@@ -274,7 +274,7 @@ describe('CLI Workflow E2E', () => {
       expect.assertions(3);
       const result = runCLIExpectError(
         'deepl translate "Hi" --to de --tm-threshold 80abc',
-        { stdio: 'pipe' },
+        { stdio: 'pipe' }
       );
       expect(result.status).toBe(6);
       expect(result.output).toContain('--tm-threshold must be an integer');

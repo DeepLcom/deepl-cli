@@ -13,26 +13,40 @@ import {
   getFileSize,
   SAFE_TEXT_SIZE_LIMIT,
 } from './translate-utils.js';
-import { buildBaseTranslationOptions, applySharedTmAndGlossary } from './translation-options-factory.js';
+import {
+  buildBaseTranslationOptions,
+  applySharedTmAndGlossary,
+} from './translation-options-factory.js';
 import { applyGlossarySourceLang } from '../../../utils/glossary-params.js';
 import type { DocumentTranslationHandler } from './document-translation-handler.js';
 
 export class FileTranslationHandler {
-  constructor(public ctx: HandlerContext, public documentHandler: DocumentTranslationHandler) {}
+  constructor(
+    public ctx: HandlerContext,
+    public documentHandler: DocumentTranslationHandler
+  ) {}
 
-  async translateFile(filePath: string, options: TranslateOptions, cachedStats?: fs.Stats | null): Promise<string> {
+  async translateFile(
+    filePath: string,
+    options: TranslateOptions,
+    cachedStats?: fs.Stats | null
+  ): Promise<string> {
     if (!options.output) {
-      throw new ValidationError('Output file path is required for file translation. Use --output <path>');
+      throw new ValidationError(
+        'Output file path is required for file translation. Use --output <path>'
+      );
     }
 
     const stdoutMode = options.output === '-';
 
     if (options.to.includes(',') && stdoutMode) {
-      throw new ValidationError('Cannot use --output - with multiple target languages. Use a directory path instead.');
+      throw new ValidationError(
+        'Cannot use --output - with multiple target languages. Use a directory path instead.'
+      );
     }
 
     if (options.to.includes(',')) {
-      const targetLangs = options.to.split(',').map(lang => lang.trim());
+      const targetLangs = options.to.split(',').map((lang) => lang.trim());
       validateTranslationLanguages(targetLangs, options);
 
       const validTargetLangs = targetLangs as Language[];
@@ -69,14 +83,17 @@ export class FileTranslationHandler {
         targets: validTargetLangs,
       });
 
-      const results = await this.ctx.fileTranslationService.translateFileToMultiple(
-        filePath,
-        validTargetLangs,
-        translationOptions
-      );
+      const results =
+        await this.ctx.fileTranslationService.translateFileToMultiple(
+          filePath,
+          validTargetLangs,
+          translationOptions
+        );
 
-      return `Translated ${filePath} to ${validTargetLangs.length} languages:\n` +
-        results.map(r => `  [${r.targetLang}] ${r.outputPath}`).join('\n');
+      return (
+        `Translated ${filePath} to ${validTargetLangs.length} languages:\n` +
+        results.map((r) => `  [${r.targetLang}] ${r.outputPath}`).join('\n')
+      );
     }
 
     if (isTextBasedFile(filePath)) {
@@ -88,16 +105,23 @@ export class FileTranslationHandler {
       }
 
       if (fileSize === null) {
-        throw new ValidationError(`File not found or cannot be accessed: ${filePath}`);
+        throw new ValidationError(
+          `File not found or cannot be accessed: ${filePath}`
+        );
       }
 
       if (fileSize <= SAFE_TEXT_SIZE_LIMIT) {
         return this.translateTextFile(filePath, options);
-      } else if (this.ctx.documentTranslationService.isDocumentSupported(filePath)) {
+      } else if (
+        this.ctx.documentTranslationService.isDocumentSupported(filePath)
+      ) {
         const fileSizeKiB = (fileSize / 1024).toFixed(1);
         const warning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSizeKiB} KiB), using document API instead`;
         Logger.warn(warning);
-        const result = await this.documentHandler.translateDocument(filePath, options);
+        const result = await this.documentHandler.translateDocument(
+          filePath,
+          options
+        );
         return `${warning}\n${result}`;
       }
     }
@@ -126,7 +150,10 @@ export class FileTranslationHandler {
     return `Translated ${filePath} -> ${options.output}`;
   }
 
-  async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
+  async translateTextFile(
+    filePath: string,
+    options: TranslateOptions
+  ): Promise<string> {
     validateTranslationLanguages([options.to], options);
 
     applyGlossarySourceLang(
@@ -154,7 +181,9 @@ export class FileTranslationHandler {
 
     if (isStructuredFile(filePath)) {
       if (options.output === '-') {
-        throw new ValidationError('Cannot stream structured file (JSON/YAML) translation to stdout. Use --output <file> instead.');
+        throw new ValidationError(
+          'Cannot stream structured file (JSON/YAML) translation to stdout. Use --output <file> instead.'
+        );
       }
 
       const translationOptions = buildBaseTranslationOptions(options);
@@ -190,7 +219,7 @@ export class FileTranslationHandler {
       translationOptions,
       {
         preserveCode: options.preserveCode,
-        skipCache: !options.cache
+        skipCache: !options.cache,
       }
     );
 

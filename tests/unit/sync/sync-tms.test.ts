@@ -52,8 +52,12 @@ jest.mock('../../../src/sync/sync-lock', () => {
     ...actual,
     SyncLockManager: jest.fn().mockImplementation(() => ({
       read: jest.fn().mockResolvedValue({
-        _comment: '', version: 1, generated_at: '', source_locale: 'en',
-        entries: {}, stats: { total_keys: 0, total_translations: 0, last_sync: '' },
+        _comment: '',
+        version: 1,
+        generated_at: '',
+        source_locale: 'en',
+        entries: {},
+        stats: { total_keys: 0, total_translations: 0, last_sync: '' },
       }),
       write: jest.fn().mockResolvedValue(undefined),
     })),
@@ -67,7 +71,9 @@ const mockFg = fg as jest.MockedFunction<typeof fg>;
 const mockReadFileSync = fs.readFileSync as jest.Mock;
 const mockReadFile = fs.promises.readFile as jest.Mock;
 
-function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -82,11 +88,12 @@ function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncCo
 
 function makeStubParser(
   extractResults: ExtractedEntry[][] | ExtractedEntry[],
-  opts: { multiLocale?: boolean; configKey?: string } = {},
+  opts: { multiLocale?: boolean; configKey?: string } = {}
 ): FormatParser {
-  const queue = Array.isArray(extractResults[0]) && typeof extractResults[0] !== 'string'
-    ? (extractResults as ExtractedEntry[][]).slice()
-    : null;
+  const queue =
+    Array.isArray(extractResults[0]) && typeof extractResults[0] !== 'string'
+      ? (extractResults as ExtractedEntry[][]).slice()
+      : null;
   const single = !queue ? (extractResults as ExtractedEntry[]) : null;
 
   return {
@@ -198,7 +205,9 @@ describe('TmsClient.pushEntry — runtime skip-partition guard', () => {
       projectId: 'p',
       apiKey: 'k',
     });
-    const pushKeySpy = jest.spyOn(client, 'pushKey').mockResolvedValue(undefined);
+    const pushKeySpy = jest
+      .spyOn(client, 'pushKey')
+      .mockResolvedValue(undefined);
     const skipped: ExtractedEntry = {
       key: 'msgs.apples',
       value: '{0} none|{1} one|[2,*] many',
@@ -216,7 +225,9 @@ describe('TmsClient.pushEntry — runtime skip-partition guard', () => {
       projectId: 'p',
       apiKey: 'k',
     });
-    const pushKeySpy = jest.spyOn(client, 'pushKey').mockResolvedValue(undefined);
+    const pushKeySpy = jest
+      .spyOn(client, 'pushKey')
+      .mockResolvedValue(undefined);
     await client.pushEntry({ key: 'greeting', value: 'Hallo' }, 'de');
     expect(pushKeySpy).toHaveBeenCalledWith('greeting', 'de', 'Hallo');
   });
@@ -253,12 +264,14 @@ describe('pushTranslations — skip-partition invariant at inline extract sites'
     const result = await pushTranslations(
       makeConfig(),
       client,
-      makeRegistryWithParser(parser),
+      makeRegistryWithParser(parser)
     );
 
     const pushKeyMock = client.pushKey as jest.Mock;
     const pushedKeys = pushKeyMock.mock.calls.map((args) => args[0]);
-    expect(pushedKeys).toEqual(expect.arrayContaining(['greeting', 'farewell']));
+    expect(pushedKeys).toEqual(
+      expect.arrayContaining(['greeting', 'farewell'])
+    );
     expect(pushedKeys).not.toContain('plural.apples');
     expect(result.pushed).toBe(2);
     expect(result.skipped).toContainEqual({
@@ -290,7 +303,11 @@ describe('pushTranslations — skip-partition invariant at inline extract sites'
     const config = makeConfig({
       buckets: { xcstrings: { include: ['Localizable.xcstrings'] } },
     });
-    const result = await pushTranslations(config, client, makeRegistryWithParser(parser));
+    const result = await pushTranslations(
+      config,
+      client,
+      makeRegistryWithParser(parser)
+    );
 
     const pushKeyMock = client.pushKey as jest.Mock;
     expect(pushKeyMock.mock.calls.map((a) => a[0])).toEqual(['greeting']);
@@ -314,7 +331,11 @@ describe('pushTranslations — skip-partition invariant at inline extract sites'
     const client = makeTmsClient();
 
     const config = makeConfig({ target_locales: ['de', 'fr'] });
-    const result = await pushTranslations(config, client, makeRegistryWithParser(parser));
+    const result = await pushTranslations(
+      config,
+      client,
+      makeRegistryWithParser(parser)
+    );
 
     const pushKeyMock = client.pushKey as jest.Mock;
     for (const args of pushKeyMock.mock.calls) {
@@ -329,15 +350,21 @@ describe('pushTranslations — skip-partition invariant at inline extract sites'
 });
 
 describe('pullTranslations — skip-partition invariant at pull-merge extract (lines 144-145)', () => {
-  const { SyncLockManager: MockLockManager } = jest.requireMock('../../../src/sync/sync-lock');
+  const { SyncLockManager: MockLockManager } = jest.requireMock(
+    '../../../src/sync/sync-lock'
+  );
 
   beforeEach(() => {
     mockFg.mockReset();
     mockReadFile.mockReset();
     MockLockManager.mockImplementation(() => ({
       read: jest.fn().mockResolvedValue({
-        _comment: '', version: 1, generated_at: '', source_locale: 'en',
-        entries: {}, stats: { total_keys: 0, total_translations: 0, last_sync: '' },
+        _comment: '',
+        version: 1,
+        generated_at: '',
+        source_locale: 'en',
+        entries: {},
+        stats: { total_keys: 0, total_translations: 0, last_sync: '' },
       }),
       write: jest.fn().mockResolvedValue(undefined),
     }));
@@ -349,7 +376,9 @@ describe('pullTranslations — skip-partition invariant at pull-merge extract (l
     // Walker reads the source file; pull then also reads the target file.
     mockReadFile.mockImplementation(async (p: fs.PathLike) => {
       const name = path.basename(String(p));
-      return name.includes('en') ? '<?php return ["a"=>"Hi"];' : '<?php return ["a"=>"Old"];';
+      return name.includes('en')
+        ? '<?php return ["a"=>"Hi"];'
+        : '<?php return ["a"=>"Old"];';
     });
 
     const sourceEntries: ExtractedEntry[] = [
@@ -377,7 +406,7 @@ describe('pullTranslations — skip-partition invariant at pull-merge extract (l
     const result = await pullTranslations(
       makeConfig(),
       client,
-      makeRegistryWithParser(parser),
+      makeRegistryWithParser(parser)
     );
 
     expect(result.pulled).toBe(1);
@@ -415,7 +444,11 @@ describe('pullTranslations — skip-partition invariant at pull-merge extract (l
     const config = makeConfig({
       buckets: { xcstrings: { include: ['Localizable.xcstrings'] } },
     });
-    const result = await pullTranslations(config, client, makeRegistryWithParser(parser));
+    const result = await pullTranslations(
+      config,
+      client,
+      makeRegistryWithParser(parser)
+    );
 
     expect(result.pulled).toBe(1);
     const reconstructMock = parser.reconstruct as jest.Mock;
@@ -437,9 +470,9 @@ describe('formatSkippedSummary', () => {
   });
 
   it('renders a single-reason summary', () => {
-    expect(formatSkippedSummary([rec('target_missing'), rec('target_missing')])).toBe(
-      ' (2 skipped: 2 target file not yet present)',
-    );
+    expect(
+      formatSkippedSummary([rec('target_missing'), rec('target_missing')])
+    ).toBe(' (2 skipped: 2 target file not yet present)');
   });
 
   it('renders a mixed-reason summary with per-reason counts', () => {

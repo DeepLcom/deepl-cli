@@ -13,7 +13,11 @@
  * results, it hangs with no API call at all.
  */
 
-import { preserveVariables, preserveCodeBlocks, restorePlaceholders } from '../../src/utils/text-preservation';
+import {
+  preserveVariables,
+  preserveCodeBlocks,
+  restorePlaceholders,
+} from '../../src/utils/text-preservation';
 
 describe('restorePlaceholders termination', () => {
   it('should terminate when the original contains its own placeholder token', () => {
@@ -47,7 +51,10 @@ describe('restorePlaceholders termination', () => {
 
   it('should restore ordinary placeholders correctly', () => {
     const map = new Map<string, string>();
-    const preserved = preserveVariables('Hello {name}, you have {count} items', map);
+    const preserved = preserveVariables(
+      'Hello {name}, you have {count} items',
+      map
+    );
 
     const restored = restorePlaceholders(preserved, map);
 

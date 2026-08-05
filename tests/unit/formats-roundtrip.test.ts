@@ -32,7 +32,7 @@ describe('parser round-trip stability', () => {
 
       const out = parser.reconstruct(
         source,
-        entries.map((e) => ({ ...e, translation: e.value })),
+        entries.map((e) => ({ ...e, translation: e.value }))
       );
 
       expect(out).not.toContain('&amp;amp;');
@@ -49,9 +49,14 @@ describe('parser round-trip stability', () => {
         // Identity "translation": any drift is the parser's, not the engine's.
         content = parser.reconstruct(
           content,
-          entries.map((e) => ({ ...e, translation: e.value })),
+          entries.map((e) => ({ ...e, translation: e.value }))
         );
-        seen.push(parser.extract(content).map((e) => `${e.key}=${e.value}`).join('|'));
+        seen.push(
+          parser
+            .extract(content)
+            .map((e) => `${e.key}=${e.value}`)
+            .join('|')
+        );
       }
 
       expect(seen[1]).toBe(seen[0]);
@@ -69,7 +74,7 @@ describe('parser round-trip stability', () => {
 
       const out = parser.reconstruct(
         source,
-        entries.map((e) => ({ ...e, translation: 'Hello 😀 world' })),
+        entries.map((e) => ({ ...e, translation: 'Hello 😀 world' }))
       );
 
       // A lone high surrogate (\ud83d with no \ude00) is malformed and
@@ -81,7 +86,9 @@ describe('parser round-trip stability', () => {
       const parser = new PropertiesFormatParser();
       const withEmoji = parser.reconstruct(
         source,
-        parser.extract(source).map((e) => ({ ...e, translation: 'Hello 😀 world' })),
+        parser
+          .extract(source)
+          .map((e) => ({ ...e, translation: 'Hello 😀 world' }))
       );
 
       const reExtracted = parser.extract(withEmoji);
@@ -93,7 +100,9 @@ describe('parser round-trip stability', () => {
       const parser = new PropertiesFormatParser();
       const withUmlaut = parser.reconstruct(
         source,
-        parser.extract(source).map((e) => ({ ...e, translation: 'Grüße, Welt' })),
+        parser
+          .extract(source)
+          .map((e) => ({ ...e, translation: 'Grüße, Welt' }))
       );
 
       expect(parser.extract(withUmlaut)[0]?.value).toBe('Grüße, Welt');
@@ -105,7 +114,7 @@ describe('parser round-trip stability', () => {
       for (const translation of [' padded', '  two leading', ' ', ' x ']) {
         const out = parser.reconstruct(
           source,
-          parser.extract(source).map((e) => ({ ...e, translation })),
+          parser.extract(source).map((e) => ({ ...e, translation }))
         );
 
         // An unescaped leading space is trimmed by the value parser (per the

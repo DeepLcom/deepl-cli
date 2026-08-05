@@ -35,10 +35,13 @@ export function resolvePaths(): ResolvedPaths {
   }
 
   // 3. XDG env vars / defaults (empty string = unset per XDG spec)
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const xdgConfigHome = process.env['XDG_CONFIG_HOME'] || path.join(home, '.config');
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const xdgCacheHome = process.env['XDG_CACHE_HOME'] || path.join(home, '.cache');
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing -- an empty
+     value counts as unset per the XDG spec, which `??` would pass through */
+  const xdgConfigHome =
+    process.env['XDG_CONFIG_HOME'] || path.join(home, '.config');
+  const xdgCacheHome =
+    process.env['XDG_CACHE_HOME'] || path.join(home, '.cache');
+  /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
 
   const configDir = path.join(xdgConfigHome, 'deepl-cli');
   const cacheDir = path.join(xdgCacheHome, 'deepl-cli');

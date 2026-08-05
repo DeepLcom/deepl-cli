@@ -22,7 +22,9 @@ describe('CLI no-args exit code', () => {
       });
       expect(output).toContain('deepl');
     } catch (error: any) {
-      fail(`CLI exited with code ${error.status as number}, expected 0. stderr: ${error.stderr as string}`);
+      fail(
+        `CLI exited with code ${error.status as number}, expected 0. stderr: ${error.stderr as string}`
+      );
     }
   });
 

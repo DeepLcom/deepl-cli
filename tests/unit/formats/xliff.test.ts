@@ -363,7 +363,9 @@ describe('xliff parser', () => {
 <xliff version="1.2"><file source-language="en"><body>
 <trans-unit id="a"><source><![CDATA[<b>bold</b>]]></source></trans-unit>
 </body></file></xliff>`;
-      expect(() => parser.extract(xliff)).toThrow(/<source> \/ <target> elements containing CDATA/);
+      expect(() => parser.extract(xliff)).toThrow(
+        /<source> \/ <target> elements containing CDATA/
+      );
     });
 
     it('rejects CDATA inside <target> with ValidationError', () => {
@@ -371,7 +373,9 @@ describe('xliff parser', () => {
 <xliff version="1.2"><file source-language="en" target-language="de"><body>
 <trans-unit id="a"><source>Hello</source><target><![CDATA[<b>Hallo</b>]]></target></trans-unit>
 </body></file></xliff>`;
-      expect(() => parser.extract(xliff)).toThrow(/<source> \/ <target> elements containing CDATA/);
+      expect(() => parser.extract(xliff)).toThrow(
+        /<source> \/ <target> elements containing CDATA/
+      );
     });
 
     it('accepts CDATA elsewhere (e.g. <note>)', () => {
@@ -429,7 +433,9 @@ describe('xliff parser', () => {
         version === '2.0'
           ? '      <unit id="k"><segment><source>v</source>\n'
           : '      <trans-unit id="k"><source>v</source>\n';
-      return head + opener.repeat(Math.ceil((bytes - head.length) / opener.length));
+      return (
+        head + opener.repeat(Math.ceil((bytes - head.length) / opener.length))
+      );
     }
 
     const v12 = unclosedOpeners(4 * 1024 * 1024, '1.2');

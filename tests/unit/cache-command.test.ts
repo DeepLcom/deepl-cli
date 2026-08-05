@@ -5,7 +5,10 @@
 import { CacheCommand } from '../../src/cli/commands/cache';
 import { CacheService } from '../../src/storage/cache';
 import { ConfigService } from '../../src/storage/config';
-import { createMockCacheService, createMockConfigService } from '../helpers/mock-factories';
+import {
+  createMockCacheService,
+  createMockConfigService,
+} from '../helpers/mock-factories';
 
 // Mock CacheService
 jest.mock('../../src/storage/cache');
@@ -122,7 +125,10 @@ describe('CacheCommand', () => {
       const maxSize = 1024 * 1024 * 500; // 500MB
       await cacheCommand.enable(maxSize);
 
-      expect(mockConfigService.set).toHaveBeenCalledWith('cache.maxSize', maxSize);
+      expect(mockConfigService.set).toHaveBeenCalledWith(
+        'cache.maxSize',
+        maxSize
+      );
       expect(mockCacheService.setMaxSize).toHaveBeenCalledWith(maxSize);
       expect(mockCacheService.enable).toHaveBeenCalledTimes(1);
     });
@@ -132,7 +138,10 @@ describe('CacheCommand', () => {
 
       await cacheCommand.enable();
 
-      expect(mockConfigService.set).not.toHaveBeenCalledWith('cache.maxSize', expect.anything());
+      expect(mockConfigService.set).not.toHaveBeenCalledWith(
+        'cache.maxSize',
+        expect.anything()
+      );
       expect(mockCacheService.setMaxSize).not.toHaveBeenCalled();
       expect(mockCacheService.enable).toHaveBeenCalledTimes(1);
     });
@@ -169,7 +178,10 @@ describe('CacheCommand', () => {
 
       await cacheCommand.disable();
 
-      expect(mockConfigService.set).toHaveBeenCalledWith('cache.enabled', false);
+      expect(mockConfigService.set).toHaveBeenCalledWith(
+        'cache.enabled',
+        false
+      );
     });
   });
 
@@ -257,8 +269,8 @@ describe('CacheCommand', () => {
   describe('formatStatsTable', () => {
     const stats = {
       entries: 142,
-      totalSize: 25 * 1024 * 1024,   // 25 MB
-      maxSize: 100 * 1024 * 1024,    // 100 MB
+      totalSize: 25 * 1024 * 1024, // 25 MB
+      maxSize: 100 * 1024 * 1024, // 100 MB
       enabled: true,
     };
 
@@ -279,12 +291,19 @@ describe('CacheCommand', () => {
     });
 
     it('should report disabled status', () => {
-      const result = cacheCommand.formatStatsTable({ ...stats, enabled: false });
+      const result = cacheCommand.formatStatsTable({
+        ...stats,
+        enabled: false,
+      });
       expect(result).toContain('disabled');
     });
 
     it('should report 0.0% usage when maxSize is zero', () => {
-      const result = cacheCommand.formatStatsTable({ ...stats, totalSize: 0, maxSize: 0 });
+      const result = cacheCommand.formatStatsTable({
+        ...stats,
+        totalSize: 0,
+        maxSize: 0,
+      });
       expect(result).toContain('0.0%');
     });
   });

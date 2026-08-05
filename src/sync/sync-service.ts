@@ -17,7 +17,11 @@ export { resolveTargetPath } from './sync-utils.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import { LOCK_FILE_NAME } from './types.js';
 import type { Language } from '../types/common.js';
-import { extractAllKeyContexts, resolveTemplatePatterns, synthesizeContext } from './sync-context.js';
+import {
+  extractAllKeyContexts,
+  resolveTemplatePatterns,
+  synthesizeContext,
+} from './sync-context.js';
 import type { TemplatePatternMatch } from './sync-context.js';
 import type { KeyContext } from './sync-context.js';
 import { SyncGlossaryManager } from './sync-glossary.js';
@@ -27,8 +31,23 @@ import { Logger } from '../utils/logger.js';
 import { errorMessage } from '../utils/error-message.js';
 
 export type SyncProgressEvent =
-  | { type: 'locale-complete'; locale: string; file: string; translated: number; failed: number; totalKeys: number; charactersBilled: number }
-  | { type: 'key-translated'; locale: string; file: string; key: string; translated: number; totalKeys: number };
+  | {
+      type: 'locale-complete';
+      locale: string;
+      file: string;
+      translated: number;
+      failed: number;
+      totalKeys: number;
+      charactersBilled: number;
+    }
+  | {
+      type: 'key-translated';
+      locale: string;
+      file: string;
+      key: string;
+      translated: number;
+      totalKeys: number;
+    };
 
 export interface CancellationSignal {
   cancelled: boolean;
@@ -102,10 +121,13 @@ export class SyncService {
   constructor(
     private readonly translationService: TranslationService,
     private readonly glossaryService: GlossaryService,
-    private readonly formatRegistry: FormatRegistry,
+    private readonly formatRegistry: FormatRegistry
   ) {}
 
-  async sync(config: ResolvedSyncConfig, options?: SyncOptions): Promise<SyncResult> {
+  async sync(
+    config: ResolvedSyncConfig,
+    options?: SyncOptions
+  ): Promise<SyncResult> {
     const processLock = acquireSyncProcessLock(config.projectRoot);
     // Watch mode owns its own sweep + backup cleanup via `backupTracker`;
     // only the non-watch runs (single `deepl sync`, `sync push/pull/export`,
@@ -139,19 +161,22 @@ export class SyncService {
         await sweepStaleBackups(
           config.projectRoot,
           resolveBakSweepAgeMs(config.sync?.bak_sweep_max_age_seconds),
-          config.buckets,
+          config.buckets
         );
       } catch (error) {
         // Best-effort — never block the sync — but warn rather than swallowing
         // the error silently.
         Logger.warn(
-          `Stale-backup sweep skipped: ${error instanceof Error ? error.message : String(error)}`,
+          `Stale-backup sweep skipped: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     }
 
     try {
-      return await this.runSync(config, { ...options, backupTracker: runBackupPaths });
+      return await this.runSync(config, {
+        ...options,
+        backupTracker: runBackupPaths,
+      });
     } finally {
       process.off('SIGINT', onSignal);
       process.off('SIGTERM', onSignal);
@@ -159,7 +184,10 @@ export class SyncService {
     }
   }
 
-  private async runSync(config: ResolvedSyncConfig, options?: SyncOptions): Promise<SyncResult> {
+  private async runSync(
+    config: ResolvedSyncConfig,
+    options?: SyncOptions
+  ): Promise<SyncResult> {
     const lockPath = path.join(config.projectRoot, LOCK_FILE_NAME);
     const lockManager = new SyncLockManager(lockPath);
     const lockFile = await lockManager.read();
@@ -169,7 +197,9 @@ export class SyncService {
     }
 
     if (options?.dryRun && options?.force) {
-      Logger.warn('--dry-run with --force shows all keys as new; this does not reflect actual translation needs');
+      Logger.warn(
+        '--dry-run with --force shows all keys as new; this does not reflect actual translation needs'
+      );
     }
 
     if (lockFile.source_locale === '') {
@@ -194,11 +224,14 @@ export class SyncService {
     // translation memory the config names but the account cannot use for the
     // requested pair is exactly what a preview exists to report.
     const effectiveLocales = options?.localeFilter?.length
-      ? config.target_locales.filter(l => options.localeFilter!.includes(l))
+      ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
       : config.target_locales;
 
     let resolvedGlossaryId: string | undefined;
-    if (config.translation?.glossary && config.translation.glossary !== 'auto') {
+    if (
+      config.translation?.glossary &&
+      config.translation.glossary !== 'auto'
+    ) {
       // The pair is known from the config, so a glossary that does not cover it
       // fails here rather than once per file, as with the translation memory
       // below.
@@ -209,12 +242,17 @@ export class SyncService {
       const overriddenLocales = new Set(
         Object.entries(config.translation?.locale_overrides ?? {})
           .filter(([, override]) => override?.glossary)
-          .map(([locale]) => locale),
+          .map(([locale]) => locale)
       );
-      const glossaryLocales = effectiveLocales.filter(locale => !overriddenLocales.has(locale));
+      const glossaryLocales = effectiveLocales.filter(
+        (locale) => !overriddenLocales.has(locale)
+      );
       resolvedGlossaryId = await this.glossaryService.resolveGlossaryId(
         config.translation.glossary,
-        { from: config.source_locale as Language, targets: glossaryLocales as Language[] },
+        {
+          from: config.source_locale as Language,
+          targets: glossaryLocales as Language[],
+        }
       );
     }
 
@@ -224,7 +262,10 @@ export class SyncService {
         this.translationService,
         config.translation.translation_memory,
         this.tmCache,
-        { from: config.source_locale as Language, targets: effectiveLocales as Language[] },
+        {
+          from: config.source_locale as Language,
+          targets: effectiveLocales as Language[],
+        }
       );
     }
 
@@ -243,7 +284,7 @@ export class SyncService {
           await this.glossaryService.resolveGlossaryId(override.glossary, {
             from: config.source_locale as Language,
             targets: [locale as Language],
-          }),
+          })
         );
       }
       if (override?.translation_memory) {
@@ -253,8 +294,11 @@ export class SyncService {
             this.translationService,
             override.translation_memory,
             this.tmCache,
-            { from: config.source_locale as Language, targets: [locale as Language] },
-          ),
+            {
+              from: config.source_locale as Language,
+              targets: [locale as Language],
+            }
+          )
         );
       }
     }
@@ -273,9 +317,13 @@ export class SyncService {
       templatePatterns = contextResult.templatePatterns;
 
       if (config.translation?.instruction_templates) {
-        const hasElementTypes = [...keyContexts.values()].some(kc => kc.elementType);
+        const hasElementTypes = [...keyContexts.values()].some(
+          (kc) => kc.elementType
+        );
         if (!hasElementTypes) {
-          Logger.warn('instruction_templates configured but no element types detected in source. Templates only apply to keys inside recognized HTML elements (button, label, th, etc.).');
+          Logger.warn(
+            'instruction_templates configured but no element types detected in source. Templates only apply to keys inside recognized HTML elements (button, label, th, etc.).'
+          );
         }
       }
     }
@@ -289,30 +337,48 @@ export class SyncService {
       for (const [fk, bc] of Object.entries(config.buckets)) {
         const p = this.formatRegistry.getParserByFormatKey(fk);
         if (!p) continue;
-        const ignorePatterns = [...(bc.exclude ?? []), ...(config.ignore ?? [])];
+        const ignorePatterns = [
+          ...(bc.exclude ?? []),
+          ...(config.ignore ?? []),
+        ];
         const files = await fg(bc.include, {
-          cwd: config.projectRoot, ignore: ignorePatterns,
-          absolute: true, followSymbolicLinks: false,
+          cwd: config.projectRoot,
+          ignore: ignorePatterns,
+          absolute: true,
+          followSymbolicLinks: false,
         });
         for (const f of files) {
           try {
             const c = await fs.promises.readFile(f, 'utf-8');
-            const entries = p.multiLocale ? p.extract(c, config.source_locale) : p.extract(c);
+            const entries = p.multiLocale
+              ? p.extract(c, config.source_locale)
+              : p.extract(c);
             bucketFileCache.set(f, { content: c, entries });
             for (const entry of entries) allKnownKeys.add(entry.key);
-          } catch { /* skip unreadable files */ }
+          } catch {
+            /* skip unreadable files */
+          }
         }
       }
-      const resolved = resolveTemplatePatterns(templatePatterns, Array.from(allKnownKeys));
+      const resolved = resolveTemplatePatterns(
+        templatePatterns,
+        Array.from(allKnownKeys)
+      );
       for (const [key, matches] of resolved) {
         if (!keyContexts.has(key)) {
-          keyContexts.set(key, { key, context: synthesizeContext(matches, { key }), occurrences: matches.length });
+          keyContexts.set(key, {
+            key,
+            context: synthesizeContext(matches, { key }),
+            occurrences: matches.length,
+          });
         }
       }
     }
 
     if (config.translation?.instruction_templates && !config.context?.enabled) {
-      Logger.warn('instruction_templates configured but context scanning is disabled — templates have no effect. Set context.enabled: true.');
+      Logger.warn(
+        'instruction_templates configured but context scanning is disabled — templates have no effect. Set context.enabled: true.'
+      );
     }
 
     const sourceEntryMap = new Map<string, string>();
@@ -326,20 +392,30 @@ export class SyncService {
       resolvedGlossaryId,
       resolvedTmId,
       options?.batch ?? config.sync?.batch,
-      options?.onProgress,
+      options?.onProgress
     );
     const allContextSentKeys = new Set<string>();
     const allInstructionSentKeys = new Set<string>();
     const allInstructionGroupTotals = new Map<string, number>();
 
-    for await (const walked of walkBuckets(config, this.formatRegistry, { strictParser: true, fileCache: bucketFileCache })) {
+    for await (const walked of walkBuckets(config, this.formatRegistry, {
+      strictParser: true,
+      fileCache: bucketFileCache,
+    })) {
       processedFiles.add(walked.relPath);
       const contribution = await processBucket(walked, {
-        config, options, lockFile,
-        sourceEntryMap, targetEntryMap,
-        allContextSentKeys, allInstructionSentKeys, allInstructionGroupTotals,
-        keyContexts, localeTranslator,
-        localeGlossaryIds, localeTmIds,
+        config,
+        options,
+        lockFile,
+        sourceEntryMap,
+        targetEntryMap,
+        allContextSentKeys,
+        allInstructionSentKeys,
+        allInstructionGroupTotals,
+        keyContexts,
+        localeTranslator,
+        localeGlossaryIds,
+        localeTmIds,
         currentTotalCharsBilled: totalCharsBilled,
       });
 
@@ -358,9 +434,13 @@ export class SyncService {
     }
 
     // Fix SPEC-02: Wire auto-glossary sync
-    if (config.translation?.glossary === 'auto' && !options?.dryRun && !driftDetected) {
+    if (
+      config.translation?.glossary === 'auto' &&
+      !options?.dryRun &&
+      !driftDetected
+    ) {
       const effectiveLocales = options?.localeFilter?.length
-        ? config.target_locales.filter(l => options.localeFilter!.includes(l))
+        ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
         : config.target_locales;
       const glossaryManager = new SyncGlossaryManager({
         sourceLocale: config.source_locale,
@@ -368,12 +448,15 @@ export class SyncService {
         glossaryService: this.glossaryService,
       });
       try {
-        const glossaryIds = await glossaryManager.syncGlossaries(sourceEntryMap, targetEntryMap);
+        const glossaryIds = await glossaryManager.syncGlossaries(
+          sourceEntryMap,
+          targetEntryMap
+        );
         lockFile.glossary_ids = { ...lockFile.glossary_ids, ...glossaryIds };
         lockDirty = true;
       } catch (error) {
         Logger.warn(
-          `Auto-glossary sync failed for locales ${effectiveLocales.join(', ')}: ${errorMessage(error)}. Translations were written; the project glossaries were not updated.`,
+          `Auto-glossary sync failed for locales ${effectiveLocales.join(', ')}: ${errorMessage(error)}. Translations were written; the project glossaries were not updated.`
         );
       }
     }
@@ -399,7 +482,7 @@ export class SyncService {
 
       if (staleByBaseName.size > 0) {
         const patterns = Array.from(staleByBaseName.keys()).map(
-          (b) => `**/${fg.escapePath(b)}`,
+          (b) => `**/${fg.escapePath(b)}`
         );
         const scanHits = await fg(patterns, {
           cwd: config.projectRoot,
@@ -408,9 +491,13 @@ export class SyncService {
           ignore: config.ignore,
         });
         for (const [baseName, lockPaths] of staleByBaseName) {
-          const hitsForBase = scanHits.filter((hit) => path.basename(hit) === baseName);
+          const hitsForBase = scanHits.filter(
+            (hit) => path.basename(hit) === baseName
+          );
           for (const lockPath of lockPaths) {
-            const foundElsewhere = hitsForBase.filter((hit) => hit !== lockPath);
+            const foundElsewhere = hitsForBase.filter(
+              (hit) => hit !== lockPath
+            );
             if (foundElsewhere.length > 0) {
               const preview = foundElsewhere.slice(0, 3).join(', ');
               const suffix = foundElsewhere.length > 3 ? ', …' : '';
@@ -418,7 +505,7 @@ export class SyncService {
                 `Lock entry "${lockPath}" no longer matches any bucket glob, but a ` +
                   `file named "${baseName}" exists at: ${preview}${suffix}. ` +
                   `Preserving entry — glob change suspected. Update your bucket ` +
-                  `patterns or remove the entry manually to resolve.`,
+                  `patterns or remove the entry manually to resolve.`
               );
               continue;
             }
@@ -458,18 +545,29 @@ export class SyncService {
     }
 
     const effectiveLocaleCount = options?.localeFilter?.length
-      ? config.target_locales.filter(l => options.localeFilter!.includes(l)).length
+      ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
+          .length
       : config.target_locales.length;
 
     return finalizeSyncResult({
-      totalKeys, newKeys, staleKeys, deletedKeys, currentKeys,
-      totalCharsBilled, fileResults, validationWarnings, validationErrors,
-      estimatedCharacters, effectiveLocaleCount,
+      totalKeys,
+      newKeys,
+      staleKeys,
+      deletedKeys,
+      currentKeys,
+      totalCharsBilled,
+      fileResults,
+      validationWarnings,
+      validationErrors,
+      estimatedCharacters,
+      effectiveLocaleCount,
       dryRun: options?.dryRun ?? false,
       frozen: options?.frozen ?? false,
-      driftDetected, lockUpdated,
-      allContextSentKeys, allInstructionSentKeys, allInstructionGroupTotals,
+      driftDetected,
+      lockUpdated,
+      allContextSentKeys,
+      allInstructionSentKeys,
+      allInstructionGroupTotals,
     });
   }
-
 }

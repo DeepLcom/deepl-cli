@@ -62,11 +62,13 @@ describe('normalizeGlossaryInfo', () => {
     const response: GlossaryApiResponse = {
       glossary_id: 'test-123',
       name: 'Valid Glossary',
-      dictionaries: [{
-        source_lang: 'en',
-        target_lang: 'es',
-        entry_count: 5,
-      }],
+      dictionaries: [
+        {
+          source_lang: 'en',
+          target_lang: 'es',
+          entry_count: 5,
+        },
+      ],
       creation_time: '2025-10-13T10:00:00Z',
     };
 

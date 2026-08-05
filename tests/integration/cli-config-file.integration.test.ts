@@ -9,7 +9,10 @@ import * as os from 'os';
 import { makeRunCLI } from '../helpers';
 
 describe('CLI --config flag integration', () => {
-  const testDir = path.join(os.tmpdir(), `.deepl-cli-config-test-${Date.now()}`);
+  const testDir = path.join(
+    os.tmpdir(),
+    `.deepl-cli-config-test-${Date.now()}`
+  );
   const customConfigPath = path.join(testDir, 'custom-config.json');
   const defaultConfigDir = path.join(testDir, '.deepl-cli-default');
   const defaultConfigPath = path.join(defaultConfigDir, 'config.json');
@@ -39,11 +42,15 @@ describe('CLI --config flag integration', () => {
     const defaultConfig = {
       auth: { apiKey: 'default-test-key' },
       api: { baseUrl: 'https://api.deepl.com', usePro: true },
-      defaults: { sourceLang: undefined, targetLangs: [], formality: 'default', preserveFormatting: true },
+      defaults: {
+        sourceLang: undefined,
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: true,
+      },
       cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: true },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-
     };
     fs.writeFileSync(defaultConfigPath, JSON.stringify(defaultConfig, null, 2));
 
@@ -51,11 +58,15 @@ describe('CLI --config flag integration', () => {
     const customConfig = {
       auth: { apiKey: 'custom-test-key' },
       api: { baseUrl: 'https://api-free.deepl.com', usePro: false },
-      defaults: { sourceLang: 'en', targetLangs: ['es', 'fr'], formality: 'more', preserveFormatting: false },
+      defaults: {
+        sourceLang: 'en',
+        targetLangs: ['es', 'fr'],
+        formality: 'more',
+        preserveFormatting: false,
+      },
       cache: { enabled: false, maxSize: 104857600, ttl: 86400 },
       output: { format: 'json', verbose: true, color: false },
       watch: { debounceMs: 1000, autoCommit: true, pattern: '*.txt' },
-
     };
     fs.writeFileSync(customConfigPath, JSON.stringify(customConfig, null, 2));
   });
@@ -74,17 +85,23 @@ describe('CLI --config flag integration', () => {
     });
 
     it('should use custom config when --config is specified', () => {
-      const output = runCLI(`deepl --config "${customConfigPath}" config get auth.apiKey`);
+      const output = runCLI(
+        `deepl --config "${customConfigPath}" config get auth.apiKey`
+      );
       expect(output.trim()).toBe('"cust...-key"');
     });
 
     it('should read nested config values from custom config', () => {
-      const output = runCLI(`deepl --config "${customConfigPath}" config get api.usePro`);
+      const output = runCLI(
+        `deepl --config "${customConfigPath}" config get api.usePro`
+      );
       expect(output.trim()).toBe('false');
     });
 
     it('should read array values from custom config', () => {
-      const output = runCLI(`deepl --config "${customConfigPath}" config get defaults.targetLangs`);
+      const output = runCLI(
+        `deepl --config "${customConfigPath}" config get defaults.targetLangs`
+      );
       const parsed = JSON.parse(output.trim());
       expect(parsed).toEqual(['es', 'fr']);
     });
@@ -99,13 +116,17 @@ describe('CLI --config flag integration', () => {
     });
 
     it('should write to custom config when --config is specified', () => {
-      runCLI(`deepl --config "${customConfigPath}" config set api.baseUrl https://custom.api.com`);
+      runCLI(
+        `deepl --config "${customConfigPath}" config set api.baseUrl https://custom.api.com`
+      );
 
       const config = JSON.parse(fs.readFileSync(customConfigPath, 'utf-8'));
       expect(config.api.baseUrl).toBe('https://custom.api.com');
 
       // Verify default config is unchanged
-      const defaultConfig = JSON.parse(fs.readFileSync(defaultConfigPath, 'utf-8'));
+      const defaultConfig = JSON.parse(
+        fs.readFileSync(defaultConfigPath, 'utf-8')
+      );
       expect(defaultConfig.api.baseUrl).toBe('https://api.deepl.com');
     });
   });
@@ -132,7 +153,9 @@ describe('CLI --config flag integration', () => {
   describe('auth command', () => {
     it('should set API key in custom config file', () => {
       // Use config set instead of auth set-key to bypass validation
-      runCLI(`deepl --config "${customConfigPath}" config set auth.apiKey new-custom-key`);
+      runCLI(
+        `deepl --config "${customConfigPath}" config set auth.apiKey new-custom-key`
+      );
 
       const config = JSON.parse(fs.readFileSync(customConfigPath, 'utf-8'));
       expect(config.auth.apiKey).toBe('new-custom-key');
@@ -144,7 +167,9 @@ describe('CLI --config flag integration', () => {
       const nonExistentPath = path.join(testDir, 'nonexistent.json');
 
       // Config file doesn't exist, so it should load defaults (apiKey is undefined)
-      const output = runCLI(`deepl --config "${nonExistentPath}" config get auth.apiKey`);
+      const output = runCLI(
+        `deepl --config "${nonExistentPath}" config get auth.apiKey`
+      );
       expect(output.trim()).toBe('null'); // undefined becomes null in JSON output
     });
 
@@ -160,7 +185,9 @@ describe('CLI --config flag integration', () => {
 
   describe('integration with other commands', () => {
     it('should use custom config API key for auth show', () => {
-      const output = runCLIAll(`deepl --config "${customConfigPath}" auth show`);
+      const output = runCLIAll(
+        `deepl --config "${customConfigPath}" auth show`
+      );
       expect(output).toContain('cust');
       expect(output).toContain('-key'); // Masked key
     });
@@ -170,7 +197,9 @@ describe('CLI --config flag integration', () => {
       expect(fs.existsSync(newConfigPath)).toBe(false);
 
       // Use config set instead of auth set-key to bypass validation
-      runCLI(`deepl --config "${newConfigPath}" config set auth.apiKey brand-new-key`);
+      runCLI(
+        `deepl --config "${newConfigPath}" config set auth.apiKey brand-new-key`
+      );
 
       expect(fs.existsSync(newConfigPath)).toBe(true);
       const config = JSON.parse(fs.readFileSync(newConfigPath, 'utf-8'));
@@ -221,17 +250,29 @@ describe('CLI --config flag integration', () => {
 
     it('should accept --config path with .json extension (case-insensitive)', () => {
       const upperCasePath = path.join(testDir, 'config.JSON');
-      fs.writeFileSync(upperCasePath, JSON.stringify({
-        auth: { apiKey: 'upper-case-key' },
-        api: { baseUrl: 'https://api.deepl.com', usePro: true },
-        defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
-        cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
-        output: { format: 'text', verbose: false, color: true },
-        watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
+      fs.writeFileSync(
+        upperCasePath,
+        JSON.stringify(
+          {
+            auth: { apiKey: 'upper-case-key' },
+            api: { baseUrl: 'https://api.deepl.com', usePro: true },
+            defaults: {
+              targetLangs: [],
+              formality: 'default',
+              preserveFormatting: true,
+            },
+            cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
+            output: { format: 'text', verbose: false, color: true },
+            watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
+          },
+          null,
+          2
+        )
+      );
 
-      }, null, 2));
-
-      const output = runCLI(`deepl --config "${upperCasePath}" config get auth.apiKey`);
+      const output = runCLI(
+        `deepl --config "${upperCasePath}" config get auth.apiKey`
+      );
       expect(output.trim()).toContain('uppe');
     });
 
@@ -239,26 +280,36 @@ describe('CLI --config flag integration', () => {
       const newPath = path.join(testDir, 'brand-new.json');
       expect(fs.existsSync(newPath)).toBe(false);
 
-      const output = runCLI(`deepl --config "${newPath}" config get auth.apiKey`);
+      const output = runCLI(
+        `deepl --config "${newPath}" config get auth.apiKey`
+      );
       expect(output.trim()).toBe('null');
     });
   });
 
   describe('precedence and isolation', () => {
     it('should not affect default config when using custom config', () => {
-      const originalDefault = JSON.parse(fs.readFileSync(defaultConfigPath, 'utf-8'));
+      const originalDefault = JSON.parse(
+        fs.readFileSync(defaultConfigPath, 'utf-8')
+      );
 
       // Modify custom config
-      runCLI(`deepl --config "${customConfigPath}" config set api.baseUrl https://changed.com`);
+      runCLI(
+        `deepl --config "${customConfigPath}" config set api.baseUrl https://changed.com`
+      );
 
       // Check default config is unchanged
-      const currentDefault = JSON.parse(fs.readFileSync(defaultConfigPath, 'utf-8'));
+      const currentDefault = JSON.parse(
+        fs.readFileSync(defaultConfigPath, 'utf-8')
+      );
       expect(currentDefault).toEqual(originalDefault);
     });
 
     it('should handle relative paths for --config', () => {
       const relativeConfigPath = path.relative(process.cwd(), customConfigPath);
-      const output = runCLI(`deepl --config "${relativeConfigPath}" config get auth.apiKey`);
+      const output = runCLI(
+        `deepl --config "${relativeConfigPath}" config get auth.apiKey`
+      );
       expect(output.trim()).toBe('"cust...-key"');
     });
   });

@@ -108,7 +108,7 @@ export class DocumentTranslationService {
       const limitMB = (MAX_DOCUMENT_FILE_SIZE / (1024 * 1024)).toFixed(0);
       throw new ValidationError(
         `File size (${sizeMB} MB) exceeds the maximum allowed size of ${limitMB} MB. ` +
-        `Please check DeepL's document size limits: https://developers.deepl.com/docs/api-reference/document`
+          `Please check DeepL's document size limits: https://developers.deepl.com/docs/api-reference/document`
       );
     }
 

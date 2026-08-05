@@ -7,7 +7,10 @@ import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
 describe('Auth Command E2E', () => {
   const testConfig = createTestConfigDir('e2e-auth');
-  const { runCLI, runCLIAll, runCLIExpectError } = makeNodeRunCLI(testConfig.path, { excludeApiKey: true });
+  const { runCLI, runCLIAll, runCLIExpectError } = makeNodeRunCLI(
+    testConfig.path,
+    { excludeApiKey: true }
+  );
 
   afterAll(() => {
     testConfig.cleanup();

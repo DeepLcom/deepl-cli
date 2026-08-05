@@ -19,11 +19,16 @@ export default function installHermeticDeepl(): void {
   if (existing && fs.existsSync(path.join(existing, 'deepl'))) return;
 
   const shimDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-cli-shim-'));
-  fs.writeFileSync(path.join(shimDir, 'deepl'), `#!/bin/sh\nexec node "${CLI_ENTRY}" "$@"\n`, {
-    mode: 0o755,
-  });
+  fs.writeFileSync(
+    path.join(shimDir, 'deepl'),
+    `#!/bin/sh\nexec node "${CLI_ENTRY}" "$@"\n`,
+    {
+      mode: 0o755,
+    }
+  );
   process.env['DEEPL_CLI_TEST_SHIM'] = shimDir;
-  process.env['PATH'] = `${shimDir}${path.delimiter}${process.env['PATH'] ?? ''}`;
+  process.env['PATH'] =
+    `${shimDir}${path.delimiter}${process.env['PATH'] ?? ''}`;
 }
 
 /**
@@ -40,6 +45,6 @@ export function isolateCredentialEnvironment(): void {
   delete process.env['TMS_TOKEN'];
 
   process.env['DEEPL_CONFIG_DIR'] ??= fs.mkdtempSync(
-    path.join(os.tmpdir(), 'deepl-cli-test-config-'),
+    path.join(os.tmpdir(), 'deepl-cli-test-config-')
   );
 }

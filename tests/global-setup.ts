@@ -1,4 +1,6 @@
-import installHermeticDeepl, { isolateCredentialEnvironment } from './hermetic-deepl';
+import installHermeticDeepl, {
+  isolateCredentialEnvironment,
+} from './hermetic-deepl';
 
 /**
  * Runs in the main jest process before workers spawn, so the shim's PATH entry

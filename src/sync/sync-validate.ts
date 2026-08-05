@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { FormatRegistry } from '../formats/index.js';
-import { validateBatch, type ValidationResult } from './translation-validator.js';
+import {
+  validateBatch,
+  type ValidationResult,
+} from './translation-validator.js';
 import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import { extractTranslatable, walkBuckets } from './sync-bucket-walker.js';
@@ -21,13 +24,20 @@ export interface ValidateResult {
 
 export async function validateTranslations(
   config: ResolvedSyncConfig,
-  formatRegistry: FormatRegistry,
+  formatRegistry: FormatRegistry
 ): Promise<ValidateResult> {
   const allIssues: ValidateIssue[] = [];
   let totalChecked = 0;
 
   for await (const walked of walkBuckets(config, formatRegistry)) {
-    const { bucketConfig, parser, relPath, content: sourceContent, entries: sourceEntries, isMultiLocale } = walked;
+    const {
+      bucketConfig,
+      parser,
+      relPath,
+      content: sourceContent,
+      entries: sourceEntries,
+      isMultiLocale,
+    } = walked;
 
     for (const locale of config.target_locales) {
       let targetEntries;
@@ -37,7 +47,12 @@ export async function validateTranslations(
         targetRelPath = relPath;
         targetEntries = extractTranslatable(parser, sourceContent, locale);
       } else {
-        targetRelPath = resolveTargetPath(relPath, config.source_locale, locale, bucketConfig.target_path_pattern);
+        targetRelPath = resolveTargetPath(
+          relPath,
+          config.source_locale,
+          locale,
+          bucketConfig.target_path_pattern
+        );
         const targetAbsPath = path.join(config.projectRoot, targetRelPath);
         assertPathWithinRoot(targetAbsPath, config.projectRoot);
 
@@ -47,7 +62,10 @@ export async function validateTranslations(
           continue;
         }
 
-        const targetContent = await fs.promises.readFile(targetAbsPath, 'utf-8');
+        const targetContent = await fs.promises.readFile(
+          targetAbsPath,
+          'utf-8'
+        );
         targetEntries = extractTranslatable(parser, targetContent);
       }
 
@@ -64,7 +82,9 @@ export async function validateTranslations(
       totalChecked += pairs.length;
       const results = validateBatch(pairs);
       const issuesOnly = results.filter((r) => r.severity !== 'pass');
-      allIssues.push(...issuesOnly.map((r) => ({ ...r, locale, file: targetRelPath })));
+      allIssues.push(
+        ...issuesOnly.map((r) => ({ ...r, locale, file: targetRelPath }))
+      );
     }
   }
 

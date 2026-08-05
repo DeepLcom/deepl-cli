@@ -57,11 +57,15 @@ export class GitHooksService {
     const workDir = path.dirname(gitDir);
 
     try {
-      const resolved = execFileSync('git', ['rev-parse', '--git-path', 'hooks'], {
-        cwd: workDir,
-        encoding: 'utf-8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim();
+      const resolved = execFileSync(
+        'git',
+        ['rev-parse', '--git-path', 'hooks'],
+        {
+          cwd: workDir,
+          encoding: 'utf-8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }
+      ).trim();
       if (resolved) {
         return path.resolve(workDir, resolved);
       }
@@ -72,7 +76,7 @@ export class GitHooksService {
     if (!fs.statSync(gitDir).isDirectory()) {
       throw new ValidationError(
         `Cannot resolve the hooks directory for "${gitDir}": it is a gitdir pointer file and git is not available to resolve it.`,
-        'Install git, or run this command from the repository that owns the worktree.',
+        'Install git, or run this command from the repository that owns the worktree.'
       );
     }
 
@@ -129,7 +133,7 @@ export class GitHooksService {
     }
     throw new ValidationError(
       `Refusing to install: ${MAX_BACKUP_SLOTS} backups of "${path.basename(hookPath)}" already exist.`,
-      `Remove the unneeded ${path.basename(primary)}* files and retry.`,
+      `Remove the unneeded ${path.basename(primary)}* files and retry.`
     );
   }
 
@@ -148,7 +152,9 @@ export class GitHooksService {
     // Verify it's a DeepL hook before removing
     const content = fs.readFileSync(hookPath, 'utf-8');
     if (!this.isDeepLHook(content)) {
-      throw new ValidationError('Hook is not a DeepL CLI hook. Remove it manually if needed.');
+      throw new ValidationError(
+        'Hook is not a DeepL CLI hook. Remove it manually if needed.'
+      );
     }
 
     fs.unlinkSync(hookPath);
@@ -181,7 +187,12 @@ export class GitHooksService {
    * List all hooks and their installation status
    */
   list(): HookStatus {
-    const hooks: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
+    const hooks: HookType[] = [
+      'pre-commit',
+      'pre-push',
+      'commit-msg',
+      'post-commit',
+    ];
     const status: HookStatus = {};
 
     for (const hook of hooks) {
@@ -228,22 +239,46 @@ export class GitHooksService {
     const hookPath = this.getHookPath(hookType);
 
     if (!fs.existsSync(hookPath)) {
-      return { installed: false, markerVersion: null, hashMatch: null, expectedHash: null, actualHash: null };
+      return {
+        installed: false,
+        markerVersion: null,
+        hashMatch: null,
+        expectedHash: null,
+        actualHash: null,
+      };
     }
 
     const content = fs.readFileSync(hookPath, 'utf-8');
 
     if (!this.isDeepLHook(content)) {
-      return { installed: false, markerVersion: null, hashMatch: null, expectedHash: null, actualHash: null };
+      return {
+        installed: false,
+        markerVersion: null,
+        hashMatch: null,
+        expectedHash: null,
+        actualHash: null,
+      };
     }
 
     const markerMatch = content.match(MARKER_PATTERN);
 
     if (!markerMatch) {
       if (content.includes(LEGACY_MARKER)) {
-        return { installed: true, markerVersion: 'legacy', hashMatch: null, expectedHash: null, actualHash: null };
+        return {
+          installed: true,
+          markerVersion: 'legacy',
+          hashMatch: null,
+          expectedHash: null,
+          actualHash: null,
+        };
       }
-      return { installed: false, markerVersion: null, hashMatch: null, expectedHash: null, actualHash: null };
+      return {
+        installed: false,
+        markerVersion: null,
+        hashMatch: null,
+        expectedHash: null,
+        actualHash: null,
+      };
     }
 
     const expectedHash = markerMatch[2]!;
@@ -272,7 +307,7 @@ export class GitHooksService {
   static extractHookBody(content: string): string {
     const lines = content.split('\n');
     const markerIndex = lines.findIndex(
-      line => MARKER_PATTERN.test(line) || line === LEGACY_MARKER
+      (line) => MARKER_PATTERN.test(line) || line === LEGACY_MARKER
     );
     if (markerIndex === -1) {
       return content;
@@ -299,7 +334,9 @@ export class GitHooksService {
 `;
 
     if (hookType === 'pre-commit') {
-      return commonPreamble + `# Pre-commit hook for DeepL CLI
+      return (
+        commonPreamble +
+        `# Pre-commit hook for DeepL CLI
 # Validates translations before committing
 
 # Check if deepl CLI is available
@@ -323,9 +360,12 @@ fi
 
 echo "✓ Translation validation passed"
 exit 0
-`;
+`
+      );
     } else if (hookType === 'pre-push') {
-      return commonPreamble + `# Pre-push hook for DeepL CLI
+      return (
+        commonPreamble +
+        `# Pre-push hook for DeepL CLI
 # Validates all translations before pushing
 
 echo "🔍 Validating all translations before push..."
@@ -345,9 +385,12 @@ fi
 
 echo "✓ Translation validation passed"
 exit 0
-`;
+`
+      );
     } else if (hookType === 'commit-msg') {
-      return commonPreamble + `# Commit message hook for DeepL CLI
+      return (
+        commonPreamble +
+        `# Commit message hook for DeepL CLI
 # Validates commit messages follow Conventional Commits format
 
 COMMIT_MSG_FILE=$1
@@ -369,9 +412,12 @@ npx --no -- commitlint --edit "$COMMIT_MSG_FILE"
 
 # Exit with commitlint's exit code
 exit $?
-`;
+`
+      );
     } else if (hookType === 'post-commit') {
-      return commonPreamble + `# Post-commit hook for DeepL CLI
+      return (
+        commonPreamble +
+        `# Post-commit hook for DeepL CLI
 # Provides feedback and automation after successful commits
 
 # Get the commit message and hash
@@ -414,11 +460,19 @@ if [ "$COMMIT_TYPE" = "feat" ] || [ "$COMMIT_TYPE" = "fix" ]; then
 fi
 
 exit 0
-`;
+`
+      );
     }
 
-    const validTypes: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
-    throw new ValidationError(`Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`);
+    const validTypes: HookType[] = [
+      'pre-commit',
+      'pre-push',
+      'commit-msg',
+      'post-commit',
+    ];
+    throw new ValidationError(
+      `Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`
+    );
   }
 
   /**
@@ -432,9 +486,16 @@ exit 0
    * Validate hook type
    */
   private validateHookType(hookType: string): asserts hookType is HookType {
-    const validTypes: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
+    const validTypes: HookType[] = [
+      'pre-commit',
+      'pre-push',
+      'commit-msg',
+      'post-commit',
+    ];
     if (!validTypes.includes(hookType as HookType)) {
-      throw new ValidationError(`Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`);
+      throw new ValidationError(
+        `Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`
+      );
     }
   }
 }

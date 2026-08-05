@@ -11,7 +11,9 @@ import { ValidationError } from '../../../src/utils/errors';
 import type { ServiceDeps } from '../../../src/cli/commands/service-factory';
 
 jest.mock('../../../src/cli/commands/service-factory', () => {
-  const actual = jest.requireActual('../../../src/cli/commands/service-factory');
+  const actual = jest.requireActual(
+    '../../../src/cli/commands/service-factory'
+  );
   return {
     ...(actual as object),
     createSyncCommand: jest.fn(),
@@ -71,7 +73,7 @@ describe('deepl sync --context hard-error', () => {
             lockUpdated: false,
           });
         }),
-      }),
+      })
     );
   });
 
@@ -83,7 +85,9 @@ describe('deepl sync --context hard-error', () => {
     expect(err).toBeInstanceOf(ValidationError);
     expect(err.exitCode).toBe(6);
     expect(err.message).toMatch(/--context is not a `deepl sync` flag/);
-    expect(err.message).toMatch(/`deepl translate --context "<text>"` takes a string/);
+    expect(err.message).toMatch(
+      /`deepl translate --context "<text>"` takes a string/
+    );
     expect(err.suggestion).toMatch(/--scan-context \/ --no-scan-context/);
     expect(mockCreateSyncCommand).not.toHaveBeenCalled();
   });

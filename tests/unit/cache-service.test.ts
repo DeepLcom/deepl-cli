@@ -37,7 +37,10 @@ describe('CacheService', () => {
     }
 
     // Create cache service with test path
-    cacheService = new CacheService({ dbPath: testCachePath, maxSize: 1024 * 100 }); // 100KB for tests
+    cacheService = new CacheService({
+      dbPath: testCachePath,
+      maxSize: 1024 * 100,
+    }); // 100KB for tests
   });
 
   afterEach(() => {
@@ -78,7 +81,9 @@ describe('CacheService', () => {
 
     it('should stamp the current schema version on a fresh database', () => {
       const db = (cacheService as any).db;
-      const result = db.prepare('PRAGMA user_version').get() as { user_version: number };
+      const result = db.prepare('PRAGMA user_version').get() as {
+        user_version: number;
+      };
       expect(result.user_version).toBe(2);
     });
 
@@ -95,8 +100,11 @@ describe('CacheService', () => {
       try {
         const reopenedDb = (reopened as any).db;
         expect(
-          (reopenedDb.prepare('PRAGMA user_version').get() as { user_version: number })
-            .user_version,
+          (
+            reopenedDb.prepare('PRAGMA user_version').get() as {
+              user_version: number;
+            }
+          ).user_version
         ).toBe(2);
         expect(reopened.get('preexisting')).toEqual({ text: 'survives' });
       } finally {
@@ -118,7 +126,9 @@ describe('CacheService', () => {
       const reopened = new CacheService({ dbPath: testCachePath });
       try {
         expect(reopened.get('translation:oldhash')).toBeNull();
-        expect(reopened.get('write:samehash')).toEqual({ text: 'still reachable' });
+        expect(reopened.get('write:samehash')).toEqual({
+          text: 'still reachable',
+        });
       } finally {
         reopened.close();
       }
@@ -138,7 +148,9 @@ describe('CacheService', () => {
         // The corrupted original was renamed, not deleted.
         const backups = fs
           .readdirSync(testCacheDir)
-          .filter((f) => f.startsWith(path.basename(testCachePath) + '.corrupt-'));
+          .filter((f) =>
+            f.startsWith(path.basename(testCachePath) + '.corrupt-')
+          );
         expect(backups.length).toBeGreaterThan(0);
       } finally {
         svc.close();
@@ -168,7 +180,10 @@ describe('CacheService', () => {
     it('should handle expired entries', () => {
       jest.useFakeTimers();
       const shortTTL = 100; // 100ms
-      const service = new CacheService({ dbPath: testCachePath, ttl: shortTTL });
+      const service = new CacheService({
+        dbPath: testCachePath,
+        ttl: shortTTL,
+      });
 
       service.set('test-key', { text: 'Hello' });
 
@@ -213,7 +228,9 @@ describe('CacheService', () => {
       cacheService.get('test-key', isMyType);
 
       expect(Logger.warn).toHaveBeenCalledTimes(1);
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('type mismatch'));
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('type mismatch')
+      );
     });
 
     it('should work without guard (backward compatible)', () => {
@@ -323,7 +340,10 @@ describe('CacheService', () => {
     });
 
     it('should start disabled when constructed with enabled: false', () => {
-      const disabled = new CacheService({ dbPath: path.join(testCacheDir, 'disabled.db'), enabled: false });
+      const disabled = new CacheService({
+        dbPath: path.join(testCacheDir, 'disabled.db'),
+        enabled: false,
+      });
       try {
         expect(disabled.stats().enabled).toBe(false);
       } finally {
@@ -332,7 +352,10 @@ describe('CacheService', () => {
     });
 
     it('should not read or write entries when constructed disabled', () => {
-      const disabled = new CacheService({ dbPath: path.join(testCacheDir, 'disabled-io.db'), enabled: false });
+      const disabled = new CacheService({
+        dbPath: path.join(testCacheDir, 'disabled-io.db'),
+        enabled: false,
+      });
       try {
         disabled.set('test', { text: 'Hello' });
         expect(disabled.get('test')).toBeNull();
@@ -343,7 +366,10 @@ describe('CacheService', () => {
     });
 
     it('should allow enable() to override a disabled start', () => {
-      const disabled = new CacheService({ dbPath: path.join(testCacheDir, 'reenable.db'), enabled: false });
+      const disabled = new CacheService({
+        dbPath: path.join(testCacheDir, 'reenable.db'),
+        enabled: false,
+      });
       try {
         disabled.enable();
         disabled.set('test', { text: 'Hello' });
@@ -563,7 +589,9 @@ describe('CacheService', () => {
     it('should handle concurrent operations', async () => {
       const promises = [];
       for (let i = 0; i < 10; i++) {
-        promises.push(Promise.resolve(cacheService.set(`concurrent-${i}`, { value: i })));
+        promises.push(
+          Promise.resolve(cacheService.set(`concurrent-${i}`, { value: i }))
+        );
       }
 
       await Promise.all(promises);
@@ -574,14 +602,17 @@ describe('CacheService', () => {
 
     it('should truncate cache key in corruption warning to first 8 characters', () => {
       // Use a long SHA-256-like key (64 hex characters)
-      const longKey = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2';
+      const longKey =
+        'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2';
 
       const db = (cacheService as any).db;
       const timestamp = Date.now();
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO cache (key, value, timestamp, size)
         VALUES (?, ?, ?, ?)
-      `).run(longKey, 'not-valid-json{{{', timestamp, 18);
+      `
+      ).run(longKey, 'not-valid-json{{{', timestamp, 18);
 
       const value = cacheService.get(longKey);
       expect(value).toBeNull();
@@ -599,10 +630,12 @@ describe('CacheService', () => {
 
       const db = (cacheService as any).db;
       const timestamp = Date.now();
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO cache (key, value, timestamp, size)
         VALUES (?, ?, ?, ?)
-      `).run(shortKey, 'bad-json!!!', timestamp, 11);
+      `
+      ).run(shortKey, 'bad-json!!!', timestamp, 11);
 
       cacheService.get(shortKey);
 
@@ -616,10 +649,12 @@ describe('CacheService', () => {
     it('should log warning when cache corruption is detected (Issue #11)', () => {
       const db = (cacheService as any).db;
       const timestamp = Date.now();
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO cache (key, value, timestamp, size)
         VALUES (?, ?, ?, ?)
-      `).run('corrupted-key', 'invalid-json-{', timestamp, 15);
+      `
+      ).run('corrupted-key', 'invalid-json-{', timestamp, 15);
 
       // Attempt to retrieve the corrupted entry
       const value = cacheService.get('corrupted-key');
@@ -861,7 +896,9 @@ describe('CacheService', () => {
       recovered.set('key', { text: 'Hello' });
       expect(recovered.get('key')).toEqual({ text: 'Hello' });
 
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('Cache database corrupted'));
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Cache database corrupted')
+      );
 
       recovered.close();
     });
@@ -878,10 +915,14 @@ describe('CacheService', () => {
 
       // Old corrupt WAL/SHM content should be gone (SQLite may recreate fresh ones)
       if (fs.existsSync(testCachePath + '-wal')) {
-        expect(fs.readFileSync(testCachePath + '-wal', 'utf8')).not.toBe('OLD WAL GARBAGE DATA');
+        expect(fs.readFileSync(testCachePath + '-wal', 'utf8')).not.toBe(
+          'OLD WAL GARBAGE DATA'
+        );
       }
       if (fs.existsSync(testCachePath + '-shm')) {
-        expect(fs.readFileSync(testCachePath + '-shm', 'utf8')).not.toBe('OLD SHM GARBAGE DATA');
+        expect(fs.readFileSync(testCachePath + '-shm', 'utf8')).not.toBe(
+          'OLD SHM GARBAGE DATA'
+        );
       }
 
       // DB should be functional
@@ -898,7 +939,10 @@ describe('CacheService', () => {
       fs.writeFileSync(testCachePath, 'CORRUPT');
 
       // Make the directory read-only so recreation fails
-      const readOnlyDir = path.join(os.tmpdir(), `deepl-cli-readonly-${Date.now()}`);
+      const readOnlyDir = path.join(
+        os.tmpdir(),
+        `deepl-cli-readonly-${Date.now()}`
+      );
       fs.mkdirSync(readOnlyDir, { recursive: true });
       const readOnlyPath = path.join(readOnlyDir, 'subdir', 'cache.db');
 

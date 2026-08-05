@@ -19,11 +19,14 @@ export interface TmCacheLike {
  * process.
  */
 export class TmCache implements TmCacheLike {
-  private readonly entries = new Map<string, { value: string; expiresAt: number }>();
+  private readonly entries = new Map<
+    string,
+    { value: string; expiresAt: number }
+  >();
 
   constructor(
     private readonly ttlMs: number = TmCache.DEFAULT_TTL_MS,
-    private readonly now: () => number = Date.now,
+    private readonly now: () => number = Date.now
   ) {}
 
   static readonly DEFAULT_TTL_MS = 5 * 60_000;

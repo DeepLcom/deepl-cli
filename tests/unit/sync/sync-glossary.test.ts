@@ -10,7 +10,11 @@ function roundTrip(entries: Record<string, string>): Record<string, string> {
   return GlossaryService.tsvToEntries(GlossaryService.entriesToTSV(entries));
 }
 
-function repeated(source: string, target: string, prefix: string): {
+function repeated(
+  source: string,
+  target: string,
+  prefix: string
+): {
   sourceEntries: Map<string, string>;
   localeEntries: Map<string, string>;
 } {
@@ -24,9 +28,10 @@ function repeated(source: string, target: string, prefix: string): {
 }
 
 describe('SyncGlossaryManager', () => {
-  function createManager(
-    overrides: Partial<SyncGlossaryManagerOptions> = {},
-  ): { manager: SyncGlossaryManager; glossaryService: ReturnType<typeof createMockGlossaryService> } {
+  function createManager(overrides: Partial<SyncGlossaryManagerOptions> = {}): {
+    manager: SyncGlossaryManager;
+    glossaryService: ReturnType<typeof createMockGlossaryService>;
+  } {
     const glossaryService = createMockGlossaryService();
     const manager = new SyncGlossaryManager({
       sourceLocale: 'en',
@@ -48,11 +53,14 @@ describe('SyncGlossaryManager', () => {
       ]);
 
       const targetEntries = new Map([
-        ['de', new Map([
-          ['page.title', 'Speichern'],
-          ['dialog.ok', 'Speichern'],
-          ['menu.save', 'Speichern'],
-        ])],
+        [
+          'de',
+          new Map([
+            ['page.title', 'Speichern'],
+            ['dialog.ok', 'Speichern'],
+            ['menu.save', 'Speichern'],
+          ]),
+        ],
       ]);
 
       const result = manager.extractTerms(sourceEntries, targetEntries);
@@ -70,11 +78,14 @@ describe('SyncGlossaryManager', () => {
       ]);
 
       const targetEntries = new Map([
-        ['de', new Map([
-          ['key1', 'Öffnen'],
-          ['key2', 'Offen'],
-          ['key3', 'Öffnen'],
-        ])],
+        [
+          'de',
+          new Map([
+            ['key1', 'Öffnen'],
+            ['key2', 'Offen'],
+            ['key3', 'Öffnen'],
+          ]),
+        ],
       ]);
 
       const result = manager.extractTerms(sourceEntries, targetEntries);
@@ -93,11 +104,14 @@ describe('SyncGlossaryManager', () => {
       ]);
 
       const targetEntries = new Map([
-        ['de', new Map([
-          ['key1', 'Lang'],
-          ['key2', 'Lang'],
-          ['key3', 'Lang'],
-        ])],
+        [
+          'de',
+          new Map([
+            ['key1', 'Lang'],
+            ['key2', 'Lang'],
+            ['key3', 'Lang'],
+          ]),
+        ],
       ]);
 
       const result = manager.extractTerms(sourceEntries, targetEntries);
@@ -123,16 +137,22 @@ describe('SyncGlossaryManager', () => {
       ]);
 
       const targetEntries = new Map([
-        ['de', new Map([
-          ['a', 'Ja'],
-          ['b', 'Ja'],
-          ['c', 'Ja'],
-        ])],
-        ['fr', new Map([
-          ['a', 'Oui'],
-          ['b', 'Oui'],
-          ['c', 'Oui'],
-        ])],
+        [
+          'de',
+          new Map([
+            ['a', 'Ja'],
+            ['b', 'Ja'],
+            ['c', 'Ja'],
+          ]),
+        ],
+        [
+          'fr',
+          new Map([
+            ['a', 'Oui'],
+            ['b', 'Oui'],
+            ['c', 'Oui'],
+          ]),
+        ],
       ]);
 
       const result = manager.extractTerms(sourceEntries, targetEntries);
@@ -157,7 +177,10 @@ describe('SyncGlossaryManager', () => {
       const { manager } = createManager();
       const { sourceEntries, localeEntries } = repeated('OK', '', 'k');
 
-      const result = manager.extractTerms(sourceEntries, new Map([['de', localeEntries]]));
+      const result = manager.extractTerms(
+        sourceEntries,
+        new Map([['de', localeEntries]])
+      );
 
       expect(result.has('de')).toBe(false);
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('k0'));
@@ -167,7 +190,10 @@ describe('SyncGlossaryManager', () => {
       const { manager } = createManager();
       const { sourceEntries, localeEntries } = repeated('OK', '   ', 'k');
 
-      const result = manager.extractTerms(sourceEntries, new Map([['de', localeEntries]]));
+      const result = manager.extractTerms(
+        sourceEntries,
+        new Map([['de', localeEntries]])
+      );
 
       expect(result.has('de')).toBe(false);
     });
@@ -176,16 +202,26 @@ describe('SyncGlossaryManager', () => {
       const { manager } = createManager();
       const { sourceEntries, localeEntries } = repeated('', 'Leer', 'k');
 
-      const result = manager.extractTerms(sourceEntries, new Map([['de', localeEntries]]));
+      const result = manager.extractTerms(
+        sourceEntries,
+        new Map([['de', localeEntries]])
+      );
 
       expect(result.has('de')).toBe(false);
     });
 
     it('should skip a term whose source contains a tab', () => {
       const { manager } = createManager();
-      const { sourceEntries, localeEntries } = repeated('Col\tumn', 'Spalte', 'k');
+      const { sourceEntries, localeEntries } = repeated(
+        'Col\tumn',
+        'Spalte',
+        'k'
+      );
 
-      const result = manager.extractTerms(sourceEntries, new Map([['de', localeEntries]]));
+      const result = manager.extractTerms(
+        sourceEntries,
+        new Map([['de', localeEntries]])
+      );
 
       expect(result.has('de')).toBe(false);
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('k0'));
@@ -196,10 +232,13 @@ describe('SyncGlossaryManager', () => {
       const { sourceEntries, localeEntries } = repeated(
         'Are you sure?\nThis cannot be undone.',
         'Sicher?',
-        'k',
+        'k'
       );
 
-      const result = manager.extractTerms(sourceEntries, new Map([['de', localeEntries]]));
+      const result = manager.extractTerms(
+        sourceEntries,
+        new Map([['de', localeEntries]])
+      );
 
       expect(result.has('de')).toBe(false);
     });
@@ -209,10 +248,19 @@ describe('SyncGlossaryManager', () => {
       const withNewline = repeated('Save', 'Spei\nchern', 'a');
       const withCr = repeated('Open', 'Öff\rnen', 'b');
 
-      const sourceEntries = new Map([...withNewline.sourceEntries, ...withCr.sourceEntries]);
-      const localeEntries = new Map([...withNewline.localeEntries, ...withCr.localeEntries]);
+      const sourceEntries = new Map([
+        ...withNewline.sourceEntries,
+        ...withCr.sourceEntries,
+      ]);
+      const localeEntries = new Map([
+        ...withNewline.localeEntries,
+        ...withCr.localeEntries,
+      ]);
 
-      const result = manager.extractTerms(sourceEntries, new Map([['de', localeEntries]]));
+      const result = manager.extractTerms(
+        sourceEntries,
+        new Map([['de', localeEntries]])
+      );
 
       expect(result.has('de')).toBe(false);
     });
@@ -222,10 +270,19 @@ describe('SyncGlossaryManager', () => {
       const clean = repeated('Save', 'Speichern', 'a');
       const dirty = repeated('Bad\tterm', 'Schlecht', 'b');
 
-      const sourceEntries = new Map([...clean.sourceEntries, ...dirty.sourceEntries]);
-      const localeEntries = new Map([...clean.localeEntries, ...dirty.localeEntries]);
+      const sourceEntries = new Map([
+        ...clean.sourceEntries,
+        ...dirty.sourceEntries,
+      ]);
+      const localeEntries = new Map([
+        ...clean.localeEntries,
+        ...dirty.localeEntries,
+      ]);
 
-      const result = manager.extractTerms(sourceEntries, new Map([['de', localeEntries]]));
+      const result = manager.extractTerms(
+        sourceEntries,
+        new Map([['de', localeEntries]])
+      );
 
       expect(result.get('de')).toEqual({ Save: 'Speichern' });
     });
@@ -233,7 +290,9 @@ describe('SyncGlossaryManager', () => {
 
   describe('syncGlossaries', () => {
     it('should create new glossary when none exists', async () => {
-      const { manager, glossaryService } = createManager({ targetLocales: ['de'] });
+      const { manager, glossaryService } = createManager({
+        targetLocales: ['de'],
+      });
 
       glossaryService.getGlossaryByName.mockResolvedValue(null);
       glossaryService.createGlossary.mockResolvedValue({
@@ -241,7 +300,9 @@ describe('SyncGlossaryManager', () => {
         name: 'deepl-sync-en-de',
         source_lang: 'en',
         target_langs: ['de'],
-        dictionaries: [{ source_lang: 'en', target_lang: 'de', entry_count: 1 }],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'de', entry_count: 1 },
+        ],
         creation_time: '2026-01-01T00:00:00Z',
       });
 
@@ -251,7 +312,14 @@ describe('SyncGlossaryManager', () => {
         ['k3', 'OK'],
       ]);
       const targetEntries = new Map([
-        ['de', new Map([['k1', 'OK'], ['k2', 'OK'], ['k3', 'OK']])],
+        [
+          'de',
+          new Map([
+            ['k1', 'OK'],
+            ['k2', 'OK'],
+            ['k3', 'OK'],
+          ]),
+        ],
       ]);
 
       const result = await manager.syncGlossaries(sourceEntries, targetEntries);
@@ -260,20 +328,24 @@ describe('SyncGlossaryManager', () => {
         'deepl-sync-en-de',
         'en',
         ['de'],
-        { OK: 'OK' },
+        { OK: 'OK' }
       );
       expect(result).toEqual({ 'en-de': 'new-id-1' });
     });
 
     it('should update existing glossary with new terms', async () => {
-      const { manager, glossaryService } = createManager({ targetLocales: ['de'] });
+      const { manager, glossaryService } = createManager({
+        targetLocales: ['de'],
+      });
 
       glossaryService.getGlossaryByName.mockResolvedValue({
         glossary_id: 'existing-id',
         name: 'deepl-sync-en-de',
         source_lang: 'en',
         target_langs: ['de'],
-        dictionaries: [{ source_lang: 'en', target_lang: 'de', entry_count: 1 }],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'de', entry_count: 1 },
+        ],
         creation_time: '2026-01-01T00:00:00Z',
       });
       glossaryService.getGlossaryEntries.mockResolvedValue({ Hello: 'Hallo' });
@@ -287,14 +359,17 @@ describe('SyncGlossaryManager', () => {
         ['k6', 'Save'],
       ]);
       const targetEntries = new Map([
-        ['de', new Map([
-          ['k1', 'Hallo'],
-          ['k2', 'Hallo'],
-          ['k3', 'Hallo'],
-          ['k4', 'Speichern'],
-          ['k5', 'Speichern'],
-          ['k6', 'Speichern'],
-        ])],
+        [
+          'de',
+          new Map([
+            ['k1', 'Hallo'],
+            ['k2', 'Hallo'],
+            ['k3', 'Hallo'],
+            ['k4', 'Speichern'],
+            ['k5', 'Speichern'],
+            ['k6', 'Speichern'],
+          ]),
+        ],
       ]);
 
       const result = await manager.syncGlossaries(sourceEntries, targetEntries);
@@ -303,12 +378,14 @@ describe('SyncGlossaryManager', () => {
       expect(glossaryService.updateGlossary).toHaveBeenCalledWith(
         'existing-id',
         {
-          dictionaries: [{
-            sourceLang: 'en',
-            targetLang: 'de',
-            entries: { Hello: 'Hallo', Save: 'Speichern' },
-          }],
-        },
+          dictionaries: [
+            {
+              sourceLang: 'en',
+              targetLang: 'de',
+              entries: { Hello: 'Hallo', Save: 'Speichern' },
+            },
+          ],
+        }
       );
       expect(glossaryService.addEntry).not.toHaveBeenCalled();
       expect(glossaryService.removeEntry).not.toHaveBeenCalled();
@@ -316,14 +393,18 @@ describe('SyncGlossaryManager', () => {
     });
 
     it('issues a single batched dictionary update per locale regardless of add/remove count', async () => {
-      const { manager, glossaryService } = createManager({ targetLocales: ['de'] });
+      const { manager, glossaryService } = createManager({
+        targetLocales: ['de'],
+      });
 
       glossaryService.getGlossaryByName.mockResolvedValue({
         glossary_id: 'existing-id',
         name: 'deepl-sync-en-de',
         source_lang: 'en',
         target_langs: ['de'],
-        dictionaries: [{ source_lang: 'en', target_lang: 'de', entry_count: 5 }],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'de', entry_count: 5 },
+        ],
         creation_time: '2026-01-01T00:00:00Z',
       });
 
@@ -336,10 +417,10 @@ describe('SyncGlossaryManager', () => {
       };
       glossaryService.getGlossaryEntries.mockResolvedValue(obsolete);
 
-      const newTerms: Array<[string, string]> = Array.from({ length: 10 }, (_, i) => [
-        `Term${i}`,
-        `Term${i}DE`,
-      ]);
+      const newTerms: Array<[string, string]> = Array.from(
+        { length: 10 },
+        (_, i) => [`Term${i}`, `Term${i}DE`]
+      );
 
       const sourceEntries = new Map<string, string>();
       const deLocale = new Map<string, string>();
@@ -358,25 +439,38 @@ describe('SyncGlossaryManager', () => {
       expect(glossaryService.addEntry).not.toHaveBeenCalled();
       expect(glossaryService.removeEntry).not.toHaveBeenCalled();
       expect(glossaryService.updateGlossary).toHaveBeenCalledTimes(1);
-      const [, payload] = glossaryService.updateGlossary.mock.calls[0] as [string, {
-        dictionaries: Array<{ sourceLang: string; targetLang: string; entries: Record<string, string> }>;
-      }];
+      const [, payload] = glossaryService.updateGlossary.mock.calls[0] as [
+        string,
+        {
+          dictionaries: Array<{
+            sourceLang: string;
+            targetLang: string;
+            entries: Record<string, string>;
+          }>;
+        },
+      ];
       expect(payload.dictionaries).toHaveLength(1);
-      expect(payload.dictionaries[0]?.entries).toEqual(Object.fromEntries(newTerms));
+      expect(payload.dictionaries[0]?.entries).toEqual(
+        Object.fromEntries(newTerms)
+      );
       for (const stale of Object.keys(obsolete)) {
         expect(payload.dictionaries[0]?.entries[stale]).toBeUndefined();
       }
     });
 
     it('skips the dictionary update call when the target terms are identical to current entries', async () => {
-      const { manager, glossaryService } = createManager({ targetLocales: ['de'] });
+      const { manager, glossaryService } = createManager({
+        targetLocales: ['de'],
+      });
 
       glossaryService.getGlossaryByName.mockResolvedValue({
         glossary_id: 'existing-id',
         name: 'deepl-sync-en-de',
         source_lang: 'en',
         target_langs: ['de'],
-        dictionaries: [{ source_lang: 'en', target_lang: 'de', entry_count: 1 }],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'de', entry_count: 1 },
+        ],
         creation_time: '2026-01-01T00:00:00Z',
       });
       glossaryService.getGlossaryEntries.mockResolvedValue({ Hello: 'Hallo' });
@@ -387,11 +481,14 @@ describe('SyncGlossaryManager', () => {
         ['k3', 'Hello'],
       ]);
       const targetEntries = new Map([
-        ['de', new Map([
-          ['k1', 'Hallo'],
-          ['k2', 'Hallo'],
-          ['k3', 'Hallo'],
-        ])],
+        [
+          'de',
+          new Map([
+            ['k1', 'Hallo'],
+            ['k2', 'Hallo'],
+            ['k3', 'Hallo'],
+          ]),
+        ],
       ]);
 
       await manager.syncGlossaries(sourceEntries, targetEntries);
@@ -402,12 +499,12 @@ describe('SyncGlossaryManager', () => {
     });
 
     it('should skip locale with no terms', async () => {
-      const { manager, glossaryService } = createManager({ targetLocales: ['de'] });
+      const { manager, glossaryService } = createManager({
+        targetLocales: ['de'],
+      });
 
       const sourceEntries = new Map([['k1', 'Unique']]);
-      const targetEntries = new Map([
-        ['de', new Map([['k1', 'Einzigartig']])],
-      ]);
+      const targetEntries = new Map([['de', new Map([['k1', 'Einzigartig']])]]);
 
       const result = await manager.syncGlossaries(sourceEntries, targetEntries);
 
@@ -423,25 +520,37 @@ describe('SyncGlossaryManager', () => {
        */
       async function syncTwice(
         sourceEntries: Map<string, string>,
-        localeEntries: Map<string, string>,
-      ): Promise<{ glossaryService: ReturnType<typeof createMockGlossaryService> }> {
-        const { manager, glossaryService } = createManager({ targetLocales: ['de'] });
+        localeEntries: Map<string, string>
+      ): Promise<{
+        glossaryService: ReturnType<typeof createMockGlossaryService>;
+      }> {
+        const { manager, glossaryService } = createManager({
+          targetLocales: ['de'],
+        });
         const info: GlossaryInfo = {
           glossary_id: 'gid-1',
           name: 'deepl-sync-en-de',
           source_lang: 'en',
           target_langs: ['de'],
-          dictionaries: [{ source_lang: 'en', target_lang: 'de', entry_count: 1 }],
+          dictionaries: [
+            { source_lang: 'en', target_lang: 'de', entry_count: 1 },
+          ],
           creation_time: '2026-01-01T00:00:00Z',
         };
 
         let stored: Record<string, string> | null = null;
-        glossaryService.getGlossaryByName.mockImplementation(async () => (stored ? info : null));
-        glossaryService.createGlossary.mockImplementation(async (_n, _s, _t, entries) => {
-          stored = roundTrip(entries);
-          return info;
-        });
-        glossaryService.getGlossaryEntries.mockImplementation(async () => stored ?? {});
+        glossaryService.getGlossaryByName.mockImplementation(async () =>
+          stored ? info : null
+        );
+        glossaryService.createGlossary.mockImplementation(
+          async (_n, _s, _t, entries) => {
+            stored = roundTrip(entries);
+            return info;
+          }
+        );
+        glossaryService.getGlossaryEntries.mockImplementation(
+          async () => stored ?? {}
+        );
         glossaryService.updateGlossary.mockResolvedValue(undefined);
 
         const targetEntries = new Map([['de', localeEntries]]);
@@ -452,18 +561,32 @@ describe('SyncGlossaryManager', () => {
       }
 
       it('should create once and never update when the source terms are unchanged', async () => {
-        const { sourceEntries, localeEntries } = repeated('Save', 'Speichern', 'k');
+        const { sourceEntries, localeEntries } = repeated(
+          'Save',
+          'Speichern',
+          'k'
+        );
 
-        const { glossaryService } = await syncTwice(sourceEntries, localeEntries);
+        const { glossaryService } = await syncTwice(
+          sourceEntries,
+          localeEntries
+        );
 
         expect(glossaryService.createGlossary).toHaveBeenCalledTimes(1);
         expect(glossaryService.updateGlossary).toHaveBeenCalledTimes(0);
       });
 
       it('should not re-upload when a term differs only by surrounding whitespace', async () => {
-        const { sourceEntries, localeEntries } = repeated('Save ', 'Speichern', 'k');
+        const { sourceEntries, localeEntries } = repeated(
+          'Save ',
+          'Speichern',
+          'k'
+        );
 
-        const { glossaryService } = await syncTwice(sourceEntries, localeEntries);
+        const { glossaryService } = await syncTwice(
+          sourceEntries,
+          localeEntries
+        );
 
         expect(glossaryService.createGlossary).toHaveBeenCalledTimes(1);
         expect(glossaryService.updateGlossary).toHaveBeenCalledTimes(0);
@@ -472,9 +595,13 @@ describe('SyncGlossaryManager', () => {
 
     describe('per-locale failure isolation', () => {
       it('should keep syncing other locales and name the failing locale in the warning', async () => {
-        const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+        const warnSpy = jest
+          .spyOn(Logger, 'warn')
+          .mockImplementation(() => undefined);
         try {
-          const { manager, glossaryService } = createManager({ targetLocales: ['de', 'fr'] });
+          const { manager, glossaryService } = createManager({
+            targetLocales: ['de', 'fr'],
+          });
 
           glossaryService.getGlossaryByName.mockResolvedValue(null);
           glossaryService.createGlossary.mockImplementation(async (name) => {
@@ -486,7 +613,9 @@ describe('SyncGlossaryManager', () => {
               name,
               source_lang: 'en',
               target_langs: ['fr'],
-              dictionaries: [{ source_lang: 'en', target_lang: 'fr', entry_count: 1 }],
+              dictionaries: [
+                { source_lang: 'en', target_lang: 'fr', entry_count: 1 },
+              ],
               creation_time: '2026-01-01T00:00:00Z',
             };
             return info;
@@ -495,14 +624,24 @@ describe('SyncGlossaryManager', () => {
           const { sourceEntries, localeEntries } = repeated('Yes', 'Ja', 'k');
           const targetEntries = new Map([
             ['de', localeEntries],
-            ['fr', new Map([...localeEntries].map(([k]) => [k, 'Oui'] as [string, string]))],
+            [
+              'fr',
+              new Map(
+                [...localeEntries].map(([k]) => [k, 'Oui'] as [string, string])
+              ),
+            ],
           ]);
 
-          const result = await manager.syncGlossaries(sourceEntries, targetEntries);
+          const result = await manager.syncGlossaries(
+            sourceEntries,
+            targetEntries
+          );
 
           expect(result).toEqual({ 'en-fr': 'fr-id' });
           expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('de'));
-          expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('glossary rejected by API'));
+          expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('glossary rejected by API')
+          );
         } finally {
           warnSpy.mockRestore();
         }
@@ -519,13 +658,17 @@ describe('SyncGlossaryManager', () => {
         name: 'deepl-sync-en-de',
         source_lang: 'en',
         target_langs: ['de'],
-        dictionaries: [{ source_lang: 'en', target_lang: 'de', entry_count: 5 }],
+        dictionaries: [
+          { source_lang: 'en', target_lang: 'de', entry_count: 5 },
+        ],
         creation_time: '2026-01-01T00:00:00Z',
       });
 
       const result = await manager.getProjectGlossary('de');
 
-      expect(glossaryService.getGlossaryByName).toHaveBeenCalledWith('deepl-sync-en-de');
+      expect(glossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'deepl-sync-en-de'
+      );
       expect(result).toBe('found-id');
     });
 

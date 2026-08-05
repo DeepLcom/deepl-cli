@@ -19,7 +19,10 @@ type CacheModule = Pick<typeof import('../storage/cache.js'), 'CacheService'>;
  * here is what keeps the service's in-memory flag from diverging from config:
  * `cache stats` and the translation path then agree on the same value.
  */
-export function resolveCacheOptions(config: ConfigService, dbPath: string): CacheServiceOptions {
+export function resolveCacheOptions(
+  config: ConfigService,
+  dbPath: string
+): CacheServiceOptions {
   const ttlSeconds = config.getValue<number>('cache.ttl');
   return {
     dbPath,
@@ -32,7 +35,8 @@ export function resolveCacheOptions(config: ConfigService, dbPath: string): Cach
 
 export function createCacheServiceGetter(
   getOptions: () => CacheServiceOptions,
-  importCacheModule: () => Promise<CacheModule> = () => import('../storage/cache.js'),
+  importCacheModule: () => Promise<CacheModule> = () =>
+    import('../storage/cache.js')
 ): () => Promise<CacheService | undefined> {
   let instance: CacheService | undefined;
   let unavailable = false;
@@ -50,12 +54,12 @@ export function createCacheServiceGetter(
       if (isNativeModuleLoadError(error)) {
         Logger.warn(
           `Translation cache backend failed to load (${detail}). ` +
-          'Your cache database has not been modified. Caching is disabled for this run. ' +
-          'Reinstall the CLI, or run it with the Node.js version it was installed with, to restore caching.',
+            'Your cache database has not been modified. Caching is disabled for this run. ' +
+            'Reinstall the CLI, or run it with the Node.js version it was installed with, to restore caching.'
         );
       } else {
         Logger.warn(
-          `Translation cache is unavailable (${detail}). Caching is disabled for this run.`,
+          `Translation cache is unavailable (${detail}). Caching is disabled for this run.`
         );
       }
     }

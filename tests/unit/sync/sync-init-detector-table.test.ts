@@ -28,7 +28,7 @@ import { resolveTargetPath } from '../../../src/sync/sync-utils';
 const TARGET_LOCALES = ['de', 'fr'] as const;
 
 function findEntry(
-  predicate: (p: DetectionPattern) => boolean,
+  predicate: (p: DetectionPattern) => boolean
 ): DetectionPattern {
   const entry = DETECTION_PATTERNS.find(predicate);
   if (!entry) throw new Error('No DETECTION_PATTERNS entry matched predicate');
@@ -37,7 +37,7 @@ function findEntry(
 
 function resolveBucketPattern(
   entry: DetectionPattern,
-  sourceFile: string,
+  sourceFile: string
 ): { pattern: string; targetPathPattern?: string } {
   const dir = sourceFile.includes('/')
     ? sourceFile.substring(0, sourceFile.lastIndexOf('/'))
@@ -47,7 +47,9 @@ function resolveBucketPattern(
     return { pattern: sourceFile };
   }
   if (entry.localeInPath) {
-    return { pattern: resolvedTemplate.replace('{locale}', entry.sourceLocale) };
+    return {
+      pattern: resolvedTemplate.replace('{locale}', entry.sourceLocale),
+    };
   }
   return { pattern: sourceFile, targetPathPattern: resolvedTemplate };
 }
@@ -56,7 +58,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
   describe('JSON', () => {
     it('flat layout: locales/en.json → bucket pattern matches source and target', () => {
       const entry = findEntry(
-        (p) => p.format === 'json' && p.globs.includes('locales/en.json'),
+        (p) => p.format === 'json' && p.globs.includes('locales/en.json')
       );
       const source = 'locales/en.json';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
@@ -64,26 +66,30 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       expect(pattern).toBe('locales/en.json');
       expect(micromatch.isMatch(source, pattern)).toBe(true);
       for (const target of TARGET_LOCALES) {
-        expect(resolveTargetPath(source, 'en', target)).toBe(`locales/${target}.json`);
+        expect(resolveTargetPath(source, 'en', target)).toBe(
+          `locales/${target}.json`
+        );
       }
     });
 
     it('i18n/en.json flat variant', () => {
       const entry = findEntry(
-        (p) => p.format === 'json' && p.globs.includes('i18n/en.json'),
+        (p) => p.format === 'json' && p.globs.includes('i18n/en.json')
       );
       const source = 'i18n/en.json';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
       const { pattern } = resolveBucketPattern(entry, source);
       expect(pattern).toBe('i18n/en.json');
       for (const target of TARGET_LOCALES) {
-        expect(resolveTargetPath(source, 'en', target)).toBe(`i18n/${target}.json`);
+        expect(resolveTargetPath(source, 'en', target)).toBe(
+          `i18n/${target}.json`
+        );
       }
     });
 
     it('dir-per-locale layout: locales/en/*.json → glob bucket pattern', () => {
       const entry = findEntry(
-        (p) => p.format === 'json' && p.globs.includes('locales/en/*.json'),
+        (p) => p.format === 'json' && p.globs.includes('locales/en/*.json')
       );
       const source = 'locales/en/common.json';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
@@ -96,7 +102,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       expect(micromatch.isMatch('locales/en/errors.json', pattern)).toBe(true);
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target)).toBe(
-          `locales/${target}/common.json`,
+          `locales/${target}/common.json`
         );
       }
     });
@@ -116,20 +122,23 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
   describe('YAML .yaml extension', () => {
     it('locales/en.yaml → .yaml bucket pattern preserves extension', () => {
       const entry = findEntry(
-        (p) => p.format === 'yaml' && p.globs.includes('locales/en.yaml'),
+        (p) => p.format === 'yaml' && p.globs.includes('locales/en.yaml')
       );
       const source = 'locales/en.yaml';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
       const { pattern } = resolveBucketPattern(entry, source);
       expect(pattern).toBe('locales/en.yaml');
       for (const target of TARGET_LOCALES) {
-        expect(resolveTargetPath(source, 'en', target)).toBe(`locales/${target}.yaml`);
+        expect(resolveTargetPath(source, 'en', target)).toBe(
+          `locales/${target}.yaml`
+        );
       }
     });
 
     it('Rails namespaced layout: config/locales/admin/en.yaml', () => {
       const entry = findEntry(
-        (p) => p.format === 'yaml' && p.globs.includes('config/locales/**/en.yaml'),
+        (p) =>
+          p.format === 'yaml' && p.globs.includes('config/locales/**/en.yaml')
       );
       const source = 'config/locales/admin/en.yaml';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
@@ -137,7 +146,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       expect(pattern).toBe('config/locales/admin/en.yaml');
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target)).toBe(
-          `config/locales/admin/${target}.yaml`,
+          `config/locales/admin/${target}.yaml`
         );
       }
     });
@@ -146,33 +155,38 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
   describe('YAML .yml extension', () => {
     it('locales/en.yml → .yml bucket pattern preserves extension', () => {
       const entry = findEntry(
-        (p) => p.format === 'yaml' && p.globs.includes('locales/en.yml'),
+        (p) => p.format === 'yaml' && p.globs.includes('locales/en.yml')
       );
       const source = 'locales/en.yml';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
       const { pattern } = resolveBucketPattern(entry, source);
       expect(pattern).toBe('locales/en.yml');
       for (const target of TARGET_LOCALES) {
-        expect(resolveTargetPath(source, 'en', target)).toBe(`locales/${target}.yml`);
+        expect(resolveTargetPath(source, 'en', target)).toBe(
+          `locales/${target}.yml`
+        );
       }
     });
 
     it('Rails canonical layout: config/locales/en.yml', () => {
       const entry = findEntry(
-        (p) => p.format === 'yaml' && p.globs.includes('config/locales/en.yml'),
+        (p) => p.format === 'yaml' && p.globs.includes('config/locales/en.yml')
       );
       const source = 'config/locales/en.yml';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
       const { pattern } = resolveBucketPattern(entry, source);
       expect(pattern).toBe('config/locales/en.yml');
       for (const target of TARGET_LOCALES) {
-        expect(resolveTargetPath(source, 'en', target)).toBe(`config/locales/${target}.yml`);
+        expect(resolveTargetPath(source, 'en', target)).toBe(
+          `config/locales/${target}.yml`
+        );
       }
     });
 
     it('Rails namespaced layout: config/locales/admin/en.yml', () => {
       const entry = findEntry(
-        (p) => p.format === 'yaml' && p.globs.includes('config/locales/**/en.yml'),
+        (p) =>
+          p.format === 'yaml' && p.globs.includes('config/locales/**/en.yml')
       );
       const source = 'config/locales/admin/en.yml';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
@@ -180,7 +194,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       expect(pattern).toBe('config/locales/admin/en.yml');
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target)).toBe(
-          `config/locales/admin/${target}.yml`,
+          `config/locales/admin/${target}.yml`
         );
       }
     });
@@ -192,7 +206,9 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
     it('does NOT match config/locales/de.yml (target-locale file)', () => {
       const yamlEntries = DETECTION_PATTERNS.filter((p) => p.format === 'yaml');
       for (const entry of yamlEntries) {
-        expect(micromatch.isMatch('config/locales/de.yml', entry.globs)).toBe(false);
+        expect(micromatch.isMatch('config/locales/de.yml', entry.globs)).toBe(
+          false
+        );
       }
     });
   });
@@ -206,7 +222,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       expect(pattern).toBe('locale/en/LC_MESSAGES/*.po');
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target)).toBe(
-          `locale/${target}/LC_MESSAGES/messages.po`,
+          `locale/${target}/LC_MESSAGES/messages.po`
         );
       }
     });
@@ -217,12 +233,15 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       const entry = findEntry((p) => p.format === 'android_xml');
       const source = 'res/values/strings.xml';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
-      const { pattern, targetPathPattern } = resolveBucketPattern(entry, source);
+      const { pattern, targetPathPattern } = resolveBucketPattern(
+        entry,
+        source
+      );
       expect(pattern).toBe('res/values/strings.xml');
       expect(targetPathPattern).toBe('res/values-{locale}/strings.xml');
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target, targetPathPattern)).toBe(
-          `res/values-${target}/strings.xml`,
+          `res/values-${target}/strings.xml`
         );
       }
     });
@@ -237,7 +256,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       expect(pattern).toBe('en.lproj/Localizable.strings');
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target)).toBe(
-          `${target}.lproj/Localizable.strings`,
+          `${target}.lproj/Localizable.strings`
         );
       }
     });
@@ -248,8 +267,12 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
     // to the four-flag non-interactive init path.
     it('does NOT match bare-root Localizable.strings', () => {
       const entry = findEntry((p) => p.format === 'ios_strings');
-      expect(micromatch.isMatch('Localizable.strings', entry.globs)).toBe(false);
-      expect(micromatch.isMatch('build/Localizable.strings', entry.globs)).toBe(false);
+      expect(micromatch.isMatch('Localizable.strings', entry.globs)).toBe(
+        false
+      );
+      expect(micromatch.isMatch('build/Localizable.strings', entry.globs)).toBe(
+        false
+      );
     });
   });
 
@@ -261,7 +284,9 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       const { pattern } = resolveBucketPattern(entry, source);
       expect(pattern).toBe('l10n/app_en.arb');
       for (const target of TARGET_LOCALES) {
-        expect(resolveTargetPath(source, 'en', target)).toBe(`l10n/app_${target}.arb`);
+        expect(resolveTargetPath(source, 'en', target)).toBe(
+          `l10n/app_${target}.arb`
+        );
       }
     });
 
@@ -274,32 +299,41 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
   describe('XLIFF (canonical src/locale + Symfony translations)', () => {
     it('Angular canonical src/locale/messages.xlf', () => {
       const entry = findEntry(
-        (p) => p.format === 'xliff' && p.globs.includes('src/locale/messages.xlf'),
+        (p) =>
+          p.format === 'xliff' && p.globs.includes('src/locale/messages.xlf')
       );
       const source = 'src/locale/messages.xlf';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
-      const { pattern, targetPathPattern } = resolveBucketPattern(entry, source);
+      const { pattern, targetPathPattern } = resolveBucketPattern(
+        entry,
+        source
+      );
       expect(pattern).toBe('src/locale/messages.xlf');
       expect(targetPathPattern).toBe('src/locale/messages.{locale}.xlf');
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target, targetPathPattern)).toBe(
-          `src/locale/messages.${target}.xlf`,
+          `src/locale/messages.${target}.xlf`
         );
       }
     });
 
     it('Symfony translations/messages.en.xlf', () => {
       const entry = findEntry(
-        (p) => p.format === 'xliff' && p.globs.includes('translations/messages.en.xlf'),
+        (p) =>
+          p.format === 'xliff' &&
+          p.globs.includes('translations/messages.en.xlf')
       );
       const source = 'translations/messages.en.xlf';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
-      const { pattern, targetPathPattern } = resolveBucketPattern(entry, source);
+      const { pattern, targetPathPattern } = resolveBucketPattern(
+        entry,
+        source
+      );
       expect(pattern).toBe('translations/messages.en.xlf');
       expect(targetPathPattern).toBe('translations/messages.{locale}.xlf');
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target, targetPathPattern)).toBe(
-          `translations/messages.${target}.xlf`,
+          `translations/messages.${target}.xlf`
         );
       }
     });
@@ -307,11 +341,15 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
     // Negative: bare-root `*.xlf` / `*.xliff` match no XLIFF entry — CAT-tool
     // dumps (Trados/memoQ/Xcode `.xcloc` extracts) are false-positive magnets.
     it('does NOT match bare-root *.xlf or *.xliff (any XLIFF entry)', () => {
-      const xliffEntries = DETECTION_PATTERNS.filter((p) => p.format === 'xliff');
+      const xliffEntries = DETECTION_PATTERNS.filter(
+        (p) => p.format === 'xliff'
+      );
       for (const entry of xliffEntries) {
         expect(micromatch.isMatch('messages.xlf', entry.globs)).toBe(false);
         expect(micromatch.isMatch('export.xliff', entry.globs)).toBe(false);
-        expect(micromatch.isMatch('trados-export/file.xlf', entry.globs)).toBe(false);
+        expect(micromatch.isMatch('trados-export/file.xlf', entry.globs)).toBe(
+          false
+        );
       }
     });
   });
@@ -325,7 +363,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       expect(pattern).toBe('lang/en/*.php');
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target)).toBe(
-          `lang/${target}/messages.php`,
+          `lang/${target}/messages.php`
         );
       }
     });
@@ -336,7 +374,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target)).toBe(
-          `resources/lang/${target}/messages.php`,
+          `resources/lang/${target}/messages.php`
         );
       }
     });
@@ -352,7 +390,10 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       const entry = findEntry((p) => p.format === 'xcstrings');
       const source = 'Localizable.xcstrings';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
-      const { pattern, targetPathPattern } = resolveBucketPattern(entry, source);
+      const { pattern, targetPathPattern } = resolveBucketPattern(
+        entry,
+        source
+      );
       expect(pattern).toBe('Localizable.xcstrings');
       expect(targetPathPattern).toBeUndefined();
       expect(entry.multiLocale).toBe(true);
@@ -368,27 +409,31 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
   describe('go-i18n TOML', () => {
     it('locales/en.toml directory layout', () => {
       const entry = findEntry(
-        (p) => p.format === 'toml' && p.globs.includes('locales/en.toml'),
+        (p) => p.format === 'toml' && p.globs.includes('locales/en.toml')
       );
       const source = 'locales/en.toml';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
       const { pattern } = resolveBucketPattern(entry, source);
       expect(pattern).toBe('locales/en.toml');
       for (const target of TARGET_LOCALES) {
-        expect(resolveTargetPath(source, 'en', target)).toBe(`locales/${target}.toml`);
+        expect(resolveTargetPath(source, 'en', target)).toBe(
+          `locales/${target}.toml`
+        );
       }
     });
 
     it('active.en.toml root-level layout', () => {
       const entry = findEntry(
-        (p) => p.format === 'toml' && p.globs.includes('active.en.toml'),
+        (p) => p.format === 'toml' && p.globs.includes('active.en.toml')
       );
       const source = 'active.en.toml';
       expect(micromatch.isMatch(source, entry.globs)).toBe(true);
       const { pattern } = resolveBucketPattern(entry, source);
       expect(pattern).toBe('active.en.toml');
       for (const target of TARGET_LOCALES) {
-        expect(resolveTargetPath(source, 'en', target)).toBe(`active.${target}.toml`);
+        expect(resolveTargetPath(source, 'en', target)).toBe(
+          `active.${target}.toml`
+        );
       }
     });
 
@@ -397,7 +442,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
     // derived from the template at sync time, not re-detected.
     it('does NOT match active.fr.toml when active.en.toml is the source signal', () => {
       const entry = findEntry(
-        (p) => p.format === 'toml' && p.globs.includes('active.en.toml'),
+        (p) => p.format === 'toml' && p.globs.includes('active.en.toml')
       );
       expect(micromatch.isMatch('active.fr.toml', entry.globs)).toBe(false);
     });
@@ -412,7 +457,7 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
       expect(pattern).toBe('src/main/resources/messages_en.properties');
       for (const target of TARGET_LOCALES) {
         expect(resolveTargetPath(source, 'en', target)).toBe(
-          `src/main/resources/messages_${target}.properties`,
+          `src/main/resources/messages_${target}.properties`
         );
       }
     });
@@ -426,27 +471,57 @@ describe('DETECTION_PATTERNS table-driven harness', () => {
     // `locales/en/en.json`, which no bucket glob in the entry matches.
     const cases: Array<{ desc: string; format: string; source: string }> = [
       { desc: 'JSON flat', format: 'json', source: 'locales/en.json' },
-      { desc: 'JSON dir-per-locale', format: 'json', source: 'locales/en/common.json' },
+      {
+        desc: 'JSON dir-per-locale',
+        format: 'json',
+        source: 'locales/en/common.json',
+      },
       { desc: 'YAML .yaml', format: 'yaml', source: 'locales/en.yaml' },
       { desc: 'YAML .yml', format: 'yaml', source: 'locales/en.yml' },
-      { desc: 'Rails namespaced yml', format: 'yaml', source: 'config/locales/admin/en.yml' },
+      {
+        desc: 'Rails namespaced yml',
+        format: 'yaml',
+        source: 'config/locales/admin/en.yml',
+      },
       { desc: 'PO', format: 'po', source: 'locale/en/LC_MESSAGES/messages.po' },
-      { desc: 'iOS', format: 'ios_strings', source: 'en.lproj/Localizable.strings' },
+      {
+        desc: 'iOS',
+        format: 'ios_strings',
+        source: 'en.lproj/Localizable.strings',
+      },
       { desc: 'ARB', format: 'arb', source: 'l10n/app_en.arb' },
-      { desc: 'Laravel', format: 'laravel_php', source: 'lang/en/messages.php' },
+      {
+        desc: 'Laravel',
+        format: 'laravel_php',
+        source: 'lang/en/messages.php',
+      },
       { desc: 'go-i18n dir', format: 'toml', source: 'locales/en.toml' },
-      { desc: 'go-i18n active.en.toml', format: 'toml', source: 'active.en.toml' },
-      { desc: 'Spring', format: 'properties', source: 'src/main/resources/messages_en.properties' },
+      {
+        desc: 'go-i18n active.en.toml',
+        format: 'toml',
+        source: 'active.en.toml',
+      },
+      {
+        desc: 'Spring',
+        format: 'properties',
+        source: 'src/main/resources/messages_en.properties',
+      },
     ];
 
-    it.each(cases)('$desc: resolved bucket pattern matches source under entry globs', ({ format, source }) => {
-      const entry = DETECTION_PATTERNS.find(
-        (p) => p.format === format && !p.multiLocale && micromatch.isMatch(source, p.globs),
-      );
-      expect(entry).toBeDefined();
-      if (!entry) return;
-      const { pattern } = resolveBucketPattern(entry, source);
-      expect(micromatch.isMatch(source, pattern)).toBe(true);
-    });
+    it.each(cases)(
+      '$desc: resolved bucket pattern matches source under entry globs',
+      ({ format, source }) => {
+        const entry = DETECTION_PATTERNS.find(
+          (p) =>
+            p.format === format &&
+            !p.multiLocale &&
+            micromatch.isMatch(source, p.globs)
+        );
+        expect(entry).toBeDefined();
+        if (!entry) return;
+        const { pattern } = resolveBucketPattern(entry, source);
+        expect(micromatch.isMatch(source, pattern)).toBe(true);
+      }
+    );
   });
 });

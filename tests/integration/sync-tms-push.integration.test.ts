@@ -24,11 +24,22 @@ import { FormatRegistry } from '../../src/formats/index';
 import { PhpArraysFormatParser } from '../../src/formats/php-arrays';
 import type { ResolvedSyncConfig } from '../../src/sync/sync-config';
 
-import { TMS_BASE, TMS_PROJECT, expectTmsPush, expectTmsPull } from '../helpers/tms-nock';
+import {
+  TMS_BASE,
+  TMS_PROJECT,
+  expectTmsPush,
+  expectTmsPull,
+} from '../helpers/tms-nock';
 
-const FIXTURE_DIR = path.resolve(__dirname, '../fixtures/sync/laravel_php-pipe-plural');
+const FIXTURE_DIR = path.resolve(
+  __dirname,
+  '../fixtures/sync/laravel_php-pipe-plural'
+);
 
-function makeConfig(projectRoot: string, overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  projectRoot: string,
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -64,9 +75,17 @@ describe('sync push/pull walker skip-partition integration', () => {
   let projectRoot: string;
 
   beforeEach(() => {
-    projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-skip-partition-'));
-    fs.copyFileSync(path.join(FIXTURE_DIR, 'en.php'), path.join(projectRoot, 'en.php'));
-    fs.copyFileSync(path.join(FIXTURE_DIR, 'de.php'), path.join(projectRoot, 'de.php'));
+    projectRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'deepl-sync-skip-partition-')
+    );
+    fs.copyFileSync(
+      path.join(FIXTURE_DIR, 'en.php'),
+      path.join(projectRoot, 'en.php')
+    );
+    fs.copyFileSync(
+      path.join(FIXTURE_DIR, 'de.php'),
+      path.join(projectRoot, 'de.php')
+    );
   });
 
   afterEach(() => {
@@ -85,7 +104,11 @@ describe('sync push/pull walker skip-partition integration', () => {
       expectTmsPush('farewell', 'de', 'Tschüss'),
     ];
 
-    const result = await pushTranslations(makeConfig(projectRoot), makeClient(), makeRegistry());
+    const result = await pushTranslations(
+      makeConfig(projectRoot),
+      makeClient(),
+      makeRegistry()
+    );
 
     expect(result.pushed).toBe(2);
     for (const scope of scopes) {
@@ -112,19 +135,30 @@ describe('sync push/pull walker skip-partition integration', () => {
       days: 'WRONG — pipe plural replacement',
     });
 
-    const result = await pullTranslations(makeConfig(projectRoot), makeClient(), makeRegistry());
+    const result = await pullTranslations(
+      makeConfig(projectRoot),
+      makeClient(),
+      makeRegistry()
+    );
 
     expect(result.pulled).toBeGreaterThanOrEqual(2);
     expect(scope.isDone()).toBe(true);
 
-    const writtenDe = fs.readFileSync(path.join(projectRoot, 'de.php'), 'utf-8');
+    const writtenDe = fs.readFileSync(
+      path.join(projectRoot, 'de.php'),
+      'utf-8'
+    );
     // Pipe-plural values in the target file must be preserved verbatim from
     // the pre-pull target (which matched the source fixture). If the partition
     // regressed, the literal string 'WRONG — pipe plural replacement' would
     // appear in one of the two plural slots.
     expect(writtenDe).not.toContain('WRONG');
-    expect(writtenDe).toContain('{0} No apples|{1} One apple|[2,*] Many apples');
-    expect(writtenDe).toContain('[0,0] No days|[1,6] A few days|[7,*] Full week');
+    expect(writtenDe).toContain(
+      '{0} No apples|{1} One apple|[2,*] Many apples'
+    );
+    expect(writtenDe).toContain(
+      '[0,0] No days|[1,6] A few days|[7,*] Full week'
+    );
     expect(writtenDe).toContain("'greeting' => 'Hallo'");
     expect(writtenDe).toContain("'farewell' => 'Tschüss'");
     expect(nock.isDone()).toBe(true);
@@ -140,7 +174,11 @@ describe('sync push/pull walker skip-partition integration', () => {
         expectTmsPush('farewell', 'de', 'Tschüss'),
       ];
 
-      const result = await pushTranslations(makeConfig(projectRoot), makeClient(), makeRegistry());
+      const result = await pushTranslations(
+        makeConfig(projectRoot),
+        makeClient(),
+        makeRegistry()
+      );
 
       expect(result.pushed).toBe(2);
       for (const scope of scopes) {
@@ -158,7 +196,10 @@ describe('sync push/pull walker skip-partition integration', () => {
     expectTmsPush('farewell', 'fr', 'Tschüss');
     // Add a second target locale with the same target-file content so the
     // walker emits skip records for both locales.
-    fs.copyFileSync(path.join(projectRoot, 'de.php'), path.join(projectRoot, 'fr.php'));
+    fs.copyFileSync(
+      path.join(projectRoot, 'de.php'),
+      path.join(projectRoot, 'fr.php')
+    );
 
     const config = makeConfig(projectRoot, { target_locales: ['de', 'fr'] });
     const result = await pushTranslations(config, makeClient(), makeRegistry());
@@ -168,11 +209,6 @@ describe('sync push/pull walker skip-partition integration', () => {
       .filter((s) => s.reason === 'pipe_pluralization')
       .map((s) => `${s.locale}:${s.key}`)
       .sort();
-    expect(keyed).toEqual([
-      'de:apples',
-      'de:days',
-      'fr:apples',
-      'fr:days',
-    ]);
+    expect(keyed).toEqual(['de:apples', 'de:days', 'fr:apples', 'fr:days']);
   });
 });

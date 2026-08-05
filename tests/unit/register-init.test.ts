@@ -48,12 +48,17 @@ describe('registerInit', () => {
     registerInit(program, {
       getConfigService: () => configService,
       getHttpOptions: () => ({ timeout: 42, maxRetries: 2 }),
-      handleError: ((error: unknown) => { throw error; }),
+      handleError: (error: unknown) => {
+        throw error;
+      },
     });
 
     await program.parseAsync(['node', 'deepl', 'init']);
 
-    expect(InitCommand).toHaveBeenCalledWith(configService, { timeout: 42, maxRetries: 2 });
+    expect(InitCommand).toHaveBeenCalledWith(configService, {
+      timeout: 42,
+      maxRetries: 2,
+    });
   });
 
   it('should construct InitCommand without options when getHttpOptions is absent', async () => {
@@ -63,7 +68,9 @@ describe('registerInit', () => {
 
     registerInit(program, {
       getConfigService: () => configService,
-      handleError: ((error: unknown) => { throw error; }),
+      handleError: (error: unknown) => {
+        throw error;
+      },
     });
 
     await program.parseAsync(['node', 'deepl', 'init']);
@@ -87,8 +94,10 @@ describe('registerInit', () => {
     expect(InitCommand).not.toHaveBeenCalled();
     expect(handleError).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: expect.stringContaining('not supported in non-interactive mode'),
-      }),
+        message: expect.stringContaining(
+          'not supported in non-interactive mode'
+        ),
+      })
     );
   });
 });

@@ -13,7 +13,11 @@
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { assertErrorEnvelope, createTestConfigDir, createTestDir } from '../helpers';
+import {
+  assertErrorEnvelope,
+  createTestConfigDir,
+  createTestDir,
+} from '../helpers';
 
 const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
 
@@ -34,10 +38,15 @@ describe('deepl sync init — no i18n files detected', () => {
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
     };
-    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(configDir, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
   }
 
-  function buildEnv(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+  function buildEnv(
+    extra: Record<string, string | undefined> = {}
+  ): NodeJS.ProcessEnv {
     return {
       ...process.env,
       DEEPL_CONFIG_DIR: testConfig.path,
@@ -113,15 +122,20 @@ describe('deepl sync init — no i18n files detected', () => {
     fs.mkdirSync(localesDir, { recursive: true });
     fs.writeFileSync(
       path.join(localesDir, 'en.json'),
-      JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n',
+      JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
     );
 
     const run = runCli([
-      'sync', 'init',
-      '--source-locale', 'en',
-      '--target-locales', 'de',
-      '--file-format', 'json',
-      '--path', 'locales/en.json',
+      'sync',
+      'init',
+      '--source-locale',
+      'en',
+      '--target-locales',
+      'de',
+      '--file-format',
+      'json',
+      '--path',
+      'locales/en.json',
     ]);
 
     expect(run.status).toBe(0);

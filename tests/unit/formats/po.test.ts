@@ -14,10 +14,7 @@ describe('PoFormatParser extract (unquote)', () => {
   const parser = new PoFormatParser();
 
   it('should decode literal backslash-n (\\\\n in PO) as backslash + n, not newline', () => {
-    const po = [
-      'msgid "path\\\\nname"',
-      'msgstr ""',
-    ].join('\n');
+    const po = ['msgid "path\\\\nname"', 'msgstr ""'].join('\n');
 
     const entries = parser.extract(po);
     expect(entries).toHaveLength(1);
@@ -30,10 +27,7 @@ describe('PoFormatParser extract (msgid with #)', () => {
   const parser = new PoFormatParser();
 
   it('should not confuse # in msgid with msgctxt separator', () => {
-    const po = [
-      'msgid "error#404"',
-      'msgstr "Not Found"',
-    ].join('\n');
+    const po = ['msgid "error#404"', 'msgstr "Not Found"'].join('\n');
 
     const entries = parser.extract(po);
     expect(entries).toHaveLength(1);
@@ -78,10 +72,7 @@ describe('PoFormatParser reconstruct', () => {
   });
 
   it('should append new entries not present in template', () => {
-    const template = [
-      'msgid "greeting"',
-      'msgstr "Hallo"',
-    ].join('\n');
+    const template = ['msgid "greeting"', 'msgstr "Hallo"'].join('\n');
 
     const entries: TranslatedEntry[] = [
       { key: 'greeting', value: 'Hello', translation: 'Hallo' },
@@ -94,8 +85,8 @@ describe('PoFormatParser reconstruct', () => {
     expect(result).toContain('msgid "new_key"');
     expect(result).toContain('msgstr "Neuer Text"');
     const lines = result.split('\n');
-    const newKeyIdx = lines.findIndex(l => l.includes('"new_key"'));
-    const greetingIdx = lines.findIndex(l => l.includes('"greeting"'));
+    const newKeyIdx = lines.findIndex((l) => l.includes('"new_key"'));
+    const greetingIdx = lines.findIndex((l) => l.includes('"greeting"'));
     expect(newKeyIdx).toBeGreaterThan(greetingIdx);
   });
 
@@ -139,7 +130,9 @@ describe('PoFormatParser reconstruct', () => {
 
     const result = parser.reconstruct(template, entries);
 
-    expect(result).toContain('msgstr "Content-Type: text/plain; charset=UTF-8\\n"');
+    expect(result).toContain(
+      'msgstr "Content-Type: text/plain; charset=UTF-8\\n"'
+    );
     expect(result).toContain('msgstr "Updated Hallo"');
   });
 
@@ -167,11 +160,7 @@ describe('PoFormatParser reconstruct', () => {
   });
 
   it('should remove fuzzy flag when providing a fresh translation', () => {
-    const template = [
-      '#, fuzzy',
-      'msgid "greeting"',
-      'msgstr ""',
-    ].join('\n');
+    const template = ['#, fuzzy', 'msgid "greeting"', 'msgstr ""'].join('\n');
 
     const entries: TranslatedEntry[] = [
       { key: 'greeting', value: 'Hello', translation: 'Hallo' },
@@ -202,12 +191,10 @@ describe('PoFormatParser reconstruct', () => {
   });
 
   it('should use continuation line format for long msgstr with newlines', () => {
-    const template = [
-      'msgid "long_message"',
-      'msgstr ""',
-    ].join('\n');
+    const template = ['msgid "long_message"', 'msgstr ""'].join('\n');
 
-    const longTranslation = 'First line of the translated message\nSecond line of the translated message\nThird line';
+    const longTranslation =
+      'First line of the translated message\nSecond line of the translated message\nThird line';
 
     const entries: TranslatedEntry[] = [
       { key: 'long_message', value: 'source', translation: longTranslation },
@@ -223,10 +210,7 @@ describe('PoFormatParser reconstruct', () => {
   });
 
   it('should use single-line format for short msgstr without newlines', () => {
-    const template = [
-      'msgid "greeting"',
-      'msgstr ""',
-    ].join('\n');
+    const template = ['msgid "greeting"', 'msgstr ""'].join('\n');
 
     const entries: TranslatedEntry[] = [
       { key: 'greeting', value: 'Hello', translation: 'Hallo' },
@@ -279,7 +263,8 @@ describe('PoFormatParser — parsing coverage', () => {
   });
 
   it('should skip obsolete entries (#~)', () => {
-    const po = '#~ msgid "old"\n#~ msgstr "ancient"\nmsgid "key"\nmsgstr "value"\n';
+    const po =
+      '#~ msgid "old"\n#~ msgstr "ancient"\nmsgid "key"\nmsgstr "value"\n';
     const entries = parser.extract(po);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.key).toBe('key');
@@ -293,12 +278,13 @@ describe('PoFormatParser — parsing coverage', () => {
   });
 
   it('should parse msgid_plural and msgstr[N]', () => {
-    const po = [
-      'msgid "item"',
-      'msgid_plural "items"',
-      'msgstr[0] "Artikel"',
-      'msgstr[1] "Artikel"',
-    ].join('\n') + '\n';
+    const po =
+      [
+        'msgid "item"',
+        'msgid_plural "items"',
+        'msgstr[0] "Artikel"',
+        'msgstr[1] "Artikel"',
+      ].join('\n') + '\n';
     const entries = parser.extract(po);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.metadata).toBeDefined();
@@ -306,60 +292,52 @@ describe('PoFormatParser — parsing coverage', () => {
   });
 
   it('should handle multi-line continuation strings', () => {
-    const po = [
-      'msgid ""',
-      '"Hello "',
-      '"World"',
-      'msgstr "Hallo Welt"',
-    ].join('\n') + '\n';
+    const po =
+      ['msgid ""', '"Hello "', '"World"', 'msgstr "Hallo Welt"'].join('\n') +
+      '\n';
     const entries = parser.extract(po);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.value).toBe('Hello World');
   });
 
   it('should handle continuation for msgctxt', () => {
-    const po = [
-      'msgctxt ""',
-      '"menu"',
-      'msgid "file"',
-      'msgstr "Datei"',
-    ].join('\n') + '\n';
+    const po =
+      ['msgctxt ""', '"menu"', 'msgid "file"', 'msgstr "Datei"'].join('\n') +
+      '\n';
     const entries = parser.extract(po);
     expect(entries).toHaveLength(1);
   });
 
   it('should handle continuation for msgid_plural', () => {
-    const po = [
-      'msgid "item"',
-      'msgid_plural ""',
-      '"items"',
-      'msgstr[0] "Artikel"',
-      'msgstr[1] "Artikel"',
-    ].join('\n') + '\n';
+    const po =
+      [
+        'msgid "item"',
+        'msgid_plural ""',
+        '"items"',
+        'msgstr[0] "Artikel"',
+        'msgstr[1] "Artikel"',
+      ].join('\n') + '\n';
     const entries = parser.extract(po);
     expect(entries[0]!.metadata!['msgid_plural']).toBe('items');
   });
 
   it('should handle continuation for msgstr', () => {
-    const po = [
-      'msgid "greeting"',
-      'msgstr ""',
-      '"Hallo "',
-      '"Welt"',
-    ].join('\n') + '\n';
+    const po =
+      ['msgid "greeting"', 'msgstr ""', '"Hallo "', '"Welt"'].join('\n') + '\n';
     const entries = parser.extract(po);
     expect(entries[0]!.value).toBe('greeting');
   });
 
   it('should handle continuation for msgstr[N]', () => {
-    const po = [
-      'msgid "item"',
-      'msgid_plural "items"',
-      'msgstr[0] ""',
-      '"Artikel"',
-      'msgstr[1] ""',
-      '"Artikel"',
-    ].join('\n') + '\n';
+    const po =
+      [
+        'msgid "item"',
+        'msgid_plural "items"',
+        'msgstr[0] ""',
+        '"Artikel"',
+        'msgstr[1] ""',
+        '"Artikel"',
+      ].join('\n') + '\n';
     const entries = parser.extract(po);
     expect(entries).toHaveLength(1);
   });
@@ -369,13 +347,14 @@ describe('PoFormatParser — reconstruct coverage', () => {
   const parser = new PoFormatParser();
 
   it('should remove deleted entries from output', () => {
-    const po = [
-      'msgid "keep"',
-      'msgstr "Keep"',
-      '',
-      'msgid "delete"',
-      'msgstr "Delete"',
-    ].join('\n') + '\n';
+    const po =
+      [
+        'msgid "keep"',
+        'msgstr "Keep"',
+        '',
+        'msgid "delete"',
+        'msgstr "Delete"',
+      ].join('\n') + '\n';
     const entries: TranslatedEntry[] = [
       { key: 'keep', value: 'keep', translation: 'Behalten' },
     ];
@@ -385,11 +364,8 @@ describe('PoFormatParser — reconstruct coverage', () => {
   });
 
   it('should reconstruct entries with msgctxt', () => {
-    const po = [
-      'msgctxt "menu"',
-      'msgid "file"',
-      'msgstr "File"',
-    ].join('\n') + '\n';
+    const po =
+      ['msgctxt "menu"', 'msgid "file"', 'msgstr "File"'].join('\n') + '\n';
     const entries: TranslatedEntry[] = [
       { key: 'menu\x04file', value: 'file', translation: 'Datei' },
     ];
@@ -398,12 +374,13 @@ describe('PoFormatParser — reconstruct coverage', () => {
   });
 
   it('should reconstruct plural entries', () => {
-    const po = [
-      'msgid "item"',
-      'msgid_plural "items"',
-      'msgstr[0] "item"',
-      'msgstr[1] "items"',
-    ].join('\n') + '\n';
+    const po =
+      [
+        'msgid "item"',
+        'msgid_plural "items"',
+        'msgstr[0] "item"',
+        'msgstr[1] "items"',
+      ].join('\n') + '\n';
     const entries: TranslatedEntry[] = [
       {
         key: 'item',
@@ -421,11 +398,8 @@ describe('PoFormatParser — reconstruct coverage', () => {
   });
 
   it('should remove fuzzy flag when translation is provided', () => {
-    const po = [
-      '#, fuzzy',
-      'msgid "greeting"',
-      'msgstr "old"',
-    ].join('\n') + '\n';
+    const po =
+      ['#, fuzzy', 'msgid "greeting"', 'msgstr "old"'].join('\n') + '\n';
     const entries: TranslatedEntry[] = [
       { key: 'greeting', value: 'greeting', translation: 'Hallo' },
     ];
@@ -435,11 +409,10 @@ describe('PoFormatParser — reconstruct coverage', () => {
   });
 
   it('should preserve non-fuzzy flags', () => {
-    const po = [
-      '#, python-format',
-      'msgid "count: %d"',
-      'msgstr "Anzahl: %d"',
-    ].join('\n') + '\n';
+    const po =
+      ['#, python-format', 'msgid "count: %d"', 'msgstr "Anzahl: %d"'].join(
+        '\n'
+      ) + '\n';
     const entries: TranslatedEntry[] = [
       { key: 'count: %d', value: 'count: %d', translation: 'Anzahl: %d' },
     ];

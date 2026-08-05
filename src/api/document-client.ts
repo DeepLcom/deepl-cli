@@ -1,5 +1,9 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { DocumentTranslationOptions, DocumentHandle, DocumentStatus } from '../types/index.js';
+import {
+  DocumentTranslationOptions,
+  DocumentHandle,
+  DocumentStatus,
+} from '../types/index.js';
 import { ValidationError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
 import {
@@ -42,7 +46,9 @@ export class DocumentClient extends HttpClient {
     }
 
     if (!options.filename) {
-      throw new ValidationError('filename is required when uploading document as Buffer');
+      throw new ValidationError(
+        'filename is required when uploading document as Buffer'
+      );
     }
 
     const { default: FormData } = await import('form-data');
@@ -54,13 +60,22 @@ export class DocumentClient extends HttpClient {
         () => {
           const formData = new FormData();
           formData.append('file', file, options.filename);
-          formData.append('target_lang', this.normalizeLanguage(options.targetLang).toUpperCase());
+          formData.append(
+            'target_lang',
+            this.normalizeLanguage(options.targetLang).toUpperCase()
+          );
 
           if (options.sourceLang) {
-            formData.append('source_lang', this.normalizeLanguage(options.sourceLang).toUpperCase());
+            formData.append(
+              'source_lang',
+              this.normalizeLanguage(options.sourceLang).toUpperCase()
+            );
           }
           if (options.formality) {
-            formData.append('formality', normalizeFormality(options.formality, 'text'));
+            formData.append(
+              'formality',
+              normalizeFormality(options.formality, 'text')
+            );
           }
           const glossaryParams = resolveGlossaryWireParams(options);
           if (glossaryParams) {
@@ -69,7 +84,7 @@ export class DocumentClient extends HttpClient {
             } else {
               formData.append(
                 'glossary_ids',
-                encodeGlossaryIdsForMultipart(glossaryParams.glossary_ids),
+                encodeGlossaryIdsForMultipart(glossaryParams.glossary_ids)
               );
             }
           }

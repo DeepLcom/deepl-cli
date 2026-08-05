@@ -1,4 +1,8 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import type {
+  ExtractedEntry,
+  FormatParser,
+  TranslatedEntry,
+} from './format.js';
 import { detectIndent } from './util/detect-indent.js';
 import { Logger } from '../utils/logger.js';
 
@@ -20,7 +24,7 @@ export class JsonFormatParser implements FormatParser {
     if (duplicates.length > 0) {
       Logger.warn(
         `JSON file contains duplicate keys: ${duplicates.join(', ')}. ` +
-        `Only the last value for each key will be used.`,
+          `Only the last value for each key will be used.`
       );
     }
 
@@ -68,7 +72,7 @@ export class JsonFormatParser implements FormatParser {
     obj: Record<string, unknown>,
     prefix: string,
     keys: Set<string>,
-    scopes: Map<string, number>,
+    scopes: Map<string, number>
   ): void {
     for (const prop of Object.keys(obj)) {
       const dotPath = prefix ? `${prefix}.${prop}` : prop;
@@ -79,7 +83,12 @@ export class JsonFormatParser implements FormatParser {
       }
       const val = obj[prop];
       if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-        this.collectFlatKeys(val as Record<string, unknown>, dotPath, keys, scopes);
+        this.collectFlatKeys(
+          val as Record<string, unknown>,
+          dotPath,
+          keys,
+          scopes
+        );
       }
     }
   }
@@ -93,7 +102,10 @@ export class JsonFormatParser implements FormatParser {
         return [flatKey, ...dotPath.slice(flatKey.length + 1).split('.')];
       }
       if (dotPath.endsWith('.' + flatKey)) {
-        return [...dotPath.slice(0, dotPath.length - flatKey.length - 1).split('.'), flatKey];
+        return [
+          ...dotPath.slice(0, dotPath.length - flatKey.length - 1).split('.'),
+          flatKey,
+        ];
       }
     }
 
@@ -155,7 +167,7 @@ export class JsonFormatParser implements FormatParser {
     obj: unknown,
     prefix: string,
     translations: Map<string, string>,
-    flatKeyInfo: FlatKeyInfo,
+    flatKeyInfo: FlatKeyInfo
   ): void {
     if (Array.isArray(obj)) {
       for (let i = 0; i < obj.length; i++) {
@@ -190,7 +202,11 @@ export class JsonFormatParser implements FormatParser {
     }
   }
 
-  private insertNewKeys(obj: unknown, translations: Map<string, string>, flatKeyInfo: FlatKeyInfo): void {
+  private insertNewKeys(
+    obj: unknown,
+    translations: Map<string, string>,
+    flatKeyInfo: FlatKeyInfo
+  ): void {
     if (typeof obj !== 'object' || obj === null) return;
     for (const [key, value] of translations) {
       if (!this.hasKey(obj, key, flatKeyInfo)) {
@@ -200,7 +216,11 @@ export class JsonFormatParser implements FormatParser {
     }
   }
 
-  private hasKey(obj: unknown, dotPath: string, flatKeyInfo: FlatKeyInfo): boolean {
+  private hasKey(
+    obj: unknown,
+    dotPath: string,
+    flatKeyInfo: FlatKeyInfo
+  ): boolean {
     const parts = this.splitKeyParts(dotPath, flatKeyInfo);
     let current: unknown = obj;
     for (const part of parts) {
@@ -219,7 +239,11 @@ export class JsonFormatParser implements FormatParser {
    * `obj['__proto__'] = v` invokes the prototype setter instead of creating a
    * property, which both loses the translation and mutates Object.prototype.
    */
-  private setOwn(obj: Record<string, unknown>, key: string, value: unknown): void {
+  private setOwn(
+    obj: Record<string, unknown>,
+    key: string,
+    value: unknown
+  ): void {
     Object.defineProperty(obj, key, {
       value,
       writable: true,
@@ -228,7 +252,11 @@ export class JsonFormatParser implements FormatParser {
     });
   }
 
-  private setKeyWithParts(obj: Record<string, unknown>, parts: string[], value: string): void {
+  private setKeyWithParts(
+    obj: Record<string, unknown>,
+    parts: string[],
+    value: string
+  ): void {
     let current: Record<string, unknown> = obj;
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i]!;
@@ -248,7 +276,7 @@ export class JsonFormatParser implements FormatParser {
     obj: unknown,
     prefix: string,
     translations: Map<string, string>,
-    flatKeyInfo: FlatKeyInfo,
+    flatKeyInfo: FlatKeyInfo
   ): void {
     if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return;
     const record = obj as Record<string, unknown>;
@@ -259,7 +287,11 @@ export class JsonFormatParser implements FormatParser {
         if (!translations.has(key)) {
           delete record[prop];
         }
-      } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+      } else if (
+        typeof val === 'object' &&
+        val !== null &&
+        !Array.isArray(val)
+      ) {
         this.removeDeletedKeys(val, key, translations, flatKeyInfo);
         if (Object.keys(val).length === 0) {
           delete record[prop];

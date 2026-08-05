@@ -13,7 +13,7 @@ describe('AdminClient Integration', () => {
   const clients: AdminClient[] = [];
 
   afterEach(() => {
-    clients.forEach(c => c.destroy());
+    clients.forEach((c) => c.destroy());
     clients.length = 0;
     nock.cleanAll();
   });
@@ -63,7 +63,9 @@ describe('AdminClient Integration', () => {
         .get('/v2/admin/developer-keys')
         .reply(403, { message: 'Forbidden' });
 
-      await expect(client.listApiKeys()).rejects.toThrow('Authentication failed');
+      await expect(client.listApiKeys()).rejects.toThrow(
+        'Authentication failed'
+      );
     });
   });
 
@@ -226,7 +228,11 @@ describe('AdminClient Integration', () => {
 
       const scope = nock(API_URL)
         .get('/v2/admin/analytics')
-        .query({ start_date: '2024-01-01', end_date: '2024-01-31', group_by: 'key' })
+        .query({
+          start_date: '2024-01-01',
+          end_date: '2024-01-31',
+          group_by: 'key',
+        })
         .reply(200, {
           usage_report: {
             total_usage: {

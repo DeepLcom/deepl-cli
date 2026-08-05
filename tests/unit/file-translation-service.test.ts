@@ -98,9 +98,14 @@ describe('FileTranslationService', () => {
         detectedSourceLang: 'en',
       });
 
-      await fileTranslationService.translateFile(inputPath, outputPath, {
-        targetLang: 'es',
-      }, { preserveCode: true });
+      await fileTranslationService.translateFile(
+        inputPath,
+        outputPath,
+        {
+          targetLang: 'es',
+        },
+        { preserveCode: true }
+      );
 
       const output = fs.readFileSync(outputPath, 'utf-8');
       expect(output).toContain('```js\nconst x = 1;\n```');
@@ -302,7 +307,9 @@ describe('FileTranslationService', () => {
     let stdoutWriteSpy: jest.SpyInstance;
 
     beforeEach(() => {
-      stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      stdoutWriteSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
     });
 
     afterEach(() => {

@@ -52,7 +52,7 @@ const ENTRIES: readonly LanguageEntry[] = GENERATED_ENTRIES;
 
 /** Read-only map of language code to its registry entry. Primary lookup structure. */
 export const LANGUAGE_REGISTRY: ReadonlyMap<string, LanguageEntry> = new Map(
-  ENTRIES.map(entry => [entry.code, entry])
+  ENTRIES.map((entry) => [entry.code, entry])
 );
 
 /** The fields of a GET /v3/languages entry the derivation below depends on. */
@@ -71,7 +71,9 @@ export interface DerivableLanguage {
  * Shared with scripts/generate-language-registry.mjs so the snapshot and the
  * runtime fallback for codes it does not list cannot disagree.
  */
-export function deriveLanguageEntry(language: DerivableLanguage): LanguageEntry {
+export function deriveLanguageEntry(
+  language: DerivableLanguage
+): LanguageEntry {
   const code = language.lang.toLowerCase();
   const usableAsSource = language.usable_as_source !== false;
 
@@ -83,11 +85,12 @@ export function deriveLanguageEntry(language: DerivableLanguage): LanguageEntry 
   const described = language.features !== undefined;
   const supportsGlossary = language.features?.['glossary'] !== undefined;
 
-  const category: LanguageCategory = described && !supportsGlossary
-    ? 'extended'
-    : usableAsSource
-      ? 'core'
-      : 'regional';
+  const category: LanguageCategory =
+    described && !supportsGlossary
+      ? 'extended'
+      : usableAsSource
+        ? 'core'
+        : 'regional';
 
   return {
     code,
@@ -137,7 +140,7 @@ export function getLanguageName(code: string): string | undefined {
 
 /** Return all languages that can be used as a source language (excludes regional target-only variants). */
 export function getSourceLanguages(): LanguageEntry[] {
-  return ENTRIES.filter(e => !e.targetOnly);
+  return ENTRIES.filter((e) => !e.targetOnly);
 }
 
 /** Return all languages that can be used as a target language (includes regional variants). */
@@ -147,10 +150,12 @@ export function getTargetLanguages(): LanguageEntry[] {
 
 /** Return the set of all known language codes (core + regional + extended). */
 export function getAllLanguageCodes(): ReadonlySet<string> {
-  return new Set(ENTRIES.map(e => e.code));
+  return new Set(ENTRIES.map((e) => e.code));
 }
 
 /** Return only the extended-tier language codes (no formality/glossary support). */
 export function getExtendedLanguageCodes(): ReadonlySet<string> {
-  return new Set(ENTRIES.filter(e => e.category === 'extended').map(e => e.code));
+  return new Set(
+    ENTRIES.filter((e) => e.category === 'extended').map((e) => e.code)
+  );
 }

@@ -52,7 +52,10 @@ describe('Correct Command E2E', () => {
     it('should accept correct without --lang flag (auto-detect)', () => {
       expect.assertions(1);
       try {
-        execSync('deepl correct "test text"', { encoding: 'utf-8', stdio: 'pipe' });
+        execSync('deepl correct "test text"', {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
       } catch (error: any) {
         // May fail on API key, but should NOT fail on missing --lang (exit code 1)
         expect(error.status).not.toBe(1);
@@ -62,7 +65,10 @@ describe('Correct Command E2E', () => {
     it('should reject invalid language code', () => {
       expect.assertions(1);
       try {
-        execSync('deepl correct "test" --lang invalid', { encoding: 'utf-8', stdio: 'pipe' });
+        execSync('deepl correct "test" --lang invalid', {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
       } catch (error: any) {
         // Exit code 6 = InvalidInput (validation error)
         expect(error.status).toBe(6);
@@ -72,7 +78,10 @@ describe('Correct Command E2E', () => {
     it('should reject --style as an unknown option', () => {
       expect.assertions(2);
       try {
-        execSync('deepl correct "test" --style business', { encoding: 'utf-8', stdio: 'pipe' });
+        execSync('deepl correct "test" --style business', {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
       } catch (error: any) {
         expect(error.status).not.toBe(0);
         expect(error.stderr?.toString() ?? '').toMatch(/unknown option/i);
@@ -82,7 +91,10 @@ describe('Correct Command E2E', () => {
     it('should reject --tone as an unknown option', () => {
       expect.assertions(2);
       try {
-        execSync('deepl correct "test" --tone friendly', { encoding: 'utf-8', stdio: 'pipe' });
+        execSync('deepl correct "test" --tone friendly', {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
       } catch (error: any) {
         expect(error.status).not.toBe(0);
         expect(error.stderr?.toString() ?? '').toMatch(/unknown option/i);
@@ -92,7 +104,10 @@ describe('Correct Command E2E', () => {
     it('should reject conflicting --to and --lang values', () => {
       expect.assertions(1);
       try {
-        execSync('deepl correct "test" --to de --lang fr', { encoding: 'utf-8', stdio: 'pipe' });
+        execSync('deepl correct "test" --to de --lang fr', {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
       } catch (error: any) {
         expect(error.status).toBe(6);
       }
@@ -107,7 +122,10 @@ describe('Correct Command E2E', () => {
       // This will fail without API key, but should recognize it as a file operation
       expect.assertions(1);
       try {
-        execSync(`deepl correct "${testFile}" --lang en-US`, { encoding: 'utf-8', stdio: 'pipe' });
+        execSync(`deepl correct "${testFile}" --lang en-US`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
       } catch (error: any) {
         // Expected to fail without API key, but should not error on file path recognition
         const stderr = error.stderr?.toString() ?? '';

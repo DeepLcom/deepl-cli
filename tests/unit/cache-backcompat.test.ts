@@ -14,7 +14,12 @@ import * as path from 'path';
 import * as os from 'os';
 import { CacheService } from '../../src/storage/cache';
 
-const FIXTURE = path.join(__dirname, '..', 'fixtures', 'cache-better-sqlite3.db');
+const FIXTURE = path.join(
+  __dirname,
+  '..',
+  'fixtures',
+  'cache-better-sqlite3.db'
+);
 
 describe('CacheService better-sqlite3 back-compat', () => {
   let testCacheDir: string;
@@ -22,7 +27,9 @@ describe('CacheService better-sqlite3 back-compat', () => {
   let cache: CacheService | undefined;
 
   beforeEach(() => {
-    testCacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-cli-backcompat-'));
+    testCacheDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'deepl-cli-backcompat-')
+    );
     testCachePath = path.join(testCacheDir, 'cache.db');
     fs.copyFileSync(FIXTURE, testCachePath);
   });
@@ -42,7 +49,9 @@ describe('CacheService better-sqlite3 back-compat', () => {
   it('opens the database without treating it as corrupt', () => {
     openFixture();
 
-    const corruptBackups = fs.readdirSync(testCacheDir).filter((f) => f.includes('.corrupt-'));
+    const corruptBackups = fs
+      .readdirSync(testCacheDir)
+      .filter((f) => f.includes('.corrupt-'));
     expect(corruptBackups).toEqual([]);
   });
 
@@ -57,7 +66,9 @@ describe('CacheService better-sqlite3 back-compat', () => {
       text: 'Welt',
       detectedSourceLang: 'en',
     });
-    expect(service.get('write:v1:improve')).toEqual({ text: 'An improved sentence.' });
+    expect(service.get('write:v1:improve')).toEqual({
+      text: 'An improved sentence.',
+    });
   });
 
   it('reports accurate stats for the pre-existing entries', () => {

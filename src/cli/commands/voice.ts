@@ -21,45 +21,123 @@ import { Logger } from '../../utils/logger.js';
 import { sanitizeForTerminal } from '../../utils/control-chars.js';
 import { VoicePartialResultError } from '../../services/voice-stream-session.js';
 
-const VALID_VOICE_TARGET_LANGS: ReadonlySet<string> = new Set<VoiceTargetLanguage>([
-  'ar','bg','cs','da','de','el','en','en-GB','en-US','es','et','fi','fr',
-  'he','hu','id','it','ja','ko','lt','lv','nb','nl','pl','pt','pt-BR','pt-PT',
-  'ro','ru','sk','sl','sv','th','tr','uk','vi','zh','zh-HANS','zh-HANT',
-]);
+const VALID_VOICE_TARGET_LANGS: ReadonlySet<string> =
+  new Set<VoiceTargetLanguage>([
+    'ar',
+    'bg',
+    'cs',
+    'da',
+    'de',
+    'el',
+    'en',
+    'en-GB',
+    'en-US',
+    'es',
+    'et',
+    'fi',
+    'fr',
+    'he',
+    'hu',
+    'id',
+    'it',
+    'ja',
+    'ko',
+    'lt',
+    'lv',
+    'nb',
+    'nl',
+    'pl',
+    'pt',
+    'pt-BR',
+    'pt-PT',
+    'ro',
+    'ru',
+    'sk',
+    'sl',
+    'sv',
+    'th',
+    'tr',
+    'uk',
+    'vi',
+    'zh',
+    'zh-HANS',
+    'zh-HANT',
+  ]);
 
-const VALID_VOICE_SOURCE_LANGS: ReadonlySet<string> = new Set<VoiceSourceLanguage>([
-  'ar','bg','cs','da','de','el','en','es','et','fi','fr','hu','id','it',
-  'ja','ko','lt','lv','nb','nl','pl','pt','ro','ru','sk','sl','sv','tr','uk','zh',
-]);
+const VALID_VOICE_SOURCE_LANGS: ReadonlySet<string> =
+  new Set<VoiceSourceLanguage>([
+    'ar',
+    'bg',
+    'cs',
+    'da',
+    'de',
+    'el',
+    'en',
+    'es',
+    'et',
+    'fi',
+    'fr',
+    'hu',
+    'id',
+    'it',
+    'ja',
+    'ko',
+    'lt',
+    'lv',
+    'nb',
+    'nl',
+    'pl',
+    'pt',
+    'ro',
+    'ru',
+    'sk',
+    'sl',
+    'sv',
+    'tr',
+    'uk',
+    'zh',
+  ]);
 
 /**
  * Lowercase lookups onto the spellings the Voice API expects (`en-GB`,
  * `zh-HANS`), so input is accepted in any casing as it is everywhere else.
  */
 const VOICE_TARGET_BY_LOWERCASE = new Map<string, VoiceTargetLanguage>(
-  Array.from(VALID_VOICE_TARGET_LANGS, lang => [
+  Array.from(VALID_VOICE_TARGET_LANGS, (lang) => [
     lang.toLowerCase(),
     lang as VoiceTargetLanguage,
-  ]),
+  ])
 );
 const VOICE_SOURCE_BY_LOWERCASE = new Map<string, VoiceSourceLanguage>(
-  Array.from(VALID_VOICE_SOURCE_LANGS, lang => [
+  Array.from(VALID_VOICE_SOURCE_LANGS, (lang) => [
     lang.toLowerCase(),
     lang as VoiceSourceLanguage,
-  ]),
+  ])
 );
 
-const VALID_VOICE_CONTENT_TYPES: ReadonlySet<string> = new Set<VoiceSourceMediaContentType>([
-  'audio/auto',
-  'audio/pcm;encoding=s16le;rate=8000','audio/pcm;encoding=s16le;rate=16000',
-  'audio/pcm;encoding=s16le;rate=44100','audio/pcm;encoding=s16le;rate=48000',
-  'audio/opus;container=ogg','audio/opus;container=webm','audio/opus;container=matroska',
-  'audio/ogg','audio/ogg;codecs=flac','audio/ogg;codecs=opus',
-  'audio/webm','audio/webm;codecs=opus',
-  'audio/x-matroska','audio/x-matroska;codecs=aac','audio/x-matroska;codecs=flac',
-  'audio/x-matroska;codecs=mp3','audio/x-matroska;codecs=opus',
-  'audio/flac','audio/mpeg',
-]);
+const VALID_VOICE_CONTENT_TYPES: ReadonlySet<string> =
+  new Set<VoiceSourceMediaContentType>([
+    'audio/auto',
+    'audio/pcm;encoding=s16le;rate=8000',
+    'audio/pcm;encoding=s16le;rate=16000',
+    'audio/pcm;encoding=s16le;rate=44100',
+    'audio/pcm;encoding=s16le;rate=48000',
+    'audio/opus;container=ogg',
+    'audio/opus;container=webm',
+    'audio/opus;container=matroska',
+    'audio/ogg',
+    'audio/ogg;codecs=flac',
+    'audio/ogg;codecs=opus',
+    'audio/webm',
+    'audio/webm;codecs=opus',
+    'audio/x-matroska',
+    'audio/x-matroska;codecs=aac',
+    'audio/x-matroska;codecs=flac',
+    'audio/x-matroska;codecs=mp3',
+    'audio/x-matroska;codecs=opus',
+    'audio/flac',
+    'audio/mpeg',
+  ]);
 
 /**
  * Join transcript segments for the live display, with response text sanitized.
@@ -98,7 +176,7 @@ export function validateVoiceOptions(options: {
     const canonical = VOICE_TARGET_BY_LOWERCASE.get(raw.toLowerCase());
     if (!canonical) {
       throw new ValidationError(
-        `Invalid voice target language: "${raw}". Valid codes: ${Array.from(VALID_VOICE_TARGET_LANGS).sort().join(', ')}`,
+        `Invalid voice target language: "${raw}". Valid codes: ${Array.from(VALID_VOICE_TARGET_LANGS).sort().join(', ')}`
       );
     }
     return canonical;
@@ -109,14 +187,17 @@ export function validateVoiceOptions(options: {
     sourceLang = VOICE_SOURCE_BY_LOWERCASE.get(options.from.toLowerCase());
     if (!sourceLang) {
       throw new ValidationError(
-        `Invalid voice source language: "${options.from}". Valid codes: ${Array.from(VALID_VOICE_SOURCE_LANGS).sort().join(', ')}`,
+        `Invalid voice source language: "${options.from}". Valid codes: ${Array.from(VALID_VOICE_SOURCE_LANGS).sort().join(', ')}`
       );
     }
   }
 
-  if (options.contentType && !VALID_VOICE_CONTENT_TYPES.has(options.contentType)) {
+  if (
+    options.contentType &&
+    !VALID_VOICE_CONTENT_TYPES.has(options.contentType)
+  ) {
     throw new ValidationError(
-      `Invalid voice content type: "${options.contentType}". Valid types: ${Array.from(VALID_VOICE_CONTENT_TYPES).sort().join(', ')}`,
+      `Invalid voice content type: "${options.contentType}". Valid types: ${Array.from(VALID_VOICE_CONTENT_TYPES).sort().join(', ')}`
     );
   }
 
@@ -145,20 +226,32 @@ export class VoiceCommand {
     this.voiceService = voiceService;
   }
 
-  async translate(filePath: string, options: VoiceCommandOptions): Promise<string> {
+  async translate(
+    filePath: string,
+    options: VoiceCommandOptions
+  ): Promise<string> {
     const translateOptions = this.buildOptions(options);
     const isTTY = process.stdout.isTTY && options.stream !== false;
 
     let callbacks: VoiceStreamCallbacks | undefined;
     if (isTTY) {
-      callbacks = this.createTTYCallbacks(translateOptions.targetLangs, translateOptions.maxReconnectAttempts);
+      callbacks = this.createTTYCallbacks(
+        translateOptions.targetLangs,
+        translateOptions.maxReconnectAttempts
+      );
     }
 
-    const sigintHandler = () => { this.voiceService.cancel(); };
+    const sigintHandler = () => {
+      this.voiceService.cancel();
+    };
     process.on('SIGINT', sigintHandler);
 
     try {
-      const result = await this.voiceService.translateFile(filePath, translateOptions, callbacks);
+      const result = await this.voiceService.translateFile(
+        filePath,
+        translateOptions,
+        callbacks
+      );
 
       if (isTTY) {
         this.clearTTYDisplay(translateOptions.targetLangs.length);
@@ -170,7 +263,7 @@ export class VoiceCommand {
         error,
         translateOptions.targetLangs.length,
         isTTY,
-        options.format,
+        options.format
       );
       throw error;
     } finally {
@@ -184,14 +277,22 @@ export class VoiceCommand {
 
     let callbacks: VoiceStreamCallbacks | undefined;
     if (isTTY) {
-      callbacks = this.createTTYCallbacks(translateOptions.targetLangs, translateOptions.maxReconnectAttempts);
+      callbacks = this.createTTYCallbacks(
+        translateOptions.targetLangs,
+        translateOptions.maxReconnectAttempts
+      );
     }
 
-    const sigintHandler = () => { this.voiceService.cancel(); };
+    const sigintHandler = () => {
+      this.voiceService.cancel();
+    };
     process.on('SIGINT', sigintHandler);
 
     try {
-      const result = await this.voiceService.translateStdin(translateOptions, callbacks);
+      const result = await this.voiceService.translateStdin(
+        translateOptions,
+        callbacks
+      );
 
       if (isTTY) {
         this.clearTTYDisplay(translateOptions.targetLangs.length);
@@ -203,7 +304,7 @@ export class VoiceCommand {
         error,
         translateOptions.targetLangs.length,
         isTTY,
-        options.format,
+        options.format
       );
       throw error;
     } finally {
@@ -217,19 +318,21 @@ export class VoiceCommand {
     if (options.glossary && targetLangs.length > 1) {
       process.stderr.write(
         `Warning: --glossary applies a single glossary ID to all target languages. ` +
-        `DeepL glossaries are language-pair-specific, so the glossary may not be compatible ` +
-        `with all targets (${targetLangs.join(', ')}). ` +
-        `Consider translating each target language separately with its own glossary.\n`,
+          `DeepL glossaries are language-pair-specific, so the glossary may not be compatible ` +
+          `with all targets (${targetLangs.join(', ')}). ` +
+          `Consider translating each target language separately with its own glossary.\n`
       );
     }
 
     return {
       targetLangs,
       sourceLang,
-      sourceLanguageMode: options.sourceLanguageMode as VoiceSourceLanguageMode | undefined,
+      sourceLanguageMode: options.sourceLanguageMode as
+        VoiceSourceLanguageMode | undefined,
       formality: options.formality as VoiceTranslateOptions['formality'],
       glossaryId: options.glossary,
-      contentType: options.contentType as VoiceSourceMediaContentType | undefined,
+      contentType: options.contentType as
+        VoiceSourceMediaContentType | undefined,
       chunkSize: options.chunkSize,
       chunkInterval: options.chunkInterval,
       reconnect: options.reconnect,
@@ -237,7 +340,10 @@ export class VoiceCommand {
     };
   }
 
-  private createTTYCallbacks(targetLangs: VoiceTargetLanguage[], maxReconnectAttempts?: number): VoiceStreamCallbacks {
+  private createTTYCallbacks(
+    targetLangs: VoiceTargetLanguage[],
+    maxReconnectAttempts?: number
+  ): VoiceStreamCallbacks {
     const state: Record<string, { concluded: string; tentative: string }> = {};
 
     // Initialize state for source + each target. Keyed lowercase for the same
@@ -258,14 +364,18 @@ export class VoiceCommand {
       const src = state['source']!;
       readline.clearLine(process.stdout, 0);
       readline.cursorTo(process.stdout, 0);
-      process.stdout.write(`${chalk.bold('[source]')} ${src.concluded}${chalk.gray(src.tentative)}\n`);
+      process.stdout.write(
+        `${chalk.bold('[source]')} ${src.concluded}${chalk.gray(src.tentative)}\n`
+      );
 
       // Render each target language
       for (const lang of targetLangs) {
         const tgt = state[lang]!;
         readline.clearLine(process.stdout, 0);
         readline.cursorTo(process.stdout, 0);
-        process.stdout.write(`${chalk.bold(`[${lang}]`)} ${tgt.concluded}${chalk.gray(tgt.tentative)}\n`);
+        process.stdout.write(
+          `${chalk.bold(`[${lang}]`)} ${tgt.concluded}${chalk.gray(tgt.tentative)}\n`
+        );
       }
     };
 
@@ -289,7 +399,9 @@ export class VoiceCommand {
 
     return {
       onReconnecting: (attempt: number) => {
-        process.stdout.write(chalk.yellow(`[reconnecting ${attempt}/${maxAttempts}...]\n`));
+        process.stdout.write(
+          chalk.yellow(`[reconnecting ${attempt}/${maxAttempts}...]\n`)
+        );
       },
       onSourceTranscript: (update) => {
         const src = state['source']!;
@@ -342,7 +454,7 @@ export class VoiceCommand {
     error: unknown,
     targetCount: number,
     isTTY: boolean,
-    format?: string,
+    format?: string
   ): void {
     if (!(error instanceof VoicePartialResultError)) {
       return;
@@ -380,7 +492,9 @@ export class VoiceCommand {
     }
 
     for (const target of result.targets) {
-      lines.push(`[${sanitizeForTerminal(target.lang)}] ${sanitizeForTerminal(target.text)}`);
+      lines.push(
+        `[${sanitizeForTerminal(target.lang)}] ${sanitizeForTerminal(target.text)}`
+      );
     }
 
     return lines.join('\n');

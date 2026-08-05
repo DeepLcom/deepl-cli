@@ -7,7 +7,9 @@ import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
 describe('Config Command E2E', () => {
   const testConfig = createTestConfigDir('e2e-config');
-  const { runCLI, runCLIAll, runCLIExpectError } = makeNodeRunCLI(testConfig.path);
+  const { runCLI, runCLIAll, runCLIExpectError } = makeNodeRunCLI(
+    testConfig.path
+  );
 
   afterAll(() => {
     testConfig.cleanup();

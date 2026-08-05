@@ -11,7 +11,7 @@ import { ExitCode, exitCodeForError } from '../../../utils/exit-codes.js';
  */
 export function resolveFormat(
   opts: { format?: string },
-  command: Command,
+  command: Command
 ): string | undefined {
   const parentFormat = command.parent?.opts()['format'] as string | undefined;
   if (parentFormat && parentFormat !== 'text' && opts.format === 'text') {
@@ -31,7 +31,7 @@ export function resolveFormat(
  */
 export function resolveLocale(
   opts: { locale?: string },
-  command: Command,
+  command: Command
 ): string | undefined {
   if (opts.locale !== undefined) return opts.locale;
   return command.parent?.opts()['locale'] as string | undefined;
@@ -44,7 +44,7 @@ export function resolveLocale(
  */
 export function resolveSyncConfig(
   opts: { syncConfig?: string },
-  command: Command,
+  command: Command
 ): string | undefined {
   if (opts.syncConfig !== undefined) return opts.syncConfig;
   return command.parent?.opts()['syncConfig'] as string | undefined;
@@ -54,7 +54,9 @@ export function resolveSyncConfig(
  * Split a resolved --locale value into the comma-separated filter list that
  * `loadSyncConfig` validates against `target_locales`.
  */
-export function parseLocaleFilter(locale: string | undefined): string[] | undefined {
+export function parseLocaleFilter(
+  locale: string | undefined
+): string[] | undefined {
   if (!locale) return undefined;
   return locale.split(',').map((l) => l.trim());
 }
@@ -105,13 +107,13 @@ function sanitizeMessage(message: string): string {
  */
 export function emitJsonErrorAndExit(
   error: unknown,
-  overrideExitCode?: number,
+  overrideExitCode?: number
 ): never {
   const err = error instanceof Error ? error : new Error(String(error));
   const code = err instanceof DeepLCLIError ? err.name : 'UnknownError';
-  const exitCode = overrideExitCode ?? (
-    err instanceof DeepLCLIError ? err.exitCode : exitCodeForError(err)
-  );
+  const exitCode =
+    overrideExitCode ??
+    (err instanceof DeepLCLIError ? err.exitCode : exitCodeForError(err));
   const envelope: SyncJsonErrorEnvelope = {
     ok: false,
     error: {
@@ -133,7 +135,7 @@ export function emitJsonErrorAndExit(
  * have richer payloads and write them directly.
  */
 export function emitJsonInitSuccessAndExit(
-  payload: SyncInitJsonSuccessEnvelope['created'],
+  payload: SyncInitJsonSuccessEnvelope['created']
 ): never {
   const envelope: SyncInitJsonSuccessEnvelope = {
     ok: true,

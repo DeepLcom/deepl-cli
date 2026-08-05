@@ -13,7 +13,7 @@ export const MIN_NODE_MAJOR = 24;
  * version is supported. Unparseable versions fail open.
  */
 export function unsupportedNodeVersionMessage(
-  version: string = process.versions.node,
+  version: string = process.versions.node
 ): string | null {
   const major = Number(version.split('.')[0]);
   if (!Number.isInteger(major) || major >= MIN_NODE_MAJOR) {
@@ -23,7 +23,7 @@ export function unsupportedNodeVersionMessage(
 }
 
 export function assertSupportedNodeVersion(
-  version: string = process.versions.node,
+  version: string = process.versions.node
 ): void {
   const message = unsupportedNodeVersionMessage(version);
   if (message) {

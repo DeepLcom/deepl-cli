@@ -32,52 +32,56 @@ export async function resolveTranslationMemoryId(
   client: TranslationMemoryLister,
   nameOrId: string,
   cache: TmCacheLike,
-  expected?: { from: Language; targets: Language[] },
+  expected?: { from: Language; targets: Language[] }
 ): Promise<string> {
   if (UUID_RE.test(nameOrId)) return nameOrId;
 
   const cacheKey = expected
-    ? `${nameOrId}|${expected.from.toLowerCase()}|${expected.targets.map(t => t.toLowerCase()).join(',')}`
+    ? `${nameOrId}|${expected.from.toLowerCase()}|${expected.targets.map((t) => t.toLowerCase()).join(',')}`
     : nameOrId;
   if (cache.has(cacheKey)) {
     const cached = cache.get(cacheKey)!;
-    Logger.verbose(`[verbose] Translation memory cache hit: "${nameOrId}" -> ${cached}`);
+    Logger.verbose(
+      `[verbose] Translation memory cache hit: "${nameOrId}" -> ${cached}`
+    );
     return cached;
   }
 
   const list = await client.listTranslationMemories();
-  const candidates = list.filter(tm => !hasSuspiciousChars(tm.name));
-  const matches = candidates.filter(tm => tm.name === nameOrId);
+  const candidates = list.filter((tm) => !hasSuspiciousChars(tm.name));
+  const matches = candidates.filter((tm) => tm.name === nameOrId);
   if (matches.length > 1) {
     throw new ConfigError(
       `Multiple translation memories share the name "${sanitizeForError(nameOrId)}"`,
-      'Pass the UUID directly to disambiguate.',
+      'Pass the UUID directly to disambiguate.'
     );
   }
   const match = matches[0];
   if (!match) {
     throw new ConfigError(
       `Translation memory "${sanitizeForError(nameOrId)}" not found`,
-      'Pass the UUID directly, or check your translation memories on the DeepL dashboard.',
+      'Pass the UUID directly, or check your translation memories on the DeepL dashboard.'
     );
   }
 
   if (expected) {
     const tmFrom = match.source_language.toLowerCase();
-    const tmTargets = match.target_languages.map(t => t.toLowerCase());
+    const tmTargets = match.target_languages.map((t) => t.toLowerCase());
     const expectedFrom = expected.from.toLowerCase();
     const mismatch =
       tmFrom !== expectedFrom ||
-      expected.targets.some(t => !tmTargets.includes(t.toLowerCase()));
+      expected.targets.some((t) => !tmTargets.includes(t.toLowerCase()));
     if (mismatch) {
       throw new ConfigError(
         `Translation memory "${sanitizeForError(nameOrId)}" does not support the requested language pair`,
-        `TM is ${match.source_language}\u2192${match.target_languages.join(',')}; requested ${expected.from}\u2192${expected.targets.join(',')}.`,
+        `TM is ${match.source_language}\u2192${match.target_languages.join(',')}; requested ${expected.from}\u2192${expected.targets.join(',')}.`
       );
     }
   }
 
   cache.set(cacheKey, match.translation_memory_id);
-  Logger.verbose(`[verbose] Resolved translation memory "${nameOrId}" -> ${match.translation_memory_id}`);
+  Logger.verbose(
+    `[verbose] Resolved translation memory "${nameOrId}" -> ${match.translation_memory_id}`
+  );
   return match.translation_memory_id;
 }

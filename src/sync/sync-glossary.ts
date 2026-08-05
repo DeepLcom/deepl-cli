@@ -27,7 +27,9 @@ function isUnusableTerm(text: string): boolean {
  * parsed back out of TSV, which trims each field. Comparing raw local terms
  * against that could never be equal, so every sync re-uploaded the dictionary.
  */
-function normalizeForComparison(entries: Record<string, string>): Map<string, string> {
+function normalizeForComparison(
+  entries: Record<string, string>
+): Map<string, string> {
   const normalized = new Map<string, string>();
   for (const [source, target] of Object.entries(entries)) {
     normalized.set(source.trim(), target.trim());
@@ -35,7 +37,10 @@ function normalizeForComparison(entries: Record<string, string>): Map<string, st
   return normalized;
 }
 
-function entriesEqual(a: Record<string, string>, b: Record<string, string>): boolean {
+function entriesEqual(
+  a: Record<string, string>,
+  b: Record<string, string>
+): boolean {
   const normalizedA = normalizeForComparison(a);
   const normalizedB = normalizeForComparison(b);
   if (normalizedA.size !== normalizedB.size) return false;
@@ -55,7 +60,7 @@ export class SyncGlossaryManager {
    */
   extractTerms(
     sourceEntries: Map<string, string>,
-    targetEntries: Map<string, Map<string, string>>,
+    targetEntries: Map<string, Map<string, string>>
   ): Map<string, Record<string, string>> {
     const result = new Map<string, Record<string, string>>();
 
@@ -75,7 +80,10 @@ export class SyncGlossaryManager {
     for (const [locale, localeEntries] of targetEntries) {
       // Null-prototype: keyed by untrusted source strings, which may be
       // named after Object.prototype members.
-      const terms: Record<string, string> = Object.create(null) as Record<string, string>;
+      const terms: Record<string, string> = Object.create(null) as Record<
+        string,
+        string
+      >;
 
       for (const [sourceText, keys] of sourceTextToKeys) {
         if (keys.size < MIN_KEY_COUNT) continue;
@@ -100,10 +108,13 @@ export class SyncGlossaryManager {
 
         if (!isConsistent || consistentTranslation === undefined) continue;
 
-        if (isUnusableTerm(sourceText) || isUnusableTerm(consistentTranslation)) {
+        if (
+          isUnusableTerm(sourceText) ||
+          isUnusableTerm(consistentTranslation)
+        ) {
           const sampleKey = keys.values().next().value;
           Logger.warn(
-            `Skipping glossary term from key "${sampleKey}" (${locale}): source or translation is empty or contains a tab, carriage return or newline.`,
+            `Skipping glossary term from key "${sampleKey}" (${locale}): source or translation is empty or contains a tab, carriage return or newline.`
           );
           continue;
         }
@@ -125,10 +136,13 @@ export class SyncGlossaryManager {
    */
   async syncGlossaries(
     sourceEntries: Map<string, string>,
-    targetEntries: Map<string, Map<string, string>>,
+    targetEntries: Map<string, Map<string, string>>
   ): Promise<Record<string, string>> {
     const terms = this.extractTerms(sourceEntries, targetEntries);
-    const glossaryIds: Record<string, string> = Object.create(null) as Record<string, string>;
+    const glossaryIds: Record<string, string> = Object.create(null) as Record<
+      string,
+      string
+    >;
 
     for (const targetLocale of this.options.targetLocales) {
       const localeTerms = terms.get(targetLocale);
@@ -143,25 +157,32 @@ export class SyncGlossaryManager {
 
       // One rejected dictionary must not abandon the remaining locales.
       try {
-        const existing = await this.options.glossaryService.getGlossaryByName(name);
+        const existing =
+          await this.options.glossaryService.getGlossaryByName(name);
 
         if (existing) {
-          const currentEntries = await this.options.glossaryService.getGlossaryEntries(
-            existing.glossary_id,
-            sourceLang,
-            targetLang,
-          );
+          const currentEntries =
+            await this.options.glossaryService.getGlossaryEntries(
+              existing.glossary_id,
+              sourceLang,
+              targetLang
+            );
 
           glossaryIds[localePair] = existing.glossary_id;
 
           if (!entriesEqual(currentEntries, localeTerms)) {
-            await this.options.glossaryService.updateGlossary(existing.glossary_id, {
-              dictionaries: [{
-                sourceLang,
-                targetLang,
-                entries: localeTerms,
-              }],
-            });
+            await this.options.glossaryService.updateGlossary(
+              existing.glossary_id,
+              {
+                dictionaries: [
+                  {
+                    sourceLang,
+                    targetLang,
+                    entries: localeTerms,
+                  },
+                ],
+              }
+            );
             Logger.info(`Updated glossary "${name}" (${existing.glossary_id})`);
           }
         } else {
@@ -169,7 +190,7 @@ export class SyncGlossaryManager {
             name,
             sourceLang,
             [targetLang],
-            localeTerms,
+            localeTerms
           );
           glossaryIds[localePair] = created.glossary_id;
           Logger.info(`Created glossary "${name}" (${created.glossary_id})`);
@@ -177,7 +198,7 @@ export class SyncGlossaryManager {
       } catch (error) {
         delete glossaryIds[localePair];
         Logger.warn(
-          `Glossary sync failed for ${localePair} (glossary "${name}", ${Object.keys(localeTerms).length} terms): ${errorMessage(error)}`,
+          `Glossary sync failed for ${localePair} (glossary "${name}", ${Object.keys(localeTerms).length} terms): ${errorMessage(error)}`
         );
       }
     }

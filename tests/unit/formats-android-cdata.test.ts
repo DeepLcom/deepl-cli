@@ -36,7 +36,9 @@ describe('Android XML CDATA safety', () => {
       translation: e.key === 'body' ? BREAKOUT : e.value,
     }));
 
-    expect(() => parser.reconstruct(WITH_CDATA, translated)).toThrow(ValidationError);
+    expect(() => parser.reconstruct(WITH_CDATA, translated)).toThrow(
+      ValidationError
+    );
     expect(() => parser.reconstruct(WITH_CDATA, translated)).toThrow(/CDATA/);
   });
 
@@ -47,8 +49,11 @@ describe('Android XML CDATA safety', () => {
     expect(() =>
       parser.reconstruct(
         WITH_CDATA,
-        entries.map((e) => ({ ...e, translation: e.key === 'body' ? 'array]]> end' : e.value })),
-      ),
+        entries.map((e) => ({
+          ...e,
+          translation: e.key === 'body' ? 'array]]> end' : e.value,
+        }))
+      )
     ).toThrow(/"\]\]>"/);
   });
 
@@ -72,11 +77,14 @@ describe('Android XML CDATA safety', () => {
           metadata: {
             plurals: [
               { quantity: 'one', value: '<b>1</b> Element' },
-              { quantity: 'other', value: `]]><string name="injected">x</string><![CDATA[` },
+              {
+                quantity: 'other',
+                value: `]]><string name="injected">x</string><![CDATA[`,
+              },
             ],
           },
         },
-      ]),
+      ])
     ).toThrow(ValidationError);
   });
 
@@ -92,8 +100,12 @@ describe('Android XML CDATA safety', () => {
 
     expect(() =>
       parser.reconstruct(xml, [
-        { key: 'labels.0', value: 'Less < More', translation: ']]></item><item>injected<![CDATA[' },
-      ]),
+        {
+          key: 'labels.0',
+          value: 'Less < More',
+          translation: ']]></item><item>injected<![CDATA[',
+        },
+      ])
     ).toThrow(ValidationError);
   });
 
@@ -110,9 +122,9 @@ describe('Android XML CDATA safety', () => {
     ]);
 
     expect(out).toContain('array]]&gt; end');
-    expect(new Map(parser.extract(out).map((e) => [e.key, e.value])).get('plain')).toBe(
-      'array]]> end',
-    );
+    expect(
+      new Map(parser.extract(out).map((e) => [e.key, e.value])).get('plain')
+    ).toBe('array]]> end');
   });
 
   it('should keep CDATA output well-formed for ordinary translations', () => {
@@ -121,13 +133,16 @@ describe('Android XML CDATA safety', () => {
 
     const out = parser.reconstruct(
       WITH_CDATA,
-      entries.map((e) => ({ ...e, translation: e.key === 'body' ? '<b>Fett</b> Text' : e.value })),
+      entries.map((e) => ({
+        ...e,
+        translation: e.key === 'body' ? '<b>Fett</b> Text' : e.value,
+      }))
     );
 
     expect(out).toContain('<![CDATA[<b>Fett</b> Text]]>');
-    expect(new Map(parser.extract(out).map((e) => [e.key, e.value])).get('body')).toBe(
-      '<b>Fett</b> Text',
-    );
+    expect(
+      new Map(parser.extract(out).map((e) => [e.key, e.value])).get('body')
+    ).toBe('<b>Fett</b> Text');
   });
 
   it('should never re-extract more entries than the template declares', () => {
@@ -136,7 +151,10 @@ describe('Android XML CDATA safety', () => {
 
     const out = parser.reconstruct(
       WITH_CDATA,
-      entries.map((e) => ({ ...e, translation: e.key === 'body' ? '<i>x</i>' : e.value })),
+      entries.map((e) => ({
+        ...e,
+        translation: e.key === 'body' ? '<i>x</i>' : e.value,
+      }))
     );
 
     expect(parser.extract(out)).toHaveLength(entries.length);

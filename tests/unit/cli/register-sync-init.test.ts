@@ -69,12 +69,16 @@ describe('deepl sync init flag vocabulary', () => {
     const deps = makeDeps(handleError);
     await runSyncInit(
       [
-        '--source-locale', 'en',
-        '--target-locales', 'de,fr',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de,fr',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ],
-      deps,
+      deps
     );
     expect(handleError).not.toHaveBeenCalled();
     expect(fs.existsSync(path.join(tmpDir, '.deepl-sync.yaml'))).toBe(true);
@@ -84,36 +88,51 @@ describe('deepl sync init flag vocabulary', () => {
   it.each([
     ['--source-lang', 'en'],
     ['--target-langs', 'de,fr'],
-  ])('rejects the removed %s alias as an unknown option', async (flag, value) => {
-    const deps = makeDeps(handleError);
-    await expect(
-      runSyncInit(
-        [
-          '--source-locale', 'en',
-          '--target-locales', 'de,fr',
-          '--file-format', 'json',
-          '--path', 'locales/en.json',
-          flag, value,
-        ],
-        deps,
-      ),
-    ).rejects.toThrow(new RegExp(`unknown option '${flag}'`));
-    expect(fs.existsSync(path.join(tmpDir, '.deepl-sync.yaml'))).toBe(false);
-  });
+  ])(
+    'rejects the removed %s alias as an unknown option',
+    async (flag, value) => {
+      const deps = makeDeps(handleError);
+      await expect(
+        runSyncInit(
+          [
+            '--source-locale',
+            'en',
+            '--target-locales',
+            'de,fr',
+            '--file-format',
+            'json',
+            '--path',
+            'locales/en.json',
+            flag,
+            value,
+          ],
+          deps
+        )
+      ).rejects.toThrow(new RegExp(`unknown option '${flag}'`));
+      expect(fs.existsSync(path.join(tmpDir, '.deepl-sync.yaml'))).toBe(false);
+    }
+  );
 
   it('no longer emits a deprecation warning for the canonical flags', async () => {
     const deps = makeDeps(handleError);
     await runSyncInit(
       [
-        '--source-locale', 'en',
-        '--target-locales', 'de',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ],
-      deps,
+      deps
     );
     expect(handleError).not.toHaveBeenCalled();
-    const yaml = fs.readFileSync(path.join(tmpDir, '.deepl-sync.yaml'), 'utf-8');
+    const yaml = fs.readFileSync(
+      path.join(tmpDir, '.deepl-sync.yaml'),
+      'utf-8'
+    );
     expect(yaml).toMatch(/source_locale:\s*en/);
     expect(stderrText()).not.toMatch(/\[deprecated\]/);
   });

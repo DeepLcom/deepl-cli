@@ -174,7 +174,9 @@ describe('Logger', () => {
     });
 
     it('should redact &token= query parameter from URLs', () => {
-      Logger.verbose('https://api.deepl.com/ws?lang=en&token=abc123-secret&format=text');
+      Logger.verbose(
+        'https://api.deepl.com/ws?lang=en&token=abc123-secret&format=text'
+      );
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'https://api.deepl.com/ws?lang=en&token=[REDACTED]&format=text'
       );
@@ -189,9 +191,7 @@ describe('Logger', () => {
 
     it('should redact DeepL-Auth-Key case-insensitively', () => {
       Logger.verbose('deepl-auth-key MY-KEY:fx');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'DeepL-Auth-Key [REDACTED]'
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('DeepL-Auth-Key [REDACTED]');
     });
 
     it('should redact X-Api-Key header values', () => {
@@ -210,13 +210,13 @@ describe('Logger', () => {
 
     it('should redact X-Api-Key case-insensitively', () => {
       Logger.verbose('x-api-key: MY-SECRET');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'X-Api-Key: [REDACTED]'
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('X-Api-Key: [REDACTED]');
     });
 
     it('should redact ?api_key= query parameter from URLs', () => {
-      Logger.verbose('https://tms.example.com/projects?api_key=abc123&format=json');
+      Logger.verbose(
+        'https://tms.example.com/projects?api_key=abc123&format=json'
+      );
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'https://tms.example.com/projects?api_key=[REDACTED]&format=json'
       );
@@ -499,7 +499,7 @@ describe('Logger', () => {
     it('should not redact when TMS_API_KEY is not set', () => {
       Logger.info('Generic message without any TMS values');
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Generic message without any TMS values',
+        'Generic message without any TMS values'
       );
     });
 
@@ -558,7 +558,7 @@ describe('Logger', () => {
       process.env['TMS_TOKEN'] = 'test-tms-token-67890';
       try {
         Logger.info(
-          'deepl=deepl-key-abc:fx tmsKey=test-tms-api-key-12345 tmsTok=test-tms-token-67890 url?token=qp-secret DeepL-Auth-Key deepl-key-abc:fx Authorization: Bearer jwt.abc',
+          'deepl=deepl-key-abc:fx tmsKey=test-tms-api-key-12345 tmsTok=test-tms-token-67890 url?token=qp-secret DeepL-Auth-Key deepl-key-abc:fx Authorization: Bearer jwt.abc'
         );
         const logged = consoleErrorSpy.mock.calls[0]?.[0] as string;
         expect(logged).not.toContain('deepl-key-abc:fx');
@@ -599,10 +599,15 @@ describe('Logger', () => {
     });
 
     it('should guard against circular references', () => {
-      const obj: Record<string, unknown> = { url: 'https://host?token=loop-secret' };
+      const obj: Record<string, unknown> = {
+        url: 'https://host?token=loop-secret',
+      };
       obj['self'] = obj;
       Logger.error(obj);
-      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Record<
+        string,
+        unknown
+      >;
       expect(logged['url']).toBe('https://host?token=[REDACTED]');
       expect(logged['self']).toBe('[Circular]');
     });
@@ -620,13 +625,17 @@ describe('Logger', () => {
 
     it('should redact extra properties attached to an Error', () => {
       const err = new Error('boom') as Error & { config?: unknown };
-      err.config = { headers: { Authorization: 'Authorization: ApiKey axios-secret' } };
+      err.config = {
+        headers: { Authorization: 'Authorization: ApiKey axios-secret' },
+      };
       Logger.error(err);
       const logged = consoleErrorSpy.mock.calls[0]?.[0] as Error & {
         config?: { headers?: { Authorization?: string } };
       };
       expect(logged).toBeInstanceOf(Error);
-      expect(logged.config?.headers?.Authorization).toBe('Authorization: ApiKey [REDACTED]');
+      expect(logged.config?.headers?.Authorization).toBe(
+        'Authorization: ApiKey [REDACTED]'
+      );
     });
 
     it('should pass non-plain objects through unchanged', () => {
@@ -643,7 +652,10 @@ describe('Logger', () => {
       const obj = Object.create(null) as Record<string, unknown>;
       obj['url'] = 'https://host?api_key=np-secret';
       Logger.error(obj);
-      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Record<
+        string,
+        unknown
+      >;
       expect(logged['url']).toBe('https://host?api_key=[REDACTED]');
     });
   });

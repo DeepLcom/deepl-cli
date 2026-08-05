@@ -1,4 +1,3 @@
- 
 /**
  * Tests for VoiceStreamSession
  * Covers WebSocket lifecycle, reconnection, SIGINT handling, chunk streaming,
@@ -73,15 +72,21 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
-          process.nextTick(() => callbacks.onEndOfStream?.());
-        });
-        return mockWs;
-      });
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
+          process.nextTick(() => {
+            mockWs.emit('open');
+            process.nextTick(() => callbacks.onEndOfStream?.());
+          });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
       const result = await streamSession.run(emptyChunks());
       expect(result.source.lang).toBe('auto');
     });
@@ -93,13 +98,15 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
-          process.nextTick(() => callbacks.onEndOfStream?.());
-        });
-        return mockWs;
-      });
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
+          process.nextTick(() => {
+            mockWs.emit('open');
+            process.nextTick(() => callbacks.onEndOfStream?.());
+          });
+          return mockWs;
+        }
+      );
 
       const streamSession = new VoiceStreamSession(mockClient, session, {
         ...options,
@@ -126,20 +133,28 @@ describe('VoiceStreamSession', () => {
         });
       });
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, _callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
-        });
-        return mockWs;
-      });
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, _callbacks) => {
+          process.nextTick(() => {
+            mockWs.emit('open');
+          });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
-      const result = await streamSession.run(singleChunk(Buffer.from('audio-data')));
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
+      const result = await streamSession.run(
+        singleChunk(Buffer.from('audio-data'))
+      );
 
       expect(mockClient.createWebSocket).toHaveBeenCalledWith(
         'wss://test.deepl.com/stream',
         'token-1',
-        expect.any(Object),
+        expect.any(Object)
       );
       expect(mockClient.sendAudioChunk).toHaveBeenCalled();
       expect(mockClient.sendEndOfSource).toHaveBeenCalled();
@@ -153,26 +168,34 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
           process.nextTick(() => {
-            callbacks.onSourceTranscript?.({
-              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
-              tentative: [],
+            mockWs.emit('open');
+            process.nextTick(() => {
+              callbacks.onSourceTranscript?.({
+                concluded: [
+                  { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+                ],
+                tentative: [],
+              });
+              callbacks.onTargetTranscript?.({
+                language: 'de',
+                concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
+                tentative: [],
+              });
+              callbacks.onEndOfStream?.();
             });
-            callbacks.onTargetTranscript?.({
-              language: 'de',
-              concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
-              tentative: [],
-            });
-            callbacks.onEndOfStream?.();
           });
-        });
-        return mockWs;
-      });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
       const result = await streamSession.run(emptyChunks());
 
       expect(result.source.text).toBe('Hello');
@@ -191,18 +214,24 @@ describe('VoiceStreamSession', () => {
 
       const listenerCountBefore = process.listenerCount('SIGINT');
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
           process.nextTick(() => {
-            expect(process.listenerCount('SIGINT')).toBe(listenerCountBefore);
-            callbacks.onEndOfStream?.();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              expect(process.listenerCount('SIGINT')).toBe(listenerCountBefore);
+              callbacks.onEndOfStream?.();
+            });
           });
-        });
-        return mockWs;
-      });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
       await streamSession.run(emptyChunks());
     });
   });
@@ -215,18 +244,24 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
           process.nextTick(() => {
-            streamSession.cancel();
-            process.nextTick(() => callbacks.onEndOfStream?.());
+            mockWs.emit('open');
+            process.nextTick(() => {
+              streamSession.cancel();
+              process.nextTick(() => callbacks.onEndOfStream?.());
+            });
           });
-        });
-        return mockWs;
-      });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
       await streamSession.run(emptyChunks());
 
       expect(mockClient.sendEndOfSource).toHaveBeenCalledWith(mockWs);
@@ -239,15 +274,21 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
-          process.nextTick(() => callbacks.onEndOfStream?.());
-        });
-        return mockWs;
-      });
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
+          process.nextTick(() => {
+            mockWs.emit('open');
+            process.nextTick(() => callbacks.onEndOfStream?.());
+          });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
       await streamSession.run(emptyChunks());
 
       mockClient.sendEndOfSource.mockClear();
@@ -278,10 +319,14 @@ describe('VoiceStreamSession', () => {
 
       const noReconnect = { ...options, reconnect: false };
       await expect(
-        new VoiceStreamSession(mockClient, session, noReconnect).run(emptyChunks()),
+        new VoiceStreamSession(mockClient, session, noReconnect).run(
+          emptyChunks()
+        )
       ).rejects.toThrow(VoiceError);
       await expect(
-        new VoiceStreamSession(mockClient, session, noReconnect).run(emptyChunks()),
+        new VoiceStreamSession(mockClient, session, noReconnect).run(
+          emptyChunks()
+        )
       ).rejects.toThrow(/WebSocket connection failed: Connection refused/);
     });
 
@@ -292,23 +337,31 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
           process.nextTick(() => {
-            callbacks.onError?.({
-              request_type: 'unknown',
-              error_code: 400,
-              reason_code: 9040000,
-              error_message: 'Invalid audio format',
+            mockWs.emit('open');
+            process.nextTick(() => {
+              callbacks.onError?.({
+                request_type: 'unknown',
+                error_code: 400,
+                reason_code: 9040000,
+                error_message: 'Invalid audio format',
+              });
             });
           });
-        });
-        return mockWs;
-      });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
-      await expect(streamSession.run(emptyChunks())).rejects.toThrow(VoiceError);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
+      await expect(streamSession.run(emptyChunks())).rejects.toThrow(
+        VoiceError
+      );
     });
 
     it('should reject when chunk streaming throws', async () => {
@@ -323,8 +376,14 @@ describe('VoiceStreamSession', () => {
         return mockWs;
       });
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
-      await expect(streamSession.run(throwingChunks())).rejects.toThrow('chunk error');
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
+      await expect(streamSession.run(throwingChunks())).rejects.toThrow(
+        'chunk error'
+      );
       expect(mockWs.close).toHaveBeenCalled();
     });
   });
@@ -340,33 +399,38 @@ describe('VoiceStreamSession', () => {
       });
 
       let wsCallCount = 0;
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        wsCallCount++;
-        const mockWs = new EventEmitter();
-        mockWs.readyState = 1;
-        mockWs.send = jest.fn();
-        mockWs.close = jest.fn();
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
+          wsCallCount++;
+          const mockWs = new EventEmitter();
+          mockWs.readyState = 1;
+          mockWs.send = jest.fn();
+          mockWs.close = jest.fn();
 
-        if (wsCallCount === 1) {
-          process.nextTick(() => {
-            mockWs.emit('open');
+          if (wsCallCount === 1) {
             process.nextTick(() => {
-              mockWs.emit('error', new Error('read ECONNRESET'));
-              mockWs.readyState = 3;
-              mockWs.emit('close');
+              mockWs.emit('open');
+              process.nextTick(() => {
+                mockWs.emit('error', new Error('read ECONNRESET'));
+                mockWs.readyState = 3;
+                mockWs.emit('close');
+              });
             });
-          });
-        } else {
-          process.nextTick(() => {
-            mockWs.emit('open');
-            process.nextTick(() => callbacks.onEndOfStream?.());
-          });
+          } else {
+            process.nextTick(() => {
+              mockWs.emit('open');
+              process.nextTick(() => callbacks.onEndOfStream?.());
+            });
+          }
+          return mockWs;
         }
-        return mockWs;
-      });
+      );
 
       const streamSession = new VoiceStreamSession(
-        mockClient, session, options, { onReconnecting },
+        mockClient,
+        session,
+        options,
+        { onReconnecting }
       );
       const result = await streamSession.run(emptyChunks());
 
@@ -405,7 +469,7 @@ describe('VoiceStreamSession', () => {
         new VoiceStreamSession(mockClient, session, {
           ...options,
           maxReconnectAttempts: 1,
-        }).run(emptyChunks()),
+        }).run(emptyChunks())
       ).rejects.toThrow(/WebSocket connection failed: read ECONNRESET/);
       expect(mockClient.reconnectSession).toHaveBeenCalledTimes(1);
     });
@@ -415,7 +479,7 @@ describe('VoiceStreamSession', () => {
       const input = trackedChunks();
 
       mockClient.reconnectSession.mockRejectedValue(
-        new VoiceError('Voice API access denied.'),
+        new VoiceError('Voice API access denied.')
       );
 
       mockClient.createWebSocket.mockImplementation(() => {
@@ -435,7 +499,11 @@ describe('VoiceStreamSession', () => {
         return mockWs;
       });
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
       await expect(streamSession.run(input.chunks)).rejects.toThrow(VoiceError);
 
       expect(input.closed()).toBe(true);
@@ -461,28 +529,33 @@ describe('VoiceStreamSession', () => {
       });
 
       let wsCallCount = 0;
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        wsCallCount++;
-        if (wsCallCount === 1) {
-          process.nextTick(() => {
-            mockWs1.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
+          wsCallCount++;
+          if (wsCallCount === 1) {
             process.nextTick(() => {
-              mockWs1.readyState = 3;
-              mockWs1.emit('close');
+              mockWs1.emit('open');
+              process.nextTick(() => {
+                mockWs1.readyState = 3;
+                mockWs1.emit('close');
+              });
             });
-          });
-          return mockWs1;
-        } else {
-          process.nextTick(() => {
-            mockWs2.emit('open');
-            process.nextTick(() => callbacks.onEndOfStream?.());
-          });
-          return mockWs2;
+            return mockWs1;
+          } else {
+            process.nextTick(() => {
+              mockWs2.emit('open');
+              process.nextTick(() => callbacks.onEndOfStream?.());
+            });
+            return mockWs2;
+          }
         }
-      });
+      );
 
       const streamSession = new VoiceStreamSession(
-        mockClient, session, options, { onReconnecting },
+        mockClient,
+        session,
+        options,
+        { onReconnecting }
       );
       const result = await streamSession.run(emptyChunks());
 
@@ -524,12 +597,14 @@ describe('VoiceStreamSession', () => {
         maxReconnectAttempts: 2,
       });
 
-      await expect(streamSession.run(emptyChunks())).rejects.toThrow(VoiceError);
+      await expect(streamSession.run(emptyChunks())).rejects.toThrow(
+        VoiceError
+      );
       await expect(
         new VoiceStreamSession(mockClient, session, {
           ...options,
           maxReconnectAttempts: 2,
-        }).run(emptyChunks()),
+        }).run(emptyChunks())
       ).rejects.toThrow(/WebSocket closed unexpectedly/);
     });
 
@@ -556,7 +631,9 @@ describe('VoiceStreamSession', () => {
         reconnect: false,
       });
 
-      await expect(streamSession.run(emptyChunks())).rejects.toThrow(VoiceError);
+      await expect(streamSession.run(emptyChunks())).rejects.toThrow(
+        VoiceError
+      );
       expect(mockClient.reconnectSession).not.toHaveBeenCalled();
     });
 
@@ -568,7 +645,7 @@ describe('VoiceStreamSession', () => {
       mockWs.close = jest.fn();
 
       mockClient.reconnectSession.mockRejectedValue(
-        new VoiceError('Voice API access denied.'),
+        new VoiceError('Voice API access denied.')
       );
 
       mockClient.createWebSocket.mockImplementation(() => {
@@ -582,8 +659,14 @@ describe('VoiceStreamSession', () => {
         return mockWs;
       });
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
-      await expect(streamSession.run(emptyChunks())).rejects.toThrow(VoiceError);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
+      await expect(streamSession.run(emptyChunks())).rejects.toThrow(
+        VoiceError
+      );
     });
   });
 
@@ -595,30 +678,50 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
           process.nextTick(() => {
-            callbacks.onSourceTranscript?.({
-              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 0.5 }],
-              tentative: [],
+            mockWs.emit('open');
+            process.nextTick(() => {
+              callbacks.onSourceTranscript?.({
+                concluded: [
+                  {
+                    text: 'Hello',
+                    language: 'en',
+                    start_time: 0,
+                    end_time: 0.5,
+                  },
+                ],
+                tentative: [],
+              });
+              callbacks.onSourceTranscript?.({
+                concluded: [
+                  {
+                    text: 'world',
+                    language: 'en',
+                    start_time: 0.5,
+                    end_time: 1,
+                  },
+                ],
+                tentative: [],
+              });
+              callbacks.onTargetTranscript?.({
+                language: 'de',
+                concluded: [{ text: 'Hallo Welt', start_time: 0, end_time: 1 }],
+                tentative: [],
+              });
+              callbacks.onEndOfStream?.();
             });
-            callbacks.onSourceTranscript?.({
-              concluded: [{ text: 'world', language: 'en', start_time: 0.5, end_time: 1 }],
-              tentative: [],
-            });
-            callbacks.onTargetTranscript?.({
-              language: 'de',
-              concluded: [{ text: 'Hallo Welt', start_time: 0, end_time: 1 }],
-              tentative: [],
-            });
-            callbacks.onEndOfStream?.();
           });
-        });
-        return mockWs;
-      });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
       const result = await streamSession.run(emptyChunks());
 
       expect(result.source.text).toBe('Hello world');
@@ -632,25 +735,27 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
           process.nextTick(() => {
-            callbacks.onTargetTranscript?.({
-              language: 'de',
-              concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
-              tentative: [],
+            mockWs.emit('open');
+            process.nextTick(() => {
+              callbacks.onTargetTranscript?.({
+                language: 'de',
+                concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
+                tentative: [],
+              });
+              callbacks.onTargetTranscript?.({
+                language: 'fr',
+                concluded: [{ text: 'Bonjour', start_time: 0, end_time: 1 }],
+                tentative: [],
+              });
+              callbacks.onEndOfStream?.();
             });
-            callbacks.onTargetTranscript?.({
-              language: 'fr',
-              concluded: [{ text: 'Bonjour', start_time: 0, end_time: 1 }],
-              tentative: [],
-            });
-            callbacks.onEndOfStream?.();
           });
-        });
-        return mockWs;
-      });
+          return mockWs;
+        }
+      );
 
       const streamSession = new VoiceStreamSession(mockClient, session, {
         targetLangs: ['de', 'fr'],
@@ -669,26 +774,39 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
           process.nextTick(() => {
-            callbacks.onSourceTranscript?.({
-              concluded: [{ text: 'Bonjour', language: 'fr', start_time: 0, end_time: 1 }],
-              tentative: [],
+            mockWs.emit('open');
+            process.nextTick(() => {
+              callbacks.onSourceTranscript?.({
+                concluded: [
+                  {
+                    text: 'Bonjour',
+                    language: 'fr',
+                    start_time: 0,
+                    end_time: 1,
+                  },
+                ],
+                tentative: [],
+              });
+              callbacks.onTargetTranscript?.({
+                language: 'de',
+                concluded: [{ text: 'Guten Tag', start_time: 0, end_time: 1 }],
+                tentative: [],
+              });
+              callbacks.onEndOfStream?.();
             });
-            callbacks.onTargetTranscript?.({
-              language: 'de',
-              concluded: [{ text: 'Guten Tag', start_time: 0, end_time: 1 }],
-              tentative: [],
-            });
-            callbacks.onEndOfStream?.();
           });
-        });
-        return mockWs;
-      });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options
+      );
       const result = await streamSession.run(emptyChunks());
 
       expect(result.source.lang).toBe('fr');
@@ -700,7 +818,7 @@ describe('VoiceStreamSession', () => {
     function runWithFrames(
       frames: (callbacks: VoiceStreamCallbacks) => void,
       sessionOptions: VoiceTranslateOptions = options,
-      chunks: AsyncGenerator<Buffer> = emptyChunks(),
+      chunks: AsyncGenerator<Buffer> = emptyChunks()
     ): Promise<VoiceSessionResult> {
       const EventEmitter = require('events');
       const mockWs = new EventEmitter();
@@ -708,18 +826,24 @@ describe('VoiceStreamSession', () => {
       mockWs.send = jest.fn();
       mockWs.close = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, callbacks) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, callbacks) => {
           process.nextTick(() => {
-            frames(callbacks);
-            callbacks.onEndOfStream?.();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              frames(callbacks);
+              callbacks.onEndOfStream?.();
+            });
           });
-        });
-        return mockWs;
-      });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, sessionOptions);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        sessionOptions
+      );
       return streamSession.run(chunks);
     }
 
@@ -727,10 +851,12 @@ describe('VoiceStreamSession', () => {
       await expect(
         runWithFrames((callbacks) => {
           callbacks.onSourceTranscript?.({
-            concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+            concluded: [
+              { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+            ],
             tentative: [],
           });
-        }),
+        })
       ).rejects.toThrow(VoiceError);
     });
 
@@ -740,7 +866,9 @@ describe('VoiceStreamSession', () => {
         await runWithFrames(
           (callbacks) => {
             callbacks.onSourceTranscript?.({
-              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+              concluded: [
+                { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+              ],
               tentative: [],
             });
             callbacks.onTargetTranscript?.({
@@ -749,7 +877,7 @@ describe('VoiceStreamSession', () => {
               tentative: [],
             });
           },
-          { targetLangs: ['de', 'fr', 'es'], chunkInterval: 0 },
+          { targetLangs: ['de', 'fr', 'es'], chunkInterval: 0 }
         );
       } catch (error) {
         expect((error as Error).message).toContain('de');
@@ -762,7 +890,9 @@ describe('VoiceStreamSession', () => {
       await expect(
         runWithFrames((callbacks) => {
           callbacks.onSourceTranscript?.({
-            concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+            concluded: [
+              { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+            ],
             tentative: [],
           });
           callbacks.onTargetTranscript?.({
@@ -770,7 +900,7 @@ describe('VoiceStreamSession', () => {
             concluded: [{ text: '  ', start_time: 0, end_time: 1 }],
             tentative: [],
           });
-        }),
+        })
       ).rejects.toThrow(VoiceError);
     });
 
@@ -778,7 +908,9 @@ describe('VoiceStreamSession', () => {
       await expect(
         runWithFrames((callbacks) => {
           callbacks.onSourceTranscript?.({
-            concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+            concluded: [
+              { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+            ],
             tentative: [],
           });
           callbacks.onTargetTranscript?.({
@@ -786,7 +918,7 @@ describe('VoiceStreamSession', () => {
             concluded: [],
             tentative: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
           });
-        }),
+        })
       ).rejects.toThrow(VoiceError);
     });
 
@@ -803,7 +935,9 @@ describe('VoiceStreamSession', () => {
       const result = await runWithFrames(
         (callbacks) => {
           callbacks.onSourceTranscript?.({
-            concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+            concluded: [
+              { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+            ],
             tentative: [],
           });
           callbacks.onTargetTranscript?.({
@@ -814,7 +948,7 @@ describe('VoiceStreamSession', () => {
             tentative: [],
           });
         },
-        { targetLangs: ['zh-HANS'], chunkInterval: 0 },
+        { targetLangs: ['zh-HANS'], chunkInterval: 0 }
       );
 
       expect(result.targets[0]!.text).toBe('你好');
@@ -827,7 +961,9 @@ describe('VoiceStreamSession', () => {
         await runWithFrames(
           (callbacks) => {
             callbacks.onSourceTranscript?.({
-              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+              concluded: [
+                { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+              ],
               tentative: [],
             });
             callbacks.onTargetTranscript?.({
@@ -836,15 +972,17 @@ describe('VoiceStreamSession', () => {
               tentative: [],
             });
           },
-          { targetLangs: ['fr', 'de'], chunkInterval: 0 },
+          { targetLangs: ['fr', 'de'], chunkInterval: 0 }
         );
       } catch (error) {
         // The audio is billed either way, so what did arrive must not be thrown
         // away with the failure.
         const partial = (error as VoicePartialResultError).result;
         expect(partial.source.text).toBe('Hello');
-        expect(partial.targets.find(t => t.lang === 'fr')?.text).toBe('Bonjour');
-        expect(partial.targets.find(t => t.lang === 'de')?.text).toBe('');
+        expect(partial.targets.find((t) => t.lang === 'fr')?.text).toBe(
+          'Bonjour'
+        );
+        expect(partial.targets.find((t) => t.lang === 'de')?.text).toBe('');
       }
     });
 
@@ -855,13 +993,15 @@ describe('VoiceStreamSession', () => {
         runWithFrames(
           (callbacks) => {
             callbacks.onSourceTranscript?.({
-              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
+              concluded: [
+                { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+              ],
               tentative: [],
             });
           },
           options,
-          tracked.chunks,
-        ),
+          tracked.chunks
+        )
       ).rejects.toThrow(VoiceError);
 
       expect(tracked.closed()).toBe(true);
@@ -884,28 +1024,37 @@ describe('VoiceStreamSession', () => {
         onEndOfStream: jest.fn(),
       };
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, internalCbs) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, internalCbs) => {
           process.nextTick(() => {
-            internalCbs.onSourceTranscript?.({
-              concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 1 }],
-              tentative: [],
+            mockWs.emit('open');
+            process.nextTick(() => {
+              internalCbs.onSourceTranscript?.({
+                concluded: [
+                  { text: 'Hello', language: 'en', start_time: 0, end_time: 1 },
+                ],
+                tentative: [],
+              });
+              internalCbs.onTargetTranscript?.({
+                language: 'de',
+                concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
+                tentative: [],
+              });
+              internalCbs.onEndOfSourceTranscript?.();
+              internalCbs.onEndOfTargetTranscript?.('de');
+              internalCbs.onEndOfStream?.();
             });
-            internalCbs.onTargetTranscript?.({
-              language: 'de',
-              concluded: [{ text: 'Hallo', start_time: 0, end_time: 1 }],
-              tentative: [],
-            });
-            internalCbs.onEndOfSourceTranscript?.();
-            internalCbs.onEndOfTargetTranscript?.('de');
-            internalCbs.onEndOfStream?.();
           });
-        });
-        return mockWs;
-      });
+          return mockWs;
+        }
+      );
 
-      const streamSession = new VoiceStreamSession(mockClient, session, options, callbacks);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options,
+        callbacks
+      );
       await streamSession.run(emptyChunks());
 
       expect(callbacks.onSourceTranscript).toHaveBeenCalledTimes(1);
@@ -924,28 +1073,35 @@ describe('VoiceStreamSession', () => {
 
       const onError = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url, _token, internalCbs) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url, _token, internalCbs) => {
           process.nextTick(() => {
-            internalCbs.onError?.({
-              request_type: 'unknown',
-              error_code: 400,
-              reason_code: 0,
-              error_message: 'Bad request',
+            mockWs.emit('open');
+            process.nextTick(() => {
+              internalCbs.onError?.({
+                request_type: 'unknown',
+                error_code: 400,
+                reason_code: 0,
+                error_message: 'Bad request',
+              });
             });
           });
-        });
-        return mockWs;
-      });
-
-      const streamSession = new VoiceStreamSession(
-        mockClient, session, options, { onError },
+          return mockWs;
+        }
       );
 
-      await expect(streamSession.run(emptyChunks())).rejects.toThrow(VoiceError);
+      const streamSession = new VoiceStreamSession(
+        mockClient,
+        session,
+        options,
+        { onError }
+      );
+
+      await expect(streamSession.run(emptyChunks())).rejects.toThrow(
+        VoiceError
+      );
       expect(onError).toHaveBeenCalledWith(
-        expect.objectContaining({ error_code: 400 }),
+        expect.objectContaining({ error_code: 400 })
       );
     });
   });
@@ -955,7 +1111,6 @@ async function* emptyChunks(): AsyncGenerator<Buffer> {
   // yields nothing
 }
 
- 
 async function* singleChunk(data: Buffer): AsyncGenerator<Buffer> {
   yield data;
 }
@@ -966,7 +1121,10 @@ async function* throwingChunks(): AsyncGenerator<Buffer> {
 }
 
 /** A chunk source that reports whether the session closed it. */
-function trackedChunks(): { chunks: AsyncGenerator<Buffer>; closed: () => boolean } {
+function trackedChunks(): {
+  chunks: AsyncGenerator<Buffer>;
+  closed: () => boolean;
+} {
   let closed = false;
   async function* generate(): AsyncGenerator<Buffer> {
     try {

@@ -53,7 +53,10 @@ describe('HttpClient retry policy', () => {
       ...options,
     });
     sleepSpy = jest
-      .spyOn(client as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep')
+      .spyOn(
+        client as unknown as { sleep: (ms: number) => Promise<void> },
+        'sleep'
+      )
       .mockResolvedValue();
     clients.push(client);
     return client;
@@ -99,9 +102,9 @@ describe('HttpClient retry policy', () => {
         .reply(200, { translations: [{ text: 'Hola' }] });
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(1);
     });
@@ -142,9 +145,9 @@ describe('HttpClient retry policy', () => {
         .reply(200, {});
       const requests = countRequests(scope);
 
-      await expect(makeClient().put('/v3/glossaries/g-1', { name: 'x' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().put('/v3/glossaries/g-1', { name: 'x' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(4);
     });
@@ -152,7 +155,10 @@ describe('HttpClient retry policy', () => {
 
   describe('server errors', () => {
     it('retries a 500 on an idempotent GET', async () => {
-      const scope = nock(BASE_URL).get('/v2/usage').times(4).reply(500, { message: 'boom' });
+      const scope = nock(BASE_URL)
+        .get('/v2/usage')
+        .times(4)
+        .reply(500, { message: 'boom' });
       const requests = countRequests(scope);
 
       await expect(makeClient().get('/v2/usage')).rejects.toThrow(NetworkError);
@@ -167,9 +173,9 @@ describe('HttpClient retry policy', () => {
         .reply(500, { message: 'boom' });
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        /Server error \(500\)/
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(/Server error \(500\)/);
 
       expect(requests()).toBe(1);
     });
@@ -181,9 +187,9 @@ describe('HttpClient retry policy', () => {
         .reply(503, { message: 'Service Unavailable' });
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        /Service temporarily unavailable/
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(/Service temporarily unavailable/);
 
       expect(requests()).toBe(1);
     });
@@ -221,9 +227,9 @@ describe('HttpClient retry policy', () => {
         .reply(429, { message: 'Too many requests' });
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        RateLimitError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(RateLimitError);
 
       expect(requests()).toBe(4);
     });
@@ -231,7 +237,10 @@ describe('HttpClient retry policy', () => {
 
   describe('401 handling', () => {
     it('maps 401 to AuthError without retrying', async () => {
-      const scope = nock(BASE_URL).get('/v2/usage').times(4).reply(401, { message: 'Unauthorized' });
+      const scope = nock(BASE_URL)
+        .get('/v2/usage')
+        .times(4)
+        .reply(401, { message: 'Unauthorized' });
       const requests = countRequests(scope);
 
       const error = await makeClient()
@@ -253,7 +262,11 @@ describe('HttpClient retry policy', () => {
         .reply(200, {});
       const requests = countRequests(scope);
 
-      const client = makeClient({ timeout: 200, maxRetries: 5, totalTimeout: 500 });
+      const client = makeClient({
+        timeout: 200,
+        maxRetries: 5,
+        totalTimeout: 500,
+      });
       const start = Date.now();
       await expect(client.get('/v2/usage')).rejects.toThrow(NetworkError);
       const elapsed = Date.now() - start;
@@ -272,7 +285,11 @@ describe('HttpClient retry policy', () => {
         .reply(200, {});
       const requests = countRequests(scope);
 
-      const client = makeClient({ timeout: 200, maxRetries: 5, totalTimeout: undefined });
+      const client = makeClient({
+        timeout: 200,
+        maxRetries: 5,
+        totalTimeout: undefined,
+      });
       await expect(client.get('/v2/usage')).rejects.toThrow(NetworkError);
 
       // Default budget is twice the timeout, so far short of six attempts.
@@ -286,12 +303,14 @@ describe('HttpClient retry policy', () => {
       const scope = nock(BASE_URL)
         .post('/v2/translate')
         .times(4)
-        .replyWithError(transportError('ECONNREFUSED', 'connect ECONNREFUSED 127.0.0.1:443'));
+        .replyWithError(
+          transportError('ECONNREFUSED', 'connect ECONNREFUSED 127.0.0.1:443')
+        );
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(4);
     });
@@ -300,12 +319,17 @@ describe('HttpClient retry policy', () => {
       const scope = nock(BASE_URL)
         .post('/v2/translate')
         .times(4)
-        .replyWithError(transportError('ENOTFOUND', 'getaddrinfo ENOTFOUND api-free.deepl.com'));
+        .replyWithError(
+          transportError(
+            'ENOTFOUND',
+            'getaddrinfo ENOTFOUND api-free.deepl.com'
+          )
+        );
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(4);
     });
@@ -317,9 +341,9 @@ describe('HttpClient retry policy', () => {
         .replyWithError(transportError('ECONNRESET', 'socket hang up'));
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(1);
     });
@@ -333,11 +357,15 @@ describe('HttpClient retry policy', () => {
         .post('/v2/translate', { text: 'Hello' })
         .catch((e: unknown) => e);
 
-      expect((error as Error).message).not.toMatch(/Network error: Network error/);
+      expect((error as Error).message).not.toMatch(
+        /Network error: Network error/
+      );
     });
 
     it('leaves an already-classified error untouched', () => {
-      const classified = new ValidationError('API error: Tone is not supported');
+      const classified = new ValidationError(
+        'API error: Tone is not supported'
+      );
 
       expect(makeClient().classify(classified)).toBe(classified);
     });

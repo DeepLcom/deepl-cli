@@ -38,10 +38,16 @@ describe('CLI sync --format json error envelope', () => {
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
     };
-    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(configDir, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
   }
 
-  function writeSyncConfig(projectDir: string, opts?: { enableTms?: boolean }): void {
+  function writeSyncConfig(
+    projectDir: string,
+    opts?: { enableTms?: boolean }
+  ): void {
     const yaml: string[] = [
       'version: 1',
       'source_locale: en',
@@ -60,7 +66,10 @@ describe('CLI sync --format json error envelope', () => {
       yaml.push('  auth: "api_key_env"');
       yaml.push('  api_key_env: "TMS_API_KEY"');
     }
-    fs.writeFileSync(path.join(projectDir, '.deepl-sync.yaml'), yaml.join('\n') + '\n');
+    fs.writeFileSync(
+      path.join(projectDir, '.deepl-sync.yaml'),
+      yaml.join('\n') + '\n'
+    );
   }
 
   function writeSourceFile(projectDir: string): void {
@@ -68,11 +77,13 @@ describe('CLI sync --format json error envelope', () => {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
       path.join(dir, 'en.json'),
-      JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n',
+      JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n'
     );
   }
 
-  function buildEnv(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+  function buildEnv(
+    extra: Record<string, string | undefined> = {}
+  ): NodeJS.ProcessEnv {
     return {
       ...process.env,
       DEEPL_CONFIG_DIR: testConfig.path,
@@ -87,14 +98,21 @@ describe('CLI sync --format json error envelope', () => {
     stderr: string;
   }
 
-  function runCli(args: string[], env: Record<string, string | undefined> = {}): Run {
-    const result: SpawnSyncReturns<string> = spawnSync('node', [CLI_PATH, ...args], {
-      encoding: 'utf-8',
-      cwd: testFiles.path,
-      env: buildEnv(env),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 15000,
-    });
+  function runCli(
+    args: string[],
+    env: Record<string, string | undefined> = {}
+  ): Run {
+    const result: SpawnSyncReturns<string> = spawnSync(
+      'node',
+      [CLI_PATH, ...args],
+      {
+        encoding: 'utf-8',
+        cwd: testFiles.path,
+        env: buildEnv(env),
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 15000,
+      }
+    );
     return {
       status: result.status ?? 1,
       stdout: result.stdout ?? '',
@@ -108,7 +126,8 @@ describe('CLI sync --format json error envelope', () => {
 
   beforeEach(() => {
     const localesDir = path.join(testFiles.path, 'locales');
-    if (fs.existsSync(localesDir)) fs.rmSync(localesDir, { recursive: true, force: true });
+    if (fs.existsSync(localesDir))
+      fs.rmSync(localesDir, { recursive: true, force: true });
     const lock = path.join(testFiles.path, '.deepl-sync.lock');
     if (fs.existsSync(lock)) fs.unlinkSync(lock);
     const syncCfg = path.join(testFiles.path, '.deepl-sync.yaml');
@@ -157,7 +176,14 @@ describe('CLI sync --format json error envelope', () => {
   describe('init envelope on non-TTY without all four flags (ValidationError, exit 6)', () => {
     it('deepl sync init --format json → envelope ValidationError/6', () => {
       writeSourceFile(testFiles.path);
-      const run = runCli(['sync', 'init', '--format', 'json', '--source-locale', 'en']);
+      const run = runCli([
+        'sync',
+        'init',
+        '--format',
+        'json',
+        '--source-locale',
+        'en',
+      ]);
       expect(run.status).toBe(6);
       const envelope = assertErrorEnvelope(run.stderr, 'ValidationError', 6);
       expect(envelope.error.message).toMatch(/All four flags/);
@@ -171,11 +197,16 @@ describe('CLI sync --format json error envelope', () => {
       const run = runCli([
         'sync',
         'init',
-        '--format', 'json',
-        '--source-locale', 'en',
-        '--target-locales', 'de,fr',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--format',
+        'json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de,fr',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ]);
 
       expect(run.status).toBe(0);
@@ -195,11 +226,16 @@ describe('CLI sync --format json error envelope', () => {
       const run = runCli([
         'sync',
         'init',
-        '--format', 'json',
-        '--source-locale', 'en',
-        '--target-locales', 'de',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--format',
+        'json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ]);
 
       expect(run.status).toBe(7);
@@ -232,7 +268,10 @@ describe('CLI sync --format json error envelope', () => {
         '  "stats": { "total_keys": 1, "total_translations": 1, "last_sync": "2026-04-20T12:00:00Z" }',
         '}',
       ].join('\n');
-      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.lock'), conflictedLock);
+      fs.writeFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        conflictedLock
+      );
 
       const run = runCli(['sync', 'resolve', '--format', 'json']);
       expect(run.status).toBe(11);

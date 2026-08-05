@@ -1,7 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { computeSourceHash, createEmptyLockFile, SyncLockManager } from '../../../src/sync/sync-lock';
+import {
+  computeSourceHash,
+  createEmptyLockFile,
+  SyncLockManager,
+} from '../../../src/sync/sync-lock';
 import { Logger } from '../../../src/utils/logger';
 import { LOCK_FILE_VERSION, LOCK_FILE_COMMENT } from '../../../src/sync/types';
 import type { SyncLockFile, SyncLockEntry } from '../../../src/sync/types';
@@ -40,7 +44,10 @@ describe('computeSourceHash()', () => {
   it('should produce different hash when plural metadata is provided', () => {
     const hashWithout = computeSourceHash('text');
     const hashWith = computeSourceHash('text', {
-      plurals: [{ quantity: 'one', value: '1 item' }, { quantity: 'other', value: '%d items' }],
+      plurals: [
+        { quantity: 'one', value: '1 item' },
+        { quantity: 'other', value: '%d items' },
+      ],
     });
     expect(hashWith).toHaveLength(12);
     expect(hashWith).not.toBe(hashWithout);
@@ -70,7 +77,9 @@ describe('computeSourceHash()', () => {
 
   it('should include plural_forms in hash', () => {
     const hashWithout = computeSourceHash('item');
-    const hashWith = computeSourceHash('item', { plural_forms: { 'msgstr[0]': '', 'msgstr[1]': '' } });
+    const hashWith = computeSourceHash('item', {
+      plural_forms: { 'msgstr[0]': '', 'msgstr[1]': '' },
+    });
     expect(hashWith).not.toBe(hashWithout);
   });
 });
@@ -127,7 +136,11 @@ describe('SyncLockManager', () => {
         generated_at: '2026-01-01T00:00:00.000Z',
         source_locale: 'en',
         entries: {},
-        stats: { total_keys: 0, total_translations: 0, last_sync: '2026-01-01T00:00:00.000Z' },
+        stats: {
+          total_keys: 0,
+          total_translations: 0,
+          last_sync: '2026-01-01T00:00:00.000Z',
+        },
       };
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile, null, 2));
       const result = await manager.read();
@@ -139,7 +152,9 @@ describe('SyncLockManager', () => {
       const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
       fs.writeFileSync(lockFilePath, '{not valid json!!!');
       const result = await manager.read();
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Lock file corrupted'));
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Lock file corrupted')
+      );
       expect(result.entries).toEqual({});
     });
 
@@ -149,7 +164,9 @@ describe('SyncLockManager', () => {
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile));
       const result = await manager.read();
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(`Unsupported lock file version 999 (expected ${LOCK_FILE_VERSION})`),
+        expect.stringContaining(
+          `Unsupported lock file version 999 (expected ${LOCK_FILE_VERSION})`
+        )
       );
       expect(result.entries).toEqual({});
     });
@@ -159,15 +176,20 @@ describe('SyncLockManager', () => {
       const lockFile = { entries: {} };
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile));
       const result = await manager.read();
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Lock file corrupted (missing version)'));
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Lock file corrupted (missing version)')
+      );
       expect(result.entries).toEqual({});
     });
 
     describe('backup before reset', () => {
-      const backupPattern = /^\.deepl-sync\.lock\.bak-(?:corrupt|v\d+)-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(?:-\d{3})?Z$/;
+      const backupPattern =
+        /^\.deepl-sync\.lock\.bak-(?:corrupt|v\d+)-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(?:-\d{3})?Z$/;
 
       const listBackups = (): string[] =>
-        fs.readdirSync(tmpDir).filter((name) => name.startsWith('.deepl-sync.lock.bak-'));
+        fs
+          .readdirSync(tmpDir)
+          .filter((name) => name.startsWith('.deepl-sync.lock.bak-'));
 
       it('should back up corrupt JSON lockfile before resetting', async () => {
         jest.spyOn(Logger, 'warn').mockImplementation(() => {});
@@ -181,7 +203,9 @@ describe('SyncLockManager', () => {
         const backupName = backups[0]!;
         expect(backupName).toMatch(backupPattern);
         expect(backupName).toContain('.bak-corrupt-');
-        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(original);
+        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(
+          original
+        );
       });
 
       it('should back up wrong-version lockfile before resetting and tag version in filename', async () => {
@@ -196,7 +220,9 @@ describe('SyncLockManager', () => {
         const backupName = backups[0]!;
         expect(backupName).toMatch(backupPattern);
         expect(backupName).toContain('.bak-v0-');
-        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(original);
+        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(
+          original
+        );
       });
 
       it('should back up missing-version lockfile as v-unknown and preserve contents', async () => {
@@ -210,12 +236,17 @@ describe('SyncLockManager', () => {
         expect(backups).toHaveLength(1);
         const backupName = backups[0]!;
         expect(backupName).toContain('.bak-v-unknown-');
-        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(original);
+        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(
+          original
+        );
       });
 
       it('should log the backup path at WARN level', async () => {
         const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
-        fs.writeFileSync(lockFilePath, JSON.stringify({ version: 99, entries: {} }));
+        fs.writeFileSync(
+          lockFilePath,
+          JSON.stringify({ version: 99, entries: {} })
+        );
 
         await manager.read();
 
@@ -232,7 +263,11 @@ describe('SyncLockManager', () => {
           generated_at: '2026-01-01T00:00:00.000Z',
           source_locale: 'en',
           entries: {},
-          stats: { total_keys: 0, total_translations: 0, last_sync: '2026-01-01T00:00:00.000Z' },
+          stats: {
+            total_keys: 0,
+            total_translations: 0,
+            last_sync: '2026-01-01T00:00:00.000Z',
+          },
         };
         fs.writeFileSync(lockFilePath, JSON.stringify(lockFile, null, 2));
 
@@ -252,7 +287,9 @@ describe('SyncLockManager', () => {
       const lockFile = { version: LOCK_FILE_VERSION };
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile));
       const result = await manager.read();
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Lock file missing entries'));
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Lock file missing entries')
+      );
       expect(result.entries).toEqual({});
     });
 
@@ -268,7 +305,11 @@ describe('SyncLockManager', () => {
               source_hash: '185f8db32271',
               source_text: 'Hello',
               translations: {
-                es: { hash: 'abc', translated_at: '2026-01-01T00:00:00.000Z', status: 'translated' },
+                es: {
+                  hash: 'abc',
+                  translated_at: '2026-01-01T00:00:00.000Z',
+                  status: 'translated',
+                },
               },
             },
             farewell: {
@@ -278,7 +319,11 @@ describe('SyncLockManager', () => {
             },
           },
         },
-        stats: { total_keys: 2, total_translations: 1, last_sync: '2026-01-01T00:00:00.000Z' },
+        stats: {
+          total_keys: 2,
+          total_translations: 1,
+          last_sync: '2026-01-01T00:00:00.000Z',
+        },
       };
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile, null, 2));
       const result = await manager.read();
@@ -328,8 +373,16 @@ describe('SyncLockManager', () => {
           source_hash: 'aaa',
           source_text: 'Hello',
           translations: {
-            fr: { hash: 'h1', translated_at: '2026-01-01T00:00:00.000Z', status: 'translated' },
-            de: { hash: 'h2', translated_at: '2026-01-01T00:00:00.000Z', status: 'translated' },
+            fr: {
+              hash: 'h1',
+              translated_at: '2026-01-01T00:00:00.000Z',
+              status: 'translated',
+            },
+            de: {
+              hash: 'h2',
+              translated_at: '2026-01-01T00:00:00.000Z',
+              status: 'translated',
+            },
           },
         },
         alpha: {
@@ -402,7 +455,10 @@ describe('SyncLockManager', () => {
         translations: {},
       };
       await manager.updateEntry('file.json', 'greeting', entry);
-      await manager.updateEntry('file.json', 'farewell', { ...entry, source_hash: 'bbb' });
+      await manager.updateEntry('file.json', 'farewell', {
+        ...entry,
+        source_hash: 'bbb',
+      });
 
       await manager.removeEntry('file.json', 'greeting');
       const result = await manager.read();
@@ -424,7 +480,9 @@ describe('SyncLockManager', () => {
     });
 
     it('should handle removing non-existent entry gracefully', async () => {
-      await expect(manager.removeEntry('missing.json', 'no-key')).resolves.not.toThrow();
+      await expect(
+        manager.removeEntry('missing.json', 'no-key')
+      ).resolves.not.toThrow();
     });
   });
 

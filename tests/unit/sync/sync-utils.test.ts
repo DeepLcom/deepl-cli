@@ -12,30 +12,44 @@ import { ValidationError } from '../../../src/utils/errors';
 
 describe('resolveTargetPath()', () => {
   it('should replace locale in filename', () => {
-    expect(resolveTargetPath('locales/en.json', 'en', 'de')).toBe('locales/de.json');
+    expect(resolveTargetPath('locales/en.json', 'en', 'de')).toBe(
+      'locales/de.json'
+    );
   });
 
   it('should replace locale in directory path', () => {
-    expect(resolveTargetPath('locales/en/common.json', 'en', 'de')).toBe('locales/de/common.json');
+    expect(resolveTargetPath('locales/en/common.json', 'en', 'de')).toBe(
+      'locales/de/common.json'
+    );
   });
 
   it('should not partially match within longer words', () => {
-    expect(resolveTargetPath('content/en.json', 'en', 'de')).toBe('content/de.json');
+    expect(resolveTargetPath('content/en.json', 'en', 'de')).toBe(
+      'content/de.json'
+    );
     // "content" contains "en" but only as a substring, not as a path segment
     // A path with no locale at a word boundary throws ValidationError
-    expect(() => resolveTargetPath('contents/messages.json', 'en', 'de')).toThrow(ValidationError);
+    expect(() =>
+      resolveTargetPath('contents/messages.json', 'en', 'de')
+    ).toThrow(ValidationError);
   });
 
   it('should handle regional locale codes', () => {
-    expect(resolveTargetPath('locales/en-US.json', 'en-US', 'de')).toBe('locales/de.json');
+    expect(resolveTargetPath('locales/en-US.json', 'en-US', 'de')).toBe(
+      'locales/de.json'
+    );
   });
 
   it('should replace at start of path', () => {
-    expect(resolveTargetPath('en/messages.json', 'en', 'de')).toBe('de/messages.json');
+    expect(resolveTargetPath('en/messages.json', 'en', 'de')).toBe(
+      'de/messages.json'
+    );
   });
 
   it('should handle multiple occurrences', () => {
-    expect(resolveTargetPath('en/data/en.json', 'en', 'de')).toBe('de/data/de.json');
+    expect(resolveTargetPath('en/data/en.json', 'en', 'de')).toBe(
+      'de/data/de.json'
+    );
   });
 
   it('should handle underscore boundary (ARB format)', () => {
@@ -43,18 +57,26 @@ describe('resolveTargetPath()', () => {
   });
 
   it('should handle dot boundary (iOS .lproj)', () => {
-    expect(resolveTargetPath('en.lproj/Localizable.strings', 'en', 'de')).toBe('de.lproj/Localizable.strings');
+    expect(resolveTargetPath('en.lproj/Localizable.strings', 'en', 'de')).toBe(
+      'de.lproj/Localizable.strings'
+    );
   });
 
   it('should throw ValidationError when locale not found in path', () => {
-    expect(() => resolveTargetPath('res/values/strings.xml', 'en', 'de')).toThrow(ValidationError);
-    expect(() => resolveTargetPath('res/values/strings.xml', 'en', 'de')).toThrow(
-      'Cannot resolve target path: locale "en" not found in path "res/values/strings.xml"',
+    expect(() =>
+      resolveTargetPath('res/values/strings.xml', 'en', 'de')
+    ).toThrow(ValidationError);
+    expect(() =>
+      resolveTargetPath('res/values/strings.xml', 'en', 'de')
+    ).toThrow(
+      'Cannot resolve target path: locale "en" not found in path "res/values/strings.xml"'
     );
   });
 
   it('should throw ValidationError when path is unchanged after substitution', () => {
-    expect(() => resolveTargetPath('messages.json', 'fr', 'de')).toThrow(ValidationError);
+    expect(() => resolveTargetPath('messages.json', 'fr', 'de')).toThrow(
+      ValidationError
+    );
   });
 
   it('should treat $1 in targetLocale literally, not as a backreference', () => {
@@ -71,40 +93,50 @@ describe('resolveTargetPath()', () => {
 describe('resolveTargetPath() with targetPathPattern', () => {
   it('should resolve Android XML target path via {locale} template', () => {
     const result = resolveTargetPath(
-      'res/values/strings.xml', 'en', 'de',
-      'res/values-{locale}/strings.xml',
+      'res/values/strings.xml',
+      'en',
+      'de',
+      'res/values-{locale}/strings.xml'
     );
     expect(result).toBe('res/values-de/strings.xml');
   });
 
   it('should resolve XLIFF target path via {locale} template', () => {
     const result = resolveTargetPath(
-      'src/locale/messages.xlf', 'en', 'de',
-      'src/locale/messages.{locale}.xlf',
+      'src/locale/messages.xlf',
+      'en',
+      'de',
+      'src/locale/messages.{locale}.xlf'
     );
     expect(result).toBe('src/locale/messages.de.xlf');
   });
 
   it('should replace {basename} with source file basename', () => {
     const result = resolveTargetPath(
-      'res/values/arrays.xml', 'en', 'de',
-      'res/values-{locale}/{basename}',
+      'res/values/arrays.xml',
+      'en',
+      'de',
+      'res/values-{locale}/{basename}'
     );
     expect(result).toBe('res/values-de/arrays.xml');
   });
 
   it('should handle multiple {locale} occurrences', () => {
     const result = resolveTargetPath(
-      'src/file.txt', 'en', 'fr',
-      '{locale}/output/{locale}.json',
+      'src/file.txt',
+      'en',
+      'fr',
+      '{locale}/output/{locale}.json'
     );
     expect(result).toBe('fr/output/fr.json');
   });
 
   it('should ignore sourceLocale when pattern is provided', () => {
     const result = resolveTargetPath(
-      'res/values/strings.xml', 'en', 'ja',
-      'res/values-{locale}/strings.xml',
+      'res/values/strings.xml',
+      'en',
+      'ja',
+      'res/values-{locale}/strings.xml'
     );
     expect(result).toBe('res/values-ja/strings.xml');
   });
@@ -112,12 +144,18 @@ describe('resolveTargetPath() with targetPathPattern', () => {
 
 describe('assertPathWithinRoot()', () => {
   it('should pass for a valid path within root', () => {
-    expect(() => assertPathWithinRoot('/project/locales/de.json', '/project')).not.toThrow();
+    expect(() =>
+      assertPathWithinRoot('/project/locales/de.json', '/project')
+    ).not.toThrow();
   });
 
   it('should throw ValidationError for path escaping with ../', () => {
-    expect(() => assertPathWithinRoot('/project/../etc/passwd', '/project')).toThrow(ValidationError);
-    expect(() => assertPathWithinRoot('/project/../etc/passwd', '/project')).toThrow('Target path escapes project root');
+    expect(() =>
+      assertPathWithinRoot('/project/../etc/passwd', '/project')
+    ).toThrow(ValidationError);
+    expect(() =>
+      assertPathWithinRoot('/project/../etc/passwd', '/project')
+    ).toThrow('Target path escapes project root');
   });
 
   it('should pass for path exactly at root', () => {
@@ -125,7 +163,9 @@ describe('assertPathWithinRoot()', () => {
   });
 
   it('should throw for sibling directory', () => {
-    expect(() => assertPathWithinRoot('/other-project/file.json', '/project')).toThrow(ValidationError);
+    expect(() =>
+      assertPathWithinRoot('/other-project/file.json', '/project')
+    ).toThrow(ValidationError);
   });
 
   it('sanitizes control chars in absPath echo', () => {
@@ -149,20 +189,33 @@ describe('assertPathWithinRoot()', () => {
       // → /private/tmp case is the canonical example; this test reproduces
       // that shape portably under os.tmpdir().
       realRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kxri-real-'));
-      symlinkedRoot = path.join(os.tmpdir(), `kxri-link-${process.pid}-${Date.now()}`);
+      symlinkedRoot = path.join(
+        os.tmpdir(),
+        `kxri-link-${process.pid}-${Date.now()}`
+      );
       fs.symlinkSync(realRoot, symlinkedRoot);
     });
 
     afterAll(() => {
-      try { fs.unlinkSync(symlinkedRoot); } catch { /* may not exist */ }
-      try { fs.rmSync(realRoot, { recursive: true, force: true }); } catch { /* best effort */ }
+      try {
+        fs.unlinkSync(symlinkedRoot);
+      } catch {
+        /* may not exist */
+      }
+      try {
+        fs.rmSync(realRoot, { recursive: true, force: true });
+      } catch {
+        /* best effort */
+      }
     });
 
     it('accepts a path under the realpath when projectRoot is the symlink', () => {
       // projectRoot typed as the symlink, output path under the real form
       // → must pass: both resolve through realpath to the same inode.
       const outputViaReal = path.join(realRoot, 'out.xlf');
-      expect(() => assertPathWithinRoot(outputViaReal, symlinkedRoot)).not.toThrow();
+      expect(() =>
+        assertPathWithinRoot(outputViaReal, symlinkedRoot)
+      ).not.toThrow();
     });
 
     it('accepts a path under the symlink when projectRoot is the realpath', () => {
@@ -170,19 +223,23 @@ describe('assertPathWithinRoot()', () => {
       // (/private/tmp/foo) but the user types --output via the symlink form
       // (/tmp/foo/out.xlf). Both forms must resolve identically.
       const outputViaSymlink = path.join(symlinkedRoot, 'out.xlf');
-      expect(() => assertPathWithinRoot(outputViaSymlink, realRoot)).not.toThrow();
+      expect(() =>
+        assertPathWithinRoot(outputViaSymlink, realRoot)
+      ).not.toThrow();
     });
 
     it('rejects a symlink inside the project that points outside', () => {
       // Defense-in-depth: realpath resolution catches symlink-based escapes.
       // A symlink inside the project pointing at a sibling path must be
       // rejected.
-      const escapeTarget = fs.mkdtempSync(path.join(os.tmpdir(), 'kxri-escape-'));
+      const escapeTarget = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'kxri-escape-')
+      );
       const escapeLink = path.join(realRoot, 'escape');
       fs.symlinkSync(escapeTarget, escapeLink);
       try {
         expect(() =>
-          assertPathWithinRoot(path.join(escapeLink, 'leak.xlf'), realRoot),
+          assertPathWithinRoot(path.join(escapeLink, 'leak.xlf'), realRoot)
         ).toThrow(ValidationError);
       } finally {
         fs.unlinkSync(escapeLink);
@@ -217,8 +274,12 @@ describe('resolveTargetPath() error message sanitization', () => {
 describe('getParserForBucket()', () => {
   it('resolves config-key bucket names via the registry', async () => {
     const registry = await createDefaultRegistry();
-    expect(getParserForBucket(registry, 'android_xml')?.name).toBe('Android XML');
-    expect(getParserForBucket(registry, 'ios_strings')?.name).toBe('iOS Strings');
+    expect(getParserForBucket(registry, 'android_xml')?.name).toBe(
+      'Android XML'
+    );
+    expect(getParserForBucket(registry, 'ios_strings')?.name).toBe(
+      'iOS Strings'
+    );
     expect(getParserForBucket(registry, 'json')?.name).toBe('JSON i18n');
   });
 
@@ -236,12 +297,24 @@ describe('mergePulledTranslations()', () => {
         { key: 'farewell', value: 'Goodbye' },
       ],
       { greeting: 'Hallo' },
-      new Map([['farewell', 'Tschuess']]),
+      new Map([['farewell', 'Tschuess']])
     );
 
     expect(merged).toEqual([
-      { key: 'greeting', value: 'Hello', translation: 'Hallo', context: undefined, metadata: undefined },
-      { key: 'farewell', value: 'Goodbye', translation: 'Tschuess', context: undefined, metadata: undefined },
+      {
+        key: 'greeting',
+        value: 'Hello',
+        translation: 'Hallo',
+        context: undefined,
+        metadata: undefined,
+      },
+      {
+        key: 'farewell',
+        value: 'Goodbye',
+        translation: 'Tschuess',
+        context: undefined,
+        metadata: undefined,
+      },
     ]);
   });
 
@@ -251,12 +324,24 @@ describe('mergePulledTranslations()', () => {
         { key: 'greeting', value: 'Hello' },
         { key: 'farewell', value: 'Goodbye' },
       ],
-      { greeting: 'Hallo' },
+      { greeting: 'Hallo' }
     );
 
     expect(merged).toEqual([
-      { key: 'greeting', value: 'Hello', translation: 'Hallo', context: undefined, metadata: undefined },
-      { key: 'farewell', value: 'Goodbye', translation: 'Goodbye', context: undefined, metadata: undefined },
+      {
+        key: 'greeting',
+        value: 'Hello',
+        translation: 'Hallo',
+        context: undefined,
+        metadata: undefined,
+      },
+      {
+        key: 'farewell',
+        value: 'Goodbye',
+        translation: 'Goodbye',
+        context: undefined,
+        metadata: undefined,
+      },
     ]);
   });
 });

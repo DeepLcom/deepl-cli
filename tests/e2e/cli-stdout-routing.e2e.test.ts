@@ -32,26 +32,27 @@ describe('CLI stdout routing E2E', () => {
   }
 
   function writeSyncProject(): void {
-    const yaml = [
-      'version: 1',
-      'source_locale: en',
-      'target_locales:',
-      '  - de',
-      'buckets:',
-      '  json:',
-      '    include:',
-      '      - "locales/en.json"',
-    ].join('\n') + '\n';
+    const yaml =
+      [
+        'version: 1',
+        'source_locale: en',
+        'target_locales:',
+        '  - de',
+        'buckets:',
+        '  json:',
+        '    include:',
+        '      - "locales/en.json"',
+      ].join('\n') + '\n';
     fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.yaml'), yaml);
     const dir = path.join(testFiles.path, 'locales');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
       path.join(dir, 'en.json'),
-      JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n',
+      JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
     );
     fs.writeFileSync(
       path.join(dir, 'de.json'),
-      JSON.stringify({ greeting: 'Hallo' }, null, 2) + '\n',
+      JSON.stringify({ greeting: 'Hallo' }, null, 2) + '\n'
     );
   }
 
@@ -90,12 +91,12 @@ describe('CLI stdout routing E2E', () => {
       fs.mkdirSync(localesDir, { recursive: true });
       fs.writeFileSync(
         path.join(localesDir, 'en.json'),
-        JSON.stringify({ greeting: 'Hello' }) + '\n',
+        JSON.stringify({ greeting: 'Hello' }) + '\n'
       );
 
       const stdout = runStdout(
         'sync init --source-locale en --target-locales de --file-format json --path "locales/en.json"',
-        initDir.path,
+        initDir.path
       );
 
       expect(stdout).toContain('Created');
@@ -110,7 +111,9 @@ describe('CLI stdout routing E2E', () => {
     try {
       fs.writeFileSync(
         path.join(authConfig.path, 'config.json'),
-        JSON.stringify({ auth: { apiKey: 'abcd1234-5678-90ef-ghij-klmnopqrwxyz' } }),
+        JSON.stringify({
+          auth: { apiKey: 'abcd1234-5678-90ef-ghij-klmnopqrwxyz' },
+        })
       );
       const stdout = execSync(`node ${CLI_PATH} auth show`, {
         encoding: 'utf-8',

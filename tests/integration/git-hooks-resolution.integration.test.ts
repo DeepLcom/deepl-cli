@@ -35,7 +35,9 @@ describe('GitHooksService hooks directory resolution', () => {
   let tmpRoot: string;
 
   beforeEach(() => {
-    tmpRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-hooks-res-')));
+    tmpRoot = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-hooks-res-'))
+    );
   });
 
   afterEach(() => {
@@ -52,8 +54,12 @@ describe('GitHooksService hooks directory resolution', () => {
       const service = new GitHooksService(path.join(repo, '.git'));
       service.install('pre-commit');
 
-      expect(fs.existsSync(path.join(repo, '.husky', '_', 'pre-commit'))).toBe(true);
-      expect(fs.existsSync(path.join(repo, '.git', 'hooks', 'pre-commit'))).toBe(false);
+      expect(fs.existsSync(path.join(repo, '.husky', '_', 'pre-commit'))).toBe(
+        true
+      );
+      expect(
+        fs.existsSync(path.join(repo, '.git', 'hooks', 'pre-commit'))
+      ).toBe(false);
     });
 
     it('should report the effective hooks path from getHookPath', () => {
@@ -63,7 +69,9 @@ describe('GitHooksService hooks directory resolution', () => {
 
       const service = new GitHooksService(path.join(repo, '.git'));
 
-      expect(service.getHookPath('pre-push')).toBe(path.join(repo, '.husky', '_', 'pre-push'));
+      expect(service.getHookPath('pre-push')).toBe(
+        path.join(repo, '.husky', '_', 'pre-push')
+      );
     });
 
     it('should have list() reflect hooks installed at the effective path', () => {
@@ -74,7 +82,9 @@ describe('GitHooksService hooks directory resolution', () => {
       const service = new GitHooksService(path.join(repo, '.git'));
       service.install('commit-msg');
 
-      expect(fs.existsSync(path.join(repo, 'hooks-dir', 'commit-msg'))).toBe(true);
+      expect(fs.existsSync(path.join(repo, 'hooks-dir', 'commit-msg'))).toBe(
+        true
+      );
       expect(service.list()['commit-msg']).toBe(true);
       expect(service.isInstalled('commit-msg')).toBe(true);
     });
@@ -88,7 +98,9 @@ describe('GitHooksService hooks directory resolution', () => {
       service.install('pre-commit');
       service.uninstall('pre-commit');
 
-      expect(fs.existsSync(path.join(repo, '.husky', '_', 'pre-commit'))).toBe(false);
+      expect(fs.existsSync(path.join(repo, '.husky', '_', 'pre-commit'))).toBe(
+        false
+      );
     });
   });
 
@@ -106,7 +118,9 @@ describe('GitHooksService hooks directory resolution', () => {
       const service = new GitHooksService(gitFile);
       expect(() => service.install('pre-commit')).not.toThrow();
 
-      expect(fs.existsSync(path.join(repo, '.git', 'hooks', 'pre-commit'))).toBe(true);
+      expect(
+        fs.existsSync(path.join(repo, '.git', 'hooks', 'pre-commit'))
+      ).toBe(true);
       expect(service.isInstalled('pre-commit')).toBe(true);
     });
 
@@ -120,7 +134,16 @@ describe('GitHooksService hooks directory resolution', () => {
       const parent = path.join(tmpRoot, 'parent');
       initRepo(parent);
       git(parent, 'commit', '-q', '--allow-empty', '-m', 'init');
-      git(parent, '-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', upstream, 'sub');
+      git(
+        parent,
+        '-c',
+        'protocol.file.allow=always',
+        'submodule',
+        'add',
+        '-q',
+        upstream,
+        'sub'
+      );
 
       const subGitFile = path.join(parent, 'sub', '.git');
       expect(fs.statSync(subGitFile).isFile()).toBe(true);
@@ -128,7 +151,14 @@ describe('GitHooksService hooks directory resolution', () => {
       const service = new GitHooksService(subGitFile);
       expect(() => service.install('pre-commit')).not.toThrow();
 
-      const expected = path.join(parent, '.git', 'modules', 'sub', 'hooks', 'pre-commit');
+      const expected = path.join(
+        parent,
+        '.git',
+        'modules',
+        'sub',
+        'hooks',
+        'pre-commit'
+      );
       expect(fs.existsSync(expected)).toBe(true);
       expect(service.isInstalled('pre-commit')).toBe(true);
     });
@@ -144,16 +174,22 @@ describe('GitHooksService hooks directory resolution', () => {
       const service = new GitHooksService(path.join(repo, '.git'));
       const first = service.install('pre-commit');
       expect(first.backupPath).toBe(hookPath + '.backup');
-      expect(fs.readFileSync(hookPath + '.backup', 'utf-8')).toContain('original user hook');
+      expect(fs.readFileSync(hookPath + '.backup', 'utf-8')).toContain(
+        'original user hook'
+      );
 
       // A third-party tool rewrites the hook, then deepl installs again.
       fs.writeFileSync(hookPath, '#!/bin/sh\n# husky wrapper\nexit 0\n');
       const second = service.install('pre-commit');
 
-      expect(fs.readFileSync(hookPath + '.backup', 'utf-8')).toContain('original user hook');
+      expect(fs.readFileSync(hookPath + '.backup', 'utf-8')).toContain(
+        'original user hook'
+      );
       expect(second.backupPath).not.toBe(hookPath + '.backup');
       expect(second.backupPath).toBeTruthy();
-      expect(fs.readFileSync(second.backupPath!, 'utf-8')).toContain('husky wrapper');
+      expect(fs.readFileSync(second.backupPath!, 'utf-8')).toContain(
+        'husky wrapper'
+      );
     });
 
     it('should report no backup path when no pre-existing hook is present', () => {
@@ -164,7 +200,9 @@ describe('GitHooksService hooks directory resolution', () => {
       const result = service.install('pre-push');
 
       expect(result.backupPath).toBeNull();
-      expect(result.hookPath).toBe(path.join(repo, '.git', 'hooks', 'pre-push'));
+      expect(result.hookPath).toBe(
+        path.join(repo, '.git', 'hooks', 'pre-push')
+      );
     });
 
     it('should not create a backup when replacing an existing DeepL hook', () => {
@@ -187,7 +225,9 @@ describe('GitHooksService hooks directory resolution', () => {
       const originalCwd = process.cwd();
       process.chdir(repo);
       try {
-        expect(GitHooksService.findGitRoot('.')).toBe(path.join(fs.realpathSync(repo), '.git'));
+        expect(GitHooksService.findGitRoot('.')).toBe(
+          path.join(fs.realpathSync(repo), '.git')
+        );
       } finally {
         process.chdir(originalCwd);
       }

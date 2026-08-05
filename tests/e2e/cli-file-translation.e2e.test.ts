@@ -75,10 +75,9 @@ describe('File Translation E2E', () => {
       const filePath = path.join(testDir, 'test.txt');
       fs.writeFileSync(filePath, 'Hello');
 
-      const result = runCLIExpectError(
-        `translate ${filePath} --to de`,
-        { apiKey: 'invalid-api-key-format:fx' }
-      );
+      const result = runCLIExpectError(`translate ${filePath} --to de`, {
+        apiKey: 'invalid-api-key-format:fx',
+      });
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toMatch(/error|authentication|invalid/i);

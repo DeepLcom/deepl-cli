@@ -55,15 +55,18 @@ class LoggerClass {
     }
 
     if (value instanceof Error) {
-      const copy = Object.create(Object.getPrototypeOf(value) as object) as object;
+      const copy = Object.create(
+        Object.getPrototypeOf(value) as object
+      ) as object;
       for (const key of Object.getOwnPropertyNames(value)) {
         const descriptor = Object.getOwnPropertyDescriptor(value, key);
         if (!descriptor) continue;
         // Accessor properties (V8 materializes `stack` lazily via a getter)
         // are flattened to their current value so the copy stays self-contained.
-        const raw = 'value' in descriptor
-          ? descriptor.value
-          : (value as unknown as Record<string, unknown>)[key];
+        const raw =
+          'value' in descriptor
+            ? descriptor.value
+            : (value as unknown as Record<string, unknown>)[key];
         Object.defineProperty(copy, key, {
           value: this.sanitizeValue(raw, seen),
           writable: true,
@@ -89,17 +92,26 @@ class LoggerClass {
   private sanitizeString(value: string): string {
     let result = value;
     result = result.replace(/([?&])token=[^&\s]*/gi, '$1token=[REDACTED]');
-    result = result.replace(/([?&])api[_-]?key=[^&\s]*/gi, '$1api_key=[REDACTED]');
-    result = result.replace(/DeepL-Auth-Key\s+\S+/gi, 'DeepL-Auth-Key [REDACTED]');
+    result = result.replace(
+      /([?&])api[_-]?key=[^&\s]*/gi,
+      '$1api_key=[REDACTED]'
+    );
+    result = result.replace(
+      /DeepL-Auth-Key\s+\S+/gi,
+      'DeepL-Auth-Key [REDACTED]'
+    );
     result = result.replace(
       /Authorization:\s+(ApiKey|Bearer)\s+\S+/gi,
-      'Authorization: $1 [REDACTED]',
+      'Authorization: $1 [REDACTED]'
     );
     // X-Api-Key / X-Auth-Token — common in REST APIs and present on
     // TMS-style backends. axios error dumps frequently include the full
     // `config.headers` object, so these need explicit coverage.
     result = result.replace(/X-Api-Key:\s+\S+/gi, 'X-Api-Key: [REDACTED]');
-    result = result.replace(/X-Auth-Token:\s+\S+/gi, 'X-Auth-Token: [REDACTED]');
+    result = result.replace(
+      /X-Auth-Token:\s+\S+/gi,
+      'X-Auth-Token: [REDACTED]'
+    );
     const apiKey = process.env['DEEPL_API_KEY'];
     if (apiKey) {
       result = result.replaceAll(apiKey, '[REDACTED]');

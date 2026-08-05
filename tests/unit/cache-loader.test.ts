@@ -14,7 +14,10 @@ jest.mock('../../src/utils/logger', () => ({
   },
 }));
 
-import { createCacheServiceGetter, resolveCacheOptions } from '../../src/cli/cache-loader';
+import {
+  createCacheServiceGetter,
+  resolveCacheOptions,
+} from '../../src/cli/cache-loader';
 import { Logger } from '../../src/utils/logger';
 import type { CacheService } from '../../src/storage/cache';
 import type { ConfigService } from '../../src/storage/config';
@@ -33,17 +36,33 @@ function makeError(message: string, code?: string): Error {
 
 describe('resolveCacheOptions', () => {
   it('carries cache.enabled through to the cache service', () => {
-    expect(resolveCacheOptions(fakeConfig({ 'cache.enabled': false }), '/tmp/cache.db').enabled).toBe(false);
-    expect(resolveCacheOptions(fakeConfig({ 'cache.enabled': true }), '/tmp/cache.db').enabled).toBe(true);
+    expect(
+      resolveCacheOptions(
+        fakeConfig({ 'cache.enabled': false }),
+        '/tmp/cache.db'
+      ).enabled
+    ).toBe(false);
+    expect(
+      resolveCacheOptions(
+        fakeConfig({ 'cache.enabled': true }),
+        '/tmp/cache.db'
+      ).enabled
+    ).toBe(true);
   });
 
   it('converts the configured TTL from seconds to milliseconds', () => {
-    const options = resolveCacheOptions(fakeConfig({ 'cache.ttl': 90 }), '/tmp/cache.db');
+    const options = resolveCacheOptions(
+      fakeConfig({ 'cache.ttl': 90 }),
+      '/tmp/cache.db'
+    );
     expect(options.ttl).toBe(90_000);
   });
 
   it('passes the db path and max size through unchanged', () => {
-    const options = resolveCacheOptions(fakeConfig({ 'cache.maxSize': 4096 }), '/tmp/cache.db');
+    const options = resolveCacheOptions(
+      fakeConfig({ 'cache.maxSize': 4096 }),
+      '/tmp/cache.db'
+    );
     expect(options.dbPath).toBe('/tmp/cache.db');
     expect(options.maxSize).toBe(4096);
   });
@@ -94,7 +113,7 @@ describe('createCacheServiceGetter', () => {
   describe('when the dynamic import rejects (e.g. ABI mismatch)', () => {
     const abiError = makeError(
       "The module '/x/better_sqlite3.node' was compiled against a different Node.js version using NODE_MODULE_VERSION 137.",
-      'ERR_DLOPEN_FAILED',
+      'ERR_DLOPEN_FAILED'
     );
 
     it('returns undefined instead of throwing', async () => {

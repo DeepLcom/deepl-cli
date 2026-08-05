@@ -43,7 +43,9 @@ jest.mock('fs', () => ({
   statSync: jest.fn(),
 }));
 
-const mockedExistsSync = fs.existsSync as jest.MockedFunction<typeof fs.existsSync>;
+const mockedExistsSync = fs.existsSync as jest.MockedFunction<
+  typeof fs.existsSync
+>;
 const mockedStatSync = fs.statSync as jest.MockedFunction<typeof fs.statSync>;
 const mockedLoggerWarn = Logger.warn as jest.MockedFunction<typeof Logger.warn>;
 
@@ -73,7 +75,18 @@ describe('translate-utils', () => {
     });
 
     it('TEXT_BASED_EXTENSIONS should include expected extensions', () => {
-      expect(TEXT_BASED_EXTENSIONS).toEqual(['.txt', '.md', '.html', '.htm', '.srt', '.xlf', '.xliff', '.json', '.yaml', '.yml']);
+      expect(TEXT_BASED_EXTENSIONS).toEqual([
+        '.txt',
+        '.md',
+        '.html',
+        '.htm',
+        '.srt',
+        '.xlf',
+        '.xliff',
+        '.json',
+        '.yaml',
+        '.yml',
+      ]);
     });
 
     it('STRUCTURED_EXTENSIONS should include expected extensions', () => {
@@ -111,11 +124,15 @@ describe('translate-utils', () => {
     });
 
     it('should throw ValidationError for a malformed language code', () => {
-      expect(() => validateLanguageCodes(['not-a-language'])).toThrow(ValidationError);
+      expect(() => validateLanguageCodes(['not-a-language'])).toThrow(
+        ValidationError
+      );
     });
 
     it('should include the invalid code in the error message', () => {
-      expect(() => validateLanguageCodes(['zzzz'])).toThrow(/Invalid target language code: "zzzz"/);
+      expect(() => validateLanguageCodes(['zzzz'])).toThrow(
+        /Invalid target language code: "zzzz"/
+      );
     });
 
     it('should pass through a well-formed code the snapshot does not know', () => {
@@ -132,7 +149,9 @@ describe('translate-utils', () => {
 
       // Said before anything is sent, since the API answers an unknown code with
       // a bare "target_lang not supported" that points nowhere.
-      const warning = mockedLoggerWarn.mock.calls.map(call => String(call[0])).join('\n');
+      const warning = mockedLoggerWarn.mock.calls
+        .map((call) => String(call[0]))
+        .join('\n');
       expect(warning).toContain('"ex" is not in the bundled language list');
       expect(warning).toContain('deepl languages');
     });
@@ -145,7 +164,14 @@ describe('translate-utils', () => {
     });
 
     it('should still reject input that is not shaped like a language tag', () => {
-      for (const code of ['g', 'grman', 'de_ch', 'de-', '../etc/passwd', 'de ch']) {
+      for (const code of [
+        'g',
+        'grman',
+        'de_ch',
+        'de-',
+        '../etc/passwd',
+        'de ch',
+      ]) {
         expect(() => validateLanguageCodes([code])).toThrow(ValidationError);
       }
     });
@@ -166,7 +192,9 @@ describe('translate-utils', () => {
     });
 
     it('should throw on first invalid code in array', () => {
-      expect(() => validateLanguageCodes(['en', 'invalid', 'de'])).toThrow(/Invalid target language code: "invalid"/);
+      expect(() => validateLanguageCodes(['en', 'invalid', 'de'])).toThrow(
+        /Invalid target language code: "invalid"/
+      );
     });
 
     it('should warn once per unknown code however many times it is validated', () => {
@@ -182,7 +210,9 @@ describe('translate-utils', () => {
       validateLanguageCodes(['ex', 'zz']);
       validateLanguageCodes(['ex', 'zz']);
 
-      const warnings = mockedLoggerWarn.mock.calls.map(call => String(call[0]));
+      const warnings = mockedLoggerWarn.mock.calls.map((call) =>
+        String(call[0])
+      );
       expect(warnings).toHaveLength(2);
       expect(warnings[0]).toContain('"ex"');
       expect(warnings[1]).toContain('"zz"');
@@ -209,16 +239,20 @@ describe('translate-utils', () => {
     });
 
     it('should reject a malformed code as a source, not a target', () => {
-      expect(() => validateSourceLanguage('not!!a!!lang')).toThrow(ValidationError);
       expect(() => validateSourceLanguage('not!!a!!lang')).toThrow(
-        /Invalid source language code: "not!!a!!lang"/,
+        ValidationError
+      );
+      expect(() => validateSourceLanguage('not!!a!!lang')).toThrow(
+        /Invalid source language code: "not!!a!!lang"/
       );
     });
 
     it('should defer a well-formed unknown code to the API with a warning', () => {
       expect(() => validateSourceLanguage('zz')).not.toThrow();
 
-      const warning = mockedLoggerWarn.mock.calls.map(call => String(call[0])).join('\n');
+      const warning = mockedLoggerWarn.mock.calls
+        .map((call) => String(call[0]))
+        .join('\n');
       expect(warning).toContain('"zz" is not in the bundled language list');
     });
 
@@ -233,36 +267,40 @@ describe('translate-utils', () => {
   describe('validateTranslationLanguages()', () => {
     it('should reject a malformed target code', () => {
       expect(() => validateTranslationLanguages(['not!!a!!lang'], {})).toThrow(
-        /Invalid target language code/,
+        /Invalid target language code/
       );
     });
 
     it('should reject a malformed source code', () => {
-      expect(() => validateTranslationLanguages(['de'], { from: 'not!!a!!lang' })).toThrow(
-        /Invalid source language code/,
-      );
+      expect(() =>
+        validateTranslationLanguages(['de'], { from: 'not!!a!!lang' })
+      ).toThrow(/Invalid source language code/);
     });
 
     it('should enforce the extended-tier constraint over the whole target list', () => {
-      expect(() => validateTranslationLanguages(['de', 'hi'], { formality: 'more' })).toThrow(
-        /Language\(s\) hi do not support formality/,
-      );
+      expect(() =>
+        validateTranslationLanguages(['de', 'hi'], { formality: 'more' })
+      ).toThrow(/Language\(s\) hi do not support formality/);
     });
 
     it('should enforce the extended-tier constraint for a single target', () => {
       expect(() =>
-        validateTranslationLanguages(['hi'], { modelType: 'latency_optimized' }),
+        validateTranslationLanguages(['hi'], { modelType: 'latency_optimized' })
       ).toThrow(/only support quality_optimized/);
     });
 
     it('should accept a valid pair with no constrained options', () => {
-      expect(() => validateTranslationLanguages(['de', 'fr'], { from: 'en' })).not.toThrow();
+      expect(() =>
+        validateTranslationLanguages(['de', 'fr'], { from: 'en' })
+      ).not.toThrow();
     });
 
     it('should not enforce an arm the caller left out', () => {
       // The input modes disagree about which flags they honour; a mode that
       // discards a flag passes it here as absent.
-      expect(() => validateTranslationLanguages(['hi'], { formality: 'more' })).toThrow();
+      expect(() =>
+        validateTranslationLanguages(['hi'], { formality: 'more' })
+      ).toThrow();
       expect(() => validateTranslationLanguages(['hi'], {})).not.toThrow();
     });
   });
@@ -272,40 +310,64 @@ describe('translate-utils', () => {
 
     it('should throw for extended language with latency_optimized model', () => {
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, modelType: 'latency_optimized' })
+        validateExtendedLanguageConstraints('hi', {
+          ...baseOptions,
+          modelType: 'latency_optimized',
+        })
       ).toThrow(ValidationError);
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, modelType: 'latency_optimized' })
+        validateExtendedLanguageConstraints('hi', {
+          ...baseOptions,
+          modelType: 'latency_optimized',
+        })
       ).toThrow(/only support quality_optimized/);
     });
 
     it('should throw for extended language with formality setting', () => {
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, formality: 'more' })
+        validateExtendedLanguageConstraints('hi', {
+          ...baseOptions,
+          formality: 'more',
+        })
       ).toThrow(ValidationError);
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, formality: 'more' })
+        validateExtendedLanguageConstraints('hi', {
+          ...baseOptions,
+          formality: 'more',
+        })
       ).toThrow(/do not support formality/);
     });
 
     it('should not throw for extended language with formality=default', () => {
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, formality: 'default' })
+        validateExtendedLanguageConstraints('hi', {
+          ...baseOptions,
+          formality: 'default',
+        })
       ).not.toThrow();
     });
 
     it('should throw for extended language with glossary', () => {
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, glossary: ['my-glossary'] })
+        validateExtendedLanguageConstraints('hi', {
+          ...baseOptions,
+          glossary: ['my-glossary'],
+        })
       ).toThrow(ValidationError);
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, glossary: ['my-glossary'] })
+        validateExtendedLanguageConstraints('hi', {
+          ...baseOptions,
+          glossary: ['my-glossary'],
+        })
       ).toThrow(/do not support glossaries/);
     });
 
     it('should not throw for an empty glossary list, which selects nothing', () => {
       expect(() =>
-        validateExtendedLanguageConstraints('hi', { ...baseOptions, glossary: [] })
+        validateExtendedLanguageConstraints('hi', {
+          ...baseOptions,
+          glossary: [],
+        })
       ).not.toThrow();
     });
 
@@ -321,13 +383,18 @@ describe('translate-utils', () => {
 
     it('should handle comma-separated target languages', () => {
       expect(() =>
-        validateExtendedLanguageConstraints('hi, sw', { ...baseOptions, modelType: 'latency_optimized' })
+        validateExtendedLanguageConstraints('hi, sw', {
+          ...baseOptions,
+          modelType: 'latency_optimized',
+        })
       ).toThrow(/hi, sw/);
     });
 
     it('should not throw when only non-extended langs in comma-separated list', () => {
       expect(() =>
-        validateExtendedLanguageConstraints('en, de', { modelType: 'latency_optimized' })
+        validateExtendedLanguageConstraints('en, de', {
+          modelType: 'latency_optimized',
+        })
       ).not.toThrow();
     });
 
@@ -340,52 +407,81 @@ describe('translate-utils', () => {
 
   describe('validateXmlTags()', () => {
     it('should accept valid tag names', () => {
-      expect(() => validateXmlTags(['div', 'span', 'myTag'], '--splitting-tags')).not.toThrow();
+      expect(() =>
+        validateXmlTags(['div', 'span', 'myTag'], '--splitting-tags')
+      ).not.toThrow();
     });
 
     it('should accept tags starting with underscore', () => {
-      expect(() => validateXmlTags(['_tag', '_my-tag'], '--splitting-tags')).not.toThrow();
+      expect(() =>
+        validateXmlTags(['_tag', '_my-tag'], '--splitting-tags')
+      ).not.toThrow();
     });
 
     it('should accept tags with hyphens, underscores, and periods', () => {
-      expect(() => validateXmlTags(['my-tag', 'my_tag', 'my.tag'], '--splitting-tags')).not.toThrow();
+      expect(() =>
+        validateXmlTags(['my-tag', 'my_tag', 'my.tag'], '--splitting-tags')
+      ).not.toThrow();
     });
 
     it('should throw for empty tag', () => {
-      expect(() => validateXmlTags([''], '--splitting-tags')).toThrow(ValidationError);
-      expect(() => validateXmlTags([''], '--splitting-tags')).toThrow(/Tag name cannot be empty/);
+      expect(() => validateXmlTags([''], '--splitting-tags')).toThrow(
+        ValidationError
+      );
+      expect(() => validateXmlTags([''], '--splitting-tags')).toThrow(
+        /Tag name cannot be empty/
+      );
     });
 
     it('should throw for whitespace-only tag', () => {
-      expect(() => validateXmlTags(['  '], '--splitting-tags')).toThrow(/Tag name cannot be empty/);
+      expect(() => validateXmlTags(['  '], '--splitting-tags')).toThrow(
+        /Tag name cannot be empty/
+      );
     });
 
     it('should throw for tag starting with "xml" (lowercase)', () => {
-      expect(() => validateXmlTags(['xmltag'], '--splitting-tags')).toThrow(/cannot start with "xml"/);
+      expect(() => validateXmlTags(['xmltag'], '--splitting-tags')).toThrow(
+        /cannot start with "xml"/
+      );
     });
 
     it('should throw for tag starting with "XML" (uppercase)', () => {
-      expect(() => validateXmlTags(['XMLtag'], '--splitting-tags')).toThrow(/cannot start with "xml"/);
+      expect(() => validateXmlTags(['XMLtag'], '--splitting-tags')).toThrow(
+        /cannot start with "xml"/
+      );
     });
 
     it('should throw for tag starting with "Xml" (mixed case)', () => {
-      expect(() => validateXmlTags(['Xmltag'], '--splitting-tags')).toThrow(/cannot start with "xml"/);
+      expect(() => validateXmlTags(['Xmltag'], '--splitting-tags')).toThrow(
+        /cannot start with "xml"/
+      );
     });
 
     it('should throw for tag with invalid characters', () => {
-      expect(() => validateXmlTags(['tag!name'], '--splitting-tags')).toThrow(/Invalid XML tag name/);
+      expect(() => validateXmlTags(['tag!name'], '--splitting-tags')).toThrow(
+        /Invalid XML tag name/
+      );
     });
 
     it('should throw for tag starting with digit', () => {
-      expect(() => validateXmlTags(['1tag'], '--splitting-tags')).toThrow(/Invalid XML tag name/);
+      expect(() => validateXmlTags(['1tag'], '--splitting-tags')).toThrow(
+        /Invalid XML tag name/
+      );
     });
 
     it('should include param name in error message', () => {
-      expect(() => validateXmlTags([''], '--ignore-tags')).toThrow(/--ignore-tags/);
+      expect(() => validateXmlTags([''], '--ignore-tags')).toThrow(
+        /--ignore-tags/
+      );
     });
 
     it('should accept multiple valid tags', () => {
-      expect(() => validateXmlTags(['header', 'footer', 'nav', 'aside'], '--splitting-tags')).not.toThrow();
+      expect(() =>
+        validateXmlTags(
+          ['header', 'footer', 'nav', 'aside'],
+          '--splitting-tags'
+        )
+      ).not.toThrow();
     });
 
     it('should accept empty array', () => {
@@ -536,12 +632,18 @@ describe('translate-utils', () => {
     });
 
     it('should map context', () => {
-      const result = buildTranslationOptions({ to: 'de', context: 'technical document' });
+      const result = buildTranslationOptions({
+        to: 'de',
+        context: 'technical document',
+      });
       expect(result.context).toBe('technical document');
     });
 
     it('should map splitSentences', () => {
-      const result = buildTranslationOptions({ to: 'de', splitSentences: 'nonewlines' });
+      const result = buildTranslationOptions({
+        to: 'de',
+        splitSentences: 'nonewlines',
+      });
       expect(result.splitSentences).toBe('nonewlines');
     });
 
@@ -551,7 +653,10 @@ describe('translate-utils', () => {
     });
 
     it('should map modelType', () => {
-      const result = buildTranslationOptions({ to: 'de', modelType: 'quality_optimized' });
+      const result = buildTranslationOptions({
+        to: 'de',
+        modelType: 'quality_optimized',
+      });
       expect(result.modelType).toBe('quality_optimized');
     });
 
@@ -565,29 +670,42 @@ describe('translate-utils', () => {
     });
 
     it('should reject tagHandlingVersion without tagHandling', () => {
-      expect(() => buildTranslationOptions({ to: 'de', tagHandlingVersion: 'v2' })).toThrow(
-        '--tag-handling-version requires --tag-handling',
-      );
+      expect(() =>
+        buildTranslationOptions({ to: 'de', tagHandlingVersion: 'v2' })
+      ).toThrow('--tag-handling-version requires --tag-handling');
     });
 
     it('should reject a tagHandlingVersion that is neither v1 nor v2', () => {
       expect(() =>
-        buildTranslationOptions({ to: 'de', tagHandling: 'xml', tagHandlingVersion: 'v3' }),
+        buildTranslationOptions({
+          to: 'de',
+          tagHandling: 'xml',
+          tagHandlingVersion: 'v3',
+        })
       ).toThrow('--tag-handling-version must be "v1" or "v2"');
     });
 
     it('should map preserveFormatting when explicitly set', () => {
-      const result = buildTranslationOptions({ to: 'de', preserveFormatting: true });
+      const result = buildTranslationOptions({
+        to: 'de',
+        preserveFormatting: true,
+      });
       expect(result.preserveFormatting).toBe(true);
     });
 
     it('should map preserveFormatting=false when explicitly set', () => {
-      const result = buildTranslationOptions({ to: 'de', preserveFormatting: false });
+      const result = buildTranslationOptions({
+        to: 'de',
+        preserveFormatting: false,
+      });
       expect(result.preserveFormatting).toBe(false);
     });
 
     it('should map showBilledCharacters', () => {
-      const result = buildTranslationOptions({ to: 'de', showBilledCharacters: true });
+      const result = buildTranslationOptions({
+        to: 'de',
+        showBilledCharacters: true,
+      });
       expect(result.showBilledCharacters).toBe(true);
     });
 
@@ -619,40 +737,66 @@ describe('translate-utils', () => {
 
     it('should return true when cachedStats.isFile() returns true', () => {
       const stats = { isFile: () => true } as fs.Stats;
-      expect(isFilePath('anything', stats, mockFileTranslationService)).toBe(true);
+      expect(isFilePath('anything', stats, mockFileTranslationService)).toBe(
+        true
+      );
     });
 
     it('should return true when cachedStats is null and file exists', () => {
       mockedExistsSync.mockReturnValue(true);
-      expect(isFilePath('/some/file.txt', null, mockFileTranslationService)).toBe(true);
+      expect(
+        isFilePath('/some/file.txt', null, mockFileTranslationService)
+      ).toBe(true);
     });
 
     it('should return true when cachedStats is undefined and file exists', () => {
       mockedExistsSync.mockReturnValue(true);
-      expect(isFilePath('/some/file.txt', undefined, mockFileTranslationService)).toBe(true);
+      expect(
+        isFilePath('/some/file.txt', undefined, mockFileTranslationService)
+      ).toBe(true);
     });
 
     it('should return false for URL inputs', () => {
-      expect(isFilePath('http://example.com', null, mockFileTranslationService)).toBe(false);
-      expect(isFilePath('https://example.com/file.txt', null, mockFileTranslationService)).toBe(false);
-      expect(isFilePath('ftp://files.example.com', null, mockFileTranslationService)).toBe(false);
+      expect(
+        isFilePath('http://example.com', null, mockFileTranslationService)
+      ).toBe(false);
+      expect(
+        isFilePath(
+          'https://example.com/file.txt',
+          null,
+          mockFileTranslationService
+        )
+      ).toBe(false);
+      expect(
+        isFilePath('ftp://files.example.com', null, mockFileTranslationService)
+      ).toBe(false);
     });
 
     it('should return true for paths with separators when isSupportedFile returns true', () => {
       mockedExistsSync.mockReturnValue(false);
-      (mockFileTranslationService.isSupportedFile as jest.Mock).mockReturnValue(true);
-      expect(isFilePath('dir/file.txt', null, mockFileTranslationService)).toBe(true);
+      (mockFileTranslationService.isSupportedFile as jest.Mock).mockReturnValue(
+        true
+      );
+      expect(isFilePath('dir/file.txt', null, mockFileTranslationService)).toBe(
+        true
+      );
     });
 
     it('should return false for paths with separators when isSupportedFile returns false', () => {
       mockedExistsSync.mockReturnValue(false);
-      (mockFileTranslationService.isSupportedFile as jest.Mock).mockReturnValue(false);
-      expect(isFilePath('dir/file.xyz', null, mockFileTranslationService)).toBe(false);
+      (mockFileTranslationService.isSupportedFile as jest.Mock).mockReturnValue(
+        false
+      );
+      expect(isFilePath('dir/file.xyz', null, mockFileTranslationService)).toBe(
+        false
+      );
     });
 
     it('should return false for plain text without path separators', () => {
       mockedExistsSync.mockReturnValue(false);
-      expect(isFilePath('Hello world', null, mockFileTranslationService)).toBe(false);
+      expect(isFilePath('Hello world', null, mockFileTranslationService)).toBe(
+        false
+      );
     });
 
     it('should not call existsSync when cachedStats is provided', () => {
@@ -663,9 +807,12 @@ describe('translate-utils', () => {
   });
 
   describe('isTextBasedFile()', () => {
-    it.each(TEXT_BASED_EXTENSIONS)('should return true for %s extension', (ext) => {
-      expect(isTextBasedFile(`file${ext}`)).toBe(true);
-    });
+    it.each(TEXT_BASED_EXTENSIONS)(
+      'should return true for %s extension',
+      (ext) => {
+        expect(isTextBasedFile(`file${ext}`)).toBe(true);
+      }
+    );
 
     it('should be case-insensitive', () => {
       expect(isTextBasedFile('file.TXT')).toBe(true);
@@ -686,9 +833,12 @@ describe('translate-utils', () => {
   });
 
   describe('isStructuredFile()', () => {
-    it.each(STRUCTURED_EXTENSIONS)('should return true for %s extension', (ext) => {
-      expect(isStructuredFile(`file${ext}`)).toBe(true);
-    });
+    it.each(STRUCTURED_EXTENSIONS)(
+      'should return true for %s extension',
+      (ext) => {
+        expect(isStructuredFile(`file${ext}`)).toBe(true);
+      }
+    );
 
     it('should be case-insensitive', () => {
       expect(isStructuredFile('file.JSON')).toBe(true);
@@ -732,10 +882,16 @@ describe('translate-utils', () => {
         resolveGlossaryId: jest.fn().mockResolvedValue('glossary-123'),
       } as unknown as GlossaryService;
 
-      const result = await resolveGlossaryId(mockGlossaryService, 'my-glossary');
+      const result = await resolveGlossaryId(
+        mockGlossaryService,
+        'my-glossary'
+      );
 
       expect(result).toBe('glossary-123');
-      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', undefined);
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith(
+        'my-glossary',
+        undefined
+      );
     });
 
     it('should forward the expected language pair for the preflight check', async () => {
@@ -748,10 +904,13 @@ describe('translate-utils', () => {
         targets: ['de'],
       });
 
-      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith('my-glossary', {
-        from: 'en',
-        targets: ['de'],
-      });
+      expect(mockGlossaryService.resolveGlossaryId).toHaveBeenCalledWith(
+        'my-glossary',
+        {
+          from: 'en',
+          targets: ['de'],
+        }
+      );
     });
 
     it('should pass through errors from glossaryService', async () => {
@@ -759,7 +918,9 @@ describe('translate-utils', () => {
         resolveGlossaryId: jest.fn().mockRejectedValue(new Error('Not found')),
       } as unknown as GlossaryService;
 
-      await expect(resolveGlossaryId(mockGlossaryService, 'missing')).rejects.toThrow('Not found');
+      await expect(
+        resolveGlossaryId(mockGlossaryService, 'missing')
+      ).rejects.toThrow('Not found');
     });
   });
 });

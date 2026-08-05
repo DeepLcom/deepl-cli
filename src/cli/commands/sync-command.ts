@@ -1,11 +1,24 @@
 import * as fsSync from 'fs';
-import { SyncService, type SyncResult, type SyncOptions, type SyncProgressEvent, type CancellationSignal } from '../../sync/sync-service.js';
-import { loadSyncConfig, type SyncConfigOverrides, type ResolvedSyncConfig } from '../../sync/sync-config.js';
+import {
+  SyncService,
+  type SyncResult,
+  type SyncOptions,
+  type SyncProgressEvent,
+  type CancellationSignal,
+} from '../../sync/sync-service.js';
+import {
+  loadSyncConfig,
+  type SyncConfigOverrides,
+  type ResolvedSyncConfig,
+} from '../../sync/sync-config.js';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 import { ExitCode } from '../../utils/exit-codes.js';
 import { LOCK_FILE_NAME } from '../../sync/types.js';
-import { sweepStaleBackups as sweepStaleBackupsImpl, DEFAULT_BAK_SWEEP_MAX_AGE_SECONDS } from '../../sync/sync-bak-cleanup.js';
+import {
+  sweepStaleBackups as sweepStaleBackupsImpl,
+  DEFAULT_BAK_SWEEP_MAX_AGE_SECONDS,
+} from '../../sync/sync-bak-cleanup.js';
 import { claimGracefulShutdown } from '../../utils/signal-exit.js';
 
 export const STALE_BACKUP_AGE_MS = DEFAULT_BAK_SWEEP_MAX_AGE_SECONDS * 1000;
@@ -95,7 +108,10 @@ export interface WatchController {
 
 export interface WatchControllerDeps {
   watcher: { close(): Promise<void> | void };
-  runSync: (signal: CancellationSignal, backupTracker: Set<string>) => Promise<void>;
+  runSync: (
+    signal: CancellationSignal,
+    backupTracker: Set<string>
+  ) => Promise<void>;
   projectRoot: string;
   staleBackupAgeMs: number;
   /** Bucket include-glob map for scoped .bak sweep. When absent the sweep falls back to full-tree walk. */
@@ -108,7 +124,9 @@ export interface WatchControllerDeps {
   clearPendingDebounce?: () => void;
 }
 
-export function createWatchController(deps: WatchControllerDeps): WatchController {
+export function createWatchController(
+  deps: WatchControllerDeps
+): WatchController {
   let syncing = false;
   let pendingRun = false;
   const cancellationSignal: CancellationSignal = { cancelled: false };
@@ -122,7 +140,9 @@ export function createWatchController(deps: WatchControllerDeps): WatchControlle
       } catch (err) {
         const code = (err as NodeJS.ErrnoException).code;
         if (code !== 'ENOENT') {
-          Logger.warn(`Failed to remove backup ${bakPath}: ${err instanceof Error ? err.message : String(err)}`);
+          Logger.warn(
+            `Failed to remove backup ${bakPath}: ${err instanceof Error ? err.message : String(err)}`
+          );
         }
       }
     }
@@ -163,7 +183,11 @@ export function createWatchController(deps: WatchControllerDeps): WatchControlle
   }
 
   async function sweepStaleBackups(): Promise<void> {
-    await sweepStaleBackupsImpl(deps.projectRoot, deps.staleBackupAgeMs, deps.buckets);
+    await sweepStaleBackupsImpl(
+      deps.projectRoot,
+      deps.staleBackupAgeMs,
+      deps.buckets
+    );
   }
 
   return { runOnce, shutdown, sweepStaleBackups };
@@ -193,25 +217,45 @@ export interface SyncJsonOutput {
   estimatedCost?: string;
   rateAssumption: 'pro';
   dryRun: boolean;
-  perLocale: Array<{ locale: string; translated: number; skipped: number; failed: number }>;
+  perLocale: Array<{
+    locale: string;
+    translated: number;
+    skipped: number;
+    failed: number;
+  }>;
 }
 
-function projectToPublicShape(result: SyncResult, estimatedCost: string | undefined): SyncJsonOutput {
-  const perLocale = result.fileResults.reduce<Map<string, { translated: number; skipped: number; failed: number }>>(
-    (acc, fr) => {
-      const existing = acc.get(fr.locale) ?? { translated: 0, skipped: 0, failed: 0 };
-      existing.translated += fr.translated;
-      existing.skipped += fr.skipped;
-      existing.failed += fr.failed;
-      acc.set(fr.locale, existing);
-      return acc;
-    },
-    new Map(),
-  );
+function projectToPublicShape(
+  result: SyncResult,
+  estimatedCost: string | undefined
+): SyncJsonOutput {
+  const perLocale = result.fileResults.reduce<
+    Map<string, { translated: number; skipped: number; failed: number }>
+  >((acc, fr) => {
+    const existing = acc.get(fr.locale) ?? {
+      translated: 0,
+      skipped: 0,
+      failed: 0,
+    };
+    existing.translated += fr.translated;
+    existing.skipped += fr.skipped;
+    existing.failed += fr.failed;
+    acc.set(fr.locale, existing);
+    return acc;
+  }, new Map());
 
-  const totalTranslated = result.fileResults.reduce((sum, fr) => sum + fr.translated, 0);
-  const totalSkipped = result.fileResults.reduce((sum, fr) => sum + fr.skipped, 0);
-  const totalFailed = result.fileResults.reduce((sum, fr) => sum + fr.failed, 0);
+  const totalTranslated = result.fileResults.reduce(
+    (sum, fr) => sum + fr.translated,
+    0
+  );
+  const totalSkipped = result.fileResults.reduce(
+    (sum, fr) => sum + fr.skipped,
+    0
+  );
+  const totalFailed = result.fileResults.reduce(
+    (sum, fr) => sum + fr.failed,
+    0
+  );
 
   return {
     ok: result.success,
@@ -224,7 +268,10 @@ function projectToPublicShape(result: SyncResult, estimatedCost: string | undefi
     ...(estimatedCost !== undefined ? { estimatedCost } : {}),
     rateAssumption: 'pro',
     dryRun: result.dryRun,
-    perLocale: Array.from(perLocale.entries()).map(([locale, counts]) => ({ locale, ...counts })),
+    perLocale: Array.from(perLocale.entries()).map(([locale, counts]) => ({
+      locale,
+      ...counts,
+    })),
   };
 }
 
@@ -238,7 +285,9 @@ export class SyncCommand {
       frozen,
       dryRun: options.dryRun,
       force: options.force,
-      localeFilter: options.locale ? options.locale.split(',').map(l => l.trim()) : undefined,
+      localeFilter: options.locale
+        ? options.locale.split(',').map((l) => l.trim())
+        : undefined,
       formality: options.formality,
       glossary: options.glossary,
       modelType: options.modelType,
@@ -270,7 +319,12 @@ export class SyncCommand {
       process.exitCode = ExitCode.PartialFailure;
     }
 
-    if (options.autoCommit && result.success && !result.dryRun && !result.driftDetected) {
+    if (
+      options.autoCommit &&
+      result.success &&
+      !result.dryRun &&
+      !result.driftDetected
+    ) {
       await this.autoCommitTranslations(result, config);
     }
 
@@ -284,7 +338,7 @@ export class SyncCommand {
   private async watchAndSync(
     config: ResolvedSyncConfig,
     syncOptions: SyncOptions,
-    options: CliSyncOptions,
+    options: CliSyncOptions
   ): Promise<void> {
     const chokidar = await import('chokidar');
     const { default: path } = await import('path');
@@ -309,7 +363,9 @@ export class SyncCommand {
       watchPaths.push(configPathResolved);
     }
 
-    Logger.info(`Watching ${watchPaths.length} pattern(s) for changes (debounce: ${debounceMs}ms)...`);
+    Logger.info(
+      `Watching ${watchPaths.length} pattern(s) for changes (debounce: ${debounceMs}ms)...`
+    );
 
     const watcher = chokidar.watch(watchPaths, {
       cwd: config.projectRoot,
@@ -333,11 +389,17 @@ export class SyncCommand {
     let cachedConfig: ResolvedSyncConfig = config;
     const configFileName = path.basename(configPathResolved);
 
-    const ensureFreshConfig = async (changedPaths: string[]): Promise<ResolvedSyncConfig> => {
+    const ensureFreshConfig = async (
+      changedPaths: string[]
+    ): Promise<ResolvedSyncConfig> => {
       const configChanged = changedPaths.some((p) => {
         if (!p) return false;
-        const resolved = path.isAbsolute(p) ? p : path.resolve(config.projectRoot, p);
-        return resolved === configPathResolved || path.basename(p) === configFileName;
+        const resolved = path.isAbsolute(p)
+          ? p
+          : path.resolve(config.projectRoot, p);
+        return (
+          resolved === configPathResolved || path.basename(p) === configFileName
+        );
       });
       if (configChanged) {
         cachedConfig = await loadSyncConfig(process.cwd(), {
@@ -384,7 +446,12 @@ export class SyncCommand {
           backupTracker,
         });
         this.displayResult(result, 'text');
-        if (options.autoCommit && result.success && !result.dryRun && !result.driftDetected) {
+        if (
+          options.autoCommit &&
+          result.success &&
+          !result.dryRun &&
+          !result.driftDetected
+        ) {
           await this.autoCommitTranslations(result, activeConfig);
         }
       },
@@ -432,7 +499,7 @@ export class SyncCommand {
    * one bucket's target_path_pattern cannot claim another bucket's output.
    */
   private async resolveOwnedTargetPaths(
-    config: ResolvedSyncConfig,
+    config: ResolvedSyncConfig
   ): Promise<Map<string, string>> {
     const pathMod = await import('path');
     const { minimatch } = await import('minimatch');
@@ -440,20 +507,27 @@ export class SyncCommand {
     const { resolveTargetPath } = await import('../../sync/sync-utils.js');
 
     const owned = new Map<string, string>();
-    const lockManager = new SyncLockManager(pathMod.join(config.projectRoot, LOCK_FILE_NAME));
+    const lockManager = new SyncLockManager(
+      pathMod.join(config.projectRoot, LOCK_FILE_NAME)
+    );
     const lockFile = await lockManager.read();
     const sourcePaths = Object.keys(lockFile.entries);
 
     for (const bucketConfig of Object.values(config.buckets)) {
       for (const sourcePath of sourcePaths) {
-        if (!bucketConfig.include.some(pattern => minimatch(sourcePath, pattern))) continue;
+        if (
+          !bucketConfig.include.some((pattern) =>
+            minimatch(sourcePath, pattern)
+          )
+        )
+          continue;
         for (const locale of config.target_locales) {
           try {
             const targetPath = resolveTargetPath(
               sourcePath,
               config.source_locale,
               locale,
-              bucketConfig.target_path_pattern,
+              bucketConfig.target_path_pattern
             );
             owned.set(targetPath, locale);
           } catch {
@@ -466,7 +540,10 @@ export class SyncCommand {
     return owned;
   }
 
-  private async autoCommitTranslations(result: SyncResult, config: ResolvedSyncConfig): Promise<void> {
+  private async autoCommitTranslations(
+    result: SyncResult,
+    config: ResolvedSyncConfig
+  ): Promise<void> {
     const { execFile } = await import('child_process');
     const { promisify } = await import('util');
     const fsMod = await import('fs');
@@ -482,8 +559,8 @@ export class SyncCommand {
     }
 
     const writtenFiles = result.fileResults
-      .filter(r => r.written)
-      .map(r => r.file);
+      .filter((r) => r.written)
+      .map((r) => r.file);
 
     // Preflight: refuse to auto-commit in unsafe repo states, so unrelated work
     // is never bundled into the chore(i18n) commit and nothing lands on the
@@ -494,11 +571,19 @@ export class SyncCommand {
     // wrote: a translation from an earlier refusal belongs to the next commit
     // rather than being an unrelated modification.
     const ownedPaths = await this.resolveOwnedTargetPaths(config);
-    const expectedStaged = new Set<string>([...writtenFiles, ...ownedPaths.keys(), LOCK_FILE_NAME]);
+    const expectedStaged = new Set<string>([
+      ...writtenFiles,
+      ...ownedPaths.keys(),
+      LOCK_FILE_NAME,
+    ]);
 
     // 1. In-progress rebase/merge/cherry-pick
-    const gitDir = (await execFileAsync('git', ['rev-parse', '--git-dir'], { cwd })).stdout.trim();
-    const gitDirAbs = pathMod.isAbsolute(gitDir) ? gitDir : pathMod.join(cwd, gitDir);
+    const gitDir = (
+      await execFileAsync('git', ['rev-parse', '--git-dir'], { cwd })
+    ).stdout.trim();
+    const gitDirAbs = pathMod.isAbsolute(gitDir)
+      ? gitDir
+      : pathMod.join(cwd, gitDir);
     const inProgressMarkers: Array<{ path: string; label: string }> = [
       { path: 'rebase-apply', label: 'rebase (apply)' },
       { path: 'rebase-merge', label: 'rebase (merge)' },
@@ -509,7 +594,7 @@ export class SyncCommand {
       if (fsMod.existsSync(pathMod.join(gitDirAbs, marker.path))) {
         throw new ValidationError(
           `Refusing to auto-commit: a ${marker.label} is in progress.`,
-          'Complete or abort the in-progress operation (e.g. `git rebase --abort`), then re-run `deepl sync --auto-commit`.',
+          'Complete or abort the in-progress operation (e.g. `git rebase --abort`), then re-run `deepl sync --auto-commit`.'
         );
       }
     }
@@ -520,13 +605,17 @@ export class SyncCommand {
     } catch {
       throw new ValidationError(
         'Refusing to auto-commit: HEAD is detached (no branch to commit to).',
-        'Check out a branch with `git checkout <branch>` before running `deepl sync --auto-commit`.',
+        'Check out a branch with `git checkout <branch>` before running `deepl sync --auto-commit`.'
       );
     }
 
     // 3. Dirty tree with unrelated modifications (or pre-existing staged files
     // that aren't part of this sync run).
-    const { stdout: porcelain } = await execFileAsync('git', ['status', '--porcelain', '-z'], { cwd });
+    const { stdout: porcelain } = await execFileAsync(
+      'git',
+      ['status', '--porcelain', '-z'],
+      { cwd }
+    );
     const unrelated: string[] = [];
     const dirtyOwned: string[] = [];
     if (porcelain.length > 0) {
@@ -552,7 +641,7 @@ export class SyncCommand {
       const list = unrelated.join(', ');
       throw new ValidationError(
         `Refusing to auto-commit: working tree has unrelated modifications in: ${list}.`,
-        'Commit or stash them first, then run `deepl sync --auto-commit` again.',
+        'Commit or stash them first, then run `deepl sync --auto-commit` again.'
       );
     }
 
@@ -566,8 +655,13 @@ export class SyncCommand {
     }
 
     const localeOf = new Map<string, string>(ownedPaths);
-    for (const fileResult of result.fileResults) localeOf.set(fileResult.file, fileResult.locale);
-    const locales = [...new Set(filesToStage.map(file => localeOf.get(file)).filter(Boolean))].join(', ');
+    for (const fileResult of result.fileResults)
+      localeOf.set(fileResult.file, fileResult.locale);
+    const locales = [
+      ...new Set(
+        filesToStage.map((file) => localeOf.get(file)).filter(Boolean)
+      ),
+    ].join(', ');
 
     const msg = locales
       ? `chore(i18n): sync translations for ${locales}`
@@ -576,7 +670,10 @@ export class SyncCommand {
     Logger.info(`Auto-committed ${filesToStage.length} file(s): ${msg}`);
   }
 
-  private renderProgress(event: SyncProgressEvent, format: 'text' | 'json'): void {
+  private renderProgress(
+    event: SyncProgressEvent,
+    format: 'text' | 'json'
+  ): void {
     if (Logger.isQuiet()) return;
     if (format === 'json') {
       Logger.info(JSON.stringify(event));
@@ -584,18 +681,25 @@ export class SyncCommand {
       const total = event.translated + event.failed;
       if (total === 0) return;
       const icon = event.failed > 0 ? '\u2717' : '\u2713';
-      Logger.info(`  ${icon} ${event.locale}: ${event.translated}/${total} keys (${event.file})`);
+      Logger.info(
+        `  ${icon} ${event.locale}: ${event.translated}/${total} keys (${event.file})`
+      );
     }
     // key-translated events are silent in text mode
   }
 
   private displayResult(result: SyncResult, format: 'text' | 'json'): void {
     if (format === 'json') {
-      const charSource = result.totalCharactersBilled || result.estimatedCharacters;
-      const estimatedCost = charSource > 0 ? formatCostEstimate(charSource) : undefined;
+      const charSource =
+        result.totalCharactersBilled || result.estimatedCharacters;
+      const estimatedCost =
+        charSource > 0 ? formatCostEstimate(charSource) : undefined;
       // Success JSON payload routed to stdout so `deepl sync --format json > out.json`
       // captures the final result. Progress events remain on stderr via Logger.info.
-      process.stdout.write(JSON.stringify(projectToPublicShape(result, estimatedCost), null, 2) + '\n');
+      process.stdout.write(
+        JSON.stringify(projectToPublicShape(result, estimatedCost), null, 2) +
+          '\n'
+      );
       return;
     }
 
@@ -607,8 +711,12 @@ export class SyncCommand {
       const driftParts: string[] = [];
       if (result.newKeys > 0) driftParts.push(`${result.newKeys} new`);
       if (result.staleKeys > 0) driftParts.push(`${result.staleKeys} stale`);
-      if (result.deletedKeys > 0) driftParts.push(`${result.deletedKeys} deleted`);
-      const driftSummary = driftParts.length > 0 ? driftParts.join(', ') : 'no key-level diffs surfaced';
+      if (result.deletedKeys > 0)
+        driftParts.push(`${result.deletedKeys} deleted`);
+      const driftSummary =
+        driftParts.length > 0
+          ? driftParts.join(', ')
+          : 'no key-level diffs surfaced';
       Logger.info(`Sync drift detected: ${driftSummary} keys.`);
       return;
     }
@@ -620,9 +728,10 @@ export class SyncCommand {
     if (result.deletedKeys > 0) parts.push(`${result.deletedKeys} deleted`);
 
     const summary = parts.length > 0 ? parts.join(', ') : 'no changes';
-    const localeInfo = result.dryRun && result.targetLocaleCount > 0
-      ? ` across ${result.targetLocaleCount} language${result.targetLocaleCount === 1 ? '' : 's'}`
-      : '';
+    const localeInfo =
+      result.dryRun && result.targetLocaleCount > 0
+        ? ` across ${result.targetLocaleCount} language${result.targetLocaleCount === 1 ? '' : 's'}`
+        : '';
     let chars = '';
     if (result.totalCharactersBilled > 0) {
       chars = ` (${result.totalCharactersBilled.toLocaleString()} chars, ${formatCostEstimate(result.totalCharactersBilled)} (Pro tier estimate))`;
@@ -638,7 +747,9 @@ export class SyncCommand {
       const instrEntries = Object.entries(result.strategy.instruction);
       if (instrEntries.length > 0) {
         const instrTotal = instrEntries.reduce((sum, [, n]) => sum + n, 0);
-        const instrDetail = instrEntries.map(([elem, n]) => `${elem}: ${n}`).join(', ');
+        const instrDetail = instrEntries
+          .map(([elem, n]) => `${elem}: ${n}`)
+          .join(', ');
         stratParts.push(`instructions: ${instrTotal} keys (${instrDetail})`);
       }
       if (stratParts.length > 0) {
@@ -647,7 +758,9 @@ export class SyncCommand {
     }
 
     if (result.dryRun && result.estimatedCharacters > 0) {
-      Logger.info(`This sync: ~${result.estimatedCharacters.toLocaleString()} chars, ${formatCostEstimate(result.estimatedCharacters)} (Pro tier estimate)`);
+      Logger.info(
+        `This sync: ~${result.estimatedCharacters.toLocaleString()} chars, ${formatCostEstimate(result.estimatedCharacters)} (Pro tier estimate)`
+      );
     }
 
     if (result.validationWarnings > 0) {

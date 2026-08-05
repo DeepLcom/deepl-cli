@@ -25,7 +25,8 @@ const CASES: LineBasedCase[] = [
   {
     label: 'PO',
     parser: () => new PoFormatParser(),
-    source: 'msgid "greeting"\nmsgstr "Hello"\n\nmsgid "farewell"\nmsgstr "Goodbye"\n',
+    source:
+      'msgid "greeting"\nmsgstr "Hello"\n\nmsgid "farewell"\nmsgstr "Goodbye"\n',
     expectedKeys: ['greeting', 'farewell'],
   },
   {
@@ -53,16 +54,24 @@ describe('line-based parsers with CRLF line endings', () => {
     const crlf = source.replace(/\n/g, '\r\n');
 
     it('should extract the same keys from LF and CRLF sources', () => {
-      const fromLf = parser().extract(source).map((e) => e.key);
-      const fromCrlf = parser().extract(crlf).map((e) => e.key);
+      const fromLf = parser()
+        .extract(source)
+        .map((e) => e.key);
+      const fromCrlf = parser()
+        .extract(crlf)
+        .map((e) => e.key);
 
       expect(fromLf).toEqual(expect.arrayContaining(expectedKeys));
       expect(fromCrlf).toEqual(fromLf);
     });
 
     it('should extract the same values from LF and CRLF sources', () => {
-      const fromLf = parser().extract(source).map((e) => e.value);
-      const fromCrlf = parser().extract(crlf).map((e) => e.value);
+      const fromLf = parser()
+        .extract(source)
+        .map((e) => e.value);
+      const fromCrlf = parser()
+        .extract(crlf)
+        .map((e) => e.value);
 
       expect(fromCrlf).toEqual(fromLf);
       // A stray \r must not survive into an extracted value.
@@ -79,7 +88,10 @@ describe('line-based parsers with CRLF line endings', () => {
 
     it('should reconstruct a CRLF source without losing entries', () => {
       const entries = parser().extract(crlf);
-      const translated = entries.map((e) => ({ ...e, translation: `[de]${e.value}` }));
+      const translated = entries.map((e) => ({
+        ...e,
+        translation: `[de]${e.value}`,
+      }));
 
       const out = parser().reconstruct(crlf, translated);
       const reExtracted = parser().extract(out);

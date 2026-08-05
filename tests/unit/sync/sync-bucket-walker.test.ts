@@ -1,4 +1,7 @@
-import { extractTranslatable, walkBuckets } from '../../../src/sync/sync-bucket-walker';
+import {
+  extractTranslatable,
+  walkBuckets,
+} from '../../../src/sync/sync-bucket-walker';
 import type { ExtractedEntry, FormatParser } from '../../../src/formats/index';
 import { FormatRegistry } from '../../../src/formats/index';
 import { JsonFormatParser } from '../../../src/formats/json';
@@ -25,7 +28,9 @@ const mockFg = fg as jest.MockedFunction<typeof fg>;
 const mockReadFile = fs.promises.readFile as jest.Mock;
 const mockStat = fs.promises.stat as jest.Mock;
 
-function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -83,7 +88,11 @@ describe('walkBuckets', () => {
       extensions: ['.json'],
       extract: () => [
         { key: 'a', value: 'Hello' },
-        { key: 'b', value: '{0}none|{1}one|[2,*]many', metadata: { skipped: { reason: 'pipe_pluralization' } } },
+        {
+          key: 'b',
+          value: '{0}none|{1}one|[2,*]many',
+          metadata: { skipped: { reason: 'pipe_pluralization' } },
+        },
         { key: 'c', value: 'Goodbye' },
       ],
       reconstruct: (content: string) => content,
@@ -101,7 +110,7 @@ describe('walkBuckets', () => {
 
     expect(mockFg).toHaveBeenCalledWith(
       ['locales/en.json'],
-      expect.objectContaining({ followSymbolicLinks: false }),
+      expect.objectContaining({ followSymbolicLinks: false })
     );
   });
 
@@ -120,7 +129,7 @@ describe('walkBuckets', () => {
     const emptyRegistry = new FormatRegistry();
 
     await expect(
-      collect(walkBuckets(config, emptyRegistry, { strictParser: true })),
+      collect(walkBuckets(config, emptyRegistry, { strictParser: true }))
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
@@ -179,7 +188,9 @@ describe('walkBuckets', () => {
     });
 
     it('skips entire bucket when glob returns more files than sync.limits.max_source_files', async () => {
-      mockFg.mockResolvedValue(Array.from({ length: 10 }, (_, i) => `/test/locales/en/${i}.json`));
+      mockFg.mockResolvedValue(
+        Array.from({ length: 10 }, (_, i) => `/test/locales/en/${i}.json`)
+      );
 
       const config = makeConfig({
         sync: {
@@ -216,10 +227,11 @@ describe('walkBuckets', () => {
       mockFg.mockResolvedValue(['/test/lang/en.php'] as never);
       mockStat.mockResolvedValue({ size: 200 });
       mockReadFile.mockResolvedValue(
-        `<?php return ['a' => ['b' => ['c' => ['d' => 'too deep']]]];`,
+        `<?php return ['a' => ['b' => ['c' => ['d' => 'too deep']]]];`
       );
 
-      const { PhpArraysFormatParser } = await import('../../../src/formats/php-arrays');
+      const { PhpArraysFormatParser } =
+        await import('../../../src/formats/php-arrays');
       const registry = new FormatRegistry();
       registry.register(new PhpArraysFormatParser());
 
@@ -241,7 +253,7 @@ describe('walkBuckets', () => {
 describe('extractTranslatable', () => {
   function makeParser(
     entries: ExtractedEntry[],
-    opts: { multiLocale?: boolean } = {},
+    opts: { multiLocale?: boolean } = {}
   ): FormatParser {
     return {
       multiLocale: opts.multiLocale,
@@ -254,7 +266,11 @@ describe('extractTranslatable', () => {
   it('drops entries tagged with metadata.skipped from the returned list', () => {
     const parser = makeParser([
       { key: 'greeting', value: 'Hello' },
-      { key: 'plural', value: '|{n} item', metadata: { skipped: 'pipe_pluralization' } },
+      {
+        key: 'plural',
+        value: '|{n} item',
+        metadata: { skipped: 'pipe_pluralization' },
+      },
       { key: 'farewell', value: 'Goodbye' },
     ]);
     const result = extractTranslatable(parser, '<content>');

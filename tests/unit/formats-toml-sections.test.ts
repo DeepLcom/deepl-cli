@@ -17,10 +17,17 @@ describe('TOML section handling for new keys', () => {
 
     const out = parser.reconstruct(sectioned, [
       { key: 'messages.greeting', value: 'Hello', translation: 'Hallo' },
-      { key: 'messages.farewell', value: 'Goodbye', translation: 'Auf Wiedersehen' },
+      {
+        key: 'messages.farewell',
+        value: 'Goodbye',
+        translation: 'Auf Wiedersehen',
+      },
     ]);
 
-    const keys = parser.extract(out).map((e) => e.key).sort();
+    const keys = parser
+      .extract(out)
+      .map((e) => e.key)
+      .sort();
     expect(keys).toEqual(['messages.farewell', 'messages.greeting']);
     expect(out).not.toContain('messages.messages');
   });
@@ -30,7 +37,11 @@ describe('TOML section handling for new keys', () => {
 
     const out = parser.reconstruct(sectioned, [
       { key: 'messages.greeting', value: 'Hello', translation: 'Hallo' },
-      { key: 'messages.farewell', value: 'Goodbye', translation: 'Auf Wiedersehen' },
+      {
+        key: 'messages.farewell',
+        value: 'Goodbye',
+        translation: 'Auf Wiedersehen',
+      },
     ]);
 
     // A duplicated section header or doubled path throws here.
@@ -41,7 +52,11 @@ describe('TOML section handling for new keys', () => {
     const parser = new TomlFormatParser();
     const entries = [
       { key: 'messages.greeting', value: 'Hello', translation: 'Hallo' },
-      { key: 'messages.farewell', value: 'Goodbye', translation: 'Auf Wiedersehen' },
+      {
+        key: 'messages.farewell',
+        value: 'Goodbye',
+        translation: 'Auf Wiedersehen',
+      },
     ];
 
     const first = parser.reconstruct(sectioned, entries);
@@ -59,7 +74,12 @@ describe('TOML section handling for new keys', () => {
       { key: 'farewell', value: 'Goodbye', translation: 'Auf Wiedersehen' },
     ]);
 
-    expect(parser.extract(out).map((e) => e.key).sort()).toEqual(['farewell', 'greeting']);
+    expect(
+      parser
+        .extract(out)
+        .map((e) => e.key)
+        .sort()
+    ).toEqual(['farewell', 'greeting']);
   });
 
   describe('multi-line string blocks', () => {
@@ -82,7 +102,10 @@ describe('TOML section handling for new keys', () => {
 
       const out = parser.reconstruct(
         multiline,
-        entries.map((e) => ({ ...e, translation: e.key === 'greeting' ? 'Hallo' : e.value })),
+        entries.map((e) => ({
+          ...e,
+          translation: e.key === 'greeting' ? 'Hallo' : e.value,
+        }))
       );
 
       expect(out).toContain('setting = "this looks like a key"');
@@ -95,11 +118,19 @@ describe('TOML section handling for new keys', () => {
 
       const out = parser.reconstruct(
         multiline,
-        entries.map((e) => ({ ...e, translation: e.key === 'greeting' ? 'Hallo' : e.value })),
+        entries.map((e) => ({
+          ...e,
+          translation: e.key === 'greeting' ? 'Hallo' : e.value,
+        }))
       );
 
       expect(() => parser.extract(out)).not.toThrow();
-      expect(parser.extract(out).map((e) => e.key).sort()).toEqual(['greeting', 'intro']);
+      expect(
+        parser
+          .extract(out)
+          .map((e) => e.key)
+          .sort()
+      ).toEqual(['greeting', 'intro']);
     });
 
     it('should still translate ordinary keys alongside a multi-line block', () => {
@@ -108,7 +139,10 @@ describe('TOML section handling for new keys', () => {
 
       const out = parser.reconstruct(
         multiline,
-        entries.map((e) => ({ ...e, translation: e.key === 'greeting' ? 'Hallo' : e.value })),
+        entries.map((e) => ({
+          ...e,
+          translation: e.key === 'greeting' ? 'Hallo' : e.value,
+        }))
       );
 
       const byKey = new Map(parser.extract(out).map((e) => [e.key, e.value]));
@@ -122,11 +156,18 @@ describe('TOML section handling for new keys', () => {
 
       const out = parser.reconstruct(
         source,
-        entries.map((e) => ({ ...e, translation: e.key === 'greeting' ? 'Hallo' : e.value })),
+        entries.map((e) => ({
+          ...e,
+          translation: e.key === 'greeting' ? 'Hallo' : e.value,
+        }))
       );
 
       expect(() => parser.extract(out)).not.toThrow();
-      expect(new Map(parser.extract(out).map((e) => [e.key, e.value])).get('greeting')).toBe('Hallo');
+      expect(
+        new Map(parser.extract(out).map((e) => [e.key, e.value])).get(
+          'greeting'
+        )
+      ).toBe('Hallo');
     });
   });
 
@@ -135,10 +176,17 @@ describe('TOML section handling for new keys', () => {
 
     const out = parser.reconstruct(sectioned, [
       { key: 'messages.greeting', value: 'Hello', translation: 'Hallo' },
-      { key: 'errors.notFound', value: 'Not found', translation: 'Nicht gefunden' },
+      {
+        key: 'errors.notFound',
+        value: 'Not found',
+        translation: 'Nicht gefunden',
+      },
     ]);
 
-    const keys = parser.extract(out).map((e) => e.key).sort();
+    const keys = parser
+      .extract(out)
+      .map((e) => e.key)
+      .sort();
     expect(keys).toEqual(['errors.notFound', 'messages.greeting']);
   });
 });

@@ -5,7 +5,10 @@ import fg from 'fast-glob';
 import { SYNC_CONFIG_FILENAME } from './sync-config.js';
 import { safeReadFileSync } from '../utils/safe-read-file.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
-import { createDefaultRegistry, type FormatRegistry } from '../formats/index.js';
+import {
+  createDefaultRegistry,
+  type FormatRegistry,
+} from '../formats/index.js';
 
 export interface DetectedProject {
   format: string;
@@ -151,7 +154,11 @@ export const DETECTION_PATTERNS: DetectionPattern[] = [
   // root-level XLIFF is CAT-tool dump territory (Trados/memoQ/Xcode `.xcloc`
   // extracts) and a false-positive magnet. Canonical Angular layouts stay.
   {
-    globs: ['src/locale/messages.xlf', 'src/locale/*.xlf', 'src/locale/*.xliff'],
+    globs: [
+      'src/locale/messages.xlf',
+      'src/locale/*.xlf',
+      'src/locale/*.xliff',
+    ],
     format: 'xliff',
     sourceLocale: 'en',
     patternTemplate: 'src/locale/messages.{locale}.xlf',
@@ -186,7 +193,11 @@ export const DETECTION_PATTERNS: DetectionPattern[] = [
   // Xcode String Catalog — multi-locale (all locales in one file). The same
   // file is the target for every locale; no target_path_pattern needed.
   {
-    globs: ['Localizable.xcstrings', 'Resources/Localizable.xcstrings', '*.xcstrings'],
+    globs: [
+      'Localizable.xcstrings',
+      'Resources/Localizable.xcstrings',
+      '*.xcstrings',
+    ],
     format: 'xcstrings',
     sourceLocale: 'en',
     patternTemplate: '',
@@ -224,7 +235,7 @@ export const DETECTION_PATTERNS: DetectionPattern[] = [
 ];
 
 const PACKAGE_JSON_HINTS: Record<string, string> = {
-  'i18next': 'json',
+  i18next: 'json',
   'react-intl': 'json',
   'react-i18next': 'json',
   'next-intl': 'json',
@@ -232,7 +243,7 @@ const PACKAGE_JSON_HINTS: Record<string, string> = {
   'ngx-translate': 'json',
   '@angular/localize': 'xliff',
   'gettext-parser': 'po',
-  'flutter_localizations': 'arb',
+  flutter_localizations: 'arb',
 };
 
 export function detectFromPackageJson(rootDir: string): string | undefined {
@@ -242,23 +253,30 @@ export function detectFromPackageJson(rootDir: string): string | undefined {
     // file would be JSON-parsed and the CLI would act on whatever dependency
     // hints it found there.
     const content = safeReadFileSync(pkgPath, 'utf-8');
-    const pkg = JSON.parse(content) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+    const pkg = JSON.parse(content) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
     const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
     for (const [dep, format] of Object.entries(PACKAGE_JSON_HINTS)) {
       if (dep in allDeps) return format;
     }
-  } catch { /* no package.json or parse error */ }
+  } catch {
+    /* no package.json or parse error */
+  }
   return undefined;
 }
 
-export async function detectI18nFiles(rootDir: string): Promise<DetectedProject[]> {
+export async function detectI18nFiles(
+  rootDir: string
+): Promise<DetectedProject[]> {
   const detected: DetectedProject[] = [];
   let registry: FormatRegistry | undefined;
 
   for (const pattern of DETECTION_PATTERNS) {
     if (pattern.requires) {
       const allMarkersPresent = pattern.requires.every((marker) =>
-        fs.existsSync(path.join(rootDir, marker)),
+        fs.existsSync(path.join(rootDir, marker))
       );
       if (!allMarkersPresent) continue;
     }
@@ -350,11 +368,19 @@ export function generateSyncConfig(opts: {
  * so its directory becomes the project root that detection and the generated
  * globs are relative to.
  */
-export function resolveInitConfigPath(cwd: string, configPath?: string): string {
-  return configPath ? path.resolve(cwd, configPath) : path.join(cwd, SYNC_CONFIG_FILENAME);
+export function resolveInitConfigPath(
+  cwd: string,
+  configPath?: string
+): string {
+  return configPath
+    ? path.resolve(cwd, configPath)
+    : path.join(cwd, SYNC_CONFIG_FILENAME);
 }
 
-export async function writeSyncConfig(configPath: string, content: string): Promise<string> {
+export async function writeSyncConfig(
+  configPath: string,
+  content: string
+): Promise<string> {
   await fs.promises.mkdir(path.dirname(configPath), { recursive: true });
   await atomicWriteFile(configPath, content, 'utf-8');
   return configPath;

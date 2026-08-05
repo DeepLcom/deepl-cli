@@ -21,13 +21,18 @@ function entries(): ExtractedEntry[] {
   return [{ key: 'greeting', value: SOURCE }];
 }
 
-function lockEntry(translations: SyncLockEntry['translations']): Record<string, SyncLockEntry> {
+function lockEntry(
+  translations: SyncLockEntry['translations']
+): Record<string, SyncLockEntry> {
   return {
     greeting: { source_hash: CURRENT_HASH, source_text: SOURCE, translations },
   };
 }
 
-function translation(hash: string, status = 'translated'): SyncLockEntry['translations'][string] {
+function translation(
+  hash: string,
+  status = 'translated'
+): SyncLockEntry['translations'][string] {
   return {
     hash,
     status,
@@ -39,9 +44,12 @@ function translation(hash: string, status = 'translated'): SyncLockEntry['transl
 describe('computeDiff per-locale staleness', () => {
   it('should report a key as current when every locale is up to date', () => {
     const diffs = computeDiff(
-      lockEntry({ de: translation(CURRENT_HASH), fr: translation(CURRENT_HASH) }),
+      lockEntry({
+        de: translation(CURRENT_HASH),
+        fr: translation(CURRENT_HASH),
+      }),
       entries(),
-      ['de', 'fr'],
+      ['de', 'fr']
     );
 
     expect(diffs[0]?.status).toBe('current');
@@ -52,7 +60,7 @@ describe('computeDiff per-locale staleness', () => {
     const diffs = computeDiff(
       lockEntry({ de: translation(CURRENT_HASH), fr: translation(STALE_HASH) }),
       entries(),
-      ['de', 'fr'],
+      ['de', 'fr']
     );
 
     expect(diffs[0]?.status).toBe('stale');
@@ -62,19 +70,23 @@ describe('computeDiff per-locale staleness', () => {
     // A locale with no lockfile entry is a new target, promoted to `new` by
     // sync-process-bucket's hasNewLocale path so backfill is counted as new
     // keys rather than as drift. Marking it stale here would misreport it.
-    const diffs = computeDiff(lockEntry({ de: translation(CURRENT_HASH) }), entries(), [
-      'de',
-      'fr',
-    ]);
+    const diffs = computeDiff(
+      lockEntry({ de: translation(CURRENT_HASH) }),
+      entries(),
+      ['de', 'fr']
+    );
 
     expect(diffs[0]?.status).toBe('current');
   });
 
   it('should report a key as stale when a locale previously failed', () => {
     const diffs = computeDiff(
-      lockEntry({ de: translation(CURRENT_HASH), fr: translation(CURRENT_HASH, 'failed') }),
+      lockEntry({
+        de: translation(CURRENT_HASH),
+        fr: translation(CURRENT_HASH, 'failed'),
+      }),
       entries(),
-      ['de', 'fr'],
+      ['de', 'fr']
     );
 
     expect(diffs[0]?.status).toBe('stale');
@@ -86,7 +98,7 @@ describe('computeDiff per-locale staleness', () => {
     const diffs = computeDiff(
       lockEntry({ de: translation(CURRENT_HASH), es: translation(STALE_HASH) }),
       entries(),
-      ['de'],
+      ['de']
     );
 
     expect(diffs[0]?.status).toBe('current');
@@ -110,7 +122,7 @@ describe('computeDiff per-locale staleness', () => {
     // sync-status and other callers may omit the locale list.
     const diffs = computeDiff(
       lockEntry({ de: translation(CURRENT_HASH), fr: translation(STALE_HASH) }),
-      entries(),
+      entries()
     );
 
     expect(diffs[0]?.status).toBe('current');

@@ -1,5 +1,14 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { TranslationClient, TranslationResult, isTranslationResult, ProductUsage, UsageInfo, LanguageInfo, LanguageFeature, LanguageFeatures } from './translation-client.js';
+import {
+  TranslationClient,
+  TranslationResult,
+  isTranslationResult,
+  ProductUsage,
+  UsageInfo,
+  LanguageInfo,
+  LanguageFeature,
+  LanguageFeatures,
+} from './translation-client.js';
 import { GlossaryClient } from './glossary-client.js';
 import { DocumentClient } from './document-client.js';
 import { WriteClient } from './write-client.js';
@@ -31,7 +40,15 @@ import {
   AdminUsageReport,
 } from '../types/index.js';
 
-export { TranslationResult, isTranslationResult, ProductUsage, UsageInfo, LanguageInfo, LanguageFeature, LanguageFeatures };
+export {
+  TranslationResult,
+  isTranslationResult,
+  ProductUsage,
+  UsageInfo,
+  LanguageInfo,
+  LanguageFeature,
+  LanguageFeatures,
+};
 
 export class DeepLClient {
   private readonly apiKey: string;
@@ -51,7 +68,10 @@ export class DeepLClient {
   }
 
   private get translationClient(): TranslationClient {
-    this._translationClient ??= new TranslationClient(this.apiKey, this.options);
+    this._translationClient ??= new TranslationClient(
+      this.apiKey,
+      this.options
+    );
     return this._translationClient;
   }
 
@@ -131,7 +151,12 @@ export class DeepLClient {
     targetLangs: Language[],
     entries: string
   ): Promise<GlossaryInfo> {
-    return this.glossaryClient.createGlossary(name, sourceLang, targetLangs, entries);
+    return this.glossaryClient.createGlossary(
+      name,
+      sourceLang,
+      targetLangs,
+      entries
+    );
   }
 
   async listGlossaries(): Promise<GlossaryInfo[]> {
@@ -151,7 +176,11 @@ export class DeepLClient {
     sourceLang: Language,
     targetLang: Language
   ): Promise<string> {
-    return this.glossaryClient.getGlossaryEntries(glossaryId, sourceLang, targetLang);
+    return this.glossaryClient.getGlossaryEntries(
+      glossaryId,
+      sourceLang,
+      targetLang
+    );
   }
 
   async updateGlossaryEntries(
@@ -160,7 +189,12 @@ export class DeepLClient {
     targetLang: Language,
     entries: string
   ): Promise<void> {
-    return this.glossaryClient.updateGlossaryEntries(glossaryId, sourceLang, targetLang, entries);
+    return this.glossaryClient.updateGlossaryEntries(
+      glossaryId,
+      sourceLang,
+      targetLang,
+      entries
+    );
   }
 
   async replaceGlossaryDictionary(
@@ -169,7 +203,12 @@ export class DeepLClient {
     targetLang: Language,
     entries: string
   ): Promise<void> {
-    return this.glossaryClient.replaceGlossaryDictionary(glossaryId, sourceLang, targetLang, entries);
+    return this.glossaryClient.replaceGlossaryDictionary(
+      glossaryId,
+      sourceLang,
+      targetLang,
+      entries
+    );
   }
 
   async updateGlossary(
@@ -196,7 +235,11 @@ export class DeepLClient {
     sourceLang: Language,
     targetLang: Language
   ): Promise<void> {
-    return this.glossaryClient.deleteGlossaryDictionary(glossaryId, sourceLang, targetLang);
+    return this.glossaryClient.deleteGlossaryDictionary(
+      glossaryId,
+      sourceLang,
+      targetLang
+    );
   }
 
   async uploadDocument(
@@ -238,11 +281,17 @@ export class DeepLClient {
     return this.styleRulesClient.createStyleRule(options);
   }
 
-  async getStyleRule(styleId: string, detailed = false): Promise<StyleRule | StyleRuleDetailed> {
+  async getStyleRule(
+    styleId: string,
+    detailed = false
+  ): Promise<StyleRule | StyleRuleDetailed> {
     return this.styleRulesClient.getStyleRule(styleId, detailed);
   }
 
-  async updateStyleRule(styleId: string, options: UpdateStyleRuleOptions): Promise<StyleRule> {
+  async updateStyleRule(
+    styleId: string,
+    options: UpdateStyleRuleOptions
+  ): Promise<StyleRule> {
     return this.styleRulesClient.updateStyleRule(styleId, options);
   }
 
@@ -250,27 +299,37 @@ export class DeepLClient {
     return this.styleRulesClient.deleteStyleRule(styleId);
   }
 
-  async replaceConfiguredRules(styleId: string, rules: ConfiguredRules): Promise<StyleRuleDetailed> {
+  async replaceConfiguredRules(
+    styleId: string,
+    rules: ConfiguredRules
+  ): Promise<StyleRuleDetailed> {
     return this.styleRulesClient.replaceConfiguredRules(styleId, rules);
   }
 
   async createCustomInstruction(
     styleId: string,
-    options: CreateCustomInstructionOptions,
+    options: CreateCustomInstructionOptions
   ): Promise<CustomInstruction> {
     return this.styleRulesClient.createCustomInstruction(styleId, options);
   }
 
-  async getCustomInstruction(styleId: string, label: string): Promise<CustomInstruction> {
+  async getCustomInstruction(
+    styleId: string,
+    label: string
+  ): Promise<CustomInstruction> {
     return this.styleRulesClient.getCustomInstruction(styleId, label);
   }
 
   async updateCustomInstruction(
     styleId: string,
     label: string,
-    options: UpdateCustomInstructionOptions,
+    options: UpdateCustomInstructionOptions
   ): Promise<CustomInstruction> {
-    return this.styleRulesClient.updateCustomInstruction(styleId, label, options);
+    return this.styleRulesClient.updateCustomInstruction(
+      styleId,
+      label,
+      options
+    );
   }
 
   async deleteCustomInstruction(styleId: string, label: string): Promise<void> {
@@ -293,7 +352,10 @@ export class DeepLClient {
     return this.adminClient.renameApiKey(keyId, label);
   }
 
-  async setApiKeyLimit(keyId: string, characters: number | null): Promise<void> {
+  async setApiKeyLimit(
+    keyId: string,
+    characters: number | null
+  ): Promise<void> {
     return this.adminClient.setApiKeyLimit(keyId, characters);
   }
 

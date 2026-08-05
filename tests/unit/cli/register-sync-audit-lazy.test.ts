@@ -13,9 +13,8 @@ import { Command } from 'commander';
 
 describe('registerSyncAudit lazy loading', () => {
   it('does not load sync-bucket-walker at registration time', async () => {
-    const { registerSyncAudit } = await import(
-      '../../../src/cli/commands/sync/register-sync-audit'
-    );
+    const { registerSyncAudit } =
+      await import('../../../src/cli/commands/sync/register-sync-audit');
 
     const program = new Command();
     registerSyncAudit(program, { handleError: jest.fn() as never });

@@ -24,7 +24,7 @@ export interface TagHandlingSelection {
  * version and keep the cache keys they had.
  */
 export function resolveTagHandlingVersion(
-  selection: TagHandlingSelection,
+  selection: TagHandlingSelection
 ): 'v1' | 'v2' | undefined {
   if (selection.tagHandlingVersion) {
     return selection.tagHandlingVersion;

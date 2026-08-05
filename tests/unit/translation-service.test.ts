@@ -2,14 +2,20 @@
  * Tests for TranslationService
  */
 
- 
-
-import { TranslationService, MAX_TEXT_BYTES, MULTI_TARGET_CONCURRENCY } from '../../src/services/translation';
+import {
+  TranslationService,
+  MAX_TEXT_BYTES,
+  MULTI_TARGET_CONCURRENCY,
+} from '../../src/services/translation';
 import { DeepLClient, TranslationResult } from '../../src/api/deepl-client';
 import { ConfigService } from '../../src/storage/config';
 import { CacheService } from '../../src/storage/cache';
 import { Language } from '../../src/types';
-import { createMockDeepLClient, createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
+import {
+  createMockDeepLClient,
+  createMockConfigService,
+  createMockCacheService,
+} from '../helpers/mock-factories';
 
 // Mock dependencies
 jest.mock('../../src/api/deepl-client');
@@ -48,14 +54,17 @@ describe('TranslationService', () => {
 
     mockCacheService = createMockCacheService();
 
-    translationService = new TranslationService(mockDeepLClient, mockConfigService, mockCacheService);
+    translationService = new TranslationService(
+      mockDeepLClient,
+      mockConfigService,
+      mockCacheService
+    );
   });
 
   describe('initialization', () => {
     it('should create a TranslationService instance', () => {
       expect(translationService).toBeInstanceOf(TranslationService);
     });
-
   });
 
   describe('translate()', () => {
@@ -96,7 +105,6 @@ describe('TranslationService', () => {
         auth: {},
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-
       });
 
       mockDeepLClient.translate.mockResolvedValue({
@@ -123,12 +131,15 @@ describe('TranslationService', () => {
           formality: 'more',
           preserveFormatting: true,
         },
-        cache: { enabled: true, maxSize: 1024 * 1024 * 1024, ttl: 30 * 24 * 60 * 60 },
+        cache: {
+          enabled: true,
+          maxSize: 1024 * 1024 * 1024,
+          ttl: 30 * 24 * 60 * 60,
+        },
         api: { baseUrl: 'https://api.deepl.com/v2', usePro: true },
         auth: {},
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
-
       });
 
       mockDeepLClient.translate.mockResolvedValue({
@@ -157,7 +168,6 @@ describe('TranslationService', () => {
 
     it('should throw error when no target language specified', async () => {
       await expect(
-         
         translationService.translate('Hello', {} as any)
       ).rejects.toThrow('Target language is required');
     });
@@ -289,10 +299,20 @@ describe('TranslationService', () => {
 
     it('should handle batch size limits (50 texts per batch)', async () => {
       // Create 100 UNIQUE texts to avoid deduplication
-      const largeTextArray = Array(100).fill(0).map((_, i) => `test${i}`);
+      const largeTextArray = Array(100)
+        .fill(0)
+        .map((_, i) => `test${i}`);
       mockDeepLClient.translateBatch
-        .mockResolvedValueOnce(Array(50).fill(0).map((_, i) => ({ text: `traducido${i}` })))
-        .mockResolvedValueOnce(Array(50).fill(0).map((_, i) => ({ text: `traducido${i + 50}` })));
+        .mockResolvedValueOnce(
+          Array(50)
+            .fill(0)
+            .map((_, i) => ({ text: `traducido${i}` }))
+        )
+        .mockResolvedValueOnce(
+          Array(50)
+            .fill(0)
+            .map((_, i) => ({ text: `traducido${i + 50}` }))
+        );
 
       await translationService.translateBatch(largeTextArray, {
         targetLang: 'es',
@@ -305,14 +325,20 @@ describe('TranslationService', () => {
     it('should correctly map results when first batch fails (CRITICAL BUG #3)', async () => {
       // This test demonstrates the critical index mismatch bug
       // Scenario: 100 texts, first batch (50 texts) fails, second batch (50 texts) succeeds
-      const batch1Texts = Array(50).fill(0).map((_, i) => `Text${i}`);
-      const batch2Texts = Array(50).fill(0).map((_, i) => `Text${i + 50}`);
+      const batch1Texts = Array(50)
+        .fill(0)
+        .map((_, i) => `Text${i}`);
+      const batch2Texts = Array(50)
+        .fill(0)
+        .map((_, i) => `Text${i + 50}`);
       const allTexts = [...batch1Texts, ...batch2Texts];
 
       // First batch fails, second batch succeeds
       mockDeepLClient.translateBatch
         .mockRejectedValueOnce(new Error('API error for first batch'))
-        .mockResolvedValueOnce(batch2Texts.map(t => ({ text: `${t}_translated` })));
+        .mockResolvedValueOnce(
+          batch2Texts.map((t) => ({ text: `${t}_translated` }))
+        );
 
       const results = await translationService.translateBatch(allTexts, {
         targetLang: 'es',
@@ -336,7 +362,7 @@ describe('TranslationService', () => {
       expect(cacheSetCalls.length).toBe(50); // 50 successful translations cached
 
       // Verify a specific text was cached correctly
-      const text55CacheCall = cacheSetCalls.find(call => {
+      const text55CacheCall = cacheSetCalls.find((call) => {
         const result = call[1] as TranslationResult;
         return result.text === 'Text55_translated';
       });
@@ -346,12 +372,18 @@ describe('TranslationService', () => {
     it('should handle partial batch failures correctly', async () => {
       // Test with 100 texts split into 2 batches (50 each)
       // Batch 1 succeeds, Batch 2 fails
-      const batch1Texts = Array(50).fill(0).map((_, i) => `Text${i}`);
-      const batch2Texts = Array(50).fill(0).map((_, i) => `Text${i + 50}`);
+      const batch1Texts = Array(50)
+        .fill(0)
+        .map((_, i) => `Text${i}`);
+      const batch2Texts = Array(50)
+        .fill(0)
+        .map((_, i) => `Text${i + 50}`);
       const allTexts = [...batch1Texts, ...batch2Texts];
 
       mockDeepLClient.translateBatch
-        .mockResolvedValueOnce(batch1Texts.map(t => ({ text: `${t}_translated` }))) // Batch 1 succeeds
+        .mockResolvedValueOnce(
+          batch1Texts.map((t) => ({ text: `${t}_translated` }))
+        ) // Batch 1 succeeds
         .mockRejectedValueOnce(new Error('API error for second batch')); // Batch 2 fails
 
       const results = await translationService.translateBatch(allTexts, {
@@ -376,13 +408,13 @@ describe('TranslationService', () => {
       // This test demonstrates the duplicate text bug
       // When the same text appears multiple times, all occurrences should get translations
       mockDeepLClient.translateBatch.mockResolvedValue([
-        { text: 'Hola' },     // Translation for "Hello"
-        { text: 'Mundo' },    // Translation for "World"
+        { text: 'Hola' }, // Translation for "Hello"
+        { text: 'Mundo' }, // Translation for "World"
       ]);
 
       // Input has "Hello" twice - both should be translated
       const results = await translationService.translateBatch(
-        ['Hello', 'Hello', 'World'],  // "Hello" appears twice
+        ['Hello', 'Hello', 'World'], // "Hello" appears twice
         { targetLang: 'es' }
       );
 
@@ -391,12 +423,12 @@ describe('TranslationService', () => {
 
       // Both "Hello" instances should have translations
       expect(results[0]?.text).toBe('Hola');
-      expect(results[1]?.text).toBe('Hola');  // Second "Hello" should also be translated
+      expect(results[1]?.text).toBe('Hola'); // Second "Hello" should also be translated
       expect(results[2]?.text).toBe('Mundo');
 
       // Verify API was called with deduplicated texts (only unique texts sent)
       expect(mockDeepLClient.translateBatch).toHaveBeenCalledWith(
-        ['Hello', 'World'],  // Deduplicated!
+        ['Hello', 'World'], // Deduplicated!
         expect.any(Object)
       );
     });
@@ -429,43 +461,49 @@ describe('TranslationService', () => {
       const resolvers: Array<(value: { text: string }) => void> = [];
 
       mockDeepLClient.translate.mockImplementation(
-        () => new Promise<{ text: string }>((resolve) => {
-          resolvers.push(resolve);
-        })
+        () =>
+          new Promise<{ text: string }>((resolve) => {
+            resolvers.push(resolve);
+          })
       );
 
-      const resultPromise = translationService.translateToMultiple('Hello', langs);
+      const resultPromise = translationService.translateToMultiple(
+        'Hello',
+        langs
+      );
 
       // With 3 languages and concurrency limit of 5, all 3 should start immediately
-      await new Promise(r => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 10));
       expect(resolvers).toHaveLength(3);
 
-      resolvers.forEach(r => r({ text: 'Translated' }));
+      resolvers.forEach((r) => r({ text: 'Translated' }));
       const results = await resultPromise;
       expect(results).toHaveLength(3);
     });
 
     it('should enforce concurrency limit when target languages exceed it', async () => {
       const langs = Array.from(
-        { length: MULTI_TARGET_CONCURRENCY + 3 }, (_, i) => `lang${i}`
+        { length: MULTI_TARGET_CONCURRENCY + 3 },
+        (_, i) => `lang${i}`
       ) as Language[];
       let inflight = 0;
       let maxInflight = 0;
 
-      mockDeepLClient.translate.mockImplementation(
-        () => {
-          inflight++;
-          maxInflight = Math.max(maxInflight, inflight);
-          return new Promise<{ text: string }>((resolve) => {
-            setTimeout(() => {
-              inflight--;
-              resolve({ text: 'Translated' });
-            }, 5);
-          });
-        }
-      );
+      mockDeepLClient.translate.mockImplementation(() => {
+        inflight++;
+        maxInflight = Math.max(maxInflight, inflight);
+        return new Promise<{ text: string }>((resolve) => {
+          setTimeout(() => {
+            inflight--;
+            resolve({ text: 'Translated' });
+          }, 5);
+        });
+      });
 
-      const results = await translationService.translateToMultiple('Hello', langs);
+      const results = await translationService.translateToMultiple(
+        'Hello',
+        langs
+      );
 
       expect(results).toHaveLength(langs.length);
       expect(maxInflight).toBeLessThanOrEqual(MULTI_TARGET_CONCURRENCY);
@@ -475,7 +513,8 @@ describe('TranslationService', () => {
     it('should process all items even when concurrency is limited', async () => {
       const count = MULTI_TARGET_CONCURRENCY * 3;
       const langs = Array.from(
-        { length: count }, (_, i) => `lang${i}`
+        { length: count },
+        (_, i) => `lang${i}`
       ) as Language[];
 
       mockDeepLClient.translate.mockImplementation(
@@ -483,7 +522,10 @@ describe('TranslationService', () => {
           Promise.resolve({ text: `translated-${opts.targetLang}` })
       );
 
-      const results = await translationService.translateToMultiple('Hello', langs);
+      const results = await translationService.translateToMultiple(
+        'Hello',
+        langs
+      );
 
       expect(results).toHaveLength(count);
       for (let i = 0; i < count; i++) {
@@ -589,9 +631,11 @@ describe('TranslationService', () => {
   describe('preserveVariables()', () => {
     it('should preserve curly brace variables', async () => {
       // Mock to echo back the translated text with placeholders intact
-      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
-        text: text.replace('Hello', 'Hola'),
-      }));
+      mockDeepLClient.translate.mockImplementation((text) =>
+        Promise.resolve({
+          text: text.replace('Hello', 'Hola'),
+        })
+      );
 
       const result = await translationService.translate('Hello {name}', {
         targetLang: 'es',
@@ -601,9 +645,11 @@ describe('TranslationService', () => {
     });
 
     it('should preserve dollar sign variables', async () => {
-      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
-        text: text.replace('Hello', 'Hola'),
-      }));
+      mockDeepLClient.translate.mockImplementation((text) =>
+        Promise.resolve({
+          text: text.replace('Hello', 'Hola'),
+        })
+      );
 
       const result = await translationService.translate('Hello ${name}', {
         targetLang: 'es',
@@ -613,37 +659,58 @@ describe('TranslationService', () => {
     });
 
     it('should preserve printf-style variables', async () => {
-      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
-        text: text.replace('Hello', 'Hola').replace('you are', 'tienes').replace('years old', 'años'),
-      }));
+      mockDeepLClient.translate.mockImplementation((text) =>
+        Promise.resolve({
+          text: text
+            .replace('Hello', 'Hola')
+            .replace('you are', 'tienes')
+            .replace('years old', 'años'),
+        })
+      );
 
-      const result = await translationService.translate('Hello %s, you are %d years old', {
-        targetLang: 'es',
-      });
+      const result = await translationService.translate(
+        'Hello %s, you are %d years old',
+        {
+          targetLang: 'es',
+        }
+      );
 
       expect(result.text).toBe('Hola %s, tienes %d años');
     });
 
     it('should preserve numbered placeholders', async () => {
-      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
-        text: text.replace('Hello', 'Hola').replace('you are', 'tienes').replace('years old', 'años'),
-      }));
+      mockDeepLClient.translate.mockImplementation((text) =>
+        Promise.resolve({
+          text: text
+            .replace('Hello', 'Hola')
+            .replace('you are', 'tienes')
+            .replace('years old', 'años'),
+        })
+      );
 
-      const result = await translationService.translate('Hello {0}, you are {1} years old', {
-        targetLang: 'es',
-      });
+      const result = await translationService.translate(
+        'Hello {0}, you are {1} years old',
+        {
+          targetLang: 'es',
+        }
+      );
 
       expect(result.text).toBe('Hola {0}, tienes {1} años');
     });
 
     it('should preserve multiple variable types', async () => {
-      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
-        text: text.replace('has', 'tiene').replace('and', 'y'),
-      }));
+      mockDeepLClient.translate.mockImplementation((text) =>
+        Promise.resolve({
+          text: text.replace('has', 'tiene').replace('and', 'y'),
+        })
+      );
 
-      const result = await translationService.translate('{name} has ${count} and %s', {
-        targetLang: 'es',
-      });
+      const result = await translationService.translate(
+        '{name} has ${count} and %s',
+        {
+          targetLang: 'es',
+        }
+      );
 
       // Variables are preserved, though order may change based on translation
       expect(result.text).toContain('{name}');
@@ -653,11 +720,16 @@ describe('TranslationService', () => {
 
     it('should preserve many variables efficiently (Issue #7)', async () => {
       // Test with many variables to ensure efficient placeholder generation
-      const text = Array(100).fill(0).map((_, i) => `{var${i}}`).join(' ');
+      const text = Array(100)
+        .fill(0)
+        .map((_, i) => `{var${i}}`)
+        .join(' ');
 
-      mockDeepLClient.translate.mockImplementation((translatedText) => Promise.resolve({
-        text: translatedText, // Echo back with placeholders
-      }));
+      mockDeepLClient.translate.mockImplementation((translatedText) =>
+        Promise.resolve({
+          text: translatedText, // Echo back with placeholders
+        })
+      );
 
       const result = await translationService.translate(text, {
         targetLang: 'es',
@@ -670,13 +742,18 @@ describe('TranslationService', () => {
     });
 
     it('should handle duplicate variable names correctly', async () => {
-      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
-        text: text.replace('and', 'y'),
-      }));
+      mockDeepLClient.translate.mockImplementation((text) =>
+        Promise.resolve({
+          text: text.replace('and', 'y'),
+        })
+      );
 
-      const result = await translationService.translate('{name} and {name} and {name}', {
-        targetLang: 'es',
-      });
+      const result = await translationService.translate(
+        '{name} and {name} and {name}',
+        {
+          targetLang: 'es',
+        }
+      );
 
       // Should preserve all three {name} instances
       const nameCount = (result.text.match(/\{name\}/g) ?? []).length;
@@ -760,7 +837,8 @@ describe('TranslationService', () => {
         { language: 'es', name: 'Spanish' },
       ]);
 
-      const languages = await translationService.getSupportedLanguages('source');
+      const languages =
+        await translationService.getSupportedLanguages('source');
 
       expect(languages).toHaveLength(2);
       expect(languages[0]?.language).toBe('en');
@@ -773,7 +851,8 @@ describe('TranslationService', () => {
         { language: 'fr', name: 'French' },
       ]);
 
-      const languages = await translationService.getSupportedLanguages('target');
+      const languages =
+        await translationService.getSupportedLanguages('target');
 
       expect(languages).toHaveLength(2);
       expect(languages[0]?.language).toBe('es');
@@ -797,7 +876,9 @@ describe('TranslationService', () => {
       const text = 'a'.repeat(50000);
       mockDeepLClient.translate.mockResolvedValue({ text: 'a'.repeat(50000) });
 
-      const result = await translationService.translate(text, { targetLang: 'es' });
+      const result = await translationService.translate(text, {
+        targetLang: 'es',
+      });
 
       expect(result.text.length).toBe(50000);
       expect(mockDeepLClient.translate).toHaveBeenCalled();
@@ -807,7 +888,9 @@ describe('TranslationService', () => {
       const text = 'a'.repeat(MAX_TEXT_BYTES);
       mockDeepLClient.translate.mockResolvedValue({ text });
 
-      const result = await translationService.translate(text, { targetLang: 'es' });
+      const result = await translationService.translate(text, {
+        targetLang: 'es',
+      });
 
       expect(result.text).toBe(text);
     });
@@ -826,7 +909,9 @@ describe('TranslationService', () => {
 
       await expect(
         translationService.translate(text, { targetLang: 'es' })
-      ).rejects.toThrow(`${expectedBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit`);
+      ).rejects.toThrow(
+        `${expectedBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit`
+      );
     });
 
     it('should suggest splitting text in the error message', async () => {
@@ -834,7 +919,9 @@ describe('TranslationService', () => {
 
       await expect(
         translationService.translate(text, { targetLang: 'es' })
-      ).rejects.toThrow('Split the text into smaller chunks or use file translation');
+      ).rejects.toThrow(
+        'Split the text into smaller chunks or use file translation'
+      );
     });
 
     it('should measure multi-byte characters correctly', async () => {
@@ -844,7 +931,9 @@ describe('TranslationService', () => {
       const textAtLimit = cjkChar.repeat(charCount);
       mockDeepLClient.translate.mockResolvedValue({ text: textAtLimit });
 
-      const result = await translationService.translate(textAtLimit, { targetLang: 'en' });
+      const result = await translationService.translate(textAtLimit, {
+        targetLang: 'en',
+      });
       expect(result.text).toBe(textAtLimit);
 
       // One more character pushes it over
@@ -868,10 +957,9 @@ describe('TranslationService', () => {
       const oversizedText = 'a'.repeat(MAX_TEXT_BYTES + 1);
 
       await expect(
-        translationService.translateBatch(
-          ['Hello', oversizedText, 'World'],
-          { targetLang: 'es' }
-        )
+        translationService.translateBatch(['Hello', oversizedText, 'World'], {
+          targetLang: 'es',
+        })
       ).rejects.toThrow('Text at index 1 too large');
     });
 
@@ -888,10 +976,9 @@ describe('TranslationService', () => {
         { text: 'B-translated' },
       ]);
 
-      const results = await translationService.translateBatch(
-        [text1, text2],
-        { targetLang: 'es' },
-      );
+      const results = await translationService.translateBatch([text1, text2], {
+        targetLang: 'es',
+      });
 
       expect(results).toHaveLength(2);
       expect(results[0]?.text).toBe('A-translated');
@@ -986,7 +1073,9 @@ describe('TranslationService', () => {
         text: 'Hola (cached)',
       });
 
-      const result = await translationService.translate('Hello', { targetLang: 'es' });
+      const result = await translationService.translate('Hello', {
+        targetLang: 'es',
+      });
 
       expect(result.text).toBe('Hola (cached)');
       expect(mockDeepLClient.translate).not.toHaveBeenCalled();
@@ -998,7 +1087,9 @@ describe('TranslationService', () => {
         text: 'Hola (cached)',
       });
 
-      const result = await translationService.translate('Hello', { targetLang: 'es' });
+      const result = await translationService.translate('Hello', {
+        targetLang: 'es',
+      });
 
       expect(result.cached).toBe(true);
     });
@@ -1008,7 +1099,9 @@ describe('TranslationService', () => {
         text: 'Hola',
       });
 
-      const result = await translationService.translate('Hello', { targetLang: 'es' });
+      const result = await translationService.translate('Hello', {
+        targetLang: 'es',
+      });
 
       expect(result.cached).toBe(false);
     });
@@ -1053,7 +1146,9 @@ describe('TranslationService', () => {
       expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1);
 
       // Second call with same params
-      const result2 = await translationService.translate('Hello', { targetLang: 'es' });
+      const result2 = await translationService.translate('Hello', {
+        targetLang: 'es',
+      });
       expect(result2.text).toBe('Hola (cached)');
       expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1); // Still only 1 API call
     });
@@ -1161,14 +1256,17 @@ describe('TranslationService', () => {
       const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 
       const keysFor = async (
-        optionSets: Array<Record<string, unknown>>,
+        optionSets: Array<Record<string, unknown>>
       ): Promise<string[]> => {
         mockCacheService.get.mockReturnValue(null);
         mockDeepLClient.translate.mockResolvedValue({ text: 'Hola' });
         mockCacheService.set.mockClear();
 
         for (const options of optionSets) {
-          await translationService.translate('Hello', { targetLang: 'es', ...options } as any);
+          await translationService.translate('Hello', {
+            targetLang: 'es',
+            ...options,
+          } as any);
         }
 
         return mockCacheService.set.mock.calls.map((call) => call[0]);
@@ -1183,13 +1281,19 @@ describe('TranslationService', () => {
       });
 
       it('should separate one glossary from two', async () => {
-        const [one, two] = await keysFor([{ glossaryIds: [A] }, { glossaryIds: [A, B] }]);
+        const [one, two] = await keysFor([
+          { glossaryIds: [A] },
+          { glossaryIds: [A, B] },
+        ]);
         expect(one).not.toBe(two);
       });
 
       /** A reordered list is a different request to the API, so the keys must differ. */
       it('should separate the two orderings of the same glossaries', async () => {
-        const [ab, ba] = await keysFor([{ glossaryIds: [A, B] }, { glossaryIds: [B, A] }]);
+        const [ab, ba] = await keysFor([
+          { glossaryIds: [A, B] },
+          { glossaryIds: [B, A] },
+        ]);
         expect(ab).not.toBe(ba);
       });
 
@@ -1209,14 +1313,17 @@ describe('TranslationService', () => {
 
     describe('tag handling version cache keys', () => {
       const keysFor = async (
-        optionSets: Array<Record<string, unknown>>,
+        optionSets: Array<Record<string, unknown>>
       ): Promise<string[]> => {
         mockCacheService.get.mockReturnValue(null);
         mockDeepLClient.translate.mockResolvedValue({ text: 'Hola' });
         mockCacheService.set.mockClear();
 
         for (const options of optionSets) {
-          await translationService.translate('Hello', { targetLang: 'es', ...options } as any);
+          await translationService.translate('Hello', {
+            targetLang: 'es',
+            ...options,
+          } as any);
         }
 
         return mockCacheService.set.mock.calls.map((call) => call[0]);
@@ -1242,21 +1349,27 @@ describe('TranslationService', () => {
 
     describe('cache keys for parameters that change the translation', () => {
       const keysFor = async (
-        optionSets: Array<Record<string, unknown>>,
+        optionSets: Array<Record<string, unknown>>
       ): Promise<string[]> => {
         mockCacheService.get.mockReturnValue(null);
         mockDeepLClient.translate.mockResolvedValue({ text: 'Hola' });
         mockCacheService.set.mockClear();
 
         for (const options of optionSets) {
-          await translationService.translate('Hello', { targetLang: 'es', ...options } as any);
+          await translationService.translate('Hello', {
+            targetLang: 'es',
+            ...options,
+          } as any);
         }
 
         return mockCacheService.set.mock.calls.map((call) => call[0]);
       };
 
       it('should separate a translation-memory request from one without', async () => {
-        const [none, withTm] = await keysFor([{}, { translationMemoryId: 'tm-1' }]);
+        const [none, withTm] = await keysFor([
+          {},
+          { translationMemoryId: 'tm-1' },
+        ]);
         expect(none).not.toBe(withTm);
       });
 
@@ -1359,9 +1472,12 @@ describe('TranslationService', () => {
 
       expect(result.text).toBe('Hello world');
       expect(result.detectedSourceLang).toBe('zh');
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith('你好世界', expect.objectContaining({
-        targetLang: 'en',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        '你好世界',
+        expect.objectContaining({
+          targetLang: 'en',
+        })
+      );
     });
 
     it('should translate CJK Japanese characters', async () => {
@@ -1375,9 +1491,12 @@ describe('TranslationService', () => {
       });
 
       expect(result.text).toBe('Hello');
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith('こんにちは', expect.objectContaining({
-        targetLang: 'en',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        'こんにちは',
+        expect.objectContaining({
+          targetLang: 'en',
+        })
+      );
     });
 
     it('should translate CJK Korean characters', async () => {
@@ -1391,9 +1510,12 @@ describe('TranslationService', () => {
       });
 
       expect(result.text).toBe('Hello');
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith('안녕하세요', expect.objectContaining({
-        targetLang: 'en',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        '안녕하세요',
+        expect.objectContaining({
+          targetLang: 'en',
+        })
+      );
     });
 
     it('should translate Arabic/RTL text', async () => {
@@ -1407,9 +1529,12 @@ describe('TranslationService', () => {
       });
 
       expect(result.text).toBe('Hello world');
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith('مرحبا بالعالم', expect.objectContaining({
-        targetLang: 'en',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        'مرحبا بالعالم',
+        expect.objectContaining({
+          targetLang: 'en',
+        })
+      );
     });
 
     it('should handle text with emoji', async () => {
@@ -1422,9 +1547,12 @@ describe('TranslationService', () => {
       });
 
       expect(result.text).toBe('Hola 🌍🎉');
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith('Hello 🌍🎉', expect.objectContaining({
-        targetLang: 'es',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        'Hello 🌍🎉',
+        expect.objectContaining({
+          targetLang: 'es',
+        })
+      );
     });
 
     it('should handle multi-codepoint emoji (family ZWJ sequence)', async () => {
@@ -1433,14 +1561,20 @@ describe('TranslationService', () => {
         text: `${familyEmoji} familia`,
       });
 
-      const result = await translationService.translate(`${familyEmoji} family`, {
-        targetLang: 'es',
-      });
+      const result = await translationService.translate(
+        `${familyEmoji} family`,
+        {
+          targetLang: 'es',
+        }
+      );
 
       expect(result.text).toBe(`${familyEmoji} familia`);
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith(`${familyEmoji} family`, expect.objectContaining({
-        targetLang: 'es',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        `${familyEmoji} family`,
+        expect.objectContaining({
+          targetLang: 'es',
+        })
+      );
     });
 
     it('should handle combining characters (precomposed)', async () => {
@@ -1454,9 +1588,12 @@ describe('TranslationService', () => {
       });
 
       expect(result.text).toBe(precomposed);
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith(precomposed, expect.objectContaining({
-        targetLang: 'es',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        precomposed,
+        expect.objectContaining({
+          targetLang: 'es',
+        })
+      );
     });
 
     it('should handle combining characters (decomposed)', async () => {
@@ -1470,9 +1607,12 @@ describe('TranslationService', () => {
       });
 
       expect(result.text).toBe(decomposed);
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith(decomposed, expect.objectContaining({
-        targetLang: 'es',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        decomposed,
+        expect.objectContaining({
+          targetLang: 'es',
+        })
+      );
     });
 
     it('should handle mixed scripts in a single string', async () => {
@@ -1486,9 +1626,12 @@ describe('TranslationService', () => {
       });
 
       expect(result.text).toBe('Translated mixed text');
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith(mixedText, expect.objectContaining({
-        targetLang: 'es',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        mixedText,
+        expect.objectContaining({
+          targetLang: 'es',
+        })
+      );
     });
 
     it('should handle surrogate pair characters (astral plane)', async () => {
@@ -1502,9 +1645,12 @@ describe('TranslationService', () => {
       });
 
       expect(result.text).toBe(astralChar);
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith(astralChar, expect.objectContaining({
-        targetLang: 'es',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        astralChar,
+        expect.objectContaining({
+          targetLang: 'es',
+        })
+      );
     });
 
     it('should handle zero-width joiners in text', async () => {
@@ -1573,9 +1719,11 @@ describe('TranslationService', () => {
     });
 
     it('should preserve variables in CJK text', async () => {
-      mockDeepLClient.translate.mockImplementation((text) => Promise.resolve({
-        text: text.replace('こんにちは', 'Hola'),
-      }));
+      mockDeepLClient.translate.mockImplementation((text) =>
+        Promise.resolve({
+          text: text.replace('こんにちは', 'Hola'),
+        })
+      );
 
       const result = await translationService.translate('こんにちは {name}', {
         targetLang: 'es',
@@ -1608,9 +1756,12 @@ describe('TranslationService', () => {
       await translationService.translate('你好', { targetLang: 'en' });
 
       expect(mockCacheService.set).toHaveBeenCalledTimes(1);
-      expect(mockDeepLClient.translate).toHaveBeenCalledWith('你好', expect.objectContaining({
-        targetLang: 'en',
-      }));
+      expect(mockDeepLClient.translate).toHaveBeenCalledWith(
+        '你好',
+        expect.objectContaining({
+          targetLang: 'en',
+        })
+      );
     });
   });
 
@@ -1618,7 +1769,10 @@ describe('TranslationService', () => {
     let cachelessService: TranslationService;
 
     beforeEach(() => {
-      cachelessService = new TranslationService(mockDeepLClient, mockConfigService);
+      cachelessService = new TranslationService(
+        mockDeepLClient,
+        mockConfigService
+      );
     });
 
     it('should translate even though cache.enabled is true in config', async () => {
@@ -1627,7 +1781,9 @@ describe('TranslationService', () => {
         detectedSourceLang: 'en',
       });
 
-      const result = await cachelessService.translate('Hello', { targetLang: 'es' });
+      const result = await cachelessService.translate('Hello', {
+        targetLang: 'es',
+      });
 
       expect(result.text).toBe('Hola');
       expect(mockDeepLClient.translate).toHaveBeenCalledTimes(1);
@@ -1639,11 +1795,13 @@ describe('TranslationService', () => {
         { text: 'Mundo' },
       ]);
 
-      const results = await cachelessService.translateBatch(['Hello', 'World'], { targetLang: 'es' });
+      const results = await cachelessService.translateBatch(
+        ['Hello', 'World'],
+        { targetLang: 'es' }
+      );
 
       expect(results).toHaveLength(2);
       expect(results[0]?.text).toBe('Hola');
     });
   });
-
 });

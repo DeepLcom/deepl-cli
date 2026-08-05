@@ -4,7 +4,6 @@
  */
 
 jest.mock('ws', () => {
-   
   const { EventEmitter } = require('events');
   class MockWebSocket extends EventEmitter {
     static OPEN = 1;
@@ -18,10 +17,24 @@ jest.mock('ws', () => {
 
 jest.mock('chalk', () => {
   const passthrough = (s: string) => s;
-  return { __esModule: true, default: { red: passthrough, green: passthrough, blue: passthrough, yellow: passthrough, gray: passthrough, bold: passthrough, level: 3 } };
+  return {
+    __esModule: true,
+    default: {
+      red: passthrough,
+      green: passthrough,
+      blue: passthrough,
+      yellow: passthrough,
+      gray: passthrough,
+      bold: passthrough,
+      level: 3,
+    },
+  };
 });
 
-import { createVoiceCommand, type GetApiKeyAndOptions } from '../../src/cli/commands/service-factory.js';
+import {
+  createVoiceCommand,
+  type GetApiKeyAndOptions,
+} from '../../src/cli/commands/service-factory.js';
 
 describe('createVoiceCommand', () => {
   it('should reject insecure HTTP base URL', async () => {
@@ -31,7 +44,7 @@ describe('createVoiceCommand', () => {
     });
 
     await expect(createVoiceCommand(getApiKeyAndOptions)).rejects.toThrow(
-      /Insecure HTTP URL rejected/,
+      /Insecure HTTP URL rejected/
     );
   });
 
@@ -42,7 +55,7 @@ describe('createVoiceCommand', () => {
     });
 
     await expect(createVoiceCommand(getApiKeyAndOptions)).rejects.toThrow(
-      /Unsupported protocol/,
+      /Unsupported protocol/
     );
   });
 
@@ -93,7 +106,7 @@ describe('createVoiceCommand', () => {
     });
 
     await expect(createVoiceCommand(getApiKeyAndOptions)).rejects.toThrow(
-      /Invalid URL/,
+      /Invalid URL/
     );
   });
 });

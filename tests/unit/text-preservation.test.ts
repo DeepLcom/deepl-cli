@@ -1,4 +1,8 @@
-import { preserveCodeBlocks, preserveVariables, restorePlaceholders } from '../../src/utils/text-preservation.js';
+import {
+  preserveCodeBlocks,
+  preserveVariables,
+  restorePlaceholders,
+} from '../../src/utils/text-preservation.js';
 
 describe('text-preservation', () => {
   describe('preserveCodeBlocks', () => {
@@ -179,7 +183,8 @@ describe('text-preservation', () => {
 
   describe('round-trip', () => {
     it('should restore original text after preserve → restore cycle', () => {
-      const original = 'Run `npm install` to install ${packageName} (version %s)';
+      const original =
+        'Run `npm install` to install ${packageName} (version %s)';
       const map = new Map<string, string>();
 
       let processed = preserveCodeBlocks(original, map);

@@ -29,9 +29,9 @@ describe('GlossaryService', () => {
   describe('createGlossary()', () => {
     it('should create a glossary from entries', async () => {
       const entries = {
-        'API': 'API',
-        'REST': 'REST',
-        'Hello': 'Hola',
+        API: 'API',
+        REST: 'REST',
+        Hello: 'Hola',
       };
 
       mockDeepLClient.createGlossary.mockResolvedValue({
@@ -39,11 +39,13 @@ describe('GlossaryService', () => {
         name: 'tech-terms',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 3,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 3,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -87,11 +89,13 @@ describe('GlossaryService', () => {
         name: 'test',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 3,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 3,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -113,11 +117,13 @@ describe('GlossaryService', () => {
         name: 'test',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 3,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 3,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -139,11 +145,13 @@ describe('GlossaryService', () => {
         name: 'test',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 3,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 3,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -166,11 +174,13 @@ describe('GlossaryService', () => {
           name: 'tech-terms',
           source_lang: 'en',
           target_langs: ['es'],
-          dictionaries: [{
-            source_lang: 'en',
-            target_lang: 'es',
-            entry_count: 10,
-          }],
+          dictionaries: [
+            {
+              source_lang: 'en',
+              target_lang: 'es',
+              entry_count: 10,
+            },
+          ],
           creation_time: '2024-01-01T00:00:00Z',
         },
         {
@@ -178,11 +188,13 @@ describe('GlossaryService', () => {
           name: 'legal-terms',
           source_lang: 'en',
           target_langs: ['de'],
-          dictionaries: [{
-            source_lang: 'en',
-            target_lang: 'de',
-            entry_count: 25,
-          }],
+          dictionaries: [
+            {
+              source_lang: 'en',
+              target_lang: 'de',
+              entry_count: 25,
+            },
+          ],
           creation_time: '2024-01-02T00:00:00Z',
         },
       ]);
@@ -210,11 +222,13 @@ describe('GlossaryService', () => {
         name: 'tech-terms',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 10,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 10,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -230,9 +244,9 @@ describe('GlossaryService', () => {
         new Error('Glossary not found')
       );
 
-      await expect(
-        glossaryService.getGlossary('non-existent')
-      ).rejects.toThrow('Glossary not found');
+      await expect(glossaryService.getGlossary('non-existent')).rejects.toThrow(
+        'Glossary not found'
+      );
     });
   });
 
@@ -244,11 +258,13 @@ describe('GlossaryService', () => {
           name: 'tech-terms',
           source_lang: 'en',
           target_langs: ['es'],
-          dictionaries: [{
-            source_lang: 'en',
-            target_lang: 'es',
-            entry_count: 10,
-          }],
+          dictionaries: [
+            {
+              source_lang: 'en',
+              target_lang: 'es',
+              entry_count: 10,
+            },
+          ],
           creation_time: '2024-01-01T00:00:00Z',
         },
       ]);
@@ -269,7 +285,9 @@ describe('GlossaryService', () => {
 
     it('should warn when the matched glossary itself has empty dictionaries', async () => {
       const { Logger } = await import('../../src/utils/logger.js');
-      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+      const warnSpy = jest
+        .spyOn(Logger, 'warn')
+        .mockImplementation(() => undefined);
       try {
         mockDeepLClient.listGlossaries.mockResolvedValue([
           {
@@ -282,10 +300,13 @@ describe('GlossaryService', () => {
           },
         ]);
 
-        const glossary = await glossaryService.getGlossaryByName('still-processing');
+        const glossary =
+          await glossaryService.getGlossaryByName('still-processing');
 
         expect(glossary?.glossary_id).toBe('empty-123');
-        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('empty dictionaries'));
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('empty dictionaries')
+        );
       } finally {
         warnSpy.mockRestore();
       }
@@ -309,11 +330,13 @@ describe('GlossaryService', () => {
           name: 'tech-terms',
           source_lang: 'en',
           target_langs: ['es'],
-          dictionaries: [{
-            source_lang: 'en',
-            target_lang: 'es',
-            entry_count: 10,
-          }],
+          dictionaries: [
+            {
+              source_lang: 'en',
+              target_lang: 'es',
+              entry_count: 10,
+            },
+          ],
           creation_time: '2024-01-01T00:00:00Z',
         },
       ]);
@@ -342,48 +365,61 @@ describe('GlossaryService', () => {
     });
 
     describe('language-pair preflight', () => {
-      const listing = (dictionaries: Array<{ source_lang: string; target_lang: string }>) => [
+      const listing = (
+        dictionaries: Array<{ source_lang: string; target_lang: string }>
+      ) => [
         {
           glossary_id: 'found-glossary-id',
           name: 'tech-terms',
           source_lang: dictionaries[0]!.source_lang,
-          target_langs: dictionaries.map(d => d.target_lang),
-          dictionaries: dictionaries.map(d => ({ ...d, entry_count: 1 })),
+          target_langs: dictionaries.map((d) => d.target_lang),
+          dictionaries: dictionaries.map((d) => ({ ...d, entry_count: 1 })),
           creation_time: '2024-01-01T00:00:00Z',
         },
       ];
 
       it('should resolve when a dictionary covers the requested pair', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'en', target_lang: 'es' }]) as never,
+          listing([{ source_lang: 'en', target_lang: 'es' }]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['es'],
+          })
         ).resolves.toBe('found-glossary-id');
       });
 
       it('should reject when no dictionary covers the requested target', async () => {
         expect.assertions(2);
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'en', target_lang: 'es' }]) as never,
+          listing([{ source_lang: 'en', target_lang: 'es' }]) as never
         );
 
         try {
-          await glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['de'] });
+          await glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['de'],
+          });
         } catch (error) {
-          expect((error as Error).message).toContain('does not support the requested language pair');
+          expect((error as Error).message).toContain(
+            'does not support the requested language pair'
+          );
           expect((error as ConfigError).suggestion).toContain('en→es');
         }
       });
 
       it('should reject when the source language does not match', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'en', target_lang: 'es' }]) as never,
+          listing([{ source_lang: 'en', target_lang: 'es' }]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'de', targets: ['es'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'de',
+            targets: ['es'],
+          })
         ).rejects.toThrow('does not support the requested language pair');
       });
 
@@ -392,14 +428,20 @@ describe('GlossaryService', () => {
           listing([
             { source_lang: 'en', target_lang: 'es' },
             { source_lang: 'en', target_lang: 'fr' },
-          ]) as never,
+          ]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es', 'fr'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['es', 'fr'],
+          })
         ).resolves.toBe('found-glossary-id');
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es', 'de'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['es', 'de'],
+          })
         ).rejects.toThrow('does not support the requested language pair');
       });
 
@@ -409,11 +451,14 @@ describe('GlossaryService', () => {
           listing([
             { source_lang: 'en', target_lang: 'es' },
             { source_lang: 'de', target_lang: 'fr' },
-          ]) as never,
+          ]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['fr'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['fr'],
+          })
         ).rejects.toThrow('does not support the requested language pair');
       });
 
@@ -422,33 +467,42 @@ describe('GlossaryService', () => {
         // variants, so de→en has to cover de→en-us or glossaries become
         // unusable for the variants DeepL steers users towards.
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'de', target_lang: 'en' }]) as never,
+          listing([{ source_lang: 'de', target_lang: 'en' }]) as never
         );
 
         for (const target of ['en-us', 'en-gb'] as const) {
           await expect(
-            glossaryService.resolveGlossaryId('tech-terms', { from: 'de', targets: [target] }),
+            glossaryService.resolveGlossaryId('tech-terms', {
+              from: 'de',
+              targets: [target],
+            })
           ).resolves.toBe('found-glossary-id');
         }
       });
 
       it('should treat a regional --from as covered by a base-language dictionary', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'pt', target_lang: 'de' }]) as never,
+          listing([{ source_lang: 'pt', target_lang: 'de' }]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'pt-br', targets: ['de'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'pt-br',
+            targets: ['de'],
+          })
         ).resolves.toBe('found-glossary-id');
       });
 
       it('should still reject a pair no dictionary covers even across regions', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'de', target_lang: 'en' }]) as never,
+          listing([{ source_lang: 'de', target_lang: 'en' }]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'de', targets: ['pt-br'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'de',
+            targets: ['pt-br'],
+          })
         ).rejects.toThrow('does not support the requested language pair');
       });
 
@@ -458,41 +512,53 @@ describe('GlossaryService', () => {
         // both sides on their base language would make a pt-br dictionary satisfy
         // pt-pt, which is a different language pair.
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'en', target_lang: 'pt-br' }]) as never,
+          listing([{ source_lang: 'en', target_lang: 'pt-br' }]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['pt-pt'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['pt-pt'],
+          })
         ).rejects.toThrow('does not support the requested language pair');
       });
 
       it('should not let a regional dictionary source cover a different region', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'pt-br', target_lang: 'de' }]) as never,
+          listing([{ source_lang: 'pt-br', target_lang: 'de' }]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'pt-pt', targets: ['de'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'pt-pt',
+            targets: ['de'],
+          })
         ).rejects.toThrow('does not support the requested language pair');
       });
 
       it('should still match a regional dictionary asked for exactly', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'en', target_lang: 'pt-br' }]) as never,
+          listing([{ source_lang: 'en', target_lang: 'pt-br' }]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['pt-br'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['pt-br'],
+          })
         ).resolves.toBe('found-glossary-id');
       });
 
       it('should compare languages case-insensitively', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'EN', target_lang: 'ES' }]) as never,
+          listing([{ source_lang: 'EN', target_lang: 'ES' }]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['es'],
+          })
         ).resolves.toBe('found-glossary-id');
       });
 
@@ -500,7 +566,10 @@ describe('GlossaryService', () => {
         const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 
         await expect(
-          glossaryService.resolveGlossaryId(uuid, { from: 'en', targets: ['de'] }),
+          glossaryService.resolveGlossaryId(uuid, {
+            from: 'en',
+            targets: ['de'],
+          })
         ).resolves.toBe(uuid);
         expect(mockDeepLClient.listGlossaries).not.toHaveBeenCalled();
       });
@@ -518,20 +587,29 @@ describe('GlossaryService', () => {
         ] as never);
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['de'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['de'],
+          })
         ).resolves.toBe('empty-glossary-id');
       });
 
       it('should not let a cached resolution skip the check for a different pair', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue(
-          listing([{ source_lang: 'en', target_lang: 'es' }]) as never,
+          listing([{ source_lang: 'en', target_lang: 'es' }]) as never
         );
 
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['es'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['es'],
+          })
         ).resolves.toBe('found-glossary-id');
         await expect(
-          glossaryService.resolveGlossaryId('tech-terms', { from: 'en', targets: ['de'] }),
+          glossaryService.resolveGlossaryId('tech-terms', {
+            from: 'en',
+            targets: ['de'],
+          })
         ).rejects.toThrow('does not support the requested language pair');
       });
     });
@@ -543,7 +621,9 @@ describe('GlossaryService', () => {
           name: 'tech-terms',
           source_lang: 'en',
           target_langs: ['es'],
-          dictionaries: [{ source_lang: 'en', target_lang: 'es', entry_count: 1 }],
+          dictionaries: [
+            { source_lang: 'en', target_lang: 'es', entry_count: 1 },
+          ],
           creation_time: '2024-01-01T00:00:00Z',
         },
       ]);
@@ -553,7 +633,9 @@ describe('GlossaryService', () => {
       await glossaryService.resolveGlossaryId('tech-terms');
 
       expect(spy).toHaveBeenCalledWith(
-        expect.stringContaining('Resolved glossary "tech-terms" -> resolved-glossary-id')
+        expect.stringContaining(
+          'Resolved glossary "tech-terms" -> resolved-glossary-id'
+        )
       );
       spy.mockRestore();
     });
@@ -564,7 +646,13 @@ describe('GlossaryService', () => {
         name: 'tech-terms',
         source_lang: 'en' as const,
         target_langs: ['es' as const],
-        dictionaries: [{ source_lang: 'en' as const, target_lang: 'es' as const, entry_count: 1 }],
+        dictionaries: [
+          {
+            source_lang: 'en' as const,
+            target_lang: 'es' as const,
+            entry_count: 1,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       };
 
@@ -591,7 +679,9 @@ describe('GlossaryService', () => {
         await glossaryService.resolveGlossaryId('tech-terms');
 
         expect(spy).toHaveBeenCalledWith(
-          expect.stringContaining('Glossary cache hit: "tech-terms" -> resolved-glossary-id'),
+          expect.stringContaining(
+            'Glossary cache hit: "tech-terms" -> resolved-glossary-id'
+          )
         );
         spy.mockRestore();
       });
@@ -637,7 +727,13 @@ describe('GlossaryService', () => {
         name: 'tech-terms',
         source_lang: 'en' as const,
         target_langs: ['es' as const],
-        dictionaries: [{ source_lang: 'en' as const, target_lang: 'es' as const, entry_count: 1 }],
+        dictionaries: [
+          {
+            source_lang: 'en' as const,
+            target_lang: 'es' as const,
+            entry_count: 1,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       };
 
@@ -688,7 +784,9 @@ describe('GlossaryService', () => {
         });
 
         await glossaryService.getGlossaryByName('tech-terms');
-        await glossaryService.createGlossary('brand-new', 'en', ['es'], { a: 'b' });
+        await glossaryService.createGlossary('brand-new', 'en', ['es'], {
+          a: 'b',
+        });
         await glossaryService.getGlossaryByName('tech-terms');
 
         expect(mockDeepLClient.listGlossaries).toHaveBeenCalledTimes(2);
@@ -701,27 +799,41 @@ describe('GlossaryService', () => {
         name: 'prod-gloss',
         source_lang: 'en' as const,
         target_langs: ['es' as const],
-        dictionaries: [{ source_lang: 'en' as const, target_lang: 'es' as const, entry_count: 1 }],
+        dictionaries: [
+          {
+            source_lang: 'en' as const,
+            target_lang: 'es' as const,
+            entry_count: 1,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       };
 
       it('treats a glossary whose name contains a zero-width space as non-existent (silent skip)', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue([
-          { ...cleanGlossary, glossary_id: 'poisoned-id', name: 'prod-gloss\u200B' },
+          {
+            ...cleanGlossary,
+            glossary_id: 'poisoned-id',
+            name: 'prod-gloss\u200B',
+          },
         ]);
 
         await expect(
-          glossaryService.resolveGlossaryId('prod-gloss\u200B'),
+          glossaryService.resolveGlossaryId('prod-gloss\u200B')
         ).rejects.toThrow(/not found/);
       });
 
       it('treats a glossary whose name contains an ASCII control char as non-existent (silent skip)', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue([
-          { ...cleanGlossary, glossary_id: 'poisoned-id', name: 'prod-gloss\x00' },
+          {
+            ...cleanGlossary,
+            glossary_id: 'poisoned-id',
+            name: 'prod-gloss\x00',
+          },
         ]);
 
         await expect(
-          glossaryService.resolveGlossaryId('prod-gloss\x00'),
+          glossaryService.resolveGlossaryId('prod-gloss\x00')
         ).rejects.toThrow(/not found/);
       });
 
@@ -766,7 +878,11 @@ describe('GlossaryService', () => {
       it('legit unambiguous name still resolves even when a filtered sibling exists', async () => {
         mockDeepLClient.listGlossaries.mockResolvedValue([
           { ...cleanGlossary, glossary_id: 'legit-id', name: 'prod-gloss' },
-          { ...cleanGlossary, glossary_id: 'poisoned-id', name: 'prod-gloss\x00' },
+          {
+            ...cleanGlossary,
+            glossary_id: 'poisoned-id',
+            name: 'prod-gloss\x00',
+          },
         ]);
 
         const resolved = await glossaryService.resolveGlossaryId('prod-gloss');
@@ -802,23 +918,39 @@ describe('GlossaryService', () => {
         'API\tAPI\nREST\tREST\nHello\tHola'
       );
 
-      const entries = await glossaryService.getGlossaryEntries('test-123', 'en', 'es');
+      const entries = await glossaryService.getGlossaryEntries(
+        'test-123',
+        'en',
+        'es'
+      );
 
       expect(entries).toEqual({
         API: 'API',
         REST: 'REST',
         Hello: 'Hola',
       });
-      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith('test-123', 'en', 'es');
+      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith(
+        'test-123',
+        'en',
+        'es'
+      );
     });
 
     it('should handle empty glossary', async () => {
       mockDeepLClient.getGlossaryEntries.mockResolvedValue('');
 
-      const entries = await glossaryService.getGlossaryEntries('test-123', 'en', 'es');
+      const entries = await glossaryService.getGlossaryEntries(
+        'test-123',
+        'en',
+        'es'
+      );
 
       expect(entries).toEqual({});
-      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith('test-123', 'en', 'es');
+      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith(
+        'test-123',
+        'en',
+        'es'
+      );
     });
   });
 
@@ -959,14 +1091,20 @@ describe('GlossaryService', () => {
   describe('addEntry()', () => {
     it('should add a new entry to glossary', async () => {
       // Mock getting existing entries
-      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue(
+        'API\tAPI\nREST\tREST'
+      );
 
       // Mock updating glossary entries
       mockDeepLClient.updateGlossaryEntries.mockResolvedValue(undefined);
 
       await glossaryService.addEntry('test-123', 'en', 'es', 'Hello', 'Hola');
 
-      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith('test-123', 'en', 'es');
+      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith(
+        'test-123',
+        'en',
+        'es'
+      );
       expect(mockDeepLClient.updateGlossaryEntries).toHaveBeenCalledWith(
         'test-123',
         'en',
@@ -976,7 +1114,9 @@ describe('GlossaryService', () => {
     });
 
     it('should throw error if entry already exists', async () => {
-      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue(
+        'API\tAPI\nREST\tREST'
+      );
 
       await expect(
         glossaryService.addEntry('test-123', 'en', 'es', 'API', 'Interface')
@@ -1021,12 +1161,24 @@ describe('GlossaryService', () => {
 
   describe('updateEntry()', () => {
     it('should update an existing entry', async () => {
-      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue(
+        'API\tAPI\nREST\tREST'
+      );
       mockDeepLClient.updateGlossaryEntries.mockResolvedValue(undefined);
 
-      await glossaryService.updateEntry('test-123', 'en', 'es', 'API', 'Interface');
+      await glossaryService.updateEntry(
+        'test-123',
+        'en',
+        'es',
+        'API',
+        'Interface'
+      );
 
-      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith('test-123', 'en', 'es');
+      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith(
+        'test-123',
+        'en',
+        'es'
+      );
       expect(mockDeepLClient.updateGlossaryEntries).toHaveBeenCalledWith(
         'test-123',
         'en',
@@ -1036,10 +1188,18 @@ describe('GlossaryService', () => {
     });
 
     it('should throw error if entry does not exist', async () => {
-      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue(
+        'API\tAPI\nREST\tREST'
+      );
 
       await expect(
-        glossaryService.updateEntry('test-123', 'en', 'es', 'NonExistent', 'target')
+        glossaryService.updateEntry(
+          'test-123',
+          'en',
+          'es',
+          'NonExistent',
+          'target'
+        )
       ).rejects.toThrow('Entry "NonExistent" not found in glossary');
     });
 
@@ -1059,7 +1219,13 @@ describe('GlossaryService', () => {
       mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI');
 
       await expect(
-        glossaryService.updateEntry('test-123', 'en', 'es', 'API', 'Inter\tface')
+        glossaryService.updateEntry(
+          'test-123',
+          'en',
+          'es',
+          'API',
+          'Inter\tface'
+        )
       ).rejects.toThrow(/tab/i);
       expect(mockDeepLClient.updateGlossaryEntries).not.toHaveBeenCalled();
     });
@@ -1068,19 +1234,31 @@ describe('GlossaryService', () => {
       mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI');
 
       await expect(
-        glossaryService.updateEntry('test-123', 'en', 'es', 'API', 'Inter\nface')
+        glossaryService.updateEntry(
+          'test-123',
+          'en',
+          'es',
+          'API',
+          'Inter\nface'
+        )
       ).rejects.toThrow(/newline/i);
     });
   });
 
   describe('removeEntry()', () => {
     it('should remove an entry from glossary', async () => {
-      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST\nHello\tHola');
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue(
+        'API\tAPI\nREST\tREST\nHello\tHola'
+      );
       mockDeepLClient.updateGlossaryEntries.mockResolvedValue(undefined);
 
       await glossaryService.removeEntry('test-123', 'en', 'es', 'Hello');
 
-      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith('test-123', 'en', 'es');
+      expect(mockDeepLClient.getGlossaryEntries).toHaveBeenCalledWith(
+        'test-123',
+        'en',
+        'es'
+      );
       expect(mockDeepLClient.updateGlossaryEntries).toHaveBeenCalledWith(
         'test-123',
         'en',
@@ -1090,7 +1268,9 @@ describe('GlossaryService', () => {
     });
 
     it('should throw error if entry does not exist', async () => {
-      mockDeepLClient.getGlossaryEntries.mockResolvedValue('API\tAPI\nREST\tREST');
+      mockDeepLClient.getGlossaryEntries.mockResolvedValue(
+        'API\tAPI\nREST\tREST'
+      );
 
       await expect(
         glossaryService.removeEntry('test-123', 'en', 'es', 'NonExistent')
@@ -1108,7 +1288,9 @@ describe('GlossaryService', () => {
 
       await expect(
         glossaryService.removeEntry('test-123', 'en', 'es', 'API')
-      ).rejects.toThrow('Cannot remove last entry from glossary. Delete the glossary instead.');
+      ).rejects.toThrow(
+        'Cannot remove last entry from glossary. Delete the glossary instead.'
+      );
     });
   });
 
@@ -1119,11 +1301,13 @@ describe('GlossaryService', () => {
         name: 'old-name',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 3,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 3,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -1132,27 +1316,33 @@ describe('GlossaryService', () => {
       await glossaryService.updateGlossary('test-123', { name: 'new-name' });
 
       expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('test-123');
-      expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', { name: 'new-name' });
+      expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', {
+        name: 'new-name',
+      });
     });
 
     it('should update dictionaries only', async () => {
       mockDeepLClient.updateGlossary.mockResolvedValue(undefined);
 
       await glossaryService.updateGlossary('test-123', {
-        dictionaries: [{
-          sourceLang: 'en',
-          targetLang: 'es',
-          entries: { Hello: 'Hola' },
-        }],
+        dictionaries: [
+          {
+            sourceLang: 'en',
+            targetLang: 'es',
+            entries: { Hello: 'Hola' },
+          },
+        ],
       });
 
       expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', {
-        dictionaries: [{
-          source_lang: 'EN',
-          target_lang: 'ES',
-          entries: 'Hello\tHola',
-          entries_format: 'tsv',
-        }],
+        dictionaries: [
+          {
+            source_lang: 'EN',
+            target_lang: 'ES',
+            entries: 'Hello\tHola',
+            entries_format: 'tsv',
+          },
+        ],
       });
     });
 
@@ -1162,11 +1352,13 @@ describe('GlossaryService', () => {
         name: 'old-name',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 3,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 3,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -1174,28 +1366,34 @@ describe('GlossaryService', () => {
 
       await glossaryService.updateGlossary('test-123', {
         name: 'new-name',
-        dictionaries: [{
-          sourceLang: 'en',
-          targetLang: 'es',
-          entries: { Hello: 'Hola', World: 'Mundo' },
-        }],
+        dictionaries: [
+          {
+            sourceLang: 'en',
+            targetLang: 'es',
+            entries: { Hello: 'Hola', World: 'Mundo' },
+          },
+        ],
       });
 
       expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', {
         name: 'new-name',
-        dictionaries: [{
-          source_lang: 'EN',
-          target_lang: 'ES',
-          entries: 'Hello\tHola\nWorld\tMundo',
-          entries_format: 'tsv',
-        }],
+        dictionaries: [
+          {
+            source_lang: 'EN',
+            target_lang: 'ES',
+            entries: 'Hello\tHola\nWorld\tMundo',
+            entries_format: 'tsv',
+          },
+        ],
       });
     });
 
     it('should throw when neither name nor dictionaries provided', async () => {
       await expect(
         glossaryService.updateGlossary('test-123', {})
-      ).rejects.toThrow('At least one of name or dictionaries must be provided');
+      ).rejects.toThrow(
+        'At least one of name or dictionaries must be provided'
+      );
     });
 
     it('should validate new name is not empty', async () => {
@@ -1210,11 +1408,13 @@ describe('GlossaryService', () => {
         name: 'same-name',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 3,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 3,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -1241,11 +1441,13 @@ describe('GlossaryService', () => {
         name: 'old-name',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 3,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 3,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -1254,7 +1456,9 @@ describe('GlossaryService', () => {
       await glossaryService.renameGlossary('test-123', 'new-name');
 
       expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('test-123');
-      expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', { name: 'new-name' });
+      expect(mockDeepLClient.updateGlossary).toHaveBeenCalledWith('test-123', {
+        name: 'new-name',
+      });
     });
 
     it('should validate new name is not empty', async () => {
@@ -1269,11 +1473,13 @@ describe('GlossaryService', () => {
         name: 'same-name',
         source_lang: 'en',
         target_langs: ['es'],
-        dictionaries: [{
-          source_lang: 'en',
-          target_lang: 'es',
-          entry_count: 3,
-        }],
+        dictionaries: [
+          {
+            source_lang: 'en',
+            target_lang: 'es',
+            entry_count: 3,
+          },
+        ],
         creation_time: '2024-01-01T00:00:00Z',
       });
 
@@ -1323,9 +1529,15 @@ describe('GlossaryService', () => {
 
       mockDeepLClient.deleteGlossaryDictionary.mockResolvedValue(undefined);
 
-      await glossaryService.deleteGlossaryDictionary('multi-gloss-123', 'en', 'fr');
+      await glossaryService.deleteGlossaryDictionary(
+        'multi-gloss-123',
+        'en',
+        'fr'
+      );
 
-      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('multi-gloss-123');
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith(
+        'multi-gloss-123'
+      );
       expect(mockDeepLClient.deleteGlossaryDictionary).toHaveBeenCalledWith(
         'multi-gloss-123',
         'en',
@@ -1352,9 +1564,13 @@ describe('GlossaryService', () => {
 
       await expect(
         glossaryService.deleteGlossaryDictionary('single-gloss-123', 'en', 'es')
-      ).rejects.toThrow('Cannot delete dictionary from single-language glossary. Delete the entire glossary instead.');
+      ).rejects.toThrow(
+        'Cannot delete dictionary from single-language glossary. Delete the entire glossary instead.'
+      );
 
-      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('single-gloss-123');
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith(
+        'single-gloss-123'
+      );
       expect(mockDeepLClient.deleteGlossaryDictionary).not.toHaveBeenCalled();
     });
 
@@ -1378,7 +1594,9 @@ describe('GlossaryService', () => {
 
       await expect(
         glossaryService.deleteGlossaryDictionary('last-dict-123', 'en', 'es')
-      ).rejects.toThrow('Cannot delete last dictionary from glossary. Delete the entire glossary instead.');
+      ).rejects.toThrow(
+        'Cannot delete last dictionary from glossary. Delete the entire glossary instead.'
+      );
 
       expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('last-dict-123');
       expect(mockDeepLClient.deleteGlossaryDictionary).not.toHaveBeenCalled();
@@ -1410,7 +1628,9 @@ describe('GlossaryService', () => {
         glossaryService.deleteGlossaryDictionary('multi-gloss-123', 'en', 'de')
       ).rejects.toThrow('Dictionary en-de not found in glossary');
 
-      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('multi-gloss-123');
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith(
+        'multi-gloss-123'
+      );
       expect(mockDeepLClient.deleteGlossaryDictionary).not.toHaveBeenCalled();
     });
 
@@ -1461,9 +1681,15 @@ describe('GlossaryService', () => {
       mockDeepLClient.deleteGlossaryDictionary.mockResolvedValue(undefined);
 
       // Request with lowercase codes should still match uppercase dictionary entries
-      await glossaryService.deleteGlossaryDictionary('multi-gloss-123', 'en', 'fr');
+      await glossaryService.deleteGlossaryDictionary(
+        'multi-gloss-123',
+        'en',
+        'fr'
+      );
 
-      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('multi-gloss-123');
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith(
+        'multi-gloss-123'
+      );
       expect(mockDeepLClient.deleteGlossaryDictionary).toHaveBeenCalledWith(
         'multi-gloss-123',
         'en',
@@ -1514,7 +1740,9 @@ describe('GlossaryService', () => {
         glossaryService.deleteGlossaryDictionary('multi-gloss-123', 'en', 'fr')
       ).rejects.toThrow('Dictionary deletion failed');
 
-      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith('multi-gloss-123');
+      expect(mockDeepLClient.getGlossary).toHaveBeenCalledWith(
+        'multi-gloss-123'
+      );
       expect(mockDeepLClient.deleteGlossaryDictionary).toHaveBeenCalledWith(
         'multi-gloss-123',
         'en',
@@ -1528,23 +1756,39 @@ describe('GlossaryService', () => {
       mockDeepLClient.replaceGlossaryDictionary.mockResolvedValue(undefined);
 
       await glossaryService.replaceGlossaryDictionary(
-        'glossary-123', 'en', 'es', 'hello\thola\nworld\tmundo'
+        'glossary-123',
+        'en',
+        'es',
+        'hello\thola\nworld\tmundo'
       );
 
       expect(mockDeepLClient.replaceGlossaryDictionary).toHaveBeenCalledWith(
-        'glossary-123', 'en', 'es', 'hello\thola\nworld\tmundo'
+        'glossary-123',
+        'en',
+        'es',
+        'hello\thola\nworld\tmundo'
       );
     });
 
     it('should reject empty TSV content', async () => {
       await expect(
-        glossaryService.replaceGlossaryDictionary('glossary-123', 'en', 'es', '')
+        glossaryService.replaceGlossaryDictionary(
+          'glossary-123',
+          'en',
+          'es',
+          ''
+        )
       ).rejects.toThrow('No valid entries found');
     });
 
     it('should reject TSV with only invalid lines', async () => {
       await expect(
-        glossaryService.replaceGlossaryDictionary('glossary-123', 'en', 'es', 'invalid-no-tab')
+        glossaryService.replaceGlossaryDictionary(
+          'glossary-123',
+          'en',
+          'es',
+          'invalid-no-tab'
+        )
       ).rejects.toThrow('No valid entries found');
     });
 
@@ -1555,7 +1799,10 @@ describe('GlossaryService', () => {
 
       await expect(
         glossaryService.replaceGlossaryDictionary(
-          'glossary-123', 'en', 'es', 'hello\thola'
+          'glossary-123',
+          'en',
+          'es',
+          'hello\thola'
         )
       ).rejects.toThrow('API error');
     });

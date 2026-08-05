@@ -11,10 +11,16 @@ import { FileTranslationService } from '../../services/file-translation.js';
 import { TranslationService } from '../../services/translation.js';
 import { GlossaryService } from '../../services/glossary.js';
 import { Language, Formality } from '../../types/index.js';
-import { FileTranslationResult, WatchTranslationResult } from '../../services/watch.js';
+import {
+  FileTranslationResult,
+  WatchTranslationResult,
+} from '../../services/watch.js';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
-import { applyGlossarySourceLang, hasGlossarySelection } from '../../utils/glossary-params.js';
+import {
+  applyGlossarySourceLang,
+  hasGlossarySelection,
+} from '../../utils/glossary-params.js';
 import type { ConfigService } from '../../storage/config.js';
 import { DEFAULT_DEBOUNCE_MS } from '../../storage/config.js';
 
@@ -47,16 +53,18 @@ export class WatchCommand {
   constructor(
     translationService: TranslationService,
     glossaryService: GlossaryService,
-    config?: ConfigService,
+    config?: ConfigService
   ) {
-    this.fileTranslationService = new FileTranslationService(translationService);
+    this.fileTranslationService = new FileTranslationService(
+      translationService
+    );
     this.glossaryService = glossaryService;
     this.config = config;
   }
 
   private async resolveGlossaryId(
     nameOrId: string,
-    expected?: { from: Language; targets: Language[] },
+    expected?: { from: Language; targets: Language[] }
   ): Promise<string> {
     return this.glossaryService.resolveGlossaryId(nameOrId, expected);
   }
@@ -77,9 +85,17 @@ export class WatchCommand {
       throw new ValidationError('--git-staged requires a git repository');
     }
 
-    const { stdout } = await execFileAsync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACM']);
-    const files = stdout.trim().split('\n').filter(f => f.length > 0);
-    return new Set(files.map(f => path.resolve(f)));
+    const { stdout } = await execFileAsync('git', [
+      'diff',
+      '--cached',
+      '--name-only',
+      '--diff-filter=ACM',
+    ]);
+    const files = stdout
+      .trim()
+      .split('\n')
+      .filter((f) => f.length > 0);
+    return new Set(files.map((f) => path.resolve(f)));
   }
 
   /**
@@ -92,12 +108,15 @@ export class WatchCommand {
     }
 
     // Parse target languages
-    const targetLangs = options.to.split(',').map(lang => lang.trim()).filter(lang => lang.length > 0) as Language[];
+    const targetLangs = options.to
+      .split(',')
+      .map((lang) => lang.trim())
+      .filter((lang) => lang.length > 0) as Language[];
 
     if (targetLangs.length === 0) {
       throw new ValidationError(
         'No target language specified.',
-        'Use --to <lang>:   deepl watch ./docs --to es,fr,de\n  Set a default:     deepl init',
+        'Use --to <lang>:   deepl watch ./docs --to es,fr,de\n  Set a default:     deepl init'
       );
     }
 
@@ -110,7 +129,7 @@ export class WatchCommand {
       applyGlossarySourceLang(
         options,
         this.config?.getValue<string>('defaults.sourceLang'),
-        'Example: deepl watch ./docs --from en --to es --glossary my-glossary',
+        'Example: deepl watch ./docs --from en --to es --glossary my-glossary'
       );
     }
 
@@ -119,7 +138,9 @@ export class WatchCommand {
     if (options.gitStaged) {
       stagedFiles = await this.getStagedFiles();
       if (stagedFiles.size === 0) {
-        Logger.warn(chalk.yellow('No git-staged files found. Nothing to watch.'));
+        Logger.warn(
+          chalk.yellow('No git-staged files found. Nothing to watch.')
+        );
         return;
       }
       Logger.info(chalk.gray(`Git-staged files: ${stagedFiles.size}`));
@@ -131,7 +152,9 @@ export class WatchCommand {
     if (options.glossary) {
       glossaryId = await this.resolveGlossaryId(
         options.glossary,
-        options.from ? { from: options.from as Language, targets: targetLangs } : undefined,
+        options.from
+          ? { from: options.from as Language, targets: targetLangs }
+          : undefined
       );
     }
 
@@ -176,7 +199,10 @@ export class WatchCommand {
       watchServiceOptions.concurrency = options.concurrency;
     }
 
-    this.watchService = new WatchService(this.fileTranslationService, watchServiceOptions);
+    this.watchService = new WatchService(
+      this.fileTranslationService,
+      watchServiceOptions
+    );
 
     // Create abort controller for cancellation
     const controller = new AbortController();
@@ -197,7 +223,11 @@ export class WatchCommand {
       onTranslate: async (filePath: string, result: WatchTranslationResult) => {
         if (Array.isArray(result)) {
           // Multiple languages
-          Logger.success(chalk.green(`✓ Translated ${filePath} to ${result.length} languages`));
+          Logger.success(
+            chalk.green(
+              `✓ Translated ${filePath} to ${result.length} languages`
+            )
+          );
           result.forEach((r: FileTranslationResult) => {
             Logger.info(chalk.gray(`  → [${r.targetLang}] ${r.outputPath}`));
           });
@@ -213,7 +243,10 @@ export class WatchCommand {
         }
       },
       onError: (filePath: string, error: Error) => {
-        Logger.error(chalk.red(`✗ Translation failed for ${filePath}:`), error.message);
+        Logger.error(
+          chalk.red(`✗ Translation failed for ${filePath}:`),
+          error.message
+        );
       },
     };
 
@@ -263,7 +296,10 @@ export class WatchCommand {
    * Auto-commit translated files to git
    * SECURITY: Uses execFile instead of exec to prevent command injection
    */
-  private async autoCommit(sourceFile: string, result: WatchTranslationResult): Promise<void> {
+  private async autoCommit(
+    sourceFile: string,
+    result: WatchTranslationResult
+  ): Promise<void> {
     try {
       const { execFile } = await import('child_process');
       const { promisify } = await import('util');
@@ -273,7 +309,9 @@ export class WatchCommand {
       try {
         await execFileAsync('git', ['rev-parse', '--git-dir']);
       } catch {
-        Logger.warn(chalk.yellow('⚠️  Not a git repository, skipping auto-commit'));
+        Logger.warn(
+          chalk.yellow('⚠️  Not a git repository, skipping auto-commit')
+        );
         return;
       }
 
@@ -310,7 +348,10 @@ export class WatchCommand {
 
       Logger.success(chalk.green('✓ Auto-committed translations'));
     } catch (error) {
-      Logger.error(chalk.red('✗ Auto-commit failed:'), error instanceof Error ? error.message : 'Unknown error');
+      Logger.error(
+        chalk.red('✗ Auto-commit failed:'),
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   }
 

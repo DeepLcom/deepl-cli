@@ -11,7 +11,10 @@ import { TranslationService, MAX_TEXT_BYTES } from './translation.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
-import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
+import {
+  mapWithConcurrency,
+  MULTI_TARGET_CONCURRENCY,
+} from '../utils/concurrency.js';
 import { ValidationError, NetworkError } from '../utils/errors.js';
 
 interface FileTranslationOptions {
@@ -70,7 +73,7 @@ export class StructuredFileTranslationService {
 
     if (strings.length > 0) {
       const translations = await this.translateStringsInBatches(
-        strings.map(s => s.value),
+        strings.map((s) => s.value),
         options
       );
 
@@ -91,7 +94,9 @@ export class StructuredFileTranslationService {
   async translateFileToMultiple(
     inputPath: string,
     targetLangs: Language[],
-    options: Omit<TranslationOptions, 'targetLang'> & { outputDir?: string } = {}
+    options: Omit<TranslationOptions, 'targetLang'> & {
+      outputDir?: string;
+    } = {}
   ): Promise<FileMultiTargetResult[]> {
     const content = await this.readFile(inputPath);
 
@@ -104,7 +109,7 @@ export class StructuredFileTranslationService {
     // Parse once to extract strings (read-only, shared across all languages)
     const referenceParsed = this.parseFile(content, ext);
     const strings = this.extractStrings(referenceParsed.data);
-    const stringValues = strings.map(s => s.value);
+    const stringValues = strings.map((s) => s.value);
 
     // Create output directory once before fan-out to avoid races
     if (options.outputDir) {
@@ -318,11 +323,14 @@ export class StructuredFileTranslationService {
       const strBytes = Buffer.byteLength(str, 'utf-8');
 
       if (batch.length > 0 && batchBytes + strBytes > MAX_TEXT_BYTES) {
-        const batchResults = await this.translationService.translateBatch(batch, options);
+        const batchResults = await this.translationService.translateBatch(
+          batch,
+          options
+        );
         if (batchResults.length !== batch.length) {
           throw new NetworkError(
             `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
-            'Aborting to prevent misaligned output.'
+              'Aborting to prevent misaligned output.'
           );
         }
         for (const r of batchResults) {
@@ -337,11 +345,14 @@ export class StructuredFileTranslationService {
     }
 
     if (batch.length > 0) {
-      const batchResults = await this.translationService.translateBatch(batch, options);
+      const batchResults = await this.translationService.translateBatch(
+        batch,
+        options
+      );
       if (batchResults.length !== batch.length) {
         throw new NetworkError(
           `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
-          'Aborting to prevent misaligned output.'
+            'Aborting to prevent misaligned output.'
         );
       }
       for (const r of batchResults) {

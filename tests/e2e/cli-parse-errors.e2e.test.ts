@@ -32,7 +32,7 @@ describe('CLI Parse Errors E2E', () => {
     it('invalid option choice exits 6', () => {
       const result = runCLIExpectError(
         "translate 'Hi' --to es --formality bogus",
-        { excludeApiKey: true },
+        { excludeApiKey: true }
       );
 
       expect(result.status).toBe(6);

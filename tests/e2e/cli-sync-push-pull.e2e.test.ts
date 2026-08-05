@@ -11,12 +11,21 @@
  * the driving test clear state and set canned pull responses between runs.
  */
 
-import { spawn, ChildProcess, spawnSync, SpawnSyncReturns } from 'child_process';
+import {
+  spawn,
+  ChildProcess,
+  spawnSync,
+  SpawnSyncReturns,
+} from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import nock from 'nock';
 
-import { createTestConfigDir, createTestDir, assertErrorEnvelope } from '../helpers';
+import {
+  createTestConfigDir,
+  createTestDir,
+  assertErrorEnvelope,
+} from '../helpers';
 import { buildSyncConfigYaml } from '../helpers/sync-harness';
 
 const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
@@ -62,7 +71,10 @@ describe('CLI sync push/pull dispatch E2E', () => {
 
       child.stderr.on('data', (data: Buffer) => {
         const msg = data.toString();
-        if (!msg.includes('ExperimentalWarning') && !msg.includes('--experimental')) {
+        if (
+          !msg.includes('ExperimentalWarning') &&
+          !msg.includes('--experimental')
+        ) {
           process.stderr.write(`[mock-tms stderr] ${msg}`);
         }
       });
@@ -74,7 +86,10 @@ describe('CLI sync push/pull dispatch E2E', () => {
         }
       });
 
-      setTimeout(() => reject(new Error('Mock TMS server did not start within 15s')), 15000);
+      setTimeout(
+        () => reject(new Error('Mock TMS server did not start within 15s')),
+        15000
+      );
     });
   }
 
@@ -101,21 +116,27 @@ describe('CLI sync push/pull dispatch E2E', () => {
     const config = {
       auth: { apiKey: 'mock-api-key-for-testing:fx' },
       api: { baseUrl: 'http://127.0.0.1:1/', usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: true,
+      },
       cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
     };
     fs.writeFileSync(
       path.join(testConfig.path, 'config.json'),
-      JSON.stringify(config, null, 2),
+      JSON.stringify(config, null, 2)
     );
   }
 
-  function writeSyncYaml(opts: {
-    targetLocales?: string[];
-    includeTmsBlock?: boolean;
-  } = {}): void {
+  function writeSyncYaml(
+    opts: {
+      targetLocales?: string[];
+      includeTmsBlock?: boolean;
+    } = {}
+  ): void {
     const tms = opts.includeTmsBlock
       ? { enabled: true, server: baseUrl, project_id: PROJECT_ID }
       : undefined;
@@ -127,16 +148,24 @@ describe('CLI sync push/pull dispatch E2E', () => {
     fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.yaml'), yaml);
   }
 
-  function writeSource(keys: Record<string, string> = { greeting: 'Hello', farewell: 'Goodbye' }): void {
+  function writeSource(
+    keys: Record<string, string> = { greeting: 'Hello', farewell: 'Goodbye' }
+  ): void {
     const dir = path.join(testFiles.path, 'locales');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'en.json'), JSON.stringify(keys, null, 2) + '\n');
+    fs.writeFileSync(
+      path.join(dir, 'en.json'),
+      JSON.stringify(keys, null, 2) + '\n'
+    );
   }
 
   function writeTarget(locale: string, keys: Record<string, string>): void {
     const dir = path.join(testFiles.path, 'locales');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, `${locale}.json`), JSON.stringify(keys, null, 2) + '\n');
+    fs.writeFileSync(
+      path.join(dir, `${locale}.json`),
+      JSON.stringify(keys, null, 2) + '\n'
+    );
   }
 
   function buildEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
@@ -155,13 +184,17 @@ describe('CLI sync push/pull dispatch E2E', () => {
   }
 
   function runCli(args: string[], extraEnv: Record<string, string> = {}): Run {
-    const result: SpawnSyncReturns<string> = spawnSync('node', [CLI_PATH, ...args], {
-      encoding: 'utf-8',
-      cwd: testFiles.path,
-      env: buildEnv(extraEnv),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 15000,
-    });
+    const result: SpawnSyncReturns<string> = spawnSync(
+      'node',
+      [CLI_PATH, ...args],
+      {
+        encoding: 'utf-8',
+        cwd: testFiles.path,
+        env: buildEnv(extraEnv),
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 15000,
+      }
+    );
     return {
       status: result.status ?? (result.signal ? 128 : 1),
       stdout: result.stdout ?? '',
@@ -183,7 +216,8 @@ describe('CLI sync push/pull dispatch E2E', () => {
     nock.enableNetConnect('127.0.0.1');
     await resetMockServer();
     const localesDir = path.join(testFiles.path, 'locales');
-    if (fs.existsSync(localesDir)) fs.rmSync(localesDir, { recursive: true, force: true });
+    if (fs.existsSync(localesDir))
+      fs.rmSync(localesDir, { recursive: true, force: true });
     for (const name of ['.deepl-sync.yaml', '.deepl-sync.lock']) {
       const p = path.join(testFiles.path, name);
       if (fs.existsSync(p)) fs.unlinkSync(p);
@@ -213,9 +247,14 @@ describe('CLI sync push/pull dispatch E2E', () => {
       for (const req of state.requests) {
         expect(req.method).toBe('PUT');
         expect(req.authHeader).toBe('ApiKey push-pull-key');
-        expect(req.url).toMatch(new RegExp(`^/api/projects/${PROJECT_ID}/keys/`));
+        expect(req.url).toMatch(
+          new RegExp(`^/api/projects/${PROJECT_ID}/keys/`)
+        );
       }
-      expect(Object.keys(state.pushed['de'] ?? {}).sort()).toEqual(['farewell', 'greeting']);
+      expect(Object.keys(state.pushed['de'] ?? {}).sort()).toEqual([
+        'farewell',
+        'greeting',
+      ]);
       expect(state.pushed['de']!['greeting']).toBe('Hallo');
       expect(state.pushed['de']!['farewell']).toBe('Auf Wiedersehen');
     });
@@ -238,13 +277,19 @@ describe('CLI sync push/pull dispatch E2E', () => {
 
       const targetFile = path.join(testFiles.path, 'locales', 'de.json');
       expect(fs.existsSync(targetFile)).toBe(true);
-      const parsed = JSON.parse(fs.readFileSync(targetFile, 'utf-8')) as Record<string, string>;
+      const parsed = JSON.parse(fs.readFileSync(targetFile, 'utf-8')) as Record<
+        string,
+        string
+      >;
       expect(parsed['greeting']).toBe('Hallo (approved)');
       expect(parsed['farewell']).toBe('Tschuess (approved)');
 
       const state = await inspectMockServer();
       const pullReqs = state.requests.filter(
-        (r) => r.method === 'GET' && r.url.includes('/keys/export') && r.url.includes('locale=de'),
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/keys/export') &&
+          r.url.includes('locale=de')
       );
       expect(pullReqs.length).toBeGreaterThan(0);
       expect(pullReqs[0]!.authHeader).toBe('ApiKey push-pull-key');
@@ -291,13 +336,18 @@ describe('CLI sync push/pull dispatch E2E', () => {
       writeSyncYaml({ includeTmsBlock: true, targetLocales: ['de', 'fr'] });
       writeSource({ greeting: 'Hello', farewell: 'Goodbye' });
 
-      const run = runCli(['sync', 'pull', '--locale', 'fr'], { TMS_API_KEY: 'push-pull-key' });
+      const run = runCli(['sync', 'pull', '--locale', 'fr'], {
+        TMS_API_KEY: 'push-pull-key',
+      });
 
       expect(run.status).toBe(0);
 
       const frFile = path.join(testFiles.path, 'locales', 'fr.json');
       expect(fs.existsSync(frFile)).toBe(true);
-      const frParsed = JSON.parse(fs.readFileSync(frFile, 'utf-8')) as Record<string, string>;
+      const frParsed = JSON.parse(fs.readFileSync(frFile, 'utf-8')) as Record<
+        string,
+        string
+      >;
       expect(frParsed['greeting']).toBe('Bonjour');
 
       const deFile = path.join(testFiles.path, 'locales', 'de.json');
@@ -305,7 +355,7 @@ describe('CLI sync push/pull dispatch E2E', () => {
 
       const state = await inspectMockServer();
       const pullReqs = state.requests.filter(
-        (r) => r.method === 'GET' && r.url.includes('/keys/export'),
+        (r) => r.method === 'GET' && r.url.includes('/keys/export')
       );
       expect(pullReqs.length).toBeGreaterThan(0);
       expect(pullReqs.some((r) => r.url.includes('locale=fr'))).toBe(true);
@@ -318,12 +368,16 @@ describe('CLI sync push/pull dispatch E2E', () => {
       writeTarget('de', { greeting: 'Hallo' });
       writeTarget('fr', { greeting: 'Bonjour' });
 
-      const run = runCli(['sync', 'push', '--locale', 'de'], { TMS_API_KEY: 'push-pull-key' });
+      const run = runCli(['sync', 'push', '--locale', 'de'], {
+        TMS_API_KEY: 'push-pull-key',
+      });
 
       expect(run.status).toBe(0);
 
       const state = await inspectMockServer();
-      expect(Object.keys(state.pushed['de'] ?? {}).sort()).toEqual(['greeting']);
+      expect(Object.keys(state.pushed['de'] ?? {}).sort()).toEqual([
+        'greeting',
+      ]);
       expect(state.pushed['fr']).toBeUndefined();
     });
 
@@ -346,7 +400,7 @@ describe('CLI sync push/pull dispatch E2E', () => {
 
       const state = await inspectMockServer();
       const pullReqs = state.requests.filter(
-        (r) => r.method === 'GET' && r.url.includes('/keys/export'),
+        (r) => r.method === 'GET' && r.url.includes('/keys/export')
       );
       expect(pullReqs.some((r) => r.url.includes('locale=fr'))).toBe(true);
       expect(pullReqs.some((r) => r.url.includes('locale=de'))).toBe(false);
@@ -368,7 +422,11 @@ describe('CLI sync push/pull dispatch E2E', () => {
       });
 
       expect(run.status).toBe(0);
-      const envelope = JSON.parse(run.stdout) as { ok: boolean; pushed: number; skipped: unknown[] };
+      const envelope = JSON.parse(run.stdout) as {
+        ok: boolean;
+        pushed: number;
+        skipped: unknown[];
+      };
       expect(envelope.ok).toBe(true);
       expect(typeof envelope.pushed).toBe('number');
       expect(Array.isArray(envelope.skipped)).toBe(true);
@@ -387,7 +445,11 @@ describe('CLI sync push/pull dispatch E2E', () => {
       });
 
       expect(run.status).toBe(0);
-      const envelope = JSON.parse(run.stdout) as { ok: boolean; pulled: number; skipped: unknown[] };
+      const envelope = JSON.parse(run.stdout) as {
+        ok: boolean;
+        pulled: number;
+        skipped: unknown[];
+      };
       expect(envelope.ok).toBe(true);
       expect(typeof envelope.pulled).toBe('number');
       expect(Array.isArray(envelope.skipped)).toBe(true);

@@ -59,7 +59,11 @@ function writePidFile(pidFilePath: string): void {
     pid: process.pid,
     startedAt: new Date().toISOString(),
   };
-  const fd = fs.openSync(pidFilePath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o644);
+  const fd = fs.openSync(
+    pidFilePath,
+    fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY,
+    0o644
+  );
   try {
     fs.writeSync(fd, JSON.stringify(payload));
   } finally {
@@ -85,13 +89,13 @@ export function acquireSyncProcessLock(projectRoot: string): ProcessLockHandle {
     if (existing && isProcessAlive(existing.pid)) {
       throw new ConfigError(
         `Another \`deepl sync\` process is running in this directory (PID=${existing.pid}, started ${existing.startedAt}). Wait for it to finish or kill it before retrying.`,
-        `If the process is definitely not running, remove ${PROCESS_LOCK_FILE_NAME} manually and retry.`,
+        `If the process is definitely not running, remove ${PROCESS_LOCK_FILE_NAME} manually and retry.`
       );
     }
 
     const stalePidLabel = existing ? `PID=${existing.pid}` : 'unknown PID';
     Logger.warn(
-      `Removing stale ${PROCESS_LOCK_FILE_NAME} (${stalePidLabel} is not alive); reclaiming lock.`,
+      `Removing stale ${PROCESS_LOCK_FILE_NAME} (${stalePidLabel} is not alive); reclaiming lock.`
     );
     try {
       fs.unlinkSync(pidFilePath);
@@ -117,7 +121,7 @@ export function acquireSyncProcessLock(projectRoot: string): ProcessLockHandle {
       const code = (err as NodeJS.ErrnoException).code;
       if (code !== 'ENOENT') {
         Logger.warn(
-          `Failed to remove ${PROCESS_LOCK_FILE_NAME}: ${err instanceof Error ? err.message : String(err)}`,
+          `Failed to remove ${PROCESS_LOCK_FILE_NAME}: ${err instanceof Error ? err.message : String(err)}`
         );
       }
     }

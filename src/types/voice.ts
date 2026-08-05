@@ -3,7 +3,6 @@
  * Types for DeepL Voice API real-time speech transcription and translation.
  */
 
-
 // Source languages supported by the Voice API (30 languages)
 export type VoiceSourceLanguage =
   | 'ar'
@@ -105,7 +104,14 @@ export type VoiceSourceMediaContentType =
 export type VoiceSourceLanguageMode = 'auto' | 'fixed';
 
 // Voice-specific formality values (differs from text translation API)
-export type VoiceFormality = 'default' | 'formal' | 'more' | 'informal' | 'less' | 'prefer_more' | 'prefer_less';
+export type VoiceFormality =
+  | 'default'
+  | 'formal'
+  | 'more'
+  | 'informal'
+  | 'less'
+  | 'prefer_more'
+  | 'prefer_less';
 
 // REST endpoint: POST /v3/voice/realtime
 

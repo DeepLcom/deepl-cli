@@ -67,17 +67,13 @@ describe('formatVoiceJson()', () => {
     source: {
       lang: 'en',
       text: 'Hello world',
-      segments: [
-        { text: 'Hello world', start_time: 0, end_time: 1.5 },
-      ],
+      segments: [{ text: 'Hello world', start_time: 0, end_time: 1.5 }],
     },
     targets: [
       {
         lang: 'de',
         text: 'Hallo Welt',
-        segments: [
-          { text: 'Hallo Welt', start_time: 0, end_time: 1.5 },
-        ],
+        segments: [{ text: 'Hallo Welt', start_time: 0, end_time: 1.5 }],
       },
     ],
   };

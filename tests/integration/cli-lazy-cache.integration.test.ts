@@ -13,17 +13,28 @@ describe('Lazy CacheService Instantiation', () => {
   let testHomeDir: string;
   let testConfigDir: string;
   let expectedCachePath: string;
-  let runCLI: (command: string, extraEnv?: Record<string, string | undefined>) => string;
+  let runCLI: (
+    command: string,
+    extraEnv?: Record<string, string | undefined>
+  ) => string;
 
   beforeEach(() => {
-    testHomeDir = path.join(os.tmpdir(), `.deepl-cli-lazy-cache-home-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    testHomeDir = path.join(
+      os.tmpdir(),
+      `.deepl-cli-lazy-cache-home-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     testConfigDir = path.join(testHomeDir, '.deepl-cli');
     expectedCachePath = path.join(testConfigDir, 'cache.db');
     fs.mkdirSync(testHomeDir, { recursive: true });
 
     const helpers = makeRunCLI(testConfigDir);
-    runCLI = (command: string, extraEnv: Record<string, string | undefined> = {}) => {
-      return helpers.runCLI(command, { env: { HOME: testHomeDir, ...extraEnv } });
+    runCLI = (
+      command: string,
+      extraEnv: Record<string, string | undefined> = {}
+    ) => {
+      return helpers.runCLI(command, {
+        env: { HOME: testHomeDir, ...extraEnv },
+      });
     };
   });
 

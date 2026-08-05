@@ -12,12 +12,18 @@ import { spawnSync } from 'child_process';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 
-const SCRIPT = path.join(__dirname, '..', '..', 'scripts', 'generate-language-registry.mjs');
+const SCRIPT = path.join(
+  __dirname,
+  '..',
+  '..',
+  'scripts',
+  'generate-language-registry.mjs'
+);
 
 /** Renders `entries`/`writeTargets` and reports either the output or the rejection. */
 function render(
   entries: Array<Record<string, unknown>>,
-  writeTargets: string[] = ['de'],
+  writeTargets: string[] = ['de']
 ): { ok: boolean; output: string } {
   const source = `
     const gen = await import(${JSON.stringify(SCRIPT)});
@@ -28,25 +34,41 @@ function render(
       process.stdout.write('ERR\\n' + error.message);
     }
   `;
-  const result = spawnSync('node', ['--input-type=module', '-e', source], { encoding: 'utf-8' });
+  const result = spawnSync('node', ['--input-type=module', '-e', source], {
+    encoding: 'utf-8',
+  });
   const stdout = result.stdout ?? '';
-  return { ok: stdout.startsWith('OK'), output: stdout.slice(stdout.indexOf('\n') + 1) };
+  return {
+    ok: stdout.startsWith('OK'),
+    output: stdout.slice(stdout.indexOf('\n') + 1),
+  };
 }
 
 describe('generate-language-registry', () => {
   describe('benign responses', () => {
     it('should render an entry as a single-quoted literal', () => {
-      const { ok, output } = render([{ code: 'de', name: 'German', category: 'core' }]);
+      const { ok, output } = render([
+        { code: 'de', name: 'German', category: 'core' },
+      ]);
 
       expect(ok).toBe(true);
-      expect(output).toContain("{ code: 'de', name: 'German', category: 'core' },");
+      expect(output).toContain(
+        "{ code: 'de', name: 'German', category: 'core' },"
+      );
       expect(output).toContain("  'de',");
     });
 
     it('should mark a target-only entry', () => {
       const { ok, output } = render(
-        [{ code: 'en-gb', name: 'English (British)', category: 'regional', targetOnly: true }],
-        ['en-gb'],
+        [
+          {
+            code: 'en-gb',
+            name: 'English (British)',
+            category: 'regional',
+            targetOnly: true,
+          },
+        ],
+        ['en-gb']
       );
 
       expect(ok).toBe(true);
@@ -54,7 +76,11 @@ describe('generate-language-registry', () => {
     });
 
     it('should accept the punctuation real display names use', () => {
-      for (const name of ['Norwegian (bokmål)', 'Kurdish (Sorani)', 'Chinese (simplified)']) {
+      for (const name of [
+        'Norwegian (bokmål)',
+        'Kurdish (Sorani)',
+        'Chinese (simplified)',
+      ]) {
         expect(render([{ code: 'nb', name, category: 'core' }]).ok).toBe(true);
       }
     });
@@ -75,41 +101,54 @@ describe('generate-language-registry', () => {
     });
 
     it('should reject a display name carrying a quote or comment marker', () => {
-      const { ok, output } = render([{ code: 'de', name: "Ger'; eval('x'); //", category: 'core' }]);
+      const { ok, output } = render([
+        { code: 'de', name: "Ger'; eval('x'); //", category: 'core' },
+      ]);
 
       expect(ok).toBe(false);
       expect(output).toMatch(/refusing to write display name/);
     });
 
-    it.each([['newline', 'German\nExtra'], ['backslash', 'German\\']])(
-      'should reject a display name containing a %s',
-      (_label, name) => {
-        expect(render([{ code: 'de', name, category: 'core' }]).ok).toBe(false);
-      },
-    );
+    it.each([
+      ['newline', 'German\nExtra'],
+      ['backslash', 'German\\'],
+    ])('should reject a display name containing a %s', (_label, name) => {
+      expect(render([{ code: 'de', name, category: 'core' }]).ok).toBe(false);
+    });
 
     it('should reject a category outside the three tiers', () => {
-      const { ok, output } = render([{ code: 'de', name: 'German', category: "core'; eval('x')" }]);
+      const { ok, output } = render([
+        { code: 'de', name: 'German', category: "core'; eval('x')" },
+      ]);
 
       expect(ok).toBe(false);
       expect(output).toMatch(/unexpected category/);
     });
 
     it('should reject a non-string code or name', () => {
-      expect(render([{ code: 42, name: 'X', category: 'core' }]).ok).toBe(false);
-      expect(render([{ code: 'de', name: 42, category: 'core' }]).ok).toBe(false);
+      expect(render([{ code: 42, name: 'X', category: 'core' }]).ok).toBe(
+        false
+      );
+      expect(render([{ code: 'de', name: 42, category: 'core' }]).ok).toBe(
+        false
+      );
     });
 
     it('should reject a Write target that is not a language tag', () => {
-      const { ok } = render([{ code: 'de', name: 'German', category: 'core' }], [
-        "de' ], evil = [",
-      ]);
+      const { ok } = render(
+        [{ code: 'de', name: 'German', category: 'core' }],
+        ["de' ], evil = ["]
+      );
 
       // The Write list is validated in main(); rendering it quotes the value so
       // it cannot escape the literal even when reached directly.
       expect(ok).toBe(true);
-      expect(render([{ code: 'de', name: 'German', category: 'core' }], ["de' ], evil = ["]).output)
-        .toContain("'de\\' ], evil = ['");
+      expect(
+        render(
+          [{ code: 'de', name: 'German', category: 'core' }],
+          ["de' ], evil = ["]
+        ).output
+      ).toContain("'de\\' ], evil = ['");
     });
   });
 
@@ -121,12 +160,16 @@ describe('generate-language-registry', () => {
         __dirname,
         '..',
         'fixtures',
-        'throwing-fetch.mjs',
+        'throwing-fetch.mjs'
       );
-      const result = spawnSync('node', ['--import', pathToFileURL(preload).href, SCRIPT], {
-        encoding: 'utf-8',
-        env: { ...process.env, DEEPL_API_KEY: 'test-key-for-generator:fx' },
-      });
+      const result = spawnSync(
+        'node',
+        ['--import', pathToFileURL(preload).href, SCRIPT],
+        {
+          encoding: 'utf-8',
+          env: { ...process.env, DEEPL_API_KEY: 'test-key-for-generator:fx' },
+        }
+      );
 
       expect(result.status).toBe(1);
       expect(result.stderr).toContain('error: simulated transport failure');

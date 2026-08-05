@@ -99,7 +99,7 @@ describe('yaml parser', () => {
       const yaml = 'list:\n  - name: Alice\n    role: admin\n';
       const entries = parser.extract(yaml);
       expect(entries).toHaveLength(2);
-      const keys = entries.map(e => e.key);
+      const keys = entries.map((e) => e.key);
       expect(keys).toContain('list\x000\x00name');
       expect(keys).toContain('list\x000\x00role');
     });
@@ -110,8 +110,8 @@ describe('yaml parser', () => {
       const yaml = 'base: &anchor "hello"\nalias: *anchor\n';
       const entries = parser.extract(yaml);
       expect(entries).toHaveLength(2);
-      const baseEntry = entries.find(e => e.key === 'base');
-      const aliasEntry = entries.find(e => e.key === 'alias');
+      const baseEntry = entries.find((e) => e.key === 'base');
+      const aliasEntry = entries.find((e) => e.key === 'alias');
       expect(baseEntry).toBeDefined();
       expect(baseEntry!.value).toBe('hello');
       expect(aliasEntry).toBeDefined();
@@ -204,7 +204,7 @@ describe('yaml parser', () => {
     it('should walk into nested sequences within sequences', () => {
       const yaml = 'matrix:\n  - - a\n    - b\n  - - c\n';
       const entries = parser.extract(yaml);
-      const keys = entries.map(e => e.key);
+      const keys = entries.map((e) => e.key);
       expect(keys).toContain('matrix\x000\x000');
       expect(keys).toContain('matrix\x000\x001');
       expect(keys).toContain('matrix\x001\x000');
@@ -214,7 +214,7 @@ describe('yaml parser', () => {
       const yaml = 'items:\n  - title: First\n  - title: Second\n';
       const entries = parser.extract(yaml);
       expect(entries).toHaveLength(2);
-      const keys = entries.map(e => e.key);
+      const keys = entries.map((e) => e.key);
       expect(keys).toContain('items\x000\x00title');
       expect(keys).toContain('items\x001\x00title');
     });
@@ -222,16 +222,17 @@ describe('yaml parser', () => {
 
   describe('aliases resolving to collections', () => {
     it('should extract aliased map content only at its anchor site', () => {
-      const yaml = 'defaults: &defaults\n  color: red\n  size: large\ntheme: *defaults\n';
+      const yaml =
+        'defaults: &defaults\n  color: red\n  size: large\ntheme: *defaults\n';
       const entries = parser.extract(yaml);
-      const keys = entries.map(e => e.key);
+      const keys = entries.map((e) => e.key);
       expect(keys).toEqual(['defaults\0color', 'defaults\0size']);
     });
 
     it('should extract aliased map content in a sequence only at its anchor site', () => {
       const yaml = 'base: &base\n  x: hello\nitems:\n  - *base\n';
       const entries = parser.extract(yaml);
-      const keys = entries.map(e => e.key);
+      const keys = entries.map((e) => e.key);
       expect(keys).toEqual(['base\0x']);
     });
 
@@ -268,9 +269,12 @@ describe('yaml parser', () => {
         '',
       ].join('\n');
       const extracted = parser.extract(yaml);
-      expect(extracted.map(e => e.key)).toEqual(['defaults\0color', 'theme\0name']);
+      expect(extracted.map((e) => e.key)).toEqual([
+        'defaults\0color',
+        'theme\0name',
+      ]);
 
-      const entries: TranslatedEntry[] = extracted.map(e => ({
+      const entries: TranslatedEntry[] = extracted.map((e) => ({
         ...e,
         translation: e.value === 'red' ? 'rojo' : 'Oscuro',
       }));
@@ -347,7 +351,8 @@ describe('yaml parser', () => {
     });
 
     it('should walk alias resolving to scalar in map value and delete it', () => {
-      const yaml = 'base: &anchor hello\nkept: world\nalias1: *anchor\nalias2: *anchor\n';
+      const yaml =
+        'base: &anchor hello\nkept: world\nalias1: *anchor\nalias2: *anchor\n';
       const entries: TranslatedEntry[] = [
         { key: 'kept', value: 'world', translation: 'mundo' },
       ];
@@ -371,11 +376,11 @@ describe('yaml parser', () => {
     it('should handle alias in sequence resolving to scalar in extract', () => {
       const yaml = 'base: &val hello\nitems:\n  - *val\n  - extra\n';
       const entries = parser.extract(yaml);
-      const keys = entries.map(e => e.key);
+      const keys = entries.map((e) => e.key);
       expect(keys).toContain('base');
       expect(keys).toContain('items\x000');
       expect(keys).toContain('items\x001');
-      expect(entries.find(e => e.key === 'items\x000')!.value).toBe('hello');
+      expect(entries.find((e) => e.key === 'items\x000')!.value).toBe('hello');
     });
 
     it('should walk alias resolving to scalar in seq during walkDoc and delete it', () => {
@@ -395,7 +400,9 @@ describe('yaml parser', () => {
     const aliasBomb = (): string => {
       const lines = ['level0: &level0 [a, b, c, d]'];
       for (let i = 1; i <= 12; i++) {
-        const refs = Array.from({ length: 9 }, () => `*level${i - 1}`).join(', ');
+        const refs = Array.from({ length: 9 }, () => `*level${i - 1}`).join(
+          ', '
+        );
         lines.push(`level${i}: &level${i} [${refs}]`);
       }
       return `${lines.join('\n')}\n`;
@@ -411,7 +418,7 @@ describe('yaml parser', () => {
 
     it('should extract nested alias fan-out without expanding it', () => {
       const entries = parser.extract(aliasBomb());
-      expect(entries.map(e => e.key)).toEqual([
+      expect(entries.map((e) => e.key)).toEqual([
         'level0\x000',
         'level0\x001',
         'level0\x002',
@@ -423,7 +430,7 @@ describe('yaml parser', () => {
       const yaml = aliasBomb();
       const entries: TranslatedEntry[] = parser
         .extract(yaml)
-        .map(e => ({ ...e, translation: e.value.toUpperCase() }));
+        .map((e) => ({ ...e, translation: e.value.toUpperCase() }));
       const result = parser.reconstruct(yaml, entries);
       expect(result).toContain('&level0');
       expect(result).toContain('*level11');
@@ -442,7 +449,7 @@ describe('yaml parser', () => {
 
       const entries = parser.extract(yaml);
       expect(entries).toHaveLength(500);
-      expect(entries.every(e => e.key.startsWith('big\0'))).toBe(true);
+      expect(entries.every((e) => e.key.startsWith('big\0'))).toBe(true);
     });
 
     it('should extract nothing from a self-referential anchor', () => {
@@ -458,14 +465,16 @@ describe('yaml parser', () => {
     it('should still extract a document that reuses one anchor many times', () => {
       const entries = parser.extract(anchorReusedManyTimes());
       expect(entries).toHaveLength(201);
-      expect(entries.every(e => e.value === 'shared')).toBe(true);
+      expect(entries.every((e) => e.value === 'shared')).toBe(true);
     });
 
     it('should still round-trip a document that reuses one anchor many times', () => {
       const yaml = anchorReusedManyTimes();
-      const entries: TranslatedEntry[] = parser
-        .extract(yaml)
-        .map(e => ({ key: e.key, value: e.value, translation: 'compartido' }));
+      const entries: TranslatedEntry[] = parser.extract(yaml).map((e) => ({
+        key: e.key,
+        value: e.value,
+        translation: 'compartido',
+      }));
       const result = parser.reconstruct(yaml, entries);
       expect(result).toContain('compartido');
       expect(result).toContain('key199');
@@ -501,7 +510,9 @@ describe('yaml parser', () => {
 
       const result = parser.reconstruct(yaml, entries);
       const roundTripped = parser.extract(result);
-      expect(roundTripped).toEqual(entries.map(e => ({ key: e.key, value: e.translation })));
+      expect(roundTripped).toEqual(
+        entries.map((e) => ({ key: e.key, value: e.translation }))
+      );
     });
   });
 

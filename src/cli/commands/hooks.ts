@@ -26,7 +26,9 @@ export class HooksCommand {
    */
   install(hookType: HookType): string {
     if (!this.gitHooksService) {
-      throw new ValidationError('Not in a git repository. Run this command from within a git repository.');
+      throw new ValidationError(
+        'Not in a git repository. Run this command from within a git repository.'
+      );
     }
 
     const result = this.gitHooksService.install(hookType);
@@ -36,7 +38,9 @@ export class HooksCommand {
       lines.push(chalk.gray(`  Path: ${result.hookPath}`));
     }
     if (result?.backupPath) {
-      lines.push(chalk.gray(`  Previous hook backed up to: ${result.backupPath}`));
+      lines.push(
+        chalk.gray(`  Previous hook backed up to: ${result.backupPath}`)
+      );
     }
 
     return lines.join('\n');
@@ -47,7 +51,9 @@ export class HooksCommand {
    */
   uninstall(hookType: HookType): string {
     if (!this.gitHooksService) {
-      throw new ValidationError('Not in a git repository. Run this command from within a git repository.');
+      throw new ValidationError(
+        'Not in a git repository. Run this command from within a git repository.'
+      );
     }
 
     this.gitHooksService.uninstall(hookType);
@@ -78,7 +84,9 @@ export class HooksCommand {
 
     for (const [hook, installed] of Object.entries(status)) {
       const icon = installed ? chalk.green('✓') : chalk.gray('✗');
-      const text = installed ? chalk.green('installed') : chalk.gray('not installed');
+      const text = installed
+        ? chalk.green('installed')
+        : chalk.gray('not installed');
       lines.push(`  ${icon} ${hook.padEnd(15)} ${text}`);
     }
 
@@ -90,7 +98,9 @@ export class HooksCommand {
    */
   showPath(hookType: HookType): string {
     if (!this.gitHooksService) {
-      throw new ValidationError('Not in a git repository. Run this command from within a git repository.');
+      throw new ValidationError(
+        'Not in a git repository. Run this command from within a git repository.'
+      );
     }
 
     const hookPath = this.gitHooksService.getHookPath(hookType);

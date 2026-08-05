@@ -6,7 +6,11 @@
 import { ConfigService } from '../../storage/config.js';
 import { DeepLClient } from '../../api/deepl-client.js';
 import type { DeepLClientOptions } from '../../api/http-client.js';
-import { ValidationError, AuthError, NetworkError } from '../../utils/errors.js';
+import {
+  ValidationError,
+  AuthError,
+  NetworkError,
+} from '../../utils/errors.js';
 import { resolveEndpoint } from '../../utils/resolve-endpoint.js';
 
 export class AuthCommand {
@@ -21,7 +25,10 @@ export class AuthCommand {
   /**
    * Set API key and validate it
    */
-  async setKey(apiKey: string, options: { verify?: boolean } = {}): Promise<void> {
+  async setKey(
+    apiKey: string,
+    options: { verify?: boolean } = {}
+  ): Promise<void> {
     // Validate input
     if (!apiKey || apiKey.trim() === '') {
       throw new ValidationError('API key cannot be empty');
@@ -55,7 +62,7 @@ export class AuthCommand {
         if (error instanceof NetworkError) {
           throw new NetworkError(
             `Could not reach the DeepL API to validate the key: ${error.message}`,
-            'Store the key without validating with --no-verify, or set DEEPL_API_KEY in your environment instead.',
+            'Store the key without validating with --no-verify, or set DEEPL_API_KEY in your environment instead.'
           );
         }
         throw error;

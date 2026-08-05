@@ -75,11 +75,14 @@ export function parseIcu(text: string): IcuParseResult {
           // Filling missing values with '' produced empty plural branches,
           // which render nothing for that category.
           throw new Error(
-            `ICU reassemble expected ${segments.length} translations, received ${translations.length}`,
+            `ICU reassemble expected ${segments.length} translations, received ${translations.length}`
           );
         }
         let idx = 0;
-        return template.replace(/__ICU_LEAF_(?:\d+|P|S)__/g, () => translations[idx++] ?? '');
+        return template.replace(
+          /__ICU_LEAF_(?:\d+|P|S)__/g,
+          () => translations[idx++] ?? ''
+        );
       },
     };
   } catch {
@@ -95,7 +98,11 @@ interface ParseBlockResult {
 
 const OFFSET_RE = /^offset\s*:\s*\d+/;
 
-function parseIcuBlock(text: string, start: number, inPluralContext = false): ParseBlockResult | null {
+function parseIcuBlock(
+  text: string,
+  start: number,
+  inPluralContext = false
+): ParseBlockResult | null {
   let i = start;
 
   // Skip leading whitespace
@@ -174,7 +181,11 @@ function parseIcuBlock(text: string, start: number, inPluralContext = false): Pa
     i = branchContent.endIndex + 1;
 
     // Check if branch content itself contains nested ICU
-    const nestedResult = tryParseNestedContent(content, pluralContext, segments);
+    const nestedResult = tryParseNestedContent(
+      content,
+      pluralContext,
+      segments
+    );
     const leafIndex = segments.length;
 
     if (nestedResult) {
@@ -192,7 +203,7 @@ function parseIcuBlock(text: string, start: number, inPluralContext = false): Pa
 function tryParseNestedContent(
   content: string,
   inPluralContext: boolean,
-  segments: IcuSegment[],
+  segments: IcuSegment[]
 ): { template: string } | null {
   // Check if content contains a nested ICU block
   // e.g., "{gender, select, male {He has # items} female {She has # items}}"
@@ -214,7 +225,10 @@ function tryParseNestedContent(
   // Reindex the nested template's leaf references
   let reindexed = nested.template;
   for (let j = nested.segments.length - 1; j >= 0; j--) {
-    reindexed = reindexed.replace(`__ICU_LEAF_${j}__`, `__ICU_LEAF_${baseIndex + j}__`);
+    reindexed = reindexed.replace(
+      `__ICU_LEAF_${j}__`,
+      `__ICU_LEAF_${baseIndex + j}__`
+    );
   }
 
   return { template: reindexed };
@@ -229,7 +243,7 @@ function tryParseNestedContent(
 function extractBraceContent(
   text: string,
   start: number,
-  inPluralContext: boolean,
+  inPluralContext: boolean
 ): { content: string; endIndex: number } | null {
   if (text[start] !== '{') return null;
 

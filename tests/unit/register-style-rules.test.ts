@@ -30,7 +30,10 @@ jest.mock('chalk', () => ({
   yellow: (t: string) => t,
 }));
 
-const mockCreateStyleRulesCommand = createStyleRulesCommand as jest.MockedFunction<typeof createStyleRulesCommand>;
+const mockCreateStyleRulesCommand =
+  createStyleRulesCommand as jest.MockedFunction<
+    typeof createStyleRulesCommand
+  >;
 
 const SAMPLE_RULE = {
   styleId: 'sr-1',
@@ -66,9 +69,15 @@ function makeMockStyleRulesCmd() {
     update: jest.fn().mockResolvedValue(SAMPLE_RULE),
     delete: jest.fn().mockResolvedValue(undefined),
     replaceRules: jest.fn().mockResolvedValue(SAMPLE_DETAILED),
-    listInstructions: jest.fn().mockResolvedValue([{ label: 'tone', prompt: 'Be formal' }]),
-    addInstruction: jest.fn().mockResolvedValue({ label: 'tone', prompt: 'Be formal' }),
-    updateInstruction: jest.fn().mockResolvedValue({ label: 'tone', prompt: 'Be friendlier' }),
+    listInstructions: jest
+      .fn()
+      .mockResolvedValue([{ label: 'tone', prompt: 'Be formal' }]),
+    addInstruction: jest
+      .fn()
+      .mockResolvedValue({ label: 'tone', prompt: 'Be formal' }),
+    updateInstruction: jest
+      .fn()
+      .mockResolvedValue({ label: 'tone', prompt: 'Be friendlier' }),
     removeInstruction: jest.fn().mockResolvedValue(undefined),
     formatStyleRulesList: jest.fn().mockReturnValue('rules-list-text'),
     formatStyleRulesJson: jest.fn().mockReturnValue('[]'),
@@ -76,19 +85,34 @@ function makeMockStyleRulesCmd() {
     formatStyleRule: jest.fn().mockReturnValue('rule-text'),
     formatStyleRuleJson: jest.fn().mockReturnValue('{}'),
     formatCustomInstruction: jest.fn().mockReturnValue('instruction-text'),
-    formatCustomInstructionsList: jest.fn().mockReturnValue('instructions-list-text'),
-    formatCustomInstructionsTable: jest.fn().mockReturnValue('instructions-list-table'),
+    formatCustomInstructionsList: jest
+      .fn()
+      .mockReturnValue('instructions-list-text'),
+    formatCustomInstructionsTable: jest
+      .fn()
+      .mockReturnValue('instructions-list-table'),
     formatCustomInstructionJson: jest.fn().mockReturnValue('{}'),
   };
 }
 
-async function withTTY<T>(value: boolean, fn: () => Promise<T> | T): Promise<T> {
+async function withTTY<T>(
+  value: boolean,
+  fn: () => Promise<T> | T
+): Promise<T> {
   const original = process.stdout.isTTY;
-  Object.defineProperty(process.stdout, 'isTTY', { value, configurable: true, writable: true });
+  Object.defineProperty(process.stdout, 'isTTY', {
+    value,
+    configurable: true,
+    writable: true,
+  });
   try {
     return await fn();
   } finally {
-    Object.defineProperty(process.stdout, 'isTTY', { value: original, configurable: true, writable: true });
+    Object.defineProperty(process.stdout, 'isTTY', {
+      value: original,
+      configurable: true,
+      writable: true,
+    });
   }
 }
 
@@ -115,7 +139,14 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'list', '--format', 'json']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'list',
+        '--format',
+        'json',
+      ]);
 
       expect(mock.formatStyleRulesJson).toHaveBeenCalledWith([SAMPLE_RULE]);
     });
@@ -136,7 +167,14 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await withTTY(true, async () => {
-        await program.parseAsync(['node', 'test', 'style-rules', 'list', '--format', 'table']);
+        await program.parseAsync([
+          'node',
+          'test',
+          'style-rules',
+          'list',
+          '--format',
+          'table',
+        ]);
       });
 
       expect(mock.formatStyleRulesTable).toHaveBeenCalledWith([SAMPLE_RULE]);
@@ -151,12 +189,21 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await withTTY(false, async () => {
-        await program.parseAsync(['node', 'test', 'style-rules', 'list', '--format', 'table']);
+        await program.parseAsync([
+          'node',
+          'test',
+          'style-rules',
+          'list',
+          '--format',
+          'table',
+        ]);
       });
 
       expect(mock.formatStyleRulesTable).not.toHaveBeenCalled();
       expect(mock.formatStyleRulesList).toHaveBeenCalledWith([SAMPLE_RULE]);
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('non-TTY')
+      );
       expect(Logger.output).toHaveBeenCalledWith('rules-list-text');
     });
   });
@@ -167,7 +214,16 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'create', '--name', 'X', '--language', 'en']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'create',
+        '--name',
+        'X',
+        '--language',
+        'en',
+      ]);
 
       expect(mock.create).toHaveBeenCalledWith({ name: 'X', language: 'en' });
       expect(Logger.success).toHaveBeenCalled();
@@ -179,13 +235,21 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'create',
-        '--name', 'X', '--language', 'en',
-        '--rules', '{"punctuation":{"quotation_mark":"use_guillemets"}}',
+        'node',
+        'test',
+        'style-rules',
+        'create',
+        '--name',
+        'X',
+        '--language',
+        'en',
+        '--rules',
+        '{"punctuation":{"quotation_mark":"use_guillemets"}}',
       ]);
 
       expect(mock.create).toHaveBeenCalledWith({
-        name: 'X', language: 'en',
+        name: 'X',
+        language: 'en',
         configuredRules: { punctuation: { quotation_mark: 'use_guillemets' } },
       });
     });
@@ -197,8 +261,16 @@ describe('registerStyleRules', () => {
 
       await expect(
         program.parseAsync([
-          'node', 'test', 'style-rules', 'create',
-          '--name', 'X', '--language', 'en', '--rules', '{garbage',
+          'node',
+          'test',
+          'style-rules',
+          'create',
+          '--name',
+          'X',
+          '--language',
+          'en',
+          '--rules',
+          '{garbage',
         ])
       ).rejects.toThrow();
       expect(handleError).toHaveBeenCalled();
@@ -211,12 +283,22 @@ describe('registerStyleRules', () => {
 
       await expect(
         program.parseAsync([
-          'node', 'test', 'style-rules', 'create',
-          '--name', 'X', '--language', 'en', '--rules', '["rule_a"]',
+          'node',
+          'test',
+          'style-rules',
+          'create',
+          '--name',
+          'X',
+          '--language',
+          'en',
+          '--rules',
+          '["rule_a"]',
         ])
       ).rejects.toThrow();
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('JSON object of category') }),
+        expect.objectContaining({
+          message: expect.stringContaining('JSON object of category'),
+        })
       );
     });
 
@@ -227,12 +309,22 @@ describe('registerStyleRules', () => {
 
       await expect(
         program.parseAsync([
-          'node', 'test', 'style-rules', 'create',
-          '--name', 'X', '--language', 'en', '--rules', '{"punctuation":"wrong"}',
+          'node',
+          'test',
+          'style-rules',
+          'create',
+          '--name',
+          'X',
+          '--language',
+          'en',
+          '--rules',
+          '{"punctuation":"wrong"}',
         ])
       ).rejects.toThrow();
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('category "punctuation"') }),
+        expect.objectContaining({
+          message: expect.stringContaining('category "punctuation"'),
+        })
       );
     });
 
@@ -243,12 +335,20 @@ describe('registerStyleRules', () => {
 
       await expect(
         program.parseAsync([
-          'node', 'test', 'style-rules', 'create',
-          '--name', 'X', '--language', 'en', '--rules', '{"x":{"y":42}}',
+          'node',
+          'test',
+          'style-rules',
+          'create',
+          '--name',
+          'X',
+          '--language',
+          'en',
+          '--rules',
+          '{"x":{"y":42}}',
         ])
       ).rejects.toThrow();
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('"x.y"') }),
+        expect.objectContaining({ message: expect.stringContaining('"x.y"') })
       );
     });
 
@@ -258,8 +358,16 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'create',
-        '--name', 'X', '--language', 'en', '--format', 'json',
+        'node',
+        'test',
+        'style-rules',
+        'create',
+        '--name',
+        'X',
+        '--language',
+        'en',
+        '--format',
+        'json',
       ]);
 
       expect(mock.formatStyleRuleJson).toHaveBeenCalledWith(SAMPLE_RULE);
@@ -283,7 +391,14 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'show', 'sr-1', '--detailed']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'show',
+        'sr-1',
+        '--detailed',
+      ]);
 
       expect(mock.show).toHaveBeenCalledWith('sr-1', true);
     });
@@ -293,7 +408,15 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'show', 'sr-1', '--format', 'json']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'show',
+        'sr-1',
+        '--format',
+        'json',
+      ]);
 
       expect(mock.formatStyleRuleJson).toHaveBeenCalledWith(SAMPLE_RULE);
     });
@@ -315,7 +438,15 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'update', 'sr-1', '--name', 'Renamed']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'update',
+        'sr-1',
+        '--name',
+        'Renamed',
+      ]);
 
       expect(mock.update).toHaveBeenCalledWith('sr-1', { name: 'Renamed' });
       expect(mock.replaceRules).not.toHaveBeenCalled();
@@ -328,8 +459,13 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'update', 'sr-1',
-        '--rules', '{"punctuation":{"quotation_mark":"use_guillemets"}}',
+        'node',
+        'test',
+        'style-rules',
+        'update',
+        'sr-1',
+        '--rules',
+        '{"punctuation":{"quotation_mark":"use_guillemets"}}',
       ]);
 
       expect(mock.update).not.toHaveBeenCalled();
@@ -344,8 +480,15 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'update', 'sr-1',
-        '--name', 'New', '--rules', '{"x":{"y":"z"}}',
+        'node',
+        'test',
+        'style-rules',
+        'update',
+        'sr-1',
+        '--name',
+        'New',
+        '--rules',
+        '{"x":{"y":"z"}}',
       ]);
 
       expect(mock.update).toHaveBeenCalledWith('sr-1', { name: 'New' });
@@ -369,8 +512,15 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'update', 'sr-1',
-        '--name', 'X', '--format', 'json',
+        'node',
+        'test',
+        'style-rules',
+        'update',
+        'sr-1',
+        '--name',
+        'X',
+        '--format',
+        'json',
       ]);
 
       expect(mock.formatStyleRuleJson).toHaveBeenCalled();
@@ -383,7 +533,14 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'delete', 'sr-1', '--yes']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'delete',
+        'sr-1',
+        '--yes',
+      ]);
 
       expect(mock.delete).toHaveBeenCalledWith('sr-1');
       expect(Logger.success).toHaveBeenCalled();
@@ -394,10 +551,19 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'delete', 'sr-1', '--dry-run']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'delete',
+        'sr-1',
+        '--dry-run',
+      ]);
 
       expect(mock.delete).not.toHaveBeenCalled();
-      expect(Logger.output).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'));
+      expect(Logger.output).toHaveBeenCalledWith(
+        expect.stringContaining('[dry-run]')
+      );
     });
 
     it('should abort on declined confirmation', async () => {
@@ -408,7 +574,13 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'delete', 'sr-1']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'delete',
+        'sr-1',
+      ]);
 
       expect(mock.delete).not.toHaveBeenCalled();
       expect(Logger.info).toHaveBeenCalledWith('Aborted.');
@@ -422,7 +594,13 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'delete', 'sr-1']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'delete',
+        'sr-1',
+      ]);
 
       expect(mock.delete).toHaveBeenCalledWith('sr-1');
     });
@@ -434,7 +612,13 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'instructions', 'sr-1']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'instructions',
+        'sr-1',
+      ]);
 
       expect(mock.listInstructions).toHaveBeenCalledWith('sr-1');
       expect(mock.formatCustomInstructionsList).toHaveBeenCalled();
@@ -445,7 +629,15 @@ describe('registerStyleRules', () => {
       mockCreateStyleRulesCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'style-rules', 'instructions', 'sr-1', '--format', 'json']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'style-rules',
+        'instructions',
+        'sr-1',
+        '--format',
+        'json',
+      ]);
 
       expect(mock.formatCustomInstructionJson).toHaveBeenCalled();
     });
@@ -456,7 +648,15 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await withTTY(true, async () => {
-        await program.parseAsync(['node', 'test', 'style-rules', 'instructions', 'sr-1', '--format', 'table']);
+        await program.parseAsync([
+          'node',
+          'test',
+          'style-rules',
+          'instructions',
+          'sr-1',
+          '--format',
+          'table',
+        ]);
       });
 
       expect(mock.formatCustomInstructionsTable).toHaveBeenCalled();
@@ -471,12 +671,22 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await withTTY(false, async () => {
-        await program.parseAsync(['node', 'test', 'style-rules', 'instructions', 'sr-1', '--format', 'table']);
+        await program.parseAsync([
+          'node',
+          'test',
+          'style-rules',
+          'instructions',
+          'sr-1',
+          '--format',
+          'table',
+        ]);
       });
 
       expect(mock.formatCustomInstructionsTable).not.toHaveBeenCalled();
       expect(mock.formatCustomInstructionsList).toHaveBeenCalled();
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('non-TTY')
+      );
       expect(Logger.output).toHaveBeenCalledWith('instructions-list-text');
     });
 
@@ -485,7 +695,13 @@ describe('registerStyleRules', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'style-rules', 'instructions', 'sr-1'])
+        program.parseAsync([
+          'node',
+          'test',
+          'style-rules',
+          'instructions',
+          'sr-1',
+        ])
       ).rejects.toThrow('404');
       expect(handleError).toHaveBeenCalled();
     });
@@ -498,10 +714,19 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'add-instruction', 'sr-1', 'tone', 'Be formal',
+        'node',
+        'test',
+        'style-rules',
+        'add-instruction',
+        'sr-1',
+        'tone',
+        'Be formal',
       ]);
 
-      expect(mock.addInstruction).toHaveBeenCalledWith('sr-1', { label: 'tone', prompt: 'Be formal' });
+      expect(mock.addInstruction).toHaveBeenCalledWith('sr-1', {
+        label: 'tone',
+        prompt: 'Be formal',
+      });
     });
 
     it('should pass --source-language through', async () => {
@@ -510,12 +735,21 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'add-instruction', 'sr-1', 'tone', 'Be formal',
-        '--source-language', 'en',
+        'node',
+        'test',
+        'style-rules',
+        'add-instruction',
+        'sr-1',
+        'tone',
+        'Be formal',
+        '--source-language',
+        'en',
       ]);
 
       expect(mock.addInstruction).toHaveBeenCalledWith('sr-1', {
-        label: 'tone', prompt: 'Be formal', sourceLanguage: 'en',
+        label: 'tone',
+        prompt: 'Be formal',
+        sourceLanguage: 'en',
       });
     });
 
@@ -525,8 +759,15 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'add-instruction', 'sr-1', 'tone', 'Be formal',
-        '--format', 'json',
+        'node',
+        'test',
+        'style-rules',
+        'add-instruction',
+        'sr-1',
+        'tone',
+        'Be formal',
+        '--format',
+        'json',
       ]);
 
       expect(mock.formatCustomInstructionJson).toHaveBeenCalled();
@@ -540,10 +781,18 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'update-instruction', 'sr-1', 'tone', 'Be friendlier',
+        'node',
+        'test',
+        'style-rules',
+        'update-instruction',
+        'sr-1',
+        'tone',
+        'Be friendlier',
       ]);
 
-      expect(mock.updateInstruction).toHaveBeenCalledWith('sr-1', 'tone', { prompt: 'Be friendlier' });
+      expect(mock.updateInstruction).toHaveBeenCalledWith('sr-1', 'tone', {
+        prompt: 'Be friendlier',
+      });
     });
 
     it('should pass --source-language through', async () => {
@@ -552,12 +801,20 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'update-instruction', 'sr-1', 'tone', 'Be friendlier',
-        '--source-language', 'en',
+        'node',
+        'test',
+        'style-rules',
+        'update-instruction',
+        'sr-1',
+        'tone',
+        'Be friendlier',
+        '--source-language',
+        'en',
       ]);
 
       expect(mock.updateInstruction).toHaveBeenCalledWith('sr-1', 'tone', {
-        prompt: 'Be friendlier', sourceLanguage: 'en',
+        prompt: 'Be friendlier',
+        sourceLanguage: 'en',
       });
     });
 
@@ -567,8 +824,15 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'update-instruction', 'sr-1', 'tone', 'New',
-        '--format', 'json',
+        'node',
+        'test',
+        'style-rules',
+        'update-instruction',
+        'sr-1',
+        'tone',
+        'New',
+        '--format',
+        'json',
       ]);
 
       expect(mock.formatCustomInstructionJson).toHaveBeenCalled();
@@ -582,7 +846,13 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'remove-instruction', 'sr-1', 'tone', '--yes',
+        'node',
+        'test',
+        'style-rules',
+        'remove-instruction',
+        'sr-1',
+        'tone',
+        '--yes',
       ]);
 
       expect(mock.removeInstruction).toHaveBeenCalledWith('sr-1', 'tone');
@@ -595,11 +865,19 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'remove-instruction', 'sr-1', 'tone', '--dry-run',
+        'node',
+        'test',
+        'style-rules',
+        'remove-instruction',
+        'sr-1',
+        'tone',
+        '--dry-run',
       ]);
 
       expect(mock.removeInstruction).not.toHaveBeenCalled();
-      expect(Logger.output).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'));
+      expect(Logger.output).toHaveBeenCalledWith(
+        expect.stringContaining('[dry-run]')
+      );
     });
 
     it('should abort on declined confirmation', async () => {
@@ -611,7 +889,12 @@ describe('registerStyleRules', () => {
       const { program } = makeProgram();
 
       await program.parseAsync([
-        'node', 'test', 'style-rules', 'remove-instruction', 'sr-1', 'tone',
+        'node',
+        'test',
+        'style-rules',
+        'remove-instruction',
+        'sr-1',
+        'tone',
       ]);
 
       expect(mock.removeInstruction).not.toHaveBeenCalled();

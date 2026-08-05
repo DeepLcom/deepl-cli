@@ -22,19 +22,27 @@ describe('isUnrecoverableRequestError', () => {
       "API error: Value for 'source_lang' not supported.",
       'API error: target_lang not supported',
       'API error: source_lang not supported',
-    ])('should match %s', message => {
-      expect(isUnrecoverableRequestError(new ValidationError(message))).toBe(true);
+    ])('should match %s', (message) => {
+      expect(isUnrecoverableRequestError(new ValidationError(message))).toBe(
+        true
+      );
     });
 
     it('should match regardless of case', () => {
       expect(
-        isUnrecoverableRequestError(new ValidationError("VALUE FOR 'TARGET_LANG' NOT SUPPORTED.")),
+        isUnrecoverableRequestError(
+          new ValidationError("VALUE FOR 'TARGET_LANG' NOT SUPPORTED.")
+        )
       ).toBe(true);
     });
 
     it('should treat a refused key and an exhausted quota as request-wide', () => {
-      expect(isUnrecoverableRequestError(new AuthError('Authentication failed'))).toBe(true);
-      expect(isUnrecoverableRequestError(new QuotaError('Quota exceeded'))).toBe(true);
+      expect(
+        isUnrecoverableRequestError(new AuthError('Authentication failed'))
+      ).toBe(true);
+      expect(
+        isUnrecoverableRequestError(new QuotaError('Quota exceeded'))
+      ).toBe(true);
     });
   });
 
@@ -45,23 +53,29 @@ describe('isUnrecoverableRequestError', () => {
       expect(
         isUnrecoverableRequestError(
           new NetworkError(
-            "Server error (502): upstream unavailable, value for 'target_lang' not supported by shard",
-          ),
-        ),
+            "Server error (502): upstream unavailable, value for 'target_lang' not supported by shard"
+          )
+        )
       ).toBe(false);
     });
 
     it('should not match a rate limit', () => {
-      expect(isUnrecoverableRequestError(new RateLimitError('Rate limit exceeded'))).toBe(false);
+      expect(
+        isUnrecoverableRequestError(new RateLimitError('Rate limit exceeded'))
+      ).toBe(false);
     });
 
     it('should not match an unrelated validation error', () => {
-      expect(isUnrecoverableRequestError(new ValidationError('Text cannot be empty'))).toBe(false);
+      expect(
+        isUnrecoverableRequestError(new ValidationError('Text cannot be empty'))
+      ).toBe(false);
     });
 
     it('should not match a plain Error, whatever it says', () => {
       expect(
-        isUnrecoverableRequestError(new Error("Value for 'target_lang' not supported.")),
+        isUnrecoverableRequestError(
+          new Error("Value for 'target_lang' not supported.")
+        )
       ).toBe(false);
     });
 

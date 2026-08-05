@@ -2,8 +2,6 @@
  * Tests for Usage Command
  */
 
- 
-
 import { UsageCommand } from '../../src/cli/commands/usage';
 import { createMockUsageService } from '../helpers/mock-factories';
 
@@ -71,25 +69,33 @@ describe('UsageCommand', () => {
     });
 
     it('should handle API errors', async () => {
-      mockService.getUsage = jest.fn().mockRejectedValue(new Error('API error'));
+      mockService.getUsage = jest
+        .fn()
+        .mockRejectedValue(new Error('API error'));
 
       await expect(usageCommand.getUsage()).rejects.toThrow('API error');
     });
 
     it('should handle authentication errors', async () => {
-      mockService.getUsage = jest.fn().mockRejectedValue(
-        new Error('Authentication failed: Invalid API key')
-      );
+      mockService.getUsage = jest
+        .fn()
+        .mockRejectedValue(new Error('Authentication failed: Invalid API key'));
 
-      await expect(usageCommand.getUsage()).rejects.toThrow('Authentication failed: Invalid API key');
+      await expect(usageCommand.getUsage()).rejects.toThrow(
+        'Authentication failed: Invalid API key'
+      );
     });
 
     it('should handle quota exceeded errors', async () => {
-      mockService.getUsage = jest.fn().mockRejectedValue(
-        new Error('Quota exceeded: Character limit reached')
-      );
+      mockService.getUsage = jest
+        .fn()
+        .mockRejectedValue(
+          new Error('Quota exceeded: Character limit reached')
+        );
 
-      await expect(usageCommand.getUsage()).rejects.toThrow('Quota exceeded: Character limit reached');
+      await expect(usageCommand.getUsage()).rejects.toThrow(
+        'Quota exceeded: Character limit reached'
+      );
     });
   });
 
@@ -152,8 +158,16 @@ describe('UsageCommand', () => {
         characterCount: 2150000,
         characterLimit: 20000000,
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
-          { productType: 'write', characterCount: 1250000, apiKeyCharacterCount: 1000000 },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
+          {
+            productType: 'write',
+            characterCount: 1250000,
+            apiKeyCharacterCount: 1000000,
+          },
         ],
       });
 
@@ -185,8 +199,16 @@ describe('UsageCommand', () => {
         startTime: '2025-04-24T14:58:02Z',
         endTime: '2025-05-24T14:58:02Z',
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
-          { productType: 'write', characterCount: 1250000, apiKeyCharacterCount: 1000000 },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
+          {
+            productType: 'write',
+            characterCount: 1250000,
+            apiKeyCharacterCount: 1000000,
+          },
         ],
       });
 
@@ -275,7 +297,9 @@ describe('UsageCommand', () => {
       });
 
       expect(formatted).toContain('Product Breakdown:');
-      expect(formatted).toContain('translate: 5,000 units (API key: 4,500 units)');
+      expect(formatted).toContain(
+        'translate: 5,000 units (API key: 4,500 units)'
+      );
     });
 
     it('should show unlimited for zero API key character limit', () => {
@@ -294,7 +318,11 @@ describe('UsageCommand', () => {
         characterCount: 2150000,
         characterLimit: 20000000,
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
         ],
       });
 
@@ -315,8 +343,17 @@ describe('UsageCommand', () => {
         characterCount: 2150000,
         characterLimit: 20000000,
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
-          { productType: 'speech_to_text', characterCount: 3661000, apiKeyCharacterCount: 3661000, billingUnit: 'milliseconds' },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
+          {
+            productType: 'speech_to_text',
+            characterCount: 3661000,
+            apiKeyCharacterCount: 3661000,
+            billingUnit: 'milliseconds',
+          },
         ],
       });
 
@@ -401,7 +438,9 @@ describe('UsageCommand', () => {
         ],
       });
 
-      expect(formatted).toContain('speech_to_text: 100h 0m 0s (API key: 24h 23m 0s)');
+      expect(formatted).toContain(
+        'speech_to_text: 100h 0m 0s (API key: 24h 23m 0s)'
+      );
     });
 
     it('should prefer unitCount over apiKeyUnitCount for minutes-billed totals', () => {
@@ -420,7 +459,9 @@ describe('UsageCommand', () => {
         ],
       });
 
-      expect(formatted).toContain('speech_to_text: 2h 0m 0s (API key: 1h 0m 0s)');
+      expect(formatted).toContain(
+        'speech_to_text: 2h 0m 0s (API key: 1h 0m 0s)'
+      );
     });
 
     it('should render camelCase product types with the documented snake_case names', () => {
@@ -428,7 +469,11 @@ describe('UsageCommand', () => {
         characterCount: 0,
         characterLimit: 20000000,
         products: [
-          { productType: 'textTranslation', characterCount: 900000, apiKeyCharacterCount: 880000 },
+          {
+            productType: 'textTranslation',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
         ],
       });
 
@@ -445,8 +490,17 @@ describe('UsageCommand', () => {
         startTime: '2025-04-24T14:58:02Z',
         endTime: '2025-05-24T14:58:02Z',
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
-          { productType: 'speech_to_text', characterCount: 120000, apiKeyCharacterCount: 120000, billingUnit: 'milliseconds' },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
+          {
+            productType: 'speech_to_text',
+            characterCount: 120000,
+            apiKeyCharacterCount: 120000,
+            billingUnit: 'milliseconds',
+          },
         ],
       });
 
@@ -503,7 +557,11 @@ describe('UsageCommand', () => {
         characterCount: 1000,
         characterLimit: 10000,
         products: [
-          { productType: 'translate', characterCount: 900, apiKeyCharacterCount: 800 },
+          {
+            productType: 'translate',
+            characterCount: 900,
+            apiKeyCharacterCount: 800,
+          },
           {
             productType: 'speech_to_text',
             characterCount: 120000,

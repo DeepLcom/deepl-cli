@@ -4,7 +4,11 @@ import type { ExtractedEntry, FormatRegistry } from '../formats/index.js';
 import type { TmsClient } from './tms-client.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import { SyncLockManager, computeSourceHash } from './sync-lock.js';
-import { resolveTargetPath, assertPathWithinRoot, mergePulledTranslations } from './sync-utils.js';
+import {
+  resolveTargetPath,
+  assertPathWithinRoot,
+  mergePulledTranslations,
+} from './sync-utils.js';
 import { LOCK_FILE_NAME } from './types.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { mapWithConcurrency, PUSH_CONCURRENCY } from '../utils/concurrency.js';
@@ -48,9 +52,10 @@ const SKIP_REASON_LABELS: Record<SkipReason, string> = {
 export function formatSkippedSummary(skipped: SkippedRecord[]): string {
   if (skipped.length === 0) return '';
   const counts = new Map<SkipReason, number>();
-  for (const s of skipped) counts.set(s.reason, (counts.get(s.reason) ?? 0) + 1);
+  for (const s of skipped)
+    counts.set(s.reason, (counts.get(s.reason) ?? 0) + 1);
   const parts = Array.from(counts.entries()).map(
-    ([reason, count]) => `${count} ${SKIP_REASON_LABELS[reason]}`,
+    ([reason, count]) => `${count} ${SKIP_REASON_LABELS[reason]}`
   );
   return ` (${skipped.length} skipped: ${parts.join(', ')})`;
 }
@@ -59,7 +64,7 @@ export async function pushTranslations(
   config: ResolvedSyncConfig,
   client: TmsClient,
   registry: FormatRegistry,
-  options?: SyncPushPullOptions,
+  options?: SyncPushPullOptions
 ): Promise<PushResult> {
   let pushed = 0;
   const skipped: SkippedRecord[] = [];
@@ -69,27 +74,43 @@ export async function pushTranslations(
     await sweepStaleBackups(
       config.projectRoot,
       resolveBakSweepAgeMs(config.sync?.bak_sweep_max_age_seconds),
-      config.buckets,
+      config.buckets
     );
   } catch {
     /* best-effort */
   }
 
   for await (const walked of walkBuckets(config, registry)) {
-    const { bucketConfig, parser, relPath, content: sourceContent, isMultiLocale } = walked;
+    const {
+      bucketConfig,
+      parser,
+      relPath,
+      content: sourceContent,
+      isMultiLocale,
+    } = walked;
     for (const locale of config.target_locales) {
-      if (options?.localeFilter && !options.localeFilter.includes(locale)) continue;
+      if (options?.localeFilter && !options.localeFilter.includes(locale))
+        continue;
       try {
         let entries: ExtractedEntry[];
         let skippedEntries: ExtractedEntry[];
         if (isMultiLocale) {
-          ({ entries, skippedEntries } = partitionEntries(parser.extract(sourceContent, locale)));
+          ({ entries, skippedEntries } = partitionEntries(
+            parser.extract(sourceContent, locale)
+          ));
         } else {
-          const targetPath = resolveTargetPath(relPath, config.source_locale, locale, bucketConfig.target_path_pattern);
+          const targetPath = resolveTargetPath(
+            relPath,
+            config.source_locale,
+            locale,
+            bucketConfig.target_path_pattern
+          );
           const targetAbsPath = path.join(config.projectRoot, targetPath);
           assertPathWithinRoot(targetAbsPath, config.projectRoot);
           const content = fs.readFileSync(targetAbsPath, 'utf-8');
-          ({ entries, skippedEntries } = partitionEntries(parser.extract(content)));
+          ({ entries, skippedEntries } = partitionEntries(
+            parser.extract(content)
+          ));
         }
         for (const skippedEntry of skippedEntries) {
           skipped.push({
@@ -105,7 +126,7 @@ export async function pushTranslations(
             await client.pushEntry(entry, locale);
             pushed++;
           },
-          pushConcurrency,
+          pushConcurrency
         );
       } catch (err) {
         // Record and continue on "target file does not exist yet" (common on
@@ -124,7 +145,7 @@ export async function pullTranslations(
   config: ResolvedSyncConfig,
   client: TmsClient,
   registry: FormatRegistry,
-  options?: SyncPushPullOptions,
+  options?: SyncPushPullOptions
 ): Promise<PullResult> {
   const lockPath = path.join(config.projectRoot, LOCK_FILE_NAME);
   const lockManager = new SyncLockManager(lockPath);
@@ -137,7 +158,7 @@ export async function pullTranslations(
     await sweepStaleBackups(
       config.projectRoot,
       resolveBakSweepAgeMs(config.sync?.bak_sweep_max_age_seconds),
-      config.buckets,
+      config.buckets
     );
   } catch {
     /* best-effort */
@@ -150,22 +171,39 @@ export async function pullTranslations(
   let localeKeys = new Map<string, Record<string, string>>();
 
   for await (const walked of walkBuckets(config, registry)) {
-    const { bucket, bucketConfig, parser, relPath, content: sourceContent, entries: sourceEntries, isMultiLocale } = walked;
+    const {
+      bucket,
+      bucketConfig,
+      parser,
+      relPath,
+      content: sourceContent,
+      entries: sourceEntries,
+      isMultiLocale,
+    } = walked;
 
     if (bucket !== currentBucket) {
       currentBucket = bucket;
       localeKeys = new Map();
       for (const locale of config.target_locales) {
-        if (options?.localeFilter && !options.localeFilter.includes(locale)) continue;
+        if (options?.localeFilter && !options.localeFilter.includes(locale))
+          continue;
         localeKeys.set(locale, await client.pullKeys(locale));
       }
     }
 
     for (const locale of config.target_locales) {
-      if (options?.localeFilter && !options.localeFilter.includes(locale)) continue;
+      if (options?.localeFilter && !options.localeFilter.includes(locale))
+        continue;
 
       const keys = localeKeys.get(locale)!;
-      const targetRelPath = isMultiLocale ? relPath : resolveTargetPath(relPath, config.source_locale, locale, bucketConfig.target_path_pattern);
+      const targetRelPath = isMultiLocale
+        ? relPath
+        : resolveTargetPath(
+            relPath,
+            config.source_locale,
+            locale,
+            bucketConfig.target_path_pattern
+          );
       const targetAbsPath = path.join(config.projectRoot, targetRelPath);
       assertPathWithinRoot(targetAbsPath, config.projectRoot);
 
@@ -176,14 +214,16 @@ export async function pullTranslations(
         const { entries: existingEntries } = isMultiLocale
           ? partitionEntries(parser.extract(templateContent, locale))
           : partitionEntries(parser.extract(templateContent));
-        existingTargetEntries = new Map(existingEntries.map((entry) => [entry.key, entry.value]));
+        existingTargetEntries = new Map(
+          existingEntries.map((entry) => [entry.key, entry.value])
+        );
       } catch {
         templateContent = sourceContent;
       }
 
       const pulledEntries = sourceEntries
-        .filter(entry => keys[entry.key] !== undefined)
-        .map(entry => ({
+        .filter((entry) => keys[entry.key] !== undefined)
+        .map((entry) => ({
           key: entry.key,
           value: entry.value,
           translation: keys[entry.key]!,
@@ -198,7 +238,7 @@ export async function pullTranslations(
       const translatedEntries = mergePulledTranslations(
         sourceEntries,
         keys,
-        existingTargetEntries,
+        existingTargetEntries
       );
 
       const reconstructed = isMultiLocale
@@ -208,7 +248,7 @@ export async function pullTranslations(
       await atomicWriteFile(targetAbsPath, reconstructed, 'utf-8');
       pulled += pulledEntries.length;
 
-      const fileEntryMap = lockFile.entries[relPath] ??= {};
+      const fileEntryMap = (lockFile.entries[relPath] ??= {});
       for (const entry of pulledEntries) {
         const existing = fileEntryMap[entry.key];
         const existingTranslations = existing?.translations ?? {};

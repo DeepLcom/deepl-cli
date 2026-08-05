@@ -24,7 +24,10 @@ describe('InitCommand', () => {
   const baseUrl = 'https://api.deepl.com';
 
   beforeEach(() => {
-    testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-init-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    testConfigDir = path.join(
+      os.tmpdir(),
+      `.deepl-cli-test-init-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     fs.mkdirSync(testConfigDir, { recursive: true });
     const configPath = path.join(testConfigDir, 'config.json');
     configService = new ConfigService(configPath);
@@ -89,9 +92,7 @@ describe('InitCommand', () => {
   it('should throw on invalid API key', async () => {
     mockPassword.mockResolvedValueOnce('bad-key');
 
-    nock(baseUrl)
-      .get('/v2/usage')
-      .reply(403, { message: 'Forbidden' });
+    nock(baseUrl).get('/v2/usage').reply(403, { message: 'Forbidden' });
 
     const { InitCommand } = await import('../../src/cli/commands/init');
     const cmd = new InitCommand(configService);

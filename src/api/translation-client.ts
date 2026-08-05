@@ -1,5 +1,9 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { TranslationOptions, Language, TranslationMemory } from '../types/index.js';
+import {
+  TranslationOptions,
+  Language,
+  TranslationMemory,
+} from '../types/index.js';
 import { NetworkError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
 import { resolveGlossaryWireParams } from '../utils/glossary-params.js';
@@ -137,12 +141,16 @@ export class TranslationClient extends HttpClient {
       );
 
       if (!response.translations || response.translations.length === 0) {
-        throw new NetworkError(`No translation returned from DeepL API. Request: translate text (${text.length} chars) to ${options.targetLang}`);
+        throw new NetworkError(
+          `No translation returned from DeepL API. Request: translate text (${text.length} chars) to ${options.targetLang}`
+        );
       }
 
       const translation = response.translations[0];
       if (!translation) {
-        throw new NetworkError(`Empty translation in API response. Request: translate text (${text.length} chars) to ${options.targetLang}`);
+        throw new NetworkError(
+          `Empty translation in API response. Request: translate text (${text.length} chars) to ${options.targetLang}`
+        );
       }
 
       return {
@@ -150,7 +158,8 @@ export class TranslationClient extends HttpClient {
         detectedSourceLang: translation.detected_source_language
           ? this.normalizeLanguage(translation.detected_source_language)
           : undefined,
-        billedCharacters: translation.billed_characters ?? response.billed_characters,
+        billedCharacters:
+          translation.billed_characters ?? response.billed_characters,
         modelTypeUsed: translation.model_type_used,
       };
     } catch (error) {
@@ -176,11 +185,15 @@ export class TranslationClient extends HttpClient {
       );
 
       if (!response.translations) {
-        throw new NetworkError('Unexpected API response. Please retry your translation. If the issue persists, report it at https://github.com/DeepL/deepl-cli/issues');
+        throw new NetworkError(
+          'Unexpected API response. Please retry your translation. If the issue persists, report it at https://github.com/DeepL/deepl-cli/issues'
+        );
       }
 
       if (response.translations.length !== texts.length) {
-        throw new NetworkError('Unexpected API response. Please retry your translation. If the issue persists, report it at https://github.com/DeepL/deepl-cli/issues');
+        throw new NetworkError(
+          'Unexpected API response. Please retry your translation. If the issue persists, report it at https://github.com/DeepL/deepl-cli/issues'
+        );
       }
 
       return response.translations.map((translation) => ({
@@ -188,7 +201,8 @@ export class TranslationClient extends HttpClient {
         detectedSourceLang: translation.detected_source_language
           ? this.normalizeLanguage(translation.detected_source_language)
           : undefined,
-        billedCharacters: translation.billed_characters ?? response.billed_characters,
+        billedCharacters:
+          translation.billed_characters ?? response.billed_characters,
         modelTypeUsed: translation.model_type_used,
       }));
     } catch (error) {
@@ -233,13 +247,17 @@ export class TranslationClient extends HttpClient {
         usage.accountUnitLimit = response.account_unit_limit;
       }
       if (response.products) {
-        usage.products = response.products.map(p => ({
+        usage.products = response.products.map((p) => ({
           productType: p.product_type,
           characterCount: p.character_count,
           apiKeyCharacterCount: p.api_key_character_count,
           ...(p.unit_count !== undefined && { unitCount: p.unit_count }),
-          ...(p.account_unit_count !== undefined && { accountUnitCount: p.account_unit_count }),
-          ...(p.api_key_unit_count !== undefined && { apiKeyUnitCount: p.api_key_unit_count }),
+          ...(p.account_unit_count !== undefined && {
+            accountUnitCount: p.account_unit_count,
+          }),
+          ...(p.api_key_unit_count !== undefined && {
+            apiKeyUnitCount: p.api_key_unit_count,
+          }),
           ...(p.billing_unit && { billingUnit: p.billing_unit }),
         }));
       }
@@ -257,7 +275,9 @@ export class TranslationClient extends HttpClient {
         total_count?: number;
       }>('GET', '/v3/translation_memories');
 
-      const aggregated: TranslationMemory[] = [...(first.translation_memories ?? [])];
+      const aggregated: TranslationMemory[] = [
+        ...(first.translation_memories ?? []),
+      ];
       const total = first.total_count;
       if (typeof total !== 'number' || aggregated.length >= total) {
         return aggregated;
@@ -321,27 +341,31 @@ export class TranslationClient extends HttpClient {
     try {
       const response = await this.fetchTranslateLanguages();
 
-      return response
-        // `!== false`, not truthiness: an absent flag is not a denial, and the
-        // language registry reads it the same way, so a truthy filter here would
-        // drop a language the generator records as usable.
-        .filter((lang) =>
-          type === 'source' ? lang.usable_as_source !== false : lang.usable_as_target !== false,
-        )
-        .map((lang) => {
-          const code = this.normalizeLanguage(lang.lang);
-          return {
-            language: code,
-            name: lang.name,
-            // Only claimed when the response described this language's features;
-            // silence about a language is not evidence that formality is absent.
-            ...(type === 'target' &&
-              lang.features && {
-                supportsFormality: lang.features['formality'] !== undefined,
-              }),
-            ...(lang.features && { features: lang.features }),
-          };
-        });
+      return (
+        response
+          // `!== false`, not truthiness: an absent flag is not a denial, and the
+          // language registry reads it the same way, so a truthy filter here would
+          // drop a language the generator records as usable.
+          .filter((lang) =>
+            type === 'source'
+              ? lang.usable_as_source !== false
+              : lang.usable_as_target !== false
+          )
+          .map((lang) => {
+            const code = this.normalizeLanguage(lang.lang);
+            return {
+              language: code,
+              name: lang.name,
+              // Only claimed when the response described this language's features;
+              // silence about a language is not evidence that formality is absent.
+              ...(type === 'target' &&
+                lang.features && {
+                  supportsFormality: lang.features['formality'] !== undefined,
+                }),
+              ...(lang.features && { features: lang.features }),
+            };
+          })
+      );
     } catch (error) {
       throw this.handleError(error);
     }
@@ -357,7 +381,9 @@ export class TranslationClient extends HttpClient {
     };
 
     if (options.sourceLang) {
-      params['source_lang'] = this.normalizeLanguage(options.sourceLang).toUpperCase();
+      params['source_lang'] = this.normalizeLanguage(
+        options.sourceLang
+      ).toUpperCase();
     }
 
     if (options.formality) {
@@ -371,7 +397,9 @@ export class TranslationClient extends HttpClient {
 
     if (options.translationMemoryId) {
       params['translation_memory_id'] = options.translationMemoryId;
-      params['translation_memory_threshold'] = String(options.translationMemoryThreshold ?? 75);
+      params['translation_memory_threshold'] = String(
+        options.translationMemoryThreshold ?? 75
+      );
     }
 
     if (options.preserveFormatting) {
@@ -384,7 +412,8 @@ export class TranslationClient extends HttpClient {
 
     if (options.splitSentences) {
       const splitMap: Record<string, string> = { on: '1', off: '0' };
-      params['split_sentences'] = splitMap[options.splitSentences] ?? options.splitSentences;
+      params['split_sentences'] =
+        splitMap[options.splitSentences] ?? options.splitSentences;
     }
 
     if (options.tagHandling) {
@@ -427,7 +456,6 @@ export class TranslationClient extends HttpClient {
     if (tagHandlingVersion) {
       params['tag_handling_version'] = tagHandlingVersion;
     }
-
 
     return params;
   }

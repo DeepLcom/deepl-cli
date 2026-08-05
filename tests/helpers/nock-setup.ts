@@ -4,22 +4,26 @@ export const DEEPL_FREE_API_URL = 'https://api-free.deepl.com';
 export const DEEPL_PRO_API_URL = 'https://api.deepl.com';
 export const TEST_API_KEY = 'test-api-key-123:fx';
 
-export function setupDeepLNock(baseUrl: string = DEEPL_FREE_API_URL): nock.Scope {
+export function setupDeepLNock(
+  baseUrl: string = DEEPL_FREE_API_URL
+): nock.Scope {
   return nock(baseUrl);
 }
 
 export function mockTranslateResponse(
   scope: nock.Scope,
   response: { text: string; detected_source_language?: string }[],
-  statusCode: number = 200,
+  statusCode: number = 200
 ): nock.Scope {
-  return scope.post('/v2/translate').reply(statusCode, { translations: response });
+  return scope
+    .post('/v2/translate')
+    .reply(statusCode, { translations: response });
 }
 
 export function mockTranslateError(
   scope: nock.Scope,
   statusCode: number,
-  body: string | Record<string, unknown> = { message: 'Error' },
+  body: string | Record<string, unknown> = { message: 'Error' }
 ): nock.Scope {
   return scope.post('/v2/translate').reply(statusCode, body);
 }
@@ -30,7 +34,7 @@ export function mockUsageResponse(
     character_count: 50000,
     character_limit: 500000,
   },
-  statusCode: number = 200,
+  statusCode: number = 200
 ): nock.Scope {
   return scope.get('/v2/usage').reply(statusCode, response);
 }
@@ -85,18 +89,15 @@ export function mockLanguagesResponse(
       features: { formality: STABLE, glossary: STABLE, tag_handling: STABLE },
     },
   ],
-  resource: string = 'translate_text',
+  resource: string = 'translate_text'
 ): nock.Scope {
-  return scope
-    .get('/v3/languages')
-    .query({ resource })
-    .reply(200, languages);
+  return scope.get('/v3/languages').query({ resource }).reply(200, languages);
 }
 
 export function mockWriteResponse(
   scope: nock.Scope,
   improvements: Array<{ text: string; [key: string]: unknown }>,
-  statusCode: number = 200,
+  statusCode: number = 200
 ): nock.Scope {
   return scope.post('/v2/write/rephrase').reply(statusCode, { improvements });
 }

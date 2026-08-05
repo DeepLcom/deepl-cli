@@ -12,7 +12,11 @@ import { WriteService } from '../../src/services/write.js';
 import { ConfigService } from '../../src/storage/config.js';
 import { CacheService } from '../../src/storage/cache.js';
 import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers';
-import type { WritingStyle, WriteTone, WriteLanguage } from '../../src/types/api.js';
+import type {
+  WritingStyle,
+  WriteTone,
+  WriteLanguage,
+} from '../../src/types/api.js';
 
 describe('Write Command Integration', () => {
   const API_KEY = TEST_API_KEY;
@@ -37,7 +41,11 @@ describe('Write Command Integration', () => {
     client.destroy();
     nock.abortPendingRequests();
     nock.cleanAll();
-    try { cacheService.close(); } catch { /* ignore */ }
+    try {
+      cacheService.close();
+    } catch {
+      /* ignore */
+    }
     fs.rmSync(testDir, { recursive: true, force: true });
   });
 
@@ -53,7 +61,9 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Hello, world!', target_language: 'en-US' }],
         });
 
-      const result = await writeService.improve('Hello world', { targetLang: 'en-us' });
+      const result = await writeService.improve('Hello world', {
+        targetLang: 'en-us',
+      });
 
       expect(result).toHaveLength(1);
       expect(result[0]?.text).toBe('Hello, world!');
@@ -71,7 +81,9 @@ describe('Write Command Integration', () => {
           ],
         });
 
-      const result = await writeService.improve('Hello world', { targetLang: 'en-us' });
+      const result = await writeService.improve('Hello world', {
+        targetLang: 'en-us',
+      });
 
       expect(result).toHaveLength(3);
       expect(result[0]?.text).toBe('Hello, world!');
@@ -80,11 +92,9 @@ describe('Write Command Integration', () => {
     });
 
     it('should throw error for empty improvements array from API', async () => {
-      nock(FREE_API_URL)
-        .post('/v2/write/rephrase')
-        .reply(200, {
-          improvements: [],
-        });
+      nock(FREE_API_URL).post('/v2/write/rephrase').reply(200, {
+        improvements: [],
+      });
 
       await expect(
         writeService.improve('Perfect text', { targetLang: 'en-us' })
@@ -101,7 +111,13 @@ describe('Write Command Integration', () => {
           return true;
         })
         .reply(200, {
-          improvements: [{ text: 'Hallo, Welt!', target_language: 'de', detected_source_language: 'de' }],
+          improvements: [
+            {
+              text: 'Hallo, Welt!',
+              target_language: 'de',
+              detected_source_language: 'de',
+            },
+          ],
         });
 
       const result = await writeService.improve('Hallo Welt', {});
@@ -122,7 +138,9 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Hello, world!', target_language: 'en-GB' }],
         });
 
-      const result = await writeService.improve('Hello world', { targetLang: 'en-gb' });
+      const result = await writeService.improve('Hello world', {
+        targetLang: 'en-gb',
+      });
 
       expect(result[0]?.text).toBe('Hello, world!');
       expect(scope.isDone()).toBe(true);
@@ -155,27 +173,30 @@ describe('Write Command Integration', () => {
         output: 'Use this feature',
         expectedSubstring: undefined,
       },
-    ])('should apply $style writing style', async ({ style, input, output, expectedSubstring }) => {
-      const writingStyle = style as WritingStyle;
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.writing_style).toBe(writingStyle);
-          return true;
-        })
-        .reply(200, {
-          improvements: [{ text: output, target_language: 'en-US' }],
+    ])(
+      'should apply $style writing style',
+      async ({ style, input, output, expectedSubstring }) => {
+        const writingStyle = style as WritingStyle;
+        const scope = nock(FREE_API_URL)
+          .post('/v2/write/rephrase', (body) => {
+            expect(body.writing_style).toBe(writingStyle);
+            return true;
+          })
+          .reply(200, {
+            improvements: [{ text: output, target_language: 'en-US' }],
+          });
+
+        const result = await writeService.improve(input, {
+          targetLang: 'en-us',
+          writingStyle,
         });
 
-      const result = await writeService.improve(input, {
-        targetLang: 'en-us',
-        writingStyle,
-      });
-
-      if (expectedSubstring !== undefined) {
-        expect(result[0]?.text).toContain(expectedSubstring);
+        if (expectedSubstring !== undefined) {
+          expect(result[0]?.text).toContain(expectedSubstring);
+        }
+        expect(scope.isDone()).toBe(true);
       }
-      expect(scope.isDone()).toBe(true);
-    });
+    );
   });
 
   describe('improve() - Tones', () => {
@@ -208,30 +229,39 @@ describe('Write Command Integration', () => {
         expectedSubstring: undefined,
         checkNoWritingStyle: false,
       },
-    ])('should apply $tone tone', async ({ tone, input, output, expectedSubstring, checkNoWritingStyle }) => {
-      const toneValue = tone as WriteTone;
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.tone).toBe(toneValue);
-          if (checkNoWritingStyle) {
-            expect(body.writing_style).toBeUndefined();
-          }
-          return true;
-        })
-        .reply(200, {
-          improvements: [{ text: output, target_language: 'en-US' }],
+    ])(
+      'should apply $tone tone',
+      async ({
+        tone,
+        input,
+        output,
+        expectedSubstring,
+        checkNoWritingStyle,
+      }) => {
+        const toneValue = tone as WriteTone;
+        const scope = nock(FREE_API_URL)
+          .post('/v2/write/rephrase', (body) => {
+            expect(body.tone).toBe(toneValue);
+            if (checkNoWritingStyle) {
+              expect(body.writing_style).toBeUndefined();
+            }
+            return true;
+          })
+          .reply(200, {
+            improvements: [{ text: output, target_language: 'en-US' }],
+          });
+
+        const result = await writeService.improve(input, {
+          targetLang: 'en-us',
+          tone: toneValue,
         });
 
-      const result = await writeService.improve(input, {
-        targetLang: 'en-us',
-        tone: toneValue,
-      });
-
-      if (expectedSubstring !== undefined) {
-        expect(result[0]?.text).toContain(expectedSubstring);
+        if (expectedSubstring !== undefined) {
+          expect(result[0]?.text).toContain(expectedSubstring);
+        }
+        expect(scope.isDone()).toBe(true);
       }
-      expect(scope.isDone()).toBe(true);
-    });
+    );
   });
 
   describe('improve() - Different Languages', () => {
@@ -292,24 +322,27 @@ describe('Write Command Integration', () => {
         output: '我想购买这个',
         expectedExact: undefined,
       },
-    ])('should improve $label text', async ({ lang, input, output, expectedExact }) => {
-      const targetLang = lang as WriteLanguage;
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.target_lang).toBe(targetLang);
-          return true;
-        })
-        .reply(200, {
-          improvements: [{ text: output, target_language: targetLang }],
-        });
+    ])(
+      'should improve $label text',
+      async ({ lang, input, output, expectedExact }) => {
+        const targetLang = lang as WriteLanguage;
+        const scope = nock(FREE_API_URL)
+          .post('/v2/write/rephrase', (body) => {
+            expect(body.target_lang).toBe(targetLang);
+            return true;
+          })
+          .reply(200, {
+            improvements: [{ text: output, target_language: targetLang }],
+          });
 
-      const result = await writeService.improve(input, { targetLang });
+        const result = await writeService.improve(input, { targetLang });
 
-      if (expectedExact !== undefined) {
-        expect(result[0]?.text).toBe(expectedExact);
+        if (expectedExact !== undefined) {
+          expect(result[0]?.text).toBe(expectedExact);
+        }
+        expect(scope.isDone()).toBe(true);
       }
-      expect(scope.isDone()).toBe(true);
-    });
+    );
   });
 
   describe('improve() - Styles and Tones on Romance language variants', () => {
@@ -326,36 +359,46 @@ describe('Write Command Integration', () => {
       { lang: 'pt', field: 'tone' as const, value: 'enthusiastic' },
       { lang: 'pt-br', field: 'tone' as const, value: 'friendly' },
       { lang: 'pt-pt', field: 'tone' as const, value: 'confident' },
-    ])('should send $field=$value with target_lang=$lang', async ({ lang, field, value }) => {
-      const targetLang = lang as WriteLanguage;
-      const scope = nock(FREE_API_URL)
-        .post('/v2/write/rephrase', (body) => {
-          expect(body.target_lang).toBe(targetLang);
-          expect(body[field]).toBe(value);
-          return true;
-        })
-        .reply(200, {
-          improvements: [{ text: 'improved', target_language: targetLang }],
-        });
+    ])(
+      'should send $field=$value with target_lang=$lang',
+      async ({ lang, field, value }) => {
+        const targetLang = lang as WriteLanguage;
+        const scope = nock(FREE_API_URL)
+          .post('/v2/write/rephrase', (body) => {
+            expect(body.target_lang).toBe(targetLang);
+            expect(body[field]).toBe(value);
+            return true;
+          })
+          .reply(200, {
+            improvements: [{ text: 'improved', target_language: targetLang }],
+          });
 
-      const improveOptions: { targetLang: WriteLanguage; writingStyle?: WritingStyle; tone?: WriteTone } = { targetLang };
-      if (field === 'writing_style') {
-        improveOptions.writingStyle = value as WritingStyle;
-      } else {
-        improveOptions.tone = value as WriteTone;
+        const improveOptions: {
+          targetLang: WriteLanguage;
+          writingStyle?: WritingStyle;
+          tone?: WriteTone;
+        } = { targetLang };
+        if (field === 'writing_style') {
+          improveOptions.writingStyle = value as WritingStyle;
+        } else {
+          improveOptions.tone = value as WriteTone;
+        }
+        const result = await writeService.improve(
+          'source text',
+          improveOptions
+        );
+
+        expect(result[0]?.text).toBe('improved');
+        expect(scope.isDone()).toBe(true);
       }
-      const result = await writeService.improve('source text', improveOptions);
-
-      expect(result[0]?.text).toBe('improved');
-      expect(scope.isDone()).toBe(true);
-    });
+    );
   });
 
   describe('improve() - Error Handling', () => {
     it('should throw error for empty text', async () => {
-      await expect(writeService.improve('', { targetLang: 'en-us' })).rejects.toThrow(
-        'Text cannot be empty'
-      );
+      await expect(
+        writeService.improve('', { targetLang: 'en-us' })
+      ).rejects.toThrow('Text cannot be empty');
     });
 
     it('should throw error when both style and tone are specified', async () => {
@@ -369,7 +412,9 @@ describe('Write Command Integration', () => {
     });
 
     it('should handle 403 authentication errors', async () => {
-      nock(FREE_API_URL).post('/v2/write/rephrase').reply(403, { message: 'Invalid API key' });
+      nock(FREE_API_URL)
+        .post('/v2/write/rephrase')
+        .reply(403, { message: 'Invalid API key' });
 
       await expect(
         writeService.improve('Test', { targetLang: 'en-us' })
@@ -377,7 +422,9 @@ describe('Write Command Integration', () => {
     });
 
     it('should handle 456 quota exceeded errors', async () => {
-      nock(FREE_API_URL).post('/v2/write/rephrase').reply(456, { message: 'Quota exceeded' });
+      nock(FREE_API_URL)
+        .post('/v2/write/rephrase')
+        .reply(456, { message: 'Quota exceeded' });
 
       await expect(
         writeService.improve('Test', { targetLang: 'en-us' })
@@ -394,7 +441,6 @@ describe('Write Command Integration', () => {
         writeService.improve('Test', { targetLang: 'en-us' })
       ).rejects.toThrow('Rate limit exceeded');
     });
-
   });
 
   describe('improve() - Edge Cases', () => {
@@ -439,10 +485,14 @@ describe('Write Command Integration', () => {
           return true;
         })
         .reply(200, {
-          improvements: [{ text: 'Hello, 世界 🌍 café!', target_language: 'en-US' }],
+          improvements: [
+            { text: 'Hello, 世界 🌍 café!', target_language: 'en-US' },
+          ],
         });
 
-      const result = await writeService.improve(unicodeText, { targetLang: 'en-us' });
+      const result = await writeService.improve(unicodeText, {
+        targetLang: 'en-us',
+      });
       expect(result[0]?.text).toContain('世界');
       expect(result[0]?.text).toContain('🌍');
       expect(scope.isDone()).toBe(true);
@@ -462,7 +512,9 @@ describe('Write Command Integration', () => {
           ],
         });
 
-      const result = await writeService.improve(multilineText, { targetLang: 'en-us' });
+      const result = await writeService.improve(multilineText, {
+        targetLang: 'en-us',
+      });
       expect(result[0]?.text).toContain('\n');
       expect(result[0]?.text.split('\n')).toHaveLength(3);
     });
@@ -487,11 +539,9 @@ describe('Write Command Integration', () => {
     });
 
     it('should throw error when no improvements returned from API', async () => {
-      nock(FREE_API_URL)
-        .post('/v2/write/rephrase')
-        .reply(200, {
-          improvements: [],
-        });
+      nock(FREE_API_URL).post('/v2/write/rephrase').reply(200, {
+        improvements: [],
+      });
 
       await expect(
         writeService.getBestImprovement('Test', { targetLang: 'en-us' })
@@ -556,8 +606,12 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Improved!', target_language: 'en-US' }],
         });
 
-      const result1 = await writeService.improve('Test', { targetLang: 'en-us' });
-      const result2 = await writeService.improve('Test', { targetLang: 'en-us' });
+      const result1 = await writeService.improve('Test', {
+        targetLang: 'en-us',
+      });
+      const result2 = await writeService.improve('Test', {
+        targetLang: 'en-us',
+      });
 
       expect(result1).toEqual(result2);
       expect(scope.isDone()).toBe(true);
@@ -572,7 +626,11 @@ describe('Write Command Integration', () => {
         });
 
       await writeService.improve('Test', { targetLang: 'en-us' });
-      await writeService.improve('Test', { targetLang: 'en-us' }, { skipCache: true });
+      await writeService.improve(
+        'Test',
+        { targetLang: 'en-us' },
+        { skipCache: true }
+      );
 
       expect(nock.isDone()).toBe(true);
     });
@@ -590,8 +648,14 @@ describe('Write Command Integration', () => {
           improvements: [{ text: 'Casual text', target_language: 'en-US' }],
         });
 
-      const business = await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'business' });
-      const casual = await writeService.improve('Test', { targetLang: 'en-us', writingStyle: 'casual' });
+      const business = await writeService.improve('Test', {
+        targetLang: 'en-us',
+        writingStyle: 'business',
+      });
+      const casual = await writeService.improve('Test', {
+        targetLang: 'en-us',
+        writingStyle: 'casual',
+      });
 
       expect(business[0]?.text).toBe('Business text');
       expect(casual[0]?.text).toBe('Casual text');
@@ -604,7 +668,11 @@ describe('Write Command Integration', () => {
   describe('error handling - network', () => {
     it('should handle network errors', async () => {
       const noRetryClient = new DeepLClient(API_KEY, { maxRetries: 0 });
-      const noRetryWriteService = new WriteService(noRetryClient, configService, cacheService);
+      const noRetryWriteService = new WriteService(
+        noRetryClient,
+        configService,
+        cacheService
+      );
 
       nock(FREE_API_URL)
         .post('/v2/write/rephrase')

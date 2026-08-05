@@ -38,10 +38,9 @@ describe('ios-strings parser', () => {
     });
 
     it('should preserve non-entry, non-comment lines', () => {
-      const content = [
-        '"greeting" = "Hello";',
-        '"deleted" = "Gone";',
-      ].join('\n');
+      const content = ['"greeting" = "Hello";', '"deleted" = "Gone";'].join(
+        '\n'
+      );
 
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },
@@ -101,8 +100,8 @@ describe('ios-strings parser', () => {
       const content = '"greeting" = "Hello";\n"farewell" = "Goodbye";\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
-      expect(entries.find(e => e.key === 'greeting')!.value).toBe('Hello');
-      expect(entries.find(e => e.key === 'farewell')!.value).toBe('Goodbye');
+      expect(entries.find((e) => e.key === 'greeting')!.value).toBe('Hello');
+      expect(entries.find((e) => e.key === 'farewell')!.value).toBe('Goodbye');
     });
 
     it('should attach block comments as metadata', () => {
@@ -127,7 +126,9 @@ describe('ios-strings parser', () => {
       ].join('\n');
       const entries = parser.extract(content);
       expect(entries).toHaveLength(1);
-      expect(entries[0]!.metadata).toEqual({ comment: 'This is a\n   multi-line comment' });
+      expect(entries[0]!.metadata).toEqual({
+        comment: 'This is a\n   multi-line comment',
+      });
     });
 
     it('should handle block comment spanning three or more lines', () => {
@@ -183,7 +184,7 @@ describe('ios-strings parser', () => {
     it('should extract entries in source-file order (consumers sort downstream)', () => {
       const content = '"zebra" = "Z";\n"alpha" = "A";\n"middle" = "M";\n';
       const entries = parser.extract(content);
-      expect(entries.map(e => e.key)).toEqual(['zebra', 'alpha', 'middle']);
+      expect(entries.map((e) => e.key)).toEqual(['zebra', 'alpha', 'middle']);
     });
   });
 
@@ -209,10 +210,7 @@ describe('ios-strings parser', () => {
     });
 
     it('should preserve line comments for kept keys', () => {
-      const content = [
-        '// A line comment',
-        '"greeting" = "Hello";',
-      ].join('\n');
+      const content = ['// A line comment', '"greeting" = "Hello";'].join('\n');
 
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },
@@ -458,10 +456,9 @@ describe('ios-strings parser', () => {
 
   describe('reconstruct flush trailing pending comments', () => {
     it('should flush trailing comments at end of file', () => {
-      const content = [
-        '"greeting" = "Hello";',
-        '// trailing comment',
-      ].join('\n');
+      const content = ['"greeting" = "Hello";', '// trailing comment'].join(
+        '\n'
+      );
 
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },

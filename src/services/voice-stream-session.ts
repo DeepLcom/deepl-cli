@@ -31,7 +31,7 @@ export class VoicePartialResultError extends VoiceError {
   constructor(
     message: string,
     suggestion: string,
-    readonly result: VoiceSessionResult,
+    readonly result: VoiceSessionResult
   ) {
     super(message, suggestion);
   }
@@ -61,17 +61,22 @@ export class VoiceStreamSession {
     client: VoiceClient,
     session: VoiceSessionResponse,
     options: VoiceTranslateOptions,
-    callbacks?: VoiceStreamCallbacks,
+    callbacks?: VoiceStreamCallbacks
   ) {
     this.client = client;
     this.session = session;
     this.callbacks = callbacks;
 
     this.reconnectEnabled = options.reconnect !== false;
-    this.maxReconnectAttempts = options.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
+    this.maxReconnectAttempts =
+      options.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
     this.currentToken = session.token;
 
-    this.sourceTranscript = { lang: options.sourceLang ?? 'auto', text: '', segments: [] };
+    this.sourceTranscript = {
+      lang: options.sourceLang ?? 'auto',
+      text: '',
+      segments: [],
+    };
     this.textParts.set(this.sourceTranscript, []);
 
     for (const lang of options.targetLangs) {
@@ -98,7 +103,7 @@ export class VoiceStreamSession {
       this.ws = this.client.createWebSocket(
         this.session.streaming_url,
         this.session.token,
-        internalCallbacks,
+        internalCallbacks
       );
 
       this.ws.on('open', () => {
@@ -116,27 +121,34 @@ export class VoiceStreamSession {
    */
   private attachSocketHandlers(
     internalCallbacks: VoiceStreamCallbacks,
-    reject: (reason: unknown) => void,
+    reject: (reason: unknown) => void
   ): void {
-    this.ws.on('close', () => { this.handleClose(internalCallbacks, reject); });
-    this.ws.on('error', (error: Error) => { this.transportError = error; });
+    this.ws.on('close', () => {
+      this.handleClose(internalCallbacks, reject);
+    });
+    this.ws.on('error', (error: Error) => {
+      this.transportError = error;
+    });
   }
 
   private createInternalCallbacks(
     resolve: (value: VoiceSessionResult) => void,
-    reject: (reason: unknown) => void,
+    reject: (reason: unknown) => void
   ): VoiceStreamCallbacks {
     return {
       onSourceTranscript: (update: VoiceSourceTranscriptUpdate) => {
         this.accumulateTranscript(this.sourceTranscript, update.concluded);
-        const detectedLang = update.concluded[0]?.language ?? update.tentative[0]?.language;
+        const detectedLang =
+          update.concluded[0]?.language ?? update.tentative[0]?.language;
         if (detectedLang) {
           this.sourceTranscript.lang = detectedLang as VoiceSourceLanguage;
         }
         this.callbacks?.onSourceTranscript?.(update);
       },
       onTargetTranscript: (update: VoiceTargetTranscriptUpdate) => {
-        const target = this.targetTranscripts.get(update.language.toLowerCase());
+        const target = this.targetTranscripts.get(
+          update.language.toLowerCase()
+        );
         if (target) {
           this.accumulateTranscript(target, update.concluded);
         }
@@ -168,8 +180,8 @@ export class VoiceStreamSession {
             new VoicePartialResultError(
               `Voice session ended without a translation for: ${untranslated.join(', ')}.`,
               'The audio was transcribed but the server sent no translated text. Retry the request.',
-              result,
-            ),
+              result
+            )
           );
           return;
         }
@@ -180,7 +192,9 @@ export class VoiceStreamSession {
         this.callbacks?.onError?.(error);
         this.fail(
           reject,
-          new VoiceError(`Voice streaming error: ${error.error_message} (${error.error_code})`),
+          new VoiceError(
+            `Voice streaming error: ${error.error_message} (${error.error_code})`
+          )
         );
       },
     };
@@ -188,13 +202,16 @@ export class VoiceStreamSession {
 
   private handleClose(
     internalCallbacks: VoiceStreamCallbacks,
-    reject: (reason: unknown) => void,
+    reject: (reason: unknown) => void
   ): void {
     if (this.streamEnded) {
       return;
     }
 
-    if (this.reconnectEnabled && this.reconnectAttempts < this.maxReconnectAttempts) {
+    if (
+      this.reconnectEnabled &&
+      this.reconnectAttempts < this.maxReconnectAttempts
+    ) {
       this.reconnectAttempts++;
       this.callbacks?.onReconnecting?.(this.reconnectAttempts);
 
@@ -205,24 +222,28 @@ export class VoiceStreamSession {
     this.fail(
       reject,
       this.transportError
-        ? new VoiceError(`WebSocket connection failed: ${this.transportError.message}`)
-        : new VoiceError('WebSocket closed unexpectedly'),
+        ? new VoiceError(
+            `WebSocket connection failed: ${this.transportError.message}`
+          )
+        : new VoiceError('WebSocket closed unexpectedly')
     );
   }
 
   private async reconnect(
     internalCallbacks: VoiceStreamCallbacks,
-    reject: (reason: unknown) => void,
+    reject: (reason: unknown) => void
   ): Promise<void> {
     try {
-      const reconnectResponse = await this.client.reconnectSession(this.currentToken);
+      const reconnectResponse = await this.client.reconnectSession(
+        this.currentToken
+      );
       this.currentToken = reconnectResponse.token;
       this.transportError = undefined;
 
       this.ws = this.client.createWebSocket(
         reconnectResponse.streaming_url,
         reconnectResponse.token,
-        internalCallbacks,
+        internalCallbacks
       );
 
       this.attachSocketHandlers(internalCallbacks, reject);
@@ -234,7 +255,10 @@ export class VoiceStreamSession {
         }
       });
     } catch (error) {
-      this.fail(reject, error instanceof Error ? error : new VoiceError(String(error)));
+      this.fail(
+        reject,
+        error instanceof Error ? error : new VoiceError(String(error))
+      );
     }
   }
 
@@ -262,7 +286,7 @@ export class VoiceStreamSession {
 
   private streamChunks(
     chunks: AsyncGenerator<Buffer>,
-    reject: (reason: unknown) => void,
+    reject: (reason: unknown) => void
   ): void {
     void (async () => {
       try {
@@ -271,20 +295,25 @@ export class VoiceStreamSession {
             if (this.streamEnded) {
               return;
             }
-            await new Promise<void>((r) => { this.chunkStreamingResolve = r; });
+            await new Promise<void>((r) => {
+              this.chunkStreamingResolve = r;
+            });
           }
           this.client.sendAudioChunk(this.ws, chunk.toString('base64'));
         }
         this.client.sendEndOfSource(this.ws);
       } catch (error) {
-        this.fail(reject, error instanceof Error ? error : new VoiceError(String(error)));
+        this.fail(
+          reject,
+          error instanceof Error ? error : new VoiceError(String(error))
+        );
       }
     })();
   }
 
   private accumulateTranscript(
     transcript: VoiceTranscript,
-    concluded: VoiceTranscriptSegment[],
+    concluded: VoiceTranscriptSegment[]
   ): void {
     const parts = this.textParts.get(transcript)!;
     for (const segment of concluded) {

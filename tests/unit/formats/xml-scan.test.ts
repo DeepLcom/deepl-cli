@@ -13,9 +13,14 @@ const TAG: ElementPattern = {
 describe('xml-scan', () => {
   describe('scanElements', () => {
     it('should return elements in document order with their parts split out', () => {
-      const elements = scanElements('a<tag id="x">one</tag>b<tag>two</tag>', TAG);
+      const elements = scanElements(
+        'a<tag id="x">one</tag>b<tag>two</tag>',
+        TAG
+      );
 
-      expect(elements.map((e) => [e.groups[0], e.inner, e.openTag, e.closeTag])).toEqual([
+      expect(
+        elements.map((e) => [e.groups[0], e.inner, e.openTag, e.closeTag])
+      ).toEqual([
         ['x', 'one', '<tag id="x">', '</tag>'],
         [undefined, 'two', '<tag>', '</tag>'],
       ]);
@@ -53,7 +58,9 @@ describe('xml-scan', () => {
 
   describe('findElement', () => {
     it('should return the first match', () => {
-      expect(findElement('x<tag>one</tag><tag>two</tag>', TAG)?.inner).toBe('one');
+      expect(findElement('x<tag>one</tag><tag>two</tag>', TAG)?.inner).toBe(
+        'one'
+      );
     });
 
     it('should return undefined when there is no match', () => {
@@ -63,21 +70,29 @@ describe('xml-scan', () => {
 
   describe('replaceElements', () => {
     it('should return the input unchanged when nothing matches', () => {
-      expect(replaceElements('<other>one</other>', TAG, () => 'x')).toBe('<other>one</other>');
+      expect(replaceElements('<other>one</other>', TAG, () => 'x')).toBe(
+        '<other>one</other>'
+      );
     });
 
     it('should rewrite matched elements in place', () => {
-      expect(replaceElements('a<tag>one</tag>b<tag>two</tag>', TAG, (e) => `[${e.inner}]`)).toBe(
-        'a[one]b[two]',
-      );
+      expect(
+        replaceElements(
+          'a<tag>one</tag>b<tag>two</tag>',
+          TAG,
+          (e) => `[${e.inner}]`
+        )
+      ).toBe('a[one]b[two]');
     });
 
     it('should drop an element with its indentation and trailing whitespace', () => {
       const content = 'x\n    <tag>one</tag>\n    <tag>two</tag>\n';
 
-      expect(replaceElements(content, TAG, (e) => (e.inner === 'one' ? null : e.text))).toBe(
-        'x\n<tag>two</tag>\n',
-      );
+      expect(
+        replaceElements(content, TAG, (e) =>
+          e.inner === 'one' ? null : e.text
+        )
+      ).toBe('x\n<tag>two</tag>\n');
     });
 
     it('should drop consecutive elements without reaching past the previous drop', () => {

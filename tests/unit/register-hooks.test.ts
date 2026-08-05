@@ -1,4 +1,3 @@
- 
 import { Command } from 'commander';
 import { registerHooks } from '../../src/cli/commands/register-hooks';
 import { Logger } from '../../src/utils/logger';
@@ -46,7 +45,13 @@ describe('registerHooks', () => {
       mockHooksCommand.install.mockReturnValue('Installed pre-commit hook');
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'hooks', 'install', 'pre-commit']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'hooks',
+        'install',
+        'pre-commit',
+      ]);
 
       expect(mockHooksCommand.install).toHaveBeenCalledWith('pre-commit');
       expect(Logger.output).toHaveBeenCalledWith('Installed pre-commit hook');
@@ -70,7 +75,13 @@ describe('registerHooks', () => {
       mockHooksCommand.uninstall.mockReturnValue('Uninstalled pre-commit hook');
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'hooks', 'uninstall', 'pre-commit']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'hooks',
+        'uninstall',
+        'pre-commit',
+      ]);
 
       expect(mockHooksCommand.uninstall).toHaveBeenCalledWith('pre-commit');
       expect(Logger.output).toHaveBeenCalledWith('Uninstalled pre-commit hook');
@@ -91,13 +102,17 @@ describe('registerHooks', () => {
 
   describe('hooks list', () => {
     it('should list hooks and output result', async () => {
-      mockHooksCommand.list.mockReturnValue('Git Hooks Status:\n  pre-commit installed');
+      mockHooksCommand.list.mockReturnValue(
+        'Git Hooks Status:\n  pre-commit installed'
+      );
       const { program } = makeProgram();
 
       await program.parseAsync(['node', 'test', 'hooks', 'list']);
 
       expect(mockHooksCommand.list).toHaveBeenCalled();
-      expect(Logger.output).toHaveBeenCalledWith('Git Hooks Status:\n  pre-commit installed');
+      expect(Logger.output).toHaveBeenCalledWith(
+        'Git Hooks Status:\n  pre-commit installed'
+      );
     });
 
     it('should call handleError on failure', async () => {
@@ -115,13 +130,17 @@ describe('registerHooks', () => {
 
   describe('hooks path', () => {
     it('should show hook path and output result', async () => {
-      mockHooksCommand.showPath.mockReturnValue('Hook path: /repo/.git/hooks/pre-commit');
+      mockHooksCommand.showPath.mockReturnValue(
+        'Hook path: /repo/.git/hooks/pre-commit'
+      );
       const { program } = makeProgram();
 
       await program.parseAsync(['node', 'test', 'hooks', 'path', 'pre-commit']);
 
       expect(mockHooksCommand.showPath).toHaveBeenCalledWith('pre-commit');
-      expect(Logger.output).toHaveBeenCalledWith('Hook path: /repo/.git/hooks/pre-commit');
+      expect(Logger.output).toHaveBeenCalledWith(
+        'Hook path: /repo/.git/hooks/pre-commit'
+      );
     });
 
     it('should call handleError on failure', async () => {

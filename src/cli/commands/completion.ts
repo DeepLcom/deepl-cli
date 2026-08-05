@@ -42,7 +42,9 @@ export class CompletionCommand {
   }
 
   private findCommand(name: string): Command | undefined {
-    return this.program.commands.find((c) => c.name() === name || c.aliases().includes(name));
+    return this.program.commands.find(
+      (c) => c.name() === name || c.aliases().includes(name)
+    );
   }
 
   private getCommandOptions(cmdName: string): string[] {
@@ -59,7 +61,7 @@ export class CompletionCommand {
         this.program.options
           .map((opt) => opt.long)
           .filter((o): o is string => !!o)
-          .concat('--help', '--version'),
+          .concat('--help', '--version')
       ),
     ];
   }
@@ -76,7 +78,9 @@ export class CompletionCommand {
       }
       const cmdOpts = this.getCommandOptions(parent);
       const words = [...subs, ...cmdOpts].join(' ');
-      subcommandCases.push(`        ${parent})\n            COMPREPLY=($(compgen -W "${words}" -- "\${cur}"))\n            return 0\n            ;;`);
+      subcommandCases.push(
+        `        ${parent})\n            COMPREPLY=($(compgen -W "${words}" -- "\${cur}"))\n            return 0\n            ;;`
+      );
     }
 
     const topLevelWords = [...topLevel, ...globalOpts].join(' ');
@@ -153,7 +157,9 @@ complete -F _deepl_completions deepl
     _describe -t ${safeName}-commands '${parent} subcommand' subcmds
 }`);
 
-      subcommandDispatch.push(`        ${parent})\n            _deepl_${safeName}\n            ;;`);
+      subcommandDispatch.push(
+        `        ${parent})\n            _deepl_${safeName}\n            ;;`
+      );
     }
 
     const topLevelDescriptions: string[] = [];
@@ -232,7 +238,9 @@ _deepl "$@"
     for (const cmdName of topLevel) {
       const cmd = this.findCommand(cmdName);
       const desc = cmd ? cmd.description() : '';
-      lines.push(`complete -c deepl -n '${noSubcmdCondition}' -a '${cmdName}' -d '${desc.replace(/'/g, "\\'")}'`);
+      lines.push(
+        `complete -c deepl -n '${noSubcmdCondition}' -a '${cmdName}' -d '${desc.replace(/'/g, "\\'")}'`
+      );
     }
 
     for (const opt of globalOpts) {
@@ -257,15 +265,18 @@ _deepl "$@"
       }
       const parentCmd = this.findCommand(parent);
       const seenCondition = `__fish_seen_subcommand_from ${parent}`;
-      const notSeenSub = subs.length > 0
-        ? `; and not __fish_seen_subcommand_from ${subs.join(' ')}`
-        : '';
+      const notSeenSub =
+        subs.length > 0
+          ? `; and not __fish_seen_subcommand_from ${subs.join(' ')}`
+          : '';
 
       lines.push(`# ${parent} subcommands`);
       if (parentCmd) {
         for (const sub of this.visibleCommands(parentCmd)) {
           const desc = sub.description().replace(/'/g, "\\'");
-          lines.push(`complete -c deepl -n '${seenCondition}${notSeenSub}' -a '${sub.name()}' -d '${desc}'`);
+          lines.push(
+            `complete -c deepl -n '${seenCondition}${notSeenSub}' -a '${sub.name()}' -d '${desc}'`
+          );
         }
       }
 
@@ -274,7 +285,9 @@ _deepl "$@"
         const optObj = parentCmd?.options.find((o) => o.long === opt);
         const desc = optObj ? optObj.description.replace(/'/g, "\\'") : '';
         const longFlag = opt.replace(/^--/, '');
-        lines.push(`complete -c deepl -n '${seenCondition}' -l '${longFlag}' -d '${desc}'`);
+        lines.push(
+          `complete -c deepl -n '${seenCondition}' -l '${longFlag}' -d '${desc}'`
+        );
       }
       lines.push('');
     }

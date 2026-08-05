@@ -4,17 +4,34 @@
  */
 
 import * as crypto from 'crypto';
-import { DeepLClient, TranslationResult, isTranslationResult, UsageInfo, LanguageInfo } from '../api/deepl-client.js';
+import {
+  DeepLClient,
+  TranslationResult,
+  isTranslationResult,
+  UsageInfo,
+  LanguageInfo,
+} from '../api/deepl-client.js';
 import { ConfigService } from '../storage/config.js';
 import type { CacheService } from '../storage/cache.js';
-import { TranslationOptions, Language, TranslationMemory } from '../types/index.js';
+import {
+  TranslationOptions,
+  Language,
+  TranslationMemory,
+} from '../types/index.js';
 import { Logger } from '../utils/logger.js';
-import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
+import {
+  mapWithConcurrency,
+  MULTI_TARGET_CONCURRENCY,
+} from '../utils/concurrency.js';
 import { ValidationError } from '../utils/errors.js';
 import { errorMessage } from '../utils/error-message.js';
 import { resolveGlossaryWireParams } from '../utils/glossary-params.js';
 import { resolveTagHandlingVersion } from '../utils/tag-handling-version.js';
-import { preserveCodeBlocks, preserveVariables, restorePlaceholders } from '../utils/text-preservation.js';
+import {
+  preserveCodeBlocks,
+  preserveVariables,
+  restorePlaceholders,
+} from '../utils/text-preservation.js';
 
 export { MULTI_TARGET_CONCURRENCY };
 
@@ -45,10 +62,17 @@ export class TranslationService {
   // No cache means "run cacheless" — the CLI passes undefined when the
   // cache backend is unavailable (see cli/cache-loader.ts).
   private cache?: CacheService;
-  private languageCache: Map<'source' | 'target', { data: LanguageInfo[]; timestamp: number }> = new Map();
+  private languageCache: Map<
+    'source' | 'target',
+    { data: LanguageInfo[]; timestamp: number }
+  > = new Map();
   private readonly LANGUAGE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-  constructor(client: DeepLClient, config: ConfigService, cache?: CacheService) {
+  constructor(
+    client: DeepLClient,
+    config: ConfigService,
+    cache?: CacheService
+  ) {
     this.client = client;
     this.config = config;
     this.cache = cache;
@@ -75,7 +99,7 @@ export class TranslationService {
     if (textBytes > MAX_TEXT_BYTES) {
       throw new ValidationError(
         `Text too large: ${textBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
-        'Split the text into smaller chunks or use file translation for large documents.'
+          'Split the text into smaller chunks or use file translation for large documents.'
       );
     }
 
@@ -88,7 +112,8 @@ export class TranslationService {
       ...options,
       sourceLang: options.sourceLang ?? defaults.sourceLang,
       formality: options.formality ?? defaults.formality,
-      preserveFormatting: options.preserveFormatting ?? defaults.preserveFormatting,
+      preserveFormatting:
+        options.preserveFormatting ?? defaults.preserveFormatting,
     };
 
     // Preserve code blocks if requested
@@ -130,7 +155,10 @@ export class TranslationService {
 
     // Translate via API
     const startTime = Date.now();
-    const result = await this.client.translate(processedText, translationOptions);
+    const result = await this.client.translate(
+      processedText,
+      translationOptions
+    );
     const elapsed = Date.now() - startTime;
     Logger.verbose(`[verbose] API response time: ${elapsed}ms`);
 
@@ -171,7 +199,7 @@ export class TranslationService {
       if (itemBytes > MAX_TEXT_BYTES) {
         throw new ValidationError(
           `Text at index ${i} too large: ${itemBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
-          'Split the text into smaller chunks or use file translation for large documents.'
+            'Split the text into smaller chunks or use file translation for large documents.'
         );
       }
     }
@@ -186,14 +214,16 @@ export class TranslationService {
       ...options,
       sourceLang: options.sourceLang ?? defaults.sourceLang,
       formality: options.formality ?? defaults.formality,
-      preserveFormatting: options.preserveFormatting ?? defaults.preserveFormatting,
+      preserveFormatting:
+        options.preserveFormatting ?? defaults.preserveFormatting,
     };
 
     // Check cache and separate cached vs non-cached texts
     // Use Set for deduplication and Map to track all indices for each text
     const textsToTranslateSet = new Set<string>();
     const textIndexMap = new Map<string, number[]>(); // Maps text to ALL original indices
-    const results: (TranslationResult | null)[] = new Array<TranslationResult | null>(texts.length).fill(null);
+    const results: (TranslationResult | null)[] =
+      new Array<TranslationResult | null>(texts.length).fill(null);
 
     for (let i = 0; i < texts.length; i++) {
       const text = texts[i];
@@ -245,7 +275,10 @@ export class TranslationService {
 
     for (const batch of batches) {
       try {
-        const batchResults = await this.client.translateBatch(batch, translationOptions);
+        const batchResults = await this.client.translateBatch(
+          batch,
+          translationOptions
+        );
 
         // Map each result to its corresponding text
         for (let i = 0; i < batch.length; i++) {
@@ -293,9 +326,11 @@ export class TranslationService {
     }
 
     // Calculate actual failures
-    const actualFailures = results.filter(r => r === null).length;
+    const actualFailures = results.filter((r) => r === null).length;
     if (actualFailures > 0) {
-      Logger.warn(`⚠️  Warning: ${actualFailures} of ${texts.length} translations failed`);
+      Logger.warn(
+        `⚠️  Warning: ${actualFailures} of ${texts.length} translations failed`
+      );
     }
 
     // Return sparse array preserving positional correspondence with input texts.
@@ -309,7 +344,9 @@ export class TranslationService {
   async translateToMultiple(
     text: string,
     targetLangs: Language[],
-    options: Omit<TranslationOptions, 'targetLang'> & { skipCache?: boolean } = {}
+    options: Omit<TranslationOptions, 'targetLang'> & {
+      skipCache?: boolean;
+    } = {}
   ): Promise<MultiTargetResult[]> {
     if (targetLangs.length === 0) {
       throw new ValidationError('At least one target language is required');
@@ -318,10 +355,14 @@ export class TranslationService {
     return mapWithConcurrency(
       targetLangs,
       async (targetLang) => {
-        const result = await this.translate(text, {
-          ...options,
-          targetLang,
-        }, { skipCache: options.skipCache });
+        const result = await this.translate(
+          text,
+          {
+            ...options,
+            targetLang,
+          },
+          { skipCache: options.skipCache }
+        );
 
         return {
           targetLang,
@@ -358,13 +399,15 @@ export class TranslationService {
   /**
    * Get supported languages with caching (24-hour TTL)
    */
-  async getSupportedLanguages(type: 'source' | 'target'): Promise<LanguageInfo[]> {
+  async getSupportedLanguages(
+    type: 'source' | 'target'
+  ): Promise<LanguageInfo[]> {
     // Check cache first
     const cached = this.languageCache.get(type);
     const now = Date.now();
 
     // Return cached data if it exists and hasn't expired
-    if (cached && (now - cached.timestamp) < this.LANGUAGE_CACHE_TTL) {
+    if (cached && now - cached.timestamp < this.LANGUAGE_CACHE_TTL) {
       return cached.data;
     }
 
@@ -421,22 +464,28 @@ export class TranslationService {
     // Create a stable representation with deterministic property order
     // Property order matters because JSON.stringify() preserves insertion order
     const cacheData = {
-      text,                      // 1. Text to translate
-      targetLang: options.targetLang,    // 2. Target language
-      sourceLang: options.sourceLang,    // 3. Source language (if specified)
-      formality: options.formality,      // 4. Formality level
-      glossaryId: glossary && 'glossary_id' in glossary ? glossary.glossary_id : undefined, // 5. Glossary ID
-      context: options.context,          // 6. Context hint
-      modelType: options.modelType,      // 7. Model type affects output quality
+      text, // 1. Text to translate
+      targetLang: options.targetLang, // 2. Target language
+      sourceLang: options.sourceLang, // 3. Source language (if specified)
+      formality: options.formality, // 4. Formality level
+      glossaryId:
+        glossary && 'glossary_id' in glossary
+          ? glossary.glossary_id
+          : undefined, // 5. Glossary ID
+      context: options.context, // 6. Context hint
+      modelType: options.modelType, // 7. Model type affects output quality
       splitSentences: options.splitSentences, // 8. Sentence splitting behavior
-      tagHandling: options.tagHandling,  // 9. HTML/XML processing
+      tagHandling: options.tagHandling, // 9. HTML/XML processing
       tagHandlingVersion: resolveTagHandlingVersion(options), // 10. Tag handling version
       customInstructions: options.customInstructions, // 11. Custom instructions
-      styleId: options.styleId,          // 12. Style rules
-      glossaryIds: glossary && 'glossary_ids' in glossary ? glossary.glossary_ids : undefined, // 13. Multi-glossary selection (order-significant)
+      styleId: options.styleId, // 12. Style rules
+      glossaryIds:
+        glossary && 'glossary_ids' in glossary
+          ? glossary.glossary_ids
+          : undefined, // 13. Multi-glossary selection (order-significant)
       translationMemoryId: options.translationMemoryId, // 14. Memory consulted for matches
       translationMemoryThreshold: options.translationMemoryThreshold, // 15. Which matches it reuses
-      ignoreTags: options.ignoreTags,     // 16. Tags left untranslated
+      ignoreTags: options.ignoreTags, // 16. Tags left untranslated
       splittingTags: options.splittingTags, // 17. Tags that split sentences
       nonSplittingTags: options.nonSplittingTags, // 18. Tags that do not
       outlineDetection: options.outlineDetection, // 19. XML structure inference

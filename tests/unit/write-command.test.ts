@@ -63,7 +63,10 @@ describe('WriteCommand', () => {
     writeCommand = new WriteCommand(mockWriteService);
 
     // Create temporary directory for file tests with more entropy to avoid collisions
-    testDir = join(tmpdir(), `deepl-cli-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    testDir = join(
+      tmpdir(),
+      `deepl-cli-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     await fs.mkdir(testDir, { recursive: true });
   });
 
@@ -94,7 +97,9 @@ describe('WriteCommand', () => {
           },
         ];
 
-        mockWriteService.getBestImprovement.mockResolvedValue(mockImprovements[0]!);
+        mockWriteService.getBestImprovement.mockResolvedValue(
+          mockImprovements[0]!
+        );
 
         const result = await writeCommand.improve('This is a sentence.', {
           lang: 'en-us',
@@ -335,7 +340,9 @@ describe('WriteCommand', () => {
     describe('parameter constraints', () => {
       it('should propagate service error when both style and tone are specified', async () => {
         mockWriteService.getBestImprovement.mockRejectedValueOnce(
-          new Error('Cannot specify both --style and --tone in a single request')
+          new Error(
+            'Cannot specify both --style and --tone in a single request'
+          )
         );
 
         await expect(
@@ -382,7 +389,18 @@ describe('WriteCommand', () => {
 
     describe('supported languages', () => {
       it('should work with all supported Write languages', async () => {
-        const languages: Array<'de' | 'en' | 'en-gb' | 'en-us' | 'es' | 'fr' | 'it' | 'pt' | 'pt-br' | 'pt-pt'> = [
+        const languages: Array<
+          | 'de'
+          | 'en'
+          | 'en-gb'
+          | 'en-us'
+          | 'es'
+          | 'fr'
+          | 'it'
+          | 'pt'
+          | 'pt-br'
+          | 'pt-pt'
+        > = [
           'de',
           'en',
           'en-gb',
@@ -401,7 +419,9 @@ describe('WriteCommand', () => {
             targetLanguage: lang,
           };
 
-          mockWriteService.getBestImprovement.mockResolvedValue(mockImprovement);
+          mockWriteService.getBestImprovement.mockResolvedValue(
+            mockImprovement
+          );
 
           const result = await writeCommand.improve('Test', { lang });
 
@@ -440,7 +460,9 @@ describe('WriteCommand', () => {
 
       it('should throw error for non-existent file', async () => {
         await expect(
-          writeCommand.improveFile(join(testDir, 'nonexistent.txt'), { lang: 'en-us' })
+          writeCommand.improveFile(join(testDir, 'nonexistent.txt'), {
+            lang: 'en-us',
+          })
         ).rejects.toThrow('File not found');
       });
 
@@ -823,10 +845,18 @@ describe('WriteCommand', () => {
     it('should generate alternatives with different styles', async () => {
       // Mock different responses for different styles
       mockWriteService.improve
-        .mockResolvedValueOnce([{ text: 'Simple improvement.', targetLanguage: 'en-US' }])
-        .mockResolvedValueOnce([{ text: 'Business improvement.', targetLanguage: 'en-US' }])
-        .mockResolvedValueOnce([{ text: 'Academic improvement.', targetLanguage: 'en-US' }])
-        .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
+        .mockResolvedValueOnce([
+          { text: 'Simple improvement.', targetLanguage: 'en-US' },
+        ])
+        .mockResolvedValueOnce([
+          { text: 'Business improvement.', targetLanguage: 'en-US' },
+        ])
+        .mockResolvedValueOnce([
+          { text: 'Academic improvement.', targetLanguage: 'en-US' },
+        ])
+        .mockResolvedValueOnce([
+          { text: 'Casual improvement.', targetLanguage: 'en-US' },
+        ]);
 
       mockSelect.mockResolvedValue(1);
 
@@ -877,10 +907,18 @@ describe('WriteCommand', () => {
     it('should remove duplicate improvements', async () => {
       // Mock where some styles return the same text
       mockWriteService.improve
-        .mockResolvedValueOnce([{ text: 'Same improvement.', targetLanguage: 'en-US' }])
-        .mockResolvedValueOnce([{ text: 'Same improvement.', targetLanguage: 'en-US' }])
-        .mockResolvedValueOnce([{ text: 'Different improvement.', targetLanguage: 'en-US' }])
-        .mockResolvedValueOnce([{ text: 'Same improvement.', targetLanguage: 'en-US' }]);
+        .mockResolvedValueOnce([
+          { text: 'Same improvement.', targetLanguage: 'en-US' },
+        ])
+        .mockResolvedValueOnce([
+          { text: 'Same improvement.', targetLanguage: 'en-US' },
+        ])
+        .mockResolvedValueOnce([
+          { text: 'Different improvement.', targetLanguage: 'en-US' },
+        ])
+        .mockResolvedValueOnce([
+          { text: 'Same improvement.', targetLanguage: 'en-US' },
+        ]);
 
       mockSelect.mockResolvedValue(0);
 
@@ -927,9 +965,13 @@ describe('WriteCommand', () => {
       // Mock where some styles fail but others succeed
       mockWriteService.improve
         .mockRejectedValueOnce(new Error('API error'))
-        .mockResolvedValueOnce([{ text: 'Business improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([
+          { text: 'Business improvement.', targetLanguage: 'en-US' },
+        ])
         .mockRejectedValueOnce(new Error('API error'))
-        .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
+        .mockResolvedValueOnce([
+          { text: 'Casual improvement.', targetLanguage: 'en-US' },
+        ]);
 
       mockSelect.mockResolvedValue(0);
 
@@ -944,9 +986,13 @@ describe('WriteCommand', () => {
     it('should log verbose diagnostics when a write style fails', async () => {
       mockWriteService.improve
         .mockRejectedValueOnce(new Error('Rate limit exceeded'))
-        .mockResolvedValueOnce([{ text: 'Business improvement.', targetLanguage: 'en-US' }])
+        .mockResolvedValueOnce([
+          { text: 'Business improvement.', targetLanguage: 'en-US' },
+        ])
         .mockRejectedValueOnce(new Error('Server error'))
-        .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
+        .mockResolvedValueOnce([
+          { text: 'Casual improvement.', targetLanguage: 'en-US' },
+        ]);
 
       mockSelect.mockResolvedValue(0);
 
@@ -968,9 +1014,15 @@ describe('WriteCommand', () => {
     it('should log verbose diagnostics with stringified non-Error objects', async () => {
       mockWriteService.improve
         .mockRejectedValueOnce('string error')
-        .mockResolvedValueOnce([{ text: 'Business improvement.', targetLanguage: 'en-US' }])
-        .mockResolvedValueOnce([{ text: 'Academic improvement.', targetLanguage: 'en-US' }])
-        .mockResolvedValueOnce([{ text: 'Casual improvement.', targetLanguage: 'en-US' }]);
+        .mockResolvedValueOnce([
+          { text: 'Business improvement.', targetLanguage: 'en-US' },
+        ])
+        .mockResolvedValueOnce([
+          { text: 'Academic improvement.', targetLanguage: 'en-US' },
+        ])
+        .mockResolvedValueOnce([
+          { text: 'Casual improvement.', targetLanguage: 'en-US' },
+        ]);
 
       mockSelect.mockResolvedValue(0);
 

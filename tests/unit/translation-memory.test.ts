@@ -12,7 +12,9 @@ import type { TranslationMemory } from '../../src/types/index';
 
 const UUID = '11111111-2222-3333-4444-555555555555';
 
-const makeTm = (overrides: Partial<TranslationMemory> = {}): TranslationMemory => ({
+const makeTm = (
+  overrides: Partial<TranslationMemory> = {}
+): TranslationMemory => ({
   translation_memory_id: UUID,
   name: 'my-tm',
   source_language: 'en',
@@ -20,7 +22,9 @@ const makeTm = (overrides: Partial<TranslationMemory> = {}): TranslationMemory =
   ...overrides,
 });
 
-const makeClient = (tms: TranslationMemory[] = []): jest.Mocked<TranslationMemoryLister> => ({
+const makeClient = (
+  tms: TranslationMemory[] = []
+): jest.Mocked<TranslationMemoryLister> => ({
   listTranslationMemories: jest.fn().mockResolvedValue(tms),
 });
 
@@ -104,30 +108,38 @@ describe('resolveTranslationMemoryId', () => {
     });
 
     it('re-runs pair-check when same TM name is requested with a different expected pair (cache does not bypass validation)', async () => {
-      const client = makeClient([makeTm({ source_language: 'en', target_languages: ['de'] })]);
+      const client = makeClient([
+        makeTm({ source_language: 'en', target_languages: ['de'] }),
+      ]);
       const cache = new Map<string, string>();
 
       const first = await resolveTranslationMemoryId(client, 'my-tm', cache, {
-        from: 'en', targets: ['de'],
+        from: 'en',
+        targets: ['de'],
       });
       expect(first).toBe(UUID);
 
       await expect(
         resolveTranslationMemoryId(client, 'my-tm', cache, {
-          from: 'en', targets: ['fr'],
+          from: 'en',
+          targets: ['fr'],
         })
       ).rejects.toThrow('does not support the requested language pair');
     });
 
     it('reuses cached UUID when the same name + same pair is requested twice (no extra list call)', async () => {
-      const client = makeClient([makeTm({ source_language: 'en', target_languages: ['de'] })]);
+      const client = makeClient([
+        makeTm({ source_language: 'en', target_languages: ['de'] }),
+      ]);
       const cache = new Map<string, string>();
 
       const first = await resolveTranslationMemoryId(client, 'my-tm', cache, {
-        from: 'en', targets: ['de'],
+        from: 'en',
+        targets: ['de'],
       });
       const second = await resolveTranslationMemoryId(client, 'my-tm', cache, {
-        from: 'en', targets: ['de'],
+        from: 'en',
+        targets: ['de'],
       });
 
       expect(first).toBe(UUID);
@@ -146,7 +158,10 @@ describe('resolveTranslationMemoryId', () => {
       const cache = new Map<string, string>();
 
       await expect(
-        resolveTranslationMemoryId(client, 'prod-tm\x00', cache, { from: 'en', targets: ['de'] }),
+        resolveTranslationMemoryId(client, 'prod-tm\x00', cache, {
+          from: 'en',
+          targets: ['de'],
+        })
       ).rejects.toThrow(/not found/);
     });
 
@@ -159,28 +174,45 @@ describe('resolveTranslationMemoryId', () => {
       const cache = new Map<string, string>();
 
       await expect(
-        resolveTranslationMemoryId(client, 'prod-tm\u200B', cache, { from: 'en', targets: ['de'] }),
+        resolveTranslationMemoryId(client, 'prod-tm\u200B', cache, {
+          from: 'en',
+          targets: ['de'],
+        })
       ).rejects.toThrow(/not found/);
     });
 
     it('throws ConfigError when two TMs share the same exact name (no first-create-wins)', async () => {
       const first = makeTm({ translation_memory_id: UUID, name: 'shared' });
-      const second = makeTm({ translation_memory_id: '22222222-2222-3333-4444-555555555555', name: 'shared' });
+      const second = makeTm({
+        translation_memory_id: '22222222-2222-3333-4444-555555555555',
+        name: 'shared',
+      });
       const client = makeClient([first, second]);
       const cache = new Map<string, string>();
 
       await expect(
-        resolveTranslationMemoryId(client, 'shared', cache, { from: 'en', targets: ['de'] }),
+        resolveTranslationMemoryId(client, 'shared', cache, {
+          from: 'en',
+          targets: ['de'],
+        })
       ).rejects.toThrow(/Multiple translation memories share the name/);
     });
 
     it('legit unambiguous name still resolves cleanly (no false positive)', async () => {
-      const client = makeClient([makeTm({ translation_memory_id: UUID, name: 'my-tm' })]);
+      const client = makeClient([
+        makeTm({ translation_memory_id: UUID, name: 'my-tm' }),
+      ]);
       const cache = new Map<string, string>();
 
-      const resolved = await resolveTranslationMemoryId(client, 'my-tm', cache, {
-        from: 'en', targets: ['de'],
-      });
+      const resolved = await resolveTranslationMemoryId(
+        client,
+        'my-tm',
+        cache,
+        {
+          from: 'en',
+          targets: ['de'],
+        }
+      );
 
       expect(resolved).toBe(UUID);
     });
@@ -194,9 +226,15 @@ describe('resolveTranslationMemoryId', () => {
       const client = makeClient([legit, filteredSibling]);
       const cache = new Map<string, string>();
 
-      const resolved = await resolveTranslationMemoryId(client, 'prod-tm', cache, {
-        from: 'en', targets: ['de'],
-      });
+      const resolved = await resolveTranslationMemoryId(
+        client,
+        'prod-tm',
+        cache,
+        {
+          from: 'en',
+          targets: ['de'],
+        }
+      );
 
       expect(resolved).toBe(UUID);
     });
@@ -212,7 +250,9 @@ describe('resolveTranslationMemoryId', () => {
       await resolveTranslationMemoryId(client, 'my-tm', cache);
 
       expect(spy).toHaveBeenCalledWith(
-        expect.stringContaining(`Resolved translation memory "my-tm" -> ${UUID}`)
+        expect.stringContaining(
+          `Resolved translation memory "my-tm" -> ${UUID}`
+        )
       );
       spy.mockRestore();
     });
@@ -228,7 +268,9 @@ describe('resolveTranslationMemoryId', () => {
       await resolveTranslationMemoryId(client, 'my-tm', cache);
 
       expect(spy).toHaveBeenCalledWith(
-        expect.stringContaining(`Translation memory cache hit: "my-tm" -> ${UUID}`)
+        expect.stringContaining(
+          `Translation memory cache hit: "my-tm" -> ${UUID}`
+        )
       );
       spy.mockRestore();
     });
@@ -251,7 +293,7 @@ describe('resolveTranslationMemoryId', () => {
       const err = thrown as ConfigError;
       expect(err.message).toBe('Translation memory "missing-tm" not found');
       expect(err.suggestion).toBe(
-        'Pass the UUID directly, or check your translation memories on the DeepL dashboard.',
+        'Pass the UUID directly, or check your translation memories on the DeepL dashboard.'
       );
       expect(err.exitCode).toBe(7);
     });
@@ -272,7 +314,7 @@ describe('resolveTranslationMemoryId', () => {
 
       expect(thrown).toBeInstanceOf(ConfigError);
       expect((thrown as ConfigError).message).toBe(
-        `Translation memory "${expectedName}" not found`,
+        `Translation memory "${expectedName}" not found`
       );
     });
   });
@@ -298,7 +340,7 @@ describe('resolveTranslationMemoryId', () => {
         resolveTranslationMemoryId(client, 'my-tm', cache, {
           from: 'fr',
           targets: ['de'],
-        }),
+        })
       ).rejects.toBeInstanceOf(ConfigError);
     });
 
@@ -310,7 +352,7 @@ describe('resolveTranslationMemoryId', () => {
         resolveTranslationMemoryId(client, 'my-tm', cache, {
           from: 'en',
           targets: ['fr'],
-        }),
+        })
       ).rejects.toBeInstanceOf(ConfigError);
     });
 
@@ -322,7 +364,7 @@ describe('resolveTranslationMemoryId', () => {
         resolveTranslationMemoryId(client, 'my-tm', cache, {
           from: 'en',
           targets: ['de', 'fr'],
-        }),
+        })
       ).rejects.toBeInstanceOf(ConfigError);
     });
 
@@ -334,7 +376,7 @@ describe('resolveTranslationMemoryId', () => {
         resolveTranslationMemoryId(client, 'my-tm', cache, {
           from: 'fr',
           targets: ['de'],
-        }),
+        })
       ).rejects.toBeInstanceOf(ConfigError);
 
       expect(cache.has('my-tm')).toBe(false);

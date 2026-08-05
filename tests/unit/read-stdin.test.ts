@@ -9,7 +9,10 @@ describe('readStdin', () => {
   });
 
   afterEach(() => {
-    Object.defineProperty(process, 'stdin', { value: originalStdin, writable: true });
+    Object.defineProperty(process, 'stdin', {
+      value: originalStdin,
+      writable: true,
+    });
   });
 
   function mockStdin(): PassThrough {
@@ -59,7 +62,9 @@ describe('readStdin', () => {
     stream.end();
 
     await expect(promise).rejects.toThrow(ValidationError);
-    await expect(promise).rejects.toThrow('Input exceeds maximum size of 128KB');
+    await expect(promise).rejects.toThrow(
+      'Input exceeds maximum size of 128KB'
+    );
   });
 
   it('should reject on stdin error', async () => {
