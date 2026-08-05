@@ -34,6 +34,8 @@ describe('Voice CLI E2E', () => {
       expect(output).toContain('--chunk-interval');
       expect(output).toContain('--no-stream');
       expect(output).toContain('--format');
+      expect(output).toContain('--no-reconnect');
+      expect(output).toContain('--max-reconnect-attempts');
     });
 
     it('should show voice in main help', () => {
@@ -46,6 +48,35 @@ describe('Voice CLI E2E', () => {
       expect(output).toContain('Examples:');
       expect(output).toContain('.ogg');
       expect(output).toContain('.mp3');
+    });
+  });
+
+  describe('Insecure API URL in config', () => {
+    // Its own config dir: the point of the test is a poisoned config.json, and
+    // the rest of this file shares one.
+    it('should reject an http:// base URL rather than sending audio to it', () => {
+      const insecureConfig = createTestConfigDir('voice-e2e-insecure');
+      const audioFile = path.join(testDir, 'insecure-url.mp3');
+      fs.writeFileSync(audioFile, Buffer.alloc(100));
+      fs.writeFileSync(
+        path.join(insecureConfig.path, 'config.json'),
+        JSON.stringify({
+          auth: { apiKey: 'test-key-for-url-validation' },
+          api: { baseUrl: 'http://evil-server.example.com/v2', usePro: false },
+        })
+      );
+      const { runCLIAll: runInsecure } = makeRunCLI(insecureConfig.path);
+
+      let output: string;
+      try {
+        output = runInsecure(`deepl voice ${audioFile} --to de`);
+      } catch (error) {
+        const failure = error as { stdout?: unknown; stderr?: unknown };
+        output = String(failure.stdout ?? '') + String(failure.stderr ?? '');
+      }
+      insecureConfig.cleanup();
+
+      expect(output).toMatch(/Insecure HTTP URL rejected/i);
     });
   });
 
