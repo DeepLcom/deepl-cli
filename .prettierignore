@@ -1,8 +1,7 @@
-node_modules
+# Build and coverage output. The format scripts only cover src/ and tests/,
+# but prettier reaches these when pointed at the repo root.
 dist
 coverage
-*.log
-.DS_Store
 
 # Generated from GET /v3/languages; check:languages compares the raw text, so
 # reformatting it would report permanent drift.
