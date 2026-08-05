@@ -243,6 +243,82 @@ describe('WatchCommand', () => {
       );
     });
 
+    it('should apply the documented 500ms default when --debounce is omitted', async () => {
+      expect.assertions(1);
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      try {
+        await watchCommand.watch('/some/file.md', { to: 'es' });
+      } catch {
+        // Expected
+      }
+
+      expect(WatchService).toHaveBeenCalledWith(
+        mockFileTranslationService,
+        expect.objectContaining({
+          debounceMs: 500,
+        })
+      );
+    });
+
+    it('should honour watch.debounceMs from config when --debounce is omitted', async () => {
+      expect.assertions(1);
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      const configured = new WatchCommand(
+        mockTranslationService,
+        mockGlossaryService,
+        createMockConfigService({
+          getValue: jest.fn((key: string) => (key === 'watch.debounceMs' ? 1200 : undefined)),
+        }),
+      );
+
+      try {
+        await configured.watch('/some/file.md', { to: 'es' });
+      } catch {
+        // Expected
+      }
+
+      expect(WatchService).toHaveBeenCalledWith(
+        mockFileTranslationService,
+        expect.objectContaining({
+          debounceMs: 1200,
+        })
+      );
+    });
+
+    it('should let --debounce override watch.debounceMs from config', async () => {
+      expect.assertions(1);
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+      mockWatchService.watch.mockImplementation(() => { throw new Error('Test complete'); });
+
+      const configured = new WatchCommand(
+        mockTranslationService,
+        mockGlossaryService,
+        createMockConfigService({
+          getValue: jest.fn((key: string) => (key === 'watch.debounceMs' ? 1200 : undefined)),
+        }),
+      );
+
+      try {
+        await configured.watch('/some/file.md', { to: 'es', debounce: 250 });
+      } catch {
+        // Expected
+      }
+
+      expect(WatchService).toHaveBeenCalledWith(
+        mockFileTranslationService,
+        expect.objectContaining({
+          debounceMs: 250,
+        })
+      );
+    });
+
     it('should pass pattern option to WatchService', async () => {
       expect.assertions(1);
       (fs.existsSync as jest.Mock).mockReturnValue(true);

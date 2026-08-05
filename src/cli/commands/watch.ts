@@ -16,6 +16,7 @@ import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 import { applyGlossarySourceLang, hasGlossarySelection } from '../../utils/glossary-params.js';
 import type { ConfigService } from '../../storage/config.js';
+import { DEFAULT_DEBOUNCE_MS } from '../../storage/config.js';
 
 interface WatchOptions {
   to: string;
@@ -164,9 +165,13 @@ export class WatchCommand {
       stagedFiles?: Set<string>;
     } = { pattern: options.pattern, stagedFiles };
 
-    if (options.debounce) {
-      watchServiceOptions.debounceMs = options.debounce;
-    }
+    // The default is applied here rather than left to WatchService so that the
+    // documented value holds and `watch.debounceMs` takes effect: the flag wins,
+    // then configuration, then the documented default.
+    watchServiceOptions.debounceMs =
+      options.debounce ??
+      this.config?.getValue<number>('watch.debounceMs') ??
+      DEFAULT_DEBOUNCE_MS;
     if (options.concurrency) {
       watchServiceOptions.concurrency = options.concurrency;
     }

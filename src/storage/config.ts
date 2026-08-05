@@ -43,7 +43,10 @@ const FORBIDDEN_KEY_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']
 
 const DEFAULT_CACHE_SIZE = 1024 * 1024 * 1024; // 1GB
 const DEFAULT_CACHE_TTL = 30 * 24 * 60 * 60; // 30 days in seconds
-const DEFAULT_DEBOUNCE_MS = 500;
+/** Debounce delay applied by `watch` when neither the flag nor configuration
+ *  names one. Exported so the CLI default and this schema default stay one
+ *  value. */
+export const DEFAULT_DEBOUNCE_MS = 500;
 
 /**
  * Language values are stored lowercase, matching what `deepl languages` prints
