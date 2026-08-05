@@ -5,9 +5,9 @@
  * unnoticed — a single run looks almost right.
  */
 
-import { AndroidXmlFormatParser } from '../../src/formats/android-xml';
-import { PropertiesFormatParser } from '../../src/formats/properties';
-import { TomlFormatParser } from '../../src/formats/toml';
+import { AndroidXmlFormatParser } from '../../../src/formats/android-xml';
+import { PropertiesFormatParser } from '../../../src/formats/properties';
+import { TomlFormatParser } from '../../../src/formats/toml';
 
 describe('parser round-trip stability', () => {
   describe('Android XML entity escaping', () => {

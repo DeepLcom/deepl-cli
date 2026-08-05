@@ -7,11 +7,11 @@
  * the file from nothing.
  */
 
-import { PoFormatParser } from '../../src/formats/po';
-import { IosStringsFormatParser } from '../../src/formats/ios-strings';
-import { PropertiesFormatParser } from '../../src/formats/properties';
-import { TomlFormatParser } from '../../src/formats/toml';
-import type { FormatParser } from '../../src/formats/format';
+import { PoFormatParser } from '../../../src/formats/po';
+import { IosStringsFormatParser } from '../../../src/formats/ios-strings';
+import { PropertiesFormatParser } from '../../../src/formats/properties';
+import { TomlFormatParser } from '../../../src/formats/toml';
+import type { FormatParser } from '../../../src/formats/format';
 
 interface LineBasedCase {
   label: string;

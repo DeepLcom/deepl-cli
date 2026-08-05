@@ -10,7 +10,7 @@
  * the stale translation.
  */
 
-import { XliffFormatParser } from '../../src/formats/xliff';
+import { XliffFormatParser } from '../../../src/formats/xliff';
 
 const V12_WITH_STATE = `<?xml version="1.0" encoding="UTF-8"?>
 <xliff version="1.2">

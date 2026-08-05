@@ -7,8 +7,8 @@
  * parser's stance on CDATA in translatable content.
  */
 
-import { AndroidXmlFormatParser } from '../../src/formats/android-xml';
-import { ValidationError } from '../../src/utils/errors';
+import { AndroidXmlFormatParser } from '../../../src/formats/android-xml';
+import { ValidationError } from '../../../src/utils/errors';
 
 const WITH_CDATA = `<?xml version="1.0" encoding="utf-8"?>
 <resources>

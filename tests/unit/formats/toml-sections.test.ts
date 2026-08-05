@@ -7,7 +7,7 @@
  * then still missing, it was re-appended on every subsequent sync run.
  */
 
-import { TomlFormatParser } from '../../src/formats/toml';
+import { TomlFormatParser } from '../../../src/formats/toml';
 
 describe('TOML section handling for new keys', () => {
   const sectioned = '[messages]\ngreeting = "Hello"\n';

@@ -6,8 +6,8 @@
  *    resource file could not be read at all.
  */
 
-import { XcstringsFormatParser } from '../../src/formats/xcstrings';
-import { ArbFormatParser } from '../../src/formats/arb';
+import { XcstringsFormatParser } from '../../../src/formats/xcstrings';
+import { ArbFormatParser } from '../../../src/formats/arb';
 
 describe('Xcode String Catalog localizations', () => {
   const withVariations = JSON.stringify(
