@@ -46,6 +46,7 @@ describe('Languages Command E2E', () => {
       expect(output).toContain('Usage:');
       expect(output).toContain('languages');
       expect(output).toContain('Options:');
+      expect(output).toContain('List supported source and target languages');
     });
 
     it('should show source and target options', () => {
@@ -53,8 +54,8 @@ describe('Languages Command E2E', () => {
 
       expect(output).toContain('--source');
       expect(output).toContain('--target');
-      expect(output).toContain('source languages');
-      expect(output).toContain('target languages');
+      expect(output).toContain('Show only source languages');
+      expect(output).toContain('Show only target languages');
     });
 
     it('should display short flags', () => {
@@ -97,6 +98,21 @@ describe('Languages Command E2E', () => {
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('English (British)');
       expect(result.stdout).toContain('English (American)');
+    });
+
+    // Anchored rows rather than substrings, so a variant listed under the wrong
+    // label or dropped from the bundled snapshot fails here. noColor because the
+    // code is chalk.cyan'd; excludeApiKey to read the snapshot, not the API.
+    it('should list regional variants against their own labels', () => {
+      const output = runCLI('languages --target', {
+        excludeApiKey: true,
+        noColor: true,
+      });
+
+      expect(output).toMatch(/^\s+de-ch\s+German \(Swiss\)$/m);
+      expect(output).toMatch(/^\s+fr-ca\s+French \(Canadian\)$/m);
+      expect(output).toMatch(/^\s+de-de\s+German$/m);
+      expect(output).toMatch(/^\s+fr-fr\s+French$/m);
     });
 
     it('should warn about missing API key', () => {
@@ -271,7 +287,9 @@ describe('Languages Command E2E', () => {
       const helpOutput = runCLI('--help');
 
       expect(helpOutput).toContain('languages');
-      expect(helpOutput).toMatch(/list.*languages/i);
+      expect(helpOutput).toContain(
+        'List supported source and target languages'
+      );
     });
 
     it('should support --quiet flag', () => {
