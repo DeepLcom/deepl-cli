@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 29: Advanced Translation Options
+# Advanced Translation Options
 # Demonstrates tag handling versions, beta languages, custom API URLs, and minification
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 29: Advanced Translation Options ==="
+echo "=== DeepL CLI: Advanced Translation Options ==="
 echo
 
 # Check if API key is configured

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 19: Configuration
+# Configuration
 # Demonstrates configuration management
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 19: Configuration ==="
+echo "=== DeepL CLI: Configuration ==="
 echo
 
 # Check if API key is configured

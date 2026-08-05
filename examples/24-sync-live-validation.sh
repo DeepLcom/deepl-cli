@@ -1,12 +1,12 @@
 #!/bin/bash
-# Example 32: Sync — Live API Validation
+# Sync — Live API Validation
 # Comprehensive end-to-end validation of all sync features against the real DeepL API.
 # Exercises: multi-format, placeholders, plurals, incremental sync, new locales,
 # frozen mode, status, validate, force, and context extraction.
 
 set -euo pipefail
 
-echo "=== DeepL CLI Example 32: Sync — Live API Validation ==="
+echo "=== DeepL CLI: Sync — Live API Validation ==="
 echo
 
 # Check API key

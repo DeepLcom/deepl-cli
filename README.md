@@ -874,7 +874,7 @@ Pattern: *.md
 Press Ctrl+C to stop
 ```
 
-See [examples/16-watch-mode.sh](./examples/16-watch-mode.sh) for a complete watch mode example with multiple scenarios.
+See [examples/19-watch-mode.sh](./examples/19-watch-mode.sh) for a complete watch mode example with multiple scenarios.
 
 ### Git Hooks
 
@@ -927,7 +927,7 @@ Git Hooks Status:
 
 **Note:** The hooks are generated with placeholder validation logic. You can customize them based on your project's translation workflow by editing the hook files directly at `.git/hooks/pre-commit` or `.git/hooks/pre-push`.
 
-See [examples/17-git-hooks.sh](./examples/17-git-hooks.sh) for a complete git hooks example demonstrating installation, usage, and management.
+See [examples/20-git-hooks.sh](./examples/20-git-hooks.sh) for a complete git hooks example demonstrating installation, usage, and management.
 
 ### Configuration
 
@@ -983,7 +983,7 @@ deepl usage
 
 **Note:** Usage statistics help you track your DeepL API character quota and avoid exceeding limits.
 
-See [examples/23-usage-monitoring.sh](./examples/23-usage-monitoring.sh) for a complete usage monitoring example.
+See [examples/33-usage-monitoring.sh](./examples/33-usage-monitoring.sh) for a complete usage monitoring example.
 
 **Cost Transparency:**
 
@@ -1073,7 +1073,7 @@ deepl languages
 
 **The API decides what exists.** `GET /v3/languages` is authoritative; the bundled list is a generated snapshot of it (`npm run generate:languages`) so that listing and validating languages works offline. Because a snapshot can lag the API, a well-formed language code it does not list is passed to the API rather than rejected locally — that is why `deepl translate --to de-CH` works even if your copy of the list predates Swiss German. Input that is not shaped like a language tag is still rejected immediately.
 
-See [examples/24-languages.sh](./examples/24-languages.sh) for a complete example.
+See [examples/34-languages.sh](./examples/34-languages.sh) for a complete example.
 
 #### Configure Defaults
 

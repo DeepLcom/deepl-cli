@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 21: Cache Management
+# Cache Management
 # Demonstrates working with the translation cache
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 21: Cache Management ==="
+echo "=== DeepL CLI: Cache Management ==="
 echo
 
 # Check if API key is configured

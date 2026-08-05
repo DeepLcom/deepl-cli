@@ -1,5 +1,5 @@
 #!/bin/bash
-# Example 33: Translation Memory listing
+# Translation Memory listing
 # Lists all translation memories on the current DeepL account.
 # TM files are authored and uploaded via the DeepL web UI; this CLI
 # surfaces them so you can copy a UUID or name into a translate or
@@ -7,7 +7,7 @@
 
 set -e
 
-echo "=== DeepL CLI Example 33: deepl tm list ==="
+echo "=== DeepL CLI: deepl tm list ==="
 echo
 
 if ! deepl auth show &>/dev/null; then

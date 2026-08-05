@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 14: Voice (Real-Time Speech Translation)
+# Voice (Real-Time Speech Translation)
 # Translate audio files using the DeepL Voice API with WebSocket streaming
 
 set -e
 
-echo "=== DeepL CLI Example 14: Voice ==="
+echo "=== DeepL CLI: Voice ==="
 echo
 
 # Check if API key is configured

@@ -1,11 +1,11 @@
 #!/bin/bash
-# Example 34: Sync — Laravel PHP arrays
+# Sync — Laravel PHP arrays
 # Demonstrates the laravel_php format parser: AST allowlist, span-surgical
 # reconstruct, pipe-pluralization warning gate, and sync.limits caps.
 
 set -e
 
-echo "=== DeepL CLI Example 34: Sync — Laravel PHP arrays ==="
+echo "=== DeepL CLI: Sync — Laravel PHP arrays ==="
 echo
 
 if ! deepl auth show &>/dev/null; then

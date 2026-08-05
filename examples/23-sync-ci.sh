@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 31: Sync — CI/CD Integration
+# Sync — CI/CD Integration
 # Demonstrates using deepl sync in automated pipelines
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 31: Sync — CI/CD Integration ==="
+echo "=== DeepL CLI: Sync — CI/CD Integration ==="
 echo
 
 # Check if API key is configured

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 28: Setup Wizard (deepl init)
+# Setup Wizard (deepl init)
 # Demonstrates first-time interactive setup
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 28: Setup Wizard ==="
+echo "=== DeepL CLI: Setup Wizard ==="
 echo
 
 # Note: deepl init is an interactive wizard that requires terminal input.

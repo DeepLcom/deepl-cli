@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 27: Admin API
+# Admin API
 # Manage API keys and view organization usage analytics (requires admin API key)
 
 set -e
 
-echo "=== DeepL CLI Example 27: Admin API ==="
+echo "=== DeepL CLI: Admin API ==="
 echo
 echo "Note: Admin API requires an admin-level API key."
 echo "These commands manage developer keys and usage analytics for your organization."

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 11: Table Output Format
+# Table Output Format
 # Demonstrates structured table output for comparing translations across multiple languages
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 11: Table Output Format ==="
+echo "=== DeepL CLI: Table Output Format ==="
 echo
 
 # Check if API key is configured

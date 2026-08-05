@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 30: Sync — Basic Usage
+# Sync — Basic Usage
 # Demonstrates scanning, diffing, and syncing i18n locale files
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 30: Sync — Basic Usage ==="
+echo "=== DeepL CLI: Sync — Basic Usage ==="
 echo
 
 # Check if API key is configured

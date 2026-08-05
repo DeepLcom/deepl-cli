@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 25: Language Detection
+# Language Detection
 # Demonstrates detecting the language of text using the DeepL API
 
 set -e
 
-echo "=== DeepL CLI Example 25: Language Detection ==="
+echo "=== DeepL CLI: Language Detection ==="
 echo
 
 if ! deepl auth show &>/dev/null; then

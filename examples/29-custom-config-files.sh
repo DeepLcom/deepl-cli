@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 20: Custom Configuration Files
+# Custom Configuration Files
 # Demonstrates using --config flag for multiple configurations
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 20: Custom Configuration Files ==="
+echo "=== DeepL CLI: Custom Configuration Files ==="
 echo
 
 # Check if API key is configured

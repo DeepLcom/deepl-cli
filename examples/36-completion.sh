@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 26: Shell Completions
+# Shell Completions
 # Demonstrates generating shell completion scripts for bash, zsh, and fish
 
 set -e
 
-echo "=== DeepL CLI Example 26: Shell Completions ==="
+echo "=== DeepL CLI: Shell Completions ==="
 echo
 
 echo "1. Generate bash completion (preview):"

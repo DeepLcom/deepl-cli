@@ -62,43 +62,43 @@ EXAMPLES=(
   "12-cost-transparency.sh"
   # Core Commands - Write
   "13-write.sh"
-  "36-write-extended-languages.sh"
-  "37-correct.sh"
+  "14-write-extended-languages.sh"
+  "15-correct.sh"
   # Core Commands - Voice
-  "14-voice.sh"
+  "16-voice.sh"
   # Resources
-  "15-glossaries.sh"
-  "33-tm-list.sh"
+  "17-glossaries.sh"
+  "18-tm-list.sh"
   # Workflow
-  "16-watch-mode.sh"
-  "17-git-hooks.sh"
-  "18-cicd-integration.sh"
-  "30-sync-basic.sh"
-  "31-sync-ci.sh"
-  "32-sync-live-validation.sh"
-  "34-sync-laravel-php.sh"
+  "19-watch-mode.sh"
+  "20-git-hooks.sh"
+  "21-cicd-integration.sh"
+  "22-sync-basic.sh"
+  "23-sync-ci.sh"
+  "24-sync-live-validation.sh"
+  "25-sync-laravel-php.sh"
   # Configuration
-  "19-configuration.sh"
-  "20-custom-config-files.sh"
-  "21-cache.sh"
-  "22-style-rules.sh"
-  "35-style-rules-crud.sh"
+  "28-configuration.sh"
+  "29-custom-config-files.sh"
+  "30-cache.sh"
+  "31-style-rules.sh"
+  "32-style-rules-crud.sh"
   # Information
-  "23-usage-monitoring.sh"
-  "24-languages.sh"
-  "25-detect.sh"
-  "26-completion.sh"
+  "33-usage-monitoring.sh"
+  "34-languages.sh"
+  "35-detect.sh"
+  "36-completion.sh"
   # Administration
-  "27-admin.sh"
+  "37-admin.sh"
   # Getting Started
-  "28-init.sh"
+  "38-init.sh"
   # Advanced
-  "29-advanced-translate.sh"
+  "39-advanced-translate.sh"
 )
 
 # Skip slow examples in fast mode
 if [ "$FAST_MODE" = true ]; then
-  echo "ℹ️  Fast mode enabled - skipping slow examples (16, 17)"
+  echo "ℹ️  Fast mode enabled - skipping slow examples (watch mode, git hooks)"
   echo
   EXAMPLES=(
     # Core Commands - Translate
@@ -116,35 +116,35 @@ if [ "$FAST_MODE" = true ]; then
     "12-cost-transparency.sh"
     # Core Commands - Write
     "13-write.sh"
-    "36-write-extended-languages.sh"
-    "37-correct.sh"
+    "14-write-extended-languages.sh"
+    "15-correct.sh"
     # Core Commands - Voice
-    "14-voice.sh"
+    "16-voice.sh"
     # Resources
-    "15-glossaries.sh"
+    "17-glossaries.sh"
     # Workflow (watch/hooks skipped)
-    "18-cicd-integration.sh"
-    "30-sync-basic.sh"
-    "31-sync-ci.sh"
-    "32-sync-live-validation.sh"
-    "34-sync-laravel-php.sh"
+    "21-cicd-integration.sh"
+    "22-sync-basic.sh"
+    "23-sync-ci.sh"
+    "24-sync-live-validation.sh"
+    "25-sync-laravel-php.sh"
     # Configuration
-    "19-configuration.sh"
-    "20-custom-config-files.sh"
-    "21-cache.sh"
-    "22-style-rules.sh"
-    "35-style-rules-crud.sh"
+    "28-configuration.sh"
+    "29-custom-config-files.sh"
+    "30-cache.sh"
+    "31-style-rules.sh"
+    "32-style-rules-crud.sh"
     # Information
-    "23-usage-monitoring.sh"
-    "24-languages.sh"
-    "25-detect.sh"
-    "26-completion.sh"
+    "33-usage-monitoring.sh"
+    "34-languages.sh"
+    "35-detect.sh"
+    "36-completion.sh"
     # Administration
-    "27-admin.sh"
+    "37-admin.sh"
     # Getting Started
-    "28-init.sh"
+    "38-init.sh"
     # Advanced
-    "29-advanced-translate.sh"
+    "39-advanced-translate.sh"
   )
 fi
 

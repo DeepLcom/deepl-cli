@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 17: Git Hooks Integration
+# Git Hooks Integration
 # Demonstrates automating translation validation in git workflow
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 17: Git Hooks Integration ==="
+echo "=== DeepL CLI: Git Hooks Integration ==="
 echo
 
 # Check if API key is configured

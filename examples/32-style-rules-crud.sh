@@ -1,11 +1,11 @@
 #!/bin/bash
-# Example 35: Style Rules CRUD
+# Style Rules CRUD
 # End-to-end walkthrough of creating, updating, and deleting a style rule,
 # including custom instruction management. Pro API only.
 
 set -e
 
-echo "=== DeepL CLI Example 35: Style Rules CRUD ==="
+echo "=== DeepL CLI: Style Rules CRUD ==="
 echo
 
 # Check if API key is configured

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 16: Watch Mode
+# Watch Mode
 # Demonstrates real-time file monitoring and auto-translation
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 16: Watch Mode ==="
+echo "=== DeepL CLI: Watch Mode ==="
 echo
 
 # Check if API key is configured

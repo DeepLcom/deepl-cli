@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 18: CI/CD Integration
+# CI/CD Integration
 # Demonstrates using DeepL CLI in automated workflows
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 18: CI/CD Integration ==="
+echo "=== DeepL CLI: CI/CD Integration ==="
 echo
 
 # Check if API key is configured

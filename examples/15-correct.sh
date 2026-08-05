@@ -1,11 +1,11 @@
 #!/bin/bash
-# Example 37: Correct — spelling and grammar correction without rewording
+# Correct — spelling and grammar correction without rewording
 # Demonstrates the correct command: basic use, alias, check mode,
 # fix with backup, diff view, and JSON output.
 
 set -e
 
-echo "=== DeepL CLI Example 37: Correct — Spelling and Grammar ==="
+echo "=== DeepL CLI: Correct — Spelling and Grammar ==="
 echo
 
 if ! deepl auth show &>/dev/null; then

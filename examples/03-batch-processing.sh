@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 3: Batch Processing
+# Batch Processing
 # Demonstrates processing multiple files efficiently
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 3: Batch Processing ==="
+echo "=== DeepL CLI: Batch Processing ==="
 echo
 
 # Check if API key is configured

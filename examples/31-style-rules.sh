@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 22: Style Rules
+# Style Rules
 # List and use DeepL style rules for consistent translation styles (Pro API only)
 
 set -e
 
-echo "=== DeepL CLI Example 22: Style Rules ==="
+echo "=== DeepL CLI: Style Rules ==="
 echo
 
 # Check if API key is configured

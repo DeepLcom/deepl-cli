@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 13: DeepL Write API
+# DeepL Write API
 # Demonstrates grammar, style, and tone enhancement
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 13: DeepL Write API ==="
+echo "=== DeepL CLI: DeepL Write API ==="
 echo
 
 # Check if API key is configured

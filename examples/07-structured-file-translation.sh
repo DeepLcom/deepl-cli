@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 7: Structured File Translation (JSON/YAML)
+# Structured File Translation (JSON/YAML)
 # Demonstrates translating i18n locale files while preserving structure
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 7: Structured File Translation ==="
+echo "=== DeepL CLI: Structured File Translation ==="
 echo
 
 # Check if API key is configured

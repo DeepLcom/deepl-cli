@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 23: API Usage Monitoring
+# API Usage Monitoring
 # Demonstrates checking API character usage and quota
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 23: API Usage Monitoring ==="
+echo "=== DeepL CLI: API Usage Monitoring ==="
 echo
 
 # Check if API key is configured

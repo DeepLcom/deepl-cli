@@ -977,6 +977,6 @@ See [API.md Exit Codes appendix](API.md#exit-codes) for detailed per-code descri
 ## Further Reading
 
 - [API Reference](./API.md#sync) -- complete command and flag reference
-- [Example: Basic Sync](../examples/30-sync-basic.sh) -- walkthrough of a typical sync workflow
-- [Example: CI/CD Sync](../examples/31-sync-ci.sh) -- using sync in automated pipelines
+- [Example: Basic Sync](../examples/22-sync-basic.sh) -- walkthrough of a typical sync workflow
+- [Example: CI/CD Sync](../examples/23-sync-ci.sh) -- using sync in automated pipelines
 - [CHANGELOG](../CHANGELOG.md) -- release history

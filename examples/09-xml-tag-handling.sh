@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 9: Advanced XML Tag Handling
+# Advanced XML Tag Handling
 # Demonstrates fine-tuned control over XML/HTML translation with tag handling parameters
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 9: Advanced XML Tag Handling ==="
+echo "=== DeepL CLI: Advanced XML Tag Handling ==="
 echo
 
 # Check if API key is configured

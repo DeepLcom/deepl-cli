@@ -1,11 +1,11 @@
 #!/bin/bash
-# Example 15: Glossaries (v3 API)
+# Glossaries (v3 API)
 # Demonstrates managing glossaries for consistent terminology
 # v3 API supports both single-target and multilingual glossaries
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 15: Glossaries (v3 API) ==="
+echo "=== DeepL CLI: Glossaries (v3 API) ==="
 echo
 
 # Check if API key is configured

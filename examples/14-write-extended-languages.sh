@@ -1,11 +1,11 @@
 #!/bin/bash
-# Example 36: Write — extended language coverage
+# Write — extended language coverage
 # Demonstrates ja/ko/zh/zh-hans target languages and
 # tone / style applied to ES/IT/FR/PT variants.
 
 set -e
 
-echo "=== DeepL CLI Example 36: Write — Extended Language Coverage ==="
+echo "=== DeepL CLI: Write — Extended Language Coverage ==="
 echo
 
 if ! deepl auth show &>/dev/null; then
