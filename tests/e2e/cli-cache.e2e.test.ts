@@ -97,6 +97,13 @@ describe('Cache Command E2E', () => {
       expect(output).toContain('Size:');
     });
 
+    it('should report size in MB alongside the share of the limit used', () => {
+      const output = runCLI('cache stats');
+
+      expect(output).toMatch(/Size: [\d.]+ MB/);
+      expect(output).toMatch(/[\d.]+% used/);
+    });
+
     it('should exit successfully', () => {
       const result = runCLIExpectError('cache stats');
       expect(result.status).toBe(0);
@@ -134,6 +141,19 @@ describe('Cache Command E2E', () => {
       const output = runCLIAll('cache disable');
 
       expect(output).toContain('Cache disabled');
+    });
+
+    it('should report success when an operation is already satisfied', () => {
+      runCLIAll('cache enable');
+      expect(runCLIAll('cache enable')).toContain('Cache enabled');
+
+      runCLIAll('cache disable');
+      expect(runCLIAll('cache disable')).toContain('Cache disabled');
+
+      runCLIAll('cache clear --yes');
+      expect(runCLIAll('cache clear --yes')).toContain(
+        'Cache cleared successfully'
+      );
     });
   });
 
