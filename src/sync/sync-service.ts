@@ -6,7 +6,11 @@ import type { GlossaryService } from '../services/glossary.js';
 import type { FormatRegistry } from '../formats/index.js';
 import { SyncLockManager } from './sync-lock.js';
 import { acquireSyncProcessLock } from './sync-process-lock.js';
-import { sweepStaleBackups, resolveBakSweepAgeMs } from './sync-bak-cleanup.js';
+import {
+  sweepStaleBackups,
+  resolveBakSweepAgeMs,
+  BACKUP_SUFFIX,
+} from './sync-bak-cleanup.js';
 import { ValidationError } from '../utils/errors.js';
 import { walkBuckets } from './sync-bucket-walker.js';
 import type { BucketFileCache } from './sync-bucket-walker.js';
@@ -135,19 +139,45 @@ export class SyncService {
     const isOuterWatchRun = options?.backupTracker !== undefined;
     const runBackupPaths = options?.backupTracker ?? new Set<string>();
 
-    const cleanupBackups = (): void => {
+    /**
+     * Undo the writes this run has already made. Reached only from the signal
+     * path, where the run is abandoned partway through: the lockfile is written
+     * once at the end, so an interrupted run records nothing, and the targets it
+     * has rewritten hold machine output that nothing accounts for.
+     *
+     * This used to unlink the backups instead, which is right for a run that
+     * finished and wrong for one that did not — it deleted the only remaining
+     * copy of content the run had already overwritten, at which point the user's
+     * translations were gone with no record and no recovery path.
+     *
+     * Synchronous on purpose: `installSignalExit` defers the exit by one
+     * `setImmediate`, so only work done synchronously in a handler is guaranteed
+     * to complete. Each file is copied back before its backup is removed, so an
+     * interrupt during the restore leaves the backup rather than nothing.
+     */
+    const restoreBackups = (): void => {
+      const restored: string[] = [];
       for (const bakPath of runBackupPaths) {
+        const targetPath = bakPath.slice(0, -BACKUP_SUFFIX.length);
         try {
+          fs.copyFileSync(bakPath, targetPath);
           fs.unlinkSync(bakPath);
+          restored.push(path.relative(config.projectRoot, targetPath));
         } catch {
-          /* ignore — already gone or never landed */
+          /* Leave the backup in place: it may be the only copy left. */
         }
       }
       runBackupPaths.clear();
+      if (restored.length > 0) {
+        Logger.warn(
+          `Interrupted — restored ${restored.length} file(s) from backup: ${restored.join(', ')}. ` +
+            'No lockfile was written, so nothing was recorded; re-run to translate again.'
+        );
+      }
     };
 
     const onSignal = (): void => {
-      if (!isOuterWatchRun) cleanupBackups();
+      if (!isOuterWatchRun) restoreBackups();
       processLock.release();
     };
     process.once('SIGINT', onSignal);
