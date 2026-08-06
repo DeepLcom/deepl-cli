@@ -1204,7 +1204,8 @@ describe('TranslateCommand', () => {
       expect(mockFileService.translateFileToMultiple).toHaveBeenCalledWith(
         '/input.txt',
         ['es', 'fr'],
-        expect.objectContaining({ sourceLang: 'en', outputDir: '/output' })
+        expect.objectContaining({ sourceLang: 'en', outputDir: '/output' }),
+        expect.objectContaining({ skipCache: expect.any(Boolean) })
       );
     });
 
@@ -1232,7 +1233,8 @@ describe('TranslateCommand', () => {
       expect(mockFileService.translateFileToMultiple).toHaveBeenCalledWith(
         '/input.txt',
         ['es', 'de'],
-        expect.objectContaining({ formality: 'more', outputDir: '/output' })
+        expect.objectContaining({ formality: 'more', outputDir: '/output' }),
+        expect.objectContaining({ skipCache: expect.any(Boolean) })
       );
     });
   });

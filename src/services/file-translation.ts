@@ -18,6 +18,8 @@ interface NodeErrno extends Error {
 
 interface FileTranslationOptions {
   preserveCode?: boolean;
+  /** Bypasses the cache read and write for every request the file produces. */
+  skipCache?: boolean;
 }
 
 interface MultipleFileOptions {
@@ -120,7 +122,8 @@ export class FileTranslationService {
   async translateFileToMultiple(
     inputPath: string,
     targetLangs: Language[],
-    options: Omit<TranslationOptions, 'targetLang'> & MultipleFileOptions = {}
+    options: Omit<TranslationOptions, 'targetLang'> & MultipleFileOptions = {},
+    fileOptions: FileTranslationOptions = {}
   ): Promise<FileMultiTargetResult[]> {
     if (!this.isSupportedFile(inputPath)) {
       throw new ValidationError(
@@ -132,7 +135,12 @@ export class FileTranslationService {
     // Delegate structured files (JSON/YAML) to StructuredFileTranslationService
     if (this.isStructuredExt(inputPath)) {
       const svc = await this.getStructuredService();
-      return svc.translateFileToMultiple(inputPath, targetLangs, options);
+      return svc.translateFileToMultiple(
+        inputPath,
+        targetLangs,
+        options,
+        fileOptions
+      );
     }
 
     // Read file content using safeReadFile (rejects symlinks for security)
@@ -153,11 +161,10 @@ export class FileTranslationService {
 
     // Translate to multiple languages
     const translationResults =
-      await this.translationService.translateToMultiple(
-        content,
-        targetLangs,
-        options
-      );
+      await this.translationService.translateToMultiple(content, targetLangs, {
+        ...options,
+        skipCache: fileOptions.skipCache,
+      });
 
     // Convert to FileMultiTargetResult
     const results: FileMultiTargetResult[] = translationResults.map((r) => ({

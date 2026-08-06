@@ -40,6 +40,15 @@ interface TranslateServiceOptions {
   skipCache?: boolean;
 }
 
+/**
+ * Service-level options for `translateBatch`. Separate from
+ * `TranslateServiceOptions` because code-block preservation is a single-text
+ * concern that the batch path does not apply.
+ */
+export interface TranslateBatchServiceOptions {
+  skipCache?: boolean;
+}
+
 interface MultiTargetResult {
   targetLang: Language;
   text: string;
@@ -181,10 +190,15 @@ export class TranslationService {
    *
    * @param texts - Array of texts to translate
    * @param options - Translation options
+   * @param serviceOptions - `skipCache` bypasses both the cache read and the
+   *   cache write, matching `translate()`. Without it, `--no-cache` was a
+   *   silent no-op for every structured i18n format, so a corrupt translation
+   *   could not be re-fetched and the natural remedy did nothing.
    */
   async translateBatch(
     texts: string[],
-    options: TranslationOptions
+    options: TranslationOptions,
+    serviceOptions: TranslateBatchServiceOptions = {}
   ): Promise<TranslationResult[]> {
     if (texts.length === 0) {
       return [];
@@ -208,6 +222,13 @@ export class TranslationService {
     const configData = this.config.get();
     const defaults = configData.defaults;
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
+    const shouldUseCache = cacheEnabled && !serviceOptions.skipCache;
+
+    if (!cacheEnabled) {
+      Logger.info('ℹ️  Cache is disabled');
+    } else if (serviceOptions.skipCache) {
+      Logger.info('ℹ️  Cache bypassed for this request (--no-cache)');
+    }
 
     // Merge options with defaults
     const translationOptions: TranslationOptions = {
@@ -233,7 +254,7 @@ export class TranslationService {
 
       const cacheKey = this.generateCacheKey(text, translationOptions);
 
-      if (cacheEnabled) {
+      if (shouldUseCache) {
         const cachedResult = this.cache?.get(cacheKey, isTranslationResult);
         if (cachedResult) {
           results[i] = cachedResult;
@@ -318,7 +339,7 @@ export class TranslationService {
         }
 
         // Cache the result (only once per unique text)
-        if (cacheEnabled) {
+        if (shouldUseCache) {
           const cacheKey = this.generateCacheKey(text, translationOptions);
           this.cache?.set(cacheKey, result);
         }

@@ -89,7 +89,8 @@ export class FileTranslationHandler {
         await this.ctx.fileTranslationService.translateFileToMultiple(
           filePath,
           validTargetLangs,
-          translationOptions
+          translationOptions,
+          { skipCache: !options.cache }
         );
 
       return (
@@ -220,7 +221,7 @@ export class FileTranslationHandler {
         filePath,
         options.output!,
         translationOptions,
-        { preserveCode: options.preserveCode }
+        { preserveCode: options.preserveCode, skipCache: !options.cache }
       );
 
       return `Translated ${filePath} -> ${options.output}`;

@@ -19,6 +19,9 @@ import { ValidationError, NetworkError } from '../utils/errors.js';
 
 interface FileTranslationOptions {
   preserveCode?: boolean;
+  /** Bypasses the cache read and write, so `--no-cache` reaches the batch
+   *  path that every structured i18n format goes through. */
+  skipCache?: boolean;
 }
 
 interface FileMultiTargetResult {
@@ -59,7 +62,7 @@ export class StructuredFileTranslationService {
     inputPath: string,
     outputPath: string,
     options: TranslationOptions,
-    _fileOptions: FileTranslationOptions = {}
+    fileOptions: FileTranslationOptions = {}
   ): Promise<void> {
     const content = await this.readFile(inputPath);
 
@@ -74,7 +77,8 @@ export class StructuredFileTranslationService {
     if (strings.length > 0) {
       const translations = await this.translateStringsInBatches(
         strings.map((s) => s.value),
-        options
+        options,
+        fileOptions
       );
 
       if (parsed.format === 'yaml' && parsed.yamlDoc) {
@@ -96,7 +100,8 @@ export class StructuredFileTranslationService {
     targetLangs: Language[],
     options: Omit<TranslationOptions, 'targetLang'> & {
       outputDir?: string;
-    } = {}
+    } = {},
+    fileOptions: FileTranslationOptions = {}
   ): Promise<FileMultiTargetResult[]> {
     const content = await this.readFile(inputPath);
 
@@ -125,7 +130,8 @@ export class StructuredFileTranslationService {
         if (strings.length > 0) {
           const translations = await this.translateStringsInBatches(
             stringValues,
-            { ...options, targetLang }
+            { ...options, targetLang },
+            fileOptions
           );
 
           if (parsed.format === 'yaml' && parsed.yamlDoc) {
@@ -313,7 +319,8 @@ export class StructuredFileTranslationService {
 
   private async translateStringsInBatches(
     strings: string[],
-    options: TranslationOptions
+    options: TranslationOptions,
+    fileOptions: FileTranslationOptions = {}
   ): Promise<string[]> {
     const results: string[] = [];
     let batch: string[] = [];
@@ -325,7 +332,8 @@ export class StructuredFileTranslationService {
       if (batch.length > 0 && batchBytes + strBytes > MAX_TEXT_BYTES) {
         const batchResults = await this.translationService.translateBatch(
           batch,
-          options
+          options,
+          { skipCache: fileOptions.skipCache }
         );
         if (batchResults.length !== batch.length) {
           throw new NetworkError(
@@ -347,7 +355,8 @@ export class StructuredFileTranslationService {
     if (batch.length > 0) {
       const batchResults = await this.translationService.translateBatch(
         batch,
-        options
+        options,
+        { skipCache: fileOptions.skipCache }
       );
       if (batchResults.length !== batch.length) {
         throw new NetworkError(

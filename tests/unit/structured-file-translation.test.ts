@@ -527,7 +527,8 @@ describe('StructuredFileTranslationService', () => {
       expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(1);
       expect(mockTranslationService.translateBatch).toHaveBeenCalledWith(
         expect.arrayContaining(['Value 0']),
-        expect.objectContaining({ targetLang: 'es' })
+        expect.objectContaining({ targetLang: 'es' }),
+        { skipCache: undefined }
       );
     });
 
@@ -697,7 +698,8 @@ describe('StructuredFileTranslationService', () => {
           targetLang: 'es',
           formality: 'more',
           glossaryId: 'g-123',
-        })
+        }),
+        { skipCache: undefined }
       );
     });
   });
