@@ -153,6 +153,8 @@ Each bucket maps a format name to a set of file patterns. The format name must b
 | `target_path_pattern` | `string` | No | Template for target file paths. Use `{locale}` for the target locale and `{basename}` for the source filename. Required for formats where the source locale is not in the source file path (e.g., Android XML, XLIFF). |
 | `key_style` | `string` | No | Key format: `nested` (dot-separated keys become nested objects) or `flat` (keys preserved as-is). |
 
+**Glob pattern bounds.** Every glob string in the config — `include`, `exclude`, top-level `ignore`, and `context.scan_paths` — must expand to at most 1000 paths through its brace groups and be at most 4096 characters long. Both bounds are fixed and cannot be raised in the config: brace expansion is a product, so `{a,b}` repeated 20 times is only 107 characters but expands to over a million paths and exhausts the heap before any file is read. A pattern past either bound fails at config load with `ConfigError` (exit 7), naming the field. Realistic patterns are far below the cap — `{en,de,fr}/**/*.{json,yaml,yml}` expands to 9.
+
 #### `translation`
 
 | Field | Type | Required | Default | Description |

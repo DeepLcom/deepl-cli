@@ -4,6 +4,7 @@ import * as YAML from 'yaml';
 import { ConfigError } from '../utils/errors.js';
 import { safeReadFileSync } from '../utils/safe-read-file.js';
 import { sanitizeForTerminal } from '../utils/control-chars.js';
+import { assertBoundedGlobExpansion } from '../utils/glob-safety.js';
 import type {
   SyncConfig,
   SyncBucketConfig,
@@ -398,6 +399,16 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
           `Replace the absolute path in buckets.${safeName}.include with a path relative to the project root.`
         );
       }
+      assertBoundedGlobExpansion(inc, `buckets.${safeName}.include`);
+    }
+    // exclude joins include on the way to fast-glob (as its `ignore` option),
+    // so it needs the same expansion bound.
+    if (Array.isArray(b['exclude'])) {
+      for (const exc of b['exclude']) {
+        if (typeof exc === 'string') {
+          assertBoundedGlobExpansion(exc, `buckets.${safeName}.exclude`);
+        }
+      }
     }
     if (b['target_path_pattern'] !== undefined) {
       if (typeof b['target_path_pattern'] !== 'string') {
@@ -575,6 +586,22 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
       KNOWN_CONTEXT_KEYS,
       'context'
     );
+    const scanPaths = (obj['context'] as Record<string, unknown>)['scan_paths'];
+    if (Array.isArray(scanPaths)) {
+      for (const scanPath of scanPaths) {
+        if (typeof scanPath === 'string') {
+          assertBoundedGlobExpansion(scanPath, 'context.scan_paths');
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(obj['ignore'])) {
+    for (const ignored of obj['ignore']) {
+      if (typeof ignored === 'string') {
+        assertBoundedGlobExpansion(ignored, 'ignore');
+      }
+    }
   }
 
   const tmsBlock = obj['tms'] as Record<string, unknown> | undefined;
