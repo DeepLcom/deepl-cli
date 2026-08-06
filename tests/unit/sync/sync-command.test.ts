@@ -1332,19 +1332,12 @@ describe('SyncCommand', () => {
       // Don't mock process.on — the whole point is to observe real listener
       // churn across repeated invocations. Trigger shutdown by emitting the
       // signal to the real process emitter (listeners only react synchronously).
+      const listenersAttached = (): boolean =>
+        process.listenerCount('SIGINT') > sigintBaseline &&
+        process.listenerCount('SIGTERM') > sigtermBaseline;
+
       const firstRun = command.run({ watch: true, debounce: 50 });
-      await flushWatchSetup();
-      // flushWatchSetup returns as soon as the watcher listeners attach, which
-      // can precede the process.on('SIGINT', ...) call. Retry with a hard
-      // ceiling so a missing listener fails loudly rather than as
-      // "Expected: 1, Received: 0".
-      for (
-        let i = 0;
-        i < 10 && process.listenerCount('SIGINT') === sigintBaseline;
-        i++
-      ) {
-        await flushWatchSetup();
-      }
+      await flushUntil(listenersAttached, 'first watch session stop listeners');
       expect(process.listenerCount('SIGINT')).toBe(sigintBaseline + 1);
       expect(process.listenerCount('SIGTERM')).toBe(sigtermBaseline + 1);
 
@@ -1356,14 +1349,10 @@ describe('SyncCommand', () => {
 
       // Second invocation should also add exactly one listener, then remove it.
       const secondRun = command.run({ watch: true, debounce: 50 });
-      await flushWatchSetup();
-      for (
-        let i = 0;
-        i < 10 && process.listenerCount('SIGINT') === sigintBaseline;
-        i++
-      ) {
-        await flushWatchSetup();
-      }
+      await flushUntil(
+        listenersAttached,
+        'second watch session stop listeners'
+      );
       expect(process.listenerCount('SIGINT')).toBe(sigintBaseline + 1);
       expect(process.listenerCount('SIGTERM')).toBe(sigtermBaseline + 1);
 
@@ -1392,7 +1381,15 @@ describe('SyncCommand', () => {
 
       const runPromise = command.run({ watch: true, debounce: 100 });
 
-      await flushWatchSetup();
+      // The pattern count is logged before chokidar.watch, so the stop listener
+      // is the later of the two things this test needs; wait for both.
+      await flushUntil(
+        () =>
+          logInfoSpy.mock.calls.some((c: unknown[]) =>
+            String(c[0]).includes('pattern(s)')
+          ) && sigintListeners.length > 0,
+        'watched-pattern log line and stop listener'
+      );
 
       for (const listener of sigintListeners) {
         listener();
