@@ -650,8 +650,10 @@ export class SyncCommand {
     const filesToStage = dirtyOwned;
     if (filesToStage.length === 0) return;
 
+    // `--` stops git reading a target path that begins with a dash as an
+    // option: execFile prevents shell injection, not git's own option parsing.
     for (const file of filesToStage) {
-      await execFileAsync('git', ['add', file], { cwd });
+      await execFileAsync('git', ['add', '--', file], { cwd });
     }
 
     const localeOf = new Map<string, string>(ownedPaths);
@@ -666,7 +668,13 @@ export class SyncCommand {
     const msg = locales
       ? `chore(i18n): sync translations for ${locales}`
       : 'chore(i18n): sync translation lockfile';
-    await execFileAsync('git', ['commit', '-m', msg], { cwd });
+    // --only restricts the commit to the staged translation files, so anything
+    // else already in the index is not swept into an i18n commit.
+    await execFileAsync(
+      'git',
+      ['commit', '--only', '-m', msg, '--', ...filesToStage],
+      { cwd }
+    );
     Logger.info(`Auto-committed ${filesToStage.length} file(s): ${msg}`);
   }
 

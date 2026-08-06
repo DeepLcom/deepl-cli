@@ -825,8 +825,14 @@ describe('SyncCommand', () => {
       const gitCalls = calls.map((c: unknown[]) => [c[0], c[1]]);
 
       expect(gitCalls).toContainEqual(['git', ['rev-parse', '--git-dir']]);
-      expect(gitCalls).toContainEqual(['git', ['add', 'locales/de.json']]);
-      expect(gitCalls).toContainEqual(['git', ['add', '.deepl-sync.lock']]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', 'locales/de.json'],
+      ]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', '.deepl-sync.lock'],
+      ]);
       expect(gitCalls).toContainEqual(
         expect.arrayContaining([
           'git',
@@ -854,8 +860,14 @@ describe('SyncCommand', () => {
       const calls = mockExecFile.mock.calls;
       const gitCalls = calls.map((c: unknown[]) => [c[0], c[1]]);
 
-      expect(gitCalls).toContainEqual(['git', ['add', 'locales/de.json']]);
-      expect(gitCalls).not.toContainEqual(['git', ['add', '.deepl-sync.lock']]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', 'locales/de.json'],
+      ]);
+      expect(gitCalls).not.toContainEqual([
+        'git',
+        ['add', '--', '.deepl-sync.lock'],
+      ]);
     });
 
     it('should pass cwd=config.projectRoot to every git invocation', async () => {
@@ -903,18 +915,74 @@ describe('SyncCommand', () => {
       const calls = mockExecFile.mock.calls;
       const gitCalls = calls.map((c: unknown[]) => [c[0], c[1]]);
 
-      expect(gitCalls).toContainEqual(['git', ['add', 'locales/de.json']]);
-      expect(gitCalls).toContainEqual(['git', ['add', 'locales/fr.json']]);
-      expect(gitCalls).toContainEqual(['git', ['add', '.deepl-sync.lock']]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', 'locales/de.json'],
+      ]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', 'locales/fr.json'],
+      ]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', '.deepl-sync.lock'],
+      ]);
 
       const commitCall = calls.find(
         (c: unknown[]) =>
           Array.isArray(c[1]) && (c[1] as string[]).includes('commit')
       );
       expect(commitCall).toBeDefined();
-      const commitMsg = commitCall![1][2];
+      const commitArgs = commitCall![1];
+      const commitMsg = commitArgs[commitArgs.indexOf('-m') + 1];
       expect(commitMsg).toContain('de');
       expect(commitMsg).toContain('fr');
+    });
+
+    it('should pass a dash-leading target path after -- so git cannot read it as an option', async () => {
+      // A target_path_pattern rendering a leading dash reaches git as a pathspec;
+      // without `--`, git parses it as an option and stages unrelated files.
+      mockPorcelain = ' M --pathspec-from-file=de\0';
+      const result = makeResult({
+        fileResults: [{ ...writtenFile, file: '--pathspec-from-file=de' }],
+        lockUpdated: false,
+      });
+      const command = new SyncCommand(createMockSyncService(result));
+
+      await command.run({ autoCommit: true });
+
+      const addCall = mockExecFile.mock.calls.find(
+        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[])[0] === 'add'
+      );
+      expect(addCall).toBeDefined();
+      const addArgs = addCall![1];
+      expect(addArgs.indexOf('--')).toBeLessThan(
+        addArgs.indexOf('--pathspec-from-file=de')
+      );
+    });
+
+    it('should restrict the commit to the staged translation files', async () => {
+      // Without --only plus an explicit pathspec, git commit takes the whole
+      // index, sweeping in anything the user staged separately.
+      mockPorcelain = ' M locales/de.json\0';
+      const result = makeResult({
+        fileResults: [writtenFile],
+        lockUpdated: false,
+      });
+      const command = new SyncCommand(createMockSyncService(result));
+
+      await command.run({ autoCommit: true });
+
+      const commitCall = mockExecFile.mock.calls.find(
+        (c: unknown[]) =>
+          Array.isArray(c[1]) && (c[1] as string[])[0] === 'commit'
+      );
+      expect(commitCall).toBeDefined();
+      const commitArgs = commitCall![1];
+      expect(commitArgs).toContain('--only');
+      expect(commitArgs.slice(commitArgs.indexOf('--') + 1)).toEqual([
+        'locales/de.json',
+      ]);
     });
 
     it('should log warning and skip when not a git repository', async () => {

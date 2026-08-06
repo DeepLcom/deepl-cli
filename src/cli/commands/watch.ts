@@ -331,9 +331,10 @@ export class WatchCommand {
         return;
       }
 
-      // Stage files - execFile passes arguments as array, preventing injection
+      // `--` stops git reading an output path that begins with a dash as an
+      // option: execFile prevents shell injection, not git's own option parsing.
       for (const file of outputFiles) {
-        await execFileAsync('git', ['add', file]);
+        await execFileAsync('git', ['add', '--', file]);
       }
 
       // Create commit message
@@ -343,8 +344,16 @@ export class WatchCommand {
 
       const commitMsg = `chore(i18n): auto-translate ${sourceFile} to ${langs}`;
 
-      // Commit - commit message is passed as array argument, preventing injection
-      await execFileAsync('git', ['commit', '-m', commitMsg]);
+      // --only restricts the commit to the translated outputs, so anything else
+      // already staged in the index is not swept into an i18n commit.
+      await execFileAsync('git', [
+        'commit',
+        '--only',
+        '-m',
+        commitMsg,
+        '--',
+        ...outputFiles,
+      ]);
 
       Logger.success(chalk.green('✓ Auto-committed translations'));
     } catch (error) {
