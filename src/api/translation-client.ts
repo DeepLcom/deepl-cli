@@ -66,6 +66,47 @@ export interface TranslationResult {
   cached?: boolean;
 }
 
+/**
+ * Whether `returned` is the submitted `texts` themselves, rearranged.
+ *
+ * /v2/translate correlates a translation to its request item by position and
+ * nothing else, so a same-length reordered response passes the length check and
+ * gets written under the wrong i18n key at exit 0. This catches the one
+ * reordering that is provable from the response alone; an endpoint that returns
+ * plausible translations in the wrong order stays undetectable, because the
+ * protocol carries no per-item identity to check against.
+ *
+ * Both conditions are required. Multiset equality alone fires on a legitimate
+ * identity translation (source language equal to target). A displaced position
+ * alone fires whenever one item's translation happens to equal another item's
+ * source text, which a partially translated file produces.
+ */
+function isReorderedEcho(texts: string[], returned: string[]): boolean {
+  const remaining = new Map<string, number>();
+  for (const text of texts) {
+    remaining.set(text, (remaining.get(text) ?? 0) + 1);
+  }
+
+  let displaced = false;
+  for (let i = 0; i < returned.length; i++) {
+    const text = returned[i]!;
+    const count = remaining.get(text);
+    if (count === undefined) {
+      return false;
+    }
+    if (count === 1) {
+      remaining.delete(text);
+    } else {
+      remaining.set(text, count - 1);
+    }
+    if (text !== texts[i]) {
+      displaced = true;
+    }
+  }
+
+  return displaced && remaining.size === 0;
+}
+
 export function isTranslationResult(data: unknown): data is TranslationResult {
   if (data === null || typeof data !== 'object') {
     return false;
@@ -193,6 +234,19 @@ export class TranslationClient extends HttpClient {
       if (response.translations.length !== texts.length) {
         throw new NetworkError(
           'Unexpected API response. Please retry your translation. If the issue persists, report it at https://github.com/DeepL/deepl-cli/issues'
+        );
+      }
+
+      if (
+        isReorderedEcho(
+          texts,
+          response.translations.map((translation) => translation.text)
+        )
+      ) {
+        throw new NetworkError(
+          'The endpoint returned the submitted texts in a different order, so each translation ' +
+            'would be stored against the wrong entry. Nothing was written. Check which endpoint ' +
+            'this run used (--api-url, or api.baseUrl in your config).'
         );
       }
 

@@ -196,6 +196,81 @@ describe('TranslationClient', () => {
         client.translateBatch(['Hello'], { targetLang: 'es' })
       ).rejects.toThrow('Unexpected API response');
     });
+
+    describe('reordered-echo rejection', () => {
+      const replyWith = (texts: string[]): void => {
+        mockAxiosInstance.request.mockResolvedValue({
+          data: { translations: texts.map((text) => ({ text })) },
+          status: 200,
+          headers: {},
+        });
+      };
+
+      it('should reject a response that rotates the submitted texts', async () => {
+        const texts = ['Delete account permanently', 'Cancel', 'Save changes'];
+        replyWith(['Cancel', 'Save changes', 'Delete account permanently']);
+
+        await expect(
+          client.translateBatch(texts, { targetLang: 'de' })
+        ).rejects.toThrow('returned the submitted texts in a different order');
+      });
+
+      it('should reject a response that swaps two of the submitted texts', async () => {
+        replyWith(['Hola', 'Adiós', 'Sí']);
+        await expect(
+          client.translateBatch(['Hola', 'Sí', 'Adiós'], { targetLang: 'es' })
+        ).rejects.toThrow('returned the submitted texts in a different order');
+      });
+
+      it('should accept a response that echoes every text in place', async () => {
+        replyWith(['Hello', 'World']);
+
+        const result = await client.translateBatch(['Hello', 'World'], {
+          targetLang: 'en-us',
+        });
+
+        expect(result.map((r) => r.text)).toEqual(['Hello', 'World']);
+      });
+
+      it('should accept a translation that coincides with another item’s source text', async () => {
+        // 'Hello' translates to 'Hallo', which is also the second submitted
+        // text: one displaced position, but not a rearrangement of the batch.
+        replyWith(['Hallo', 'Hallo']);
+
+        const result = await client.translateBatch(['Hello', 'Hallo'], {
+          targetLang: 'de',
+        });
+
+        expect(result.map((r) => r.text)).toEqual(['Hallo', 'Hallo']);
+      });
+
+      it('should accept a single echoed text', async () => {
+        replyWith(['OK']);
+
+        const result = await client.translateBatch(['OK'], {
+          targetLang: 'de',
+        });
+
+        expect(result[0]!.text).toBe('OK');
+      });
+
+      it('should accept a response that repeats one submitted text out of place', async () => {
+        // Duplicate-aware: the returned multiset differs from the submitted
+        // one, so this is a bad translation, not a detectable reordering.
+        replyWith(['Cancel', 'Cancel', 'Guardar']);
+
+        const result = await client.translateBatch(
+          ['Delete', 'Cancel', 'Save'],
+          { targetLang: 'es' }
+        );
+
+        expect(result.map((r) => r.text)).toEqual([
+          'Cancel',
+          'Cancel',
+          'Guardar',
+        ]);
+      });
+    });
   });
 
   describe('translation memory params', () => {

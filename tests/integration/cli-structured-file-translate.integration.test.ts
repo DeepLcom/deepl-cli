@@ -117,6 +117,45 @@ describe('Structured File Translation service integration', () => {
       expect(result.farewell).toBe('Adiós');
     });
 
+    it('should refuse to write a file when the endpoint reorders the batch', async () => {
+      const inputPath = path.join(testDir, 'svc-reorder-en.json');
+      const outputPath = path.join(testDir, 'svc-reorder-de.json');
+
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            confirm_delete: 'Delete account permanently',
+            cancel: 'Cancel',
+            save: 'Save changes',
+          },
+          null,
+          2
+        )
+      );
+
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            { text: 'Cancel', detected_source_language: 'EN' },
+            { text: 'Save changes', detected_source_language: 'EN' },
+            {
+              text: 'Delete account permanently',
+              detected_source_language: 'EN',
+            },
+          ],
+        });
+
+      await expect(
+        fileTranslationService.translateFile(inputPath, outputPath, {
+          targetLang: 'de',
+        })
+      ).rejects.toThrow('returned the submitted texts in a different order');
+
+      expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
     it('should translate nested JSON preserving structure', async () => {
       const inputPath = path.join(testDir, 'svc-nested.json');
       const outputPath = path.join(testDir, 'svc-nested-es.json');
