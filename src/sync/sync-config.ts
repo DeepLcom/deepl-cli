@@ -26,9 +26,12 @@ export const SYNC_CONFIG_FILENAME = '.deepl-sync.yaml';
 // rejected rather than merely denylisted.
 export const LOCALE_CODE_RE = /^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{2,8})*$/;
 
-// Directories a target_path_pattern must never resolve into: writing there
-// lets a translated-locale name become VCS metadata or CI workflow code.
-const FORBIDDEN_TARGET_SEGMENTS: ReadonlySet<string> = new Set([
+// Directories no sync path may resolve into: writing there lets a
+// translated-locale name become VCS metadata or CI workflow code. Enforced
+// both here against a literal target_path_pattern and, for every path the
+// pipeline actually reads or writes, in assertPathWithinRoot — the default
+// locale-substitution path has no pattern to inspect.
+export const FORBIDDEN_TARGET_SEGMENTS: ReadonlySet<string> = new Set([
   '.git',
   '.github',
 ]);

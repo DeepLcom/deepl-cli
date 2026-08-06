@@ -52,6 +52,8 @@ The lockfile tracks content hashes for every source string. On subsequent runs, 
 
 All sync commands (`sync`, `sync push`, `sync pull`, `sync export`, `sync validate`) refuse to follow symbolic links when scanning `include` globs. A symlink matching a bucket pattern is silently skipped, preventing a hostile symlink (e.g., `locales/en.json` -> `/etc/passwd`) from exfiltrating files outside the project root to the TMS server or into an exported XLIFF.
 
+Sync also refuses to read or write any path resolving into `.git/` or `.github/`, whether it arrives as an `include` match or as a resolved target path. Translating a file into `.github/workflows/` would turn a target-locale filename into CI workflow code whose body came from the translation endpoint, so a bucket rooted there fails with exit 6 rather than being silently skipped. The check compares segments relative to the project root, so a checkout that itself lives under a `.github` directory is unaffected.
+
 ### Concurrent sync
 
 Only one `deepl sync` run is supported at a time per project directory. At startup, sync writes a `.deepl-sync.lock.pidfile` containing its PID; a second invocation that sees an existing pidfile whose PID is still alive exits with `ConfigError` (exit code 7). If the PID is dead (e.g., a previous run crashed), sync removes the stale pidfile with a warning and proceeds. The pidfile is deleted automatically on normal completion and on SIGINT/SIGTERM.

@@ -8,6 +8,7 @@ import type {
 } from '../formats/index.js';
 import { ValidationError } from '../utils/errors.js';
 import { sanitizeForTerminal } from '../utils/control-chars.js';
+import { FORBIDDEN_TARGET_SEGMENTS } from './sync-config.js';
 
 export function getParserForBucket(
   formatRegistry: FormatRegistry,
@@ -111,8 +112,9 @@ function realpathOrAncestor(absPath: string): string {
 }
 
 /**
- * Verify that an absolute path stays within the project root.
- * Throws ValidationError if path escapes.
+ * Verify that an absolute path is one the sync pipeline may read or write:
+ * inside the project root, and outside the repository's own control
+ * directories (`FORBIDDEN_TARGET_SEGMENTS`). Throws ValidationError otherwise.
  *
  * Both sides are resolved through `realpathOrAncestor` so symlinks are
  * followed before the containment check. Without that, a project rooted
@@ -120,6 +122,15 @@ function realpathOrAncestor(absPath: string): string {
  * symlink to `/private/tmp`) would reject paths the user typed in their
  * unresolved form. Symlink-based escapes (a symlink inside the project
  * pointing outside) are now also caught.
+ *
+ * The forbidden-segment check belongs on the resolved path rather than on
+ * `target_path_pattern` alone: the default locale-substitution branch of
+ * `resolveTargetPath` has no pattern to inspect, and the multi-locale branch
+ * writes back to the source path without calling it at all. Every read and
+ * write in the pipeline passes through here, so this is the one place that
+ * cannot be bypassed by a caller that forgets. Segments are compared relative
+ * to the root, so a checkout that happens to live under a `.github`
+ * directory is unaffected.
  */
 export function assertPathWithinRoot(
   absPath: string,
@@ -133,6 +144,17 @@ export function assertPathWithinRoot(
   ) {
     throw new ValidationError(
       `Target path escapes project root: ${sanitizeForTerminal(absPath)}`
+    );
+  }
+
+  const forbidden = path
+    .relative(resolvedRoot, resolvedPath)
+    .split(/[/\\]/)
+    .find((segment) => FORBIDDEN_TARGET_SEGMENTS.has(segment.toLowerCase()));
+  if (forbidden) {
+    throw new ValidationError(
+      `Sync path resolves into "${forbidden}/", which sync must never read or write: ${sanitizeForTerminal(absPath)}`,
+      `Point buckets at a locale directory outside ${forbidden}/ in .deepl-sync.yaml.`
     );
   }
 }
