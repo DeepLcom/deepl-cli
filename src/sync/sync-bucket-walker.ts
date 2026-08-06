@@ -183,10 +183,11 @@ export async function* walkBuckets(
           continue;
         }
         // A RangeError here is a parser that recursed past the stack rather than
-        // past a cap it enforces itself — the yaml library does this on a deeply
-        // nested document, before any of our own walkers run. One hostile file
-        // must not end the run, discarding the lockfile for work already
-        // translated, billed and written.
+        // past a cap it enforces itself. php-parser does this on deeply nested
+        // parentheses, from inside parseCode — before php-arrays' own max_depth
+        // guard, which walks the AST only once a parse has succeeded. One
+        // hostile file must not end the run, discarding the lockfile for work
+        // already translated, billed and written.
         if (err instanceof RangeError) {
           Logger.warn(
             `Skipping ${path.relative(config.projectRoot, sourceFile)}: ` +

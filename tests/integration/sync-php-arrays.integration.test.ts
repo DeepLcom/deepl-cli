@@ -146,6 +146,29 @@ describe('sync-php-arrays corpus integration', () => {
     expect(result.some((w) => w.sourceFile === bigPath)).toBe(false);
   });
 
+  it('skips a file that overflows php-parser instead of ending the walk', async () => {
+    // php-parser has no recursion guard of its own, and it throws from inside
+    // parseCode — before php-arrays' own max_depth guard, which walks the AST
+    // only after a successful parse. So this arrives as a bare RangeError, not
+    // as a PhpArraysCapExceededError.
+    const overflowPath = path.join(projectRoot, 'overflow.php');
+    const nesting = 50_000;
+    fs.writeFileSync(
+      overflowPath,
+      `<?php return ['a' => ${'('.repeat(nesting)}'x'${')'.repeat(nesting)}];`,
+      'utf-8'
+    );
+
+    const config = makeConfig(projectRoot);
+    const result = await collect(walkBuckets(config, makeRegistry()));
+
+    expect(result.some((w) => w.sourceFile === overflowPath)).toBe(false);
+    // The rest of the corpus still walks: one hostile file must not end the run.
+    expect(result.length).toBeGreaterThan(0);
+
+    fs.unlinkSync(overflowPath);
+  });
+
   it('instantiates laravel_php with an override max_depth when sync.limits.max_depth is set', async () => {
     // Shallow cap forces all fixtures that have ≥2 levels of nesting
     // (06, 08, 09, 10, 15) to be skipped via PhpArraysCapExceededError.
