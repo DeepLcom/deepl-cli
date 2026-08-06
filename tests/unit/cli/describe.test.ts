@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { describeProgram } from '../../../src/cli/commands/describe';
 
 describe('describeProgram', () => {
@@ -17,7 +17,14 @@ describe('describeProgram', () => {
       .command('translate')
       .description('Translate text or files')
       .option('-t, --to <lang>', 'Target language')
-      .option('-f, --from <lang>', 'Source language');
+      .option('-f, --from <lang>', 'Source language')
+      .addOption(
+        new Option('--formality <level>', 'Formality').choices([
+          'default',
+          'more',
+          'less',
+        ])
+      );
 
     program
       .command('show')
@@ -89,6 +96,30 @@ describe('describeProgram', () => {
       const result = describeProgram(program);
       const translate = result.commands.find((c) => c.name === 'translate');
       expect(translate?.aliases).toEqual([]);
+    });
+  });
+
+  describe('option choices', () => {
+    // Commander rejects a value outside the list, so the list is part of the
+    // CLI's contract and a consumer of _describe has to be able to see it.
+    it('reports the accepted values of a constrained option', () => {
+      const translate = describeProgram(program).commands.find(
+        (c) => c.name === 'translate'
+      );
+      const formality = translate?.options.find((o) =>
+        o.flags.includes('--formality')
+      );
+
+      expect(formality?.choices).toEqual(['default', 'more', 'less']);
+    });
+
+    it('omits choices on an option that accepts any value', () => {
+      const translate = describeProgram(program).commands.find(
+        (c) => c.name === 'translate'
+      );
+      const to = translate?.options.find((o) => o.flags.includes('--to'));
+
+      expect(to).not.toHaveProperty('choices');
     });
   });
 

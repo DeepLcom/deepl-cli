@@ -9,11 +9,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getAllLanguageCodes } from '../../../src/data/language-registry';
 
+interface DescribedOption {
+  flags: string;
+  choices?: string[];
+}
+
 interface DescribedCommand {
   name: string;
   aliases: string[];
   arguments: { name: string; required: boolean }[];
-  options: { flags: string }[];
+  options: DescribedOption[];
   commands: DescribedCommand[];
   hidden: boolean;
 }
@@ -52,6 +57,81 @@ const REQUIRED_ARGUMENTS: Record<string, string[]> = {
   'admin keys deactivate': ['key-id'],
   'admin keys rename': ['key-id', 'label'],
   'admin keys set-limit': ['key-id', 'characters'],
+};
+
+/**
+ * Vocabularies shared by more than one option. Naming them keeps the table
+ * below scannable and makes a change to one enum a single edit.
+ */
+const FORMALITY = [
+  'default',
+  'more',
+  'less',
+  'prefer_more',
+  'prefer_less',
+  'formal',
+  'informal',
+];
+const MODEL_TYPE = [
+  'quality_optimized',
+  'prefer_quality_optimized',
+  'latency_optimized',
+];
+const TEXT_JSON = ['text', 'json'];
+const TEXT_JSON_TABLE = ['text', 'json', 'table'];
+
+/**
+ * Every option that constrains its argument to a fixed set, and the set it
+ * accepts. Commander rejects anything outside the list, so each entry is part
+ * of the CLI's contract: dropping a value breaks callers already passing it,
+ * and adding one is a surface change that belongs in the docs.
+ */
+const OPTION_CHOICES: Record<string, string[]> = {
+  'translate --formality': FORMALITY,
+  'translate --model-type': MODEL_TYPE,
+  'translate --split-sentences': ['on', 'off', 'nonewlines'],
+  'translate --output-format': ['docx'],
+  'translate --tag-handling': ['xml', 'html'],
+  'translate --tag-handling-version': ['v1', 'v2'],
+  'translate --format': TEXT_JSON_TABLE,
+  'write --format': TEXT_JSON,
+  'correct --format': TEXT_JSON,
+  'voice --formality': FORMALITY,
+  'voice --source-language-mode': ['auto', 'fixed'],
+  'voice --format': TEXT_JSON,
+  'glossary list --format': TEXT_JSON,
+  'glossary show --format': TEXT_JSON,
+  'glossary entries --format': TEXT_JSON,
+  'tm list --format': TEXT_JSON,
+  'watch --formality': FORMALITY,
+  'sync --formality': FORMALITY,
+  'sync --model-type': MODEL_TYPE,
+  'sync --format': TEXT_JSON,
+  'sync init --format': TEXT_JSON,
+  'sync status --format': TEXT_JSON,
+  'sync validate --format': TEXT_JSON,
+  'sync audit --format': TEXT_JSON,
+  'sync export --format': TEXT_JSON,
+  'sync resolve --format': TEXT_JSON,
+  'sync push --format': TEXT_JSON,
+  'sync pull --format': TEXT_JSON,
+  'hooks list --format': TEXT_JSON,
+  'config get --format': TEXT_JSON,
+  'config list --format': TEXT_JSON,
+  'cache stats --format': TEXT_JSON_TABLE,
+  'style-rules list --format': TEXT_JSON_TABLE,
+  'style-rules create --format': TEXT_JSON,
+  'style-rules show --format': TEXT_JSON,
+  'style-rules update --format': TEXT_JSON,
+  'style-rules instructions --format': TEXT_JSON_TABLE,
+  'style-rules add-instruction --format': TEXT_JSON,
+  'style-rules update-instruction --format': TEXT_JSON,
+  'usage --format': TEXT_JSON_TABLE,
+  'languages --format': TEXT_JSON_TABLE,
+  'detect --format': TEXT_JSON,
+  'admin keys list --format': TEXT_JSON,
+  'admin keys create --format': TEXT_JSON,
+  'admin usage --format': TEXT_JSON,
 };
 
 const ROOT = path.join(__dirname, '..', '..', '..');
@@ -332,6 +412,22 @@ describe('documented CLI surface', () => {
       });
 
       expect(offenders).toEqual([]);
+    });
+  });
+
+  describe('option choice surface', () => {
+    it('accepts exactly the choice lists recorded above', () => {
+      const actual: Record<string, string[]> = {};
+      eachCommand((command, commandPath) => {
+        for (const option of command.options) {
+          if (!option.choices) continue;
+          const long = option.flags.match(/--[a-z0-9-]+/)?.[0];
+          if (!long) continue;
+          actual[`${commandPath.join(' ')} ${long}`] = option.choices;
+        }
+      });
+
+      expect(actual).toEqual(OPTION_CHOICES);
     });
   });
 

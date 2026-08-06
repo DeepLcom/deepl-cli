@@ -4,8 +4,9 @@
  * Flag-level behaviour of `deepl translate` that the workflow and success-path
  * suites do not reach: directory output requirements, comma-separated targets,
  * XML tag-handling combinations, table output, the removed
- * --enable-beta-languages flag, --api-url scheme enforcement, and the choice
- * lists on the constrained options.
+ * --enable-beta-languages flag, --api-url scheme enforcement, and rejection of
+ * out-of-list values on the constrained options. The choice lists themselves
+ * are asserted centrally in tests/unit/docs/documented-surface.test.ts.
  */
 
 import { execSync } from 'child_process';
@@ -345,27 +346,6 @@ describe('Translate CLI flags E2E', () => {
       }
     });
 
-    it('should accept all valid --formality values', () => {
-      const validValues = [
-        'default',
-        'more',
-        'less',
-        'prefer_more',
-        'prefer_less',
-      ];
-      expect.assertions(validValues.length);
-      for (const value of validValues) {
-        try {
-          runCLI(`deepl translate "Hello" --to es --formality ${value}`, {
-            stdio: 'pipe',
-          });
-        } catch (error: any) {
-          const output = error.stderr ?? error.stdout ?? '';
-          expect(output).not.toMatch(/invalid.*Allowed choices/i);
-        }
-      }
-    });
-
     it('should reject invalid --tag-handling value', () => {
       expect.assertions(5);
       try {
@@ -379,22 +359,6 @@ describe('Translate CLI flags E2E', () => {
         expect(output).toMatch(/Allowed choices/i);
         expect(output).toContain('xml');
         expect(output).toContain('html');
-      }
-    });
-
-    it('should accept valid --tag-handling values', () => {
-      const validValues = ['xml', 'html'];
-      expect.assertions(validValues.length);
-      for (const value of validValues) {
-        try {
-          runCLI(
-            `deepl translate "<p>Hello</p>" --to es --tag-handling ${value}`,
-            { stdio: 'pipe' }
-          );
-        } catch (error: any) {
-          const output = error.stderr ?? error.stdout ?? '';
-          expect(output).not.toMatch(/invalid.*Allowed choices/i);
-        }
       }
     });
 
@@ -415,25 +379,6 @@ describe('Translate CLI flags E2E', () => {
       }
     });
 
-    it('should accept valid --model-type values', () => {
-      const validValues = [
-        'quality_optimized',
-        'prefer_quality_optimized',
-        'latency_optimized',
-      ];
-      expect.assertions(validValues.length);
-      for (const value of validValues) {
-        try {
-          runCLI(`deepl translate "Hello" --to es --model-type ${value}`, {
-            stdio: 'pipe',
-          });
-        } catch (error: any) {
-          const output = error.stderr ?? error.stdout ?? '';
-          expect(output).not.toMatch(/invalid.*Allowed choices/i);
-        }
-      }
-    });
-
     it('should reject invalid --split-sentences value', () => {
       expect.assertions(6);
       try {
@@ -448,21 +393,6 @@ describe('Translate CLI flags E2E', () => {
         expect(output).toContain('on');
         expect(output).toContain('off');
         expect(output).toContain('nonewlines');
-      }
-    });
-
-    it('should accept valid --split-sentences values', () => {
-      const validValues = ['on', 'off', 'nonewlines'];
-      expect.assertions(validValues.length);
-      for (const value of validValues) {
-        try {
-          runCLI(`deepl translate "Hello" --to es --split-sentences ${value}`, {
-            stdio: 'pipe',
-          });
-        } catch (error: any) {
-          const output = error.stderr ?? error.stdout ?? '';
-          expect(output).not.toMatch(/invalid.*Allowed choices/i);
-        }
       }
     });
 

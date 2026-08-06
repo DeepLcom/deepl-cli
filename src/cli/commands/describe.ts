@@ -4,6 +4,8 @@ export interface DescribeOption {
   flags: string;
   description: string;
   defaultValue?: unknown;
+  /** Accepted values, when the option constrains its argument to a fixed set. */
+  choices?: string[];
 }
 
 export interface DescribeArgument {
@@ -34,6 +36,9 @@ function describeOption(opt: Option): DescribeOption {
   };
   if (opt.defaultValue !== undefined) {
     out.defaultValue = opt.defaultValue;
+  }
+  if (opt.argChoices !== undefined) {
+    out.choices = [...opt.argChoices];
   }
   return out;
 }
