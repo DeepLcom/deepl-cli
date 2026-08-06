@@ -333,9 +333,14 @@ export class TranslationService {
 
       const originalIndices = textIndexMap.get(text);
       if (originalIndices) {
-        // Assign result to ALL indices where this text appeared (handles duplicates)
+        // Assign result to ALL indices where this text appeared (handles
+        // duplicates). Each index gets its own copy: the returned array is
+        // typed as one result per index, and a caller editing results[i] in
+        // place was silently editing every other index whose text deduplicated
+        // to the same request item — which wrote one key's placeholder into
+        // another key's translation.
         for (const index of originalIndices) {
-          results[index] = result;
+          results[index] = { ...result };
         }
 
         // Cache the result (only once per unique text)

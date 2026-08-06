@@ -484,11 +484,17 @@ export class LocaleTranslator {
       }
     }
 
-    // Restore placeholders in all results
+    // Restore placeholders in all results, replacing each entry rather than
+    // editing it, so a result this batch shares with another index keeps its
+    // own placeholders.
     for (let ri = 0; ri < results.length; ri++) {
       const pMap = preservationMaps[ri];
-      if (results[ri] && pMap && pMap.size > 0) {
-        results[ri]!.text = restorePlaceholders(results[ri]!.text, pMap);
+      const result = results[ri];
+      if (result && pMap && pMap.size > 0) {
+        results[ri] = {
+          ...result,
+          text: restorePlaceholders(result.text, pMap),
+        };
       }
     }
 
@@ -637,11 +643,12 @@ export class LocaleTranslator {
 
         for (let ri = 0; ri < newLocaleResults.length; ri++) {
           const pMap = nlPreservationMaps[ri];
-          if (newLocaleResults[ri] && pMap && pMap.size > 0) {
-            newLocaleResults[ri]!.text = restorePlaceholders(
-              newLocaleResults[ri]!.text,
-              pMap
-            );
+          const nlResult = newLocaleResults[ri];
+          if (nlResult && pMap && pMap.size > 0) {
+            newLocaleResults[ri] = {
+              ...nlResult,
+              text: restorePlaceholders(nlResult.text, pMap),
+            };
           }
         }
 

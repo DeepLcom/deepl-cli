@@ -249,6 +249,23 @@ describe('TranslationService', () => {
       expect(mockDeepLClient.translate).not.toHaveBeenCalled();
     });
 
+    it('should give each duplicate text its own result object', async () => {
+      mockDeepLClient.translateBatch.mockResolvedValue([{ text: 'Hola' }]);
+
+      const results = await translationService.translateBatch(
+        ['Hello', 'Hello'],
+        { targetLang: 'es' }
+      );
+
+      expect(mockDeepLClient.translateBatch).toHaveBeenCalledWith(
+        ['Hello'],
+        expect.objectContaining({ targetLang: 'es' })
+      );
+      expect(results[0]).toEqual(results[1]);
+      // A caller that mutates results[0] must not be editing results[1].
+      expect(results[0]).not.toBe(results[1]);
+    });
+
     it('should handle empty array', async () => {
       const results = await translationService.translateBatch([], {
         targetLang: 'es',

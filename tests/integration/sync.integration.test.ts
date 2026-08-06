@@ -174,6 +174,49 @@ describe('Sync Integration', () => {
       expect(translated).toHaveProperty('welcome');
     });
 
+    it('should restore each key’s own placeholder when two keys protect alike', async () => {
+      writeYamlConfig(tmpDir, BASIC_CONFIG_YAML);
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify(
+          {
+            alpha: 'Hello {name}',
+            beta: 'Hello {user}',
+            delta: 'Deleted %s files',
+            epsilon: 'Deleted %d files',
+          },
+          null,
+          2
+        ) + '\n'
+      );
+
+      // Each pair protects to the same placeholder text, so only two texts are
+      // sent. Echoing them back with a prefix keeps which source produced which
+      // translation readable in the target file.
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, (_uri, body) => ({
+          translations: new URLSearchParams(String(body))
+            .getAll('text')
+            .map((text) => ({
+              text: `XX ${text}`,
+              detected_source_language: 'EN',
+            })),
+        }));
+
+      const config = await loadSyncConfig(tmpDir);
+      await syncService.sync(config);
+
+      const translated = JSON.parse(
+        fs.readFileSync(path.join(tmpDir, 'locales', 'de.json'), 'utf-8')
+      );
+      expect(translated.alpha).toBe('XX Hello {name}');
+      expect(translated.beta).toBe('XX Hello {user}');
+      expect(translated.delta).toBe('XX Deleted %s files');
+      expect(translated.epsilon).toBe('XX Deleted %d files');
+    });
+
     it('should create lock file', async () => {
       writeYamlConfig(tmpDir, BASIC_CONFIG_YAML);
       writeSourceFile(tmpDir, 'locales/en.json', SOURCE_JSON);
