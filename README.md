@@ -1496,6 +1496,8 @@ deepl cache disable
 
 Cache location: `~/.cache/deepl-cli/cache.db` (or `~/.deepl-cli/cache.db` for legacy installations)
 
+One database is shared by every endpoint a config directory has ever talked to, so the resolved API base URL is part of every translation, `write`, and `correct` cache key. A run against `--api-url http://localhost:1234` gets its own entries and can never answer a later request aimed at `api.deepl.com`; the free and Pro endpoints are likewise keyed apart.
+
 ## 💻 Development
 
 ### Prerequisites

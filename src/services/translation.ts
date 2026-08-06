@@ -455,6 +455,13 @@ export class TranslationService {
    * different requests. `preserveFormatting` counts because preserve_formatting
    * suppresses the sentence-boundary punctuation and case correction, which
    * shows up in the text.
+   *
+   * `endpoint` is not a request parameter but decides who answers the request,
+   * and one cache DB is shared by every endpoint a config dir has ever talked
+   * to. Without it, a single run against `--api-url http://localhost:1234`
+   * served its answers back for api.deepl.com for the full 30-day TTL, with no
+   * network involved. Custom endpoints are a supported feature — proxies,
+   * regional endpoints — so this needs no misuse to reach.
    */
   private generateCacheKey(text: string, options: TranslationOptions): string {
     // Keyed on the parameter the request will actually carry, so the two ways of
@@ -490,6 +497,7 @@ export class TranslationService {
       nonSplittingTags: options.nonSplittingTags, // 18. Tags that do not
       outlineDetection: options.outlineDetection, // 19. XML structure inference
       preserveFormatting: options.preserveFormatting, // 20. Suppresses boundary correction
+      endpoint: this.client.resolvedBaseUrl, // 21. Who answered the request
     };
 
     // Generate SHA-256 hash of the stable representation

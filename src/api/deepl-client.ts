@@ -1,4 +1,8 @@
-import { HttpClient, DeepLClientOptions } from './http-client.js';
+import {
+  HttpClient,
+  DeepLClientOptions,
+  resolveClientBaseUrl,
+} from './http-client.js';
 import {
   TranslationClient,
   TranslationResult,
@@ -65,6 +69,15 @@ export class DeepLClient {
     HttpClient.validateConfig(apiKey, options);
     this.apiKey = apiKey;
     this.options = options;
+  }
+
+  /**
+   * The base URL requests from this client will actually go to. Cache keys
+   * must include it: the same request against a different endpoint is a
+   * different request, and every endpoint shares one cache DB.
+   */
+  get resolvedBaseUrl(): string {
+    return resolveClientBaseUrl(this.options);
   }
 
   private get translationClient(): TranslationClient {

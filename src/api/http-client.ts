@@ -45,6 +45,18 @@ export interface DeepLClientOptions {
 
 export { sanitizeUrl };
 
+/**
+ * The base URL a client built from these options will actually send to.
+ *
+ * Exported so that anything which must reflect the endpoint — notably the
+ * translation and write cache keys, since two endpoints return different text
+ * for the same request — derives it from the same expression the transport
+ * uses, rather than a copy that can drift out of step with it.
+ */
+export function resolveClientBaseUrl(options: DeepLClientOptions): string {
+  return options.baseUrl ?? (options.usePro ? PRO_API_URL : FREE_API_URL);
+}
+
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_MAX_RETRIES = 3;
 const MAX_SOCKETS = 10;
@@ -218,8 +230,7 @@ export class HttpClient {
       throw new AuthError('API key is required');
     }
 
-    const baseURL =
-      options.baseUrl ?? (options.usePro ? PRO_API_URL : FREE_API_URL);
+    const baseURL = resolveClientBaseUrl(options);
 
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
     this.requestTimeout = options.timeout ?? DEFAULT_TIMEOUT;

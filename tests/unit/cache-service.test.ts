@@ -84,7 +84,7 @@ describe('CacheService', () => {
       const result = db.prepare('PRAGMA user_version').get() as {
         user_version: number;
       };
-      expect(result.user_version).toBe(2);
+      expect(result.user_version).toBe(3);
     });
 
     it('should upgrade-stamp a pre-versioned (user_version=0) database in place', () => {
@@ -105,28 +105,32 @@ describe('CacheService', () => {
               user_version: number;
             }
           ).user_version
-        ).toBe(2);
+        ).toBe(3);
         expect(reopened.get('preexisting')).toEqual({ text: 'survives' });
       } finally {
         reopened.close();
       }
     });
 
-    it('should drop only translation rows when upgrading an older database', () => {
-      // Every translation key changed, so those rows are unreachable. write and
-      // correct keys changed only for the five recased target codes, which a hash
-      // cannot identify, so that namespace is left to its TTL rather than dropped
-      // wholesale.
+    it('should drop the request-keyed namespaces when upgrading an older database', () => {
+      // Adding the resolved endpoint to the hashed data changed every
+      // translation, write, and correct key, so those rows are unreachable —
+      // and dropping them is also what retires a row poisoned by a run against
+      // a custom endpoint. Namespaces whose keys did not change are kept.
       const db = (cacheService as any).db;
       db.exec('PRAGMA user_version = 1');
       cacheService.set('translation:oldhash', { text: 'unreachable' });
-      cacheService.set('write:samehash', { text: 'still reachable' });
+      cacheService.set('write:oldhash', { text: 'unreachable' });
+      cacheService.set('correct:oldhash', { text: 'unreachable' });
+      cacheService.set('languages:target', { text: 'still reachable' });
       cacheService.close();
 
       const reopened = new CacheService({ dbPath: testCachePath });
       try {
         expect(reopened.get('translation:oldhash')).toBeNull();
-        expect(reopened.get('write:samehash')).toEqual({
+        expect(reopened.get('write:oldhash')).toBeNull();
+        expect(reopened.get('correct:oldhash')).toBeNull();
+        expect(reopened.get('languages:target')).toEqual({
           text: 'still reachable',
         });
       } finally {

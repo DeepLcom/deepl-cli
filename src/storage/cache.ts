@@ -70,12 +70,13 @@ function isCorruptionError(error: unknown): boolean {
  * `PRAGMA user_version` on fresh DBs and checked on every open. Bumping
  * this number means "future callers will read a DB laid out differently."
  *
- * Version 2 marks a change in how translation cache keys are computed. Opening
- * an older DB drops the `translation:` rows -- no reader can reach them again --
- * and leaves every other namespace in place. The table layout is identical in all
- * versions, so nothing is migrated.
+ * Version 2 marks a change in how translation cache keys are computed. Version 3
+ * adds the resolved API endpoint to the translation, write, and correct keys, so
+ * all three namespaces changed. Opening an older DB drops the rows whose keys can
+ * no longer be reached and leaves every other namespace in place. The table layout
+ * is identical in all versions, so nothing is migrated.
  */
-const CACHE_SCHEMA_VERSION = 2;
+const CACHE_SCHEMA_VERSION = 3;
 
 export class CacheService {
   private static instance: CacheService | null = null;
@@ -253,14 +254,16 @@ export class CacheService {
     `);
 
     if (userVersion < CACHE_SCHEMA_VERSION) {
-      // Only the translation namespace. Its keys all changed, so every row is
-      // unreachable and would otherwise occupy the size budget and `cache stats`
-      // until its TTL expires. `write`/`correct` keys changed only for the five
-      // target codes whose casing moved, and a hash cannot say which rows those
-      // are -- dropping the namespace would discard far more reachable entries
-      // than it reclaimed, so those few expire on their own. A fresh DB has no
-      // rows, so this is a no-op on first open.
-      this.db.exec("DELETE FROM cache WHERE key LIKE 'translation:%'");
+      // Every key in these three namespaces changed when the endpoint joined the
+      // hashed data, so every row is unreachable and would otherwise occupy the
+      // size budget and `cache stats` until its TTL expires. Dropping them is
+      // also the point: a row poisoned by a run against a custom endpoint must
+      // not survive the upgrade that stops it happening again. Other namespaces
+      // (glossary listings, language lists) are unaffected and stay. A fresh DB
+      // has no rows, so this is a no-op on first open.
+      this.db.exec(
+        "DELETE FROM cache WHERE key LIKE 'translation:%' OR key LIKE 'write:%' OR key LIKE 'correct:%'"
+      );
       this.db.exec(`PRAGMA user_version = ${CACHE_SCHEMA_VERSION}`);
     }
   }
