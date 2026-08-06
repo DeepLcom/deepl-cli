@@ -1,7 +1,8 @@
-import type {
-  ExtractedEntry,
-  FormatParser,
-  TranslatedEntry,
+import {
+  FormatDepthExceededError,
+  type ExtractedEntry,
+  type FormatParser,
+  type TranslatedEntry,
 } from './format.js';
 import { ValidationError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
@@ -27,7 +28,7 @@ export interface PhpArraysParserOptions {
  * this specifically to convert into a file-skip + warn (vs. propagating
  * an allowlist ValidationError, which is a hard reject).
  */
-export class PhpArraysCapExceededError extends Error {
+export class PhpArraysCapExceededError extends FormatDepthExceededError {
   constructor(message: string) {
     super(message);
     this.name = 'PhpArraysCapExceededError';
@@ -118,6 +119,10 @@ export class PhpArraysFormatParser implements FormatParser {
 
   constructor(options: PhpArraysParserOptions = {}) {
     this.maxDepth = options.maxDepth ?? DEFAULT_PHP_MAX_DEPTH;
+  }
+
+  withMaxDepth(maxDepth: number): PhpArraysFormatParser {
+    return new PhpArraysFormatParser({ maxDepth });
   }
 
   extract(content: string, _locale?: string): ExtractedEntry[] {

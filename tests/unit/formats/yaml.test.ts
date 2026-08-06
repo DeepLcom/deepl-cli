@@ -1,6 +1,9 @@
 import { createDefaultRegistry } from '../../../src/formats/index';
 import { YamlFormatParser } from '../../../src/formats/yaml';
-import type { TranslatedEntry } from '../../../src/formats/format';
+import {
+  FormatDepthExceededError,
+  type TranslatedEntry,
+} from '../../../src/formats/format';
 
 const parser = new YamlFormatParser();
 
@@ -543,6 +546,26 @@ describe('yaml parser', () => {
       const entries = parser.extract(yaml);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.value).toBe('numeric key value');
+    });
+  });
+
+  describe('deeply nested documents', () => {
+    // The yaml library builds its tree recursively and reports a blown stack as
+    // a parse diagnostic, so this fails inside the library rather than in our
+    // walker — which is why bounding our own recursion cannot prevent it. It is
+    // classified so the sync walker can skip the one file instead of dying.
+    it('reports stack exhaustion as a depth rejection, not a bare parse error', () => {
+      const flow = `a: ${'{k: '.repeat(8000)}deep${'}'.repeat(8000)}\n`;
+
+      expect(() => parser.extract(flow)).toThrow(FormatDepthExceededError);
+      expect(() => parser.extract(flow)).toThrow(/nesting depth/i);
+    });
+
+    it('leaves an ordinary parse error unclassified', () => {
+      expect(() => parser.extract('a: [1, 2\n')).toThrow(/YAML parse error/);
+      expect(() => parser.extract('a: [1, 2\n')).not.toThrow(
+        FormatDepthExceededError
+      );
     });
   });
 });

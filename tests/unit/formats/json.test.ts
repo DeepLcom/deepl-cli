@@ -1,5 +1,11 @@
-import { JsonFormatParser } from '../../../src/formats/json';
-import type { TranslatedEntry } from '../../../src/formats/format';
+import {
+  JsonFormatParser,
+  DEFAULT_JSON_MAX_DEPTH,
+} from '../../../src/formats/json';
+import {
+  FormatDepthExceededError,
+  type TranslatedEntry,
+} from '../../../src/formats/format';
 
 const parser = new JsonFormatParser();
 
@@ -677,6 +683,61 @@ describe('JsonFormatParser', () => {
       const parsed = JSON.parse(result);
       expect(parsed['outer']['inner.key']).toBe('Wert');
       expect(parsed['outer']).not.toHaveProperty('inner');
+    });
+  });
+
+  describe('max depth cap', () => {
+    const nestObjects = (depth: number): string => {
+      let inner = '"x"';
+      for (let i = 0; i < depth; i++) inner = `{"k${i}":${inner}}`;
+      return inner;
+    };
+
+    it('accepts nesting up to the configured maxDepth', () => {
+      const shallow = new JsonFormatParser({ maxDepth: 3 });
+      expect(() => shallow.extract(nestObjects(3))).not.toThrow();
+    });
+
+    it('throws FormatDepthExceededError when nesting exceeds maxDepth', () => {
+      const shallow = new JsonFormatParser({ maxDepth: 3 });
+      expect(() => shallow.extract(nestObjects(4))).toThrow(
+        FormatDepthExceededError
+      );
+    });
+
+    it('counts array nesting as well as object nesting', () => {
+      const shallow = new JsonFormatParser({ maxDepth: 3 });
+      const arrays = `{"a":${'['.repeat(4)}"x"${']'.repeat(4)}}`;
+      expect(() => shallow.extract(arrays)).toThrow(FormatDepthExceededError);
+    });
+
+    it('names the key path where the limit was hit', () => {
+      const shallow = new JsonFormatParser({ maxDepth: 2 });
+      expect(() => shallow.extract('{"outer":{"inner":{"leaf":"x"}}}')).toThrow(
+        /outer\.inner/
+      );
+    });
+
+    it('guards reconstruct as well as extract', () => {
+      const shallow = new JsonFormatParser({ maxDepth: 3 });
+      expect(() => shallow.reconstruct(nestObjects(4), [])).toThrow(
+        FormatDepthExceededError
+      );
+    });
+
+    it('defaults to a ceiling that clears any realistic i18n file but not a stack overflow', () => {
+      const defaultParser = new JsonFormatParser();
+      expect(() =>
+        defaultParser.extract(nestObjects(DEFAULT_JSON_MAX_DEPTH))
+      ).not.toThrow();
+      // The point of the default: a deeply nested file fails with a named error
+      // instead of a RangeError from a blown stack.
+      expect(() =>
+        defaultParser.extract(nestObjects(DEFAULT_JSON_MAX_DEPTH + 1))
+      ).toThrow(FormatDepthExceededError);
+      expect(() => defaultParser.extract(nestObjects(8000))).toThrow(
+        FormatDepthExceededError
+      );
     });
   });
 });

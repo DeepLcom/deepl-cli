@@ -33,4 +33,33 @@ export interface FormatParser {
   ): string;
   /** Optional: extract context for a specific key from file content */
   extractContext?(content: string, key: string): string | undefined;
+  /**
+   * Optional: a copy of this parser bounded to `maxDepth` levels of nesting.
+   * Parsers that walk their tree recursively implement it so `sync` can apply
+   * `sync.limits.max_depth`; the walker skips the field for parsers without it.
+   */
+  withMaxDepth?(maxDepth: number): FormatParser;
+}
+
+/**
+ * Thrown when a parser refuses a file for exceeding its nesting cap. Walkers
+ * catch this to skip the one file with a warning, rather than propagating a
+ * ValidationError (a hard reject) or letting a recursive walk exhaust the stack
+ * and take the whole run down with a bare RangeError.
+ */
+export class FormatDepthExceededError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FormatDepthExceededError';
+  }
+}
+
+/**
+ * Renders a key path for a depth-limit message. At the depth these fire, the
+ * full path is dozens of segments of no diagnostic value beyond the first few,
+ * so it is clipped rather than printed in full.
+ */
+export function describeKeyPath(keyPath: string): string {
+  if (!keyPath) return '<root>';
+  return keyPath.length > 60 ? `${keyPath.slice(0, 60)}…` : keyPath;
 }

@@ -1,9 +1,29 @@
 import * as YAML from 'yaml';
-import type {
-  FormatParser,
-  ExtractedEntry,
-  TranslatedEntry,
+import {
+  FormatDepthExceededError,
+  type FormatParser,
+  type ExtractedEntry,
+  type TranslatedEntry,
 } from './format.js';
+
+/**
+ * The `yaml` library builds its document tree recursively and reports a blown
+ * stack as an ordinary parse diagnostic rather than letting the RangeError
+ * escape. A deeply nested document therefore fails inside the library, before
+ * any walker of ours runs, which is why bounding our own recursion cannot
+ * prevent it. Recognising it here lets the one file be skipped like any other
+ * depth rejection instead of ending the run.
+ */
+function assertNotStackExhaustion(messages: string): void {
+  if (/maximum call stack size exceeded/i.test(messages)) {
+    // Only the first line: the library follows it with a source excerpt and a
+    // caret, which points at nesting and says nothing a reader can act on.
+    const location = messages.split('\n')[0] ?? messages;
+    throw new FormatDepthExceededError(
+      `YAML: nesting depth exhausted the stack while parsing (${location.trim()})`
+    );
+  }
+}
 
 type StringSlot =
   | { path: string[]; value: string; parent: YAML.YAMLMap; pair: YAML.Pair }
@@ -23,6 +43,7 @@ export class YamlFormatParser implements FormatParser {
 
     if (doc.errors.length > 0) {
       const messages = doc.errors.map((e) => e.message).join('; ');
+      assertNotStackExhaustion(messages);
       throw new Error(`YAML parse error: ${messages}`);
     }
 

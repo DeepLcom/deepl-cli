@@ -805,4 +805,42 @@ describe('StructuredFileTranslationService', () => {
       ).rejects.toThrow('Aborting to prevent misaligned output');
     });
   });
+
+  describe('deeply nested input', () => {
+    it('should reject a file nested past the depth ceiling with a named error', async () => {
+      const inputPath = path.join(testDir, 'deep.json');
+      const outputPath = path.join(testDir, 'deep-es.json');
+
+      // 8,000 nested arrays, ~16KB — well under any size limit, but enough to
+      // exhaust the stack in a recursive walk.
+      fs.writeFileSync(
+        inputPath,
+        `{"a":${'['.repeat(8000)}"x"${']'.repeat(8000)}}`
+      );
+
+      await expect(
+        service.translateFile(inputPath, outputPath, { targetLang: 'es' })
+      ).rejects.toThrow(/nesting depth/i);
+
+      expect(mockTranslationService.translateBatch).not.toHaveBeenCalled();
+      expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
+    it('should still translate a file nested well within the ceiling', async () => {
+      const inputPath = path.join(testDir, 'ok-deep.json');
+      const outputPath = path.join(testDir, 'ok-deep-es.json');
+
+      let inner = '"Hello"';
+      for (let i = 0; i < 20; i++) inner = `{"k${i}":${inner}}`;
+      fs.writeFileSync(inputPath, inner);
+
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: 'Hola', detectedSourceLang: 'en' },
+      ]);
+
+      await service.translateFile(inputPath, outputPath, { targetLang: 'es' });
+
+      expect(fs.readFileSync(outputPath, 'utf-8')).toContain('Hola');
+    });
+  });
 });

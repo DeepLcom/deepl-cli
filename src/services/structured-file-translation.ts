@@ -16,6 +16,15 @@ import {
   MULTI_TARGET_CONCURRENCY,
 } from '../utils/concurrency.js';
 import { ValidationError, NetworkError } from '../utils/errors.js';
+import { describeKeyPath } from '../formats/format.js';
+
+/**
+ * Stack-safety ceiling for the direct `deepl translate <file>` path, which has
+ * no `.deepl-sync.yaml` and therefore no `sync.limits.max_depth` to consult.
+ * It matches `DEFAULT_JSON_MAX_DEPTH`: far above any realistic i18n file, far
+ * below the depth at which a recursive walk exhausts the stack.
+ */
+export const MAX_STRUCTURED_DEPTH = 100;
 
 interface FileTranslationOptions {
   preserveCode?: boolean;
@@ -224,21 +233,37 @@ export class StructuredFileTranslationService {
     const strings: ExtractedString[] = [];
     let index = 0;
 
-    const walk = (value: unknown, currentPath: (string | number)[]): void => {
+    const walk = (
+      value: unknown,
+      currentPath: (string | number)[],
+      depth: number
+    ): void => {
       if (typeof value === 'string') {
         strings.push({ path: [...currentPath], value, index: index++ });
-      } else if (Array.isArray(value)) {
+        return;
+      }
+      if (depth > MAX_STRUCTURED_DEPTH) {
+        throw new ValidationError(
+          `Max nesting depth ${MAX_STRUCTURED_DEPTH} exceeded at '${describeKeyPath(currentPath.join('.'))}'. ` +
+            'Structured translation walks the document recursively, so a more deeply nested file would exhaust the stack.'
+        );
+      }
+      if (Array.isArray(value)) {
         for (let i = 0; i < value.length; i++) {
-          walk(value[i], [...currentPath, i]);
+          walk(value[i], [...currentPath, i], depth + 1);
         }
       } else if (value !== null && typeof value === 'object') {
         for (const key of Object.keys(value)) {
-          walk((value as Record<string, unknown>)[key], [...currentPath, key]);
+          walk(
+            (value as Record<string, unknown>)[key],
+            [...currentPath, key],
+            depth + 1
+          );
         }
       }
     };
 
-    walk(data, []);
+    walk(data, [], 1);
     return strings;
   }
 

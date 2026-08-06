@@ -1,21 +1,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import fg from 'fast-glob';
-import type {
-  ExtractedEntry,
-  FormatParser,
-  FormatRegistry,
+import {
+  FormatDepthExceededError,
+  type ExtractedEntry,
+  type FormatParser,
+  type FormatRegistry,
 } from '../formats/index.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncBucketConfig } from './types.js';
-import { resolveSyncLimits, DEFAULT_SYNC_LIMITS } from './types.js';
+import { resolveSyncLimits } from './types.js';
 import { assertPathWithinRoot } from './sync-utils.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
-import {
-  PhpArraysFormatParser,
-  PhpArraysCapExceededError,
-} from '../formats/php-arrays.js';
 
 export interface WalkedBucketFile {
   bucket: string;
@@ -111,14 +108,13 @@ export async function* walkBuckets(
       continue;
     }
 
-    // For laravel_php, use a config-aware parser instance when the user has
-    // overridden max_depth. Other formats (which don't consume max_depth)
-    // use the registered parser as-is.
+    // Any parser that walks its tree recursively gets a copy bounded to
+    // sync.limits.max_depth; the rest are used as registered. Applying it
+    // unconditionally, rather than only when the user overrode the default,
+    // keeps the configured limit meaningful for parsers whose own default is a
+    // looser stack-safety ceiling than sync's policy.
     const parser: FormatParser =
-      registeredParser.configKey === 'laravel_php' &&
-      limits.max_depth !== DEFAULT_SYNC_LIMITS.max_depth
-        ? new PhpArraysFormatParser({ maxDepth: limits.max_depth })
-        : registeredParser;
+      registeredParser.withMaxDepth?.(limits.max_depth) ?? registeredParser;
 
     const ignorePatterns = [
       ...(bucketConfig.exclude ?? []),
@@ -180,12 +176,25 @@ export async function* walkBuckets(
             ? parser.extract(content, config.source_locale)
             : parser.extract(content);
       } catch (err) {
-        if (err instanceof PhpArraysCapExceededError) {
+        if (err instanceof FormatDepthExceededError) {
           Logger.warn(
             `Skipping ${path.relative(config.projectRoot, sourceFile)}: ${err.message}`
           );
           continue;
         }
+        // A RangeError here is a parser that recursed past the stack rather than
+        // past a cap it enforces itself — the yaml library does this on a deeply
+        // nested document, before any of our own walkers run. One hostile file
+        // must not end the run, discarding the lockfile for work already
+        // translated, billed and written.
+        if (err instanceof RangeError) {
+          Logger.warn(
+            `Skipping ${path.relative(config.projectRoot, sourceFile)}: ` +
+              `nesting depth exhausted the stack while parsing (${err.message}).`
+          );
+          continue;
+        }
+
         throw err;
       }
 

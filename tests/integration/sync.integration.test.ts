@@ -21,6 +21,7 @@ import { PropertiesFormatParser } from '../../src/formats/properties';
 import { AndroidXmlFormatParser } from '../../src/formats/android-xml';
 import { loadSyncConfig } from '../../src/sync/sync-config';
 import { computeSourceHash } from '../../src/sync/sync-lock';
+import { Logger } from '../../src/utils/logger';
 import { LOCK_FILE_NAME } from '../../src/sync/types';
 import { ConfigError, ValidationError } from '../../src/utils/errors';
 import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers/nock-setup';
@@ -215,6 +216,62 @@ describe('Sync Integration', () => {
       expect(translated.beta).toBe('XX Hello {user}');
       expect(translated.delta).toBe('XX Deleted %s files');
       expect(translated.epsilon).toBe('XX Deleted %d files');
+    });
+
+    it('should skip a file nested past the depth cap and still finish the run', async () => {
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
+source_locale: en
+target_locales:
+  - de
+buckets:
+  json:
+    include:
+      - "locales/en.json"
+      - "deep/en.json"
+`
+      );
+      writeSourceFile(tmpDir, 'locales/en.json', SOURCE_JSON);
+      // 8,000 nested arrays, ~16KB: far below max_file_bytes, deep enough to
+      // exhaust the stack in a recursive walk.
+      writeSourceFile(
+        tmpDir,
+        'deep/en.json',
+        `{"a":${'['.repeat(8000)}"x"${']'.repeat(8000)}}`
+      );
+
+      const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, (_uri, body) => ({
+          translations: new URLSearchParams(String(body))
+            .getAll('text')
+            .map((text) => ({
+              text: `XX ${text}`,
+              detected_source_language: 'EN',
+            })),
+        }));
+
+      const config = await loadSyncConfig(tmpDir);
+      const result = await syncService.sync(config);
+
+      expect(result.success).toBe(true);
+      expect(
+        warn.mock.calls.some(
+          (call) =>
+            String(call[0]).includes('deep/en.json') &&
+            /nesting depth/i.test(String(call[0]))
+        )
+      ).toBe(true);
+      warn.mockRestore();
+
+      // The healthy file is translated and its work is recorded, rather than
+      // being paid for and then discarded when the run aborts.
+      expect(fs.existsSync(path.join(tmpDir, 'locales', 'de.json'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, 'deep', 'de.json'))).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, '.deepl-sync.lock'))).toBe(true);
     });
 
     it('should create lock file', async () => {
