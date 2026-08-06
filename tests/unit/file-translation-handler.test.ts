@@ -20,6 +20,7 @@ jest.mock('fs', () => {
     ...actual,
     existsSync: jest.fn().mockReturnValue(true),
     mkdirSync: jest.fn(),
+    statSync: jest.fn(),
   };
 });
 jest.mock('../../src/utils/atomic-write', () => ({
@@ -53,6 +54,7 @@ jest.mock('../../src/cli/commands/translate/translate-utils', () => {
 });
 
 import * as fs from 'fs';
+import { atomicWriteFileSync } from '../../src/utils/atomic-write';
 import { safeReadFileSync } from '../../src/utils/safe-read-file';
 import {
   isTextBasedFile,
@@ -151,7 +153,15 @@ describe('FileTranslationHandler', () => {
     mockedGetFileSize.mockReturnValue(50);
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     (fs.mkdirSync as jest.Mock).mockImplementation(() => undefined);
+    (fs.statSync as jest.Mock).mockImplementation(() => {
+      throw new Error('ENOENT');
+    });
   });
+
+  /** Makes every --output value look like an existing directory. */
+  function outputIsDirectory(): void {
+    (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => true });
+  }
 
   describe('translateFile()', () => {
     it('should throw ValidationError when no output is specified', async () => {
@@ -454,6 +464,147 @@ describe('FileTranslationHandler', () => {
       expect(result).toBe('');
 
       stdoutWrite.mockRestore();
+    });
+
+    describe('--output pointing at an existing directory', () => {
+      it('derives <stem>.<lang>.<ext> for a text file', async () => {
+        mockedIsTextBasedFile.mockReturnValue(true);
+        outputIsDirectory();
+
+        const result = await handler.translateFile(
+          '/tmp/file.txt',
+          defaultOptions({ output: '/tmp/out' })
+        );
+
+        expect(atomicWriteFileSync).toHaveBeenCalledWith(
+          '/tmp/out/file.de.txt',
+          'translated',
+          'utf-8'
+        );
+        expect(result).toContain('/tmp/out/file.de.txt');
+      });
+
+      it('treats a trailing slash identically for a text file', async () => {
+        mockedIsTextBasedFile.mockReturnValue(true);
+        outputIsDirectory();
+
+        await handler.translateFile(
+          '/tmp/file.txt',
+          defaultOptions({ output: '/tmp/out/' })
+        );
+
+        expect(atomicWriteFileSync).toHaveBeenCalledWith(
+          '/tmp/out/file.de.txt',
+          'translated',
+          'utf-8'
+        );
+      });
+
+      it('derives <stem>.<lang>.<ext> for a structured file', async () => {
+        mockedIsTextBasedFile.mockReturnValue(true);
+        mockedIsStructuredFile.mockReturnValue(true);
+        outputIsDirectory();
+
+        await handler.translateFile(
+          '/tmp/messages.json',
+          defaultOptions({ output: '/tmp/out' })
+        );
+
+        expect(mocks.fileTranslationService.translateFile).toHaveBeenCalledWith(
+          '/tmp/messages.json',
+          '/tmp/out/messages.de.json',
+          expect.any(Object),
+          expect.any(Object)
+        );
+      });
+
+      it('derives <stem>.<lang>.<ext> for a document', async () => {
+        mocks.documentTranslationService.isDocumentSupported.mockReturnValue(
+          true
+        );
+        outputIsDirectory();
+
+        await handler.translateFile(
+          '/tmp/doc.pdf',
+          defaultOptions({ output: '/tmp/out' })
+        );
+
+        expect(mockDocHandler.translateDocument).toHaveBeenCalledWith(
+          '/tmp/doc.pdf',
+          expect.objectContaining({ output: '/tmp/out/doc.de.pdf' })
+        );
+      });
+
+      it('names a converted document by its --output-format extension', async () => {
+        mocks.documentTranslationService.isDocumentSupported.mockReturnValue(
+          true
+        );
+        outputIsDirectory();
+
+        await handler.translateFile(
+          '/tmp/report.pdf',
+          defaultOptions({ output: '/tmp/out', outputFormat: 'docx' })
+        );
+
+        expect(mockDocHandler.translateDocument).toHaveBeenCalledWith(
+          '/tmp/report.pdf',
+          expect.objectContaining({ output: '/tmp/out/report.de.docx' })
+        );
+      });
+
+      it('ignores --output-format on the text path, where it is not honoured', async () => {
+        mockedIsTextBasedFile.mockReturnValue(true);
+        outputIsDirectory();
+
+        await handler.translateFile(
+          '/tmp/file.txt',
+          defaultOptions({ output: '/tmp/out', outputFormat: 'docx' })
+        );
+
+        expect(atomicWriteFileSync).toHaveBeenCalledWith(
+          '/tmp/out/file.de.txt',
+          'translated',
+          'utf-8'
+        );
+      });
+
+      it('derives <stem>.<lang>.<ext> on the non-text non-document fallback', async () => {
+        mocks.documentTranslationService.isDocumentSupported.mockReturnValue(
+          false
+        );
+        outputIsDirectory();
+
+        await handler.translateFile(
+          '/tmp/file.xyz',
+          defaultOptions({ output: '/tmp/out' })
+        );
+
+        expect(mocks.fileTranslationService.translateFile).toHaveBeenCalledWith(
+          '/tmp/file.xyz',
+          '/tmp/out/file.de.xyz',
+          expect.any(Object),
+          expect.any(Object)
+        );
+      });
+
+      it('still streams to stdout when --output is "-"', async () => {
+        mockedIsTextBasedFile.mockReturnValue(true);
+        outputIsDirectory();
+        const stdoutWrite = jest
+          .spyOn(process.stdout, 'write')
+          .mockImplementation(() => true);
+
+        const result = await handler.translateFile(
+          '/tmp/file.txt',
+          defaultOptions({ output: '-' })
+        );
+
+        expect(stdoutWrite).toHaveBeenCalledWith('translated');
+        expect(result).toBe('');
+        expect(atomicWriteFileSync).not.toHaveBeenCalled();
+
+        stdoutWrite.mockRestore();
+      });
     });
 
     it('should throw ValidationError for glossary without --from in translateTextFile', async () => {

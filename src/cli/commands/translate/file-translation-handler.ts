@@ -11,6 +11,7 @@ import {
   isTextBasedFile,
   isStructuredFile,
   getFileSize,
+  resolveFileOutputPath,
   SAFE_TEXT_SIZE_LIMIT,
 } from './translate-utils.js';
 import {
@@ -31,13 +32,14 @@ export class FileTranslationHandler {
     options: TranslateOptions,
     cachedStats?: fs.Stats | null
   ): Promise<string> {
-    if (!options.output) {
+    const requestedOutput = options.output;
+    if (!requestedOutput) {
       throw new ValidationError(
         'Output file path is required for file translation. Use --output <path>'
       );
     }
 
-    const stdoutMode = options.output === '-';
+    const stdoutMode = requestedOutput === '-';
 
     if (options.to.includes(',') && stdoutMode) {
       throw new ValidationError(
@@ -96,13 +98,11 @@ export class FileTranslationHandler {
       );
     }
 
+    let useTextTranslation = false;
+    let oversizeWarning: string | null = null;
+
     if (isTextBasedFile(filePath)) {
-      let fileSize: number | null;
-      if (cachedStats) {
-        fileSize = cachedStats.size;
-      } else {
-        fileSize = getFileSize(filePath);
-      }
+      const fileSize = cachedStats ? cachedStats.size : getFileSize(filePath);
 
       if (fileSize === null) {
         throw new ValidationError(
@@ -111,22 +111,44 @@ export class FileTranslationHandler {
       }
 
       if (fileSize <= SAFE_TEXT_SIZE_LIMIT) {
-        return this.translateTextFile(filePath, options);
+        useTextTranslation = true;
       } else if (
         this.ctx.documentTranslationService.isDocumentSupported(filePath)
       ) {
         const fileSizeKiB = (fileSize / 1024).toFixed(1);
-        const warning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSizeKiB} KiB), using document API instead`;
-        Logger.warn(warning);
-        const result = await this.documentHandler.translateDocument(
-          filePath,
-          options
-        );
-        return `${warning}\n${result}`;
+        oversizeWarning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSizeKiB} KiB), using document API instead`;
       }
     }
 
-    if (this.ctx.documentTranslationService.isDocumentSupported(filePath)) {
+    const useDocumentApi =
+      !useTextTranslation &&
+      this.ctx.documentTranslationService.isDocumentSupported(filePath);
+
+    // Resolved once, ahead of every branch below: each of them writes to
+    // options.output, so deciding this per branch is what let a directory
+    // destination reach the write unnoticed.
+    const outputPath = resolveFileOutputPath(
+      filePath,
+      requestedOutput,
+      options.to,
+      useDocumentApi ? options.outputFormat : undefined
+    );
+    options = { ...options, output: outputPath };
+
+    if (useTextTranslation) {
+      return this.translateTextFile(filePath, options);
+    }
+
+    if (oversizeWarning) {
+      Logger.warn(oversizeWarning);
+      const result = await this.documentHandler.translateDocument(
+        filePath,
+        options
+      );
+      return `${oversizeWarning}\n${result}`;
+    }
+
+    if (useDocumentApi) {
       return this.documentHandler.translateDocument(filePath, options);
     }
 
@@ -142,12 +164,12 @@ export class FileTranslationHandler {
 
     await this.ctx.fileTranslationService.translateFile(
       filePath,
-      options.output,
+      outputPath,
       translationOptions,
       { preserveCode: options.preserveCode }
     );
 
-    return `Translated ${filePath} -> ${options.output}`;
+    return `Translated ${filePath} -> ${outputPath}`;
   }
 
   async translateTextFile(

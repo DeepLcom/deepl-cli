@@ -169,6 +169,73 @@ describe('CLI Success Paths E2E', () => {
       expect(content).toContain('Hola');
     });
 
+    it('should write <stem>.<lang>.<ext> when --output is an existing directory', () => {
+      const inputFile = path.join(testDir, 'single-dir.md');
+      const outDir = path.join(testDir, 'single-dir-out');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+      fs.mkdirSync(outDir, { recursive: true });
+
+      const output = runCLI(
+        `translate "${inputFile}" --to es --output "${outDir}"`
+      );
+
+      const expected = path.join(outDir, 'single-dir.es.md');
+      expect(output).toContain(expected);
+      expect(fs.readFileSync(expected, 'utf-8')).toContain('Hola');
+    });
+
+    it('should treat a trailing slash on the output directory identically', () => {
+      const inputFile = path.join(testDir, 'slash-dir.md');
+      const outDir = path.join(testDir, 'slash-dir-out');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+      fs.mkdirSync(outDir, { recursive: true });
+
+      runCLI(
+        `translate "${inputFile}" --to es --output "${outDir}${path.sep}"`
+      );
+
+      expect(
+        fs.readFileSync(path.join(outDir, 'slash-dir.es.md'), 'utf-8')
+      ).toContain('Hola');
+    });
+
+    it('should write a structured file into an output directory under its own stem', () => {
+      const inputFile = path.join(testDir, 'messages.json');
+      const outDir = path.join(testDir, 'structured-dir-out');
+      fs.writeFileSync(inputFile, JSON.stringify({ greeting: 'Hello' }));
+      fs.mkdirSync(outDir, { recursive: true });
+
+      runCLI(`translate "${inputFile}" --to es --output "${outDir}"`);
+      runCLI(`translate "${inputFile}" --to fr --output "${outDir}"`);
+
+      expect(fs.existsSync(path.join(outDir, 'messages.es.json'))).toBe(true);
+      expect(fs.existsSync(path.join(outDir, 'messages.fr.json'))).toBe(true);
+    });
+
+    it('should create an output directory named with a trailing slash', () => {
+      const inputFile = path.join(testDir, 'missing-dir.md');
+      const outDir = path.join(testDir, 'missing-dir-out');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+
+      runCLI(
+        `translate "${inputFile}" --to es --output "${outDir}${path.sep}"`
+      );
+
+      expect(
+        fs.readFileSync(path.join(outDir, 'missing-dir.es.md'), 'utf-8')
+      ).toContain('Hola');
+    });
+
+    it('should still create a non-existent --output path as a file', () => {
+      const inputFile = path.join(testDir, 'new-path.md');
+      const outputFile = path.join(testDir, 'new-path-out', 'new.md');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+
+      runCLI(`translate "${inputFile}" --to es --output "${outputFile}"`);
+
+      expect(fs.readFileSync(outputFile, 'utf-8')).toContain('Hola');
+    });
+
     it('should exit with code 0 on successful translation', () => {
       const output = runCLI('translate "Hello" --to es');
       expect(output).toContain('Hola');

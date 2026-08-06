@@ -317,6 +317,42 @@ export function isStructuredFile(filePath: string): boolean {
   return STRUCTURED_EXTENSIONS.includes(ext);
 }
 
+/**
+ * Resolves --output for a single target language. A directory names the file the
+ * way multi-target translation does (<stem>.<lang>.<ext>); anything else —
+ * stdout, an existing file, a path that does not exist yet — is the destination
+ * verbatim. outputFormat, when the mode honours it, decides the extension, since
+ * it decides what the bytes are.
+ */
+export function resolveFileOutputPath(
+  inputPath: string,
+  output: string,
+  targetLang: string,
+  outputFormat?: string
+): string {
+  if (output === '-') {
+    return output;
+  }
+
+  // A trailing separator says "directory" whether or not it exists yet, which is
+  // how multi-target translation already reads --output.
+  if (!output.endsWith('/') && !output.endsWith(path.sep)) {
+    try {
+      if (!fs.statSync(output).isDirectory()) {
+        return output;
+      }
+    } catch {
+      return output;
+    }
+  }
+
+  const sourceExt = path.extname(inputPath);
+  const stem = path.basename(inputPath, sourceExt);
+  const ext = outputFormat ? `.${outputFormat.toLowerCase()}` : sourceExt;
+
+  return path.join(output, `${stem}.${targetLang}${ext}`);
+}
+
 export function getFileSize(filePath: string): number | null {
   try {
     const stats = fs.statSync(filePath);

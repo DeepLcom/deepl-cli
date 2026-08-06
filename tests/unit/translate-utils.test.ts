@@ -19,6 +19,7 @@ import {
   isTextBasedFile,
   isStructuredFile,
   getFileSize,
+  resolveFileOutputPath,
   resolveGlossaryId,
 } from '../../src/cli/commands/translate/translate-utils';
 import { ValidationError } from '../../src/utils/errors';
@@ -873,6 +874,85 @@ describe('translate-utils', () => {
     it('should return 0 for empty file', () => {
       mockedStatSync.mockReturnValue({ size: 0 } as fs.Stats);
       expect(getFileSize('/some/empty.txt')).toBe(0);
+    });
+  });
+
+  describe('resolveFileOutputPath()', () => {
+    const asDirectory = () =>
+      mockedStatSync.mockReturnValue({
+        isDirectory: () => true,
+      } as fs.Stats);
+    const asFile = () =>
+      mockedStatSync.mockReturnValue({
+        isDirectory: () => false,
+      } as fs.Stats);
+    const asMissing = () =>
+      mockedStatSync.mockImplementation(() => {
+        throw new Error('ENOENT');
+      });
+
+    it('derives <stem>.<lang>.<ext> inside an existing directory', () => {
+      asDirectory();
+      expect(resolveFileOutputPath('/src/t.md', '/out', 'ko')).toBe(
+        '/out/t.ko.md'
+      );
+    });
+
+    it('treats a trailing slash the same as no trailing slash', () => {
+      asDirectory();
+      expect(resolveFileOutputPath('/src/t.md', '/out/', 'ko')).toBe(
+        '/out/t.ko.md'
+      );
+    });
+
+    it('names by the source stem, not the directory, so two locales cannot collide', () => {
+      asDirectory();
+      expect(resolveFileOutputPath('/src/messages.json', '/out', 'ko')).toBe(
+        '/out/messages.ko.json'
+      );
+      expect(resolveFileOutputPath('/src/messages.json', '/out', 'ja')).toBe(
+        '/out/messages.ja.json'
+      );
+    });
+
+    it('leaves an existing file path untouched', () => {
+      asFile();
+      expect(resolveFileOutputPath('/src/t.md', '/out/explicit.md', 'ko')).toBe(
+        '/out/explicit.md'
+      );
+    });
+
+    it('leaves a non-existent path untouched, so it still means "file to create"', () => {
+      asMissing();
+      expect(resolveFileOutputPath('/src/t.md', '/out/new.md', 'ko')).toBe(
+        '/out/new.md'
+      );
+    });
+
+    it('honours a trailing slash on a directory that does not exist yet', () => {
+      asMissing();
+      expect(resolveFileOutputPath('/src/t.md', '/out/new-dir/', 'ko')).toBe(
+        '/out/new-dir/t.ko.md'
+      );
+    });
+
+    it('leaves stdout alone without touching the filesystem', () => {
+      expect(resolveFileOutputPath('/src/t.md', '-', 'ko')).toBe('-');
+      expect(mockedStatSync).not.toHaveBeenCalled();
+    });
+
+    it('uses the converted extension when an output format is given', () => {
+      asDirectory();
+      expect(
+        resolveFileOutputPath('/src/report.pdf', '/out', 'de', 'docx')
+      ).toBe('/out/report.de.docx');
+    });
+
+    it('ignores the output format for an explicit file path', () => {
+      asFile();
+      expect(
+        resolveFileOutputPath('/src/report.pdf', '/out/r.de.pdf', 'de', 'docx')
+      ).toBe('/out/r.de.pdf');
     });
   });
 

@@ -232,7 +232,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 
 **Output Options:**
 
-- `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text). Use `-` for stdout (text-based files only)
+- `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text). A directory receives `<name>.<lang>.<ext>` — `deepl translate README.md --to es --output docs/` writes `docs/README.es.md`, and a trailing slash creates the directory if it does not exist. Use `-` for stdout (text-based files only)
 - `--output-format FORMAT` - Convert PDF to DOCX during translation. Valid choices: `docx` (only supported conversion)
 - `--enable-minification` - Enable document minification for PPTX/DOCX files (reduces file size)
 - `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)

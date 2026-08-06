@@ -327,6 +327,10 @@ Small text-based files (under 100 KiB) automatically use the cached text transla
 deepl translate README.md --to es --output README.es.md
 # Translated README.md -> README.es.md
 
+# Output directory (names the file <name>.<lang>.<ext>)
+deepl translate README.md --to es --output ./translated/
+# Translated README.md -> translated/README.es.md
+
 # Multiple target languages (creates README.es.md, README.fr.md, etc.)
 deepl translate docs.md --to es,fr,de --output ./translated/
 # Translated docs.md to 3 languages:
