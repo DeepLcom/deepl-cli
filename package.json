@@ -66,6 +66,9 @@
     "node": ">=24.0.0",
     "npm": ">=9.0.0"
   },
+  "overrides": {
+    "brace-expansion": "^5.0.9"
+  },
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
     "axios": "^1.7.9",
