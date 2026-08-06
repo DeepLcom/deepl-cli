@@ -21,8 +21,29 @@ describe('bucketSweepRoots()', () => {
     expect(result).toEqual([path.resolve(root, 'locales')]);
   });
 
-  it('handles a glob with no directory prefix (project root)', () => {
-    const result = bucketSweepRoots(root, { json: { include: ['*.json'] } });
+  // A glob whose first character is a wildcard has no literal prefix at all,
+  // so the old `path.dirname('')` fallback yielded '.' — the entire project
+  // root, walked recursively. Scoping the sweep is the whole point of deriving
+  // roots from includes, so such a glob contributes no root rather than the
+  // widest possible one.
+  it.each([
+    ['a bare wildcard', '*.json'],
+    ['a globstar', '**/en.json'],
+    ['a leading brace group', '{en,de}/*.json'],
+    ['a leading character class', '[a-z]*/messages.json'],
+  ])('contributes no sweep root for %s', (_label, glob) => {
+    expect(bucketSweepRoots(root, { json: { include: [glob] } })).toEqual([]);
+  });
+
+  it('keeps the literal roots of sibling globs when one has no prefix', () => {
+    const result = bucketSweepRoots(root, {
+      json: { include: ['**/en.json', 'locales/**/*.json'] },
+    });
+    expect(result).toEqual([path.resolve(root, 'locales')]);
+  });
+
+  it('still returns the project root for a literal file at the root', () => {
+    const result = bucketSweepRoots(root, { json: { include: ['en.json'] } });
     expect(result).toEqual([root]);
   });
 
@@ -180,7 +201,13 @@ describe('sweepStaleBackups() with bucket config', () => {
     expect(fs.existsSync(bakFile)).toBe(false);
   });
 
-  it('restores a zero-length sibling from .deepl.bak before unlinking', async () => {
+  // The sweep used to overwrite any zero-length file from its `.deepl.bak`
+  // sibling, with no check that the sibling was a translation target or that
+  // the backup came from this tool. `atomicWriteFile` renames a fully-written
+  // temp file into place and so can never leave a zero-length target, which
+  // left the restore branch with no legitimate trigger and made it a way for a
+  // hostile checkout to write chosen bytes into an empty tracked file.
+  it('leaves a zero-length sibling alone while removing the stale .deepl.bak', async () => {
     const localesDir = path.join(tmpDir, 'locales');
     fs.mkdirSync(localesDir, { recursive: true });
 
@@ -195,8 +222,49 @@ describe('sweepStaleBackups() with bucket config', () => {
       json: { include: ['locales/**/*.json'] },
     });
 
-    expect(fs.readFileSync(sibling, 'utf-8')).toBe('{"key":"value"}');
+    expect(fs.readFileSync(sibling, 'utf-8')).toBe('');
     expect(fs.existsSync(bakFile)).toBe(false);
+  });
+
+  it('does not write attacker bytes into an unrelated empty source file', async () => {
+    const pkgDir = path.join(tmpDir, 'pkg');
+    fs.mkdirSync(pkgDir, { recursive: true });
+
+    const victim = path.join(pkgDir, '__init__.py');
+    const bakFile = `${victim}.deepl.bak`;
+    fs.writeFileSync(victim, '', 'utf-8');
+    fs.writeFileSync(bakFile, 'import os; os.system("id")\n', 'utf-8');
+    const tenMinAgo = new Date(Date.now() - 10 * 60_000);
+    fs.utimesSync(bakFile, tenMinAgo, tenMinAgo);
+
+    await sweepStaleBackups(tmpDir, 5 * 60_000, {
+      json: { include: ['pkg/**/*.json'] },
+    });
+
+    expect(fs.readFileSync(victim, 'utf-8')).toBe('');
+  });
+
+  it('does not sweep the whole project for a glob with no literal prefix', async () => {
+    const pkgDir = path.join(tmpDir, 'pkg');
+    fs.mkdirSync(pkgDir, { recursive: true });
+
+    const victim = path.join(pkgDir, '__init__.py');
+    const bakFile = `${victim}.deepl.bak`;
+    fs.writeFileSync(victim, '', 'utf-8');
+    fs.writeFileSync(bakFile, 'attacker content\n', 'utf-8');
+    const tenMinAgo = new Date(Date.now() - 10 * 60_000);
+    fs.utimesSync(bakFile, tenMinAgo, tenMinAgo);
+
+    await sweepStaleBackups(tmpDir, 5 * 60_000, {
+      json: { include: ['**/en.json'] },
+    });
+
+    expect(fs.readFileSync(victim, 'utf-8')).toBe('');
+    expect(fs.existsSync(bakFile)).toBe(true);
+    const readdirCalls: string[] = readdirSpy.mock.calls.map(
+      (c: unknown[]) => c[0] as string
+    );
+    expect(readdirCalls).toHaveLength(0);
   });
 
   it('leaves a non-empty sibling untouched while removing the stale .deepl.bak', async () => {

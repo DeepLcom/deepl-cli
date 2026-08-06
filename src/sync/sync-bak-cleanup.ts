@@ -23,7 +23,12 @@ let _warnedNoScope = false;
  * Derive the set of concrete directory roots to sweep from bucket `include`
  * globs. Returns unique absolute paths that are the longest literal prefixes
  * of each glob (i.e. everything before the first `*`, `?`, `{`, or `[`).
- * Falls back to `projectRoot` for globs with no literal prefix.
+ *
+ * A glob that starts with a wildcard has no literal prefix and contributes no
+ * root. Falling back to `projectRoot` there defeated the scoping this function
+ * exists to provide: `**\/en.json` handed the sweep the entire project tree,
+ * walked recursively. The cost is that such a bucket gets no stale-backup
+ * cleanup, which leaves inert `.deepl.bak` files on disk.
  */
 export function bucketSweepRoots(
   projectRoot: string,
@@ -35,6 +40,12 @@ export function bucketSweepRoots(
     for (const glob of bucket.include) {
       const specialIdx = glob.search(/[*?{[]/);
       const literal = specialIdx === -1 ? glob : glob.slice(0, specialIdx);
+      if (literal === '') {
+        Logger.verbose(
+          `Skipping stale-backup sweep for "${glob}": the pattern has no literal directory prefix to scope the sweep to.`
+        );
+        continue;
+      }
       const dir = literal.endsWith('/')
         ? literal.slice(0, -1)
         : path.dirname(literal);
@@ -59,10 +70,14 @@ export function bucketSweepRoots(
 
 /**
  * Walk `projectRoot` breadth-first and remove `.deepl.bak` files whose mtime
- * is older than `maxAgeMs`. When the sibling (the backup's target) exists but
- * is zero-length, restore it from the backup before unlinking. A missing
- * sibling is never recreated, and files with any other suffix (including
- * plain `.bak`) are left untouched.
+ * is older than `maxAgeMs`. Nothing is ever written: the sweep only unlinks,
+ * and files with any other suffix (including plain `.bak`) are left untouched.
+ *
+ * It used to restore a zero-length sibling from its backup first. Because
+ * every target write goes through `atomicWriteFile`, which renames a
+ * fully-written temp file into place, a crash cannot leave a zero-length
+ * target — so that branch had no legitimate trigger, and a hostile checkout
+ * could use it to write chosen bytes into any empty file within a sweep root.
  *
  * When `buckets` is provided the sweep is scoped to the directories implied by
  * each bucket's `include` globs instead of the entire project tree, keeping
@@ -126,22 +141,6 @@ async function sweepDir(
     try {
       const stat = await fs.promises.stat(full);
       if (stat.mtimeMs >= threshold) continue;
-      const sibling = full.slice(0, -BACKUP_SUFFIX.length);
-      let siblingEmpty = false;
-      try {
-        const sStat = await fs.promises.stat(sibling);
-        siblingEmpty = sStat.size === 0;
-      } catch {
-        siblingEmpty = false;
-      }
-      if (siblingEmpty) {
-        try {
-          await fs.promises.copyFile(full, sibling);
-          Logger.warn(`Restored ${sibling} from stale backup ${full}.`);
-        } catch {
-          /* fall through to unlink */
-        }
-      }
       try {
         await fs.promises.unlink(full);
       } catch {
