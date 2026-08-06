@@ -31,6 +31,11 @@ jest.mock('fs', () => ({
     copyFile: jest.fn().mockResolvedValue(undefined),
     unlink: jest.fn().mockResolvedValue(undefined),
   },
+  copyFileSync: jest.fn(),
+  unlinkSync: jest.fn(),
+  // Real values: the backup copy passes COPYFILE_EXCL, so a mock without
+  // `constants` makes the call throw before it is ever made.
+  constants: jest.requireActual<typeof import('fs')>('fs').constants,
 }));
 
 jest.mock('../../../src/sync/sync-process-lock', () => ({
@@ -426,7 +431,8 @@ describe('SyncService', () => {
 
       expect(mockCopyFile).toHaveBeenCalledWith(
         '/test/locales/de.json',
-        '/test/locales/de.json.deepl.bak'
+        '/test/locales/de.json.deepl.bak',
+        fs.constants.COPYFILE_EXCL
       );
       expect(mockUnlink).toHaveBeenCalledWith(
         '/test/locales/de.json.deepl.bak'
@@ -660,7 +666,8 @@ describe('SyncService', () => {
       expect(mockCopyFile).toHaveBeenCalledTimes(1);
       expect(mockCopyFile).toHaveBeenCalledWith(
         '/test/Localizable.xcstrings',
-        '/test/Localizable.xcstrings.deepl.bak'
+        '/test/Localizable.xcstrings.deepl.bak',
+        fs.constants.COPYFILE_EXCL
       );
     });
 

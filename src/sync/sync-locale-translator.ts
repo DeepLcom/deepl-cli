@@ -714,12 +714,32 @@ export class LocaleTranslator {
     ) {
       const bakPath = targetAbsPath + BACKUP_SUFFIX;
       try {
-        await fs.promises.copyFile(targetAbsPath, bakPath);
+        // COPYFILE_EXCL, because a backup already on disk is not ours to
+        // replace. The guard above is per-process, so after a crash — where the
+        // lockfile was never written and the backup holds the only surviving
+        // copy of the user's file — the natural recovery action of re-running
+        // sync used to overwrite that copy with machine output and then unlink
+        // it on success, destroying the data at exit 0.
+        await fs.promises.copyFile(
+          targetAbsPath,
+          bakPath,
+          fs.constants.COPYFILE_EXCL
+        );
         this.backupPaths.add(bakPath);
       } catch (err) {
-        Logger.warn(
-          `Failed to backup ${targetRelPath}: ${err instanceof Error ? err.message : String(err)}`
-        );
+        if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+          // Deliberately not tracked, so this run's success path does not
+          // unlink it either. The stale-backup sweep retires it on age.
+          Logger.warn(
+            `Keeping the existing backup ${targetRelPath}${BACKUP_SUFFIX} rather than replacing it: ` +
+              'it is from an earlier run that did not finish and may hold content this run is about to overwrite. ' +
+              `Move it aside to let ${targetRelPath} be backed up again.`
+          );
+        } else {
+          Logger.warn(
+            `Failed to backup ${targetRelPath}: ${err instanceof Error ? err.message : String(err)}`
+          );
+        }
       }
     }
 

@@ -13,6 +13,9 @@ jest.mock('fs', () => ({
     mkdir: jest.fn(),
     copyFile: jest.fn(),
   },
+  // Real values: the backup copy passes COPYFILE_EXCL, so a mock without
+  // `constants` makes the call throw before it is ever made.
+  constants: jest.requireActual<typeof import('fs')>('fs').constants,
 }));
 
 jest.mock('../../../src/utils/atomic-write', () => ({

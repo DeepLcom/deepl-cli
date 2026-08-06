@@ -165,4 +165,37 @@ describe('sync interruption and crash recovery', () => {
     releaseSecondLocale();
     await running;
   });
+  it('leaves a backup from an earlier crashed run untouched', async () => {
+    // What a `kill -9` mid-sync leaves behind: the target already machine
+    // translated, and the only copy of the human file in the .bak sibling.
+    fs.writeFileSync(dePath(), JSON.stringify({ a: 'MT Alpha' }, null, 2));
+    fs.writeFileSync(deBakPath(), HUMAN_DE);
+
+    nock(DEEPL_FREE_API_URL)
+      .post('/v2/translate')
+      .times(2)
+      .reply(200, (_uri, body) => replyWithMachineTranslations(body));
+
+    const config = await loadSyncConfig(tmpDir);
+    const result = await syncService.sync(config);
+
+    expect(result.success).toBe(true);
+    // Neither clobbered by this run's copyFile nor unlinked by its success path.
+    expect(fs.existsSync(deBakPath())).toBe(true);
+    expect(fs.readFileSync(deBakPath(), 'utf-8')).toBe(HUMAN_DE);
+  });
+
+  it('still backs up and cleans up normally when no stale backup exists', async () => {
+    nock(DEEPL_FREE_API_URL)
+      .post('/v2/translate')
+      .times(2)
+      .reply(200, (_uri, body) => replyWithMachineTranslations(body));
+
+    const config = await loadSyncConfig(tmpDir);
+    const result = await syncService.sync(config);
+
+    expect(result.success).toBe(true);
+    expect(fs.readFileSync(dePath(), 'utf-8')).toContain('MT Alpha');
+    expect(fs.existsSync(deBakPath())).toBe(false);
+  });
 });
