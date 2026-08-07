@@ -364,6 +364,18 @@ Each translation entry in the lockfile records:
 | `context_sent` | `true` when source code context was included in the API request |
 | `review_status` | `machine_translated` or `human_reviewed` (set by `--flag-for-review`) |
 
+**Formatting.** Containers are written one key per line, but each translation entry is written on a **single line**:
+
+```json
+"translations": {
+  "de": {"hash": "185f8db32271", "review_status": "human_reviewed", "status": "translated", "translated_at": "2026-04-20T08:12:03Z"}
+}
+```
+
+This is a merge-safety property, not a style choice. A translation is only meaningful whole — its hash, timestamp and review status all describe one act of translating. With one field per line, `git merge` treats those fields as independently mergeable units: a branch that changed only `review_status` and a branch that changed only `translated_at` merge **with no conflict at all** into an entry that existed on neither branch, labelling machine output `human_reviewed` while carrying a timestamp from the other branch. One line per entry makes the smallest region git can produce a whole entry, so such an overlap conflicts and reaches [`deepl sync resolve`](#deepl-sync-resolve) instead of being silently combined. Keys are sorted, so the diff for a changed translation is a single line.
+
+Upgrading from an earlier release reformats every existing lockfile on the next write, which produces one large diff. It is a formatting change only — no entry's content changes.
+
 ### Multiple Buckets
 
 You can define multiple buckets to handle different file formats in the same project:
@@ -701,6 +713,10 @@ Resolved locales/de/app.json:button.cancel (kept ours: newer translated_at 2026-
 WARN  locales/de/app.json:<conflict-region> — parse-error fallback used, JSON.parse failed on "{\"t...": Unexpected token }
 Resolved 3 conflicts (1 theirs, 1 ours, 1 length-heuristic). Run "deepl sync" to fill any gaps.
 ```
+
+**Region terminators.** A conflict region that sits inside an object is a sequence of members, and unless it is the last one it ends with a comma joining it to the member that follows. The resolver takes that comma off before parsing the region and puts it back afterwards — without this, every region but the last failed to parse and fell to the length heuristic below, so the documented `translated_at` tie-break never ran. When the two sides *disagree* on whether the region ends a member list — one side deleted what the other modified — no terminator can be correct for both, so the region falls to the heuristic rather than risk emitting invalid JSON.
+
+**Canonical output.** Resolving rebuilds each merged region, so the resolved lockfile is written back in the canonical format described under [`.deepl-sync.lock`](#deepl-sync-lock) rather than with the resolver's own indentation. Committing a resolved lockfile therefore cannot leave translations expanded across lines for the next merge to recombine.
 
 **Fallback behavior.** When `JSON.parse` fails on a conflict fragment (e.g., conflict markers landed mid-entry and split the JSON), the resolver falls back to a length-heuristic: the longer side wins. This is now **loud** — it logs a `WARN` line naming the file + conflict region with the truncated parse error, and the decision is tagged `length-heuristic` in the report. Earlier releases ran this heuristic silently, making auto-resolve a data-loss risk the user could not audit without a diff against git history. Inspect any `length-heuristic` entries and consider resolving them by hand.
 

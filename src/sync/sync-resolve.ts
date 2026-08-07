@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { serializeLockFile } from './sync-lock.js';
 import type { SyncLockFile } from './types.js';
 
 const CONFLICT_START = /^<{7}/m;
@@ -84,6 +85,18 @@ export function resolveConflicts(
   return { resolved: result.join('\n'), mergeCount, decisions };
 }
 
+/**
+ * Splits off a region's structural trailing comma, which joins it to the member
+ * that follows the conflict. A region is a sequence of object members, so the
+ * comma has to come off before the region can be parsed as an object body and go
+ * back on afterwards.
+ */
+function splitTerminator(fragment: string): { body: string; comma: string } {
+  const match = /,\s*$/.exec(fragment);
+  if (!match) return { body: fragment, comma: '' };
+  return { body: fragment.slice(0, match.index), comma: match[0] };
+}
+
 function mergeConflictSections(
   ours: string,
   theirs: string,
@@ -93,15 +106,33 @@ function mergeConflictSections(
   let theirsObj: Record<string, unknown> | undefined;
   let parseError: string | undefined;
 
-  try {
-    oursObj = JSON.parse(`{${ours}}`) as Record<string, unknown>;
-  } catch (err) {
-    parseError = err instanceof Error ? err.message : String(err);
+  const oursSplit = splitTerminator(ours);
+  const theirsSplit = splitTerminator(theirs);
+  // The member following the region is context shared by both sides, so a
+  // well-formed pair of regions agrees on whether it needs a comma. Disagreement
+  // means this is not a sequence of members and guessing a terminator could
+  // produce invalid JSON, so leave it to the fallback below.
+  const sameTerminator =
+    (oursSplit.comma === '') === (theirsSplit.comma === '');
+
+  if (!sameTerminator) {
+    parseError = 'sides disagree on whether the region ends a member list';
   }
 
   if (!parseError) {
     try {
-      theirsObj = JSON.parse(`{${theirs}}`) as Record<string, unknown>;
+      oursObj = JSON.parse(`{${oursSplit.body}}`) as Record<string, unknown>;
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  if (!parseError) {
+    try {
+      theirsObj = JSON.parse(`{${theirsSplit.body}}`) as Record<
+        string,
+        unknown
+      >;
     } catch (err) {
       parseError = err instanceof Error ? err.message : String(err);
     }
@@ -115,7 +146,7 @@ function mergeConflictSections(
       ''
     );
     const json = JSON.stringify(merged, null, 2);
-    return { merged: json.slice(2, -2), decisions };
+    return { merged: json.slice(2, -2) + oursSplit.comma, decisions };
   }
 
   const preview = truncate(ours.trim().split('\n')[0] ?? '', 10);
@@ -285,14 +316,22 @@ export async function resolveLockFile(
     file: lockPath,
   });
 
+  let parsed: unknown;
   try {
-    JSON.parse(resolved) as SyncLockFile;
+    parsed = JSON.parse(resolved);
   } catch {
     return { hadConflicts: true, resolved: false, entriesMerged: 0, decisions };
   }
 
   if (!options.dryRun) {
-    await fs.promises.writeFile(lockPath, resolved, 'utf-8');
+    // Merging rebuilds each region with its own indentation, so writing
+    // `resolved` verbatim would leave translations expanded across lines again
+    // and re-arm the field-level auto-merge the canonical form prevents.
+    const canonical =
+      typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+        ? serializeLockFile(parsed as SyncLockFile)
+        : resolved;
+    await fs.promises.writeFile(lockPath, canonical, 'utf-8');
   }
   return {
     hadConflicts: true,

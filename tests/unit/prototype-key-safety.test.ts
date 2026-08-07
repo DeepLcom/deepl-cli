@@ -18,7 +18,8 @@
 import { JsonFormatParser } from '../../src/formats/json';
 import { sanitizePullKeysResponse } from '../../src/sync/tms-client';
 import { GlossaryService } from '../../src/services/glossary';
-import { sortedKeysReplacer } from '../../src/sync/sync-lock';
+import { serializeLockFile } from '../../src/sync/sync-lock';
+import type { SyncLockFile } from '../../src/sync/types';
 import { Logger } from '../../src/utils/logger';
 
 const PROTO_KEYS = [
@@ -225,26 +226,35 @@ describe('prototype-named key safety', () => {
     });
   });
 
-  describe('sortedKeysReplacer', () => {
+  describe('serializeLockFile', () => {
     it.each(PROTO_KEYS)(
-      'should preserve a %s lockfile key when sorting',
+      'should preserve a %s source-file key when sorting',
       (key) => {
         // Built by JSON.parse so the prototype-named key is a real own property.
-        const src = JSON.parse(
-          `{"zebra": 1, ${JSON.stringify(key)}: 2, "alpha": 3}`
-        ) as Record<string, unknown>;
+        const lockFile = JSON.parse(
+          `{"version": 1, "entries": {"zebra.json": {}, ${JSON.stringify(key)}: {}, "alpha.json": {}}}`
+        ) as SyncLockFile;
 
-        const out = sortedKeysReplacer('entries', src) as Record<
-          string,
-          unknown
-        >;
+        const out = JSON.parse(serializeLockFile(lockFile)) as {
+          entries: Record<string, unknown>;
+        };
 
-        expect(Object.hasOwn(out, key)).toBe(true);
-        expect(out[key]).toBe(2);
-        expect(
-          JSON.parse(JSON.stringify(out)) as Record<string, unknown>
-        ).toHaveProperty(key, 2);
+        expect(Object.hasOwn(out.entries, key)).toBe(true);
       }
     );
+
+    it.each(PROTO_KEYS)('should preserve a %s i18n key', (key) => {
+      const lockFile = JSON.parse(
+        `{"version": 1, "entries": {"locales/en.json": {"zebra": {"source_hash": "z"}, ${JSON.stringify(key)}: {"source_hash": "p"}}}}`
+      ) as SyncLockFile;
+
+      const out = JSON.parse(serializeLockFile(lockFile)) as {
+        entries: Record<string, Record<string, { source_hash: string }>>;
+      };
+
+      const fileEntries = out.entries['locales/en.json']!;
+      expect(Object.hasOwn(fileEntries, key)).toBe(true);
+      expect(fileEntries[key]!.source_hash).toBe('p');
+    });
   });
 });

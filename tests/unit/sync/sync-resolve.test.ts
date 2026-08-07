@@ -148,7 +148,7 @@ describe('resolveConflicts()', () => {
         '<<<<<<< HEAD',
         entry('ours_hash', ourStamp),
         '=======',
-        entry('theirs_hash', theirStamp),
+        entry('them_hash', theirStamp),
         '>>>>>>> feature/de-updates',
         '    }',
         '  }',
@@ -172,7 +172,7 @@ describe('resolveConflicts()', () => {
         conflictedLock('2026-02-01T00:00:00.000Z', '2026-03-01T00:00:00.000Z')
       );
 
-      expect(survivingHash(resolved)).toBe('theirs_hash');
+      expect(survivingHash(resolved)).toBe('them_hash');
       expect(
         decisions.some(
           (d) => d.source === 'theirs' && /newer translated_at/.test(d.reason)
@@ -223,6 +223,194 @@ describe('resolveConflicts()', () => {
       // rather than to the whole lockfile. One entry, because the fields the
       // sides agree on are not reported.
       expect(decisions.map((d) => d.key)).toEqual(['greeting.translations.de']);
+    });
+  });
+
+  // The lockfile puts each translation on one line, so the smallest region git
+  // can produce is a whole `"<locale>": {...}` pair. Unless that pair is the
+  // last in its map it carries a trailing comma, which is the shape the resolver
+  // actually has to read.
+  describe("git's conflict shape for a one-line-per-translation lockfile", () => {
+    function conflictedLock(
+      ours: string,
+      theirs: string,
+      trailing: ',' | '' = ','
+    ): string {
+      return [
+        '{',
+        '  "version": 1,',
+        '  "entries": {',
+        '    "locales/en.json": {',
+        '      "greeting": {',
+        '        "source_hash": "185f8db32271",',
+        '        "source_text": "Hello",',
+        '        "translations": {',
+        '<<<<<<< HEAD',
+        `          "de": ${ours}${trailing}`,
+        '=======',
+        `          "de": ${theirs}${trailing}`,
+        '>>>>>>> feature/de-updates',
+        trailing === ','
+          ? '          "fr": {"hash": "fr_hash", "status": "translated", "translated_at": "2026-01-01T00:00:00.000Z"}'
+          : '',
+        '        }',
+        '      }',
+        '    }',
+        '  }',
+        '}',
+      ]
+        .filter((line) => line !== '')
+        .join('\n');
+    }
+
+    function translation(
+      hash: string,
+      stamp: string,
+      review = 'machine_translated'
+    ): string {
+      return `{"hash": "${hash}", "review_status": "${review}", "status": "translated", "translated_at": "${stamp}"}`;
+    }
+
+    function surviving(resolved: string): Record<string, unknown> {
+      const parsed = JSON.parse(resolved) as {
+        entries: Record<
+          string,
+          Record<
+            string,
+            { translations: Record<string, Record<string, unknown>> }
+          >
+        >;
+      };
+      return parsed.entries['locales/en.json']!['greeting']!.translations[
+        'de'
+      ]!;
+    }
+
+    it('should take theirs on the newer translated_at despite the trailing comma', () => {
+      const { resolved, decisions } = resolveConflicts(
+        conflictedLock(
+          translation('ours_hash', '2026-02-01T00:00:00.000Z'),
+          translation('them_hash', '2026-03-01T00:00:00.000Z')
+        )
+      );
+
+      expect(surviving(resolved)['hash']).toBe('them_hash');
+      expect(
+        decisions.some(
+          (d) => d.source === 'theirs' && /newer translated_at/.test(d.reason)
+        )
+      ).toBe(true);
+    });
+
+    it('should not fall back to the length heuristic for that shape', () => {
+      const { decisions } = resolveConflicts(
+        conflictedLock(
+          translation('ours_hash', '2026-02-01T00:00:00.000Z'),
+          translation('them_hash', '2026-03-01T00:00:00.000Z')
+        )
+      );
+
+      expect(decisions.filter((d) => d.source === 'length-heuristic')).toEqual(
+        []
+      );
+      expect(decisions.map((d) => d.key)).toEqual(['de']);
+    });
+
+    it('should leave the locale that followed the conflict intact', () => {
+      const { resolved } = resolveConflicts(
+        conflictedLock(
+          translation('ours_hash', '2026-02-01T00:00:00.000Z'),
+          translation('them_hash', '2026-03-01T00:00:00.000Z')
+        )
+      );
+
+      const parsed = JSON.parse(resolved) as {
+        entries: Record<
+          string,
+          Record<string, { translations: Record<string, { hash: string }> }>
+        >;
+      };
+      expect(
+        parsed.entries['locales/en.json']!['greeting']!.translations['fr']!.hash
+      ).toBe('fr_hash');
+    });
+
+    it('should resolve the shape without a trailing comma too', () => {
+      const { resolved, decisions } = resolveConflicts(
+        conflictedLock(
+          translation('ours_hash', '2026-02-01T00:00:00.000Z'),
+          translation('them_hash', '2026-03-01T00:00:00.000Z'),
+          ''
+        )
+      );
+
+      expect(surviving(resolved)['hash']).toBe('them_hash');
+      expect(decisions.filter((d) => d.source === 'length-heuristic')).toEqual(
+        []
+      );
+    });
+
+    // The failure this format exists to prevent: never emit a translation whose
+    // fields come from both sides.
+    it('should keep one whole side when the timestamps are equal', () => {
+      const stamp = '2026-01-01T00:00:00.000Z';
+      const { resolved } = resolveConflicts(
+        conflictedLock(
+          translation('machine_hash', stamp, 'machine_translated'),
+          translation('human_hash', stamp, 'human_reviewed')
+        )
+      );
+
+      const winner = surviving(resolved);
+      expect([
+        { hash: 'machine_hash', review: 'machine_translated' },
+        { hash: 'human_hash', review: 'human_reviewed' },
+      ]).toContainEqual({
+        hash: winner['hash'],
+        review: winner['review_status'],
+      });
+    });
+  });
+
+  describe('sides that disagree on the region terminator', () => {
+    // The member following a region is context shared by both sides, so a region
+    // that is a member list carries the same terminator on both. Disagreement
+    // means one side deleted what the other kept, and inventing a terminator
+    // there can only produce invalid JSON.
+    function deleteVersusModify(): string {
+      return [
+        '{',
+        '  "entries": {',
+        '    "locales/en.json": {',
+        '<<<<<<< HEAD',
+        '=======',
+        '      "greeting": {"source_hash": "src2", "translations": {}},',
+        '>>>>>>> feature/other',
+        '      "farewell": {"source_hash": "src3", "translations": {}}',
+        '    }',
+        '  }',
+        '}',
+      ].join('\n');
+    }
+
+    it('should fall back rather than guess a terminator', () => {
+      const { decisions } = resolveConflicts(deleteVersusModify());
+
+      expect(decisions).toHaveLength(1);
+      expect(decisions[0]!.source).toBe('length-heuristic');
+      expect(decisions[0]!.reason).toMatch(/ends a member list/);
+    });
+
+    it('should still leave the document parseable', () => {
+      const { resolved } = resolveConflicts(deleteVersusModify());
+
+      const parsed = JSON.parse(resolved) as {
+        entries: Record<string, Record<string, unknown>>;
+      };
+      expect(Object.keys(parsed.entries['locales/en.json']!).sort()).toEqual([
+        'farewell',
+        'greeting',
+      ]);
     });
   });
 
@@ -363,6 +551,60 @@ describe('resolveLockFile()', () => {
     const parsed = JSON.parse(writtenContent);
     expect(parsed.greeting.translated_at).toBe('2025-06-01T00:00:00Z');
     expect(parsed.extra).toBe(true);
+  });
+
+  // Resolving rebuilds the fragment with its own indentation, so without writing
+  // the canonical form back the file would leave the resolver's own output in a
+  // shape the next merge can field-mix again.
+  it('should write the resolved lock file back in canonical form', async () => {
+    const translation = (hash: string, stamp: string): string =>
+      `{"hash": "${hash}", "status": "translated", "translated_at": "${stamp}"}`;
+    mockReadFile.mockResolvedValue(
+      [
+        '{',
+        '  "version": 1,',
+        '  "entries": {',
+        '    "locales/en.json": {',
+        '      "greeting": {',
+        '        "source_hash": "185f8db32271",',
+        '        "source_text": "Hello",',
+        '        "translations": {',
+        '<<<<<<< HEAD',
+        `          "de": ${translation('ours_hash', '2026-02-01T00:00:00.000Z')},`,
+        '=======',
+        `          "de": ${translation('them_hash', '2026-03-01T00:00:00.000Z')},`,
+        '>>>>>>> branch',
+        `          "fr": ${translation('fr_hash', '2026-01-01T00:00:00.000Z')}`,
+        '        }',
+        '      }',
+        '    }',
+        '  }',
+        '}',
+      ].join('\n')
+    );
+    mockWriteFile.mockResolvedValue(undefined);
+
+    const result = await resolveLockFile(lockPath);
+
+    expect(result.resolved).toBe(true);
+    const written = mockWriteFile.mock.calls[0]![1] as string;
+    const localeLines = written
+      .split('\n')
+      .filter((line) => /^\s*"(de|fr)":/.test(line));
+    expect(localeLines).toHaveLength(2);
+    for (const line of localeLines) {
+      expect(line.trimEnd().replace(/,$/, '')).toMatch(/\}$/);
+    }
+    const parsed = JSON.parse(written) as {
+      entries: Record<
+        string,
+        Record<string, { translations: Record<string, { hash: string }> }>
+      >;
+    };
+    const translations =
+      parsed.entries['locales/en.json']!['greeting']!.translations;
+    expect(translations['de']!.hash).toBe('them_hash');
+    expect(translations['fr']!.hash).toBe('fr_hash');
   });
 
   it('should return hadConflicts=false for a clean file', async () => {

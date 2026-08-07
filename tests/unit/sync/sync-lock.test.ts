@@ -4,6 +4,7 @@ import * as os from 'os';
 import {
   computeSourceHash,
   createEmptyLockFile,
+  serializeLockFile,
   SyncLockManager,
 } from '../../../src/sync/sync-lock';
 import { Logger } from '../../../src/utils/logger';
@@ -81,6 +82,152 @@ describe('computeSourceHash()', () => {
       plural_forms: { 'msgstr[0]': '', 'msgstr[1]': '' },
     });
     expect(hashWith).not.toBe(hashWithout);
+  });
+});
+
+describe('serializeLockFile()', () => {
+  function lockWith(
+    translations: Record<string, unknown>,
+    extra: Record<string, Record<string, SyncLockEntry>> = {}
+  ): SyncLockFile {
+    const lockFile = createEmptyLockFile('en');
+    lockFile.entries['locales/en.json'] = {
+      greeting: {
+        source_hash: '185f8db32271',
+        source_text: 'Hello',
+        translations: translations as SyncLockEntry['translations'],
+      },
+    };
+    Object.assign(lockFile.entries, extra);
+    return lockFile;
+  }
+
+  const de = {
+    hash: 'h1',
+    translated_at: '2026-01-01T00:00:00.000Z',
+    status: 'translated',
+    review_status: 'machine_translated',
+  };
+  const fr = {
+    hash: 'h2',
+    translated_at: '2026-01-02T00:00:00.000Z',
+    status: 'translated',
+    review_status: 'human_reviewed',
+  };
+
+  function localeLines(serialized: string): string[] {
+    return serialized.split('\n').filter((line) => /^\s*"(de|fr)":/.test(line));
+  }
+
+  // A translation is only meaningful as a whole: its hash, timestamp and review
+  // status describe one act of translating. Splitting it across lines lets git
+  // merge the fields independently and fabricate a combination that existed on
+  // neither branch, so each one occupies a single line.
+  it('should put every translation on one line', () => {
+    const lines = localeLines(serializeLockFile(lockWith({ de, fr })));
+
+    expect(lines).toHaveLength(2);
+    for (const line of lines) {
+      expect(line.trimEnd().replace(/,$/, '')).toMatch(/\}$/);
+    }
+  });
+
+  it('should keep every field of a translation on that one line', () => {
+    const [line] = localeLines(serializeLockFile(lockWith({ de })));
+
+    expect(line).toContain('"hash": "h1"');
+    expect(line).toContain('"translated_at": "2026-01-01T00:00:00.000Z"');
+    expect(line).toContain('"status": "translated"');
+    expect(line).toContain('"review_status": "machine_translated"');
+  });
+
+  it('should still expand the containers above a translation', () => {
+    const serialized = serializeLockFile(lockWith({ de }));
+
+    expect(serialized).toContain('\n  "entries": {\n');
+    expect(serialized).toContain('\n    "locales/en.json": {\n');
+    expect(serialized).toContain('\n      "greeting": {\n');
+    expect(serialized).toContain('\n        "translations": {\n');
+  });
+
+  it('should round-trip to an identical object', () => {
+    const lockFile = lockWith({ de, fr });
+
+    expect(JSON.parse(serializeLockFile(lockFile))).toEqual(
+      JSON.parse(JSON.stringify(lockFile))
+    );
+  });
+
+  it('should sort the keys inside a one-line translation', () => {
+    const [line] = localeLines(serializeLockFile(lockWith({ de })));
+
+    expect(line!.indexOf('"hash"')).toBeLessThan(
+      line!.indexOf('"review_status"')
+    );
+    expect(line!.indexOf('"review_status"')).toBeLessThan(
+      line!.indexOf('"status"')
+    );
+  });
+
+  it('should sort container keys and end with a newline', () => {
+    const serialized = serializeLockFile(
+      lockWith({ fr, de }, { 'z.json': {}, 'a.json': {} })
+    );
+
+    expect(serialized.indexOf('"a.json"')).toBeLessThan(
+      serialized.indexOf('"z.json"')
+    );
+    expect(serialized.indexOf('"de"')).toBeLessThan(serialized.indexOf('"fr"'));
+    expect(serialized.endsWith('\n')).toBe(true);
+  });
+
+  // An i18n key of this name is a real possibility and must not be mistaken for
+  // the translations container that sits one level deeper.
+  it('should not compact an entry under an i18n key named translations', () => {
+    const lockFile = createEmptyLockFile('en');
+    lockFile.entries['locales/en.json'] = {
+      translations: {
+        source_hash: 'abc',
+        source_text: 'Hello',
+        translations: { de: de as never },
+      },
+    };
+
+    const serialized = serializeLockFile(lockFile);
+
+    expect(serialized).toContain('\n      "translations": {\n');
+    expect(serialized).toContain('\n        "source_hash": "abc",\n');
+  });
+
+  // No field of the lock file is an array today, but `sync resolve` serializes
+  // whatever it parsed out of a conflicted file, which may have been written by
+  // a version that added one. Rewriting it as {"0": ...} would be silent damage.
+  describe('array members', () => {
+    it('should keep an array in a container an array', () => {
+      const lockFile = JSON.parse(
+        '{"version": 1, "notes": ["a", "b"], "empty": [], "entries": {}}'
+      ) as SyncLockFile;
+
+      const out = JSON.parse(serializeLockFile(lockFile)) as {
+        notes: string[];
+        empty: string[];
+      };
+
+      expect(out.notes).toEqual(['a', 'b']);
+      expect(out.empty).toEqual([]);
+    });
+
+    it('should keep an array inside a translation on the one line', () => {
+      const lockFile = JSON.parse(
+        '{"version": 1, "entries": {"locales/en.json": {"greeting": {"translations": {"de": {"hash": "h", "tags": ["x", "y"], "nested": [{"k": 1}]}}}}}}'
+      ) as SyncLockFile;
+
+      const serialized = serializeLockFile(lockFile);
+
+      expect(serialized).toContain(
+        '"de": {"hash": "h", "nested": [{"k": 1}], "tags": ["x", "y"]}'
+      );
+    });
   });
 });
 

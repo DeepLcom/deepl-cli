@@ -943,14 +943,10 @@ describe('CLI Sync E2E', () => {
       writeSyncConfig(testFiles.path, ['de']);
       writeSourceFile(testFiles.path);
 
-      // Both halves end with a trailing comma, so the per-region JSON.parse
-      // fails and the length heuristic kicks in; the following non-conflicted
-      // entry keeps the merged document valid.
-      const ourEntry = {
-        hash: 'a',
-        translated_at: '2026-04-20T09:33:15Z',
-        status: 'translated',
-      };
+      // One side deleted the entry the other modified, so the halves disagree on
+      // whether the region ends a member list. Guessing a terminator there could
+      // emit invalid JSON, so the region falls to the length heuristic instead;
+      // the following non-conflicted entry keeps the merged document valid.
       const theirEntry = {
         hash: 'b',
         translated_at: '2026-04-20T08:12:03Z',
@@ -964,7 +960,6 @@ describe('CLI Sync E2E', () => {
         '  "entries": {',
         '    "locales/en.json": {',
         '<<<<<<< HEAD',
-        `      "greeting": { "source_hash": "src1", "source_text": "Hello", "translations": { "de": ${JSON.stringify(ourEntry)} } },`,
         '=======',
         `      "greeting": { "source_hash": "src2", "source_text": "Hello", "translations": { "de": ${JSON.stringify(theirEntry)} } },`,
         '>>>>>>> feature/other',

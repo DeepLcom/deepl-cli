@@ -104,42 +104,88 @@ export function createEmptyLockFile(sourceLocale: string): SyncLockFile {
   };
 }
 
+// Depth of `entries.<source file>.<i18n key>.translations.<locale>`, the level a
+// translation entry sits at. Matched on the path rather than on the key name so
+// an i18n key called `translations` is not mistaken for the container itself.
+const TRANSLATION_DEPTH = 5;
+
+function isTranslation(path: readonly string[]): boolean {
+  return (
+    path.length === TRANSLATION_DEPTH &&
+    path[0] === 'entries' &&
+    path[3] === 'translations'
+  );
+}
+
 /**
- * JSON.stringify replacer that emits plain objects with sorted keys, so the
- * lockfile is never materialized twice in memory: the replacer is invoked
- * lazily as stringify recurses, so only a single sorted-key shell lives at
- * each level of the tree.
- * Objects whose own-enumeration order is already sorted are returned as-is so
- * leaf shells (translations, stats) don't allocate.
+ * Own, enumerable, serializable members in key order. Enumerated as pairs rather
+ * than read back by key: an i18n key named `__proto__` is a real own property,
+ * and indexing a plain object for it would reach the prototype instead.
  */
-export function sortedKeysReplacer(_key: string, value: unknown): unknown {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    return value;
+function sortedMembers(value: object): [string, unknown][] {
+  return Object.entries(value)
+    .filter(
+      ([, member]) => member !== undefined && typeof member !== 'function'
+    )
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/** One line, no indentation, keys still sorted. */
+function serializeInline(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value) ?? 'null';
   }
-  const src = value as Record<string, unknown>;
-  const keys = Object.keys(src);
-  let alreadySorted = true;
-  for (let i = 1; i < keys.length; i++) {
-    if (keys[i - 1]! > keys[i]!) {
-      alreadySorted = false;
-      break;
-    }
+  if (Array.isArray(value)) {
+    return `[${value.map(serializeInline).join(', ')}]`;
   }
-  if (alreadySorted) {
-    return value;
+  const members = sortedMembers(value).map(
+    ([key, member]) => `${JSON.stringify(key)}: ${serializeInline(member)}`
+  );
+  return members.length === 0 ? '{}' : `{${members.join(', ')}}`;
+}
+
+// `path` is mutated in place rather than copied per member: a lockfile carries
+// one node per translation per key, and a fresh array at each would allocate
+// once for every one of them.
+function serializeNode(value: unknown, indent: string, path: string[]): string {
+  if (isTranslation(path) || value === null || typeof value !== 'object') {
+    return serializeInline(value);
   }
-  const sortedKeys = keys.slice().sort();
-  // Null-prototype: `out['__proto__'] = v` on a plain object invokes the
-  // prototype setter, so an i18n key of that name would vanish from the
-  // serialized lockfile on every write.
-  const out: Record<string, unknown> = Object.create(null) as Record<
-    string,
-    unknown
-  >;
-  for (const k of sortedKeys) {
-    out[k] = src[k];
+  const childIndent = `${indent}  `;
+  const members: string[] = [];
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => {
+      path.push(String(index));
+      members.push(childIndent + serializeNode(item, childIndent, path));
+      path.pop();
+    });
+    return members.length === 0
+      ? '[]'
+      : `[\n${members.join(',\n')}\n${indent}]`;
   }
-  return out;
+  for (const [key, member] of sortedMembers(value)) {
+    path.push(key);
+    members.push(
+      `${childIndent}${JSON.stringify(key)}: ${serializeNode(member, childIndent, path)}`
+    );
+    path.pop();
+  }
+  return members.length === 0 ? '{}' : `{\n${members.join(',\n')}\n${indent}}`;
+}
+
+/**
+ * The canonical on-disk form of a lock file, including its trailing newline.
+ *
+ * Every container is expanded one key per line, but each translation is emitted
+ * on a single line. A translation is only meaningful whole — its hash, timestamp
+ * and review status all describe one act of translating — and one field per line
+ * makes those fields independently mergeable units, so `git merge` can combine
+ * one side's hash with the other's review status and produce a translation that
+ * existed on neither branch, with no conflict raised. One line per translation
+ * makes the smallest region git can produce a whole entry.
+ */
+export function serializeLockFile(lockFile: SyncLockFile): string {
+  return `${serializeNode(lockFile, '', [])}\n`;
 }
 
 // Per-manager memo of the entries-mutation counter value that `stats` were
@@ -244,8 +290,11 @@ export class SyncLockManager {
     }
     lockFile.generated_at = new Date().toISOString();
     lockFile._comment = LOCK_FILE_COMMENT;
-    const serialized = JSON.stringify(lockFile, sortedKeysReplacer, 2) + '\n';
-    await atomicWriteFile(this.lockFilePath, serialized, 'utf-8');
+    await atomicWriteFile(
+      this.lockFilePath,
+      serializeLockFile(lockFile),
+      'utf-8'
+    );
   }
 
   async updateEntry(
