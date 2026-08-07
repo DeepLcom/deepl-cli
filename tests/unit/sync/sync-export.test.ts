@@ -106,6 +106,33 @@ describe('exportTranslations()', () => {
     expect(result.keys).toBe(3);
   });
 
+  it('should replace control characters that XML 1.0 cannot represent', async () => {
+    mockedFg.mockResolvedValue(['/project/locales/en/common.json'] as never);
+    mockedReadFile.mockResolvedValue(
+      JSON.stringify({ 'a\u001b]0;PWNED\u0007b': 'v\u0000w' })
+    );
+
+    const result = await exportTranslations(makeConfig(), makeRegistry());
+
+    // eslint-disable-next-line no-control-regex -- asserting the absence of control chars in generated XML
+    expect(result.content).not.toMatch(/[\x00-\x08\x0b\x0c\x0e-\x1f]/);
+    expect(result.content).toContain('id="a?]0;PWNED?b"');
+    expect(result.content).toContain('resname="a?]0;PWNED?b"');
+    expect(result.content).toContain('<source>v?w</source>');
+  });
+
+  it('should escape tab, newline and carriage return so attribute values survive XML normalization', async () => {
+    mockedFg.mockResolvedValue(['/project/locales/en/common.json'] as never);
+    mockedReadFile.mockResolvedValue(
+      JSON.stringify({ 'a\tb\nc\rd': 'one\ntwo' })
+    );
+
+    const result = await exportTranslations(makeConfig(), makeRegistry());
+
+    expect(result.content).toContain('id="a&#9;b&#10;c&#13;d"');
+    expect(result.content).toContain('<source>one&#10;two</source>');
+  });
+
   it('should handle empty bucket (no files matched)', async () => {
     mockedFg.mockResolvedValue([] as never);
 

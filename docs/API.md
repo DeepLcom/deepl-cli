@@ -3136,6 +3136,8 @@ Translations, i18n keys, glossary entries and API error messages can all contain
 
 Colour (SGR) sequences are preserved so `deepl` output stays readable; use [`NO_COLOR`](#no_color) to turn colour off. Tabs, newlines, carriage returns and Unicode formatting characters that are legitimate translation content — zero-width joiners, and the bidi marks used in Arabic, Hebrew and Persian text — are never altered on stdout.
 
+`deepl sync export` writes XLIFF rather than terminal output. There, tab, newline and carriage return are emitted as the character references `&#9;`, `&#10;` and `&#13;` so a key survives XML attribute-value normalization unchanged, and the remaining C0 control characters — which XML 1.0 cannot represent at all — are replaced with `?`.
+
 ---
 
 ## Environment Variables
