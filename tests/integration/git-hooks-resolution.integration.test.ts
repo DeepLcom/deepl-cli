@@ -86,7 +86,7 @@ describe('GitHooksService hooks directory resolution', () => {
       expect(fs.existsSync(path.join(repo, 'hooks-dir', 'commit-msg'))).toBe(
         true
       );
-      expect(service.list()['commit-msg']).toBe(true);
+      expect(service.list()['commit-msg']).toBe('installed');
       expect(service.isInstalled('commit-msg')).toBe(true);
     });
 

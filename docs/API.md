@@ -1662,7 +1662,22 @@ deepl hooks uninstall post-commit
 
 ##### `list`
 
-List all hooks and their installation status.
+List all hooks and what the file at each hook path is.
+
+Each hook installed by this CLI carries a marker line recording the SHA-256 of
+its body, and `list` checks it. Four states are reported:
+
+| State           | Meaning                                                              |
+| --------------- | -------------------------------------------------------------------- |
+| `installed`     | A versioned marker is present and the body hashes to the value it records |
+| `modified`      | A marker is present and the body does not hash to it — an edit made after installation, or a forged marker |
+| `unverified`    | A legacy (pre-1.0) marker with no recorded hash to check against      |
+| `not-installed` | No hook file, or a file carrying no DeepL marker                      |
+
+The hash is unkeyed, so `installed` establishes that a hook has not changed
+since its marker was written — not that this CLI wrote it. Anyone who can write
+the hook can write a marker that agrees with their own content. Treat the marker
+as detection of changes to a hook, not as proof of its origin.
 
 **Options:**
 
@@ -1675,8 +1690,12 @@ deepl hooks list
 
 # JSON output for CI/CD scripting
 deepl hooks list --format json
-# { "pre-commit": true, "pre-push": false, "commit-msg": false, "post-commit": false }
+# { "pre-commit": "installed", "pre-push": "modified", "commit-msg": "unverified", "post-commit": "not-installed" }
 ```
+
+The JSON values are these state strings, not booleans. Gate on
+`state === "installed"`; a truthiness test passes for every state, including
+`"not-installed"`.
 
 ##### `path <hook-type>`
 

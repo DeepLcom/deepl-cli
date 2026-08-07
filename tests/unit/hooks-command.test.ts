@@ -182,8 +182,8 @@ describe('HooksCommand', () => {
   describe('list()', () => {
     it('should list hooks when both are installed', () => {
       mockGitHooksService.list.mockReturnValue({
-        'pre-commit': true,
-        'pre-push': true,
+        'pre-commit': 'installed',
+        'pre-push': 'installed',
       });
       const command = new HooksCommand('/path/to/.git');
 
@@ -198,8 +198,8 @@ describe('HooksCommand', () => {
 
     it('should list hooks when none are installed', () => {
       mockGitHooksService.list.mockReturnValue({
-        'pre-commit': false,
-        'pre-push': false,
+        'pre-commit': 'not-installed',
+        'pre-push': 'not-installed',
       });
       const command = new HooksCommand('/path/to/.git');
 
@@ -213,8 +213,8 @@ describe('HooksCommand', () => {
 
     it('should list hooks with mixed status', () => {
       mockGitHooksService.list.mockReturnValue({
-        'pre-commit': true,
-        'pre-push': false,
+        'pre-commit': 'installed',
+        'pre-push': 'not-installed',
       });
       const command = new HooksCommand('/path/to/.git');
 
@@ -233,6 +233,76 @@ describe('HooksCommand', () => {
       const result = command.list();
 
       expect(result).toContain('Not in a git repository');
+    });
+
+    it('should not report a hook whose hash does not match as simply installed', () => {
+      mockGitHooksService.list.mockReturnValue({
+        'pre-commit': 'modified',
+      });
+      const command = new HooksCommand('/path/to/.git');
+
+      const result = command.list();
+
+      expect(result).toContain('does not match its recorded hash');
+    });
+
+    it('should mark a legacy hook as carrying no hash', () => {
+      mockGitHooksService.list.mockReturnValue({
+        'pre-commit': 'unverified',
+      });
+      const command = new HooksCommand('/path/to/.git');
+
+      const result = command.list();
+
+      expect(result).toContain('no hash recorded');
+    });
+
+    it('should explain what the hash does and does not establish when a hook is not verified', () => {
+      mockGitHooksService.list.mockReturnValue({
+        'pre-commit': 'modified',
+        'pre-push': 'installed',
+      });
+      const command = new HooksCommand('/path/to/.git');
+
+      const result = command.list();
+
+      expect(result).toContain('cannot establish');
+      expect(result).toContain('deepl hooks install');
+    });
+
+    it('should allow for a hook the user edited on purpose', () => {
+      mockGitHooksService.list.mockReturnValue({
+        'pre-commit': 'modified',
+      });
+      const command = new HooksCommand('/path/to/.git');
+
+      const result = command.list();
+
+      expect(result).toContain('edited the hook yourself');
+    });
+
+    it('should not suggest replacing a hook that is merely unverified', () => {
+      mockGitHooksService.list.mockReturnValue({
+        'pre-commit': 'unverified',
+      });
+      const command = new HooksCommand('/path/to/.git');
+
+      const result = command.list();
+
+      expect(result).toContain('cannot establish');
+      expect(result).not.toContain('deepl hooks install');
+    });
+
+    it('should not add the caveat when every hook verifies or is absent', () => {
+      mockGitHooksService.list.mockReturnValue({
+        'pre-commit': 'installed',
+        'pre-push': 'not-installed',
+      });
+      const command = new HooksCommand('/path/to/.git');
+
+      const result = command.list();
+
+      expect(result).not.toContain('cannot establish');
     });
   });
 
@@ -291,16 +361,16 @@ describe('HooksCommand', () => {
   describe('listData()', () => {
     it('should return raw status object when hooks are installed', () => {
       mockGitHooksService.list.mockReturnValue({
-        'pre-commit': true,
-        'pre-push': false,
+        'pre-commit': 'installed',
+        'pre-push': 'not-installed',
       });
       const command = new HooksCommand('/path/to/.git');
 
       const data = command.listData();
 
       expect(data).toEqual({
-        'pre-commit': true,
-        'pre-push': false,
+        'pre-commit': 'installed',
+        'pre-push': 'not-installed',
       });
     });
 
@@ -316,10 +386,10 @@ describe('HooksCommand', () => {
 
     it('should produce valid parseable JSON', () => {
       mockGitHooksService.list.mockReturnValue({
-        'pre-commit': true,
-        'pre-push': true,
-        'commit-msg': false,
-        'post-commit': false,
+        'pre-commit': 'installed',
+        'pre-push': 'installed',
+        'commit-msg': 'not-installed',
+        'post-commit': 'not-installed',
       });
       const command = new HooksCommand('/path/to/.git');
 
@@ -327,10 +397,10 @@ describe('HooksCommand', () => {
       const json = JSON.stringify(data, null, 2);
       const parsed = JSON.parse(json);
 
-      expect(parsed['pre-commit']).toBe(true);
-      expect(parsed['pre-push']).toBe(true);
-      expect(parsed['commit-msg']).toBe(false);
-      expect(parsed['post-commit']).toBe(false);
+      expect(parsed['pre-commit']).toBe('installed');
+      expect(parsed['pre-push']).toBe('installed');
+      expect(parsed['commit-msg']).toBe('not-installed');
+      expect(parsed['post-commit']).toBe('not-installed');
     });
   });
 });

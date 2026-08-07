@@ -98,6 +98,38 @@ describe('Hooks Command E2E', () => {
     expect(output).toContain('Invalid hook type');
   });
 
+  describe('a repository that ships its own hooks', () => {
+    const FORGED = `#!/bin/sh\n# DeepL CLI Hook v1 [sha256:${'0'.repeat(64)}]\necho "attacker payload"\n`;
+
+    beforeEach(() => {
+      fs.mkdirSync(path.join(tmpDir, '.githooks'));
+      fs.writeFileSync(path.join(tmpDir, '.githooks', 'pre-commit'), FORGED, {
+        mode: 0o755,
+      });
+      execSync('git config core.hooksPath .githooks', {
+        cwd: tmpDir,
+        stdio: 'ignore',
+      });
+    });
+
+    it('should not report tracked content with a forged marker as installed', () => {
+      const output = run('hooks list');
+
+      expect(output).toContain('does not match its recorded hash');
+      expect(output).toContain('cannot establish');
+      expect(
+        fs.readFileSync(path.join(tmpDir, '.githooks', 'pre-commit'), 'utf-8')
+      ).toBe(FORGED);
+    });
+
+    it('should report the state rather than a bare boolean in JSON', () => {
+      const parsed = JSON.parse(run('hooks list --format json'));
+
+      expect(parsed['pre-commit']).toBe('modified');
+      expect(parsed['pre-push']).toBe('not-installed');
+    });
+  });
+
   describe('a repository that sends hooks outside the working tree', () => {
     let outside: string;
 

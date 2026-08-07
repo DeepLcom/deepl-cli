@@ -316,10 +316,10 @@ describe('GitHooksService', () => {
       expect(status).toHaveProperty('pre-push');
       expect(status).toHaveProperty('commit-msg');
       expect(status).toHaveProperty('post-commit');
-      expect(status['pre-commit']).toBe(false);
-      expect(status['pre-push']).toBe(false);
-      expect(status['commit-msg']).toBe(false);
-      expect(status['post-commit']).toBe(false);
+      expect(status['pre-commit']).toBe('not-installed');
+      expect(status['pre-push']).toBe('not-installed');
+      expect(status['commit-msg']).toBe('not-installed');
+      expect(status['post-commit']).toBe('not-installed');
     });
 
     it('should show correct status when some hooks are installed', () => {
@@ -328,10 +328,10 @@ describe('GitHooksService', () => {
 
       const status = gitHooksService.list();
 
-      expect(status['pre-commit']).toBe(true);
-      expect(status['pre-push']).toBe(false);
-      expect(status['commit-msg']).toBe(true);
-      expect(status['post-commit']).toBe(false);
+      expect(status['pre-commit']).toBe('installed');
+      expect(status['pre-push']).toBe('not-installed');
+      expect(status['commit-msg']).toBe('installed');
+      expect(status['post-commit']).toBe('not-installed');
     });
 
     it('should show all installed when all hooks are installed', () => {
@@ -342,10 +342,10 @@ describe('GitHooksService', () => {
 
       const status = gitHooksService.list();
 
-      expect(status['pre-commit']).toBe(true);
-      expect(status['pre-push']).toBe(true);
-      expect(status['commit-msg']).toBe(true);
-      expect(status['post-commit']).toBe(true);
+      expect(status['pre-commit']).toBe('installed');
+      expect(status['pre-push']).toBe('installed');
+      expect(status['commit-msg']).toBe('installed');
+      expect(status['post-commit']).toBe('installed');
     });
   });
 
@@ -542,10 +542,17 @@ describe('GitHooksService', () => {
       expect((gitHooksService as any).isDeepLHook(customContent)).toBe(false);
     });
 
-    it('should match hook containing legacy marker as substring', () => {
+    it('should reject a line the legacy marker is only a prefix of', () => {
       const content = '#!/bin/sh\n# DeepL CLI Hooks\necho "test"';
 
-      expect((gitHooksService as any).isDeepLHook(content)).toBe(true);
+      expect((gitHooksService as any).isDeepLHook(content)).toBe(false);
+    });
+
+    it('should reject a line that merely quotes the legacy marker', () => {
+      const content =
+        '#!/bin/sh\n# adapted from a # DeepL CLI Hook\necho "test"';
+
+      expect((gitHooksService as any).isDeepLHook(content)).toBe(false);
     });
   });
 
@@ -690,6 +697,112 @@ describe('GitHooksService', () => {
         expect(result.markerVersion).toBe(1);
         expect(result.hashMatch).toBe(true);
       }
+    });
+  });
+
+  describe('hookState()', () => {
+    const BOGUS_HASH = '0'.repeat(64);
+
+    beforeEach(() => {
+      fs.mkdirSync(testHooksDir, { recursive: true });
+    });
+
+    function writeHook(content: string): void {
+      fs.writeFileSync(path.join(testHooksDir, 'pre-commit'), content, 'utf-8');
+    }
+
+    it('should report not-installed when no hook file exists', () => {
+      expect(gitHooksService.hookState('pre-commit')).toBe('not-installed');
+    });
+
+    it('should report not-installed for a hook with no DeepL marker', () => {
+      writeHook('#!/bin/sh\necho "someone else\'s hook"');
+
+      expect(gitHooksService.hookState('pre-commit')).toBe('not-installed');
+    });
+
+    it('should report installed for a hook this service just wrote', () => {
+      gitHooksService.install('pre-commit');
+
+      expect(gitHooksService.hookState('pre-commit')).toBe('installed');
+    });
+
+    it('should report modified when a forged marker records a hash the body does not have', () => {
+      writeHook(
+        `#!/bin/sh\n# DeepL CLI Hook v1 [sha256:${BOGUS_HASH}]\necho "attacker payload"\n`
+      );
+
+      expect(gitHooksService.hookState('pre-commit')).toBe('modified');
+    });
+
+    it('should report modified when an installed hook is edited afterwards', () => {
+      gitHooksService.install('pre-commit');
+      const hookPath = path.join(testHooksDir, 'pre-commit');
+      fs.appendFileSync(hookPath, '\necho "injected"\n');
+
+      expect(gitHooksService.hookState('pre-commit')).toBe('modified');
+    });
+
+    it('should report unverified for a legacy marker with no hash to check', () => {
+      writeHook('#!/bin/sh\n# DeepL CLI Hook\necho "old style"');
+
+      expect(gitHooksService.hookState('pre-commit')).toBe('unverified');
+    });
+
+    it('should surface each state through list()', () => {
+      gitHooksService.install('pre-commit');
+      fs.writeFileSync(
+        path.join(testHooksDir, 'pre-push'),
+        `#!/bin/sh\n# DeepL CLI Hook v1 [sha256:${BOGUS_HASH}]\necho "attacker payload"\n`,
+        'utf-8'
+      );
+      fs.writeFileSync(
+        path.join(testHooksDir, 'commit-msg'),
+        '#!/bin/sh\n# DeepL CLI Hook\necho "old style"',
+        'utf-8'
+      );
+
+      expect(gitHooksService.list()).toEqual({
+        'pre-commit': 'installed',
+        'pre-push': 'modified',
+        'commit-msg': 'unverified',
+        'post-commit': 'not-installed',
+      });
+    });
+  });
+
+  describe('the legacy marker is a whole line, not a substring', () => {
+    const INLINE_MENTION =
+      '#!/bin/sh\n# borrowed from a # DeepL CLI Hook someone posted\necho "payload"\n';
+
+    beforeEach(() => {
+      fs.mkdirSync(testHooksDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(testHooksDir, 'pre-commit'),
+        INLINE_MENTION,
+        'utf-8'
+      );
+    });
+
+    it('should not report a file that only mentions the marker as installed', () => {
+      expect(gitHooksService.hookState('pre-commit')).toBe('not-installed');
+      expect(gitHooksService.isInstalled('pre-commit')).toBe(false);
+    });
+
+    it('should refuse to uninstall it', () => {
+      expect(() => gitHooksService.uninstall('pre-commit')).toThrow(
+        'not a DeepL CLI hook'
+      );
+      expect(
+        fs.readFileSync(path.join(testHooksDir, 'pre-commit'), 'utf-8')
+      ).toBe(INLINE_MENTION);
+    });
+
+    it('should back it up rather than overwrite it on install', () => {
+      const result = gitHooksService.install('pre-commit');
+
+      expect(result.backupPath).not.toBeNull();
+      expect(fs.readFileSync(result.backupPath!, 'utf-8')).toBe(INLINE_MENTION);
     });
   });
 

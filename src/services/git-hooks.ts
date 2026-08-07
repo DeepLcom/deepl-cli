@@ -13,8 +13,24 @@ import { sanitizeForTerminal } from '../utils/control-chars.js';
 
 export type HookType = 'pre-commit' | 'pre-push' | 'commit-msg' | 'post-commit';
 
+/**
+ * What the hook file at the expected path is, as far as its recorded marker can
+ * establish.
+ *
+ * `installed` means a versioned marker is present and the body hashes to the
+ * value the marker records. `modified` means the marker is present and the body
+ * does not hash to it — a hand-edit after installation, or a forged marker.
+ * `unverified` means a legacy marker with no hash to check against.
+ *
+ * The hash is unkeyed, so `installed` establishes that the file has not changed
+ * since its marker was written, not that this CLI wrote it: anyone can write a
+ * marker and compute a matching hash.
+ */
+export type HookState =
+  'not-installed' | 'installed' | 'unverified' | 'modified';
+
 export interface HookStatus {
-  [key: string]: boolean;
+  [key: string]: HookState;
 }
 
 export interface InstallResult {
@@ -36,6 +52,12 @@ export interface HookIntegrity {
 const MARKER_VERSION = 1;
 const LEGACY_MARKER = '# DeepL CLI Hook';
 const MARKER_PATTERN = /^# DeepL CLI Hook v(\d+) \[sha256:([a-f0-9]{64})\]$/m;
+/**
+ * The pre-1.0 marker, anchored the way the versioned one is. It was only ever
+ * emitted as a line of its own, so requiring a whole line costs nothing and
+ * keeps a file that merely quotes the string from passing as an installed hook.
+ */
+const LEGACY_MARKER_PATTERN = /^# DeepL CLI Hook$/m;
 
 interface HooksDirResolution {
   dir: string;
@@ -252,7 +274,25 @@ export class GitHooksService {
   }
 
   /**
-   * Check if a hook is installed
+   * Classify the hook file at the expected path.
+   */
+  hookState(hookType: HookType): HookState {
+    const integrity = this.verifyIntegrity(hookType);
+
+    if (!integrity.installed) {
+      return 'not-installed';
+    }
+    if (integrity.hashMatch === null) {
+      return 'unverified';
+    }
+    return integrity.hashMatch ? 'installed' : 'modified';
+  }
+
+  /**
+   * Whether a DeepL marker is present in the hook at the expected path.
+   *
+   * Presence is not integrity: a hook whose body no longer matches its recorded
+   * hash still answers true here. Use `hookState` to tell those apart.
    */
   isInstalled(hookType: HookType): boolean {
     this.validateHookType(hookType);
@@ -268,7 +308,7 @@ export class GitHooksService {
   }
 
   /**
-   * List all hooks and their installation status
+   * List all hooks and what the file at each expected path is
    */
   list(): HookStatus {
     const hooks: HookType[] = [
@@ -280,7 +320,7 @@ export class GitHooksService {
     const status: HookStatus = {};
 
     for (const hook of hooks) {
-      status[hook] = this.isInstalled(hook);
+      status[hook] = this.hookState(hook);
     }
 
     return status;
@@ -347,7 +387,7 @@ export class GitHooksService {
     const markerMatch = content.match(MARKER_PATTERN);
 
     if (!markerMatch) {
-      if (content.includes(LEGACY_MARKER)) {
+      if (LEGACY_MARKER_PATTERN.test(content)) {
         return {
           installed: true,
           markerVersion: 'legacy',
@@ -563,7 +603,7 @@ exit 0
    * Check if content is a DeepL CLI hook (supports both legacy and versioned markers)
    */
   private isDeepLHook(content: string): boolean {
-    return MARKER_PATTERN.test(content) || content.includes(LEGACY_MARKER);
+    return MARKER_PATTERN.test(content) || LEGACY_MARKER_PATTERN.test(content);
   }
 
   /**

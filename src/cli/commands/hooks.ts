@@ -4,8 +4,45 @@
  */
 
 import chalk from 'chalk';
-import { GitHooksService, HookType } from '../../services/git-hooks.js';
+import {
+  GitHooksService,
+  HookState,
+  HookType,
+} from '../../services/git-hooks.js';
 import { ValidationError } from '../../utils/errors.js';
+
+const HOOK_STATE_DISPLAY: Record<HookState, { icon: string; text: string }> = {
+  installed: { icon: chalk.green('✓'), text: chalk.green('installed') },
+  unverified: {
+    icon: chalk.yellow('?'),
+    text: chalk.yellow('installed, no hash recorded (legacy marker)'),
+  },
+  modified: {
+    icon: chalk.yellow('!'),
+    text: chalk.yellow('installed, content does not match its recorded hash'),
+  },
+  'not-installed': { icon: chalk.gray('✗'), text: chalk.gray('not installed') },
+};
+
+/**
+ * A mismatch has two readings the CLI cannot tell apart — a hook the user
+ * customized, which the documentation invites, and content this CLI never
+ * wrote — so the note gives both rather than accusing either way.
+ */
+const MISMATCH_NOTE = [
+  'The content of a hook no longer matches the hash its marker records. That',
+  'is expected if you edited the hook yourself. If you did not, replace it:',
+  '  deepl hooks install <hook-type>',
+];
+
+/**
+ * The hash is unkeyed, so a matching one is not evidence of authorship: anyone
+ * who can write the hook can write a marker that agrees with it.
+ */
+const AUTHORSHIP_NOTE = [
+  'A recorded hash detects a change made after the marker was written. It',
+  'cannot establish that a hook came from this CLI.',
+];
 
 export class HooksCommand {
   private gitHooksService: GitHooksService | null = null;
@@ -80,7 +117,7 @@ export class HooksCommand {
   /**
    * Return raw hook status data (for JSON output)
    */
-  listData(): Record<string, boolean> {
+  listData(): Record<string, HookState> {
     if (!this.gitHooksService) {
       return {};
     }
@@ -98,12 +135,21 @@ export class HooksCommand {
     const status = this.gitHooksService.list();
     const lines = ['Git Hooks Status:', ''];
 
-    for (const [hook, installed] of Object.entries(status)) {
-      const icon = installed ? chalk.green('✓') : chalk.gray('✗');
-      const text = installed
-        ? chalk.green('installed')
-        : chalk.gray('not installed');
+    for (const [hook, state] of Object.entries(status)) {
+      const { icon, text } = HOOK_STATE_DISPLAY[state];
       lines.push(`  ${icon} ${hook.padEnd(15)} ${text}`);
+    }
+
+    const states = Object.values(status);
+    const notes: string[] = [];
+    if (states.includes('modified')) {
+      notes.push(...MISMATCH_NOTE);
+    }
+    if (states.includes('modified') || states.includes('unverified')) {
+      notes.push(...AUTHORSHIP_NOTE);
+    }
+    if (notes.length > 0) {
+      lines.push('', ...notes.map((note) => chalk.gray(note)));
     }
 
     return lines.join('\n');

@@ -931,12 +931,20 @@ $ deepl hooks list
 Git Hooks Status:
 
   ✓ pre-commit      installed
-  ✗ pre-push        not installed
-  ✗ commit-msg      not installed
+  ! pre-push        installed, content does not match its recorded hash
+  ? commit-msg      installed, no hash recorded (legacy marker)
   ✗ post-commit     not installed
+
+The content of a hook no longer matches the hash its marker records. That
+is expected if you edited the hook yourself. If you did not, replace it:
+  deepl hooks install <hook-type>
+A recorded hash detects a change made after the marker was written. It
+cannot establish that a hook came from this CLI.
 ```
 
-**Note:** The hooks are generated with placeholder validation logic. You can customize them based on your project's translation workflow by editing the hook files directly at `.git/hooks/pre-commit` or `.git/hooks/pre-push`.
+Every hook this CLI installs carries a marker recording the SHA-256 of its body, and `hooks list` checks it rather than reporting a bare "installed". A `!` means the file at that path is not what its own marker says it is — you edited it, or something else wrote it. The hash is unkeyed, so a match shows a hook has not changed since its marker was written, not that this CLI wrote it: anyone who can write the hook can write a marker to agree with it. `--format json` reports these states as strings (`installed`, `modified`, `unverified`, `not-installed`) rather than booleans.
+
+**Note:** The hooks are generated with placeholder validation logic. You can customize them based on your project's translation workflow by editing the hook files directly at `.git/hooks/pre-commit` or `.git/hooks/pre-push`. A customized hook reports as `!` from then on, since its body no longer matches the hash recorded when it was installed.
 
 See [examples/20-git-hooks.sh](./examples/20-git-hooks.sh) for a complete git hooks example demonstrating installation, usage, and management.
 
