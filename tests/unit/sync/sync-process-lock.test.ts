@@ -76,6 +76,36 @@ describe('acquireSyncProcessLock', () => {
       expect(fs.existsSync(pidFilePath)).toBe(false);
     });
 
+    /**
+     * A pidfile that exists before its payload does reads as malformed, and a
+     * concurrent sync that catches that window judges the live lock stale and
+     * removes it. No identity check downstream can catch that: the file it
+     * inspected really is the file it deleted.
+     */
+    it('writes the payload before the pidfile appears at its final path', () => {
+      const realWriteSync = fsModule.writeSync;
+      let finalPathExisted: boolean | undefined;
+      jest.spyOn(fsModule, 'writeSync').mockImplementation(((
+        ...args: Parameters<typeof fs.writeSync>
+      ) => {
+        finalPathExisted ??= fs.existsSync(pidFilePath);
+        return realWriteSync(...args);
+      }) as typeof fs.writeSync);
+
+      const handle = acquireSyncProcessLock(projectRoot);
+
+      expect(finalPathExisted).toBe(false);
+      expect(ownerPid()).toBe(process.pid);
+      handle.release();
+    });
+
+    it('leaves no staging file behind', () => {
+      const handle = acquireSyncProcessLock(projectRoot);
+      handle.release();
+
+      expect(fs.readdirSync(projectRoot)).toEqual([]);
+    });
+
     it('propagates a pidfile write failure that is not EEXIST', () => {
       let caught: unknown;
       try {
@@ -230,6 +260,87 @@ describe('acquireSyncProcessLock', () => {
       });
 
       expect(() => acquireSyncProcessLock(projectRoot)).toThrow('EACCES');
+    });
+
+    /**
+     * The reclaim is a check followed by a removal, so a sync that wins the
+     * race writes a LIVE pidfile into the window between the two. Removing it
+     * would leave both processes believing they hold the lock, writing the same
+     * target files and the same lockfile.
+     */
+    it('leaves a live pidfile alone when a racing sync reclaims the lock first', () => {
+      const winnerPid = 5555;
+      plantPidFile({ pid: 4242, startedAt: '2026-01-01T00:00:00.000Z' });
+      const realKill = process.kill.bind(process);
+      jest
+        .spyOn(process, 'kill')
+        .mockImplementation((pid: number, signal?: string | number) => {
+          if (pid === 4242) {
+            // A racing sync takes the lock between this staleness verdict and
+            // the reclaim it authorises. Unlink-then-create, as a real winner
+            // does, so the replacement is a different inode.
+            fs.rmSync(pidFilePath, { force: true });
+            plantPidFile({
+              pid: winnerPid,
+              startedAt: '2026-06-01T00:00:00.000Z',
+            });
+            throw errnoError('ESRCH');
+          }
+          if (pid === winnerPid) return true;
+          return realKill(pid, signal);
+        });
+
+      expect(() => acquireSyncProcessLock(projectRoot)).toThrow(ConfigError);
+      expect(ownerPid()).toBe(winnerPid);
+    });
+
+    it('reports the running sync rather than a raw EEXIST when the freed slot is taken first', () => {
+      const winnerPid = 5555;
+      plantPidFile({ pid: 4242, startedAt: '2026-01-01T00:00:00.000Z' });
+      jest.spyOn(process, 'kill').mockImplementation((pid: number) => {
+        if (pid === 4242) throw errnoError('ESRCH');
+        return true;
+      });
+      const realUnlink = fsModule.unlinkSync;
+      let taken = false;
+      jest.spyOn(fsModule, 'unlinkSync').mockImplementation((target) => {
+        realUnlink(target);
+        if (!taken) {
+          taken = true;
+          // The winner claims the now-vacant path before this process can.
+          plantPidFile({
+            pid: winnerPid,
+            startedAt: '2026-06-01T00:00:00.000Z',
+          });
+        }
+      });
+
+      let caught: unknown;
+      try {
+        acquireSyncProcessLock(projectRoot);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(ConfigError);
+      expect((caught as Error).message).toMatch(/PID=5555/);
+      expect(ownerPid()).toBe(winnerPid);
+    });
+
+    it('gives up with a clear error when the pidfile keeps being replaced', () => {
+      plantPidFile('not json at all');
+      const realRename = fsModule.renameSync;
+      jest.spyOn(fsModule, 'renameSync').mockImplementation((from, to) => {
+        realRename(from, to);
+        // A phantom process recreates a stale pidfile every time this one is
+        // cleared, so the retry loop must terminate rather than spin.
+        plantPidFile('not json at all');
+      });
+
+      expect(() => acquireSyncProcessLock(projectRoot)).toThrow(ConfigError);
+      expect(() => acquireSyncProcessLock(projectRoot)).toThrow(
+        /keeps being replaced/
+      );
     });
   });
 
