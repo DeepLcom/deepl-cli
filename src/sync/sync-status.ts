@@ -1,6 +1,7 @@
 import * as path from 'path';
 import type { FormatRegistry } from '../formats/index.js';
-import { SyncLockManager, getOwnMember } from './sync-lock.js';
+import { SyncLockManager } from './sync-lock.js';
+import { getOwnMember } from '../utils/own-members.js';
 import { computeDiff } from './sync-differ.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import { LOCK_FILE_NAME } from './types.js';

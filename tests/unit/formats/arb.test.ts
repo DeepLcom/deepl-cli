@@ -64,6 +64,65 @@ describe('arb parser', () => {
     });
   });
 
+  // A key colliding with an Object.prototype member is plausible in a real
+  // Flutter project, and the insertion path is reached whenever the source gains
+  // a key the existing target file does not have.
+  describe('reconstruct inserts a key that collides with Object.prototype', () => {
+    const COLLIDING = [
+      'toString',
+      'valueOf',
+      'constructor',
+      'hasOwnProperty',
+      'isPrototypeOf',
+      '__proto__',
+    ];
+
+    const template = JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n';
+
+    it.each(COLLIDING)('should insert a key named %s', (key) => {
+      const entries: TranslatedEntry[] = [
+        { key: 'greeting', value: 'Hello', translation: 'Hola' },
+        { key, value: `Source ${key}`, translation: `Translated ${key}` },
+      ];
+
+      const parsed = JSON.parse(
+        parser.reconstruct(template, entries)
+      ) as Record<string, unknown>;
+
+      expect(Object.hasOwn(parsed, key)).toBe(true);
+      expect(parsed[key]).toBe(`Translated ${key}`);
+    });
+
+    it('should insert every colliding key in one pass', () => {
+      const entries: TranslatedEntry[] = COLLIDING.map((key) => ({
+        key,
+        value: `Source ${key}`,
+        translation: `Translated ${key}`,
+      }));
+
+      const parsed = JSON.parse(
+        parser.reconstruct(template, entries)
+      ) as Record<string, unknown>;
+
+      expect(Object.keys(parsed).sort()).toEqual([...COLLIDING].sort());
+    });
+
+    it('should not reach the prototype setter when inserting __proto__', () => {
+      const entries: TranslatedEntry[] = [
+        { key: '__proto__', value: 'Source', translation: 'Translated' },
+      ];
+
+      const parsed = JSON.parse(
+        parser.reconstruct(template, entries)
+      ) as Record<string, unknown>;
+
+      expect(Object.getPrototypeOf(parsed)).toBe(Object.prototype);
+      expect(({} as Record<string, unknown>)['__proto__']).toBe(
+        Object.prototype
+      );
+    });
+  });
+
   describe('reconstruct() applies translations to existing keys', () => {
     it('should update values for all existing keys', () => {
       const content =

@@ -7,9 +7,8 @@ import {
   SyncLockManager,
   computeSourceHash,
   ensureFileEntries,
-  getOwnMember,
-  setOwnMember,
 } from './sync-lock.js';
+import { getOwnMember, setOwnMember } from '../utils/own-members.js';
 import {
   resolveTargetPath,
   assertPathWithinRoot,

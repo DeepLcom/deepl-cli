@@ -2,40 +2,9 @@ import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { Logger } from '../utils/logger.js';
+import { getOwnMember, setOwnMember } from '../utils/own-members.js';
 import type { SyncLockFile, SyncLockEntry } from './types.js';
 import { LOCK_FILE_VERSION, LOCK_FILE_COMMENT } from './types.js';
-
-/**
- * Stores an own, enumerable member. Plain assignment cannot be used: an i18n
- * key or a source path named `__proto__` reaches the prototype setter instead
- * of creating a property, so the member never lands in the lockfile and the key
- * is re-translated and re-billed on every run.
- */
-export function setOwnMember<T>(
-  map: Record<string, T>,
-  key: string,
-  value: T
-): void {
-  Object.defineProperty(map, key, {
-    value,
-    writable: true,
-    enumerable: true,
-    configurable: true,
-  });
-}
-
-/**
- * Reads a member only when the map actually holds one. Plain indexing hands
- * back inherited `Object.prototype` members for keys named `constructor`,
- * `toString`, `valueOf` and `hasOwnProperty`, which read as an existing entry
- * that happens to be missing every field it should have.
- */
-export function getOwnMember<T>(
-  map: Record<string, T>,
-  key: string
-): T | undefined {
-  return Object.hasOwn(map, key) ? map[key] : undefined;
-}
 
 /** The per-file entry map, created on demand and setter-proof either way. */
 export function ensureFileEntries(

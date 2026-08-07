@@ -249,6 +249,56 @@ describe('CLI Sync E2E', () => {
     });
   });
 
+  // A key colliding with an Object.prototype member reaches the insertion path
+  // the second time round: the target file already exists, so a key the source
+  // has just gained has to be added to it.
+  describe('an .arb key named like an Object.prototype member', () => {
+    const sourcePath = () => path.join(testFiles.path, 'locales', 'app_en.arb');
+    const targetPath = () => path.join(testFiles.path, 'locales', 'app_de.arb');
+
+    function writeArbConfig(): void {
+      const yaml =
+        [
+          'version: 1',
+          'source_locale: en',
+          'target_locales:',
+          '  - de',
+          'buckets:',
+          '  arb:',
+          '    include:',
+          '      - "locales/app_en.arb"',
+        ].join('\n') + '\n';
+      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.yaml'), yaml);
+    }
+
+    function writeSource(keys: Record<string, string>): void {
+      fs.mkdirSync(path.join(testFiles.path, 'locales'), { recursive: true });
+      fs.writeFileSync(sourcePath(), JSON.stringify(keys, null, 2) + '\n');
+    }
+
+    it('should write a key the source gained into the existing target', () => {
+      writeArbConfig();
+      writeSource({ greeting: 'Hello' });
+      runSyncAll();
+
+      writeSource({
+        greeting: 'Hello',
+        toString: 'Convert to text',
+        hasOwnProperty: 'Check the property',
+        plainNewKey: 'A plain new key',
+      });
+      const output = runSyncAll();
+
+      expect(output).toContain('Sync complete');
+      const written = JSON.parse(
+        fs.readFileSync(targetPath(), 'utf-8')
+      ) as Record<string, unknown>;
+      expect(Object.hasOwn(written, 'toString')).toBe(true);
+      expect(Object.hasOwn(written, 'hasOwnProperty')).toBe(true);
+      expect(Object.hasOwn(written, 'plainNewKey')).toBe(true);
+    });
+  });
+
   describe('a lock file the repository controls', () => {
     const lockPath = () => path.join(testFiles.path, '.deepl-sync.lock');
 

@@ -15,7 +15,7 @@ import {
   mergeInstructions,
   generateLengthInstruction,
 } from './sync-instructions.js';
-import { getOwnMember } from './sync-lock.js';
+import { getOwnMember } from '../utils/own-members.js';
 import { validateBatch } from './translation-validator.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { mapWithConcurrency } from '../utils/concurrency.js';

@@ -4,6 +4,7 @@ import type {
   TranslatedEntry,
 } from './format.js';
 import { detectIndent } from './util/detect-indent.js';
+import { setOwnMember } from '../utils/own-members.js';
 
 /** JSON.parse rejects a leading BOM, which editors on Windows add routinely. */
 function stripBom(content: string): string {
@@ -72,15 +73,19 @@ export class ArbFormatParser implements FormatParser {
     for (const key of Object.keys(data)) {
       if (!key.startsWith('@') && !translations.has(key)) {
         delete data[key];
-        if (`@${key}` in data) {
+        if (Object.hasOwn(data, `@${key}`)) {
           delete data[`@${key}`];
         }
       }
     }
 
+    // Own-property tests, not `key in data`: an i18n key named `toString` or
+    // `__proto__` collides with an Object.prototype member, so a membership test
+    // reports it as already present and the translation is dropped from the file
+    // it was billed for.
     for (const [key, translation] of translations) {
-      if (!(key in data)) {
-        data[key] = translation;
+      if (!Object.hasOwn(data, key)) {
+        setOwnMember(data, key, translation);
       }
     }
 

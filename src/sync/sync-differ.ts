@@ -1,6 +1,7 @@
 import type { ExtractedEntry } from '../formats/format.js';
 import type { SyncLockEntry, SyncDiff } from './types.js';
-import { computeSourceHash, getOwnMember } from './sync-lock.js';
+import { computeSourceHash } from './sync-lock.js';
+import { getOwnMember } from '../utils/own-members.js';
 
 /**
  * Is any of `targetLocales` out of date for this entry?

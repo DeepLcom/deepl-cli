@@ -7,12 +7,8 @@ import {
 } from '../utils/concurrency.js';
 import { ValidationError } from '../utils/errors.js';
 import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
-import {
-  computeSourceHash,
-  ensureFileEntries,
-  getOwnMember,
-  setOwnMember,
-} from './sync-lock.js';
+import { computeSourceHash, ensureFileEntries } from './sync-lock.js';
+import { getOwnMember, setOwnMember } from '../utils/own-members.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncLockFile, SyncLockTranslation } from './types.js';
 import type { KeyContext } from './sync-context.js';
