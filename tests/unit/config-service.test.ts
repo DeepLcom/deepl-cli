@@ -266,6 +266,98 @@ describe('ConfigService', () => {
     });
   });
 
+  describe('tms.allowedServers', () => {
+    it('defaults to an empty list, so no destination is trusted implicitly', () => {
+      expect(configService.get().tms.allowedServers).toEqual([]);
+    });
+
+    it('accepts an array of hostnames', () => {
+      configService.set('tms.allowedServers', [
+        'tms.example.com',
+        'tms2.example.com',
+      ]);
+      expect(configService.getValue('tms.allowedServers')).toEqual([
+        'tms.example.com',
+        'tms2.example.com',
+      ]);
+    });
+
+    it('lowercases stored hostnames so matching is not case-sensitive on disk', () => {
+      configService.set('tms.allowedServers', ['TMS.Example.COM']);
+      expect(configService.getValue('tms.allowedServers')).toEqual([
+        'tms.example.com',
+      ]);
+    });
+
+    it('trims surrounding whitespace from each hostname', () => {
+      configService.set('tms.allowedServers', ['  tms.example.com  ']);
+      expect(configService.getValue('tms.allowedServers')).toEqual([
+        'tms.example.com',
+      ]);
+    });
+
+    it('rejects a bare string — a single host must still be a one-element array', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', 'tms.example.com');
+      }).toThrow(/tms\.allowedServers must be an array of hostnames/);
+    });
+
+    it('rejects a non-string entry', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms.example.com', 42]);
+      }).toThrow(/tms\.allowedServers entries must be strings/);
+    });
+
+    it('rejects an empty hostname', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms.example.com', '  ']);
+      }).toThrow(/tms\.allowedServers entries must not be empty/);
+    });
+
+    it('rejects a full URL, naming the hostname-only expectation', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['https://tms.example.com']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('rejects a host:port pair', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms.example.com:8443']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('rejects an entry with a path', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms.example.com/api']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('rejects an entry containing whitespace', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms example.com']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('rejects a wildcard, which is not supported', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['*.example.com']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('accepts a bracketed IPv6 literal, matching URL.hostname', () => {
+      configService.set('tms.allowedServers', ['[::1]']);
+      expect(configService.getValue('tms.allowedServers')).toEqual(['[::1]']);
+    });
+
+    it('preserves a loaded allowlist across a reload rather than dropping the block', () => {
+      configService.set('tms.allowedServers', ['tms.example.com']);
+      const reloaded = new ConfigService(mockConfigPath);
+      expect(reloaded.getValue('tms.allowedServers')).toEqual([
+        'tms.example.com',
+      ]);
+    });
+  });
+
   describe('edge cases', () => {
     it('should handle empty string values', () => {
       configService.set('auth.apiKey', '');

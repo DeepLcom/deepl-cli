@@ -1497,7 +1497,17 @@ Push local translations to a TMS for human review.
 
 **Requires TMS integration.** Add a `tms:` block to `.deepl-sync.yaml` (at minimum `enabled: true`, `server`, `project_id`) and supply credentials via the `TMS_API_KEY` or `TMS_TOKEN` environment variable. Running `push` without a configured `tms:` block exits 7 (ConfigError). See [docs/SYNC.md#tms-rest-contract](./SYNC.md#tms-rest-contract) for the full field reference and REST contract.
 
-**JSON success envelope (stable within a major version):** `{ "ok": true, "pushed": <n>, "skipped": [...] }`
+**TMS destination trust.** `tms.server` is chosen by `.deepl-sync.yaml`, which lives in the checkout, while `TMS_API_KEY` / `TMS_TOKEN` come from your environment. Before an **environment-supplied** credential is attached to a request, the destination hostname must be one you have approved:
+
+- Approved if the hostname appears in the user-level `tms.allowedServers` list (`deepl config set tms.allowedServers tms.example.com`, comma-separate several).
+- Otherwise, in an interactive terminal, the CLI names the host and what would be sent and asks once. Answering yes records the hostname in **user** config (`~/.config/deepl-cli/config.json`), never in the repository.
+- Otherwise — under `--no-input`, or on a non-TTY such as CI — the run fails closed with exit 7 (ConfigError) naming the host and the exact `deepl config set tms.allowedServers ...` command. No credential and no translated string is sent.
+
+The gate applies only to environment-supplied credentials. A credential inlined as `tms.api_key` / `tms.token` in `.deepl-sync.yaml` is not gated: it belongs to the same file that chose the destination, so nothing of yours leaks. Loopback hosts (`localhost`, `127.0.0.1`) are **not** exempt — a co-tenant process listening locally is still an exfiltration sink.
+
+Both commands print the resolved destination origin on success, in text and JSON output, so a redirected destination is visible in logs even when the host was already approved.
+
+**JSON success envelope (stable within a major version):** `{ "ok": true, "pushed": <n>, "skipped": [...], "server": "<origin>" }`
 
 ##### `pull`
 
@@ -1511,7 +1521,17 @@ Pull approved translations from a TMS back into local files.
 
 **Requires TMS integration.** Add a `tms:` block to `.deepl-sync.yaml` (at minimum `enabled: true`, `server`, `project_id`) and supply credentials via the `TMS_API_KEY` or `TMS_TOKEN` environment variable. Running `pull` without a configured `tms:` block exits 7 (ConfigError). See [docs/SYNC.md#tms-rest-contract](./SYNC.md#tms-rest-contract) for the full field reference and REST contract.
 
-**JSON success envelope (stable within a major version):** `{ "ok": true, "pulled": <n>, "skipped": [...] }`
+**TMS destination trust.** `tms.server` is chosen by `.deepl-sync.yaml`, which lives in the checkout, while `TMS_API_KEY` / `TMS_TOKEN` come from your environment. Before an **environment-supplied** credential is attached to a request, the destination hostname must be one you have approved:
+
+- Approved if the hostname appears in the user-level `tms.allowedServers` list (`deepl config set tms.allowedServers tms.example.com`, comma-separate several).
+- Otherwise, in an interactive terminal, the CLI names the host and what would be sent and asks once. Answering yes records the hostname in **user** config (`~/.config/deepl-cli/config.json`), never in the repository.
+- Otherwise — under `--no-input`, or on a non-TTY such as CI — the run fails closed with exit 7 (ConfigError) naming the host and the exact `deepl config set tms.allowedServers ...` command. No credential and no translated string is sent.
+
+The gate applies only to environment-supplied credentials. A credential inlined as `tms.api_key` / `tms.token` in `.deepl-sync.yaml` is not gated: it belongs to the same file that chose the destination, so nothing of yours leaks. Loopback hosts (`localhost`, `127.0.0.1`) are **not** exempt — a co-tenant process listening locally is still an exfiltration sink.
+
+Both commands print the resolved destination origin on success, in text and JSON output, so a redirected destination is visible in logs even when the host was already approved.
+
+**JSON success envelope (stable within a major version):** `{ "ok": true, "pulled": <n>, "skipped": [...], "server": "<origin>" }`
 
 #### Examples
 
@@ -3114,6 +3134,9 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
     "debounceMs": 500,
     "autoCommit": false,
     "pattern": "*.md"
+  },
+  "tms": {
+    "allowedServers": []
   }
 }
 ```
@@ -3121,6 +3144,7 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 **Configuration Notes:**
 
 - **`baseUrl`** — when set to a custom/regional endpoint (e.g. `https://api-jp.deepl.com`), it overrides all auto-detection. Standard DeepL URLs (`api.deepl.com`, `api-free.deepl.com`) are treated as tier defaults and do **not** override key-based auto-detection. By default, the endpoint is auto-detected from the API key: keys ending with `:fx` use the Free API (`api-free.deepl.com`), all others use the Pro API (`api.deepl.com`). The `usePro` flag serves as a backward-compatible fallback for non-`:fx` keys.
+- **`tms.allowedServers`** — hostnames approved as TMS destinations for an environment-supplied `TMS_API_KEY` / `TMS_TOKEN`. Empty by default, so no destination is trusted implicitly. Entries must be bare hostnames (no scheme, port, path, or wildcard) because they are matched against a parsed URL hostname, exactly and case-insensitively — a listed `example.com` does not approve `tms.example.com`. Set it with `deepl config set tms.allowedServers a.example.com,b.example.com`; a single host is still stored as a one-element array. See [`sync push`](#push) for how the gate behaves.
 - Most users configure settings via `deepl config set` command rather than editing the file directly.
 
 ---
@@ -3335,6 +3359,7 @@ The configuration file or a configuration value is invalid. Emitted by:
 - Any command that loads the config file when the file fails to parse, is missing a required field, or specifies an unsupported version
 - `sync` when `.deepl-sync.yaml` is missing required fields, has invalid locales, or declares an unsupported version
 - `sync push` / `sync pull` when the remote TMS returns 401/403 (surfaced as `ConfigError` with a hint to check `TMS_API_KEY` / `TMS_TOKEN` and the relevant YAML fields)
+- `sync push` / `sync pull` when `.deepl-sync.yaml` names a `tms.server` hostname that is not in `tms.allowedServers` and the approval prompt is unavailable (`--no-input`, non-TTY) or declined
 - `glossary` when a named glossary cannot be resolved
 
 Remediation: run `deepl config get` to inspect the current config, or edit the file directly and re-run.

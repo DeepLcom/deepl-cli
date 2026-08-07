@@ -79,6 +79,7 @@ EXAMPLES=(
   "25-sync-laravel-php.sh"
   "26-sync-resolve.sh"
   "27-sync-audit.sh"
+  "40-sync-tms-destination-trust.sh"
   # Configuration
   "28-configuration.sh"
   "29-custom-config-files.sh"
@@ -132,6 +133,7 @@ if [ "$FAST_MODE" = true ]; then
     "25-sync-laravel-php.sh"
     "26-sync-resolve.sh"
     "27-sync-audit.sh"
+    "40-sync-tms-destination-trust.sh"
     # Configuration
     "28-configuration.sh"
     "29-custom-config-files.sh"

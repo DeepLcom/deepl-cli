@@ -286,7 +286,7 @@ Optional integration with a translation management system (TMS) for collaborativ
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `enabled` | `boolean` | Yes | -- | Enable TMS integration |
-| `server` | `string` | Yes | -- | TMS server URL (HTTPS required except for `localhost`/`127.0.0.1`) |
+| `server` | `string` | Yes | -- | TMS server URL (HTTPS required except for `localhost`/`127.0.0.1`). When the credential comes from the environment, the hostname must also be approved -- see [TMS destination trust](#tms-destination-trust) |
 | `project_id` | `string` | Yes | -- | TMS project identifier |
 | `api_key` | `string` | No | -- | API key for TMS authentication (prefer `TMS_API_KEY` env var) |
 | `token` | `string` | No | -- | Bearer token for TMS authentication (prefer `TMS_TOKEN` env var) |
@@ -295,6 +295,25 @@ Optional integration with a translation management system (TMS) for collaborativ
 | `require_review` | `string[]` | No | -- | Locales that require human review before pull |
 | `timeout_ms` | `number` | No | `30000` | Per-request timeout in milliseconds for TMS HTTP calls (positive integer). Aborts the request via `AbortController` when exceeded. |
 | `push_concurrency` | `number` | No | `10` | Maximum number of in-flight `PUT /keys/{keyPath}` requests during `deepl sync push`. Positive integer. Applied per (file, locale) batch of entries; aborts remaining pushes on first failure. |
+
+##### TMS destination trust
+
+`server` is chosen by this file, which lives in the checkout, while `TMS_API_KEY` / `TMS_TOKEN` come from the operator's environment. A checkout you do not control could therefore name the host that receives your credential and every translated string. Before an **environment-supplied** credential is attached to a request, the destination hostname must be approved in the operator's own configuration:
+
+```bash
+# Approve a destination up front (comma-separate several hosts)
+deepl config set tms.allowedServers tms.example.com
+```
+
+- Listed in `tms.allowedServers` → the run proceeds silently.
+- Not listed, interactive terminal → the CLI names the host and what would be sent, and asks once. Answering yes records the hostname in **user** config (`~/.config/deepl-cli/config.json`), never in the repository, so the answer survives a fresh clone of the same project and does not travel with the repo.
+- Not listed, no terminal (`--no-input`, CI) or declined → exit 7 (`ConfigError`) naming the host and the exact `deepl config set` command. Nothing is sent.
+
+Matching is against a parsed URL hostname: exact and case-insensitive, ignoring scheme, port and path. A listed `example.com` does **not** approve `tms.example.com`, and there are no wildcards. `localhost` and `127.0.0.1` are **not** exempt — a co-tenant process listening on loopback is still an exfiltration sink, even though `buildUrl` waives the HTTPS requirement for them.
+
+The gate does not apply to a credential inlined as `api_key` / `token` in this file: it belongs to the same file that chose the destination, so nothing of the operator's leaks. Inlining a credential is still discouraged (it commits a secret), and the CLI warns about it separately.
+
+`deepl sync push` and `deepl sync pull` print the resolved destination origin on success in both text and JSON output, so a redirected destination is visible in logs even for an already-approved host.
 
 ##### TMS reliability: timeouts and retries
 

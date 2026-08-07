@@ -53,6 +53,47 @@ const FORBIDDEN_KEY_SEGMENTS = new Set([
   'prototype',
 ]);
 
+export const ALLOWED_SERVERS_PATH = 'tms.allowedServers';
+
+/**
+ * What `URL.hostname` yields, and nothing else: a bare host, or a bracketed
+ * IPv6 literal. The allowlist is compared against a parsed hostname, so an
+ * entry carrying a scheme, port, path, or wildcard could never match and would
+ * read as approval that silently does not apply.
+ */
+const TMS_HOSTNAME_PATTERN =
+  /^(?:\[[0-9a-f:.]+\]|[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)$/;
+
+function parseAllowedServers(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    throw new ConfigError(
+      `${ALLOWED_SERVERS_PATH} must be an array of hostnames`,
+      `Run: deepl config set ${ALLOWED_SERVERS_PATH} tms.example.com  (comma-separate several hosts)`
+    );
+  }
+
+  return value.map((entry) => {
+    if (typeof entry !== 'string') {
+      throw new ConfigError(
+        `${ALLOWED_SERVERS_PATH} entries must be strings, got ${entry === null ? 'null' : typeof entry}`
+      );
+    }
+    const host = entry.trim().toLowerCase();
+    if (host === '') {
+      throw new ConfigError(
+        `${ALLOWED_SERVERS_PATH} entries must not be empty`
+      );
+    }
+    if (!TMS_HOSTNAME_PATTERN.test(host)) {
+      throw new ConfigError(
+        `Invalid TMS host "${entry}" for ${ALLOWED_SERVERS_PATH}: expected a bare hostname such as tms.example.com`,
+        'Drop the scheme, port, path, and any wildcard. The allowlist matches a parsed hostname exactly.'
+      );
+    }
+    return host;
+  });
+}
+
 const DEFAULT_CACHE_SIZE = 1024 * 1024 * 1024; // 1GB
 const DEFAULT_CACHE_TTL = 30 * 24 * 60 * 60; // 30 days in seconds
 /** Debounce delay applied by `watch` when neither the flag nor configuration
@@ -63,9 +104,10 @@ export const DEFAULT_DEBOUNCE_MS = 500;
 /**
  * Language values are stored lowercase, matching what `deepl languages` prints
  * and what the translate paths normalize their flags to, so a config written as
- * `DE` does not read back as a code the registry cannot look up.
+ * `DE` does not read back as a code the registry cannot look up. TMS hostnames
+ * are stored the same way, since they are matched against a parsed hostname.
  */
-function normalizeLanguageValue(path: string, value: unknown): unknown {
+function normalizeConfigValue(path: string, value: unknown): unknown {
   if (path === 'defaults.sourceLang' && typeof value === 'string') {
     return value.toLowerCase();
   }
@@ -73,6 +115,9 @@ function normalizeLanguageValue(path: string, value: unknown): unknown {
     return value.map((lang) =>
       typeof lang === 'string' ? lang.toLowerCase() : lang
     );
+  }
+  if (path === ALLOWED_SERVERS_PATH) {
+    return parseAllowedServers(value);
   }
   return value;
 }
@@ -102,7 +147,7 @@ export class ConfigService {
 
     const keys = key.split('.');
     this.validatePath(keys, value);
-    value = normalizeLanguageValue(keys.join('.'), value);
+    value = normalizeConfigValue(keys.join('.'), value);
 
     let current: Record<string, unknown> = this.config as unknown as Record<
       string,
@@ -247,6 +292,9 @@ export class ConfigService {
         autoCommit: false,
         pattern: '*.md',
       },
+      tms: {
+        allowedServers: [],
+      },
     };
   }
 
@@ -345,6 +393,7 @@ export class ConfigService {
       cache: { ...defaults.cache, ...loaded.cache },
       output: { ...defaults.output, ...loaded.output },
       watch: { ...defaults.watch, ...loaded.watch },
+      tms: { ...defaults.tms, ...loaded.tms },
     };
   }
 
@@ -417,6 +466,10 @@ export class ConfigService {
       if (typeof value !== 'number' || value < 0) {
         throw new ConfigError('Cache size must be positive');
       }
+    }
+
+    if (path === ALLOWED_SERVERS_PATH) {
+      parseAllowedServers(value);
     }
 
     if (path === 'api.baseUrl') {

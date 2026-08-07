@@ -80,7 +80,11 @@ export async function handleSyncPull(
 
     const processLock = acquireSyncProcessLock(config.projectRoot);
     try {
-      const client = createTmsClient(config.tms);
+      const client = await createTmsClient(config.tms);
+      const { tmsServerOrigin } =
+        await import('../../../sync/tms-server-trust.js');
+      const server = tmsServerOrigin(config.tms.server);
+
       const registry = await createDefaultRegistry();
       const result = await pullTranslations(config, client, registry, {
         localeFilter,
@@ -91,11 +95,12 @@ export async function handleSyncPull(
             ok: true,
             pulled: result.pulled,
             skipped: result.skipped,
+            server,
           }) + '\n'
         );
       } else {
         Logger.info(
-          `Pulled ${result.pulled} translations from TMS${formatSkippedSummary(result.skipped)}`
+          `Pulled ${result.pulled} translations from TMS at ${server}${formatSkippedSummary(result.skipped)}`
         );
       }
     } finally {

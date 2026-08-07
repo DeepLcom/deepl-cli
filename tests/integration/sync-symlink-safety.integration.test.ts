@@ -25,7 +25,12 @@ import { validateTranslations } from '../../src/sync/sync-validate';
 import { loadSyncConfig } from '../../src/sync/sync-config';
 
 import { createSyncHarness, writeSyncConfig } from '../helpers/sync-harness';
-import { expectTmsPush, expectTmsPull, tmsConfig } from '../helpers/tms-nock';
+import {
+  expectTmsPush,
+  expectTmsPull,
+  tmsConfig,
+  approvedTmsTrust,
+} from '../helpers/tms-nock';
 
 function writeJson(dir: string, relPath: string, obj: unknown): void {
   const abs = path.join(dir, relPath);
@@ -121,7 +126,7 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
     process.env['TMS_API_KEY'] = 'env-key';
 
     const config = await loadSyncConfig(projectDir);
-    const client = createTmsClient(config.tms!);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
 
     // Only the real file's key is expected on the wire; the symlinked secret
     // must not be read or transmitted.
@@ -153,7 +158,7 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
     process.env['TMS_API_KEY'] = 'env-key';
 
     const config = await loadSyncConfig(projectDir);
-    const client = createTmsClient(config.tms!);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
 
     // The TMS server returns translations for BOTH "greeting" and
     // "exfiltrated". If the symlinked source is read, pullTranslations will

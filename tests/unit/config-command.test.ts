@@ -103,6 +103,26 @@ describe('ConfigCommand', () => {
       );
     });
 
+    it('should parse a single tms.allowedServers hostname as a one-element array', async () => {
+      await configCommand.set('tms.allowedServers', 'tms.example.com');
+
+      expect(mockConfigService.set).toHaveBeenCalledWith('tms.allowedServers', [
+        'tms.example.com',
+      ]);
+    });
+
+    it('should parse comma-separated tms.allowedServers hostnames as an array', async () => {
+      await configCommand.set(
+        'tms.allowedServers',
+        'a.example.com,b.example.com'
+      );
+
+      expect(mockConfigService.set).toHaveBeenCalledWith('tms.allowedServers', [
+        'a.example.com',
+        'b.example.com',
+      ]);
+    });
+
     it('should set boolean values', async () => {
       await configCommand.set('cache.enabled', 'false');
 

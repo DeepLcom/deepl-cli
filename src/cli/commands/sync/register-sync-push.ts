@@ -75,7 +75,10 @@ async function handleSyncPush(
       );
     }
 
-    const client = createTmsClient(config.tms);
+    const client = await createTmsClient(config.tms);
+    const { tmsServerOrigin } =
+      await import('../../../sync/tms-server-trust.js');
+    const server = tmsServerOrigin(config.tms.server);
 
     const registry = await createDefaultRegistry();
     const result = await pushTranslations(config, client, registry, {
@@ -87,11 +90,12 @@ async function handleSyncPush(
           ok: true,
           pushed: result.pushed,
           skipped: result.skipped,
+          server,
         }) + '\n'
       );
     } else {
       Logger.info(
-        `Pushed ${result.pushed} translations to TMS${formatSkippedSummary(result.skipped)}`
+        `Pushed ${result.pushed} translations to TMS at ${server}${formatSkippedSummary(result.skipped)}`
       );
     }
   } catch (error) {

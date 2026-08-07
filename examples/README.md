@@ -44,11 +44,14 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 - [Sync — Laravel PHP arrays](./25-sync-laravel-php.sh) - `laravel_php` format parser: AST allowlist, span-surgical reconstruct, pipe-pluralization warning gate, `sync.limits` caps
 - [Sync — Resolve Lockfile Conflicts](./26-sync-resolve.sh) - Auto-resolving a `.deepl-sync.lock` left conflicted by `git merge`, and previewing the decisions first
 - [Sync — Audit Translation Consistency](./27-sync-audit.sh) - Finding one source term translated two different ways across a project
+- [Sync — TMS Destination Trust](./40-sync-tms-destination-trust.sh) - Why a repo-supplied `tms.server` cannot redirect an environment-held `TMS_API_KEY`, and how `tms.allowedServers` approves one
 
-`deepl sync push` and `deepl sync pull` have no example script here. They need a
-reachable TMS endpoint and a `TMS_API_KEY`, so an example could not run
-unattended as part of `run-all.sh`; see [docs/SYNC.md](../docs/SYNC.md) for their
-reference documentation.
+`deepl sync push` and `deepl sync pull` have no general example script here. They
+need a reachable TMS endpoint and a `TMS_API_KEY`, so an example could not
+exercise a real workflow unattended as part of `run-all.sh`; see
+[docs/SYNC.md](../docs/SYNC.md) for their reference documentation. The destination-trust
+example above is the exception — it runs its own throwaway TMS on loopback, so it
+needs neither an API key nor a network.
 
 ### Configuration
 

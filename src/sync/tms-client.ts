@@ -4,6 +4,11 @@ import { sanitizeUrl } from '../utils/sanitize-url.js';
 import { Logger } from '../utils/logger.js';
 import type { ExtractedEntry } from '../formats/format.js';
 import type { SyncTmsConfig } from './types.js';
+import {
+  ensureTmsServerApproved,
+  type TmsCredentialSource,
+  type TmsServerTrustDeps,
+} from './tms-server-trust.js';
 
 const MAX_PULL_VALUE_BYTES = 64 * 1024;
 export const MAX_PULL_KEY_COUNT = 50000;
@@ -372,7 +377,7 @@ export class TmsClient {
 export function resolveTmsCredentials(config: {
   api_key?: string;
   token?: string;
-}): { apiKey?: string; token?: string } {
+}): { apiKey?: string; token?: string; source: TmsCredentialSource } {
   const apiKey = process.env['TMS_API_KEY'] ?? config.api_key;
   const token = process.env['TMS_TOKEN'] ?? config.token;
 
@@ -387,14 +392,32 @@ export function resolveTmsCredentials(config: {
     );
   }
 
-  return { apiKey, token };
+  return { apiKey, token, source: credentialSource(apiKey, token) };
 }
 
-export function createTmsClient(config: SyncTmsConfig): TmsClient {
-  const { apiKey, token } = resolveTmsCredentials({
+/**
+ * Where the credential that `getAuthHeader` will actually attach came from.
+ * It prefers apiKey, so an env-held token behind a config-held api_key is
+ * never sent and does not make the destination a leak.
+ */
+function credentialSource(
+  apiKey: string | undefined,
+  token: string | undefined
+): TmsCredentialSource {
+  if (apiKey) return process.env['TMS_API_KEY'] ? 'env' : 'config';
+  if (token) return process.env['TMS_TOKEN'] ? 'env' : 'config';
+  return 'none';
+}
+
+export async function createTmsClient(
+  config: SyncTmsConfig,
+  trustDeps: TmsServerTrustDeps = {}
+): Promise<TmsClient> {
+  const { apiKey, token, source } = resolveTmsCredentials({
     api_key: config.api_key,
     token: config.token,
   });
+  await ensureTmsServerApproved(config.server, source, trustDeps);
   return new TmsClient({
     serverUrl: config.server,
     projectId: config.project_id,

@@ -16,6 +16,10 @@ const BOOLEAN_KEYS = [
 
 const NUMERIC_KEYS = ['cache.maxSize', 'cache.ttl', 'watch.debounceMs'];
 
+// Keys whose value is always a list, so a single entry still arrives as an
+// array rather than a bare string.
+const ARRAY_KEYS = ['tms.allowedServers'];
+
 export class ConfigCommand {
   private config: ConfigService;
 
@@ -115,7 +119,11 @@ export class ConfigCommand {
    */
   private parseValue(key: string, value: string): unknown {
     // Handle array values (comma-separated)
-    if (key.includes('targetLangs') || value.includes(',')) {
+    if (
+      ARRAY_KEYS.includes(key) ||
+      key.includes('targetLangs') ||
+      value.includes(',')
+    ) {
       return value.split(',').map((v) => v.trim());
     }
 

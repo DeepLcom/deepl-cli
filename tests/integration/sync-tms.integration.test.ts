@@ -20,14 +20,17 @@ import { pushTranslations, pullTranslations } from '../../src/sync/sync-tms';
 import { loadSyncConfig } from '../../src/sync/sync-config';
 import { LOCK_FILE_NAME } from '../../src/sync/types';
 import { ConfigError } from '../../src/utils/errors';
+import { ConfigService } from '../../src/storage/config';
 
 import { createSyncHarness, writeSyncConfig } from '../helpers/sync-harness';
 import {
   TMS_BASE,
+  TMS_HOSTNAME,
   TMS_PROJECT,
   expectTmsPush,
   expectTmsPull,
   tmsConfig,
+  approvedTmsTrust,
 } from '../helpers/tms-nock';
 
 function writeJson(dir: string, relPath: string, obj: unknown): void {
@@ -73,7 +76,7 @@ describe('sync push/pull (TMS integration)', () => {
     process.env['TMS_API_KEY'] = 'env-key';
 
     const config = await loadSyncConfig(tmpDir);
-    const client = createTmsClient(config.tms!);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
 
     const scopes = [
       expectTmsPush('farewell', 'de', 'Auf Wiedersehen', {
@@ -105,7 +108,7 @@ describe('sync push/pull (TMS integration)', () => {
     process.env['TMS_API_KEY'] = 'env-key';
 
     const config = await loadSyncConfig(tmpDir);
-    const client = createTmsClient(config.tms!);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
 
     const pullScope = expectTmsPull(
       'de',
@@ -161,7 +164,7 @@ describe('sync push/pull (TMS integration)', () => {
     process.env['TMS_API_KEY'] = 'from-env';
 
     const config = await loadSyncConfig(tmpDir);
-    const client = createTmsClient(config.tms!);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
 
     const scope = expectTmsPush('k', 'de', 'Hallo', {
       auth: { apiKey: 'from-env' },
@@ -180,7 +183,7 @@ describe('sync push/pull (TMS integration)', () => {
     process.env['TMS_TOKEN'] = 'the-token';
 
     const config = await loadSyncConfig(tmpDir);
-    const client = createTmsClient(config.tms!);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
 
     const scope = expectTmsPush('k', 'de', 'Hallo', {
       auth: { token: 'the-token' },
@@ -199,7 +202,7 @@ describe('sync push/pull (TMS integration)', () => {
       .mockImplementation(() => undefined);
     try {
       const config = await loadSyncConfig(tmpDir);
-      createTmsClient(config.tms!);
+      await createTmsClient(config.tms!, approvedTmsTrust);
       expect(warn).toHaveBeenCalledWith(
         expect.stringMatching(/TMS API key found in config file.*TMS_API_KEY/)
       );
@@ -246,7 +249,7 @@ describe('sync push/pull (TMS integration)', () => {
     process.env['TMS_API_KEY'] = 'bogus';
 
     const config = await loadSyncConfig(tmpDir);
-    const client = createTmsClient(config.tms!);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
 
     nock(TMS_BASE)
       .put(new RegExp(`/api/projects/${TMS_PROJECT}/keys/.+`))
@@ -262,5 +265,108 @@ describe('sync push/pull (TMS integration)', () => {
     await expect(
       pushTranslations(config, client, harness.registry)
     ).rejects.toThrow(/TMS authentication failed \(401/);
+  });
+});
+
+describe('TMS destination trust (real user config store)', () => {
+  let tmpDir: string;
+  let configDir: string;
+  let harness: ReturnType<typeof createSyncHarness>;
+  let envSnapshot: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    envSnapshot = { ...process.env };
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-tms-trust-'));
+    configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-tms-cfg-'));
+    harness = createSyncHarness({ parsers: ['json'] });
+    process.env['DEEPL_CONFIG_DIR'] = configDir;
+    process.env['TMS_API_KEY'] = 'MUST-NOT-LEAK';
+    delete process.env['TMS_TOKEN'];
+  });
+
+  afterEach(() => {
+    harness.cleanup();
+    for (const dir of [tmpDir, configDir]) {
+      if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+    }
+    nock.cleanAll();
+    process.env = envSnapshot;
+  });
+
+  function seedRepo(): void {
+    writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
+    writeJson(tmpDir, 'locales/en.json', { greeting: 'Hello' });
+    writeJson(tmpDir, 'locales/de.json', { greeting: 'Hallo' });
+  }
+
+  it('refuses an unapproved host and sends nothing, reading the real user config', async () => {
+    seedRepo();
+    const scope = expectTmsPush('greeting', 'de', 'Hallo');
+
+    const config = await loadSyncConfig(tmpDir);
+    await expect(
+      createTmsClient(config.tms!, { canPrompt: () => false })
+    ).rejects.toThrow(ConfigError);
+    expect(scope.isDone()).toBe(false);
+  });
+
+  it('proceeds when the host was pre-approved with deepl config set', async () => {
+    new ConfigService().set('tms.allowedServers', [TMS_HOSTNAME]);
+    seedRepo();
+    const scope = expectTmsPush('greeting', 'de', 'Hallo', {
+      auth: { apiKey: 'MUST-NOT-LEAK' },
+    });
+
+    const config = await loadSyncConfig(tmpDir);
+    const client = await createTmsClient(config.tms!, {
+      canPrompt: () => false,
+    });
+    const result = await pushTranslations(config, client, harness.registry);
+    expect(result.pushed).toBe(1);
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('records an accepted prompt in the user config, outside the repo', async () => {
+    seedRepo();
+    const config = await loadSyncConfig(tmpDir);
+    await createTmsClient(config.tms!, {
+      canPrompt: () => true,
+      promptForApproval: async () => true,
+    });
+
+    expect(new ConfigService().getValue('tms.allowedServers')).toEqual([
+      TMS_HOSTNAME,
+    ]);
+    expect(fs.existsSync(path.join(configDir, 'config.json'))).toBe(true);
+    expect(fs.readdirSync(tmpDir)).not.toContain('config.json');
+  });
+
+  it('does not prompt again on a later run once approved', async () => {
+    seedRepo();
+    const config = await loadSyncConfig(tmpDir);
+    const promptForApproval = jest.fn(async () => true);
+    await createTmsClient(config.tms!, {
+      canPrompt: () => true,
+      promptForApproval,
+    });
+    await createTmsClient(config.tms!, {
+      canPrompt: () => true,
+      promptForApproval,
+    });
+    expect(promptForApproval).toHaveBeenCalledTimes(1);
+  });
+
+  it('records the approval only once when the same host is approved twice', async () => {
+    seedRepo();
+    const config = await loadSyncConfig(tmpDir);
+    for (let i = 0; i < 2; i++) {
+      await createTmsClient(config.tms!, {
+        canPrompt: () => true,
+        promptForApproval: async () => true,
+      });
+    }
+    expect(new ConfigService().getValue('tms.allowedServers')).toEqual([
+      TMS_HOSTNAME,
+    ]);
   });
 });

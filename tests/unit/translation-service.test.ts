@@ -105,6 +105,7 @@ describe('TranslationService', () => {
         auth: {},
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
+        tms: { allowedServers: [] },
       });
 
       mockDeepLClient.translate.mockResolvedValue({
@@ -140,6 +141,7 @@ describe('TranslationService', () => {
         auth: {},
         output: { format: 'text', color: true, verbose: false },
         watch: { debounceMs: 500, autoCommit: false, pattern: '**/*' },
+        tms: { allowedServers: [] },
       });
 
       mockDeepLClient.translate.mockResolvedValue({

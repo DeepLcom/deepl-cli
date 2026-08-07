@@ -124,6 +124,9 @@ describe('CLI sync push/pull dispatch E2E', () => {
       cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
+      // The mock TMS runs on loopback; approve it as a destination so the
+      // env-supplied TMS_API_KEY is not withheld by the trust gate.
+      tms: { allowedServers: ['127.0.0.1'] },
     };
     fs.writeFileSync(
       path.join(testConfig.path, 'config.json'),
@@ -135,10 +138,15 @@ describe('CLI sync push/pull dispatch E2E', () => {
     opts: {
       targetLocales?: string[];
       includeTmsBlock?: boolean;
+      tmsServer?: string;
     } = {}
   ): void {
     const tms = opts.includeTmsBlock
-      ? { enabled: true, server: baseUrl, project_id: PROJECT_ID }
+      ? {
+          enabled: true,
+          server: opts.tmsServer ?? baseUrl,
+          project_id: PROJECT_ID,
+        }
       : undefined;
     const yaml = buildSyncConfigYaml({
       targetLocales: opts.targetLocales ?? ['de'],
@@ -241,6 +249,7 @@ describe('CLI sync push/pull dispatch E2E', () => {
       expect(run.status).toBe(0);
       const combined = run.stdout + run.stderr;
       expect(combined).toMatch(/Pushed \d+ translations to TMS/);
+      expect(combined).toContain(baseUrl);
 
       const state = await inspectMockServer();
       expect(state.requests.length).toBeGreaterThan(0);
@@ -274,6 +283,7 @@ describe('CLI sync push/pull dispatch E2E', () => {
       expect(run.status).toBe(0);
       const combined = run.stdout + run.stderr;
       expect(combined).toMatch(/Pulled \d+ translations from TMS/);
+      expect(combined).toContain(baseUrl);
 
       const targetFile = path.join(testFiles.path, 'locales', 'de.json');
       expect(fs.existsSync(targetFile)).toBe(true);
@@ -293,6 +303,98 @@ describe('CLI sync push/pull dispatch E2E', () => {
       );
       expect(pullReqs.length).toBeGreaterThan(0);
       expect(pullReqs[0]!.authHeader).toBe('ApiKey push-pull-key');
+    });
+  });
+
+  describe('repo-chosen destination not in tms.allowedServers', () => {
+    // The config dir approves 127.0.0.1 only, so pointing tms.server at
+    // "localhost" names an unapproved host that resolves to the SAME live mock
+    // TMS. If the gate did not fire, the push would succeed and the request
+    // would show up in the mock server's inspection state.
+    function unapprovedServer(): string {
+      return baseUrl.replace('127.0.0.1', 'localhost');
+    }
+
+    it('push: exits 7 without sending the env-supplied credential anywhere', async () => {
+      writeSyncYaml({ includeTmsBlock: true, tmsServer: unapprovedServer() });
+      writeSource({ greeting: 'Hello' });
+      writeTarget('de', { greeting: 'Hallo' });
+      await configureMockServer({});
+
+      const run = runCli(['sync', 'push'], {
+        TMS_API_KEY: 'must-not-leak',
+      });
+
+      expect(run.status).toBe(7);
+      const combined = run.stdout + run.stderr;
+      expect(combined).toContain('localhost');
+      expect(combined).toContain('deepl config set tms.allowedServers');
+      expect(combined).not.toContain('must-not-leak');
+
+      const state = await inspectMockServer();
+      expect(state.requests).toEqual([]);
+    });
+
+    it('pull: exits 7 without contacting the unapproved host', async () => {
+      writeSyncYaml({ includeTmsBlock: true, tmsServer: unapprovedServer() });
+      writeSource({ greeting: 'Hello' });
+      await configureMockServer({
+        pullResponses: { de: { greeting: 'Hallo (approved)' } },
+      });
+
+      const run = runCli(['sync', 'pull'], { TMS_API_KEY: 'must-not-leak' });
+
+      expect(run.status).toBe(7);
+      const combined = run.stdout + run.stderr;
+      expect(combined).toContain('deepl config set tms.allowedServers');
+
+      const state = await inspectMockServer();
+      expect(state.requests).toEqual([]);
+      expect(
+        fs.existsSync(path.join(testFiles.path, 'locales', 'de.json'))
+      ).toBe(false);
+    });
+
+    it('push --format json: emits the canonical ConfigError envelope', async () => {
+      writeSyncYaml({ includeTmsBlock: true, tmsServer: unapprovedServer() });
+      writeSource({ greeting: 'Hello' });
+      writeTarget('de', { greeting: 'Hallo' });
+      await configureMockServer({});
+
+      const run = runCli(['sync', 'push', '--format', 'json'], {
+        TMS_API_KEY: 'must-not-leak',
+      });
+
+      expect(run.status).toBe(7);
+      const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      expect(envelope.error.message).toContain('localhost');
+      expect(envelope.error.suggestion).toContain(
+        'deepl config set tms.allowedServers'
+      );
+    });
+
+    it('push: a credential inlined in the repo YAML is not gated', async () => {
+      const yaml = buildSyncConfigYaml({
+        targetLocales: ['de'],
+        buckets: { json: { include: ['locales/en.json'] } },
+        tms: {
+          enabled: true,
+          server: unapprovedServer(),
+          project_id: PROJECT_ID,
+          api_key: 'inlined-in-repo',
+        },
+      });
+      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.yaml'), yaml);
+      writeSource({ greeting: 'Hello' });
+      writeTarget('de', { greeting: 'Hallo' });
+      await configureMockServer({});
+
+      const run = runCli(['sync', 'push']);
+
+      expect(run.status).toBe(0);
+      const state = await inspectMockServer();
+      expect(state.requests.length).toBeGreaterThan(0);
+      expect(state.requests[0]!.authHeader).toBe('ApiKey inlined-in-repo');
     });
   });
 
@@ -426,10 +528,12 @@ describe('CLI sync push/pull dispatch E2E', () => {
         ok: boolean;
         pushed: number;
         skipped: unknown[];
+        server: string;
       };
       expect(envelope.ok).toBe(true);
       expect(typeof envelope.pushed).toBe('number');
       expect(Array.isArray(envelope.skipped)).toBe(true);
+      expect(envelope.server).toBe(baseUrl);
     });
 
     it('pull --format json on success: exits 0, emits JSON success envelope on stdout', async () => {
@@ -449,10 +553,12 @@ describe('CLI sync push/pull dispatch E2E', () => {
         ok: boolean;
         pulled: number;
         skipped: unknown[];
+        server: string;
       };
       expect(envelope.ok).toBe(true);
       expect(typeof envelope.pulled).toBe('number');
       expect(Array.isArray(envelope.skipped)).toBe(true);
+      expect(envelope.server).toBe(baseUrl);
     });
 
     it('push --format json with missing tms block: emits canonical error envelope on stderr, exit 7', () => {

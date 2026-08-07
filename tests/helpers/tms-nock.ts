@@ -12,7 +12,19 @@
 
 import nock from 'nock';
 
+import type { TmsServerTrustDeps } from '../../src/sync/tms-server-trust';
+
 export const TMS_BASE = 'https://tms.test';
+export const TMS_HOSTNAME = 'tms.test';
+
+/**
+ * Pre-approves TMS_BASE as a destination. `createTmsClient` refuses to attach
+ * an env-sourced TMS credential to a host the user's own config has not
+ * approved, and these suites drive that credential path deliberately.
+ */
+export const approvedTmsTrust: TmsServerTrustDeps = {
+  readAllowedServers: () => [TMS_HOSTNAME],
+};
 export const TMS_PROJECT = 'proj-42';
 export const TMS_API_KEY = 'tms-test-api-key';
 export const TMS_TOKEN = 'tms-test-token';

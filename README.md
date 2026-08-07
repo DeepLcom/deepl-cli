@@ -813,7 +813,13 @@ deepl sync resolve
 # Optional TMS integration (requires a tms: block in .deepl-sync.yaml)
 deepl sync push
 deepl sync pull
+
+# .deepl-sync.yaml picks the TMS host, so an environment-supplied TMS_API_KEY
+# only goes to a host you have approved. Approve one up front:
+deepl config set tms.allowedServers tms.example.com
 ```
+
+Because `tms.server` is chosen by `.deepl-sync.yaml` in the checkout while `TMS_API_KEY`/`TMS_TOKEN` come from your environment, `push`/`pull` will not send an environment-supplied credential to a hostname you have not approved: it asks once in a terminal (recording the answer in your **user** config, outside the repo) and fails closed with exit 7 under `--no-input` or in CI. Both commands also print the destination origin on success. See [TMS destination trust](./docs/SYNC.md#tms-destination-trust).
 
 See **[docs/SYNC.md](./docs/SYNC.md)** for configuration (`.deepl-sync.yaml`), the lockfile model, CI/CD recipes, and the TMS REST contract, and [docs/API.md#sync](./docs/API.md#sync) for the full flag reference.
 
@@ -1100,6 +1106,10 @@ deepl config get cache.enabled
 # Set a value
 deepl config set defaults.targetLangs es,fr,de
 # ✓ Configuration updated: defaults.targetLangs = ["es","fr","de"]
+
+# Approve TMS destinations for an environment-supplied TMS_API_KEY / TMS_TOKEN
+deepl config set tms.allowedServers tms.example.com,tms2.example.com
+# ✓ Set tms.allowedServers = tms.example.com,tms2.example.com
 
 # Set cache size (in bytes)
 deepl config set cache.maxSize 2147483648
