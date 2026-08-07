@@ -85,12 +85,12 @@ describe('acquireSyncProcessLock', () => {
     it('writes the payload before the pidfile appears at its final path', () => {
       const realWriteSync = fsModule.writeSync;
       let finalPathExisted: boolean | undefined;
-      jest.spyOn(fsModule, 'writeSync').mockImplementation(((
-        ...args: Parameters<typeof fs.writeSync>
-      ) => {
-        finalPathExisted ??= fs.existsSync(pidFilePath);
-        return realWriteSync(...args);
-      }) as typeof fs.writeSync);
+      jest
+        .spyOn(fsModule, 'writeSync')
+        .mockImplementation((...args: Parameters<typeof fs.writeSync>) => {
+          finalPathExisted ??= fs.existsSync(pidFilePath);
+          return realWriteSync(...args);
+        });
 
       const handle = acquireSyncProcessLock(projectRoot);
 
