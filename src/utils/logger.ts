@@ -3,6 +3,8 @@
  * Centralized logging with quiet mode support
  */
 
+import { neutralizeTerminalControls } from './control-chars.js';
+
 class LoggerClass {
   private quiet: boolean = false;
   private verboseMode: boolean = false;
@@ -36,22 +38,33 @@ class LoggerClass {
   }
 
   private sanitize(value: unknown): unknown {
-    return this.sanitizeValue(value, new WeakSet());
+    return this.mapStrings(value, new WeakSet(), (text) =>
+      this.sanitizeString(text)
+    );
+  }
+
+  private neutralize(value: unknown): unknown {
+    return this.mapStrings(value, new WeakSet(), neutralizeTerminalControls);
   }
 
   /**
-   * Recursively redact strings inside plain objects, arrays and Errors so a
-   * dumped axios error (config.headers.Authorization etc.) cannot leak
-   * credentials via util.inspect. Other object types pass through unchanged.
+   * Recursively apply `transform` to strings inside plain objects, arrays and
+   * Errors so a dumped axios error (config.headers.Authorization etc.) cannot
+   * leak credentials via util.inspect. Other object types pass through
+   * unchanged.
    */
-  private sanitizeValue(value: unknown, seen: WeakSet<object>): unknown {
-    if (typeof value === 'string') return this.sanitizeString(value);
+  private mapStrings(
+    value: unknown,
+    seen: WeakSet<object>,
+    transform: (text: string) => string
+  ): unknown {
+    if (typeof value === 'string') return transform(value);
     if (value === null || typeof value !== 'object') return value;
     if (seen.has(value)) return '[Circular]';
     seen.add(value);
 
     if (Array.isArray(value)) {
-      return value.map((item) => this.sanitizeValue(item, seen));
+      return value.map((item) => this.mapStrings(item, seen, transform));
     }
 
     if (value instanceof Error) {
@@ -68,7 +81,7 @@ class LoggerClass {
             ? descriptor.value
             : (value as unknown as Record<string, unknown>)[key];
         Object.defineProperty(copy, key, {
-          value: this.sanitizeValue(raw, seen),
+          value: this.mapStrings(raw, seen, transform),
           writable: true,
           configurable: true,
           enumerable: descriptor.enumerable,
@@ -81,7 +94,7 @@ class LoggerClass {
     if (proto === Object.prototype || proto === null) {
       const result: Record<string, unknown> = {};
       for (const [key, entry] of Object.entries(value)) {
-        result[key] = this.sanitizeValue(entry, seen);
+        result[key] = this.mapStrings(entry, seen, transform);
       }
       return result;
     }
@@ -124,7 +137,11 @@ class LoggerClass {
     if (tmsToken) {
       result = result.replaceAll(tmsToken, '[REDACTED]');
     }
-    return result;
+    // Everything routed here goes to stderr, which is diagnostics rather than
+    // data: no caller consumes it as bytes, and a non-TTY stderr is still
+    // routinely rendered by an ANSI-interpreting CI log viewer, so control
+    // sequences are neutralized unconditionally.
+    return neutralizeTerminalControls(result);
   }
 
   /**
@@ -173,8 +190,19 @@ class LoggerClass {
   /**
    * Log essential output (ALWAYS shown, even in quiet mode)
    * Use this for translation results, command output, etc.
+   *
+   * Terminal control sequences are neutralized only when stdout is a TTY.
+   * Redirected stdout is data — `deepl translate ... > out.txt` and command
+   * substitution must reproduce the translation byte for byte — and a control
+   * sequence can only act on a terminal that interprets it. Untrusted values
+   * interpolated into report lines are sanitized at their call site instead,
+   * so those stay safe whether or not stdout is a terminal.
    */
   output(...args: unknown[]): void {
+    if (process.stdout.isTTY) {
+      console.log(...args.map((arg) => this.neutralize(arg)));
+      return;
+    }
     console.log(...args);
   }
 

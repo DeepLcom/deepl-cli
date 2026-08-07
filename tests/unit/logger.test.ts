@@ -659,4 +659,91 @@ describe('Logger', () => {
       expect(logged['url']).toBe('https://host?api_key=[REDACTED]');
     });
   });
+
+  describe('terminal control sequence handling', () => {
+    const OSC_TITLE = '\x1b]0;PWNED\x07';
+    let originalIsTTY: boolean | undefined;
+
+    function setStdoutTTY(value: boolean | undefined): void {
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value,
+        configurable: true,
+      });
+    }
+
+    beforeEach(() => {
+      originalIsTTY = process.stdout.isTTY;
+    });
+
+    afterEach(() => {
+      setStdoutTTY(originalIsTTY);
+    });
+
+    it('should neutralize escape sequences on stdout when stdout is a TTY', () => {
+      setStdoutTTY(true);
+      Logger.output(`${OSC_TITLE}Bonjour`);
+      expect(consoleLogSpy).toHaveBeenCalledWith('?]0;PWNED?Bonjour');
+    });
+
+    it('should neutralize a forged clean result built from erase and cursor moves', () => {
+      setStdoutTTY(true);
+      Logger.output('\x1b[2K\x1b[1;1HAll good');
+      expect(consoleLogSpy).toHaveBeenCalledWith('?[2K?[1;1HAll good');
+    });
+
+    it('should keep chalk colour codes on stdout when stdout is a TTY', () => {
+      setStdoutTTY(true);
+      Logger.output('\x1b[32mgreen\x1b[39m');
+      expect(consoleLogSpy).toHaveBeenCalledWith('\x1b[32mgreen\x1b[39m');
+    });
+
+    it('should keep piped stdout byte-faithful when stdout is not a TTY', () => {
+      setStdoutTTY(undefined);
+      const translated = `line one\nline two\tindented\nنمی\u200cخواهم${OSC_TITLE}`;
+      Logger.output(translated);
+      expect(consoleLogSpy).toHaveBeenCalledWith(translated);
+    });
+
+    it('should keep newlines and zero-width joiners in TTY stdout translations', () => {
+      setStdoutTTY(true);
+      Logger.output('erste Zeile\nzweite\tZeile\nنمی\u200cخواهم');
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'erste Zeile\nzweite\tZeile\nنمی\u200cخواهم'
+      );
+    });
+
+    it('should neutralize escape sequences nested in objects on TTY stdout', () => {
+      setStdoutTTY(true);
+      Logger.output({ text: `${OSC_TITLE}hi` });
+      expect(consoleLogSpy).toHaveBeenCalledWith({ text: '?]0;PWNED?hi' });
+    });
+
+    it('should neutralize escape sequences on stderr regardless of TTY', () => {
+      setStdoutTTY(undefined);
+      Logger.error(`API error: ${OSC_TITLE}`);
+      Logger.warn(`warn: ${OSC_TITLE}`);
+      Logger.info(`info: ${OSC_TITLE}`);
+      Logger.success(`success: ${OSC_TITLE}`);
+      Logger.setVerbose(true);
+      Logger.verbose(`verbose: ${OSC_TITLE}`);
+      expect(consoleErrorSpy.mock.calls.map((call) => call[0])).toEqual([
+        'API error: ?]0;PWNED?',
+        'warn: ?]0;PWNED?',
+        'info: ?]0;PWNED?',
+        'success: ?]0;PWNED?',
+        'verbose: ?]0;PWNED?',
+      ]);
+    });
+
+    it('should keep chalk colour codes on stderr', () => {
+      Logger.error('\x1b[31mred\x1b[39m');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('\x1b[31mred\x1b[39m');
+    });
+
+    it('should neutralize escape sequences inside a redacted Error message', () => {
+      Logger.error(new Error(`boom ${OSC_TITLE} DeepL-Auth-Key secret-value`));
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Error;
+      expect(logged.message).toBe('boom ?]0;PWNED? DeepL-Auth-Key [REDACTED]');
+    });
+  });
 });

@@ -785,6 +785,27 @@ describe('CLI Sync E2E', () => {
       expect(result.status).toBe(8);
       expect(result.output.toLowerCase()).toMatch(/placeholder|welcome/);
     });
+
+    it('does not emit raw terminal control characters from a hostile i18n key', () => {
+      writeSyncConfig(testFiles.path, ['de']);
+      const dir = path.join(testFiles.path, 'locales');
+      fs.mkdirSync(dir, { recursive: true });
+      const hostileKey = 'welcome\u001b]52;c;cHduZWQ=\u0007\u001b[2J';
+      fs.writeFileSync(
+        path.join(dir, 'en.json'),
+        JSON.stringify({ [hostileKey]: 'Hello {name}' }, null, 2) + '\n'
+      );
+      fs.writeFileSync(
+        path.join(dir, 'de.json'),
+        JSON.stringify({ [hostileKey]: 'Hallo' }, null, 2) + '\n'
+      );
+
+      const result = runSyncExpectError('validate');
+      expect(result.status).toBe(8);
+      expect(result.output).toContain('welcome');
+      // eslint-disable-next-line no-control-regex -- asserting the absence of control chars in rendered output
+      expect(result.output).not.toMatch(/[\x00-\x08\x0b\x0c\x0e-\x1f]/);
+    });
   });
 
   describe('flag combination rejection', () => {

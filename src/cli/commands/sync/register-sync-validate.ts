@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { Logger } from '../../../utils/logger.js';
+import { sanitizeForTerminal } from '../../../utils/control-chars.js';
 import { ExitCode } from '../../../utils/exit-codes.js';
 import type { ServiceDeps } from '../service-factory.js';
 import {
@@ -76,7 +77,9 @@ async function handleSyncValidate(
               ? chalk.red('ERROR')
               : chalk.yellow('WARN');
           Logger.output(
-            `  ${icon}  ${issue.locale}/${issue.key}: ${issue.issues.map((i) => i.message).join(', ')}`
+            `  ${icon}  ${sanitizeForTerminal(issue.locale)}/${sanitizeForTerminal(issue.key)}: ${issue.issues
+              .map((i) => sanitizeForTerminal(i.message))
+              .join(', ')}`
           );
         }
         Logger.output(

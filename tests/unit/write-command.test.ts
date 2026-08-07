@@ -935,6 +935,33 @@ describe('WriteCommand', () => {
       expect(selectConfig.choices.length).toBe(3); // Keep original + 2 unique
     });
 
+    it('should sanitize control characters in prompt labels while returning the raw text', async () => {
+      const hostile = 'Improved\u001b]0;PWNED\u0007 text.';
+      mockWriteService.improve.mockResolvedValue([
+        { text: hostile, targetLanguage: 'en-US' },
+      ]);
+      mockSelect.mockResolvedValue(0);
+
+      const result = await writeCommand.improveInteractive('Original text.', {
+        lang: 'en-us',
+        style: 'business',
+      });
+
+      const selectConfig = mockSelect.mock.calls[0]![0] as unknown as {
+        choices: Array<{ name: string; description: string }>;
+      };
+      const rendered = selectConfig.choices
+        .map((choice) => `${choice.name}${choice.description}`)
+        .join('');
+      // eslint-disable-next-line no-control-regex -- asserting the absence of control chars in prompt labels
+      expect(rendered).not.toMatch(/[\x00-\x08\x0b\x0c\x0e-\x1a\x1c-\x1f]/);
+      expect(selectConfig.choices[1]!.description).toBe(
+        'Improved?]0;PWNED? text.'
+      );
+      // The value handed back to the caller is untouched.
+      expect(result).toBe(hostile);
+    });
+
     it('should handle file input in interactive mode', async () => {
       await fs.mkdir(testDir, { recursive: true });
       const testFile = join(testDir, 'test.txt');

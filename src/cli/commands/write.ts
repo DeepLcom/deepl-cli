@@ -14,6 +14,7 @@ import chalk from 'chalk';
 import { formatWriteJson } from '../../utils/formatters.js';
 import { safeReadFile } from '../../utils/safe-read-file.js';
 import { Logger } from '../../utils/logger.js';
+import { sanitizeForTerminal } from '../../utils/control-chars.js';
 import { ValidationError } from '../../utils/errors.js';
 import { errorMessage } from '../../utils/error-message.js';
 
@@ -341,16 +342,21 @@ export class WriteCommand {
       );
 
       const maxLen = this.getPreviewWidth();
+      // Prompt labels are rendered straight into the terminal by inquirer, so
+      // control characters are replaced for display. The value handed back to
+      // the caller stays raw.
+      const originalPreview = sanitizeForTerminal(text);
+      const improvedPreview = sanitizeForTerminal(improvements[0]!.text);
       const choices = [
         {
-          name: `${chalk.yellow('Keep original')} - "${this.truncate(text, maxLen)}"`,
+          name: `${chalk.yellow('Keep original')} - "${this.truncate(originalPreview, maxLen)}"`,
           value: -1,
-          description: text,
+          description: originalPreview,
         },
         {
-          name: `${chalk.bold(options.correct ? 'Corrected' : 'Improved')} - "${this.truncate(improvements[0]!.text, maxLen)}"`,
+          name: `${chalk.bold(options.correct ? 'Corrected' : 'Improved')} - "${this.truncate(improvedPreview, maxLen)}"`,
           value: 0,
-          description: improvements[0]!.text,
+          description: improvedPreview,
         },
       ];
 
@@ -403,17 +409,21 @@ export class WriteCommand {
 
     // Create choices with style labels
     const maxLen = this.getPreviewWidth();
+    const originalPreview = sanitizeForTerminal(text);
     const choices = [
       {
-        name: `${chalk.yellow('Keep original')} - "${this.truncate(text, maxLen)}"`,
+        name: `${chalk.yellow('Keep original')} - "${this.truncate(originalPreview, maxLen)}"`,
         value: -1,
-        description: text,
+        description: originalPreview,
       },
-      ...uniqueImprovements.map((improvement, index) => ({
-        name: `${chalk.bold(improvement.label)} - "${this.truncate(improvement.text, maxLen)}"`,
-        value: index,
-        description: improvement.text,
-      })),
+      ...uniqueImprovements.map((improvement, index) => {
+        const preview = sanitizeForTerminal(improvement.text);
+        return {
+          name: `${chalk.bold(improvement.label)} - "${this.truncate(preview, maxLen)}"`,
+          value: index,
+          description: preview,
+        };
+      }),
     ];
 
     // Prompt user to select

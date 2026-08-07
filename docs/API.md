@@ -37,6 +37,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
   - Administration
     - [admin](#admin)
 - [Configuration](#configuration)
+- [Terminal Output Safety](#terminal-output-safety)
 - [Environment Variables](#environment-variables)
 - [Exit Codes](#exit-codes)
 
@@ -3119,6 +3120,21 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 
 - **`baseUrl`** — when set to a custom/regional endpoint (e.g. `https://api-jp.deepl.com`), it overrides all auto-detection. Standard DeepL URLs (`api.deepl.com`, `api-free.deepl.com`) are treated as tier defaults and do **not** override key-based auto-detection. By default, the endpoint is auto-detected from the API key: keys ending with `:fx` use the Free API (`api-free.deepl.com`), all others use the Pro API (`api.deepl.com`). The `usePro` flag serves as a backward-compatible fallback for non-`:fx` keys.
 - Most users configure settings via `deepl config set` command rather than editing the file directly.
+
+---
+
+## Terminal Output Safety
+
+Translations, i18n keys, glossary entries and API error messages can all contain bytes the CLI did not author. Terminal control sequences hidden in that text can set the window title, write the clipboard (OSC 52), erase the screen, or forge a plausible-looking result line. The CLI neutralizes them, replacing each with `?`:
+
+| Stream                                                              | When                    | Behavior                                                                                                   |
+| ------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **stderr** (progress, warnings, errors)                             | Always                  | Control sequences replaced. Non-TTY stderr is still rendered by CI log viewers that interpret ANSI.          |
+| **stdout**, when it is a terminal                                   | Always                  | Control sequences replaced.                                                                                 |
+| **stdout**, when redirected to a file, a pipe or command substitution | Never                   | Byte-for-byte identical to what the API returned, so `deepl translate ... > out.txt` is lossless.           |
+| **Report lines** that interpolate untrusted values (for example the key in `deepl sync validate`) | Always | Control sequences replaced whether or not stdout is a terminal, since these are diagnostics, not data.       |
+
+Colour (SGR) sequences are preserved so `deepl` output stays readable; use [`NO_COLOR`](#no_color) to turn colour off. Tabs, newlines, carriage returns and Unicode formatting characters that are legitimate translation content — zero-width joiners, and the bidi marks used in Arabic, Hebrew and Persian text — are never altered on stdout.
 
 ---
 
