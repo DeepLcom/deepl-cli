@@ -917,6 +917,7 @@ deepl hooks uninstall pre-commit
 **Features:**
 
 - 🔒 Safe installation with automatic backup of existing hooks
+- 🚧 Confirmation before writing an executable outside the working tree — a repository-local `core.hooksPath` travels with the repository, so an install that would land outside the checkout names the configured value and the resolved directory and asks first (`--yes` to accept, exit `6` and nothing written if declined). Paths inside the working tree, linked worktrees, and submodules are unaffected
 - 🎯 Only validates changed files (pre-commit)
 - ⚡ Lightweight and fast
 - 🔧 Customizable hook scripts

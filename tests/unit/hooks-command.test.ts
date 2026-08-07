@@ -81,7 +81,10 @@ describe('HooksCommand', () => {
 
       const result = command.install('pre-commit');
 
-      expect(mockGitHooksService.install).toHaveBeenCalledWith('pre-commit');
+      expect(mockGitHooksService.install).toHaveBeenCalledWith(
+        'pre-commit',
+        {}
+      );
       expect(result).toContain('Installed pre-commit hook');
       expect(result).toContain('/path/to/.git/hooks/pre-commit');
     });
@@ -109,7 +112,7 @@ describe('HooksCommand', () => {
 
       const result = command.install('pre-push');
 
-      expect(mockGitHooksService.install).toHaveBeenCalledWith('pre-push');
+      expect(mockGitHooksService.install).toHaveBeenCalledWith('pre-push', {});
       expect(result).toContain('Installed pre-push hook');
     });
 

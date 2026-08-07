@@ -1629,6 +1629,12 @@ Install a git hook.
 
 - `hook-type` - Hook type: `pre-commit`, `pre-push`, `commit-msg`, `post-commit`
 
+**Options:**
+
+- `-y, --yes` - Skip the confirmation prompt when this repository sends hooks outside the working tree
+
+**Hooks directory outside the repository:** the hook is written wherever git reads hooks from, which a repository-local `core.hooksPath` can point anywhere — including an absolute path outside the checkout. Because that setting travels with the repository rather than coming from you, an install that would land outside the working tree names the configured value and the resolved directory and asks first. Declining, or running without a terminal, exits `6` and writes nothing; `--yes` installs there and prints the same notice to stderr. A `core.hooksPath` that stays inside the working tree (`.husky/_`, for example) is not affected, and neither are linked worktrees or submodules, where git legitimately reads hooks from the repository that owns them.
+
 **Examples:**
 
 ```bash
@@ -1636,6 +1642,9 @@ deepl hooks install pre-commit
 deepl hooks install pre-push
 deepl hooks install commit-msg
 deepl hooks install post-commit
+
+# Accept a hooks directory outside the working tree without prompting
+deepl hooks install pre-commit --yes
 ```
 
 ##### `uninstall <hook-type>`

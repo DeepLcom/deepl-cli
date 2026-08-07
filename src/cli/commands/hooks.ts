@@ -24,14 +24,30 @@ export class HooksCommand {
   /**
    * Install a git hook
    */
-  install(hookType: HookType): string {
+  /**
+   * The `core.hooksPath` this repository uses to send hooks outside the working
+   * tree, or null. The CLI asks before writing there; `install` refuses on its
+   * own if nobody did.
+   */
+  externalHooksPath(): string | null {
+    return this.gitHooksService?.externalHooksPath ?? null;
+  }
+
+  hooksDirectory(): string | null {
+    return this.gitHooksService?.hooksDirectory ?? null;
+  }
+
+  install(
+    hookType: HookType,
+    options: { allowExternal?: boolean } = {}
+  ): string {
     if (!this.gitHooksService) {
       throw new ValidationError(
         'Not in a git repository. Run this command from within a git repository.'
       );
     }
 
-    const result = this.gitHooksService.install(hookType);
+    const result = this.gitHooksService.install(hookType, options);
 
     const lines = [chalk.green(`✓ Installed ${hookType} hook`)];
     if (result?.hookPath) {

@@ -8,6 +8,8 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { execFileSync } from 'child_process';
 import { ValidationError } from '../utils/errors.js';
+import { isWithinDirectory } from '../utils/paths.js';
+import { sanitizeForTerminal } from '../utils/control-chars.js';
 
 export type HookType = 'pre-commit' | 'pre-push' | 'commit-msg' | 'post-commit';
 
@@ -35,15 +37,52 @@ const MARKER_VERSION = 1;
 const LEGACY_MARKER = '# DeepL CLI Hook';
 const MARKER_PATTERN = /^# DeepL CLI Hook v(\d+) \[sha256:([a-f0-9]{64})\]$/m;
 
+interface HooksDirResolution {
+  dir: string;
+  /** The `core.hooksPath` that sent `dir` outside the working tree, or null. */
+  externalRedirect: string | null;
+}
+
+/**
+ * One wording for the refusal and for the prompt that offers to go ahead, so
+ * the two cannot drift. The configured value comes from the checkout, so it is
+ * terminal-sanitized before it is interpolated.
+ */
+export function externalHooksPathMessage(
+  configured: string,
+  hooksDir: string
+): string {
+  return (
+    `This repository's core.hooksPath ("${sanitizeForTerminal(configured)}") puts git hooks outside the working tree, ` +
+    `at ${sanitizeForTerminal(hooksDir)}. Installing writes an executable there, and git runs it on every matching operation in this repository.`
+  );
+}
+
 export class GitHooksService {
   private hooksDir: string;
+  private externalRedirect: string | null;
 
   constructor(gitDir: string) {
     if (!fs.existsSync(gitDir)) {
       throw new ValidationError('Git directory not found: ' + gitDir);
     }
 
-    this.hooksDir = GitHooksService.resolveHooksDir(gitDir);
+    const resolution = GitHooksService.resolveHooksDir(gitDir);
+    this.hooksDir = resolution.dir;
+    this.externalRedirect = resolution.externalRedirect;
+  }
+
+  /**
+   * The repository-local `core.hooksPath` when it sends the hooks directory
+   * outside the working tree, or null. Non-null means installing writes an
+   * executable to a location the checkout chose rather than the user did.
+   */
+  get externalHooksPath(): string | null {
+    return this.externalRedirect;
+  }
+
+  get hooksDirectory(): string {
+    return this.hooksDir;
   }
 
   /**
@@ -53,7 +92,7 @@ export class GitHooksService {
    * and resolves the `gitdir:` pointer used by linked worktrees and submodules,
    * where `<root>/.git` is a file rather than a directory.
    */
-  private static resolveHooksDir(gitDir: string): string {
+  private static resolveHooksDir(gitDir: string): HooksDirResolution {
     const workDir = path.dirname(gitDir);
 
     try {
@@ -67,7 +106,11 @@ export class GitHooksService {
         }
       ).trim();
       if (resolved) {
-        return path.resolve(workDir, resolved);
+        const dir = path.resolve(workDir, resolved);
+        return {
+          dir,
+          externalRedirect: GitHooksService.externalRedirectFor(workDir, dir),
+        };
       }
     } catch {
       // git unavailable, or workDir is not a working tree — fall back below.
@@ -80,14 +123,55 @@ export class GitHooksService {
       );
     }
 
-    return path.join(gitDir, 'hooks');
+    return { dir: path.join(gitDir, 'hooks'), externalRedirect: null };
+  }
+
+  /**
+   * The configured `core.hooksPath` when the directory it resolves to lies
+   * outside the working tree.
+   *
+   * Only the repository-local setting is consulted, for two reasons. It is the
+   * one an untrusted checkout can carry, which is the case worth confirming —
+   * a global setting is the user's own machine-wide choice. And a repository
+   * that sets nothing is never reported, which is what keeps linked worktrees
+   * and submodules quiet: there `--git-path hooks` legitimately answers with
+   * the hooks directory of the repository that owns them, which is outside
+   * this working tree by design.
+   */
+  private static externalRedirectFor(
+    workDir: string,
+    hooksDir: string
+  ): string | null {
+    let configured: string;
+    try {
+      configured = execFileSync(
+        'git',
+        ['config', '--local', '--get', 'core.hooksPath'],
+        { cwd: workDir, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }
+      ).trim();
+    } catch {
+      // Exit status 1 means the key is not set.
+      return null;
+    }
+
+    if (!configured) return null;
+    return isWithinDirectory(workDir, hooksDir) ? null : configured;
   }
 
   /**
    * Install a git hook
    */
-  install(hookType: HookType): InstallResult {
+  install(
+    hookType: HookType,
+    options: { allowExternal?: boolean } = {}
+  ): InstallResult {
     this.validateHookType(hookType);
+    if (this.externalRedirect !== null && options.allowExternal !== true) {
+      throw new ValidationError(
+        externalHooksPathMessage(this.externalRedirect, this.hooksDir),
+        'Pass --yes to install there anyway, or drop the redirect with: git config --unset core.hooksPath'
+      );
+    }
 
     const hookPath = this.getHookPath(hookType);
     const hookContent = this.generateHookContent(hookType);

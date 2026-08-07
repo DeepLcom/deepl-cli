@@ -9,6 +9,49 @@ export interface ResolvedPaths {
   cacheFile: string;
 }
 
+/**
+ * Resolve `absPath` through any symlinks in it, tolerating a path that does not
+ * exist yet.
+ *
+ * Containment checks compare resolved strings, so two paths that reach the same
+ * inode through different symlink chains (`/tmp` vs `/private/tmp` on macOS)
+ * would otherwise compare as different. `fs.realpathSync` only works on paths
+ * that already exist, so this walks up to the closest existing ancestor,
+ * realpaths that, and re-appends the unresolved tail. If nothing on the path
+ * exists — a missing volume — it falls back to the lexically resolved form.
+ */
+export function realpathOrAncestor(absPath: string): string {
+  let current = path.resolve(absPath);
+  const tail: string[] = [];
+  while (true) {
+    try {
+      const real = fs.realpathSync(current);
+      return tail.length > 0 ? path.join(real, ...tail) : real;
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) {
+        return path.resolve(absPath);
+      }
+      tail.unshift(path.basename(current));
+      current = parent;
+    }
+  }
+}
+
+/**
+ * Whether `target` is `root` itself or lies beneath it, with both sides
+ * resolved through their symlinks first — so a symlink inside `root` that
+ * points outside it is not counted as contained.
+ */
+export function isWithinDirectory(root: string, target: string): boolean {
+  const resolvedRoot = realpathOrAncestor(root);
+  const resolvedTarget = realpathOrAncestor(target);
+  return (
+    resolvedTarget === resolvedRoot ||
+    resolvedTarget.startsWith(resolvedRoot + path.sep)
+  );
+}
+
 export function resolvePaths(): ResolvedPaths {
   const home = os.homedir();
 

@@ -8,11 +8,14 @@ jest.mock('../../src/utils/logger', () => ({
     error: jest.fn(),
     info: jest.fn(),
     success: jest.fn(),
+    warn: jest.fn(),
   },
 }));
 
 const mockHooksCommand = {
   install: jest.fn(),
+  externalHooksPath: jest.fn().mockReturnValue(null),
+  hooksDirectory: jest.fn().mockReturnValue('/repo/.git/hooks'),
   uninstall: jest.fn(),
   list: jest.fn(),
   showPath: jest.fn(),
@@ -38,6 +41,8 @@ describe('registerHooks', () => {
     // Re-apply the constructor mock after clearAllMocks
     const { HooksCommand } = require('../../src/cli/commands/hooks');
     HooksCommand.mockImplementation(() => mockHooksCommand);
+    mockHooksCommand.externalHooksPath.mockReturnValue(null);
+    mockHooksCommand.hooksDirectory.mockReturnValue('/repo/.git/hooks');
   });
 
   describe('hooks install', () => {
@@ -53,8 +58,50 @@ describe('registerHooks', () => {
         'pre-commit',
       ]);
 
-      expect(mockHooksCommand.install).toHaveBeenCalledWith('pre-commit');
+      expect(mockHooksCommand.install).toHaveBeenCalledWith('pre-commit', {
+        allowExternal: false,
+      });
       expect(Logger.output).toHaveBeenCalledWith('Installed pre-commit hook');
+    });
+
+    it('should announce and allow an external hooks path with --yes', async () => {
+      mockHooksCommand.externalHooksPath.mockReturnValue('/outside/hooks');
+      mockHooksCommand.install.mockReturnValue('Installed pre-commit hook');
+      const { program } = makeProgram();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'hooks',
+        'install',
+        'pre-commit',
+        '--yes',
+      ]);
+
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('core.hooksPath')
+      );
+      expect(mockHooksCommand.install).toHaveBeenCalledWith('pre-commit', {
+        allowExternal: true,
+      });
+    });
+
+    it('should not allow an external hooks path when it cannot prompt', async () => {
+      mockHooksCommand.externalHooksPath.mockReturnValue('/outside/hooks');
+      mockHooksCommand.install.mockReturnValue('Installed pre-commit hook');
+      const { program } = makeProgram();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'hooks',
+        'install',
+        'pre-commit',
+      ]);
+
+      expect(mockHooksCommand.install).toHaveBeenCalledWith('pre-commit', {
+        allowExternal: false,
+      });
     });
 
     it('should call handleError on failure', async () => {

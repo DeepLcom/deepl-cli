@@ -97,4 +97,38 @@ describe('Hooks Command E2E', () => {
     expect(status).toBeGreaterThan(0);
     expect(output).toContain('Invalid hook type');
   });
+
+  describe('a repository that sends hooks outside the working tree', () => {
+    let outside: string;
+
+    beforeEach(() => {
+      outside = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-hooks-out-'));
+      execSync(`git config core.hooksPath ${outside}`, {
+        cwd: tmpDir,
+        stdio: 'ignore',
+      });
+    });
+
+    afterEach(() => {
+      fs.rmSync(outside, { recursive: true, force: true });
+    });
+
+    it('should refuse to install and write nothing without confirmation', () => {
+      const result = runExpectError('hooks install pre-commit');
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('core.hooksPath');
+      expect(result.output).toContain(outside);
+      expect(result.output).toContain('git config --unset core.hooksPath');
+      expect(fs.existsSync(path.join(outside, 'pre-commit'))).toBe(false);
+    });
+
+    it('should install there when --yes is passed', () => {
+      const output = run('hooks install pre-commit --yes');
+
+      expect(output).toContain('core.hooksPath');
+      expect(output).toContain('Installed pre-commit hook');
+      expect(fs.existsSync(path.join(outside, 'pre-commit'))).toBe(true);
+    });
+  });
 });
