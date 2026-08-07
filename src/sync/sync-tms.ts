@@ -3,7 +3,13 @@ import * as path from 'path';
 import type { ExtractedEntry, FormatRegistry } from '../formats/index.js';
 import type { TmsClient } from './tms-client.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
-import { SyncLockManager, computeSourceHash } from './sync-lock.js';
+import {
+  SyncLockManager,
+  computeSourceHash,
+  ensureFileEntries,
+  getOwnMember,
+  setOwnMember,
+} from './sync-lock.js';
 import {
   resolveTargetPath,
   assertPathWithinRoot,
@@ -248,12 +254,12 @@ export async function pullTranslations(
       await atomicWriteFile(targetAbsPath, reconstructed, 'utf-8');
       pulled += pulledEntries.length;
 
-      const fileEntryMap = (lockFile.entries[relPath] ??= {});
+      const fileEntryMap = ensureFileEntries(lockFile, relPath);
       for (const entry of pulledEntries) {
-        const existing = fileEntryMap[entry.key];
+        const existing = getOwnMember(fileEntryMap, entry.key);
         const existingTranslations = existing?.translations ?? {};
         const sourceHash = computeSourceHash(entry.value, entry.metadata);
-        fileEntryMap[entry.key] = {
+        setOwnMember(fileEntryMap, entry.key, {
           source_hash: sourceHash,
           source_text: existing?.source_text ?? entry.value,
           translations: {
@@ -265,7 +271,7 @@ export async function pullTranslations(
               review_status: 'human_reviewed' as const,
             },
           },
-        };
+        });
       }
     }
   }

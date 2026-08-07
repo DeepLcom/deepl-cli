@@ -7,7 +7,12 @@ import {
 } from '../utils/concurrency.js';
 import { ValidationError } from '../utils/errors.js';
 import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
-import { computeSourceHash } from './sync-lock.js';
+import {
+  computeSourceHash,
+  ensureFileEntries,
+  getOwnMember,
+  setOwnMember,
+} from './sync-lock.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncLockFile, SyncLockTranslation } from './types.js';
 import type { KeyContext } from './sync-context.js';
@@ -97,7 +102,7 @@ export async function processBucket(
 
   const out: BucketContribution = { ...EMPTY, fileResults: [] };
 
-  const fileLockEntries = lockFile.entries[relPath] ?? {};
+  const fileLockEntries = getOwnMember(lockFile.entries, relPath) ?? {};
   // Pass the configured locales so staleness is judged per locale: a key whose
   // source is unchanged still needs work if any target locale's stored hash
   // lags behind, or if that locale previously failed.
@@ -137,7 +142,8 @@ export async function processBucket(
     if (localeFilter?.length && !localeFilter.includes(locale)) return false;
     return diffs.some(
       (d) =>
-        d.status === 'current' && !fileLockEntries[d.key]?.translations[locale]
+        d.status === 'current' &&
+        !getOwnMember(fileLockEntries, d.key)?.translations[locale]
     );
   });
 
@@ -185,7 +191,7 @@ export async function processBucket(
         diffs.some(
           (d) =>
             d.status === 'current' &&
-            !fileLockEntries[d.key]?.translations[locale]
+            !getOwnMember(fileLockEntries, d.key)?.translations[locale]
         )
       ).length;
       out.estimatedCharactersDelta += currentChars * newLocaleCount;
@@ -194,7 +200,7 @@ export async function processBucket(
   }
 
   if (deletedDiffs.length > 0) {
-    const fileEntryMap = (lockFile.entries[relPath] ??= {});
+    const fileEntryMap = ensureFileEntries(lockFile, relPath);
     for (const diff of deletedDiffs) {
       delete fileEntryMap[diff.key];
     }
@@ -240,7 +246,7 @@ export async function processBucket(
         diffs.some(
           (d) =>
             d.status === 'current' &&
-            !fileLockEntries[d.key]?.translations[locale]
+            !getOwnMember(fileLockEntries, d.key)?.translations[locale]
         )
       ).length;
       estimatedChars += currentChars * newLocaleCount;
@@ -415,10 +421,10 @@ export async function processBucket(
     concurrency
   );
 
-  const fileEntryMap = (lockFile.entries[relPath] ??= {});
+  const fileEntryMap = ensureFileEntries(lockFile, relPath);
   for (const diff of toTranslate) {
     if (diff.value === undefined) continue;
-    const existingEntry = fileEntryMap[diff.key];
+    const existingEntry = getOwnMember(fileEntryMap, diff.key);
     const existingTranslations = existingEntry?.translations ?? {};
 
     const newTranslations: Record<string, SyncLockTranslation> = {
@@ -440,11 +446,11 @@ export async function processBucket(
       };
     }
 
-    fileEntryMap[diff.key] = {
+    setOwnMember(fileEntryMap, diff.key, {
       source_hash: computeSourceHash(diff.value, diff.metadata),
       source_text: diff.value,
       translations: newTranslations,
-    };
+    });
     out.lockDirty = true;
   }
 
@@ -453,7 +459,7 @@ export async function processBucket(
     if (diff.status !== 'current' || diff.value === undefined) continue;
     const successSet = localeSuccessMap.get(diff.key);
     if (!successSet || successSet.size === 0) continue;
-    const existingEntry = fileEntryMap[diff.key];
+    const existingEntry = getOwnMember(fileEntryMap, diff.key);
     const existingTranslations = existingEntry?.translations ?? {};
     let updated = false;
     const newTranslations = { ...existingTranslations };
@@ -472,11 +478,11 @@ export async function processBucket(
       }
     }
     if (updated) {
-      fileEntryMap[diff.key] = {
+      setOwnMember(fileEntryMap, diff.key, {
         source_hash: computeSourceHash(diff.value, diff.metadata),
         source_text: diff.value,
         translations: newTranslations,
-      };
+      });
       out.lockDirty = true;
     }
   }

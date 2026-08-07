@@ -5,6 +5,50 @@ import { Logger } from '../utils/logger.js';
 import type { SyncLockFile, SyncLockEntry } from './types.js';
 import { LOCK_FILE_VERSION, LOCK_FILE_COMMENT } from './types.js';
 
+/**
+ * Stores an own, enumerable member. Plain assignment cannot be used: an i18n
+ * key or a source path named `__proto__` reaches the prototype setter instead
+ * of creating a property, so the member never lands in the lockfile and the key
+ * is re-translated and re-billed on every run.
+ */
+export function setOwnMember<T>(
+  map: Record<string, T>,
+  key: string,
+  value: T
+): void {
+  Object.defineProperty(map, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+}
+
+/**
+ * Reads a member only when the map actually holds one. Plain indexing hands
+ * back inherited `Object.prototype` members for keys named `constructor`,
+ * `toString`, `valueOf` and `hasOwnProperty`, which read as an existing entry
+ * that happens to be missing every field it should have.
+ */
+export function getOwnMember<T>(
+  map: Record<string, T>,
+  key: string
+): T | undefined {
+  return Object.hasOwn(map, key) ? map[key] : undefined;
+}
+
+/** The per-file entry map, created on demand and setter-proof either way. */
+export function ensureFileEntries(
+  lockFile: SyncLockFile,
+  filePath: string
+): Record<string, SyncLockEntry> {
+  const existing = getOwnMember(lockFile.entries, filePath);
+  if (existing) return existing;
+  const created: Record<string, SyncLockEntry> = {};
+  setOwnMember(lockFile.entries, filePath, created);
+  return created;
+}
+
 function filesystemSafeTimestamp(): string {
   return new Date().toISOString().replace(/:/g, '-').replace(/\.\d+/, '');
 }
@@ -210,15 +254,14 @@ export class SyncLockManager {
     entry: SyncLockEntry
   ): Promise<void> {
     const lockFile = await this.read();
-    lockFile.entries[filePath] ??= {};
-    lockFile.entries[filePath][key] = entry;
+    setOwnMember(ensureFileEntries(lockFile, filePath), key, entry);
     bumpMutationVersion(lockFile);
     await this.write(lockFile);
   }
 
   async removeEntry(filePath: string, key: string): Promise<void> {
     const lockFile = await this.read();
-    const fileEntries = lockFile.entries[filePath];
+    const fileEntries = getOwnMember(lockFile.entries, filePath);
     if (fileEntries) {
       delete fileEntries[key];
       if (Object.keys(fileEntries).length === 0) {

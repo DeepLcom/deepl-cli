@@ -1,6 +1,6 @@
 import type { ExtractedEntry } from '../formats/format.js';
 import type { SyncLockEntry, SyncDiff } from './types.js';
-import { computeSourceHash } from './sync-lock.js';
+import { computeSourceHash, getOwnMember } from './sync-lock.js';
 
 /**
  * Is any of `targetLocales` out of date for this entry?
@@ -38,7 +38,7 @@ export function computeDiff(
   const diffs: SyncDiff[] = [];
 
   for (const [key, entry] of currentMap) {
-    const lockEntry = lockEntries[key];
+    const lockEntry = getOwnMember(lockEntries, key);
     if (!lockEntry) {
       diffs.push({
         key,

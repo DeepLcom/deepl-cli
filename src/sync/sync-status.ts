@@ -1,6 +1,6 @@
 import * as path from 'path';
 import type { FormatRegistry } from '../formats/index.js';
-import { SyncLockManager } from './sync-lock.js';
+import { SyncLockManager, getOwnMember } from './sync-lock.js';
 import { computeDiff } from './sync-differ.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import { LOCK_FILE_NAME } from './types.js';
@@ -50,7 +50,7 @@ export async function computeSyncStatus(
     totalKeys += entries.length + skippedEntries.length;
     skippedKeys += skippedEntries.length;
 
-    const fileLockEntries = lockFile.entries[relPath] ?? {};
+    const fileLockEntries = getOwnMember(lockFile.entries, relPath) ?? {};
     const diffs = computeDiff(fileLockEntries, entries);
 
     for (const locale of config.target_locales) {
@@ -59,7 +59,7 @@ export async function computeSyncStatus(
 
       for (const diff of diffs) {
         if (diff.status === 'deleted') continue;
-        const lockEntry = fileLockEntries[diff.key];
+        const lockEntry = getOwnMember(fileLockEntries, diff.key);
         const translation = lockEntry?.translations[locale];
         const hasTranslation = translation !== undefined;
         // Judge staleness for THIS locale rather than inheriting the shared

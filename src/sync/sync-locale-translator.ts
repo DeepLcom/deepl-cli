@@ -15,6 +15,7 @@ import {
   mergeInstructions,
   generateLengthInstruction,
 } from './sync-instructions.js';
+import { getOwnMember } from './sync-lock.js';
 import { validateBatch } from './translation-validator.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { mapWithConcurrency } from '../utils/concurrency.js';
@@ -598,7 +599,7 @@ export class LocaleTranslator {
     for (const cd of currentDiffs) {
       if (cd.value === undefined) continue;
       const existingTranslation = existingTranslations.get(cd.key);
-      const lockEntry = fileLockEntries[cd.key];
+      const lockEntry = getOwnMember(fileLockEntries, cd.key);
       const hasLocaleTranslation =
         lockEntry?.translations[locale] !== undefined;
       if (existingTranslation !== undefined) {

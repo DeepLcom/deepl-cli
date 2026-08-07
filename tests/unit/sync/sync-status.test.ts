@@ -13,7 +13,12 @@ jest.mock('fs', () => ({
   },
 }));
 jest.mock('fast-glob', () => jest.fn());
-jest.mock('../../../src/sync/sync-lock');
+// Only SyncLockManager is stubbed. A bare automock would also replace the
+// module's pure entry-map accessors, which the code under test relies on.
+jest.mock('../../../src/sync/sync-lock', () => {
+  const actual = jest.requireActual('../../../src/sync/sync-lock');
+  return { ...actual, SyncLockManager: jest.fn() };
+});
 jest.mock('../../../src/sync/sync-differ');
 
 import * as fs from 'fs';
