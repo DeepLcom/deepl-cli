@@ -1,5 +1,10 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
 import {
+  requireItemArray,
+  requireItemText,
+  optionalString,
+} from './response-shape.js';
+import {
   WriteOptions,
   CorrectOptions,
   WriteImprovement,
@@ -87,14 +92,17 @@ export class WriteClient extends HttpClient {
   }
 
   private mapImprovements(response: DeepLWriteResponse): WriteImprovement[] {
-    if (!response.improvements || response.improvements.length === 0) {
+    const context = 'Request: rephrase or correct text';
+    const items = requireItemArray(response, 'improvements', context);
+
+    if (items.length === 0) {
       throw new NetworkError('No improvements returned');
     }
 
-    return response.improvements.map((improvement) => ({
-      text: improvement.text,
-      targetLanguage: improvement.target_language,
-      detectedSourceLanguage: improvement.detected_source_language,
+    return items.map((item, index) => ({
+      text: requireItemText(items, index, 'improvements', context),
+      targetLanguage: optionalString(item['target_language']) ?? '',
+      detectedSourceLanguage: optionalString(item['detected_source_language']),
     }));
   }
 }

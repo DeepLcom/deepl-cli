@@ -1,5 +1,12 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
 import {
+  requireItemArray,
+  requireItemText,
+  optionalString,
+  optionalNumber,
+  optionalNumberField,
+} from './response-shape.js';
+import {
   TranslationOptions,
   Language,
   TranslationMemory,
@@ -15,16 +22,6 @@ import { Logger } from '../utils/logger.js';
 // if the server misreports `total_count` or never returns a short page.
 export const TRANSLATION_MEMORY_LIST_PAGE_SIZE = 25;
 export const MAX_TRANSLATION_MEMORY_LIST_PAGES = 20;
-
-interface DeepLTranslateResponse {
-  translations: Array<{
-    detected_source_language?: string;
-    text: string;
-    billed_characters?: number;
-    model_type_used?: string;
-  }>;
-  billed_characters?: number;
-}
 
 interface DeepLUsageResponse {
   character_count: number;
@@ -175,33 +172,36 @@ export class TranslationClient extends HttpClient {
     const params = this.buildTranslationParams([text], options);
 
     try {
-      const response = await this.makeRequest<DeepLTranslateResponse>(
+      // Deliberately `unknown`: a declared interface asserts nothing at
+      // runtime, and a redirected endpoint can return any shape.
+      const response = await this.makeRequest<unknown>(
         'POST',
         '/v2/translate',
         params
       );
 
-      if (!response.translations || response.translations.length === 0) {
+      const context = `Request: translate text (${text.length} chars) to ${options.targetLang}`;
+      const items = requireItemArray(response, 'translations', context);
+
+      if (items.length === 0) {
         throw new NetworkError(
-          `No translation returned from DeepL API. Request: translate text (${text.length} chars) to ${options.targetLang}`
+          `No translation returned from DeepL API. ${context}`
         );
       }
 
-      const translation = response.translations[0];
-      if (!translation) {
-        throw new NetworkError(
-          `Empty translation in API response. Request: translate text (${text.length} chars) to ${options.targetLang}`
-        );
-      }
+      const translated = requireItemText(items, 0, 'translations', context);
+      const item = items[0]!;
+      const detected = optionalString(item['detected_source_language']);
 
       return {
-        text: translation.text,
-        detectedSourceLang: translation.detected_source_language
-          ? this.normalizeLanguage(translation.detected_source_language)
+        text: translated,
+        detectedSourceLang: detected
+          ? this.normalizeLanguage(detected)
           : undefined,
         billedCharacters:
-          translation.billed_characters ?? response.billed_characters,
-        modelTypeUsed: translation.model_type_used,
+          optionalNumber(item['billed_characters']) ??
+          optionalNumberField(response, 'billed_characters'),
+        modelTypeUsed: optionalString(item['model_type_used']),
       };
     } catch (error) {
       throw this.handleError(error);
@@ -219,30 +219,30 @@ export class TranslationClient extends HttpClient {
     const params = this.buildTranslationParams(texts, options);
 
     try {
-      const response = await this.makeRequest<DeepLTranslateResponse>(
+      // Deliberately `unknown`: a declared interface asserts nothing at
+      // runtime, and a redirected endpoint can return any shape.
+      const response = await this.makeRequest<unknown>(
         'POST',
         '/v2/translate',
         params
       );
 
-      if (!response.translations) {
+      const context = `Request: translate ${texts.length} texts to ${options.targetLang}`;
+      const items = requireItemArray(response, 'translations', context);
+
+      if (items.length !== texts.length) {
         throw new NetworkError(
           'Unexpected API response. Please retry your translation. If the issue persists, report it at https://github.com/DeepL/deepl-cli/issues'
         );
       }
 
-      if (response.translations.length !== texts.length) {
-        throw new NetworkError(
-          'Unexpected API response. Please retry your translation. If the issue persists, report it at https://github.com/DeepL/deepl-cli/issues'
-        );
-      }
+      // Every text is validated before any is used, so a bad element late in
+      // the array cannot leave earlier ones already written.
+      const translatedTexts = items.map((_item, index) =>
+        requireItemText(items, index, 'translations', context)
+      );
 
-      if (
-        isReorderedEcho(
-          texts,
-          response.translations.map((translation) => translation.text)
-        )
-      ) {
+      if (isReorderedEcho(texts, translatedTexts)) {
         throw new NetworkError(
           'The endpoint returned the submitted texts in a different order, so each translation ' +
             'would be stored against the wrong entry. Nothing was written. Check which endpoint ' +
@@ -250,15 +250,20 @@ export class TranslationClient extends HttpClient {
         );
       }
 
-      return response.translations.map((translation) => ({
-        text: translation.text,
-        detectedSourceLang: translation.detected_source_language
-          ? this.normalizeLanguage(translation.detected_source_language)
-          : undefined,
-        billedCharacters:
-          translation.billed_characters ?? response.billed_characters,
-        modelTypeUsed: translation.model_type_used,
-      }));
+      const topBilled = optionalNumberField(response, 'billed_characters');
+
+      return items.map((item, index) => {
+        const detected = optionalString(item['detected_source_language']);
+        return {
+          text: translatedTexts[index]!,
+          detectedSourceLang: detected
+            ? this.normalizeLanguage(detected)
+            : undefined,
+          billedCharacters:
+            optionalNumber(item['billed_characters']) ?? topBilled,
+          modelTypeUsed: optionalString(item['model_type_used']),
+        };
+      });
     } catch (error) {
       throw this.handleError(error);
     }
