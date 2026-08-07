@@ -166,6 +166,8 @@ export class HttpClient {
   protected requestTimeout: number;
   protected totalTimeout: number;
   protected _lastTraceId?: string;
+  /** Origin of `baseURL`, so a verbose request line says where it went. */
+  private readonly baseOrigin: string;
 
   /**
    * Standard NO_PROXY matching: `*` bypasses everything, a leading dot or `*.`
@@ -262,6 +264,13 @@ export class HttpClient {
     }
 
     const baseURL = resolveClientBaseUrl(options);
+    this.baseOrigin = (() => {
+      try {
+        return new URL(baseURL).origin;
+      } catch {
+        return baseURL;
+      }
+    })();
 
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
     this.requestTimeout = options.timeout ?? DEFAULT_TIMEOUT;
@@ -457,7 +466,7 @@ export class HttpClient {
         });
         const requestElapsed = Date.now() - requestStart;
         Logger.verbose(
-          `[verbose] HTTP ${method} ${path} completed in ${requestElapsed}ms (status ${response.status})`
+          `[verbose] HTTP ${method} ${this.baseOrigin}${path} completed in ${requestElapsed}ms (status ${response.status})`
         );
 
         const responseTraceId = response.headers?.['x-trace-id'] as

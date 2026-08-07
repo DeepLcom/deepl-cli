@@ -132,6 +132,15 @@ export class ConfigService {
   }
 
   /**
+   * The file this instance reads and writes. Exposed so a message about a
+   * setting can name the file that supplied it — several paths are searched and
+   * a `-c` override is possible, so the user cannot otherwise tell which won.
+   */
+  get configFilePath(): string {
+    return this.configPath;
+  }
+
+  /**
    * Get the entire configuration
    * Returns a readonly reference to prevent accidental mutations
    *

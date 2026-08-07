@@ -43,7 +43,11 @@ import { registerInit } from './commands/register-init.js';
 import { registerDetect } from './commands/register-detect.js';
 import { registerDescribe } from './commands/register-describe.js';
 import { validateApiUrl } from '../utils/validate-url.js';
-import { resolveEndpoint } from '../utils/resolve-endpoint.js';
+import {
+  resolveEndpoint,
+  nonStandardEndpointWarning,
+  type EndpointSource,
+} from '../utils/resolve-endpoint.js';
 import { installSignalExit } from '../utils/signal-exit.js';
 import { assertSupportedNodeVersion } from './node-version-check.js';
 
@@ -105,6 +109,31 @@ function parseIntOption(raw: string, flag: string, min: number): number {
   return value;
 }
 
+// Origins already announced this process. A run may build several API clients
+// (translation, usage, glossary) from the same endpoint, and the notice is about
+// the destination, not the client, so it is worth saying exactly once.
+const announcedEndpoints = new Set<string>();
+
+/**
+ * Announce a redirected endpoint before the API key is sent to it.
+ *
+ * Deliberately not gated behind --verbose: the user has no other way to learn
+ * where their key is going, and a `baseUrl` in a substituted config file is
+ * invisible otherwise. Logger.warn still respects --quiet.
+ */
+function announceEndpoint(baseUrl: string, override?: string): void {
+  const source: EndpointSource =
+    override !== undefined && override === baseUrl
+      ? { kind: 'flag' }
+      : { kind: 'config', path: configService.configFilePath };
+  const message = nonStandardEndpointWarning(baseUrl, source);
+  if (!message) return;
+  const key = `${source.kind}:${baseUrl}`;
+  if (announcedEndpoints.has(key)) return;
+  announcedEndpoints.add(key);
+  Logger.warn(message);
+}
+
 /**
  * Create DeepL client with API key from config or env
  */
@@ -134,6 +163,7 @@ async function createDeepLClient(
   if (baseUrl) {
     const { validateApiUrl } = await import('../utils/validate-url.js');
     validateApiUrl(baseUrl);
+    announceEndpoint(baseUrl, overrideBaseUrl);
   }
 
   const { DeepLClient: Client } = await import('../api/deepl-client.js');
@@ -268,6 +298,7 @@ function getApiKeyAndOptions(): {
   const baseUrl = resolveEndpoint({ apiKey: key, configBaseUrl, usePro });
   if (baseUrl) {
     validateApiUrl(baseUrl);
+    announceEndpoint(baseUrl);
   }
 
   return { apiKey: key, options: { baseUrl, ...httpOptions } };

@@ -2,6 +2,7 @@ import {
   resolveEndpoint,
   isStandardDeepLUrl,
   isFreeKey,
+  nonStandardEndpointWarning,
 } from '../../src/utils/resolve-endpoint';
 
 const FREE = 'https://api-free.deepl.com';
@@ -43,6 +44,66 @@ describe('isStandardDeepLUrl', () => {
     ['subdomain spoof', 'https://api.deepl.com.evil.com'],
   ])('non-standard: %s → false', (_label, url) => {
     expect(isStandardDeepLUrl(url)).toBe(false);
+  });
+});
+
+describe('nonStandardEndpointWarning', () => {
+  it.each([
+    ['pro', PRO],
+    ['free', FREE],
+    ['pro with path', 'https://api.deepl.com/v2/translate'],
+  ])('returns undefined for a standard endpoint: %s', (_label, url) => {
+    expect(nonStandardEndpointWarning(url, { kind: 'flag' })).toBeUndefined();
+  });
+
+  it('names the origin and the --api-url flag', () => {
+    const msg = nonStandardEndpointWarning('http://127.0.0.1:8732/v2', {
+      kind: 'flag',
+    });
+    expect(msg).toContain('http://127.0.0.1:8732');
+    expect(msg).toContain('--api-url');
+    expect(msg).toMatch(/API key/i);
+  });
+
+  it('names the origin and the config file that redirected it', () => {
+    const msg = nonStandardEndpointWarning('https://evil.example.com', {
+      kind: 'config',
+      path: '/home/u/.config/deepl-cli/config.json',
+    });
+    expect(msg).toContain('https://evil.example.com');
+    expect(msg).toContain('api.baseUrl');
+    expect(msg).toContain('/home/u/.config/deepl-cli/config.json');
+  });
+
+  it('reports the origin only, never a path or query from the URL', () => {
+    const msg = nonStandardEndpointWarning(
+      'https://evil.example.com/leak?key=SECRET#frag',
+      { kind: 'flag' }
+    );
+    expect(msg).toContain('https://evil.example.com');
+    expect(msg).not.toContain('/leak');
+    expect(msg).not.toContain('SECRET');
+    expect(msg).not.toContain('frag');
+  });
+
+  it('warns for a regional DeepL endpoint, which is not one of the two standard hosts', () => {
+    expect(
+      nonStandardEndpointWarning('https://api-jp.deepl.com', { kind: 'flag' })
+    ).toContain('https://api-jp.deepl.com');
+  });
+
+  it('warns for loopback, which is as much an exfiltration sink as a remote host', () => {
+    expect(
+      nonStandardEndpointWarning('http://localhost:9999', { kind: 'flag' })
+    ).toContain('http://localhost:9999');
+  });
+
+  it('still warns, and neutralizes control sequences, when the URL does not parse', () => {
+    const msg = nonStandardEndpointWarning('://not-a-url\u001b[2K', {
+      kind: 'flag',
+    });
+    expect(msg).toBeDefined();
+    expect(msg).not.toContain('\u001b');
   });
 });
 

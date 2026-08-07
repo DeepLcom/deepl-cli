@@ -264,8 +264,10 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 
 **API Options:**
 
-- `--api-url URL` - Custom API endpoint URL (for testing or private instances)
+- `--api-url URL` - Custom API endpoint URL (for testing or private instances). Any host other than `api.deepl.com` and `api-free.deepl.com` prints a warning to **stderr** naming the origin the key is about to be sent to — see "Non-standard endpoint notice" below
 - `--show-billed-characters` - Request and display actual billed character count for cost transparency
+
+**Non-standard endpoint notice.** The API key is attached to every request, so whatever host the CLI is pointed at receives it along with the text being translated. Whenever the resolved endpoint is not one of the two standard DeepL hosts, the CLI prints an unconditional warning to stderr naming the **origin** (scheme, host, port — never a path or query, which the redirect may control) and stating where the redirect came from: `set by --api-url`, or `set by api.baseUrl in <config file>` with the actual file path, since several config locations are searched and `-c` can override them. Regional endpoints such as `api-jp.deepl.com` are included, as is loopback — a co-tenant process listening on `127.0.0.1` receives the key just as a remote host does, the same reasoning the TMS destination-trust gate applies. The notice is **not** gated behind `--verbose`, because it is the user's only signal that a substituted config file has redirected their key; it is suppressed by `--quiet` like every other warning, and it goes to stderr so `deepl translate ... > out.txt` still captures only translation output. It is printed once per run, not once per API client. Under `--verbose`, each request line also names the resolved origin (`[verbose] HTTP POST https://api.deepl.com/v2/translate completed in 12ms (status 200)`).
 
 **Batch Options (for directories):**
 
