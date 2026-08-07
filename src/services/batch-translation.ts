@@ -346,8 +346,22 @@ export class BatchTranslationService {
 
         for (let i = 0; i < batch.length; i++) {
           const entry = batch[i]!;
+          const result = results[i];
+          if (!result) {
+            failed.push({
+              file: entry.file,
+              error: 'No translation returned for this file',
+            });
+            completed++;
+            onProgress?.({
+              completed,
+              total: totalFiles,
+              current: entry.file,
+            });
+            continue;
+          }
           const translatedText = restorePlaceholders(
-            results[i]!.text,
+            result.text,
             entry.preservationMap
           );
 

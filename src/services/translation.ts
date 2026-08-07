@@ -76,6 +76,7 @@ export class TranslationService {
     { data: LanguageInfo[]; timestamp: number }
   > = new Map();
   private readonly LANGUAGE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+  private announcedCacheNotices = new Set<string>();
 
   constructor(
     client: DeepLClient,
@@ -85,6 +86,23 @@ export class TranslationService {
     this.client = client;
     this.config = config;
     this.cache = cache;
+  }
+
+  /**
+   * The cache state is a property of the run, not of one request, so repeat it
+   * no more than once. A file of more than `TRANSLATE_BATCH_SIZE` strings needs
+   * several requests, and one notice per request buried the output.
+   */
+  private announceCacheMode(cacheEnabled: boolean, skipCache: boolean): void {
+    const notice = !cacheEnabled
+      ? 'ℹ️  Cache is disabled'
+      : skipCache
+        ? 'ℹ️  Cache bypassed for this request (--no-cache)'
+        : undefined;
+    if (notice && !this.announcedCacheNotices.has(notice)) {
+      this.announcedCacheNotices.add(notice);
+      Logger.info(notice);
+    }
   }
 
   /**
@@ -140,12 +158,7 @@ export class TranslationService {
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
     const shouldUseCache = cacheEnabled && !serviceOptions.skipCache;
 
-    // Log when cache is bypassed
-    if (!cacheEnabled) {
-      Logger.info('ℹ️  Cache is disabled');
-    } else if (serviceOptions.skipCache) {
-      Logger.info('ℹ️  Cache bypassed for this request (--no-cache)');
-    }
+    this.announceCacheMode(cacheEnabled, serviceOptions.skipCache === true);
 
     const cacheKey = this.generateCacheKey(processedText, translationOptions);
 
@@ -194,12 +207,17 @@ export class TranslationService {
    *   cache write, matching `translate()`. Without it, `--no-cache` was a
    *   silent no-op for every structured i18n format, so a corrupt translation
    *   could not be re-fetched and the natural remedy did nothing.
+   * @returns One slot per input text, in input order. A slot is `null` when the
+   *   request carrying that text failed; the surviving batches are still
+   *   returned so callers that track failure per item can retry only those.
+   *   Callers needing all-or-nothing should submit at most
+   *   `TRANSLATE_BATCH_SIZE` texts, which makes any failure a rejection.
    */
   async translateBatch(
     texts: string[],
     options: TranslationOptions,
     serviceOptions: TranslateBatchServiceOptions = {}
-  ): Promise<TranslationResult[]> {
+  ): Promise<(TranslationResult | null)[]> {
     if (texts.length === 0) {
       return [];
     }
@@ -224,11 +242,7 @@ export class TranslationService {
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
     const shouldUseCache = cacheEnabled && !serviceOptions.skipCache;
 
-    if (!cacheEnabled) {
-      Logger.info('ℹ️  Cache is disabled');
-    } else if (serviceOptions.skipCache) {
-      Logger.info('ℹ️  Cache bypassed for this request (--no-cache)');
-    }
+    this.announceCacheMode(cacheEnabled, serviceOptions.skipCache === true);
 
     // Merge options with defaults
     const translationOptions: TranslationOptions = {
@@ -249,6 +263,11 @@ export class TranslationService {
     for (let i = 0; i < texts.length; i++) {
       const text = texts[i];
       if (!text) {
+        // An empty source value has an empty translation. Sending it would be
+        // billed for nothing, and leaving the slot null made a text that was
+        // never sent indistinguishable from a request that failed — which
+        // crashed file translation and cost sync the key outright.
+        results[i] = { text: '', billedCharacters: 0 };
         continue;
       }
 
@@ -278,7 +297,7 @@ export class TranslationService {
 
     // If all texts were cached, return results preserving positional correspondence
     if (textsToTranslate.length === 0) {
-      return results as TranslationResult[];
+      return results;
     }
 
     // Use batch API to translate all non-cached texts in a single request
@@ -359,9 +378,7 @@ export class TranslationService {
       );
     }
 
-    // Return sparse array preserving positional correspondence with input texts.
-    // Callers must check for null/undefined at each index.
-    return results as TranslationResult[];
+    return results;
   }
 
   /**

@@ -7,7 +7,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'yaml';
-import { TranslationService, MAX_TEXT_BYTES } from './translation.js';
+import {
+  TranslationService,
+  MAX_TEXT_BYTES,
+  TRANSLATE_BATCH_SIZE,
+} from './translation.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
@@ -342,6 +346,12 @@ export class StructuredFileTranslationService {
     return result;
   }
 
+  /**
+   * One output file cannot be partly translated, so a batch that comes back
+   * incomplete aborts the run. Batches are capped at `TRANSLATE_BATCH_SIZE` as
+   * well as by size, which keeps each call to a single API request: a rejection
+   * then surfaces with its own exit code instead of arriving as empty slots.
+   */
   private async translateStringsInBatches(
     strings: string[],
     options: TranslationOptions,
@@ -351,33 +361,11 @@ export class StructuredFileTranslationService {
     let batch: string[] = [];
     let batchBytes = 0;
 
-    for (const str of strings) {
-      const strBytes = Buffer.byteLength(str, 'utf-8');
-
-      if (batch.length > 0 && batchBytes + strBytes > MAX_TEXT_BYTES) {
-        const batchResults = await this.translationService.translateBatch(
-          batch,
-          options,
-          { skipCache: fileOptions.skipCache }
-        );
-        if (batchResults.length !== batch.length) {
-          throw new NetworkError(
-            `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
-              'Aborting to prevent misaligned output.'
-          );
-        }
-        for (const r of batchResults) {
-          results.push(r.text);
-        }
-        batch = [];
-        batchBytes = 0;
+    const flush = async (): Promise<void> => {
+      if (batch.length === 0) {
+        return;
       }
-
-      batch.push(str);
-      batchBytes += strBytes;
-    }
-
-    if (batch.length > 0) {
+      const offset = results.length;
       const batchResults = await this.translationService.translateBatch(
         batch,
         options,
@@ -389,10 +377,35 @@ export class StructuredFileTranslationService {
             'Aborting to prevent misaligned output.'
         );
       }
-      for (const r of batchResults) {
-        results.push(r.text);
+      for (let i = 0; i < batch.length; i++) {
+        const result = batchResults[i];
+        if (!result) {
+          throw new NetworkError(
+            `Translation batch failed: no translation returned for string ${offset + i + 1} of ${strings.length}. ` +
+              'Aborting to prevent misaligned output.'
+          );
+        }
+        results.push(result.text);
       }
+      batch = [];
+      batchBytes = 0;
+    };
+
+    for (const str of strings) {
+      const strBytes = Buffer.byteLength(str, 'utf-8');
+
+      if (
+        batch.length >= TRANSLATE_BATCH_SIZE ||
+        (batch.length > 0 && batchBytes + strBytes > MAX_TEXT_BYTES)
+      ) {
+        await flush();
+      }
+
+      batch.push(str);
+      batchBytes += strBytes;
     }
+
+    await flush();
 
     return results;
   }

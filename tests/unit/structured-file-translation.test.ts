@@ -505,12 +505,12 @@ describe('StructuredFileTranslationService', () => {
   });
 
   describe('batching', () => {
-    it('should batch strings under 128KB into a single call', async () => {
+    it('should batch strings well under 128KB into a single call', async () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
       const data: Record<string, string> = {};
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 10; i++) {
         data[`key${i}`] = `Value ${i}`;
       }
       fs.writeFileSync(inputPath, JSON.stringify(data, null, 2));
@@ -530,6 +530,28 @@ describe('StructuredFileTranslationService', () => {
         expect.objectContaining({ targetLang: 'es' }),
         { skipCache: undefined }
       );
+    });
+
+    it('should split at TRANSLATE_BATCH_SIZE even when far under 128KB', async () => {
+      const inputPath = path.join(testDir, 'en.json');
+      const outputPath = path.join(testDir, 'es.json');
+
+      const data: Record<string, string> = {};
+      for (let i = 0; i < 100; i++) {
+        data[`key${i}`] = `Value ${i}`;
+      }
+      fs.writeFileSync(inputPath, JSON.stringify(data, null, 2));
+
+      mockTranslationService.translateBatch.mockImplementation(
+        (texts: string[]) =>
+          Promise.resolve(texts.map((t) => ({ text: `Translated ${t}` })))
+      );
+
+      await service.translateFile(inputPath, outputPath, { targetLang: 'es' });
+
+      expect(
+        mockTranslationService.translateBatch.mock.calls.map((c) => c[0].length)
+      ).toEqual([50, 50]);
     });
 
     it('should split strings into multiple batches when over 128KB', async () => {

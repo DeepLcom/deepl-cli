@@ -123,16 +123,18 @@ export async function reassembleIcu(
     // Every segment must come back. Substituting the source segment for a failed
     // one would emit a part-source message reported as successfully translated,
     // so leave the result unset — the message is marked failed and retried.
+    // An empty branch (`one {}`) translates to an empty string, which is a
+    // result: treating it as a failure lost the whole message permanently.
     const anySegmentFailed =
       segResults.length !== segTexts.length ||
-      segResults.some((sr) => !sr?.text);
+      segResults.some((sr) => typeof sr?.text !== 'string');
     if (anySegmentFailed) {
       results[icu.textIndex] = null;
       continue;
     }
 
     const translatedSegments = segResults.map((sr, si) => {
-      let translated = sr.text;
+      let translated = sr?.text ?? '';
       const pMap = segTexts[si]!.pMap;
       if (pMap.size > 0) translated = restorePlaceholders(translated, pMap);
       return translated;

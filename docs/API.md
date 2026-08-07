@@ -355,6 +355,8 @@ The following structured formats are parsed to extract only string values, trans
 - `.json` - JSON files (i18n locale files, config files)
 - `.yaml`, `.yml` - YAML files (Rails i18n, config files)
 
+An empty string value is copied to the output unchanged and is never sent to the API, so a placeholder key you have not written copy for yet costs nothing and stays in the file. Requests are capped at 50 strings each; if one of them fails, no output file is written and the command exits with that failure's own code (for example 3 for a rate limit), because a partly translated file is indistinguishable from a complete one.
+
 ```bash
 # Translate JSON locale file
 deepl translate en.json --to es --output es.json

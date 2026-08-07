@@ -50,6 +50,8 @@ deepl sync
 
 The lockfile tracks content hashes for every source string. On subsequent runs, only strings whose hash has changed (or that are newly added) are sent to DeepL. Deleted keys are removed from target files. This makes sync fast and cost-efficient -- you only pay for what actually changed.
 
+A key whose source value is an empty string is written to each target as an empty string without a request. It counts as translated, so it settles in the lockfile on the first run instead of being retried on every run. The same holds for an empty ICU plural branch such as `one {}` -- the branch stays empty and the rest of the message is translated normally.
+
 All sync commands (`sync`, `sync push`, `sync pull`, `sync export`, `sync validate`) refuse to follow symbolic links when scanning `include` globs. A symlink matching a bucket pattern is silently skipped, preventing a hostile symlink (e.g., `locales/en.json` -> `/etc/passwd`) from exfiltrating files outside the project root to the TMS server or into an exported XLIFF.
 
 Sync also refuses to read or write any path resolving into `.git/` or `.github/`, whether it arrives as an `include` match or as a resolved target path. Translating a file into `.github/workflows/` would turn a target-locale filename into CI workflow code whose body came from the translation endpoint, so a bucket rooted there fails with exit 6 rather than being silently skipped. The check compares segments relative to the project root, so a checkout that itself lives under a `.github` directory is unaffected.

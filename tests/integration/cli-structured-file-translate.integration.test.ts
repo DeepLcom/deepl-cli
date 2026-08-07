@@ -117,6 +117,82 @@ describe('Structured File Translation service integration', () => {
       expect(result.farewell).toBe('Adiós');
     });
 
+    it('should write an empty value back unchanged without sending it', async () => {
+      const inputPath = path.join(testDir, 'svc-empty-en.json');
+      const outputPath = path.join(testDir, 'svc-empty-de.json');
+
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            title: 'Hello world',
+            placeholder: '',
+            footer: 'Goodbye',
+          },
+          null,
+          2
+        )
+      );
+
+      let sentTexts: string[] = [];
+      nock(FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          sentTexts = body['text'] as string[];
+          return true;
+        })
+        .reply(200, {
+          translations: [
+            { text: 'Hallo Welt', detected_source_language: 'EN' },
+            { text: 'Auf Wiedersehen', detected_source_language: 'EN' },
+          ],
+        });
+
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'de',
+      });
+
+      expect(sentTexts).toEqual(['Hello world', 'Goodbye']);
+      expect(JSON.parse(fs.readFileSync(outputPath, 'utf-8'))).toEqual({
+        title: 'Hallo Welt',
+        placeholder: '',
+        footer: 'Auf Wiedersehen',
+      });
+    });
+
+    it('should surface a rate limit on the second request as exit code 3', async () => {
+      const inputPath = path.join(testDir, 'svc-partial-en.json');
+      const outputPath = path.join(testDir, 'svc-partial-de.json');
+
+      const data: Record<string, string> = {};
+      for (let i = 0; i < 60; i++) {
+        data[`k${i}`] = `String number ${i}`;
+      }
+      fs.writeFileSync(inputPath, JSON.stringify(data, null, 2));
+
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: Object.values(data)
+            .slice(0, 50)
+            .map((v) => ({ text: `DE ${v}`, detected_source_language: 'EN' })),
+        });
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .times(6)
+        .reply(429, { message: 'Too many requests' });
+
+      expect.assertions(3);
+      try {
+        await fileTranslationService.translateFile(inputPath, outputPath, {
+          targetLang: 'de',
+        });
+      } catch (error) {
+        expect((error as Error).message).not.toMatch(/Cannot read properties/);
+        expect((error as { exitCode?: number }).exitCode).toBe(3);
+      }
+      expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
     it('should refuse to write a file when the endpoint reorders the batch', async () => {
       const inputPath = path.join(testDir, 'svc-reorder-en.json');
       const outputPath = path.join(testDir, 'svc-reorder-de.json');

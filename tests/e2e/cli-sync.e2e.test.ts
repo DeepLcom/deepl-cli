@@ -237,6 +237,35 @@ describe('CLI Sync E2E', () => {
       expect(parsed['farewell']).toBeDefined();
     });
 
+    it('should carry an empty source value into the target rather than dropping the key', () => {
+      writeSyncConfig(testFiles.path, ['de']);
+      const dir = path.join(testFiles.path, 'locales');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, 'en.json'),
+        JSON.stringify(
+          { title: 'Hello world', placeholder: '', footer: 'Goodbye' },
+          null,
+          2
+        ) + '\n'
+      );
+
+      const first = runSyncExpectError();
+
+      expect(first.status).toBe(0);
+      expect(first.output).toContain('3/3 keys');
+      const parsed = JSON.parse(
+        fs.readFileSync(path.join(dir, 'de.json'), 'utf-8')
+      ) as Record<string, string>;
+      expect(parsed['placeholder']).toBe('');
+      expect(Object.keys(parsed)).toHaveLength(3);
+
+      // The empty key is settled, not queued for a retry that can never succeed.
+      const second = runSyncExpectError();
+      expect(second.status).toBe(0);
+      expect(second.output).toContain('3 current');
+    });
+
     it('should show dry-run preview without creating files', () => {
       writeSyncConfig(testFiles.path, ['de']);
       writeSourceFile(testFiles.path);

@@ -1,10 +1,12 @@
 import {
   expandPlurals,
   detectIcu,
+  reassembleIcu,
   writebackPlurals,
 } from '../../../src/sync/sync-message-preprocess';
 import type { SyncDiff } from '../../../src/sync/types';
 import type { TranslationResult } from '../../../src/api/translation-client';
+import type { TranslationService } from '../../../src/services/translation';
 
 function makeDiff(partial: Partial<SyncDiff>): SyncDiff {
   return {
@@ -83,6 +85,45 @@ describe('detectIcu', () => {
     detectIcu(input);
 
     expect(input[0]).toBe('{n, plural, one {x} other {y}}');
+  });
+});
+
+describe('reassembleIcu', () => {
+  function serviceReturning(
+    impl: (texts: string[]) => (TranslationResult | null)[]
+  ): TranslationService {
+    return {
+      translateBatch: (texts: string[]) => Promise.resolve(impl(texts)),
+    } as unknown as TranslationService;
+  }
+
+  it('accepts an empty plural branch as translated', async () => {
+    const source = '{count, plural, one {} other {# items}}';
+    const { extendedTexts, icuMappings } = detectIcu([source]);
+    const results: (TranslationResult | null)[] = [null];
+    const service = serviceReturning((texts) =>
+      texts.map((t) => ({ text: t === '' ? '' : `DE ${t}` }))
+    );
+
+    await reassembleIcu(service, results, icuMappings, { targetLang: 'de' });
+
+    expect(extendedTexts[0]).toBe('__ICU_PLACEHOLDER_0__');
+    expect(results[0]).not.toBeNull();
+    expect(results[0]?.text).toBe('{count, plural, one {} other {DE # items}}');
+  });
+
+  it('still marks the message failed when a segment has no result at all', async () => {
+    const { icuMappings } = detectIcu([
+      '{count, plural, one {# item} other {# items}}',
+    ]);
+    const results: (TranslationResult | null)[] = [null];
+    const service = serviceReturning((texts) =>
+      texts.map((t, i) => (i === 0 ? null : { text: `DE ${t}` }))
+    );
+
+    await reassembleIcu(service, results, icuMappings, { targetLang: 'de' });
+
+    expect(results[0]).toBeNull();
   });
 });
 

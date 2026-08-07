@@ -118,7 +118,7 @@ describe('translateBatch honours skipCache', () => {
       { skipCache: true }
     );
 
-    expect(results.map((r) => r.text)).toEqual([
+    expect(results.map((r) => r?.text)).toEqual([
       'FRESH(one)',
       'FRESH(two)',
       'FRESH(three)',
