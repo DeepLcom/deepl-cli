@@ -5,9 +5,36 @@
 
 import { neutralizeTerminalControls } from './control-chars.js';
 
+/**
+ * Shortest credential value redacted by literal substring match. A DeepL key is
+ * UUID-shaped and TMS credentials are longer still, so nothing real is below
+ * this; anything that is would corrupt ordinary prose instead, because the
+ * match has no token boundary — a one-character key turns every "Check" in
+ * every diagnostic into "Chec[REDACTED]".
+ */
+const MIN_REDACTABLE_SECRET_LENGTH = 8;
+
 class LoggerClass {
   private quiet: boolean = false;
   private verboseMode: boolean = false;
+  private readonly registeredSecrets = new Set<string>();
+
+  /**
+   * Register a credential the redactor cannot find in the environment: an API
+   * key read from config.json, or TMS credentials inlined in .deepl-sync.yaml.
+   * A config-file key takes precedence over DEEPL_API_KEY, so without this the
+   * credential actually on the wire is the one value the redactor cannot see.
+   */
+  registerSecret(value: string | undefined): void {
+    if (value) this.registeredSecrets.add(value);
+  }
+
+  /**
+   * Forget every credential passed to `registerSecret`.
+   */
+  clearSecrets(): void {
+    this.registeredSecrets.clear();
+  }
 
   /**
    * Enable or disable quiet mode
@@ -48,10 +75,9 @@ class LoggerClass {
   }
 
   /**
-   * Recursively apply `transform` to strings inside plain objects, arrays and
-   * Errors so a dumped axios error (config.headers.Authorization etc.) cannot
-   * leak credentials via util.inspect. Other object types pass through
-   * unchanged.
+   * Recursively apply `transform` to every string reachable from `value` so a
+   * dumped axios error (config.headers.Authorization etc.) cannot leak
+   * credentials via util.inspect.
    */
   private mapStrings(
     value: unknown,
@@ -65,6 +91,34 @@ class LoggerClass {
 
     if (Array.isArray(value)) {
       return value.map((item) => this.mapStrings(item, seen, transform));
+    }
+
+    if (value instanceof Map) {
+      return new Map(
+        Array.from(value, ([key, entry]) => [
+          this.mapStrings(key, seen, transform),
+          this.mapStrings(entry, seen, transform),
+        ])
+      );
+    }
+
+    if (value instanceof Set) {
+      return new Set(
+        Array.from(value, (entry) => this.mapStrings(entry, seen, transform))
+      );
+    }
+
+    // Values whose payload does not live in string-keyed own properties: a
+    // rebuilt copy would either lose it (Date, RegExp) or enumerate every byte
+    // (Buffer and the other views over an ArrayBuffer). None of them renders a
+    // credential as readable text, so they are returned as they are.
+    if (
+      value instanceof Date ||
+      value instanceof RegExp ||
+      value instanceof ArrayBuffer ||
+      ArrayBuffer.isView(value)
+    ) {
+      return value;
     }
 
     if (value instanceof Error) {
@@ -90,16 +144,43 @@ class LoggerClass {
       return copy;
     }
 
-    const proto: unknown = Object.getPrototypeOf(value);
-    if (proto === Object.prototype || proto === null) {
-      const result: Record<string, unknown> = {};
-      for (const [key, entry] of Object.entries(value)) {
-        result[key] = this.mapStrings(entry, seen, transform);
-      }
-      return result;
+    // Every remaining object — a plain one, an axios AxiosHeaders, a
+    // ClientRequest — is rebuilt property by property on its own prototype, so
+    // util.inspect still names the class but never sees the live original.
+    // Handing a redactor's caller the untouched instance is the wrong default.
+    // Properties are defined rather than assigned so a key named `__proto__`
+    // becomes an own property of the copy instead of reaching the setter.
+    const copy = Object.create(
+      Object.getPrototypeOf(value) as object | null
+    ) as object;
+    for (const [key, entry] of Object.entries(value)) {
+      Object.defineProperty(copy, key, {
+        value: this.mapStrings(entry, seen, transform),
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
     }
+    return copy;
+  }
 
-    return value;
+  /**
+   * Credential values long enough to redact by literal match — the environment
+   * ones plus whatever the CLI registered from a config file. The header and
+   * query-parameter patterns above cover the shapes a credential is normally
+   * printed in; this is the backstop for a key echoed somewhere they do not
+   * reach, such as a server's own error message.
+   */
+  private literalSecrets(): string[] {
+    return [
+      process.env['DEEPL_API_KEY'],
+      process.env['TMS_API_KEY'],
+      process.env['TMS_TOKEN'],
+      ...this.registeredSecrets,
+    ].filter(
+      (secret): secret is string =>
+        secret !== undefined && secret.length >= MIN_REDACTABLE_SECRET_LENGTH
+    );
   }
 
   private sanitizeString(value: string): string {
@@ -125,17 +206,8 @@ class LoggerClass {
       /X-Auth-Token:\s+\S+/gi,
       'X-Auth-Token: [REDACTED]'
     );
-    const apiKey = process.env['DEEPL_API_KEY'];
-    if (apiKey) {
-      result = result.replaceAll(apiKey, '[REDACTED]');
-    }
-    const tmsApiKey = process.env['TMS_API_KEY'];
-    if (tmsApiKey) {
-      result = result.replaceAll(tmsApiKey, '[REDACTED]');
-    }
-    const tmsToken = process.env['TMS_TOKEN'];
-    if (tmsToken) {
-      result = result.replaceAll(tmsToken, '[REDACTED]');
+    for (const secret of this.literalSecrets()) {
+      result = result.replaceAll(secret, '[REDACTED]');
     }
     // Everything routed here goes to stderr, which is diagnostics rather than
     // data: no caller consumes it as bytes, and a non-TTY stderr is still

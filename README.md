@@ -1676,6 +1676,7 @@ See [docs/API.md#environment-variables](./docs/API.md#environment-variables) for
 ## 🔒 Security & Privacy
 
 - **API key storage** - Keys are stored as **plaintext** in `config.json` with `0600` file permissions (owner read/write only). For CI/CD or shared environments, prefer the `DEEPL_API_KEY` environment variable instead. Avoid committing `config.json` to version control — it is gitignored by default.
+- **Credential redaction in diagnostics** - Errors, warnings and `--verbose` output are scrubbed before they reach stderr: auth headers and `token=`/`api_key=` query parameters are replaced by `[REDACTED]`, as is the literal value of whichever credential the run is using, whether it came from the environment, `config.json`, or `.deepl-sync.yaml`. A credential value shorter than 8 characters is matched only by the header and query-parameter patterns, not by its literal value — a substring that short corrupts ordinary words in the diagnostics without protecting anything real. `deepl translate` output on stdout is never rewritten.
 - **Local caching** - All cached data stored locally in SQLite, never shared
 - **No telemetry** - Zero usage tracking or data collection
 - **Environment variable support** - Use `DEEPL_API_KEY` environment variable for CI/CD

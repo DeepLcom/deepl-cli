@@ -21,6 +21,7 @@ describe('Logger', () => {
     // Reset logger state
     Logger.setQuiet(false);
     Logger.setVerbose(false);
+    Logger.clearSecrets();
   });
 
   describe('setQuiet()', () => {
@@ -638,14 +639,68 @@ describe('Logger', () => {
       );
     });
 
-    it('should pass non-plain objects through unchanged', () => {
+    it('should redact inside a class instance while keeping its class', () => {
       class Custom {
         value = 'https://host?token=class-secret';
       }
       const instance = new Custom();
-      const map = new Map([['k', 'v']]);
-      Logger.error(instance, map);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(instance, map);
+      Logger.error(instance);
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Custom;
+      expect(logged).toBeInstanceOf(Custom);
+      expect(logged.value).toBe('https://host?token=[REDACTED]');
+      // The caller's instance is not mutated.
+      expect(instance.value).toBe('https://host?token=class-secret');
+    });
+
+    it('should redact an auth header held on a class instance inside an Error', () => {
+      class AxiosHeaders {
+        Authorization = 'DeepL-Auth-Key SUPER-SECRET-KEY-FROM-CONFIG';
+      }
+      const err = new Error('boom') as Error & { config?: unknown };
+      err.config = { headers: new AxiosHeaders() };
+      Logger.error(err);
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Error & {
+        config?: { headers?: { Authorization?: string } };
+      };
+      expect(logged.config?.headers?.Authorization).toBe(
+        'DeepL-Auth-Key [REDACTED]'
+      );
+    });
+
+    it('should redact Map keys and values while keeping it a Map', () => {
+      const map = new Map([
+        ['url', 'https://host?token=map-secret'],
+        ['https://host?api_key=key-secret', 'value'],
+      ]);
+      Logger.error(map);
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Map<string, string>;
+      expect(logged).toBeInstanceOf(Map);
+      expect(logged.get('url')).toBe('https://host?token=[REDACTED]');
+      expect(logged.get('https://host?api_key=[REDACTED]')).toBe('value');
+    });
+
+    it('should redact Set members while keeping it a Set', () => {
+      Logger.error(new Set(['https://host?token=set-secret', 'safe']));
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Set<string>;
+      expect(logged).toBeInstanceOf(Set);
+      expect([...logged]).toEqual(['https://host?token=[REDACTED]', 'safe']);
+    });
+
+    it.each([
+      ['a Date', new Date(0)],
+      ['a RegExp', /token=secret/],
+      ['an ArrayBuffer', new ArrayBuffer(8)],
+    ])('should pass %s through unchanged', (_label, value) => {
+      Logger.error(value);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(value);
+    });
+
+    it('should pass a Buffer through without enumerating its bytes', () => {
+      const buffer = Buffer.from('DeepL-Auth-Key not-text-in-inspect');
+      Logger.error(buffer);
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Buffer;
+      expect(Buffer.isBuffer(logged)).toBe(true);
+      expect(logged).toBe(buffer);
     });
 
     it('should redact values in null-prototype objects', () => {
@@ -657,6 +712,107 @@ describe('Logger', () => {
         unknown
       >;
       expect(logged['url']).toBe('https://host?api_key=[REDACTED]');
+    });
+  });
+
+  describe('registerSecret()', () => {
+    it('should redact a registered credential the environment does not hold', () => {
+      Logger.registerSecret('CONFIG-FILE-KEY-WINS:fx');
+      Logger.error('rejected credential CONFIG-FILE-KEY-WINS:fx');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'rejected credential [REDACTED]'
+      );
+    });
+
+    it('should redact a registered credential nested in an object', () => {
+      Logger.registerSecret('CONFIG-FILE-KEY-WINS:fx');
+      Logger.error({ body: { message: 'CONFIG-FILE-KEY-WINS:fx' } });
+      expect(consoleErrorSpy).toHaveBeenCalledWith({
+        body: { message: '[REDACTED]' },
+      });
+    });
+
+    it('should redact every registered credential', () => {
+      Logger.registerSecret('first-registered-key');
+      Logger.registerSecret('second-registered-key');
+      Logger.error('first-registered-key and second-registered-key');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[REDACTED] and [REDACTED]');
+    });
+
+    it('should ignore an undefined credential', () => {
+      Logger.registerSecret(undefined);
+      Logger.error('nothing to redact here');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('nothing to redact here');
+    });
+
+    it('should stop redacting a credential after clearSecrets()', () => {
+      Logger.registerSecret('CONFIG-FILE-KEY-WINS:fx');
+      Logger.clearSecrets();
+      Logger.error('CONFIG-FILE-KEY-WINS:fx');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('CONFIG-FILE-KEY-WINS:fx');
+    });
+  });
+
+  describe('minimum length for literal credential redaction', () => {
+    const withEnv = (name: string, value: string, run: () => void): void => {
+      const original = process.env[name];
+      process.env[name] = value;
+      try {
+        run();
+      } finally {
+        if (original === undefined) {
+          delete process.env[name];
+        } else {
+          process.env[name] = original;
+        }
+      }
+    };
+
+    it('should leave ordinary words intact when DEEPL_API_KEY is one character', () => {
+      withEnv('DEEPL_API_KEY', 'k', () => {
+        Logger.error('Check your internet connection and proxy settings');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Check your internet connection and proxy settings'
+        );
+      });
+    });
+
+    it('should not redact a DEEPL_API_KEY shorter than eight characters', () => {
+      withEnv('DEEPL_API_KEY', 'env-key', () => {
+        Logger.error('Using key env-key for request');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Using key env-key for request'
+        );
+      });
+    });
+
+    it('should redact a DEEPL_API_KEY of exactly eight characters', () => {
+      withEnv('DEEPL_API_KEY', 'env-keys', () => {
+        Logger.error('Using key env-keys for request');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Using key [REDACTED] for request'
+        );
+      });
+    });
+
+    it('should not redact a TMS_API_KEY shorter than eight characters', () => {
+      withEnv('TMS_API_KEY', 'tms', () => {
+        Logger.error('tms transport failed');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('tms transport failed');
+      });
+    });
+
+    it('should not redact a TMS_TOKEN shorter than eight characters', () => {
+      withEnv('TMS_TOKEN', 'tok', () => {
+        Logger.error('token exchange failed');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('token exchange failed');
+      });
+    });
+
+    it('should not redact a registered credential shorter than eight characters', () => {
+      Logger.registerSecret('short');
+      Logger.error('a short message');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('a short message');
     });
   });
 

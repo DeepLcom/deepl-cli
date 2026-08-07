@@ -1,6 +1,7 @@
 import nock from 'nock';
 import { HttpClient } from '../../src/api/http-client';
 import { NetworkError } from '../../src/utils/errors';
+import { Logger } from '../../src/utils/logger';
 
 class TestHttpClient extends HttpClient {
   async get<T>(path: string, params?: Record<string, unknown>): Promise<T> {
@@ -371,6 +372,28 @@ describe('HttpClient', () => {
       process.env['no_proxy'] = 'api.deepl.com';
 
       expect(proxyFor('https://api.deepl.com')).toBeUndefined();
+    });
+  });
+
+  describe('credential registration', () => {
+    let errorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      Logger.clearSecrets();
+      errorSpy = jest.spyOn(console, 'error').mockImplementation();
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+      Logger.clearSecrets();
+    });
+
+    it('should register the key it attaches so diagnostics redact it', () => {
+      new TestHttpClient('CONFIG-FILE-KEY-WINS:fx');
+
+      Logger.error('API error: CONFIG-FILE-KEY-WINS:fx');
+
+      expect(errorSpy).toHaveBeenCalledWith('API error: [REDACTED]');
     });
   });
 });

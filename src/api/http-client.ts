@@ -263,6 +263,11 @@ export class HttpClient {
       throw new AuthError('API key is required');
     }
 
+    // The key is attached to every request below, so this is the one place that
+    // sees whichever key won precedence — including a config-file key, which
+    // the redactor cannot discover from the environment.
+    Logger.registerSecret(apiKey);
+
     const baseURL = resolveClientBaseUrl(options);
     this.baseOrigin = (() => {
       try {

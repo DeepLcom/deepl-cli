@@ -9,6 +9,7 @@ import type { SyncTmsConfig } from '../../../src/sync/types';
 import type { TmsServerTrustDeps } from '../../../src/sync/tms-server-trust';
 import { ConfigError, ValidationError } from '../../../src/utils/errors';
 import { ExitCode, exitCodeForError } from '../../../src/utils/exit-codes';
+import { Logger } from '../../../src/utils/logger';
 
 const mockFetch = jest.fn();
 (global as unknown as Record<string, unknown>)['fetch'] = mockFetch;
@@ -949,5 +950,43 @@ describe('TmsClient.pullKeys response validation', () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => atLimit });
     const result = await client.pullKeys('de');
     expect(Object.keys(result)).toHaveLength(50000);
+  });
+});
+
+describe('TmsClient credential registration', () => {
+  let errorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    Logger.clearSecrets();
+    errorSpy = jest.spyOn(console, 'error').mockImplementation();
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+    Logger.clearSecrets();
+  });
+
+  it('should register a yaml-held api_key so diagnostics redact it', () => {
+    new TmsClient({
+      serverUrl: 'https://tms.example.com',
+      projectId: 'p',
+      apiKey: 'YAML-HELD-TMS-API-KEY',
+    });
+
+    Logger.error('server rejected YAML-HELD-TMS-API-KEY');
+
+    expect(errorSpy).toHaveBeenCalledWith('server rejected [REDACTED]');
+  });
+
+  it('should register a yaml-held token so diagnostics redact it', () => {
+    new TmsClient({
+      serverUrl: 'https://tms.example.com',
+      projectId: 'p',
+      token: 'YAML-HELD-TMS-TOKEN',
+    });
+
+    Logger.error('server rejected YAML-HELD-TMS-TOKEN');
+
+    expect(errorSpy).toHaveBeenCalledWith('server rejected [REDACTED]');
   });
 });

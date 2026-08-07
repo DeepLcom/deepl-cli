@@ -201,6 +201,11 @@ export class TmsClient {
   private readonly retry: Required<TmsClientRetryOptions>;
 
   constructor(private readonly options: TmsClientOptions) {
+    // Either credential may have come from .deepl-sync.yaml rather than the
+    // environment, where the redactor cannot find it.
+    Logger.registerSecret(options.apiKey);
+    Logger.registerSecret(options.token);
+
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TMS_TIMEOUT_MS;
     this.retry = {
       maxAttempts: options.retry?.maxAttempts ?? DEFAULT_RETRY_MAX_ATTEMPTS,
