@@ -188,6 +188,85 @@ export function serializeLockFile(lockFile: SyncLockFile): string {
   return `${serializeNode(lockFile, '', [])}\n`;
 }
 
+/** A member that can carry lock file structure: an object, not null, not an array. */
+function isContainer(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** The recorded sync timestamp when the file carries a usable one. */
+function lastSyncOf(stats: unknown): string {
+  if (isContainer(stats) && typeof stats['last_sync'] === 'string') {
+    return stats['last_sync'];
+  }
+  return new Date().toISOString();
+}
+
+interface ShapeRepair {
+  /** Members dropped for not having the shape the sync code dereferences. */
+  dropped: number;
+  entries: Record<string, Record<string, SyncLockEntry>>;
+  totalKeys: number;
+  totalTranslations: number;
+}
+
+/**
+ * Rebuild `entries` from the members that have the shape the rest of sync
+ * dereferences, and count what survives.
+ *
+ * A lock file is read from the repository, so every level of it is untrusted.
+ * Malformed members are dropped one at a time rather than the file being
+ * discarded whole: a key that loses its entry is translated again and billed
+ * again, so discarding an entire lock file over one bad member would hand
+ * whoever wrote it a full re-translation of the project.
+ *
+ * The result is a fresh object built with `setOwnMember`, so a file path or i18n
+ * key named `__proto__` is carried across as an own property rather than
+ * reaching a prototype setter.
+ */
+function repairEntryShape(entries: Record<string, unknown>): ShapeRepair {
+  const repaired: Record<string, Record<string, SyncLockEntry>> = {};
+  let dropped = 0;
+  let totalKeys = 0;
+  let totalTranslations = 0;
+
+  for (const [filePath, fileEntries] of Object.entries(entries)) {
+    if (!isContainer(fileEntries)) {
+      dropped++;
+      continue;
+    }
+
+    const repairedFile: Record<string, SyncLockEntry> = {};
+    for (const [key, entry] of Object.entries(fileEntries)) {
+      if (!isContainer(entry) || !isContainer(entry['translations'])) {
+        dropped++;
+        continue;
+      }
+
+      const translations: Record<string, unknown> = {};
+      for (const [locale, translation] of Object.entries(
+        entry['translations']
+      )) {
+        if (!isContainer(translation)) {
+          dropped++;
+          continue;
+        }
+        setOwnMember(translations, locale, translation);
+        totalTranslations++;
+      }
+
+      setOwnMember(repairedFile, key, {
+        ...entry,
+        translations,
+      } as unknown as SyncLockEntry);
+      totalKeys++;
+    }
+
+    setOwnMember(repaired, filePath, repairedFile);
+  }
+
+  return { dropped, entries: repaired, totalKeys, totalTranslations };
+}
+
 // Per-manager memo of the entries-mutation counter value that `stats` were
 // last computed for. Avoids walking every entry twice on each updateEntry /
 // removeEntry (once in the method, once again in write()).
@@ -275,8 +354,52 @@ export class SyncLockManager {
       Logger.warn(`Lock file missing entries, performing full sync.${suffix}`);
       return createEmptyLockFile('');
     }
+    // An array cannot carry entries keyed by source path, so there is nothing
+    // to salvage from one. Left to the full-sync path rather than repaired,
+    // unlike a malformed member inside a real map.
+    if (Array.isArray(obj['entries'])) {
+      const backup = backupLockFile(
+        this.lockFilePath,
+        raw,
+        `v${LOCK_FILE_VERSION}-entries-not-a-map`
+      );
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
+      Logger.warn(
+        `Lock file entries is not a map of source paths, performing full sync.${suffix}`
+      );
+      return createEmptyLockFile('');
+    }
 
-    return parsed as SyncLockFile;
+    const repair = repairEntryShape(obj['entries'] as Record<string, unknown>);
+    if (repair.dropped > 0) {
+      const backup = backupLockFile(
+        this.lockFilePath,
+        raw,
+        `v${LOCK_FILE_VERSION}-malformed`
+      );
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
+      Logger.warn(
+        `Lock file contained ${repair.dropped} malformed ${repair.dropped === 1 ? 'entry' : 'entries'}, now dropped; the affected keys will be translated again.${suffix}`
+      );
+    }
+
+    const lockFile = parsed as SyncLockFile;
+    lockFile.entries = repair.entries;
+    // `stats` is derived from `entries` and recomputed on every write that
+    // follows a mutation, so the values on disk are never read for their own
+    // sake. Replacing them outright is cheaper than validating them and cannot
+    // leave the counts disagreeing with the entries they describe.
+    lockFile.stats = {
+      total_keys: repair.totalKeys,
+      total_translations: repair.totalTranslations,
+      last_sync: lastSyncOf(obj['stats']),
+    };
+
+    return lockFile;
   }
 
   async write(lockFile: SyncLockFile): Promise<void> {

@@ -440,6 +440,260 @@ describe('SyncLockManager', () => {
       expect(result.entries).toEqual({});
     });
 
+    describe('a lock file whose structure the repository controls', () => {
+      let warnSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        warnSpy.mockRestore();
+      });
+
+      function writeLock(lock: unknown): void {
+        fs.writeFileSync(lockFilePath, JSON.stringify(lock));
+      }
+
+      function goodEntry(): unknown {
+        return {
+          source_hash: '185f8db32271',
+          source_text: 'Hello',
+          translations: {
+            de: {
+              hash: '185f8db32271',
+              translated_at: '2026-01-01T00:00:00.000Z',
+              status: 'translated',
+            },
+          },
+        };
+      }
+
+      function backups(): string[] {
+        return fs
+          .readdirSync(tmpDir)
+          .filter((name) => name.includes('.deepl-sync.lock.bak-'));
+      }
+
+      it('should drop a per-file map that is not an object', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': 'pwn' },
+          stats: { total_keys: 0, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toBeUndefined();
+      });
+
+      it('should drop a per-file map that is an array', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': [] },
+          stats: { total_keys: 0, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toBeUndefined();
+      });
+
+      it('should drop an entry that is not an object', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: 'pwn' } },
+          stats: { total_keys: 1, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toEqual({});
+      });
+
+      it('should drop an entry with no translations container', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': { greeting: { source_hash: '185f8db32271' } },
+          },
+          stats: { total_keys: 1, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toEqual({});
+      });
+
+      it('should drop an entry whose translations is not an object', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': {
+              greeting: { source_hash: '185f8db32271', translations: 'pwn' },
+            },
+          },
+          stats: { total_keys: 1, total_translations: 1, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toEqual({});
+      });
+
+      it('should drop a null translation and keep the entry it sat in', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': {
+              greeting: {
+                source_hash: '185f8db32271',
+                source_text: 'Hello',
+                translations: {
+                  de: null,
+                  es: {
+                    hash: '185f8db32271',
+                    translated_at: '2026-01-01T00:00:00.000Z',
+                    status: 'translated',
+                  },
+                },
+              },
+            },
+          },
+          stats: { total_keys: 1, total_translations: 2, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        const entry = result.entries['locales/en.json']!['greeting']!;
+        expect(Object.keys(entry.translations)).toEqual(['es']);
+      });
+
+      it('should keep the well-formed entries beside the dropped ones', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': { greeting: goodEntry(), farewell: 'pwn' },
+          },
+          stats: { total_keys: 2, total_translations: 1, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(Object.keys(result.entries['locales/en.json']!)).toEqual([
+          'greeting',
+        ]);
+      });
+
+      it('should recompute stats rather than believe what the file claims', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: goodEntry() } },
+          stats: {
+            total_keys: 999,
+            total_translations: 999,
+            last_sync: '2020-01-01T00:00:00.000Z',
+          },
+        });
+
+        const result = await manager.read();
+
+        expect(result.stats.total_keys).toBe(1);
+        expect(result.stats.total_translations).toBe(1);
+      });
+
+      it.each([
+        ['missing', undefined],
+        ['a string', 'pwn'],
+        ['an array', []],
+        ['null', null],
+      ])('should synthesize stats when the field is %s', async (_, stats) => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: goodEntry() } },
+          stats,
+        });
+
+        const result = await manager.read();
+
+        expect(result.stats.total_keys).toBe(1);
+        expect(result.stats.total_translations).toBe(1);
+        expect(typeof result.stats.last_sync).toBe('string');
+      });
+
+      it('should warn and back up the file when it drops anything', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: 'pwn' } },
+          stats: { total_keys: 1, total_translations: 0, last_sync: 'x' },
+        });
+
+        await manager.read();
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('malformed')
+        );
+        expect(backups()).toHaveLength(1);
+      });
+
+      it('should neither warn nor back up a well-formed lock file', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: goodEntry() } },
+          stats: { total_keys: 1, total_translations: 1, last_sync: 'x' },
+        });
+
+        await manager.read();
+
+        expect(warnSpy).not.toHaveBeenCalled();
+        expect(backups()).toHaveLength(0);
+      });
+
+      it('should degrade to a full sync when entries is an array', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: [],
+          stats: { total_keys: 0, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(Array.isArray(result.entries)).toBe(false);
+        expect(result.entries).toEqual({});
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('entries')
+        );
+        expect(backups()).toHaveLength(1);
+      });
+
+      it('should survive a write after repairing what it read', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: goodEntry() } },
+        });
+
+        const result = await manager.read();
+        await manager.write(result);
+
+        const reread = await manager.read();
+        expect(reread.stats.total_keys).toBe(1);
+        expect(reread.entries['locales/en.json']!['greeting']).toBeDefined();
+      });
+    });
+
     it('should read lock file with multiple entries', async () => {
       const lockFile: SyncLockFile = {
         _comment: LOCK_FILE_COMMENT,

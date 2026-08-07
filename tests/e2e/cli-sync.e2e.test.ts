@@ -249,6 +249,76 @@ describe('CLI Sync E2E', () => {
     });
   });
 
+  describe('a lock file the repository controls', () => {
+    const lockPath = () => path.join(testFiles.path, '.deepl-sync.lock');
+
+    function syncWithLock(lock: string): string {
+      writeSyncConfig(testFiles.path, ['de']);
+      writeSourceFile(testFiles.path);
+      fs.writeFileSync(lockPath(), lock);
+      return runSyncAll();
+    }
+
+    it('should not crash after billing when stats is missing', () => {
+      const output = syncWithLock(
+        '{"version":1,"source_locale":"en","entries":{}}'
+      );
+
+      expect(output).not.toContain('Cannot set properties of undefined');
+      expect(output).toContain('Sync complete');
+      const written = JSON.parse(fs.readFileSync(lockPath(), 'utf-8')) as {
+        stats: { total_keys: number };
+      };
+      expect(written.stats.total_keys).toBe(2);
+    });
+
+    it('should drop an entry with no translations container and record the run', () => {
+      const output = syncWithLock(
+        JSON.stringify({
+          version: 1,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': {
+              greeting: { source_hash: '185f8db32271', source_text: 'Hello' },
+            },
+          },
+          stats: { total_keys: 1, total_translations: 1, last_sync: 'x' },
+        })
+      );
+
+      expect(output).not.toContain('Cannot read properties of undefined');
+      expect(output).toContain('malformed');
+      const written = JSON.parse(fs.readFileSync(lockPath(), 'utf-8')) as {
+        entries: Record<string, Record<string, unknown>>;
+      };
+      expect(Object.keys(written.entries['locales/en.json']!)).toContain(
+        'greeting'
+      );
+    });
+
+    it('should not leave a per-file map that is a string unrecorded', () => {
+      const output = syncWithLock(
+        '{"version":1,"source_locale":"en","entries":{"locales/en.json":"pwn"},"stats":{"total_keys":0,"total_translations":0,"last_sync":"x"}}'
+      );
+
+      expect(output).not.toContain('Cannot delete property');
+      expect(output).toContain('Sync complete');
+    });
+
+    it('should record entries when the lock file arrives with entries as an array', () => {
+      const output = syncWithLock(
+        '{"version":1,"source_locale":"en","entries":[],"stats":{"total_keys":0,"total_translations":0,"last_sync":"x"}}'
+      );
+
+      expect(output).toContain('performing full sync');
+      const written = JSON.parse(fs.readFileSync(lockPath(), 'utf-8')) as {
+        entries: Record<string, Record<string, unknown>>;
+      };
+      expect(Array.isArray(written.entries)).toBe(false);
+      expect(Object.keys(written.entries['locales/en.json']!)).toHaveLength(2);
+    });
+  });
+
   describe('frozen mode', () => {
     it('should exit 10 on frozen with drift', () => {
       writeSyncConfig(testFiles.path, ['de']);

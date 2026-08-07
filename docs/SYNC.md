@@ -353,6 +353,8 @@ The lockfile is auto-generated and should be committed to version control. It st
 
 **Recovery.** If sync encounters a lockfile with an unsupported `version` or invalid JSON, it copies the existing file to `.deepl-sync.lock.bak-<tag>-<timestamp>` (tag is `corrupt`, `v-unknown`, or `v<N>`) before resetting in-memory state and continuing with a full re-sync. The backup path is logged at WARN level so you can restore it from the working tree if needed.
 
+**Malformed structure.** A lockfile that parses as JSON at the supported version is still checked member by member before it is used, because it is read from the repository and every level of it can be wrong. A per-file map, an entry, an entry's `translations` container or an individual translation that is not an object is **dropped**, and the keys behind it are translated again on that run. Dropping is per member rather than per file: discarding a whole lockfile over one bad entry would re-translate — and re-bill — the entire project. The count is reported at WARN level with a `-malformed` backup, so the original is recoverable. `entries` that is not a map at all (an array, for instance) carries nothing to salvage and takes the full re-sync path above, tagged `-entries-not-a-map`. The `stats` block is never read for its own sake — it is derived from `entries` and recomputed on write — so it is recomputed on read rather than trusted, and a missing or malformed `stats` is repaired silently.
+
 Each translation entry in the lockfile records:
 
 | Field | Description |
