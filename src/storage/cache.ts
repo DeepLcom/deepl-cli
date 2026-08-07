@@ -10,6 +10,7 @@ import { resolvePaths } from '../utils/paths.js';
 import { ConfigError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 import { errorMessage } from '../utils/error-message.js';
+import { warnOnWritableDirectory } from '../utils/private-mode.js';
 
 export interface CacheServiceOptions {
   dbPath?: string;
@@ -183,9 +184,11 @@ export class CacheService {
 
   private openDatabase(dbPath: string): void {
     const dir = path.dirname(dbPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-    }
+    // Unconditional: a recursive mkdir does not fail on a directory that already
+    // exists, and the existsSync it replaces left a window for one to appear
+    // between the check and the create.
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    warnOnWritableDirectory(dir);
     this.db = new DatabaseSync(dbPath);
     this.db.exec(`PRAGMA busy_timeout = ${this.busyTimeoutMs}`);
     fs.chmodSync(dbPath, 0o600);

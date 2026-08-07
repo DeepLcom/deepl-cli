@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { ConfigService } from '../../src/storage/config';
+import { resetWritableDirectoryWarnings } from '../../src/utils/private-mode';
 
 describe('ConfigService', () => {
   let configService: ConfigService;
@@ -444,6 +445,82 @@ describe('ConfigService', () => {
       fs.rmSync(uniqueDir, { recursive: true, force: true });
     });
 
+    describe('permissions found on disk', () => {
+      let uniqueDir: string;
+      let configPath: string;
+      let consoleErrorSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        uniqueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-perm-load-'));
+        fs.chmodSync(uniqueDir, 0o700);
+        configPath = path.join(uniqueDir, 'config.json');
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+        resetWritableDirectoryWarnings();
+      });
+
+      afterEach(() => {
+        consoleErrorSpy.mockRestore();
+        fs.rmSync(uniqueDir, { recursive: true, force: true });
+      });
+
+      function warnings(): string {
+        return consoleErrorSpy.mock.calls
+          .map((call) => call.join(' '))
+          .join('\n');
+      }
+
+      it('should tighten a group-readable config file on load', () => {
+        fs.writeFileSync(configPath, JSON.stringify({ auth: { apiKey: 'k' } }));
+        fs.chmodSync(configPath, 0o644);
+
+        const service = new ConfigService(configPath);
+
+        expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
+        expect(service.getValue('auth.apiKey')).toBe('k');
+      });
+
+      it('should say what it found and that the key may have been exposed', () => {
+        fs.writeFileSync(configPath, JSON.stringify({ auth: { apiKey: 'k' } }));
+        fs.chmodSync(configPath, 0o644);
+
+        new ConfigService(configPath);
+
+        expect(warnings()).toContain(configPath);
+        expect(warnings()).toContain('0644');
+        expect(warnings()).toMatch(/rotat/i);
+      });
+
+      it('should say nothing about an already private config file', () => {
+        fs.writeFileSync(configPath, JSON.stringify({ auth: { apiKey: 'k' } }));
+        fs.chmodSync(configPath, 0o600);
+
+        new ConfigService(configPath);
+
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+      });
+
+      it('should warn about a world-writable config directory without changing it', () => {
+        fs.writeFileSync(configPath, JSON.stringify({}));
+        fs.chmodSync(configPath, 0o600);
+        fs.chmodSync(uniqueDir, 0o777);
+
+        new ConfigService(configPath);
+
+        expect(warnings()).toContain(uniqueDir);
+        expect(fs.statSync(uniqueDir).mode & 0o777).toBe(0o777);
+      });
+
+      it('should say nothing about a traversable config directory', () => {
+        fs.writeFileSync(configPath, JSON.stringify({}));
+        fs.chmodSync(configPath, 0o600);
+        fs.chmodSync(uniqueDir, 0o755);
+
+        new ConfigService(configPath);
+
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+      });
+    });
+
     describe('temp file safety', () => {
       // The API key is written in plaintext, so the intermediate file must not
       // land on a path anyone else could have prepared in advance.
@@ -515,6 +592,9 @@ describe('ConfigService', () => {
       const badConfigDir = path.dirname(badConfigPath);
       fs.mkdirSync(badConfigDir, { recursive: true });
       fs.writeFileSync(badConfigPath, '{ invalid json !!!');
+      // The mode the CLI itself writes; a permissive fixture would add a
+      // permission warning ahead of the one under test.
+      fs.chmodSync(badConfigPath, 0o600);
 
       // Creating a ConfigService with a corrupt config file triggers load() which should log
       const service = new ConfigService(badConfigPath);

@@ -18,6 +18,7 @@ jest.mock('../../src/utils/logger', () => ({
 
 import { Logger } from '../../src/utils/logger';
 import { CacheService } from '../../src/storage/cache';
+import { resetWritableDirectoryWarnings } from '../../src/utils/private-mode';
 
 describe('CacheService', () => {
   let cacheService: CacheService;
@@ -71,6 +72,26 @@ describe('CacheService', () => {
       expect(stats.entries).toBe(0);
       expect(stats.totalSize).toBe(0);
       expect(stats.enabled).toBe(true);
+    });
+
+    it('should warn about a world-writable cache directory', () => {
+      const openDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-cache-ww-'));
+      fs.chmodSync(openDir, 0o777);
+      resetWritableDirectoryWarnings();
+
+      const service = new CacheService({
+        dbPath: path.join(openDir, 'cache.db'),
+      });
+
+      try {
+        const warned = (Logger.warn as jest.Mock).mock.calls
+          .map((call) => call.join(' '))
+          .join('\n');
+        expect(warned).toContain(openDir);
+      } finally {
+        service.close();
+        fs.rmSync(openDir, { recursive: true, force: true });
+      }
     });
 
     it('should use WAL journal mode', () => {

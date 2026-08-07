@@ -21,6 +21,10 @@ import { ConfigError } from '../utils/errors.js';
 import { validateApiUrl } from '../utils/validate-url.js';
 import { Logger } from '../utils/logger.js';
 import { errorMessage } from '../utils/error-message.js';
+import {
+  repairPrivateFileMode,
+  warnOnWritableDirectory,
+} from '../utils/private-mode.js';
 
 const VALID_FORMALITY: readonly Formality[] = [
   'default',
@@ -313,6 +317,7 @@ export class ConfigService {
   private load(): DeepLConfig {
     try {
       if (fs.existsSync(this.configPath)) {
+        this.checkPermissions();
         const data = fs.readFileSync(this.configPath, 'utf-8');
         const loaded = JSON.parse(data) as DeepLConfig;
         const merged = this.mergeWithDefaults(loaded);
@@ -327,6 +332,26 @@ export class ConfigService {
     }
 
     return ConfigService.getDefaults();
+  }
+
+  /**
+   * Checked on every load rather than only when the file is created, because
+   * that is the moment a file arriving from somewhere else — a dotfiles
+   * restore, an rsync, another tool — is first read. Failures are swallowed:
+   * the permissions of the file are not a reason to refuse the settings in it,
+   * and `load` turns any throw into a fall back to defaults.
+   */
+  private checkPermissions(): void {
+    try {
+      repairPrivateFileMode(
+        this.configPath,
+        0o600,
+        'Your API key may already have been read; consider rotating it with: deepl auth set-key'
+      );
+      warnOnWritableDirectory(path.dirname(this.configPath));
+    } catch {
+      /* ignore */
+    }
   }
 
   /**
@@ -368,10 +393,13 @@ export class ConfigService {
     // following whatever is already there.
     const tmpPath = `${this.configPath}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
     try {
-      const dir = path.dirname(this.configPath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-      }
+      // Unconditional: a recursive mkdir does not fail on a directory that
+      // already exists, and the existsSync it replaces left a window for one to
+      // appear between the check and the create.
+      fs.mkdirSync(path.dirname(this.configPath), {
+        recursive: true,
+        mode: 0o700,
+      });
       fs.writeFileSync(tmpPath, JSON.stringify(this.config, null, 2), {
         encoding: 'utf-8',
         mode: 0o600,
