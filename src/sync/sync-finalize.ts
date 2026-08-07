@@ -31,16 +31,15 @@ export function finalizeSyncResult(i: FinalizeInputs): SyncResult {
   }
   const hasStrategy = contextCount > 0 || instructionCount > 0;
 
-  // docs/API.md defines exit 12 as "completed with at least one failed
-  // locale", so this is `some`, not `every`: one locale failing completely
-  // must fail the run even when the others succeeded.
-  // A locale that translated nothing and has no failures is simply up to date.
-  const anyLocaleFailed = i.fileResults.some(
-    (fr) => fr.translated === 0 && fr.failed > 0
-  );
+  // docs/API.md defines exit 12 as a mixed result, so any failed key fails the
+  // run: failed keys are absent from the written file, and gating on a locale
+  // failing *entirely* would report success for a run that lost most of its
+  // strings. A locale with no failures translated nothing because it is up to
+  // date, which is still success.
+  const anyKeyFailed = i.fileResults.some((fr) => fr.failed > 0);
 
   return {
-    success: !i.driftDetected && !anyLocaleFailed,
+    success: !i.driftDetected && !anyKeyFailed,
     totalKeys: i.totalKeys,
     newKeys: i.newKeys,
     staleKeys: i.staleKeys,

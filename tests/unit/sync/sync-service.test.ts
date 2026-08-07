@@ -1530,7 +1530,9 @@ describe('SyncService', () => {
 
       const result = await service.sync(makeConfig());
 
-      expect(result.success).toBe(true);
+      // The run finishes and reports both outcomes, but a failed key makes the
+      // result mixed, which is exit 12 rather than 0.
+      expect(result.success).toBe(false);
       expect(result.newKeys).toBe(3);
       expect(result.fileResults).toHaveLength(1);
       const fileResult = result.fileResults[0]!;
@@ -1813,6 +1815,31 @@ describe('SyncService', () => {
       );
       const localeIdx = events.findIndex((e) => e === localeEvents[0]);
       expect(lastKeyIdx).toBeLessThan(localeIdx);
+    });
+
+    it('should not count a key whose translation came back null', async () => {
+      setupLockManager(makeEmptyLockFile());
+      // translateBatch returns a sparse array: the second key failed.
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Auf Wiedersehen', billedCharacters: 15 }]);
+      const { service } = createService({ translateBatch });
+
+      mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
+      mockReadFile.mockImplementation(async (p: unknown) => {
+        if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
+        throw new Error('ENOENT');
+      });
+
+      const events: Array<{ type: string; translated: number }> = [];
+      await service.sync(makeConfig(), {
+        onProgress: (event) =>
+          events.push({ type: event.type, translated: event.translated }),
+      });
+
+      const keyEvents = events.filter((e) => e.type === 'key-translated');
+      expect(keyEvents).toHaveLength(1);
+      expect(keyEvents[0]!.translated).toBe(1);
     });
 
     it('should not fire onProgress in dry-run mode', async () => {

@@ -87,14 +87,14 @@ describe('finalizeSyncResult failure reporting', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should report success when a locale partly succeeded', () => {
-    // docs/API.md:3056 scopes exit 12 to "at least one failed locale", so a
-    // locale that translated some keys is not a failed locale — the file is
-    // written and the per-key failures are reported in the summary.
+  it('should not report success when a locale partly failed', () => {
+    // Exit 12 means "the result was mixed". The failed keys are absent from
+    // the written file, so reporting success would let a run that lost most
+    // of its strings pass a CI gate watching exit codes.
     const result = finalize([
       fileResult({ locale: 'de', translated: 1, failed: 1, written: true }),
     ]);
 
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 });

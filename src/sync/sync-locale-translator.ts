@@ -146,6 +146,9 @@ export class LocaleTranslator {
 
     // Three-way translation: per-key context vs. element instruction batch vs. plain batch
     let results: (TranslationResult | null)[];
+    // Counts keys that actually came back translated, so the progress stream
+    // never claims a key succeeded that translateBatch left empty.
+    let completed = 0;
     const contextSentKeys = new Set<string>();
     const instructionSentKeys = new Set<string>();
     const instructionGroupCounts = new Map<string, number>();
@@ -169,12 +172,14 @@ export class LocaleTranslator {
         translationOpts
       );
       for (let i = 0; i < localeDiffs.length; i++) {
+        if (!results[i]) continue;
+        completed++;
         this.onProgress?.({
           type: 'key-translated',
           locale,
           file: relPath,
           key: localeDiffs[i]!.key,
-          translated: i + 1,
+          translated: completed,
           totalKeys: localeDiffs.length,
         });
       }
@@ -242,20 +247,21 @@ export class LocaleTranslator {
         for (let bi = 0; bi < batchPMapIndices.length; bi++) {
           results[batchPMapIndices[bi]!] = batchResults[bi] ?? null;
         }
-        for (let bi = 0; bi < batchIndices.length; bi++) {
+        for (const idx of batchIndices) {
+          if (!results[idx]) continue;
+          completed++;
           this.onProgress?.({
             type: 'key-translated',
             locale,
             file: relPath,
-            key: localeDiffs[batchIndices[bi]!]!.key,
-            translated: bi + 1,
+            key: localeDiffs[idx]!.key,
+            translated: completed,
             totalKeys: localeDiffs.length,
           });
         }
       }
 
       // Path C: batch by element type with shared custom_instructions
-      let pathCCompleted = batchIndices.length;
       for (const [elementType, indices] of instructionGroups) {
         instructionGroupCounts.set(
           elementType,
@@ -300,20 +306,20 @@ export class LocaleTranslator {
           results[groupPMapIndices[gi]!] = groupResults[gi] ?? null;
         }
         for (const idx of indices) {
-          pathCCompleted++;
+          if (!results[idx]) continue;
+          completed++;
           this.onProgress?.({
             type: 'key-translated',
             locale,
             file: relPath,
             key: localeDiffs[idx]!.key,
-            translated: pathCCompleted,
+            translated: completed,
             totalKeys: localeDiffs.length,
           });
         }
       }
 
       // Path B: context keys — batch by section where possible, per-key for overrides
-      let perKeyCompleted = pathCCompleted;
       if (contextIndices.length > 0) {
         for (const idx of contextIndices) {
           contextSentKeys.add(localeDiffs[idx]!.key);
@@ -389,13 +395,14 @@ export class LocaleTranslator {
             results[groupPMapIndices[gi]!] = groupResults[gi] ?? null;
           }
           for (const idx of indices) {
-            perKeyCompleted++;
+            if (!results[idx]) continue;
+            completed++;
             this.onProgress?.({
               type: 'key-translated',
               locale,
               file: relPath,
               key: localeDiffs[idx]!.key,
-              translated: perKeyCompleted,
+              translated: completed,
               totalKeys: localeDiffs.length,
             });
           }
@@ -468,13 +475,14 @@ export class LocaleTranslator {
               for (let ki = 0; ki < keyTextIndices.length; ki++) {
                 results[keyTextIndices[ki]!] = keyResults[ki] ?? null;
               }
-              perKeyCompleted++;
+              if (!results[idx]) return;
+              completed++;
               this.onProgress?.({
                 type: 'key-translated',
                 locale,
                 file: relPath,
                 key: diff.key,
-                translated: perKeyCompleted,
+                translated: completed,
                 totalKeys: localeDiffs.length,
               });
             },

@@ -3251,7 +3251,7 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 | 9    | VoiceError     | Voice API unavailable or session failed                        | No        |
 | 10   | SyncDrift      | `sync --frozen` detected translations out of date              | No        |
 | 11   | SyncConflict   | `sync resolve` could not auto-resolve lockfile conflicts       | No        |
-| 12   | PartialFailure | `deepl sync` completed with at least one failed locale         | Yes (per-locale retry) |
+| 12   | PartialFailure | `deepl sync` completed with at least one failed key            | Yes (per-locale retry) |
 
 ### Code details
 
@@ -3357,7 +3357,7 @@ Remediation: open `.deepl-sync.lock`, resolve the remaining `<<<<<<<` / `=======
 
 #### 12 — PartialFailure
 
-`deepl sync` completed, but at least one locale failed while at least one other locale succeeded. The successful locales' target files and lockfile entries are written; the failed locales' files are not touched. Emitted only by `deepl sync` (the root command).
+`deepl sync` completed, but at least one key failed to translate. This covers both a locale that failed entirely and a locale that translated some of its keys and failed the rest — a failed key is absent from the written target file, so any failure count above zero means the run did not produce a complete result. The successful translations' target files and lockfile entries are written; a locale that failed entirely has its file left untouched. Emitted only by `deepl sync` (the root command).
 
 Authentication failures (401/403) abort the entire run and surface as exit code 2 (`AuthError`) instead of 12. Network / rate-limit / quota failures bubble up as 5 / 3 / 4 respectively. Code 12 specifically means "the run proceeded far enough to attempt per-locale work, and the result was mixed."
 
