@@ -1106,7 +1106,7 @@ buckets:
       writeYamlConfig(tmpDir, icuConfig);
 
       // Keys sorted alphabetically by JsonFormatParser: greeting (idx 0), items (idx 1)
-      // The ICU string at idx 1 becomes __ICU_PLACEHOLDER_1__ in the main batch.
+      // The ICU string at idx 1 is blanked in the main batch and never sent.
       const sourceContent =
         JSON.stringify(
           {
@@ -1118,35 +1118,28 @@ buckets:
         ) + '\n';
       writeSourceFile(tmpDir, 'locales/en.json', sourceContent);
 
-      // Main batch: "Hello" at idx 0 and the ICU placeholder at idx 1
+      // Main batch: "Hello" alone — the ICU slot carries nothing to translate
       const mainScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const texts = getTexts(body);
-          return (
-            texts.some((t) => t === 'Hello') &&
-            texts.some((t) => t.startsWith('__ICU_PLACEHOLDER_'))
-          );
+          return texts.length === 1 && texts[0] === 'Hello';
         })
-        .reply(200, (_uri: string, rawBody: unknown) => {
-          const texts = getTexts(rawBody);
-          return {
-            translations: texts.map((t) => ({
-              text: t.startsWith('__ICU_PLACEHOLDER_') ? t : 'Hallo',
+        .reply(200, () => ({
+          translations: [
+            {
+              text: 'Hallo',
               detected_source_language: 'EN',
               billed_characters: 5,
-            })),
-          };
-        });
+            },
+          ],
+        }));
 
       // ICU segments batch: the leaf texts extracted from the plural branches
       // "# item" and "# items" — with # protected as __VAR_HASH_0__
       const icuScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const texts = getTexts(body);
-          return (
-            texts.length === 2 &&
-            !texts.some((t) => t.startsWith('__ICU_PLACEHOLDER_'))
-          );
+          return texts.length === 2;
         })
         .reply(200, (_uri: string, rawBody: unknown) => {
           const texts = getTexts(rawBody);
@@ -1212,35 +1205,29 @@ buckets:
 `;
       writeSourceFile(tmpDir, 'locales/en/strings.xml', sourceXml);
 
-      // Main batch: "Hello" plus one or two ICU placeholders for the plural quantities
+      // Main batch: "Hello" alone — the ICU plural quantities carry nothing to
+      // translate in the main batch and are never sent as texts of their own
       const mainScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const texts = getTexts(body);
-          return (
-            texts.some((t) => t === 'Hello') &&
-            texts.some((t) => t.startsWith('__ICU_PLACEHOLDER_'))
-          );
+          return texts.length === 1 && texts[0] === 'Hello';
         })
-        .reply(200, (_uri: string, rawBody: unknown) => {
-          const texts = getTexts(rawBody);
-          return {
-            translations: texts.map((t) => ({
-              text: t.startsWith('__ICU_PLACEHOLDER_') ? t : 'Hallo',
+        .reply(200, () => ({
+          translations: [
+            {
+              text: 'Hallo',
               detected_source_language: 'EN',
               billed_characters: 5,
-            })),
-          };
-        });
+            },
+          ],
+        }));
 
       // ICU segments batch: the leaf texts from the plural branches ("# widget", "# widgets")
       // — with # protected via __VAR_HASH_N__ preservation
       const icuScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const texts = getTexts(body);
-          return (
-            texts.length >= 1 &&
-            !texts.some((t) => t.startsWith('__ICU_PLACEHOLDER_'))
-          );
+          return texts.length >= 1 && texts[0] !== 'Hello';
         })
         .reply(200, (_uri: string, rawBody: unknown) => {
           const texts = getTexts(rawBody);

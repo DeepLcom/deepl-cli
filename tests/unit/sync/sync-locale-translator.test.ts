@@ -1935,4 +1935,43 @@ describe('LocaleTranslator', () => {
       expect(result.fileResult.failed).toBe(1);
     });
   });
+
+  describe('ICU messages', () => {
+    it('should not submit an internal ICU marker as a translatable text', async () => {
+      const diffs = [
+        makeDiff('greeting', 'Hello'),
+        makeDiff('items', '{n, plural, one {# item} other {# items}}'),
+      ];
+      const { mock, calls } = captureTranslateBatch([]);
+
+      await makeTranslator(mock, makeConfig(), true).translate(
+        makeCtx(diffs, new Map())
+      );
+
+      const sent = calls.flatMap((c) => c.texts);
+      expect(sent.some((t) => t.includes('__ICU_PLACEHOLDER_'))).toBe(false);
+      // The branches still go out, one segment each.
+      expect(sent).toContain('__VAR_HASH_0__ item');
+      expect(sent).toContain('__VAR_HASH_0__ items');
+    });
+
+    it('should protect every ICU block in a message, not only the first', async () => {
+      const diffs = [
+        makeDiff(
+          'both',
+          'You have {n, plural, one {# item} other {# items}} and ' +
+            '{m, plural, one {# gift} other {# gifts}} waiting.'
+        ),
+      ];
+      const { mock, calls } = captureTranslateBatch([]);
+
+      await makeTranslator(mock, makeConfig(), true).translate(
+        makeCtx(diffs, new Map())
+      );
+
+      const sent = calls.flatMap((c) => c.texts);
+      expect(sent.some((t) => t.includes('plural'))).toBe(false);
+      expect(sent.some((t) => t.includes('other {'))).toBe(false);
+    });
+  });
 });

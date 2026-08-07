@@ -68,13 +68,16 @@ describe('expandPlurals', () => {
 });
 
 describe('detectIcu', () => {
-  it('replaces ICU positions with __ICU_PLACEHOLDER_{ti}__ and preserves positions', () => {
+  it('blanks ICU positions and preserves positions', () => {
     const input = ['plain text', '{n, plural, one {# item} other {# items}}'];
 
     const { extendedTexts, icuMappings } = detectIcu(input);
 
     expect(extendedTexts[0]).toBe('plain text');
-    expect(extendedTexts[1]).toBe('__ICU_PLACEHOLDER_1__');
+    // An ICU string is translated segment-by-segment, so its slot in the main
+    // batch holds nothing to translate. A marker token was itself submitted and
+    // billed as a text, and cached under its own key.
+    expect(extendedTexts[1]).toBe('');
     expect(icuMappings).toHaveLength(1);
     expect(icuMappings[0]!.textIndex).toBe(1);
   });
@@ -107,7 +110,7 @@ describe('reassembleIcu', () => {
 
     await reassembleIcu(service, results, icuMappings, { targetLang: 'de' });
 
-    expect(extendedTexts[0]).toBe('__ICU_PLACEHOLDER_0__');
+    expect(extendedTexts[0]).toBe('');
     expect(results[0]).not.toBeNull();
     expect(results[0]?.text).toBe('{count, plural, one {} other {DE # items}}');
   });

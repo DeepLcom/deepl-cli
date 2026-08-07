@@ -1011,7 +1011,7 @@ Run `deepl sync validate` to detect placeholder issues. Consider adding a glossa
 The sync engine automatically preserves these placeholder formats during translation:
 - Simple variables: `{name}`, `{{count}}`, `${userId}`
 - Printf-style: `%s`, `%d`, `%1$s`, `%2$d`
-- ICU MessageFormat: `{count, plural, one {# item} other {# items}}` — structural keywords (`plural`, `select`, `selectordinal`, `one`, `other`, `few`, `many`, `zero`, `two`) and variable names are preserved; only leaf text is translated. Nested ICU (e.g., select inside plural) is supported.
+- ICU MessageFormat: `{count, plural, one {# item} other {# items}}` — structural keywords (`plural`, `select`, `selectordinal`, `one`, `other`, `few`, `many`, `zero`, `two`) and variable names are preserved; only leaf text is translated. Nested ICU (e.g., select inside plural) is supported, as are several blocks in one message (`You have {n, plural, ...} and {m, plural, ...} waiting.`) and prose between them. A message containing a block that will not parse is left untouched rather than partly protected.
 
 ### Rate limiting (HTTP 429)
 

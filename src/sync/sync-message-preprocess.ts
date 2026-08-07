@@ -86,8 +86,12 @@ export function detectIcu(extendedTexts: string[]): {
     const icuResult = parseIcu(out[ti]!);
     if (icuResult.isIcu && icuResult.segments.length > 0) {
       icuMappings.push({ textIndex: ti, icuResult });
-      // ICU strings skip the main batch and get translated segment-by-segment.
-      out[ti] = `__ICU_PLACEHOLDER_${ti}__`;
+      // ICU strings skip the main batch and get translated segment-by-segment,
+      // so the slot holds nothing to translate. A marker token here was itself
+      // submitted as a text, billed, and cached under its own key.
+      // `reassembleIcu` overwrites every mapped index, so the blank never
+      // reaches a target file.
+      out[ti] = '';
     }
   }
 
