@@ -779,6 +779,38 @@ describe('sync-config', () => {
       ).toThrow('target_path_pattern must not contain ".."');
     });
 
+    it('should throw when target_path_pattern starts with "-"', () => {
+      expect(() =>
+        validateSyncConfig({
+          version: 1,
+          source_locale: 'en',
+          target_locales: ['de'],
+          buckets: {
+            json: {
+              include: ['a.json'],
+              target_path_pattern: '--pathspec-from-file={locale}',
+            },
+          },
+        })
+      ).toThrow('target_path_pattern must not begin with "-"');
+    });
+
+    it('should accept a dash inside a target_path_pattern segment', () => {
+      expect(() =>
+        validateSyncConfig({
+          version: 1,
+          source_locale: 'en',
+          target_locales: ['de'],
+          buckets: {
+            xml: {
+              include: ['res/values/strings.xml'],
+              target_path_pattern: 'res/values-{locale}/strings.xml',
+            },
+          },
+        })
+      ).not.toThrow();
+    });
+
     describe('translation_memory_threshold validation', () => {
       const baseConfig = {
         version: 1,

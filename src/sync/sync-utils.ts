@@ -50,9 +50,11 @@ export function resolveTargetPath(
   targetPathPattern?: string
 ): string {
   if (targetPathPattern) {
-    return targetPathPattern
-      .replace(/\{locale\}/g, targetLocale)
-      .replace(/\{basename\}/g, path.basename(sourcePath));
+    return assertNotDashLeading(
+      targetPathPattern
+        .replace(/\{locale\}/g, targetLocale)
+        .replace(/\{basename\}/g, path.basename(sourcePath))
+    );
   }
 
   const escaped = sourceLocale.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -66,7 +68,7 @@ export function resolveTargetPath(
       new RegExp(`${escaped}(\\.[^./]+)$`),
       (_match: string, p1: string) => targetLocale + p1
     );
-    if (result2 !== sourcePath) return result2;
+    if (result2 !== sourcePath) return assertNotDashLeading(result2);
   }
 
   if (result === sourcePath) {
@@ -76,7 +78,29 @@ export function resolveTargetPath(
     );
   }
 
-  return result;
+  return assertNotDashLeading(result);
+}
+
+/**
+ * Reject a repo-relative target path whose first segment begins with `-`.
+ *
+ * Such a path is a single argv entry by the time it reaches `git add` or
+ * `git commit`, where a leading dash is parsed as an option rather than a
+ * pathspec. Only the first segment matters: a dash further along the path is
+ * never option-like, and `res/values-de/strings.xml` is the canonical Android
+ * target. The three sources of a dash-leading first segment are a literal
+ * `target_path_pattern` (also rejected at config load), a `{basename}` taken
+ * from a dash-leading source filename, and the default locale-substitution
+ * branch running over a dash-leading source directory.
+ */
+function assertNotDashLeading(targetPath: string): string {
+  if (targetPath.startsWith('-')) {
+    throw new ValidationError(
+      `Refusing to use target path "${sanitizeForTerminal(targetPath)}": its first path segment begins with "-", which command-line tools parse as an option.`,
+      'Rename the source file or adjust target_path_pattern so the target path does not begin with "-".'
+    );
+  }
+  return targetPath;
 }
 
 /**

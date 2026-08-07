@@ -432,6 +432,17 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
           `Remove ".." from buckets.${safeName}.target_path_pattern in .deepl-sync.yaml.`
         );
       }
+      // A rendered target path is passed as a single argv entry to git, so a
+      // leading dash on its first segment is an option, not a path. Checked
+      // here against the literal pattern and again in resolveTargetPath
+      // against the rendered result, which {basename} and the default
+      // locale-substitution branch can also make dash-leading.
+      if (b['target_path_pattern'].startsWith('-')) {
+        throw new ConfigError(
+          `Sync config bucket "${safeName}" target_path_pattern must not begin with "-"`,
+          `Remove the leading "-" from buckets.${safeName}.target_path_pattern in .deepl-sync.yaml.`
+        );
+      }
       const forbidden = b['target_path_pattern']
         .split(/[/\\]/)
         .find((seg) => FORBIDDEN_TARGET_SEGMENTS.has(seg.toLowerCase()));

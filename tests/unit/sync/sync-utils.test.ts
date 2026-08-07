@@ -142,6 +142,61 @@ describe('resolveTargetPath() with targetPathPattern', () => {
   });
 });
 
+describe('resolveTargetPath() dash-leading rendered paths', () => {
+  it('should reject a rendered path whose first segment comes from a dash-leading {basename}', () => {
+    expect(() =>
+      resolveTargetPath(
+        '--pathspec-from-file=x.json',
+        'en',
+        'de',
+        '{basename}.{locale}.json'
+      )
+    ).toThrow(ValidationError);
+  });
+
+  it('should reject a rendered path whose first segment comes from a dash-leading source directory', () => {
+    expect(() => resolveTargetPath('-o/en.json', 'en', 'de')).toThrow(
+      ValidationError
+    );
+  });
+
+  it('should reject a literal dash-leading pattern reaching resolveTargetPath', () => {
+    expect(() =>
+      resolveTargetPath(
+        'locales/en.json',
+        'en',
+        'de',
+        '--pathspec-from-file={locale}'
+      )
+    ).toThrow(ValidationError);
+  });
+
+  it('should allow a dash inside a rendered segment', () => {
+    expect(resolveTargetPath('locales/en.json', 'en', 'zh-Hans')).toBe(
+      'locales/zh-Hans.json'
+    );
+    expect(
+      resolveTargetPath(
+        'res/values/strings.xml',
+        'en',
+        'de',
+        'res/values-{locale}/strings.xml'
+      )
+    ).toBe('res/values-de/strings.xml');
+  });
+
+  it('should allow a dash-leading segment that is not the first', () => {
+    expect(
+      resolveTargetPath(
+        'src/f.txt',
+        'en',
+        'de',
+        'locales/-legacy/{locale}.json'
+      )
+    ).toBe('locales/-legacy/de.json');
+  });
+});
+
 describe('assertPathWithinRoot()', () => {
   it('should pass for a valid path within root', () => {
     expect(() =>
