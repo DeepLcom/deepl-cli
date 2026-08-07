@@ -736,6 +736,17 @@ export class SyncCommand {
     if (result.deletedKeys > 0) parts.push(`${result.deletedKeys} deleted`);
 
     const summary = parts.length > 0 ? parts.join(', ') : 'no changes';
+    // The key counts above describe the diff, not what landed, so on a partial
+    // failure the line would otherwise read as if every diffed key had been
+    // translated — contradicting the per-locale progress lines above it.
+    const failedTranslations = result.fileResults.reduce(
+      (total, fileResult) => total + fileResult.failed,
+      0
+    );
+    const failures =
+      failedTranslations > 0
+        ? ` (${failedTranslations.toLocaleString()} translations failed)`
+        : '';
     const localeInfo =
       result.dryRun && result.targetLocaleCount > 0
         ? ` across ${result.targetLocaleCount} language${result.targetLocaleCount === 1 ? '' : 's'}`
@@ -745,7 +756,7 @@ export class SyncCommand {
       chars = ` (${result.totalCharactersBilled.toLocaleString()} chars, ${formatCostEstimate(result.totalCharactersBilled)} (Pro tier estimate))`;
     }
 
-    Logger.info(`Sync complete: ${summary}${localeInfo}${chars}`);
+    Logger.info(`Sync complete: ${summary}${failures}${localeInfo}${chars}`);
 
     if (result.strategy) {
       const stratParts: string[] = [];

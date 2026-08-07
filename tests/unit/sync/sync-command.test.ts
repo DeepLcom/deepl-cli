@@ -433,6 +433,95 @@ describe('SyncCommand', () => {
       expect(infoOutput).toContain('1 deleted');
     });
 
+    // The key counts come from the diff, not from what landed, so on a partial
+    // failure "Sync complete: 200 new" reads as if all 200 were translated —
+    // directly contradicting the per-locale line above it.
+    describe('partial translation failure', () => {
+      function failedRun(): SyncResult {
+        return makeResult({
+          newKeys: 200,
+          staleKeys: 0,
+          currentKeys: 0,
+          fileResults: [
+            {
+              file: 'locales/en.json',
+              locale: 'de',
+              translated: 50,
+              skipped: 0,
+              failed: 150,
+              written: true,
+            },
+          ],
+        });
+      }
+
+      async function summaryLine(result: SyncResult): Promise<string> {
+        const command = new SyncCommand(createMockSyncService(result));
+        await command.run({});
+        return (
+          logInfoSpy.mock.calls
+            .map((c) => String(c[0]))
+            .find((line) => line.startsWith('Sync complete:')) ?? ''
+        );
+      }
+
+      it('should report the failure count in the summary', async () => {
+        expect(await summaryLine(failedRun())).toContain(
+          '150 translations failed'
+        );
+      });
+
+      it('should still report the diffed key counts', async () => {
+        expect(await summaryLine(failedRun())).toContain('200 new');
+      });
+
+      it('should say nothing about failures when there were none', async () => {
+        const line = await summaryLine(
+          makeResult({
+            fileResults: [
+              {
+                file: 'locales/en.json',
+                locale: 'de',
+                translated: 50,
+                skipped: 0,
+                failed: 0,
+                written: true,
+              },
+            ],
+          })
+        );
+
+        expect(line).not.toContain('failed');
+      });
+
+      it('should total failures across locales', async () => {
+        const line = await summaryLine(
+          makeResult({
+            fileResults: [
+              {
+                file: 'locales/en.json',
+                locale: 'de',
+                translated: 1,
+                skipped: 0,
+                failed: 4,
+                written: true,
+              },
+              {
+                file: 'locales/en.json',
+                locale: 'fr',
+                translated: 2,
+                skipped: 0,
+                failed: 3,
+                written: true,
+              },
+            ],
+          })
+        );
+
+        expect(line).toContain('7 translations failed');
+      });
+    });
+
     it('should pass flagForReview through to sync options', async () => {
       const result = makeResult();
       const mockService = createMockSyncService(result);

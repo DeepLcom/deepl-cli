@@ -481,6 +481,15 @@ Sync complete: 2 new, 1 updated, 7 current (100 chars, ~$0.00) (Pro tier estimat
 
 Each locale shows `✓` when all translations succeeded, or `✗` when some failed. The format is `locale: translated/attempted`.
 
+When some translations failed, the summary line names how many. The key counts describe the **diff** — how many keys were new, updated or current — not how many were successfully translated, so without this the line read as though every diffed key had landed:
+
+```
+  ✗ de: 50/200 keys (locales/en.json)
+Sync complete: 200 new (150 translations failed)
+```
+
+The count totals every locale, so a run failing 4 keys in `de` and 3 in `fr` reports `7 translations failed`. Exit code is 12 (partial failure).
+
 In `--dry-run` mode, the output includes estimated characters and cost (computed from source string lengths × target locales, no API calls):
 
 ```
