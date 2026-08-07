@@ -2,7 +2,12 @@
  * Tests for confirm utility
  */
 
-import { confirm, setNoInput, isNoInput } from '../../src/utils/confirm';
+import {
+  confirm,
+  setNoInput,
+  isNoInput,
+  canPrompt,
+} from '../../src/utils/confirm';
 
 describe('confirm()', () => {
   let originalIsTTY: boolean | undefined;
@@ -258,6 +263,32 @@ describe('confirm()', () => {
 
       expect(result).toBe(true);
       expect(mockCreateInterface).toHaveBeenCalled();
+    });
+  });
+
+  describe('canPrompt', () => {
+    function setIsTTY(value: boolean): void {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        value,
+        writable: true,
+        configurable: true,
+      });
+    }
+
+    it('should be true on a TTY with input enabled', () => {
+      setIsTTY(true);
+      expect(canPrompt()).toBe(true);
+    });
+
+    it('should be false when stdin is not a TTY', () => {
+      setIsTTY(false);
+      expect(canPrompt()).toBe(false);
+    });
+
+    it('should be false under noInput even on a TTY', () => {
+      setIsTTY(true);
+      setNoInput(true);
+      expect(canPrompt()).toBe(false);
     });
   });
 

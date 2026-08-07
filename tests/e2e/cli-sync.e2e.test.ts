@@ -450,7 +450,9 @@ describe('CLI Sync E2E', () => {
       const targetFile = path.join(testFiles.path, 'locales', 'de.json');
       expect(fs.existsSync(targetFile)).toBe(true);
 
-      const output = runSyncAll('--force');
+      // --yes is required: execSync gives the CLI no TTY, and --force refuses
+      // rather than assuming confirmation when it cannot prompt.
+      const output = runSyncAll('--force --yes');
       expect(output).toBeDefined();
       expect(fs.existsSync(targetFile)).toBe(true);
     });

@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander';
 import { ExitCode } from '../../../utils/exit-codes.js';
 import { ValidationError } from '../../../utils/errors.js';
+import { Logger } from '../../../utils/logger.js';
 import { createSyncCommand, type ServiceDeps } from '../service-factory.js';
 import { emitJsonErrorAndExit } from './sync-options.js';
 import { parsePositiveIntOption } from '../parse-int-option.js';
@@ -158,15 +159,27 @@ async function handleSyncRoot(
           'Cannot use --force in CI without --yes: add --yes to confirm intentional use and acknowledge the billing risk.'
         );
       }
-      if (process.stdin.isTTY) {
-        const { confirm } = await import('../../../utils/confirm.js');
-        const confirmed = await confirm({
-          message: 'Retranslate all keys and bypass cost cap?',
-        });
-        if (!confirmed) {
-          process.exitCode = ExitCode.Success;
-          return;
-        }
+      const { confirm, canPrompt } = await import('../../../utils/confirm.js');
+      // Refused rather than auto-answered. --force overwrites every target file,
+      // including human-reviewed translations, and no backup survives a
+      // successful run — so a git hook, cron job or container entrypoint must
+      // not be able to trigger it by being unable to answer. Erroring rather
+      // than aborting quietly, because unlike the other destructive commands
+      // declining here abandons the whole sync, and exit 0 would report an
+      // up-to-date project for a run that did nothing.
+      if (!canPrompt()) {
+        throw new ValidationError(
+          'Cannot use --force without --yes when there is no terminal to confirm at: it retranslates every key and overwrites every target file, including edits made by hand.',
+          'Add --yes to confirm intentional use and acknowledge the billing risk, or run it from a terminal.'
+        );
+      }
+      const confirmed = await confirm({
+        message: 'Retranslate all keys and bypass cost cap?',
+      });
+      if (!confirmed) {
+        Logger.info('Aborted.');
+        process.exitCode = ExitCode.Success;
+        return;
       }
     }
     const syncCommand = await createSyncCommand(deps);

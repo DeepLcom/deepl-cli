@@ -12,7 +12,7 @@
 
 import { ConfigError } from '../utils/errors.js';
 import { sanitizeForTerminal } from '../utils/control-chars.js';
-import { confirm, isNoInput } from '../utils/confirm.js';
+import { confirm, canPrompt as defaultCanPrompt } from '../utils/confirm.js';
 import { ConfigService } from '../storage/config.js';
 
 export const ALLOWED_SERVERS_CONFIG_KEY = 'tms.allowedServers';
@@ -96,8 +96,7 @@ export async function ensureTmsServerApproved(
   const existing = readAllowedServers();
   if (existing.some((entry) => entry.trim().toLowerCase() === hostname)) return;
 
-  const canPrompt =
-    deps.canPrompt ?? (() => !isNoInput() && !!process.stdin.isTTY);
+  const canPrompt = deps.canPrompt ?? defaultCanPrompt;
   if (!canPrompt()) {
     throw refuse(
       `Refusing to send an environment-supplied TMS credential to "${hostname}", which is not in ${ALLOWED_SERVERS_CONFIG_KEY}. ` +

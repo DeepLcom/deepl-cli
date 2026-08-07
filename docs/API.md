@@ -1234,8 +1234,9 @@ Scan, translate, and sync i18n resource files. The sync engine reads `.deepl-syn
   - `--watch --force` is rejected at startup with a `ValidationError` (exit 6) to prevent unbounded billing from a forced re-translation on every file save.
   - In an interactive terminal, `--force` prompts for confirmation before bypassing the cost cap. Pass `--yes` (`-y`) to skip the prompt in scripts.
   - In CI environments (`CI=true`), `--force` requires an explicit `--yes`; otherwise the process exits 6 with an actionable hint naming the missing flag.
+  - Anywhere else the prompt cannot be shown — a git hook, cron job, `make` target, container entrypoint, `deepl sync --force < /dev/null`, or `--no-input` — `--force` is **refused** with exit 6 rather than assumed to be confirmed. `--yes` is the only way to run it unattended. `--force` overwrites every target file, including translations edited by hand, and no `.deepl.bak` survives a successful run, so there is nothing to recover from afterwards.
 
-- `--yes, -y` - Skip the `--force` confirmation prompt (required when `CI=true`)
+- `--yes, -y` - Skip the `--force` confirmation prompt (required when `CI=true`, and whenever there is no terminal to prompt on)
 
 **Filtering:**
 

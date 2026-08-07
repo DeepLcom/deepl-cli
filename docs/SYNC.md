@@ -254,7 +254,7 @@ In JSON output (`--format json`), the `strategy` field provides the breakdown:
 - Keys with manual `context.overrides` always use per-key translation regardless of batching mode.
 - No-op syncs (nothing changed) complete in <200ms on typical projects.
 
-**Rollback:** If auto-generated instructions or section context produce an undesirable translation for a specific key, edit the target file manually. The lock file preserves translations by source hash — manual edits persist across syncs as long as the source text is unchanged. Use `--force` to re-translate all keys (this overwrites manual edits).
+**Rollback:** If auto-generated instructions or section context produce an undesirable translation for a specific key, edit the target file manually. The lock file preserves translations by source hash — manual edits persist across syncs as long as the source text is unchanged. Use `--force` to re-translate all keys (this overwrites manual edits, and no `.deepl.bak` survives a successful run — which is why `--force` needs a terminal to confirm on, or an explicit `--yes`).
 
 #### `validation`
 
@@ -435,7 +435,7 @@ deepl sync [OPTIONS]
 | `--dry-run` | Preview changes without translating |
 | `--frozen` | Fail (exit 10) if any translations are missing or outdated; for CI/CD |
 | `--ci` | Alias for `--frozen` |
-| `--force` | Re-translate all strings, ignoring the lockfile. **Also bypasses the `sync.max_characters` cost cap** — a forced run can re-bill every key. Preview cost with `--dry-run` first. Billing safety guards: `--watch --force` is rejected at startup with `ValidationError` (exit 6); interactive mode prompts for confirmation (add `--yes`/`-y` to skip in scripts); in CI (`CI=true`), `--force` requires explicit `--yes` or exits 6. |
+| `--force` | Re-translate all strings, ignoring the lockfile. **Also bypasses the `sync.max_characters` cost cap** — a forced run can re-bill every key. Preview cost with `--dry-run` first. Billing safety guards: `--watch --force` is rejected at startup with `ValidationError` (exit 6); interactive mode prompts for confirmation (add `--yes`/`-y` to skip in scripts); **without a terminal to prompt on — CI, a git hook, cron, a container entrypoint, `< /dev/null`, `--no-input` — `--force` is refused with exit 6, so `--yes` is the only way to run it unattended.** |
 | `--locale <langs>` | Sync only specific target locales (comma-separated) |
 | `--concurrency <n>` | Max parallel locale translations (default: 5) |
 | `--batch` | Force plain batch mode (fastest, no context or instructions). |
