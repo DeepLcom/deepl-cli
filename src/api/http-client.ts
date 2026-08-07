@@ -98,10 +98,41 @@ const CLIENT_ABORT_CODES = new Set([
   'ERR_CANCELED',
 ]);
 
-/** Per-request overrides for the retry policy and timeouts. */
+/**
+ * Ceiling on a buffered response body. Every DeepL endpoint except the
+ * document result returns JSON small enough to fit many times over; the cap
+ * exists so a hostile or malfunctioning endpoint cannot stream bytes into this
+ * process until it dies.
+ */
+export const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
+
+/**
+ * Ceiling on a whole-file transfer. DeepL accepts documents up to 30MB and a
+ * translated result may exceed its source — notably when `output_format`
+ * converts between types — so the file paths need headroom the JSON paths do
+ * not. Applied as the request-body cap for every client and, per request, as
+ * the response cap for the document download.
+ */
+export const MAX_TRANSFER_BYTES = 128 * 1024 * 1024;
+
+/** Per-request overrides for the retry policy, timeouts and transfer caps. */
 export interface RequestPolicy {
   maxRetries?: number;
   timeout?: number;
+  maxContentLength?: number;
+}
+
+/**
+ * Whether axios refused a response for exceeding `maxContentLength`. The
+ * verdict is deterministic — the same endpoint returns the same oversized body
+ * — so a replay only re-downloads bytes that will be discarded again.
+ */
+function isResponseTooLarge(error: AxiosError): boolean {
+  return (
+    error.code === 'ERR_BAD_RESPONSE' &&
+    !error.response &&
+    /^maxContentLength size of \d+ exceeded$/.test(error.message ?? '')
+  );
 }
 
 /**
@@ -240,6 +271,12 @@ export class HttpClient {
     const axiosConfig: Record<string, unknown> = {
       baseURL,
       timeout: options.timeout ?? DEFAULT_TIMEOUT,
+      // Axios defaults both of these to -1, meaning unbounded, so a server that
+      // streams without end is buffered until the process dies. The response
+      // cap is deliberately the tighter of the two; the document download
+      // raises it per request.
+      maxContentLength: MAX_RESPONSE_BYTES,
+      maxBodyLength: MAX_TRANSFER_BYTES,
       headers: {
         Authorization: `DeepL-Auth-Key ${apiKey}`,
         'User-Agent': USER_AGENT,
@@ -390,6 +427,20 @@ export class HttpClient {
     let traceId: string | undefined;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const attemptTimeout = Math.min(requestTimeout, remainingBudget);
+      // The axios `timeout` reaches the socket as an inactivity timeout, so a
+      // response body that trickles indefinitely resets it on every chunk and
+      // it never fires. This deadline is wall-clock and cannot be reset by the
+      // peer.
+      const controller = new AbortController();
+      let deadlineExpired = false;
+      const deadline =
+        attemptTimeout > 0
+          ? setTimeout(() => {
+              deadlineExpired = true;
+              controller.abort();
+            }, attemptTimeout)
+          : undefined;
       const requestStart = Date.now();
       try {
         const config = buildConfig();
@@ -398,7 +449,11 @@ export class HttpClient {
           method,
           url: path,
           ...config,
-          timeout: Math.min(requestTimeout, remainingBudget),
+          timeout: attemptTimeout,
+          signal: controller.signal,
+          ...(policy?.maxContentLength !== undefined && {
+            maxContentLength: policy.maxContentLength,
+          }),
         });
         const requestElapsed = Date.now() - requestStart;
         Logger.verbose(
@@ -413,21 +468,32 @@ export class HttpClient {
 
         return response.data;
       } catch (error) {
+        // An abort the deadline caused surfaces as a CanceledError that still
+        // carries the 200 response, which classification would report as an
+        // "API error". Restate it as the socket timeout it stands in for so
+        // every downstream decision — replay eligibility, classification,
+        // message — matches what a non-trickling timeout produces.
+        const failure = deadlineExpired
+          ? new AxiosError(
+              `timeout of ${attemptTimeout}ms exceeded`,
+              AxiosError.ETIMEDOUT
+            )
+          : error;
         remainingBudget -= Date.now() - requestStart;
-        lastError = error as Error;
+        lastError = failure as Error;
 
-        if (this.isAxiosError(error)) {
-          const responseTraceId = error.response?.headers?.['x-trace-id'] as
+        if (this.isAxiosError(failure)) {
+          const responseTraceId = failure.response?.headers?.['x-trace-id'] as
             string | undefined;
           if (responseTraceId) {
             traceId = responseTraceId;
             this._lastTraceId = responseTraceId;
           }
 
-          const status = error.response?.status;
+          const status = failure.response?.status;
           if (status === 429 && attempt < maxRetries) {
             const retryAfterDelay = this.parseRetryAfter(
-              error.response?.headers?.['retry-after'] as string | undefined
+              failure.response?.headers?.['retry-after'] as string | undefined
             );
             // Respect Retry-After verbatim when present; otherwise use
             // backoff with full jitter. Jitter prevents concurrent sync
@@ -441,18 +507,18 @@ export class HttpClient {
             continue;
           }
           if (status && status >= 400 && status < 500) {
-            throw this.handleError(error, undefined, traceId);
+            throw this.handleError(failure, undefined, traceId);
           }
         }
 
         if (
           attempt < maxRetries &&
           remainingBudget > 0 &&
-          this.isReplayable(method, error)
+          this.isReplayable(method, failure)
         ) {
           const delay = computeBackoffWithJitter(attempt);
-          const status = this.isAxiosError(error)
-            ? error.response?.status
+          const status = this.isAxiosError(failure)
+            ? failure.response?.status
             : undefined;
           Logger.verbose(
             `[verbose] HTTP ${method} ${path} retry ${attempt + 1}/${maxRetries} in ${delay}ms (${status ? `status ${status}` : 'network error'}, jitter backoff)`
@@ -462,6 +528,8 @@ export class HttpClient {
         }
 
         break;
+      } finally {
+        clearTimeout(deadline);
       }
     }
 
@@ -477,6 +545,9 @@ export class HttpClient {
    */
   private isReplayable(method: string, error: unknown): boolean {
     if (!this.isAxiosError(error)) {
+      return false;
+    }
+    if (isResponseTooLarge(error)) {
       return false;
     }
     if (!error.response && error.code && UNSENT_REQUEST_CODES.has(error.code)) {
@@ -576,6 +647,17 @@ export class HttpClient {
   }
 
   private transportError(error: AxiosError): NetworkError {
+    if (isResponseTooLarge(error)) {
+      const cap = error.config?.maxContentLength;
+      const limit =
+        typeof cap === 'number' && cap > 0
+          ? `${Math.round(cap / (1024 * 1024))}MiB`
+          : 'configured';
+      return new NetworkError(
+        `Network error: response body exceeded the ${limit} size limit`
+      );
+    }
+
     const detail = sanitizeForTerminal(error.message ?? '');
     const label =
       error.code && CLIENT_ABORT_CODES.has(error.code)

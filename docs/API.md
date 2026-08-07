@@ -60,6 +60,8 @@ Options that work with all commands:
 
 Automatic retries apply to idempotent requests, and to rate-limited (429) responses for every method; a request that submits work is otherwise never replayed. Retries share a wall-clock budget of twice `--timeout`, so raising `--max-retries` alone does not extend how long the CLI waits on an unresponsive endpoint.
 
+`--timeout` is an enforced wall-clock deadline per attempt, not merely a socket inactivity timeout: an endpoint that keeps a response body trickling is aborted at the deadline just like one that never answers at all. Responses are additionally capped at 32 MiB, raised to 128 MiB for the document download, which must accommodate a whole translated file. Exceeding either bound is a `NetworkError` (exit code 5); a size-cap rejection is deterministic and is never retried.
+
 **Examples:**
 
 ```bash

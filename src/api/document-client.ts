@@ -1,4 +1,8 @@
-import { HttpClient, DeepLClientOptions } from './http-client.js';
+import {
+  HttpClient,
+  DeepLClientOptions,
+  MAX_TRANSFER_BYTES,
+} from './http-client.js';
 import {
   DocumentTranslationOptions,
   DocumentHandle,
@@ -155,7 +159,11 @@ export class DocumentClient extends HttpClient {
             responseType: 'arraybuffer',
           };
         },
-        { maxRetries: 0, timeout: this.transferTimeout }
+        {
+          maxRetries: 0,
+          timeout: this.transferTimeout,
+          maxContentLength: MAX_TRANSFER_BYTES,
+        }
       );
 
       return Buffer.from(response);
