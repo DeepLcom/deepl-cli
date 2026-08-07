@@ -260,11 +260,25 @@ In JSON output (`--format json`), the `strategy` field provides the breakdown:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `check_placeholders` | `boolean` | No | `true` | Validate placeholder preservation in translations |
-| `fail_on_error` | `boolean` | No | `false` | Fail sync when validation errors are detected |
-| `validate_after_sync` | `boolean` | No | `true` | Run validation after each sync |
+| `check_placeholders` | `boolean` | No | `true` | Validate placeholder and ICU preservation in translations. Set `false` to write translations that fail validation |
+| `fail_on_error` | `boolean` | No | `false` | Raise `ValidationError` (exit 6) instead of finishing as a partial failure when validation errors are detected |
+| `validate_after_sync` | `boolean` | No | `true` | Run validation on each translation before it is written |
 | `fail_on_missing` | `boolean` | No | `true` | With `--frozen`, fail on new/missing translations |
 | `fail_on_stale` | `boolean` | No | `true` | With `--frozen`, fail on stale (source-changed) translations |
+
+**Corrupt translations are withheld, not written.** A translation that loses a
+placeholder or has its ICU structure rewritten by the engine (an
+`error`-severity check) never reaches the target file. The key keeps whatever
+the target file already held, the lock records it as `status: "failed"`, and the
+next sync retries it — so a run with validation errors reports at least one
+failed key and exits 12 (or 6 with `fail_on_error: true`). Warnings — an extra
+placeholder, a missing HTML tag, an untranslated string, an unusual length
+ratio — are reported but still written.
+
+Because a withheld key is retried, an engine that keeps returning the same
+corrupt output is billed again on every run. The warning names the affected keys
+and the check that rejected them; set `check_placeholders: false` to accept the
+output instead, or fix the source string.
 
 #### `sync`
 

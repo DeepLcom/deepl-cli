@@ -2271,7 +2271,9 @@ describe('SyncService', () => {
 
       const result = await service.sync(config);
       expect(result.validationErrors).toBeGreaterThan(0);
-      expect(result.success).toBe(true);
+      // Not a hard error, but not a success either: the key was withheld from
+      // the target file, so the run is a partial failure and retries next time.
+      expect(result.success).toBe(false);
     });
   });
 

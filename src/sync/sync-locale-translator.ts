@@ -16,7 +16,10 @@ import {
   generateLengthInstruction,
 } from './sync-instructions.js';
 import { getOwnMember } from '../utils/own-members.js';
-import { validateBatch } from './translation-validator.js';
+import {
+  validateBatch,
+  type ValidationResult,
+} from './translation-validator.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { mapWithConcurrency } from '../utils/concurrency.js';
 import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
@@ -48,6 +51,88 @@ export interface LocaleTranslatorContext {
   localeTmIds: Map<string, string>;
   bucketConfig: SyncBucketConfig;
   isMultiLocale: boolean;
+}
+
+interface ScreenedTranslations {
+  /** Entries safe to write. */
+  accepted: TranslatedEntry[];
+  /** Entries withheld because a check reported `error` severity. */
+  withheld: ValidationResult[];
+  warnings: number;
+  errors: number;
+}
+
+/**
+ * Split freshly translated entries into the ones that may be written and the
+ * ones a validation check rejected.
+ *
+ * An entry with an `error`-severity issue has lost a placeholder or had its ICU
+ * structure rewritten by the engine, so writing it would put machine
+ * scaffolding into the user's locale file. The caller keeps whatever the target
+ * file already held for a withheld key and counts it as failed, so the lockfile
+ * records `failed` and the next sync retries it.
+ */
+function screenTranslations(
+  entries: readonly TranslatedEntry[],
+  config: ResolvedSyncConfig
+): ScreenedTranslations {
+  if (
+    entries.length === 0 ||
+    config.validation?.validate_after_sync === false ||
+    config.validation?.check_placeholders === false
+  ) {
+    return { accepted: [...entries], withheld: [], warnings: 0, errors: 0 };
+  }
+
+  const results = validateBatch(
+    entries.map((e) => ({
+      key: e.key,
+      source: e.value,
+      translation: e.translation,
+    }))
+  );
+
+  const accepted: TranslatedEntry[] = [];
+  const withheld: ValidationResult[] = [];
+  let warnings = 0;
+  let errors = 0;
+
+  for (let i = 0; i < entries.length; i++) {
+    const result = results[i];
+    for (const issue of result?.issues ?? []) {
+      if (issue.severity === 'warn') warnings++;
+      if (issue.severity === 'error') errors++;
+    }
+    if (result?.severity === 'error') {
+      withheld.push(result);
+    } else {
+      accepted.push(entries[i]!);
+    }
+  }
+
+  return { accepted, withheld, warnings, errors };
+}
+
+function withheldKeysWarning(
+  locale: string,
+  targetRelPath: string,
+  withheld: readonly ValidationResult[]
+): string {
+  const shown = withheld.slice(0, 3).map((w) => {
+    const first =
+      w.issues.find((i) => i.severity === 'error')?.message ??
+      'validation error';
+    return `"${w.key}" (${first})`;
+  });
+  const more = withheld.length > shown.length ? ', …' : '';
+  const one = withheld.length === 1;
+  return (
+    `${locale}: withheld ${withheld.length} ${one ? 'translation' : 'translations'} from ` +
+    `${targetRelPath} that failed validation: ${shown.join(', ')}${more}. ` +
+    `${one ? 'It was' : 'They were'} not written and ${one ? 'is' : 'are'} recorded as failed, ` +
+    `so the next sync retries ${one ? 'it' : 'them'}. Set validation.check_placeholders: false ` +
+    `to write ${one ? 'it' : 'them'} anyway.`
+  );
 }
 
 export interface TranslateLocaleResult {
@@ -513,12 +598,41 @@ export class LocaleTranslator {
       icuMappings,
       baseTranslationOpts
     );
-    writebackPlurals(results, pluralSlots, localeDiffs);
+    // Validate before the plural write-backs below, which mutate the metadata
+    // the parser reconstructs from: a withheld entry has to leave those forms in
+    // the state an untouched key's would be in. `result.text` is already final
+    // here — the write-backs only copy it into metadata.
+    const screened = screenTranslations(
+      localeDiffs.flatMap((diff, i) => {
+        const result = results[i];
+        return result && diff.value !== undefined
+          ? [
+              {
+                key: diff.key,
+                value: diff.value,
+                translation: result.text,
+                metadata: diff.metadata,
+              },
+            ]
+          : [];
+      }),
+      config
+    );
+    const withheld: ValidationResult[] = [...screened.withheld];
+    const withheldKeys = new Set(screened.withheld.map((w) => w.key));
+    let localeValidationWarnings = screened.warnings;
+    let localeValidationErrors = screened.errors;
+
+    const withheldDiffIndices = new Set(
+      localeDiffs.flatMap((diff, i) => (withheldKeys.has(diff.key) ? [i] : []))
+    );
+
+    writebackPlurals(results, pluralSlots, localeDiffs, withheldDiffIndices);
 
     for (let i = 0; i < localeDiffs.length; i++) {
       const diff = localeDiffs[i]!;
       const result = results[i];
-      if (!result || !diff.metadata) continue;
+      if (!result || !diff.metadata || withheldDiffIndices.has(i)) continue;
 
       if (diff.metadata['msgid_plural'] !== undefined) {
         const forms =
@@ -545,6 +659,16 @@ export class LocaleTranslator {
       const diff = localeDiffs[i]!;
       const result = results[i];
       if (result && diff.value !== undefined) {
+        // Billed whether or not the translation is usable, so the reported
+        // spend and the lock entry both record what was actually charged.
+        if (result.billedCharacters) {
+          localeBilled += result.billedCharacters;
+          billedPerKey.set(diff.key, result.billedCharacters);
+        }
+        if (withheldKeys.has(diff.key)) {
+          failed++;
+          continue;
+        }
         translatedEntries.push({
           key: diff.key,
           value: diff.value,
@@ -552,10 +676,6 @@ export class LocaleTranslator {
           metadata: diff.metadata,
         });
         translated++;
-        if (result.billedCharacters) {
-          localeBilled += result.billedCharacters;
-          billedPerKey.set(diff.key, result.billedCharacters);
-        }
       } else {
         failed++;
       }
@@ -569,30 +689,26 @@ export class LocaleTranslator {
 
     const successfulKeys: string[] = translatedEntries.map((te) => te.key);
 
-    let localeValidationWarnings = 0;
-    let localeValidationErrors = 0;
-    if (
-      config.validation?.validate_after_sync !== false &&
-      config.validation?.check_placeholders !== false
-    ) {
-      const validationInputs = translatedEntries.map((e) => ({
-        key: e.key,
-        source: e.value,
-        translation: e.translation,
-      }));
-      const validationResults = validateBatch(validationInputs);
-      for (const vr of validationResults) {
-        for (const issue of vr.issues) {
-          if (issue.severity === 'warn') localeValidationWarnings++;
-          if (issue.severity === 'error') localeValidationErrors++;
-        }
-      }
-    }
-
     // Use target file translations for current keys
     const existingTranslations =
       existingTargetEntries.get(locale) ?? new Map<string, string>();
     const allTranslatedEntries: TranslatedEntry[] = [...translatedEntries];
+
+    // A withheld key still needs an entry: the list is the complete desired key
+    // set, so leaving it out deletes the key from the target file rather than
+    // leaving it alone. Carry the value the target file already had — the same
+    // treatment a `current` key gets — and omit it only when the file has none.
+    for (const rejected of screened.withheld) {
+      const previous = existingTranslations.get(rejected.key);
+      if (previous === undefined) continue;
+      const diff = localeDiffs.find((d) => d.key === rejected.key);
+      allTranslatedEntries.push({
+        key: rejected.key,
+        value: rejected.source,
+        translation: previous,
+        metadata: diff?.metadata,
+      });
+    }
     const currentDiffs = diffs.filter((d) => d.status === 'current');
     const currentDiffByKey = new Map(currentDiffs.map((d) => [d.key, d]));
     const untranslatedCurrentKeys: string[] = [];
@@ -661,18 +777,18 @@ export class LocaleTranslator {
           }
         }
 
+        const newLocaleEntries: TranslatedEntry[] = [];
         for (let nli = 0; nli < untranslatedCurrentKeys.length; nli++) {
           const key = untranslatedCurrentKeys[nli]!;
           const cd = currentDiffByKey.get(key)!;
           const nlResult = newLocaleResults[nli];
           if (nlResult) {
-            allTranslatedEntries.push({
+            newLocaleEntries.push({
               key,
               value: cd.value!,
               translation: nlResult.text,
               metadata: cd.metadata,
             });
-            successfulKeys.push(key);
             translated++;
             if (nlResult.billedCharacters) {
               localeBilled += nlResult.billedCharacters;
@@ -684,6 +800,17 @@ export class LocaleTranslator {
             // source language would be frozen into the locale file for good.
             failed++;
           }
+        }
+
+        const nlScreened = screenTranslations(newLocaleEntries, config);
+        localeValidationWarnings += nlScreened.warnings;
+        localeValidationErrors += nlScreened.errors;
+        withheld.push(...nlScreened.withheld);
+        translated -= nlScreened.withheld.length;
+        failed += nlScreened.withheld.length;
+        for (const entry of nlScreened.accepted) {
+          allTranslatedEntries.push(entry);
+          successfulKeys.push(entry.key);
         }
       }
     }
@@ -698,6 +825,10 @@ export class LocaleTranslator {
         );
     const targetAbsPath = path.join(config.projectRoot, targetRelPath);
     assertPathWithinRoot(targetAbsPath, config.projectRoot);
+
+    if (withheld.length > 0) {
+      Logger.warn(withheldKeysWarning(locale, targetRelPath, withheld));
+    }
 
     let templateContent = content;
     let targetExists = false;

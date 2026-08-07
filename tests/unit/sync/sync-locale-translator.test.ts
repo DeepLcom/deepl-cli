@@ -49,6 +49,7 @@ import {
   assertPathWithinRoot,
 } from '../../../src/sync/sync-utils';
 import { validateBatch } from '../../../src/sync/translation-validator';
+import { Logger } from '../../../src/utils/logger';
 
 const mockReadFile = fs.promises.readFile as jest.MockedFunction<
   typeof fs.promises.readFile
@@ -1649,6 +1650,289 @@ describe('LocaleTranslator', () => {
         expect.any(Array),
         'de'
       );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 16. Validation gate — error-severity translations are withheld
+  // ---------------------------------------------------------------------------
+  describe('validation gate', () => {
+    function writtenKeys(parser: FormatParser): string[] {
+      const call = (parser.reconstruct as jest.Mock).mock.calls[0];
+      const entries = call?.[1] as Array<{ key: string }> | undefined;
+      return (entries ?? []).map((e) => e.key);
+    }
+
+    function validatingConfig(): ResolvedSyncConfig {
+      return makeConfig({
+        validation: { validate_after_sync: true, check_placeholders: true },
+      });
+    }
+
+    it('should keep an error-severity translation out of the written file', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'a',
+          source: 'Alpha',
+          translation: 'A',
+          severity: 'pass',
+          issues: [],
+        },
+        {
+          key: 'b',
+          source: 'Beta {name}',
+          translation: 'B',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {name}',
+            },
+          ],
+        },
+      ]);
+
+      const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta {name}')];
+      const { mock } = captureTranslateBatch(['A', 'B']);
+      const parser = makeParser();
+
+      const result = await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+      });
+
+      expect(writtenKeys(parser)).toEqual(['a']);
+      expect(result.targetEntries.has('b')).toBe(false);
+    });
+
+    it('should record an error-severity key as failed rather than translated', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'a',
+          source: 'Alpha',
+          translation: 'A',
+          severity: 'pass',
+          issues: [],
+        },
+        {
+          key: 'b',
+          source: 'Beta {name}',
+          translation: 'B',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {name}',
+            },
+          ],
+        },
+      ]);
+
+      const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta {name}')];
+      const { mock } = captureTranslateBatch(['A', 'B']);
+
+      const result = await makeTranslator(mock, validatingConfig()).translate(
+        makeCtx(diffs, new Map())
+      );
+
+      expect(result.successfulKeys).toEqual(['a']);
+      expect(result.fileResult.translated).toBe(1);
+      expect(result.fileResult.failed).toBe(1);
+    });
+
+    it('should keep the previous target translation for a withheld key', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'b',
+          source: 'Beta {name}',
+          translation: 'B',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {name}',
+            },
+          ],
+        },
+      ]);
+
+      const diffs = [makeDiff('b', 'Beta {name}')];
+      const { mock } = captureTranslateBatch(['B']);
+      const parser = makeParser();
+
+      const result = await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+        existingTargetEntries: new Map([
+          ['de', new Map([['b', 'Beta {name} auf Deutsch']])],
+        ]),
+      });
+
+      const entries = (parser.reconstruct as jest.Mock).mock
+        .calls[0]![1] as Array<{ key: string; translation: string }>;
+      expect(entries).toEqual([
+        expect.objectContaining({
+          key: 'b',
+          translation: 'Beta {name} auf Deutsch',
+        }),
+      ]);
+      // Preserved for the file, but not a success: the lock must retry it.
+      expect(result.successfulKeys).toEqual([]);
+      expect(result.fileResult.failed).toBe(1);
+    });
+
+    it('should still write a warn-severity translation', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'a',
+          source: 'Alpha <b>bold</b>',
+          translation: 'A',
+          severity: 'warn',
+          issues: [
+            {
+              check: 'html-tags',
+              severity: 'warn',
+              message: 'Missing HTML tags in translation: <b>',
+            },
+          ],
+        },
+      ]);
+
+      const diffs = [makeDiff('a', 'Alpha <b>bold</b>')];
+      const { mock } = captureTranslateBatch(['A']);
+      const parser = makeParser();
+
+      const result = await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+      });
+
+      expect(writtenKeys(parser)).toEqual(['a']);
+      expect(result.successfulKeys).toEqual(['a']);
+      expect(result.fileResult.failed).toBe(0);
+    });
+
+    it('should name the withheld keys in a warning', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'b',
+          source: 'Beta {name}',
+          translation: 'B',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {name}',
+            },
+          ],
+        },
+      ]);
+
+      const diffs = [makeDiff('b', 'Beta {name}')];
+      const { mock } = captureTranslateBatch(['B']);
+
+      await makeTranslator(mock, validatingConfig()).translate(
+        makeCtx(diffs, new Map())
+      );
+
+      const warnings = (Logger.warn as jest.Mock).mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
+      expect(warnings).toContain('"b"');
+      expect(warnings).toContain('Missing placeholders in translation: {name}');
+      expect(warnings).toContain('check_placeholders');
+    });
+
+    it('should reconstruct a withheld entry from the plural forms it was extracted with', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'items',
+          source: '1 item',
+          translation: '1 Element',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: %d',
+            },
+          ],
+        },
+      ]);
+
+      const diffs: SyncDiff[] = [
+        {
+          key: 'items',
+          value: '1 item',
+          status: 'new',
+          metadata: {
+            plurals: [
+              { quantity: 'one', value: '1 item' },
+              { quantity: 'other', value: '%d items' },
+            ],
+          },
+        },
+      ];
+      const { mock } = captureTranslateBatch(['1 Element', '%d Elemente']);
+      const parser = makeParser();
+
+      await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+        existingTargetEntries: new Map([
+          ['de', new Map([['items', '1 Element (vorher)']])],
+        ]),
+      });
+
+      const entries = (parser.reconstruct as jest.Mock).mock
+        .calls[0]![1] as Array<{
+        key: string;
+        metadata?: Record<string, unknown>;
+      }>;
+      expect(entries).toHaveLength(1);
+      expect(entries[0]!.metadata?.['plurals']).toEqual([
+        { quantity: 'one', value: '1 item' },
+        { quantity: 'other', value: '%d items' },
+      ]);
+    });
+
+    it('should validate the new-locale backfill batch and withhold its errors', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'c',
+          source: 'Gamma {count}',
+          translation: 'C',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {count}',
+            },
+          ],
+        },
+      ]);
+
+      const diffs: SyncDiff[] = [
+        { key: 'c', value: 'Gamma {count}', status: 'current' },
+      ];
+      const { mock } = captureTranslateBatch(['C']);
+      const parser = makeParser();
+
+      const result = await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+      });
+
+      expect(mockValidateBatch).toHaveBeenCalledTimes(1);
+      expect(writtenKeys(parser)).toEqual([]);
+      expect(result.successfulKeys).toEqual([]);
+      expect(result.validationErrors).toBe(1);
+      expect(result.fileResult.failed).toBe(1);
     });
   });
 });

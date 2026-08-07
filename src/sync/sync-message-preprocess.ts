@@ -149,14 +149,23 @@ export async function reassembleIcu(
   }
 }
 
+/**
+ * Copy translated plural forms into each diff's metadata, which is what the
+ * parsers reconstruct plural entries from.
+ *
+ * `skipDiffIndices` names diffs whose translation will not be written, so their
+ * metadata must keep the forms it was extracted with.
+ */
 export function writebackPlurals(
   results: (TranslationResult | null)[],
   pluralSlots: PluralSlot[],
-  localeDiffs: SyncDiff[]
+  localeDiffs: SyncDiff[],
+  skipDiffIndices?: ReadonlySet<number>
 ): void {
   for (const slot of pluralSlots) {
     const result = results[slot.textIndex];
     if (!result) continue;
+    if (skipDiffIndices?.has(slot.diffIndex)) continue;
     const diff = localeDiffs[slot.diffIndex]!;
     if (!diff.metadata) continue;
 
