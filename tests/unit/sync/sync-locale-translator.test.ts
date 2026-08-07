@@ -931,7 +931,11 @@ describe('LocaleTranslator', () => {
       expect(result.targetEntries.get('welcome')).toMatch(/Hallo/);
     });
 
-    it('should fall back to source text when the new-locale translateBatch returns null', async () => {
+    it('should omit the key when the new-locale translateBatch returns null', async () => {
+      // Writing the source value would record untranslated text as a
+      // translation: the next run reads it back as an existing translation and
+      // skips the key, so the source language is frozen into the locale file
+      // permanently. Leaving the key out keeps it retryable.
       const config = makeConfig();
       const diffs: SyncDiff[] = [
         { key: 'existing_key', value: 'Existing value', status: 'current' },
@@ -949,8 +953,46 @@ describe('LocaleTranslator', () => {
 
       const result = await makeTranslator(mock, config).translate(ctx);
 
-      expect(result.targetEntries.get('existing_key')).toBe('Existing value');
+      expect(result.targetEntries.has('existing_key')).toBe(false);
+      expect(result.successfulKeys).not.toContain('existing_key');
       expect(result.fileResult.failed).toBe(1);
+    });
+
+    it('should keep a failed backfill key retryable on the next run', async () => {
+      // The next run must see the key as untranslated. That is decided by the
+      // target file, so a key the failed run left out is picked up again even
+      // though nothing recorded the failure.
+      const config = makeConfig();
+      const diffs: SyncDiff[] = [
+        { key: 'existing_key', value: 'Existing value', status: 'current' },
+      ];
+      const failing = createMockTranslationService({
+        translateBatch: jest.fn().mockResolvedValue([null]),
+      });
+
+      const firstCtx: LocaleTranslatorContext = {
+        ...makeCtx(diffs, new Map()),
+        existingTargetEntries: new Map(),
+        fileLockEntries: {},
+      };
+      firstCtx.toTranslate = [];
+      const first = await makeTranslator(failing, config).translate(firstCtx);
+
+      const { mock, calls } = captureTranslateBatch(['Existierender Wert']);
+      const secondCtx: LocaleTranslatorContext = {
+        ...makeCtx(diffs, new Map()),
+        // What the failed run left behind is what the second run reads back.
+        existingTargetEntries: new Map([['de', first.targetEntries]]),
+        fileLockEntries: {},
+      };
+      secondCtx.toTranslate = [];
+      const second = await makeTranslator(mock, config).translate(secondCtx);
+
+      expect(calls.some((c) => c.texts.includes('Existing value'))).toBe(true);
+      expect(second.targetEntries.get('existing_key')).toBe(
+        'Existierender Wert'
+      );
+      expect(second.fileResult.failed).toBe(0);
     });
   });
 

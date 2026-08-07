@@ -677,12 +677,10 @@ export class LocaleTranslator {
               localeBilled += nlResult.billedCharacters;
             }
           } else {
-            allTranslatedEntries.push({
-              key,
-              value: cd.value!,
-              translation: cd.value!,
-              metadata: cd.metadata,
-            });
+            // Push nothing, matching the main path above. Writing cd.value as
+            // the translation would record untranslated source text, which the
+            // next run reads back as an existing translation and skips — the
+            // source language would be frozen into the locale file for good.
             failed++;
           }
         }
