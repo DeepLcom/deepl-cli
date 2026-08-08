@@ -8,6 +8,7 @@
 import { AndroidXmlFormatParser } from '../../../src/formats/android-xml';
 import { PropertiesFormatParser } from '../../../src/formats/properties';
 import { TomlFormatParser } from '../../../src/formats/toml';
+import { PoFormatParser } from '../../../src/formats/po';
 
 describe('parser round-trip stability', () => {
   describe('Android XML entity escaping', () => {
@@ -162,6 +163,50 @@ describe('parser round-trip stability', () => {
       const out2 = parser.reconstruct(out, entries);
       expect(out2).toBe(out);
       expect(() => parser.extract(out2)).not.toThrow();
+    });
+  });
+  // gettext does not require a blank line between entries, and `msgfmt -c`
+  // exits 0 on this catalog. Both the reader and the writer used to treat the
+  // blank line as the only entry terminator, so one sync collapsed the whole
+  // catalog into a single entry: the header lost its charset and the same
+  // translation was written into every msgstr.
+  describe('PO entries with no blank line between them', () => {
+    const source = [
+      'msgid ""',
+      'msgstr ""',
+      '"Content-Type: text/plain; charset=UTF-8\\n"',
+      '"Plural-Forms: nplurals=2; plural=(n != 1);\\n"',
+      'msgid "Hello"',
+      'msgstr "Hallo"',
+      'msgid "Bye"',
+      'msgstr "Tschuess"',
+      '',
+    ].join('\n');
+
+    it('should be a fixed point across three successive syncs', () => {
+      const parser = new PoFormatParser();
+      let content = source;
+      const seen: string[] = [];
+
+      for (let run = 0; run < 3; run++) {
+        const entries = parser.extract(content);
+        content = parser.reconstruct(
+          content,
+          entries.map((e) => ({ ...e, translation: e.value }))
+        );
+        seen.push(content);
+      }
+
+      expect(seen[1]).toBe(seen[0]);
+      expect(seen[2]).toBe(seen[0]);
+      expect(parser.extract(content).map((e) => e.key)).toEqual([
+        'Hello',
+        'Bye',
+      ]);
+      expect(content).toContain('"Content-Type: text/plain; charset=UTF-8\\n"');
+      expect(content).toContain(
+        '"Plural-Forms: nplurals=2; plural=(n != 1);\\n"'
+      );
     });
   });
 });

@@ -420,3 +420,194 @@ describe('PoFormatParser — reconstruct coverage', () => {
     expect(result).toContain('python-format');
   });
 });
+
+// gettext does not require a blank line between entries: msgfmt -c exits 0 on
+// every fixture below. Both the reader and the writer treated a blank line as
+// the only entry terminator, so a catalog without them collapsed into one
+// entry — the key set lost every message but the last, and reconstruct wrote
+// one translation into every msgstr it found, the header's included.
+describe('PoFormatParser — entries with no blank line between them', () => {
+  const parser = new PoFormatParser();
+
+  const HEADER = [
+    'msgid ""',
+    'msgstr ""',
+    '"Project-Id-Version: demo\\n"',
+    '"Content-Type: text/plain; charset=UTF-8\\n"',
+    '"Plural-Forms: nplurals=2; plural=(n != 1);\\n"',
+  ].join('\n');
+
+  function translateAll(content: string): string {
+    const entries = parser.extract(content).map((e) => ({
+      ...e,
+      translation: `[T]${e.value}`,
+    }));
+    return parser.reconstruct(content, entries);
+  }
+
+  it('extracts every entry when nothing separates them', () => {
+    const po = [
+      HEADER,
+      'msgid "Hello"',
+      'msgstr "REVIEWED-1"',
+      'msgid "Bye"',
+      'msgstr "REVIEWED-2"',
+      'msgid "Third"',
+      'msgstr "REVIEWED-3"',
+      '',
+    ].join('\n');
+
+    expect(parser.extract(po).map((e) => e.key)).toEqual([
+      'Hello',
+      'Bye',
+      'Third',
+    ]);
+  });
+
+  it('reads every existing translation out of an unseparated target', () => {
+    const po = [
+      HEADER,
+      'msgid "Hello"',
+      'msgstr "REVIEWED-1"',
+      'msgid "Bye"',
+      'msgstr "REVIEWED-2"',
+      '',
+    ].join('\n');
+
+    expect([...parser.extractTranslations(po)]).toEqual([
+      ['Hello', 'REVIEWED-1'],
+      ['Bye', 'REVIEWED-2'],
+    ]);
+  });
+
+  it('keeps the header and its charset when the first message follows it directly', () => {
+    const po = [HEADER, 'msgid "Hello"', 'msgstr "REVIEWED"', ''].join('\n');
+
+    const out = translateAll(po);
+
+    expect(out).toContain('"Content-Type: text/plain; charset=UTF-8\\n"');
+    expect(out).toContain('"Plural-Forms: nplurals=2; plural=(n != 1);\\n"');
+    expect(out).toContain('msgid ""\nmsgstr ""\n');
+    expect(out).toContain('msgstr "[T]Hello"');
+  });
+
+  it('writes each translation into its own entry rather than the first msgstr it finds', () => {
+    const po = [
+      HEADER,
+      'msgid "Hello"',
+      'msgstr "REVIEWED-1"',
+      'msgid "Bye"',
+      'msgstr "REVIEWED-2"',
+      '',
+    ].join('\n');
+
+    const out = translateAll(po);
+
+    expect(out).toContain('msgid "Hello"\nmsgstr "[T]Hello"');
+    expect(out).toContain('msgid "Bye"\nmsgstr "[T]Bye"');
+  });
+
+  it('keeps an unseparated entry that carries its own comments', () => {
+    const po = [
+      HEADER,
+      '#: src/a.js:1',
+      'msgid "Hello"',
+      'msgstr "REVIEWED-1"',
+      '#: src/b.js:2',
+      'msgid "Bye"',
+      'msgstr "REVIEWED-2"',
+      '',
+    ].join('\n');
+
+    const out = translateAll(po);
+
+    expect(out).toContain('msgid "Hello"');
+    expect(out).toContain('#: src/a.js:1');
+    expect(out).toContain('msgstr "[T]Hello"');
+    expect(out).toContain('msgstr "[T]Bye"');
+  });
+
+  it('keeps the header when an obsolete entry sits between two unseparated messages', () => {
+    const po = [
+      HEADER,
+      'msgid "Hello"',
+      'msgstr "REVIEWED-1"',
+      '#~ msgid "Gone"',
+      '#~ msgstr "Verschwunden"',
+      'msgid "Bye"',
+      'msgstr "REVIEWED-2"',
+      '',
+    ].join('\n');
+
+    const out = translateAll(po);
+
+    expect(out).toContain('"Content-Type: text/plain; charset=UTF-8\\n"');
+    expect(out).toContain('msgid "Hello"');
+    expect(out).toContain('#~ msgid "Gone"');
+    expect(out).toContain('msgstr "[T]Bye"');
+  });
+
+  it('keeps the header and the plural forms of an unseparated plural entry', () => {
+    const po = [
+      HEADER,
+      'msgid "One item"',
+      'msgid_plural "%d items"',
+      'msgstr[0] "REVIEWED-S"',
+      'msgstr[1] "REVIEWED-P"',
+      'msgid "Bye"',
+      'msgstr "REVIEWED-2"',
+      '',
+    ].join('\n');
+
+    expect(parser.extract(po).map((e) => e.key)).toEqual(['One item', 'Bye']);
+
+    const out = translateAll(po);
+
+    expect(out).toContain('"Plural-Forms: nplurals=2; plural=(n != 1);\\n"');
+    expect(out).toContain('msgid_plural "%d items"');
+    expect(out).toContain('msgstr[0] "REVIEWED-S"');
+  });
+
+  // Over-rejection guards: the separated form is the common case and its
+  // handling must not change, and a genuine continuation line must still be
+  // folded into the field it continues.
+  it('leaves a blank-line-separated catalog exactly as it was', () => {
+    const po = [
+      HEADER,
+      '',
+      'msgid "Hello"',
+      'msgstr "REVIEWED-1"',
+      '',
+      'msgid "Bye"',
+      'msgstr "REVIEWED-2"',
+      '',
+    ].join('\n');
+
+    expect(parser.extract(po).map((e) => e.key)).toEqual(['Hello', 'Bye']);
+
+    const out = translateAll(po);
+
+    expect(out).toContain('"Content-Type: text/plain; charset=UTF-8\\n"');
+    expect(out).toContain('msgid "Hello"\nmsgstr "[T]Hello"');
+    expect(out).toContain('msgid "Bye"\nmsgstr "[T]Bye"');
+  });
+
+  it('still folds a multi-line msgid and msgstr into one entry', () => {
+    const po = [
+      'msgid ""',
+      '"first "',
+      '"second"',
+      'msgstr ""',
+      '"uno "',
+      '"dos"',
+      '',
+    ].join('\n');
+
+    const entries = parser.extract(po);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.key).toBe('first second');
+    expect([...parser.extractTranslations(po)]).toEqual([
+      ['first second', 'uno dos'],
+    ]);
+  });
+});

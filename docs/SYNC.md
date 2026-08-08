@@ -160,6 +160,8 @@ Nine of the eleven formats are monolingual -- a target file holds translations a
 
 **An empty translation side means untranslated, not empty.** A `msgstr ""`, a `<trans-unit>` with no `<target>`, and an empty `<target></target>` all read as "this key has no translation yet": `sync` translates the key rather than pinning the empty string, and `push` skips it (see below). This differs from the monolingual formats, where an empty value is a deliberate translation and is preserved.
 
+**PO entries need no blank line between them.** The blank-line separator is a convention `msgfmt -c` does not require, and a catalog written without it — after the header or between messages — is read and written entry by entry all the same. An entry ends at the first line that is not a continuation of its translation: a comment, a `msgctxt`, or the next `msgid`. Layout is preserved either way, so a catalog that arrived without the separators keeps that shape on the way out.
+
 ## Configuration
 
 ### `.deepl-sync.yaml`

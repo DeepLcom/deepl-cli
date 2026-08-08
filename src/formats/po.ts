@@ -143,6 +143,34 @@ function makeKey(entry: PoEntry): string {
   return entry.msgid;
 }
 
+/**
+ * Whether `line` can only be the start of the next entry.
+ *
+ * gettext ends an entry at the first line that is not a continuation of its
+ * translation; the blank line convention is a convention, and `msgfmt -c`
+ * accepts a catalog with none. Treating a blank line as the only terminator
+ * collapsed such a catalog into a single entry, which cost the reader every
+ * key but the last and made the writer put one translation into every `msgstr`
+ * it walked past — the header's included, deleting the charset and
+ * `Plural-Forms` lines with it.
+ *
+ * Only a msgstr-ish `target` can be interrupted this way. Before that the
+ * entry is still assembling its `msgctxt`/`msgid`, where a second `msgid` line
+ * is malformed input rather than a new entry, and is left to the existing
+ * last-one-wins handling.
+ */
+function startsNextEntry(
+  line: string,
+  target: ParseTarget | undefined
+): boolean {
+  if (target !== 'msgstr' && !target?.startsWith('msgstr[')) {
+    return false;
+  }
+  return (
+    line.startsWith('#') || /^msgctxt\s/.test(line) || /^msgid\s/.test(line)
+  );
+}
+
 function parseEntries(content: string): PoEntry[] {
   const lines = content.split(/\r?\n/);
   const entries: PoEntry[] = [];
@@ -164,6 +192,13 @@ function parseEntries(content: string): PoEntry[] {
         hasContent = false;
       }
       continue;
+    }
+
+    if (hasContent && startsNextEntry(line, target)) {
+      entries.push(current);
+      current = createEmptyEntry();
+      target = undefined;
+      hasContent = false;
     }
 
     current.rawLines.push(line);
@@ -447,6 +482,9 @@ export class PoFormatParser implements FormatParser {
           break;
         }
         if (el.startsWith('#')) {
+          break;
+        }
+        if (startsNextEntry(el, target)) {
           break;
         }
         entryLines.push(el);
