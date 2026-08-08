@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import { serializeLockFile } from './sync-lock.js';
+import { atomicWriteFile } from '../utils/atomic-write.js';
 import type { SyncLockFile } from './types.js';
 
 const CONFLICT_START = /^<{7}/m;
@@ -331,7 +332,11 @@ export async function resolveLockFile(
       typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
         ? serializeLockFile(parsed as SyncLockFile)
         : resolved;
-    await fs.promises.writeFile(lockPath, canonical, 'utf-8');
+    // Rename rather than rewrite: a crash part-way through a plain write
+    // truncates the lockfile, and SyncLockManager.read() treats a truncated
+    // lockfile as corrupt and replaces it with an empty one, discarding every
+    // translation record and forcing a full re-translation.
+    await atomicWriteFile(lockPath, canonical, 'utf-8');
   }
   return {
     hadConflicts: true,

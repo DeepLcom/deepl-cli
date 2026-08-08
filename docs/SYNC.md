@@ -60,6 +60,17 @@ Sync also refuses to read or write any path resolving into `.git/` or `.github/`
 
 Only one `deepl sync` run is supported at a time per project directory. At startup, sync writes a `.deepl-sync.lock.pidfile` containing its PID; a second invocation that sees an existing pidfile whose PID is still alive exits with `ConfigError` (exit code 7). If the PID is dead (e.g., a previous run crashed), sync removes the stale pidfile with a warning and proceeds. The pidfile is deleted automatically on normal completion and on SIGINT/SIGTERM.
 
+Every command that writes `.deepl-sync.lock` takes the lock: `deepl sync`, `deepl sync pull` and `deepl sync resolve`, the last of these including `--dry-run`. A run reads the lockfile when it starts and writes its whole in-memory copy when it finishes, so anything written in between would be replaced. Read-only commands (`sync status`, `sync validate`, `sync audit`, `sync export`) do not take it.
+
+If the lockfile changes on disk between a run's read and its write anyway — a hand edit, a `git merge` or another tool, none of which take the lock — the run says so and still writes what it recorded:
+
+```
+.deepl-sync.lock changed on disk since this run read it; overwriting it with what this run recorded.
+Check the file into git before re-running if another tool or a merge wrote it.
+```
+
+It warns rather than refusing because by that point the target files are written and their translations billed; declining to record them would leave the next run to translate and bill all of them again.
+
 ## Supported File Formats
 
 | Format | Extensions | Used By |
@@ -804,6 +815,8 @@ Resolved 3 conflicts (1 theirs, 1 ours, 1 length-heuristic). Run "deepl sync" to
 **Fallback behavior.** When `JSON.parse` fails on a conflict fragment (e.g., conflict markers landed mid-entry and split the JSON), the resolver falls back to a length-heuristic: the longer side wins. This is now **loud** — it logs a `WARN` line naming the file + conflict region with the truncated parse error, and the decision is tagged `length-heuristic` in the report. Earlier releases ran this heuristic silently, making auto-resolve a data-loss risk the user could not audit without a diff against git history. Inspect any `length-heuristic` entries and consider resolving them by hand.
 
 **Dry-run.** `--dry-run` runs the full decision pipeline and prints the per-entry report without touching the lockfile. Use it to preview what `sync resolve` would do, especially when the report includes `length-heuristic` fallback warnings.
+
+**Concurrency.** `sync resolve` takes the process lock described under [Concurrent sync](#concurrent-sync), `--dry-run` included, and exits 7 while another sync holds it. Without the lock a resolve landing mid-sync was erased: the running sync had already read the pre-merge lockfile and overwrote the merged one when it finished, both steps at exit 0. The resolved lockfile is written by rename, so an interrupted resolve leaves the previous lockfile rather than a truncated one — a truncated lockfile reads as corrupt and costs a full re-translation.
 
 After resolving, run `deepl sync` to fill any translation gaps.
 

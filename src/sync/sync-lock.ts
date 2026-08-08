@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import * as path from 'path';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { Logger } from '../utils/logger.js';
 import { getOwnMember, setOwnMember } from '../utils/own-members.js';
@@ -264,10 +265,35 @@ function recomputeStats(lockFile: SyncLockFile): void {
 
 export class SyncLockManager {
   private readonly statsComputedFor = new WeakMap<SyncLockFile, number>();
+  /**
+   * Identity of the lock file as this instance last saw it, or `undefined`
+   * before the first read. `null` records "no file there".
+   */
+  private lastSeen: string | null | undefined;
 
   constructor(private readonly lockFilePath: string) {}
 
+  /**
+   * Identity of the file on disk right now. Size and mtime alone can repeat
+   * across a same-length rewrite within one mtime tick, so the inode is part of
+   * it — every writer here replaces the file by rename, which changes it.
+   */
+  private async fingerprint(): Promise<string | null> {
+    try {
+      const stats = await fs.promises.stat(this.lockFilePath);
+      return `${stats.mtimeMs}:${stats.size}:${stats.ino}`;
+    } catch {
+      return null;
+    }
+  }
+
   async read(): Promise<SyncLockFile> {
+    const lockFile = await this.readLockFile();
+    this.lastSeen = await this.fingerprint();
+    return lockFile;
+  }
+
+  private async readLockFile(): Promise<SyncLockFile> {
     try {
       await fs.promises.access(this.lockFilePath);
     } catch {
@@ -382,10 +408,33 @@ export class SyncLockManager {
     }
     lockFile.generated_at = new Date().toISOString();
     lockFile._comment = LOCK_FILE_COMMENT;
+    await this.warnIfChangedSinceRead();
     await atomicWriteFile(
       this.lockFilePath,
       serializeLockFile(lockFile),
       'utf-8'
+    );
+    this.lastSeen = await this.fingerprint();
+  }
+
+  /**
+   * A run reads the lock file when it starts and writes its whole in-memory
+   * copy when it finishes, so anything written in between is replaced. Every
+   * writing sync command holds the process lock, which is what stops two of
+   * them overlapping; this catches the rest — a hand edit, a `git merge`, or
+   * another tool — where the alternative is losing the other write in silence.
+   *
+   * A warning rather than a refusal: by the time this runs the target files
+   * are already written and their translations billed, so declining to record
+   * them would leave the next run to translate and bill them all over again.
+   */
+  private async warnIfChangedSinceRead(): Promise<void> {
+    if (this.lastSeen === undefined) return;
+    const current = await this.fingerprint();
+    if (current === this.lastSeen) return;
+    Logger.warn(
+      `${path.basename(this.lockFilePath)} changed on disk since this run read it; overwriting it with what this run recorded. ` +
+        'Check the file into git before re-running if another tool or a merge wrote it.'
     );
   }
 

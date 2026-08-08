@@ -201,6 +201,10 @@ describe('CLI Sync E2E', () => {
     if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
     const syncConfig = path.join(testFiles.path, '.deepl-sync.yaml');
     if (fs.existsSync(syncConfig)) fs.unlinkSync(syncConfig);
+    // A pidfile left behind by a test that failed part-way through would make
+    // every following `sync` in this file exit 7 on the process lock.
+    const pidFile = path.join(testFiles.path, '.deepl-sync.lock.pidfile');
+    if (fs.existsSync(pidFile)) fs.unlinkSync(pidFile);
   });
 
   afterAll(() => {
@@ -995,6 +999,39 @@ describe('CLI Sync E2E', () => {
     });
   });
 
+  /** A lockfile carrying real git conflict markers around one translation. */
+  function conflictedLockFixture(): string {
+    const entry = (hash: string): string =>
+      JSON.stringify({
+        hash,
+        translated_at: '2026-04-18T12:00:00Z',
+        status: 'translated',
+      });
+    return [
+      '{',
+      '  "version": 1,',
+      '  "generated_at": "2026-04-18T12:00:00Z",',
+      '  "source_locale": "en",',
+      '  "entries": {',
+      '    "locales/en.json": {',
+      '      "greeting": {',
+      '        "source_hash": "src1",',
+      '        "source_text": "Hello",',
+      '        "translations": {',
+      '<<<<<<< HEAD',
+      `          "de": ${entry('abc123')}`,
+      '=======',
+      `          "de": ${entry('xyz789')}`,
+      '>>>>>>> feature/other',
+      '        }',
+      '      }',
+      '    }',
+      '  },',
+      '  "stats": { "total_keys": 1, "total_translations": 1, "last_sync": "2026-04-18T12:00:00Z" }',
+      '}',
+    ].join('\n');
+  }
+
   describe('sync resolve on conflict-marked lockfile', () => {
     it('rewrites a lockfile that contains git conflict markers as valid JSON and exits 0', () => {
       writeSyncConfig(testFiles.path, ['de']);
@@ -1046,6 +1083,41 @@ describe('CLI Sync E2E', () => {
       expect(after).not.toContain('<<<<<<<');
       expect(after).not.toContain('=======');
       expect(after).not.toContain('>>>>>>>');
+    });
+
+    it('refuses to run while another sync holds the process lock, leaving the lockfile untouched', () => {
+      writeSyncConfig(testFiles.path, ['de']);
+      writeSourceFile(testFiles.path);
+      const lockPath = path.join(testFiles.path, '.deepl-sync.lock');
+      fs.writeFileSync(lockPath, conflictedLockFixture());
+
+      // This test process is alive, so the pidfile describes a running sync.
+      const pidFile = path.join(testFiles.path, '.deepl-sync.lock.pidfile');
+      fs.writeFileSync(
+        pidFile,
+        JSON.stringify({
+          pid: process.pid,
+          startedAt: new Date('2026-04-18T12:00:00Z').toISOString(),
+        })
+      );
+
+      const blocked = runSyncExpectError('resolve');
+
+      expect(blocked.status).toBe(7);
+      expect(blocked.output).toContain(
+        'Another `deepl sync` process is running'
+      );
+      // The merge result would be erased by the running sync's own lockfile
+      // write, so nothing may be written while the lock is held.
+      expect(fs.readFileSync(lockPath, 'utf-8')).toContain('<<<<<<<');
+
+      fs.unlinkSync(pidFile);
+      const output = runSyncAll('resolve');
+
+      expect(output.toLowerCase()).toMatch(/resolv/);
+      expect(fs.readFileSync(lockPath, 'utf-8')).not.toContain('<<<<<<<');
+      // The lock is released even though resolve wrote the lockfile.
+      expect(fs.existsSync(pidFile)).toBe(false);
     });
 
     it('prints a per-entry decision report with summary line', () => {

@@ -898,3 +898,85 @@ describe('SyncLockManager', () => {
     });
   });
 });
+
+describe('SyncLockManager change detection', () => {
+  let tmpDir: string;
+  let lockPath: string;
+  let warn: jest.SpyInstance;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-lock-change-'));
+    lockPath = path.join(tmpDir, '.deepl-sync.lock');
+    warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const warnings = (): string[] =>
+    warn.mock.calls.map((call) => String(call[0]));
+
+  it('warns when the file changed on disk between the read and the write', async () => {
+    const manager = new SyncLockManager(lockPath);
+    fs.writeFileSync(lockPath, serializeLockFile(createEmptyLockFile('en')));
+
+    const lockFile = await manager.read();
+
+    // Something outside this run replaces the file: a merge, a hand edit, or
+    // another tool. The write below is about to overwrite it wholesale.
+    const other = createEmptyLockFile('en');
+    other.entries['locales/en.json'] = {
+      greeting: {
+        source_hash: 'other',
+        translations: {},
+      } as unknown as SyncLockEntry,
+    };
+    fs.writeFileSync(lockPath, serializeLockFile(other));
+
+    await manager.write(lockFile);
+
+    expect(
+      warnings().filter((message) => /changed on disk/.test(message))
+    ).toHaveLength(1);
+  });
+
+  it('does not warn on an ordinary read-then-write', async () => {
+    const manager = new SyncLockManager(lockPath);
+    fs.writeFileSync(lockPath, serializeLockFile(createEmptyLockFile('en')));
+
+    const lockFile = await manager.read();
+    await manager.write(lockFile);
+
+    expect(warnings().filter((m) => /changed on disk/.test(m))).toEqual([]);
+  });
+
+  it('does not warn when there was no lock file to begin with', async () => {
+    const manager = new SyncLockManager(lockPath);
+
+    const lockFile = await manager.read();
+    await manager.write(lockFile);
+
+    expect(warnings().filter((m) => /changed on disk/.test(m))).toEqual([]);
+  });
+
+  it('does not warn when writing without having read first', async () => {
+    fs.writeFileSync(lockPath, serializeLockFile(createEmptyLockFile('en')));
+    const manager = new SyncLockManager(lockPath);
+
+    await manager.write(createEmptyLockFile('en'));
+
+    expect(warnings().filter((m) => /changed on disk/.test(m))).toEqual([]);
+  });
+
+  it('does not warn on a second write in the same run', async () => {
+    const manager = new SyncLockManager(lockPath);
+    fs.writeFileSync(lockPath, serializeLockFile(createEmptyLockFile('en')));
+
+    const lockFile = await manager.read();
+    await manager.write(lockFile);
+    await manager.write(lockFile);
+
+    expect(warnings().filter((m) => /changed on disk/.test(m))).toEqual([]);
+  });
+});

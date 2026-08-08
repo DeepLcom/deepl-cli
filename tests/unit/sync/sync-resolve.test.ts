@@ -5,6 +5,7 @@ import {
   resolveLockFile,
 } from '../../../src/sync/sync-resolve';
 import type { ResolveDecision } from '../../../src/sync/sync-resolve';
+import { atomicWriteFile } from '../../../src/utils/atomic-write';
 
 jest.mock('fs', () => {
   const actual = jest.requireActual('fs');
@@ -18,10 +19,22 @@ jest.mock('fs', () => {
   };
 });
 
+jest.mock('../../../src/utils/atomic-write', () => ({
+  atomicWriteFile: jest.fn(),
+}));
+
 const mockReadFile = fs.promises.readFile as jest.MockedFunction<
   typeof fs.promises.readFile
 >;
-const mockWriteFile = fs.promises.writeFile as jest.MockedFunction<
+/**
+ * The lockfile must be replaced by a rename, never rewritten in place: a crash
+ * part-way through a plain write truncates it, and SyncLockManager.read() reads
+ * a truncated lockfile as corrupt and discards every translation record in it.
+ */
+const mockWriteFile = atomicWriteFile as jest.MockedFunction<
+  typeof atomicWriteFile
+>;
+const mockRawWriteFile = fs.promises.writeFile as jest.MockedFunction<
   typeof fs.promises.writeFile
 >;
 
@@ -675,6 +688,32 @@ describe('resolveLockFile()', () => {
     const parsed = JSON.parse(writtenContent);
     expect(parsed.source_locale).toBe('en');
     expect(parsed.version).toBe(1);
+  });
+});
+
+describe('lockfile write durability', () => {
+  const lockPath = '/tmp/test-sync/.deepl-sync.lock.json';
+
+  it('replaces the lock file by rename rather than rewriting it in place', async () => {
+    mockReadFile.mockResolvedValue(
+      [
+        '<<<<<<< HEAD',
+        '{"greeting": {"source_hash": "abc", "translated_at": "2025-01-01T00:00:00Z"}}',
+        '=======',
+        '{"greeting": {"source_hash": "abc", "translated_at": "2025-06-01T00:00:00Z"}}',
+        '>>>>>>> branch',
+      ].join('\n')
+    );
+    mockWriteFile.mockResolvedValue(undefined);
+
+    await resolveLockFile(lockPath);
+
+    expect(mockWriteFile).toHaveBeenCalledWith(
+      lockPath,
+      expect.any(String),
+      'utf-8'
+    );
+    expect(mockRawWriteFile).not.toHaveBeenCalled();
   });
 });
 
