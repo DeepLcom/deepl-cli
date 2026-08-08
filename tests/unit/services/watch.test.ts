@@ -9,6 +9,7 @@ import * as chokidar from 'chokidar';
 import pLimit from 'p-limit';
 import { WatchService } from '../../../src/services/watch';
 import { FileTranslationService } from '../../../src/services/file-translation';
+import { Logger } from '../../../src/utils/logger';
 import { createMockFileTranslationService } from '../../helpers/mock-factories';
 
 // Mock chokidar
@@ -1158,6 +1159,76 @@ describe('WatchService', () => {
       watchService.handleFileChange(testFile);
 
       expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+
+    it('should translate a source file named like an output file when it is outside the output directory', async () => {
+      const testFile = path.join(testDir, 'pricing.es.md');
+      fs.writeFileSync(testFile, 'Precios');
+
+      const onChange = jest.fn();
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      });
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+
+    it('should still ignore an output-named file inside the output directory', async () => {
+      const outputDir = path.join(testDir, 'output');
+      fs.mkdirSync(outputDir, { recursive: true });
+      const testFile = path.join(outputDir, 'pricing.es.md');
+      fs.writeFileSync(testFile, 'Precios');
+
+      const onChange = jest.fn();
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir,
+        onChange,
+      });
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('should warn once per file when it skips a file it did not write', async () => {
+      const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      const testFile = path.join(testDir, 'pricing.es.md');
+      fs.writeFileSync(testFile, 'Precios');
+
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: testDir,
+      });
+      watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]!.join(' ')).toContain('pricing.es.md');
+    });
+
+    it('should not warn about an output file it wrote itself', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+      const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      const testFile = path.join(testDir, 'doc.md');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: testDir,
+      });
+      watchService.handleFileChange(testFile);
+      jest.advanceTimersByTime(350);
+      await flushPromises();
+
+      watchService.handleFileChange(path.join(testDir, 'doc.es.md'));
+
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
+      expect(warn).not.toHaveBeenCalled();
     });
 
     it('should ignore output files case-insensitively for language codes', async () => {

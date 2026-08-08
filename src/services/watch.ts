@@ -13,6 +13,7 @@ import { Language, TranslationOptions } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
 import { errorMessage } from '../utils/error-message.js';
+import { isWithinDirectory } from '../utils/paths.js';
 
 export interface FileTranslationResult {
   targetLang: Language;
@@ -72,6 +73,8 @@ export class WatchService {
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private activeTranslations: Set<string> = new Set();
   private pendingTranslations: Set<string> = new Set();
+  private writtenOutputs: Set<string> = new Set();
+  private warnedOutputs: Set<string> = new Set();
   private limit: LimitFunction;
   private stats: WatchStats = {
     isWatching: false,
@@ -208,6 +211,7 @@ export class WatchService {
 
     // Check if file is a translated output file to prevent infinite loops
     if (this.isTranslatedOutputFile(filePath)) {
+      this.warnOnceAboutSkippedOutput(filePath);
       return;
     }
 
@@ -302,10 +306,19 @@ export class WatchService {
 
   /**
    * Check if a file looks like a translated output file.
-   * Detects patterns like name.{langCode}.ext where langCode matches a configured target language.
+   * Detects patterns like name.{langCode}.ext where langCode matches a
+   * configured target language, and only inside the output directory — every
+   * file this service writes lands there, so requiring containment keeps the
+   * loop guard complete while letting a source file that merely carries a
+   * target-language segment in its name (pricing.es.md with --to es) be
+   * translated instead of skipped for the lifetime of the session.
    */
   private isTranslatedOutputFile(filePath: string): boolean {
     if (!this.watchOptions) {
+      return false;
+    }
+
+    if (!isWithinDirectory(this.watchOptions.outputDir, filePath)) {
       return false;
     }
 
@@ -326,6 +339,24 @@ export class WatchService {
     }
 
     return false;
+  }
+
+  /**
+   * Say once why a file inside the output directory is being left alone.
+   *
+   * A file this session wrote is skipped in silence — that is the loop guard
+   * working. Any other match is a file the user put there, and skipping it
+   * without a word is indistinguishable from the watcher not seeing it.
+   */
+  private warnOnceAboutSkippedOutput(filePath: string): void {
+    const resolved = path.resolve(filePath);
+    if (this.writtenOutputs.has(resolved) || this.warnedOutputs.has(resolved)) {
+      return;
+    }
+    this.warnedOutputs.add(resolved);
+    Logger.warn(
+      `Skipping ${filePath}: it is inside the output directory and named like a translated output, so it is read as a translation rather than a source. Move it outside ${this.watchOptions?.outputDir ?? 'the output directory'} to have it translated.`
+    );
   }
 
   /**
@@ -379,6 +410,7 @@ export class WatchService {
         { preserveCode }
       );
 
+      this.writtenOutputs.add(path.resolve(outputPath));
       this.stats.translationsCount++;
 
       if (this.watchOptions.onTranslate) {
@@ -396,6 +428,11 @@ export class WatchService {
         { ...baseOptions, outputDir, preserveCode }
       );
 
+      for (const result of results) {
+        if (result.outputPath) {
+          this.writtenOutputs.add(path.resolve(result.outputPath));
+        }
+      }
       this.stats.translationsCount += results.length;
 
       if (this.watchOptions.onTranslate) {
@@ -418,6 +455,8 @@ export class WatchService {
     // A translation already in flight keeps its slot in activeTranslations so
     // its own cleanup runs; only the queued re-run is abandoned.
     this.pendingTranslations.clear();
+    this.writtenOutputs.clear();
+    this.warnedOutputs.clear();
 
     if (this.watcher) {
       await this.watcher.close();

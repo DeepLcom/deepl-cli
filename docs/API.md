@@ -1114,6 +1114,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - Detects file changes using filesystem watch
 - Debounces rapid changes to avoid duplicate translations
 - Translates one version of a file at a time. An edit arriving while a file's translation is still running queues exactly one re-translation, which starts after the running one has written. Two translations of the same file never overlap, so a slower translation of older content cannot overwrite a newer one, and an edit storm costs two translations rather than one per event
+- Skips files inside the output directory whose name carries a target-language segment (`doc.es.md` with `--to es`), so the CLI's own output does not re-trigger the watcher. The check is limited to the output directory, so a *source* file named that way — `pricing.es.md` translated to `es` — is translated normally as long as it lives outside it. When such a file is skipped and the CLI did not write it, the reason is printed once per file
 
 #### Options
 
