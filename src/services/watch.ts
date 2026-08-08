@@ -70,6 +70,8 @@ export class WatchService {
   private options: WatchServiceOptions;
   private watchOptions: WatchOptions | null = null;
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
+  private activeTranslations: Set<string> = new Set();
+  private pendingTranslations: Set<string> = new Set();
   private limit: LimitFunction;
   private stats: WatchStats = {
     isWatching: false,
@@ -243,31 +245,59 @@ export class WatchService {
         this.debounceTimers.delete(filePath);
       }
       // Wrap async code to handle Promise properly (void operator tells TypeScript we intentionally ignore the Promise)
-      void (async () => {
-        try {
-          if (!this.stats.isWatching) {
-            return;
-          }
-
-          if (this.watchOptions?.abortSignal?.aborted) {
-            return;
-          }
-
-          await this.limit(() => this.translateFile(filePath));
-        } catch (error) {
-          this.stats.errorsCount++;
-          if (this.watchOptions?.onError) {
-            this.watchOptions.onError(filePath, error as Error);
-          }
-          Logger.error(
-            `Translation failed for ${filePath}:`,
-            errorMessage(error)
-          );
-        }
-      })();
+      void this.runTranslation(filePath);
     }, this.options.debounceMs);
 
     this.debounceTimers.set(filePath, timer);
+  }
+
+  /**
+   * Translate one path, reporting any failure through onError.
+   *
+   * At most one translation per path is in flight. A change arriving while one
+   * runs records a single re-run instead of starting a second translation:
+   * two concurrent runs write the same output path in API-completion order, so
+   * a slower translation of older content would overwrite a newer one and the
+   * output would stay stale until the next edit. Coalescing also collapses an
+   * edit storm into one re-translation rather than one per event.
+   *
+   * The re-run is dispatched from `finally` so a failed translation still picks
+   * up the edit that arrived while it was running.
+   */
+  private async runTranslation(filePath: string): Promise<void> {
+    if (this.activeTranslations.has(filePath)) {
+      this.pendingTranslations.add(filePath);
+      return;
+    }
+
+    this.activeTranslations.add(filePath);
+    try {
+      if (!this.stats.isWatching) {
+        return;
+      }
+
+      if (this.watchOptions?.abortSignal?.aborted) {
+        return;
+      }
+
+      await this.limit(() => this.translateFile(filePath));
+    } catch (error) {
+      this.stats.errorsCount++;
+      if (this.watchOptions?.onError) {
+        this.watchOptions.onError(filePath, error as Error);
+      }
+      Logger.error(`Translation failed for ${filePath}:`, errorMessage(error));
+    } finally {
+      this.activeTranslations.delete(filePath);
+      const hadPending = this.pendingTranslations.delete(filePath);
+      if (
+        hadPending &&
+        this.stats.isWatching &&
+        !this.watchOptions?.abortSignal?.aborted
+      ) {
+        void this.runTranslation(filePath);
+      }
+    }
   }
 
   /**
@@ -385,6 +415,9 @@ export class WatchService {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
+    // A translation already in flight keeps its slot in activeTranslations so
+    // its own cleanup runs; only the queued re-run is abandoned.
+    this.pendingTranslations.clear();
 
     if (this.watcher) {
       await this.watcher.close();

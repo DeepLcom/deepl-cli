@@ -1529,4 +1529,208 @@ describe('WatchService', () => {
       expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('per-path serialization', () => {
+    const DEBOUNCE_MS = 5;
+    const tick = (ms: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, ms));
+    const afterDebounce = () => tick(DEBOUNCE_MS * 4);
+
+    /**
+     * translateFile stub whose calls are resolved by the test, recording the
+     * highest number ever in flight for a single path.
+     */
+    const makeGatedService = () => {
+      const pending: Array<{ filePath: string; release: () => void }> = [];
+      const active = new Map<string, number>();
+      let maxActivePerPath = 0;
+      const impl = (filePath: string) => {
+        const next = (active.get(filePath) ?? 0) + 1;
+        active.set(filePath, next);
+        maxActivePerPath = Math.max(maxActivePerPath, next);
+        return new Promise<void>((resolve) => {
+          pending.push({
+            filePath,
+            release: () => {
+              active.set(filePath, (active.get(filePath) ?? 1) - 1);
+              resolve();
+            },
+          });
+        });
+      };
+      return { pending, impl, max: () => maxActivePerPath };
+    };
+
+    it('never runs two translations of the same file at once', async () => {
+      const gate = makeGatedService();
+      mockFileTranslationService.translateFile.mockImplementation(gate.impl);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      service.handleFileChange(testFile);
+      await afterDebounce();
+      expect(gate.pending).toHaveLength(1);
+
+      // A second edit lands while the first translation is still in flight.
+      service.handleFileChange(testFile);
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(1);
+      expect(gate.max()).toBe(1);
+
+      gate.pending[0]!.release();
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(2);
+      expect(gate.max()).toBe(1);
+      gate.pending[1]!.release();
+      await afterDebounce();
+      await service.stop();
+    });
+
+    it('coalesces an edit storm during one translation into a single re-run', async () => {
+      const gate = makeGatedService();
+      mockFileTranslationService.translateFile.mockImplementation(gate.impl);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      service.handleFileChange(testFile);
+      await afterDebounce();
+
+      for (let i = 0; i < 4; i++) {
+        service.handleFileChange(testFile);
+        await afterDebounce();
+      }
+
+      expect(gate.pending).toHaveLength(1);
+      gate.pending[0]!.release();
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(2);
+      gate.pending[1]!.release();
+      await afterDebounce();
+      expect(gate.pending).toHaveLength(2);
+      await service.stop();
+    });
+
+    it('still translates two different files concurrently', async () => {
+      const gate = makeGatedService();
+      mockFileTranslationService.translateFile.mockImplementation(gate.impl);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const fileA = path.join(testDir, 'a.txt');
+      const fileB = path.join(testDir, 'b.txt');
+      fs.writeFileSync(fileA, 'a');
+      fs.writeFileSync(fileB, 'b');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      service.handleFileChange(fileA);
+      service.handleFileChange(fileB);
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(2);
+      expect(gate.max()).toBe(1);
+      gate.pending[0]!.release();
+      gate.pending[1]!.release();
+      await afterDebounce();
+      await service.stop();
+    });
+
+    it('runs the coalesced re-run even when the first translation fails', async () => {
+      const onError = jest.fn();
+      const events: string[] = [];
+      let call = 0;
+      let releaseFirst: (() => void) | undefined;
+      mockFileTranslationService.translateFile.mockImplementation(() => {
+        call++;
+        events.push(`start${call}`);
+        if (call === 1) {
+          return new Promise<void>((_resolve, reject) => {
+            releaseFirst = () => {
+              events.push('fail1');
+              reject(new Error('boom'));
+            };
+          });
+        }
+        return Promise.resolve();
+      });
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onError,
+      });
+
+      service.handleFileChange(testFile);
+      await afterDebounce();
+      service.handleFileChange(testFile);
+      await afterDebounce();
+
+      releaseFirst!();
+      await afterDebounce();
+
+      expect(events).toEqual(['start1', 'fail1', 'start2']);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(2);
+      expect(service.getStats().errorsCount).toBe(1);
+      await service.stop();
+    });
+
+    it('drops a coalesced re-run when stop() is called first', async () => {
+      const gate = makeGatedService();
+      mockFileTranslationService.translateFile.mockImplementation(gate.impl);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      service.handleFileChange(testFile);
+      await afterDebounce();
+      service.handleFileChange(testFile);
+      await afterDebounce();
+
+      await service.stop();
+      gate.pending[0]!.release();
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(1);
+    });
+  });
 });

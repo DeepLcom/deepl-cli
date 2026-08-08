@@ -1113,6 +1113,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - Shows translation statistics on exit
 - Detects file changes using filesystem watch
 - Debounces rapid changes to avoid duplicate translations
+- Translates one version of a file at a time. An edit arriving while a file's translation is still running queues exactly one re-translation, which starts after the running one has written. Two translations of the same file never overlap, so a slower translation of older content cannot overwrite a newer one, and an edit storm costs two translations rather than one per event
 
 #### Options
 
@@ -1122,7 +1123,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - `--output, -o DIR` - Output directory (default: `<path>/translations` for directories, same dir for files)
 - `--pattern GLOB` - File pattern filter (e.g., `*.md`, `**/*.json`)
 - `--debounce MS` - Debounce delay in milliseconds. The flag wins, then the configured `watch.debounceMs`, then the default of 500
-- `--concurrency NUM` - Maximum parallel translations (default: 5)
+- `--concurrency NUM` - Maximum parallel translations across *different* files (default: 5). A single file is always translated one version at a time, whatever this is set to
 
 **Translation Options:**
 
