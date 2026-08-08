@@ -108,6 +108,35 @@ const CASES: FormatCase[] = [
   },
 ];
 
+/** A key whose containing element the target file does not have. */
+interface UnwritableCase {
+  label: string;
+  parser: SupportedParser;
+  file: string;
+  key: string;
+  v1: string;
+  v2: string;
+}
+
+const UNWRITABLE_CASES: UnwritableCase[] = [
+  {
+    label: 'a new <string-array> item',
+    parser: 'android_xml',
+    file: 'strings.xml',
+    key: 'colours.1',
+    v1: '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string-array name="colours">\n        <item>Hello</item>\n    </string-array>\n</resources>\n',
+    v2: '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string-array name="colours">\n        <item>Hello</item>\n        <item>Translate me</item>\n    </string-array>\n</resources>\n',
+  },
+  {
+    label: 'a Laravel key whose parent array is absent',
+    parser: 'laravel_php',
+    file: 'app.php',
+    key: 'grp.deep',
+    v1: "<?php\n\nreturn [\n    'greeting' => 'Hello',\n];\n",
+    v2: "<?php\n\nreturn [\n    'greeting' => 'Hello',\n    'grp' => [\n        'deep' => 'Translate me',\n    ],\n];\n",
+  },
+];
+
 function replyWith(text: string): nock.Scope {
   return nock(DEEPL_FREE_API_URL)
     .post('/v2/translate')
@@ -212,6 +241,49 @@ describe('sync with a key added to the source after the first run', () => {
         .extract(written)
         .map((e) => e.key);
       expect(holds).toContain('added');
+    });
+  });
+
+  /**
+   * Two shapes are deliberately not written, because placing them would mean
+   * inventing structure the source file already defines. Those must be recorded
+   * as failed rather than translated: a lockfile that claims a key the file does
+   * not hold is what makes `status` and `--frozen` report the locale complete.
+   */
+  describe.each(UNWRITABLE_CASES)('$label', ({ parser, file, key, v1, v2 }) => {
+    it('is recorded as failed, not translated', async () => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-newkey-'));
+      harness = createSyncHarness({ parsers: [parser] });
+      writeSyncConfig(tmpDir, {
+        targetLocales: ['es'],
+        buckets: { [parser]: { include: [`locales/en/${file}`] } },
+      });
+      const sourcePath = path.join(tmpDir, 'locales', 'en', file);
+      fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+
+      fs.writeFileSync(sourcePath, v1, 'utf-8');
+      replyWith('Hola');
+      await harness.syncService.sync(await loadSyncConfig(tmpDir));
+
+      fs.writeFileSync(sourcePath, v2, 'utf-8');
+      replyWith('Traduceme');
+      const second = await harness.syncService.sync(
+        await loadSyncConfig(tmpDir)
+      );
+
+      const written = fs.readFileSync(
+        path.join(tmpDir, 'locales', 'es', file),
+        'utf-8'
+      );
+      expect(written).not.toContain('Traduceme');
+
+      const lock = JSON.parse(
+        fs.readFileSync(path.join(tmpDir, '.deepl-sync.lock'), 'utf-8')
+      ) as SyncLockFile;
+      const fileEntries = Object.values(lock.entries)[0]!;
+      expect(fileEntries[key]?.translations['es']?.status).toBe('failed');
+      expect(second.fileResults.map((r) => r.failed)).toEqual([1]);
+      expect(second.fileResults.map((r) => r.translated)).toEqual([0]);
     });
   });
 });

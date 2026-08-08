@@ -212,4 +212,68 @@ describe('CLI sync with a key added to the source after the first run', () => {
       expect(validate.output).toContain('Checked 2 translations');
     }, 60000);
   });
+
+  /**
+   * The two shapes that are deliberately not written must stop the run claiming
+   * them. Recording a key the file does not hold is what made every gate agree
+   * the locale was complete.
+   */
+  describe.each([
+    {
+      label: 'a new <string-array> item',
+      bucket: 'android_xml',
+      file: 'strings.xml',
+      v1: '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string-array name="colours">\n        <item>Hello</item>\n    </string-array>\n</resources>\n',
+      v2: '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string-array name="colours">\n        <item>Hello</item>\n        <item>Translate me</item>\n    </string-array>\n</resources>\n',
+    },
+    {
+      label: 'a Laravel key whose parent array is absent',
+      bucket: 'laravel_php',
+      file: 'app.php',
+      v1: "<?php\n\nreturn [\n    'greeting' => 'Hello',\n];\n",
+      v2: "<?php\n\nreturn [\n    'greeting' => 'Hello',\n    'grp' => [\n        'deep' => 'Translate me',\n    ],\n];\n",
+    },
+  ])('$label', ({ bucket, file, v1, v2 }) => {
+    it('reports the key as failed rather than the locale as complete', () => {
+      const projectRoot = path.join(testFiles.path, `unwritable-${bucket}`);
+      fs.mkdirSync(path.join(projectRoot, 'locales', 'en'), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(projectRoot, '.deepl-sync.yaml'),
+        [
+          'version: 1',
+          'source_locale: en',
+          'target_locales:',
+          '  - es',
+          'buckets:',
+          `  ${bucket}:`,
+          '    include:',
+          `      - "locales/en/${file}"`,
+          '',
+        ].join('\n')
+      );
+      const sourcePath = path.join(projectRoot, 'locales', 'en', file);
+
+      fs.writeFileSync(sourcePath, v1);
+      expect(run(projectRoot, ['sync', '--yes']).status).toBe(0);
+
+      fs.writeFileSync(sourcePath, v2);
+      const second = run(projectRoot, ['sync', '--yes']);
+
+      // Exit 12 is PartialFailure: the run says so rather than exiting 0.
+      expect(second.status).toBe(12);
+      expect(second.output).toContain('could not be given 1 translated key');
+      expect(second.output).toContain('sync again');
+
+      const target = path.join(projectRoot, 'locales', 'es', file);
+      expect(fs.readFileSync(target, 'utf-8')).not.toContain('Traduceme');
+
+      const status = run(projectRoot, ['sync', 'status']);
+      expect(status.output).not.toContain('100%');
+
+      // Exit 10 is the drift the CI gate exists to catch.
+      expect(run(projectRoot, ['sync', '--frozen']).status).toBe(10);
+    }, 60000);
+  });
 });

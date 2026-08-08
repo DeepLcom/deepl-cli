@@ -121,6 +121,8 @@ The first sync has no target file, so the **source** file is the template every 
 
 Two cases are deliberately left out, because writing them would mean inventing structure the source file already defines: a new **`<string-array>` item** in Android XML, whose `name.index` key cannot be told apart from a plain resource whose name ends in a dot-integer; and a **Laravel PHP key whose parent array is absent** from the target file. Add the containing element to the target file once and the key is written on the next sync.
 
+Whatever the reason a key does not land, the run says so rather than recording it as translated. Every key is read back out of the content just written before the lockfile is updated, so a key the file does not hold is recorded `failed`: the run warns naming the file, the locale and the key, reports `✗ es: 0/1 keys` and exits **12** (`PartialFailure`), `deepl sync status` counts it against the locale, and `deepl sync --frozen` exits **10**. The next sync retries it.
+
 Note that `deepl sync status` and `deepl sync --frozen` compare the source file against `.deepl-sync.lock`, not against the target file. A target file edited by hand to remove a key the lockfile records as translated therefore still reports complete; the key is restored on the next sync that has anything to translate, or immediately if you delete the target file and let it be rebuilt.
 
 ### Key separators and colliding keys

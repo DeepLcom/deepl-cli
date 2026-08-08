@@ -3,7 +3,10 @@ import type { LocaleTranslatorContext } from '../../../src/sync/sync-locale-tran
 import type { ResolvedSyncConfig } from '../../../src/sync/sync-config';
 import type { SyncDiff } from '../../../src/sync/types';
 import type { KeyContext } from '../../../src/sync/sync-context';
-import type { FormatParser } from '../../../src/formats/format';
+import type {
+  FormatParser,
+  TranslatedEntry,
+} from '../../../src/formats/format';
 import type { TranslationOptions } from '../../../src/types/api';
 import { createMockTranslationService } from '../../helpers/mock-factories';
 
@@ -114,13 +117,27 @@ function makeConfig(
   };
 }
 
-function makeParser(): FormatParser {
+/**
+ * A parser that honours `reconstruct`: every entry it is handed is readable
+ * back out, which is what the translator verifies before recording a key as
+ * translated. `overrides` models one that does not.
+ */
+function makeParser(overrides: Partial<FormatParser> = {}): FormatParser {
   return {
     name: 'JSON',
     configKey: 'json',
     extensions: ['.json'],
-    extract: jest.fn().mockReturnValue([]),
-    reconstruct: jest.fn().mockReturnValue('{}'),
+    extract: jest.fn((content: string) =>
+      Object.entries(JSON.parse(content) as Record<string, string>).map(
+        ([key, value]) => ({ key, value })
+      )
+    ),
+    reconstruct: jest.fn((_content: string, entries: TranslatedEntry[]) =>
+      JSON.stringify(
+        Object.fromEntries(entries.map((e) => [e.key, e.translation]))
+      )
+    ),
+    ...overrides,
   };
 }
 
@@ -1972,6 +1989,96 @@ describe('LocaleTranslator', () => {
       const sent = calls.flatMap((c) => c.texts);
       expect(sent.some((t) => t.includes('plural'))).toBe(false);
       expect(sent.some((t) => t.includes('other {'))).toBe(false);
+    });
+  });
+  // -------------------------------------------------------------------------
+  // 16. A key the write did not land
+  // -------------------------------------------------------------------------
+
+  describe('a key reconstruct did not write', () => {
+    /** A parser that writes every entry except the ones named. */
+    function droppingParser(...dropped: string[]): FormatParser {
+      return makeParser({
+        reconstruct: jest.fn((_content: string, entries: TranslatedEntry[]) =>
+          JSON.stringify(
+            Object.fromEntries(
+              entries
+                .filter((e) => !dropped.includes(e.key))
+                .map((e) => [e.key, e.translation])
+            )
+          )
+        ),
+      });
+    }
+
+    it('should not report a dropped key as translated', async () => {
+      const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta')];
+      const { mock } = captureTranslateBatch(['A', 'B']);
+      const ctx = { ...makeCtx(diffs, new Map()), parser: droppingParser('b') };
+
+      const result = await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      expect(result.successfulKeys).toEqual(['a']);
+      expect(result.fileResult.translated).toBe(1);
+      expect(result.fileResult.failed).toBe(1);
+      expect(result.targetEntries.has('b')).toBe(false);
+    });
+
+    it('should warn naming the file, the locale and the key', async () => {
+      const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta')];
+      const { mock } = captureTranslateBatch(['A', 'B']);
+      const ctx = { ...makeCtx(diffs, new Map()), parser: droppingParser('b') };
+
+      await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      const warning = (Logger.warn as jest.Mock).mock.calls
+        .map((c) => String(c[0]))
+        .find((m) => m.includes('"b"'));
+      expect(warning).toContain('de');
+      expect(warning).toContain('locales/de.json');
+    });
+
+    it('should still record the keys that were written', async () => {
+      const diffs = [
+        makeDiff('a', 'Alpha'),
+        makeDiff('b', 'Beta'),
+        makeDiff('c', 'Gamma'),
+      ];
+      const { mock } = captureTranslateBatch(['A', 'B', 'C']);
+      const ctx = { ...makeCtx(diffs, new Map()), parser: droppingParser('b') };
+
+      const result = await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      expect(result.successfulKeys.sort()).toEqual(['a', 'c']);
+      expect(result.targetEntries.get('a')).toBe('A');
+      expect(result.targetEntries.get('c')).toBe('C');
+    });
+
+    it('should report every key unwritten when the file it wrote cannot be read back', async () => {
+      const diffs = [makeDiff('a', 'Alpha')];
+      const { mock } = captureTranslateBatch(['A']);
+      const ctx = {
+        ...makeCtx(diffs, new Map()),
+        parser: makeParser({
+          reconstruct: jest.fn().mockReturnValue('not json at all'),
+        }),
+      };
+
+      const result = await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      expect(result.successfulKeys).toEqual([]);
+      expect(result.fileResult.failed).toBe(1);
+    });
+
+    it('should record a key whose translation is deliberately empty', async () => {
+      const diffs = [makeDiff('a', 'Alpha')];
+      const { mock } = captureTranslateBatch(['']);
+      const ctx = makeCtx(diffs, new Map());
+
+      const result = await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      expect(result.successfulKeys).toEqual(['a']);
+      expect(result.fileResult.failed).toBe(0);
     });
   });
 });

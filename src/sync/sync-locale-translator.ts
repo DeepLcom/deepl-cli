@@ -23,6 +23,7 @@ import {
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { mapWithConcurrency } from '../utils/concurrency.js';
 import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
+import { extractExistingTranslations } from './sync-bucket-walker.js';
 import { BACKUP_SUFFIX } from './sync-bak-cleanup.js';
 import { Logger } from '../utils/logger.js';
 import {
@@ -111,6 +112,62 @@ function screenTranslations(
   }
 
   return { accepted, withheld, warnings, errors };
+}
+
+/**
+ * The keys `reconstruct` did not put into the content it returned.
+ *
+ * A run records a key as translated on the strength of the translation call, so
+ * without this a parser that cannot place an entry — one added to the source
+ * since the target file was written, and so with no slot in the template — lost
+ * the string at exit 0, with the lockfile calling it translated and every gate
+ * reading that as complete. Verifying the write is what keeps the lockfile a
+ * record of the file rather than of the API call.
+ *
+ * Presence is the test, not equality: whether a written value round-trips
+ * byte-for-byte is the escaping contract, checked per parser. A translation that
+ * is deliberately the empty string is exempt, because PO and XLIFF read an empty
+ * translation side as untranslated and leave the key out of the map by design.
+ */
+function unwrittenKeys(
+  parser: FormatParser,
+  written: string,
+  entries: readonly TranslatedEntry[],
+  locale: string | undefined
+): Set<string> {
+  const expected = entries.filter((entry) => entry.translation !== '');
+  if (expected.length === 0) return new Set();
+
+  let held: Map<string, string>;
+  try {
+    held = extractExistingTranslations(parser, written, locale);
+  } catch {
+    // Content this parser just produced and cannot read back is not a file any
+    // of these keys can be claimed to be in.
+    return new Set(expected.map((entry) => entry.key));
+  }
+  return new Set(
+    expected.filter((entry) => !held.has(entry.key)).map((entry) => entry.key)
+  );
+}
+
+function unwrittenKeysWarning(
+  locale: string,
+  targetRelPath: string,
+  unwritten: ReadonlySet<string>
+): string {
+  const keys = [...unwritten];
+  const shown = keys.slice(0, 3).map((key) => `"${key}"`);
+  const more = keys.length > shown.length ? ', …' : '';
+  const one = keys.length === 1;
+  return (
+    `${locale}: ${targetRelPath} could not be given ${keys.length} translated ` +
+    `${one ? 'key' : 'keys'}: ${shown.join(', ')}${more}. ` +
+    `${one ? 'It is' : 'They are'} recorded as failed rather than translated, so ` +
+    `${one ? 'it' : 'they'} will not be reported as complete and the next sync retries ` +
+    `${one ? 'it' : 'them'}. This usually means the target file has no element to hold ` +
+    `${one ? 'it' : 'them'} — add the containing array or group to ${targetRelPath} and sync again.`
+  );
 }
 
 function withheldKeysWarning(
@@ -887,9 +944,28 @@ export class LocaleTranslator {
     await fs.promises.mkdir(path.dirname(targetAbsPath), { recursive: true });
     await atomicWriteFile(targetAbsPath, reconstructed, 'utf-8');
 
+    const unwritten = unwrittenKeys(
+      parser,
+      reconstructed,
+      allTranslatedEntries,
+      isMultiLocale ? locale : undefined
+    );
+
     const targetEntries = new Map<string, string>();
     for (const te of allTranslatedEntries) {
+      if (unwritten.has(te.key)) continue;
       targetEntries.set(te.key, te.translation);
+    }
+
+    let writtenSuccessfulKeys = successfulKeys;
+    if (unwritten.size > 0) {
+      Logger.warn(unwrittenKeysWarning(locale, targetRelPath, unwritten));
+      writtenSuccessfulKeys = successfulKeys.filter(
+        (key) => !unwritten.has(key)
+      );
+      const lost = successfulKeys.length - writtenSuccessfulKeys.length;
+      translated -= lost;
+      failed += lost;
     }
 
     return {
@@ -901,7 +977,7 @@ export class LocaleTranslator {
         failed,
         written: true,
       },
-      successfulKeys,
+      successfulKeys: writtenSuccessfulKeys,
       charactersBilled: localeBilled,
       billedPerKey,
       contextSentKeys,

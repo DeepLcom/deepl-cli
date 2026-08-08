@@ -3445,6 +3445,8 @@ Remediation: open `.deepl-sync.lock`, resolve the remaining `<<<<<<<` / `=======
 
 A key whose translation failed placeholder/ICU validation counts as failed here too: it is withheld from the target file rather than written corrupt. See [`validation`](SYNC.md#validation) in the sync configuration reference. With `validation.fail_on_error: true` the same run raises `ValidationError` (exit 6) instead.
 
+A key that translated successfully but that the target file's format could not be given a slot for also counts as failed. Every key is read back out of the content just written before the lockfile is updated, so the run reports it rather than recording a translation the file does not contain. See [A string added after the first sync](SYNC.md#a-string-added-after-the-first-sync).
+
 Authentication failures (401/403) abort the entire run and surface as exit code 2 (`AuthError`) instead of 12. Network / rate-limit / quota failures bubble up as 5 / 3 / 4 respectively. Code 12 specifically means "the run proceeded far enough to attempt per-locale work, and the result was mixed."
 
 **Retry model.** Re-running `deepl sync` (optionally with `--locale <failed,comma,separated>`) will retry only the locales whose lockfile entries weren't written. This is the canonical CI recovery path: branch on `$? -eq 12`, inspect the per-locale error report, and re-run with the failed locales as the filter.
