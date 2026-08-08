@@ -34,6 +34,21 @@ export interface FormatParser {
   /** Optional: extract context for a specific key from file content */
   extractContext?(content: string, key: string): string | undefined;
   /**
+   * Optional: the translations a *target* file already holds, keyed the way
+   * `extract` keys them. Bilingual formats — one file carrying both sides, as
+   * PO does with `msgid`/`msgstr` and XLIFF with `<source>`/`<target>` — must
+   * implement it, because their `extract().value` is the SOURCE text even when
+   * reading a target file. A key the file has no translation for yet is left
+   * out of the map rather than mapped to the empty string, which is how a caller
+   * separates an untranslated key from a deliberately empty translation. An
+   * implementation must also leave out any key it tags `metadata.skipped`, since
+   * the map bypasses the walker's skip partition.
+   *
+   * Monolingual formats leave it undefined: for them `extract().value` on a
+   * target read already is the translation.
+   */
+  extractTranslations?(content: string, locale?: string): Map<string, string>;
+  /**
    * Optional: a copy of this parser bounded to `maxDepth` levels of nesting.
    * Parsers that walk their tree recursively implement it so `sync` can apply
    * `sync.limits.max_depth`; the walker skips the field for parsers without it.

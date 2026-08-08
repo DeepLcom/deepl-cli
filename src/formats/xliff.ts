@@ -193,6 +193,39 @@ export class XliffFormatParser implements FormatParser {
     return entries;
   }
 
+  /**
+   * XLIFF is bilingual, so `extract().value` is `<source>` even when the file
+   * being read is a target. The translation is `<target>`; a unit with no
+   * `<target>`, or an empty one, is untranslated and is left out so a caller
+   * re-translates it. The element is located exactly as `applyTarget` locates
+   * the one it overwrites, so the map reports what a write would replace.
+   */
+  extractTranslations(content: string): Map<string, string> {
+    assertNoCdataInTranslatable(content);
+    const isV2 = detectVersion(content) === '2.0';
+    const translations = new Map<string, string>();
+
+    for (const element of scanElements(
+      content,
+      isV2 ? UNIT_EL : TRANS_UNIT_EL
+    )) {
+      const scope = isV2
+        ? findElement(element.inner, SEGMENT_EL)?.inner
+        : element.inner;
+      if (scope === undefined) continue;
+      if (!findElement(scope, SOURCE_EL)) continue;
+
+      const target = findElement(scope, TARGET_EL);
+      if (!target) continue;
+      const translation = unescapeXml(target.inner);
+      if (translation === '') continue;
+
+      translations.set(element.groups[0]!, translation);
+    }
+
+    return translations;
+  }
+
   reconstruct(content: string, entries: TranslatedEntry[]): string {
     assertNoCdataInTranslatable(content);
     const version = detectVersion(content);

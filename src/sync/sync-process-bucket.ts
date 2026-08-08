@@ -14,7 +14,7 @@ import type { SyncLockFile, SyncLockTranslation } from './types.js';
 import type { KeyContext } from './sync-context.js';
 import { Logger } from '../utils/logger.js';
 import {
-  extractTranslatable,
+  extractExistingTranslations,
   type WalkedBucketFile,
 } from './sync-bucket-walker.js';
 import type { LocaleTranslator } from './sync-locale-translator.js';
@@ -262,10 +262,9 @@ export async function processBucket(
   const existingTargetEntries = new Map<string, Map<string, string>>();
   for (const locale of locales) {
     if (isMultiLocale) {
-      const targetParsed = extractTranslatable(parser, content, locale);
       existingTargetEntries.set(
         locale,
-        new Map(targetParsed.map((e) => [e.key, e.value]))
+        extractExistingTranslations(parser, content, locale)
       );
     } else {
       const targetRelPath = resolveTargetPath(
@@ -281,10 +280,9 @@ export async function processBucket(
           targetAbsPath,
           'utf-8'
         );
-        const targetParsed = extractTranslatable(parser, targetContent);
         existingTargetEntries.set(
           locale,
-          new Map(targetParsed.map((e) => [e.key, e.value]))
+          extractExistingTranslations(parser, targetContent)
         );
       } catch {
         existingTargetEntries.set(locale, new Map());

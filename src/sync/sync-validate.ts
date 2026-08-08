@@ -7,7 +7,10 @@ import {
 } from './translation-validator.js';
 import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
-import { extractTranslatable, walkBuckets } from './sync-bucket-walker.js';
+import {
+  extractExistingTranslations,
+  walkBuckets,
+} from './sync-bucket-walker.js';
 
 export interface ValidateIssue extends ValidationResult {
   locale: string;
@@ -40,12 +43,12 @@ export async function validateTranslations(
     } = walked;
 
     for (const locale of config.target_locales) {
-      let targetEntries;
+      let targetMap: Map<string, string>;
       let targetRelPath: string;
 
       if (isMultiLocale) {
         targetRelPath = relPath;
-        targetEntries = extractTranslatable(parser, sourceContent, locale);
+        targetMap = extractExistingTranslations(parser, sourceContent, locale);
       } else {
         targetRelPath = resolveTargetPath(
           relPath,
@@ -66,10 +69,8 @@ export async function validateTranslations(
           targetAbsPath,
           'utf-8'
         );
-        targetEntries = extractTranslatable(parser, targetContent);
+        targetMap = extractExistingTranslations(parser, targetContent);
       }
-
-      const targetMap = new Map(targetEntries.map((e) => [e.key, e.value]));
 
       const pairs = sourceEntries
         .filter((se) => targetMap.has(se.key))

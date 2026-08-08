@@ -68,7 +68,7 @@ async function handleSyncAudit(
     const { LOCK_FILE_NAME } = await import('../../../sync/types.js');
     const { generateGlossaryReport } =
       await import('../../../sync/sync-glossary-report.js');
-    const { extractTranslatable } =
+    const { extractExistingTranslations } =
       await import('../../../sync/sync-bucket-walker.js');
     const { createDefaultRegistry } = await import('../../../formats/index.js');
     const { resolveTargetPath } = await import('../../../sync/sync-utils.js');
@@ -100,10 +100,10 @@ async function handleSyncAudit(
             const targetAbs = pathMod.join(config.projectRoot, targetRel);
             if (!fsMod.existsSync(targetAbs)) continue;
             const content = await fsMod.promises.readFile(targetAbs, 'utf-8');
-            const entries = extractTranslatable(parser, content, locale);
-            const keyMap = new Map<string, string>();
-            for (const entry of entries) keyMap.set(entry.key, entry.value);
-            fileLocaleMap.set(locale, keyMap);
+            fileLocaleMap.set(
+              locale,
+              extractExistingTranslations(parser, content, locale)
+            );
           } catch {
             // Unreadable / unparseable target file — reported as a missing target.
           }

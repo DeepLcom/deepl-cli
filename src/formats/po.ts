@@ -355,6 +355,42 @@ export class PoFormatParser implements FormatParser {
     return entries;
   }
 
+  /**
+   * PO is bilingual, so `extract().value` is the msgid even when the file being
+   * read is a target. The translation is the msgstr, and an empty msgstr is
+   * gettext's spelling of "not translated yet" — such a key is left out so a
+   * caller re-translates it rather than pinning the empty string.
+   *
+   * A plural entry has no bare msgstr; its first non-empty msgstr[n] stands in,
+   * which is enough to report the entry as translated. The per-form values
+   * travel separately in `metadata.plural_forms`.
+   */
+  extractTranslations(content: string): Map<string, string> {
+    const translations = new Map<string, string>();
+    if (!content.trim()) {
+      return translations;
+    }
+
+    for (const pe of parseEntries(content)) {
+      if (isHeaderEntry(pe)) {
+        continue;
+      }
+
+      const singular = pe.msgstr[0];
+      const translation =
+        singular !== undefined && singular !== ''
+          ? singular
+          : [...pe.msgstrPlural.values()].find((v) => v !== '');
+      if (translation === undefined) {
+        continue;
+      }
+
+      translations.set(makeKey(pe), translation);
+    }
+
+    return translations;
+  }
+
   // Comment bookkeeping is local rather than via PendingCommentBuffer: po
   // backtracks into `result` at entry-start to slice trailing contiguous
   // `#`-runs into `commentLines`, for pop-on-delete or splice-with-fuzzy-strip

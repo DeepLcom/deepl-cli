@@ -21,7 +21,11 @@ import {
 import { LOCK_FILE_NAME } from './types.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { mapWithConcurrency, PUSH_CONCURRENCY } from '../utils/concurrency.js';
-import { partitionEntries, walkBuckets } from './sync-bucket-walker.js';
+import {
+  extractExistingTranslations,
+  partitionEntries,
+  walkBuckets,
+} from './sync-bucket-walker.js';
 import { Logger } from '../utils/logger.js';
 import { sweepStaleBackups, resolveBakSweepAgeMs } from './sync-bak-cleanup.js';
 
@@ -31,7 +35,11 @@ export interface SyncPushPullOptions {
 }
 
 export type SkipReason =
-  'target_missing' | 'no_matches' | 'pipe_pluralization' | 'key_collision';
+  | 'target_missing'
+  | 'no_matches'
+  | 'pipe_pluralization'
+  | 'key_collision'
+  | 'untranslated';
 
 export interface SkippedRecord {
   file: string;
@@ -56,6 +64,7 @@ const SKIP_REASON_LABELS: Record<SkipReason, string> = {
   no_matches: 'no matching keys',
   pipe_pluralization: 'pipe-pluralization (never sent to TMS)',
   key_collision: 'target file keys collide (left untouched)',
+  untranslated: 'no translation in the target file',
 };
 
 /**
@@ -108,10 +117,16 @@ export async function pushTranslations(
       try {
         let entries: ExtractedEntry[];
         let skippedEntries: ExtractedEntry[];
+        let translations: Map<string, string>;
         if (isMultiLocale) {
           ({ entries, skippedEntries } = partitionEntries(
             parser.extract(sourceContent, locale)
           ));
+          translations = extractExistingTranslations(
+            parser,
+            sourceContent,
+            locale
+          );
         } else {
           const targetPath = resolveTargetPath(
             relPath,
@@ -125,6 +140,7 @@ export async function pushTranslations(
           ({ entries, skippedEntries } = partitionEntries(
             parser.extract(content)
           ));
+          translations = extractExistingTranslations(parser, content);
         }
         for (const skippedEntry of skippedEntries) {
           skipped.push({
@@ -134,10 +150,28 @@ export async function pushTranslations(
             key: skippedEntry.key,
           });
         }
+        // A bilingual target file lists every key the source has, translated or
+        // not. Pushing such a key would upload its source text as the locale's
+        // translation and make the TMS the authority for it.
+        const pushable: Array<{ entry: ExtractedEntry; translation: string }> =
+          [];
+        for (const entry of entries) {
+          const translation = translations.get(entry.key);
+          if (translation === undefined) {
+            skipped.push({
+              file: relPath,
+              locale,
+              reason: 'untranslated',
+              key: entry.key,
+            });
+            continue;
+          }
+          pushable.push({ entry, translation });
+        }
         await mapWithConcurrency(
-          entries,
-          async (entry) => {
-            await client.pushEntry(entry, locale);
+          pushable,
+          async ({ entry, translation }) => {
+            await client.pushEntry(entry, locale, translation);
             pushed++;
           },
           pushConcurrency
@@ -226,11 +260,10 @@ export async function pullTranslations(
       let existingTargetEntries = new Map<string, string>();
       try {
         templateContent = await fs.promises.readFile(targetAbsPath, 'utf-8');
-        const { entries: existingEntries } = isMultiLocale
-          ? partitionEntries(parser.extract(templateContent, locale))
-          : partitionEntries(parser.extract(templateContent));
-        existingTargetEntries = new Map(
-          existingEntries.map((entry) => [entry.key, entry.value])
+        existingTargetEntries = extractExistingTranslations(
+          parser,
+          templateContent,
+          locale
         );
       } catch (err) {
         // A target file whose keys collide cannot be merged into — and must not

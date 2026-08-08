@@ -83,6 +83,34 @@ export function extractTranslatable(
   return partitionEntries(raw).entries;
 }
 
+/**
+ * The translations `content` — a *target*-file read — already holds, keyed the
+ * way `extract` keys them.
+ *
+ * Never build this map from `extract(...).value`. A bilingual format carries
+ * both sides in one file and reports the SOURCE text as `value`, so that map
+ * hands the source string back as though it were the translation: `sync`
+ * carries English into `msgstr`, `sync push` uploads English as the locale's
+ * translation, and `sync validate` compares the source against itself. Parsers
+ * that need it override the read via `extractTranslations`; for the rest
+ * `value` already is the translation.
+ */
+export function extractExistingTranslations(
+  parser: FormatParser,
+  content: string,
+  locale?: string
+): Map<string, string> {
+  if (parser.extractTranslations) {
+    return parser.extractTranslations(
+      content,
+      parser.multiLocale ? locale : undefined
+    );
+  }
+  return new Map(
+    extractTranslatable(parser, content, locale).map((e) => [e.key, e.value])
+  );
+}
+
 // Cache of already-read+parsed bucket source files, keyed by absolute path.
 // Populated opportunistically by the template-pattern prep pass in sync-service
 // so walkBuckets can skip re-reading the same files on the main translation loop.

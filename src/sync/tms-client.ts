@@ -354,7 +354,16 @@ export class TmsClient {
     });
   }
 
-  async pushEntry(entry: ExtractedEntry, locale: string): Promise<void> {
+  /**
+   * `translation` is passed explicitly rather than read off `entry.value`: for a
+   * bilingual format `value` is the source text even when the entry came from a
+   * target file, so defaulting to it would upload English as the translation.
+   */
+  async pushEntry(
+    entry: ExtractedEntry,
+    locale: string,
+    translation: string
+  ): Promise<void> {
     if (entry.metadata && 'skipped' in entry.metadata) {
       throw new Error(
         `TmsClient.pushEntry refused to push key "${entry.key}" (locale=${locale}): ` +
@@ -362,7 +371,7 @@ export class TmsClient {
           `skip-partition (partitionEntries in src/sync/sync-bucket-walker.ts) before reaching push.`
       );
     }
-    await this.pushKey(entry.key, locale, entry.value);
+    await this.pushKey(entry.key, locale, translation);
   }
 
   async pullKeys(locale: string): Promise<Record<string, string>> {

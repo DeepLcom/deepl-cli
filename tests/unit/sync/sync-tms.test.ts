@@ -214,12 +214,16 @@ describe('TmsClient.pushEntry — runtime skip-partition guard', () => {
       metadata: { skipped: { reason: SKIP_REASON_PIPE_PLURALIZATION } },
     };
 
-    await expect(client.pushEntry(skipped, 'de')).rejects.toThrow(/walker/i);
-    await expect(client.pushEntry(skipped, 'de')).rejects.toThrow(/skipped/i);
+    await expect(client.pushEntry(skipped, 'de', 'x')).rejects.toThrow(
+      /walker/i
+    );
+    await expect(client.pushEntry(skipped, 'de', 'x')).rejects.toThrow(
+      /skipped/i
+    );
     expect(pushKeySpy).not.toHaveBeenCalled();
   });
 
-  it('forwards translatable entries to pushKey unchanged', async () => {
+  it('sends the caller-supplied translation, not the entry value', async () => {
     const client = new TmsClient({
       serverUrl: 'https://tms.test',
       projectId: 'p',
@@ -228,7 +232,8 @@ describe('TmsClient.pushEntry — runtime skip-partition guard', () => {
     const pushKeySpy = jest
       .spyOn(client, 'pushKey')
       .mockResolvedValue(undefined);
-    await client.pushEntry({ key: 'greeting', value: 'Hallo' }, 'de');
+    // A bilingual format's entry carries the SOURCE as `value`.
+    await client.pushEntry({ key: 'greeting', value: 'Hello' }, 'de', 'Hallo');
     expect(pushKeySpy).toHaveBeenCalledWith('greeting', 'de', 'Hallo');
   });
 });
@@ -258,7 +263,7 @@ describe('pushTranslations — skip-partition invariant at inline extract sites'
       },
       { key: 'farewell', value: 'Tschüss' },
     ];
-    const parser = makeStubParser([mixedEntries, mixedEntries]);
+    const parser = makeStubParser(mixedEntries);
     const client = makeTmsClient();
 
     const result = await pushTranslations(
@@ -294,7 +299,7 @@ describe('pushTranslations — skip-partition invariant at inline extract sites'
         metadata: { skipped: { reason: SKIP_REASON_PIPE_PLURALIZATION } },
       },
     ];
-    const parser = makeStubParser([mixedEntries, mixedEntries], {
+    const parser = makeStubParser(mixedEntries, {
       multiLocale: true,
       configKey: 'xcstrings',
     });
@@ -327,7 +332,7 @@ describe('pushTranslations — skip-partition invariant at inline extract sites'
         metadata: { skipped: { reason: SKIP_REASON_PIPE_PLURALIZATION } },
       },
     ];
-    const parser = makeStubParser([mixedEntries, mixedEntries, mixedEntries]);
+    const parser = makeStubParser(mixedEntries);
     const client = makeTmsClient();
 
     const config = makeConfig({ target_locales: ['de', 'fr'] });

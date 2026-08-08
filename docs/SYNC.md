@@ -117,6 +117,20 @@ Such a file is **skipped with a warning naming the colliding key**, and the rest
 
 On `deepl sync pull`, a **target** file whose keys collide is left exactly as it stands and reported under the `key_collision` skip reason. Pull does not fall back to rebuilding it from the source file, which would discard every local translation the TMS export does not carry.
 
+### Bilingual formats: PO and XLIFF
+
+Nine of the eleven formats are monolingual -- a target file holds translations and nothing else, so its values *are* the translations. Gettext PO and XLIFF are **bilingual**: one file carries both sides, the source in `msgid` / `<source>` and the translation in `msgstr` / `<target>`. Every sync path that needs "the translation this target file already holds" therefore reads the translation side, never the source side:
+
+| Path | What it reads from a PO / XLIFF target |
+|------|----------------------------------------|
+| `deepl sync` | The existing `msgstr` / `<target>` is carried forward for a key the lockfile calls up to date, so a reviewed translation survives a run that rewrites the file because a *sibling* key changed |
+| `deepl sync push` | The `msgstr` / `<target>` is what gets uploaded |
+| `deepl sync validate` | Placeholder and structure checks compare the `msgstr` against the `msgid` |
+| `deepl sync pull` | For a key the export does not carry, the existing `msgstr` is kept |
+| `deepl sync audit` | Terminology consistency is measured across translations |
+
+**An empty translation side means untranslated, not empty.** A `msgstr ""`, a `<trans-unit>` with no `<target>`, and an empty `<target></target>` all read as "this key has no translation yet": `sync` translates the key rather than pinning the empty string, and `push` skips it (see below). This differs from the monolingual formats, where an empty value is a deliberate translation and is preserved.
+
 ## Configuration
 
 ### `.deepl-sync.yaml`
@@ -850,6 +864,8 @@ deepl sync push [OPTIONS]
 | `--locale <langs>` | Push specific locales only |
 | `--format <fmt>` | Output format: `text` (default), `json` |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
+
+**A key with no translation yet is not pushed.** Push reads each target file and uploads the translation it holds. A bilingual target file (see [Bilingual formats: PO and XLIFF](#bilingual-formats-po-and-xliff)) lists every key the source has, translated or not, so pushing such a key would upload its source text as the locale's translation and make the TMS the authority for it -- a later `pull` would then write English into the target file. Those keys are skipped and reported under the `untranslated` reason, with the pushed count reflecting only what was actually sent. For a monolingual format nothing is skipped on this account: every key the target file lists has a value.
 
 ### `deepl sync pull`
 

@@ -1,4 +1,5 @@
 import {
+  extractExistingTranslations,
   extractTranslatable,
   walkBuckets,
 } from '../../../src/sync/sync-bucket-walker';
@@ -324,5 +325,83 @@ describe('extractTranslatable', () => {
       { key: 'b', value: '|y', metadata: { skipped: 'pipe_pluralization' } },
     ]);
     expect(extractTranslatable(parser, '<content>')).toEqual([]);
+  });
+});
+
+describe('extractExistingTranslations', () => {
+  function makeParser(
+    entries: ExtractedEntry[],
+    opts: {
+      multiLocale?: boolean;
+      translations?: Map<string, string>;
+    } = {}
+  ): FormatParser {
+    return {
+      multiLocale: opts.multiLocale,
+      extract: jest.fn((_content: string, _locale?: string) => entries),
+      reconstruct: jest.fn(),
+      ...(opts.translations && {
+        extractTranslations: jest.fn(
+          (_content: string, _locale?: string) => opts.translations
+        ),
+      }),
+      format: 'json',
+    } as unknown as FormatParser;
+  }
+
+  it('reads value for a parser that does not override the read', () => {
+    const parser = makeParser([
+      { key: 'greeting', value: 'Hallo' },
+      { key: 'farewell', value: 'Tschuess' },
+    ]);
+
+    expect([...extractExistingTranslations(parser, '<content>')]).toEqual([
+      ['greeting', 'Hallo'],
+      ['farewell', 'Tschuess'],
+    ]);
+  });
+
+  it('drops skipped entries on the value path, as the diff paths do', () => {
+    const parser = makeParser([
+      { key: 'greeting', value: 'Hallo' },
+      {
+        key: 'plural',
+        value: '|{n} item',
+        metadata: { skipped: 'pipe_pluralization' },
+      },
+    ]);
+
+    expect([
+      ...extractExistingTranslations(parser, '<content>').keys(),
+    ]).toEqual(['greeting']);
+  });
+
+  it('prefers the parser override, so the source text is never returned', () => {
+    const parser = makeParser([{ key: 'Hello', value: 'Hello' }], {
+      translations: new Map([['Hello', 'Hola']]),
+    });
+
+    expect(extractExistingTranslations(parser, '<content>').get('Hello')).toBe(
+      'Hola'
+    );
+  });
+
+  it('forwards locale to the override only when multiLocale is true', () => {
+    const multi = makeParser([], {
+      multiLocale: true,
+      translations: new Map(),
+    });
+    extractExistingTranslations(multi, '<content>', 'de');
+    expect(multi.extractTranslations).toHaveBeenCalledWith('<content>', 'de');
+
+    const single = makeParser([], {
+      multiLocale: false,
+      translations: new Map(),
+    });
+    extractExistingTranslations(single, '<content>', 'de');
+    expect(single.extractTranslations).toHaveBeenCalledWith(
+      '<content>',
+      undefined
+    );
   });
 });
