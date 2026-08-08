@@ -546,6 +546,153 @@ describe('TmsClient retry', () => {
   });
 });
 
+/**
+ * A TMS that cannot be reached is a network failure whichever way it fails.
+ * `fetch` rejects with `TypeError: fetch failed` and puts the errno on `cause`,
+ * so the raw rejection carried neither the host, the port nor the code: the run
+ * ended at `Error: fetch failed` and the unclassified exit code, while the
+ * client-side timeout — the same condition, differently timed — exited 5 with a
+ * full message.
+ */
+describe('TmsClient transport failures', () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  function transportError(causeCode?: string, causeMessage?: string): Error {
+    const err = new TypeError('fetch failed');
+    (err as { cause?: unknown }).cause = Object.assign(
+      new Error(causeMessage ?? 'connect failed'),
+      causeCode ? { code: causeCode } : {}
+    );
+    return err;
+  }
+
+  function clientWith(stubFetch: jest.Mock, maxAttempts = 1): TmsClient {
+    return new TmsClient({
+      serverUrl: 'https://tms.example.com',
+      projectId: 'p',
+      apiKey: 'k',
+      fetch: stubFetch,
+      retry: { maxAttempts, baseDelayMs: 1, maxDelayMs: 2, jitter: false },
+    });
+  }
+
+  it('classifies a refused connection as a network error naming the request', async () => {
+    const stubFetch = jest
+      .fn()
+      .mockRejectedValue(
+        transportError('ECONNREFUSED', 'connect ECONNREFUSED 127.0.0.1:60550')
+      );
+
+    const err = await clientWith(stubFetch)
+      .pushKey('k', 'de', 'v')
+      .catch((e: unknown) => e);
+
+    expect(exitCodeForError(err)).toBe(ExitCode.NetworkError);
+    expect((err as Error).message).toContain('PUT');
+    expect((err as Error).message).toContain('https://tms.example.com');
+    expect((err as Error).message).toContain('ECONNREFUSED');
+  });
+
+  it('classifies a name that does not resolve the same way', async () => {
+    const stubFetch = jest
+      .fn()
+      .mockRejectedValue(
+        transportError('ENOTFOUND', 'getaddrinfo ENOTFOUND tms.example.com')
+      );
+
+    const err = await clientWith(stubFetch)
+      .pullKeys('de')
+      .catch((e: unknown) => e);
+
+    expect(exitCodeForError(err)).toBe(ExitCode.NetworkError);
+    expect((err as Error).message).toContain('ENOTFOUND');
+  });
+
+  it('falls back to the underlying message when there is no errno', async () => {
+    // `fetch` refuses a blocked port before connecting, with no code at all.
+    const stubFetch = jest
+      .fn()
+      .mockRejectedValue(transportError(undefined, 'bad port'));
+
+    const err = await clientWith(stubFetch)
+      .pushKey('k', 'de', 'v')
+      .catch((e: unknown) => e);
+
+    expect(exitCodeForError(err)).toBe(ExitCode.NetworkError);
+    expect((err as Error).message).toContain('bad port');
+  });
+
+  // The replay policy is unchanged: classification and retry eligibility are
+  // separate decisions, and a push is billable at the far end.
+  it('retries a refused connection exactly as before and no more', async () => {
+    const stubFetch = jest
+      .fn()
+      .mockRejectedValue(transportError('ECONNREFUSED'));
+
+    await expect(
+      clientWith(stubFetch, 3).pushKey('k', 'de', 'v')
+    ).rejects.toThrow();
+
+    expect(stubFetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('still does not retry a name that does not resolve', async () => {
+    const stubFetch = jest.fn().mockRejectedValue(transportError('ENOTFOUND'));
+
+    await expect(
+      clientWith(stubFetch, 3).pushKey('k', 'de', 'v')
+    ).rejects.toThrow();
+
+    expect(stubFetch).toHaveBeenCalledTimes(1);
+  });
+
+  // Over-rejection guards: nothing that is not a transport failure is relabelled.
+  it('leaves a 401 as a ConfigError', async () => {
+    const stubFetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      text: async () => '',
+    });
+
+    const err = await clientWith(stubFetch)
+      .pushKey('k', 'de', 'v')
+      .catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(ConfigError);
+    expect(exitCodeForError(err)).not.toBe(ExitCode.NetworkError);
+  });
+
+  it('leaves a 500 naming the status', async () => {
+    const stubFetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: async () => '',
+    });
+
+    const err = await clientWith(stubFetch)
+      .pushKey('k', 'de', 'v')
+      .catch((e: unknown) => e);
+
+    expect((err as Error).message).toContain('TMS API error: 500');
+  });
+
+  it('keeps the timeout message and its remediation', async () => {
+    const abort = Object.assign(new Error('The operation was aborted'), {
+      name: 'AbortError',
+    });
+    const stubFetch = jest.fn().mockRejectedValue(abort);
+
+    const err = await clientWith(stubFetch)
+      .pushKey('k', 'de', 'v')
+      .catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(TmsTimeoutError);
+    expect((err as Error).message).toContain('timed out after');
+  });
+});
+
 describe('TmsClient error body', () => {
   beforeEach(() => mockFetch.mockReset());
 

@@ -468,6 +468,8 @@ The gate does not apply to a credential inlined as `api_key` / `token` in this f
 
 Each TMS HTTP request is bounded by `tms.timeout_ms` (default 30000 ms) using an `AbortController`. If the configured timeout elapses before the server responds, the client raises a `TmsTimeoutError` rather than hanging indefinitely.
 
+A TMS that never answers at all is reported the same way: a refused connection, an unresolvable hostname or any other failure of the request itself exits **5** (`NetworkError`) with the method, the URL and the underlying code (`TMS request failed: PUT https://tms.example.com/api/projects/p/keys/greeting: ECONNREFUSED`). Which of those failures is retried is unchanged by that, and is listed below.
+
 `429 Too Many Requests` and `503 Service Unavailable` responses, along with transient network errors (`ECONNRESET`, `ETIMEDOUT`, `ECONNREFUSED`, `EAI_AGAIN`) and timeouts, are retried up to 3 attempts total with jittered exponential backoff starting at ~500 ms, doubling each attempt, and capped at ~10 s (±25% jitter). All other `4xx` responses (including `401`/`403` auth failures) are not retried. When a non-2xx response is finally surfaced to the caller, up to 1 KB of the response body is appended to the error message so operators can diagnose the failure without reproducing it under `curl`.
 
 `deepl sync push` issues per-key `PUT` requests concurrently, bounded by `tms.push_concurrency` (default 10). A 5000-key × 10-locale project at ~100 ms round-trip completes in minutes instead of hours. Pushes abort on first failure — a partial push is confusing and operators re-run after fixing the underlying cause — so the overall semantic (fail-fast, caller retries) is unchanged from the previous serial behavior.

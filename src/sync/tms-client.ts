@@ -124,6 +124,45 @@ function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError';
 }
 
+/**
+ * Restate a rejection from the fetch call as a network failure that names the
+ * request.
+ *
+ * Everything the request loop catches is a transport failure by construction:
+ * `fetchOnce` only awaits the fetch implementation, and every response-level
+ * outcome — a status, a body, a shape — is judged after it returns. `fetch`
+ * rejects with `TypeError: fetch failed` and puts the errno on `cause`, so the
+ * raw rejection names neither the host nor the code, and exits as an
+ * unclassified failure rather than as the retriable network error it is. An
+ * error that is already a NetworkError (the client-side timeout) keeps its own
+ * message.
+ */
+function asTransportFailure(
+  err: unknown,
+  method: string,
+  url: string
+): unknown {
+  if (err instanceof NetworkError || !(err instanceof Error)) return err;
+  const cause = (err as { cause?: unknown }).cause;
+  const causeCode =
+    cause && typeof cause === 'object'
+      ? (cause as { code?: unknown }).code
+      : undefined;
+  const causeMessage =
+    cause instanceof Error && cause.message ? cause.message : undefined;
+  const detail =
+    (typeof (err as NodeJS.ErrnoException).code === 'string'
+      ? (err as NodeJS.ErrnoException).code
+      : undefined) ??
+    (typeof causeCode === 'string' ? causeCode : undefined) ??
+    causeMessage ??
+    err.message;
+  return new NetworkError(
+    `TMS request failed: ${method} ${sanitizeUrl(url)}: ${detail}`,
+    'Check that the TMS server is running and reachable at the server: URL in the tms: block of .deepl-sync.yaml.'
+  );
+}
+
 function computeBackoffDelay(
   attempt: number,
   baseDelayMs: number,
@@ -312,7 +351,12 @@ export class TmsClient {
         lastError = err;
         const retriable =
           err instanceof TmsTimeoutError || isRetriableNetworkError(err);
-        if (!retriable || attempt === this.retry.maxAttempts - 1) throw err;
+        // Retry eligibility is decided first and independently of how the error
+        // is classified, so naming the failure cannot change how often a
+        // billable push is replayed.
+        if (!retriable || attempt === this.retry.maxAttempts - 1) {
+          throw asTransportFailure(err, method, url);
+        }
         const delay = computeBackoffDelay(
           attempt,
           this.retry.baseDelayMs,

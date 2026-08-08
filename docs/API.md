@@ -3380,6 +3380,8 @@ A response the endpoint cuts off mid-body is exit 5 as well, even though the sta
 
 A document upload response whose `document_id` is not a document identifier is rejected here as well. That value is interpolated into the path of every follow-up request (`POST /v2/document/{id}`, `POST /v2/document/{id}/result`), so an ID containing `..` or `/` would send this client's own requests to a different route on the endpoint. Anything outside `[A-Za-z0-9_-]+` is refused before the next request is sent, the ID is quoted back in the message, and no output file is written.
 
+A TMS that cannot be reached is exit 5 too, however it fails to answer. `deepl sync push` / `pull` used to report a refused connection or an unresolvable hostname as `Error: fetch failed` at exit 1 — the unclassified code — because `fetch` rejects with a bare `TypeError` and puts the errno on `cause`. Both now name the request and the code (`TMS request failed: PUT https://tms.example.com/api/projects/p/keys/greeting: ECONNREFUSED`), matching the client-side timeout, which was already exit 5. **The replay policy is unchanged by this**: retry eligibility is decided before the error is classified, so a refusal is still retried up to `tms.retry.max_attempts` and an unresolvable name still fails on the first attempt.
+
 Remediation: check connectivity and `HTTPS_PROXY` / `HTTP_PROXY` env vars, then retry.
 
 #### 6 — InvalidInput
