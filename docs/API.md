@@ -3370,6 +3370,8 @@ Connection-layer failure or transient server outage. Covers TCP errors (`ECONNRE
 
 A response that came back without the placeholder tokens the CLI substituted for your variables counts as malformed here too: `translate` names the variables it lost (`{username}`, `%s`) and writes nothing rather than leaving its own internal tokens in your text. A directory run fails only the affected files and reports each one in the summary, so its exit code follows the usual batch mapping (`1` when nothing translated, `12` when some did).
 
+A document upload response whose `document_id` is not a document identifier is rejected here as well. That value is interpolated into the path of every follow-up request (`POST /v2/document/{id}`, `POST /v2/document/{id}/result`), so an ID containing `..` or `/` would send this client's own requests to a different route on the endpoint. Anything outside `[A-Za-z0-9_-]+` is refused before the next request is sent, the ID is quoted back in the message, and no output file is written.
+
 Remediation: check connectivity and `HTTPS_PROXY` / `HTTP_PROXY` env vars, then retry.
 
 #### 6 — InvalidInput

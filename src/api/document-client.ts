@@ -8,7 +8,7 @@ import {
   DocumentHandle,
   DocumentStatus,
 } from '../types/index.js';
-import { ValidationError } from '../utils/errors.js';
+import { NetworkError, ValidationError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
 import {
   resolveGlossaryWireParams,
@@ -31,6 +31,35 @@ interface DeepLDocumentStatusResponse {
 /** Uploads and downloads move whole files, so they need far more headroom
  *  than the interactive request timeout. */
 const TRANSFER_TIMEOUT_MS = 300_000;
+
+/**
+ * A document ID is opaque to this client and goes straight into a URL path, so
+ * only characters that cannot change the path's structure are allowed. DeepL
+ * returns uppercase hex; the wider alphabet leaves room for a format change
+ * without leaving room for `..`, `/`, `%`, `?` or `#`.
+ */
+const DOCUMENT_ID_RE = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * The document ID reaching `/v2/document/{id}` comes from the upload response,
+ * which is untrusted: `--api-url`, `api.baseUrl` or a proxy can redirect the
+ * endpoint, and a redirected host that answers with
+ * `document_id: '../../v3/glossaries'` steers the client's own follow-up
+ * requests onto a different route. Checked at each interpolation site rather
+ * than once on the upload response, so a handle assembled anywhere else is
+ * covered too.
+ *
+ * `NetworkError` rather than `ValidationError`: nothing the user typed is
+ * wrong. That is also why this reads differently from
+ * `GlossaryClient.validateGlossaryId`, which guards an ID the user supplied.
+ */
+function assertUsableDocumentId(documentId: string): void {
+  if (typeof documentId === 'string' && DOCUMENT_ID_RE.test(documentId)) return;
+  throw new NetworkError(
+    `Unexpected API response: document_id must be a document identifier, got ${JSON.stringify(documentId)}. The endpoint that returned it can redirect this client's own requests.`,
+    'Check the endpoint in use (--api-url, api.baseUrl, or a proxy). No further document request was sent.'
+  );
+}
 
 export class DocumentClient extends HttpClient {
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
@@ -119,6 +148,7 @@ export class DocumentClient extends HttpClient {
   }
 
   async getDocumentStatus(handle: DocumentHandle): Promise<DocumentStatus> {
+    assertUsableDocumentId(handle.documentId);
     try {
       const response = await this.makeRequest<DeepLDocumentStatusResponse>(
         'POST',
@@ -144,6 +174,7 @@ export class DocumentClient extends HttpClient {
    * permanently, so this request is never retried.
    */
   async downloadDocument(handle: DocumentHandle): Promise<Buffer> {
+    assertUsableDocumentId(handle.documentId);
     try {
       const response = await this.makeRawRequest<Buffer>(
         'POST',

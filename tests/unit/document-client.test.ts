@@ -223,6 +223,80 @@ describe('DocumentClient', () => {
     });
   });
 
+  describe('server-supplied document ID reaching the URL path', () => {
+    const REJECTED: ReadonlyArray<[string, unknown]> = [
+      ['a traversal segment', '../../v3/glossaries%3fpwned=1'],
+      ['a bare parent segment', '..'],
+      ['a leading slash', '/v3/glossaries'],
+      ['an encoded slash', 'doc%2F..%2Fglossaries'],
+      ['a query string', 'doc-1?pwned=1'],
+      ['a fragment', 'doc-1#frag'],
+      ['a dot segment', 'doc/./1'],
+      ['whitespace', 'doc 1'],
+      ['an empty string', ''],
+      ['a missing id', undefined],
+      ['a non-string id', 42],
+    ];
+
+    describe.each(REJECTED)('rejects %s', (_label, documentId) => {
+      it('on getDocumentStatus, without issuing the request', async () => {
+        await expect(
+          client.getDocumentStatus({
+            documentId: documentId as string,
+            documentKey: 'key-abc',
+          })
+        ).rejects.toThrow(/document/i);
+        expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+      });
+
+      it('on downloadDocument, without issuing the request', async () => {
+        await expect(
+          client.downloadDocument({
+            documentId: documentId as string,
+            documentKey: 'key-abc',
+          })
+        ).rejects.toThrow(/document/i);
+        expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+      });
+    });
+
+    it('names the endpoint as the cause rather than the user', async () => {
+      let error: unknown;
+      expect.assertions(3);
+      try {
+        await client.getDocumentStatus({
+          documentId: '../../v3/glossaries',
+          documentKey: 'key-abc',
+        });
+      } catch (err) {
+        error = err;
+      }
+      expect((error as Error).name).toBe('NetworkError');
+      expect((error as Error).message).toMatch(/Unexpected API response/);
+      expect((error as Error).message).toContain('../../v3/glossaries');
+    });
+
+    it.each([
+      ['DeepL uppercase hex', 'A1B2C3D4E5F60718293A4B5C6D7E8F90'],
+      ['a hyphenated id', 'abc123-document-id'],
+      ['an underscored id', 'doc_1'],
+      ['a long numeric id', '1234567890'],
+    ])('accepts %s', async (_label, documentId) => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { document_id: documentId, status: 'done' },
+        status: 200,
+        headers: {},
+      });
+
+      await expect(
+        client.getDocumentStatus({ documentId, documentKey: 'key-abc' })
+      ).resolves.toMatchObject({ status: 'done' });
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({ url: `/v2/document/${documentId}` })
+      );
+    });
+  });
+
   describe('getDocumentStatus()', () => {
     it('should return document status', async () => {
       mockAxiosInstance.request.mockResolvedValue({

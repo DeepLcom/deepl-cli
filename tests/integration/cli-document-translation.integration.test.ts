@@ -874,6 +874,39 @@ describe('Document Translation Integration', () => {
     });
   });
 
+  describe('Service-level: a hostile document_id in the upload response', () => {
+    it('aborts the workflow, issues no follow-up request, and writes no output', async () => {
+      const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
+      const service = new DocumentTranslationService(client);
+
+      const inputPath = path.join(testDir, 'input-traversal.pdf');
+      const outputPath = path.join(testDir, 'output-traversal.pdf');
+      fs.writeFileSync(inputPath, Buffer.from('%PDF-1.4 test content'));
+
+      const uploadScope = nock(FREE_API_URL).post('/v2/document').reply(200, {
+        document_id: '../../v3/glossaries%3fpwned=1',
+        document_key: 'kt1',
+      });
+
+      // The route the traversal collapses onto. Left unmatched deliberately:
+      // nock rejects an unmatched request, so this interceptor existing and
+      // staying pending is what proves the request was never issued.
+      const traversedScope = nock(FREE_API_URL)
+        .post('/v3/glossaries%3fpwned=1')
+        .reply(200, { document_id: 'x', status: 'done' });
+
+      await expect(
+        service.translateDocument(inputPath, outputPath, { targetLang: 'de' })
+      ).rejects.toThrow(/Unexpected API response: document_id/);
+
+      expect(uploadScope.isDone()).toBe(true);
+      expect(traversedScope.isDone()).toBe(false);
+      expect(fs.existsSync(outputPath)).toBe(false);
+      nock.cleanAll();
+    });
+  });
+
   describe('Service-level: abort signal support', () => {
     it('should cancel translation when abort signal fires', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
