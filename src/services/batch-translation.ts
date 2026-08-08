@@ -18,6 +18,8 @@ import {
   preserveCodeBlocks,
   preserveVariables,
   restorePlaceholders,
+  unresolvedPlaceholders,
+  unresolvedPlaceholderMessage,
 } from '../utils/text-preservation.js';
 import { TranslationOptions } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
@@ -347,17 +349,23 @@ export class BatchTranslationService {
         for (let i = 0; i < batch.length; i++) {
           const entry = batch[i]!;
           const result = results[i];
-          if (!result) {
-            failed.push({
-              file: entry.file,
-              error: 'No translation returned for this file',
-            });
+          // A batch run fails the one file rather than the whole request, so an
+          // unusable translation is reported here rather than thrown.
+          const rejectFile = (error: string): void => {
+            failed.push({ file: entry.file, error });
             completed++;
-            onProgress?.({
-              completed,
-              total: totalFiles,
-              current: entry.file,
-            });
+            onProgress?.({ completed, total: totalFiles, current: entry.file });
+          };
+          if (!result) {
+            rejectFile('No translation returned for this file');
+            continue;
+          }
+          const unresolved = unresolvedPlaceholders(
+            result.text,
+            entry.preservationMap
+          );
+          if (unresolved.length > 0) {
+            rejectFile(unresolvedPlaceholderMessage(unresolved));
             continue;
           }
           const translatedText = restorePlaceholders(

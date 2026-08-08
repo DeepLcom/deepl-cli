@@ -76,6 +76,41 @@ describe('FileTranslation Integration', () => {
       expect(output).toBe('Hola mundo');
     });
 
+    it('should write no file when the endpoint alters a placeholder token', async () => {
+      const inputPath = path.join(testDir, 'greeting.txt');
+      const outputPath = path.join(testDir, 'greeting.de.txt');
+      fs.writeFileSync(inputPath, 'Welcome back, {username}!');
+
+      let sent = '';
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          sent = String(body['text']);
+          return true;
+        })
+        .reply(200, () => ({
+          translations: [
+            {
+              // Re-casing and re-spacing an unrecognised token is ordinary MT
+              // behaviour; the CLI must not restore around it silently.
+              text: `[de] ${sent.replace(/__VAR_(\d+)__/g, '__ Var_$1 __')}`,
+              detected_source_language: 'EN',
+            },
+          ],
+        }));
+
+      expect.assertions(4);
+      try {
+        await service.translateFile(inputPath, outputPath, {
+          targetLang: 'de',
+        });
+      } catch (error) {
+        expect((error as { exitCode?: number }).exitCode).toBe(5);
+        expect((error as Error).message).toContain('{username}');
+      }
+      expect(sent).toBe('Welcome back, __VAR_0__!');
+      expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
     it('should translate a .md file via API', async () => {
       const inputPath = path.join(testDir, 'readme.md');
       const outputPath = path.join(testDir, 'readme-de.md');

@@ -3368,6 +3368,8 @@ Remediation: run `deepl usage` to see remaining characters, or upgrade the plan 
 
 Connection-layer failure or transient server outage. Covers TCP errors (`ECONNREFUSED`, `ENOTFOUND`, `ECONNRESET`, `ETIMEDOUT`, socket hang up), timeouts, proxy misconfigurations, and HTTP 503 responses. Also emitted for malformed or empty API responses thrown from `src/api/translation-client.ts` and `src/api/write-client.ts`, and from document/structured-file translation when the polling response is unparseable.
 
+A response that came back without the placeholder tokens the CLI substituted for your variables counts as malformed here too: `translate` names the variables it lost (`{username}`, `%s`) and writes nothing rather than leaving its own internal tokens in your text. A directory run fails only the affected files and reports each one in the summary, so its exit code follows the usual batch mapping (`1` when nothing translated, `12` when some did).
+
 Remediation: check connectivity and `HTTPS_PROXY` / `HTTP_PROXY` env vars, then retry.
 
 #### 6 — InvalidInput

@@ -31,6 +31,7 @@ import {
   preserveCodeBlocks,
   preserveVariables,
   restorePlaceholders,
+  assertPlaceholdersSurvived,
 } from '../utils/text-preservation.js';
 
 export { MULTI_TARGET_CONCURRENCY };
@@ -166,6 +167,7 @@ export class TranslationService {
       const cachedResult = this.cache?.get(cacheKey, isTranslationResult);
       if (cachedResult) {
         Logger.verbose('[verbose] Cache hit');
+        assertPlaceholdersSurvived(cachedResult.text, preservationMap);
         return {
           ...cachedResult,
           text: restorePlaceholders(cachedResult.text, preservationMap),
@@ -183,6 +185,10 @@ export class TranslationService {
     );
     const elapsed = Date.now() - startTime;
     Logger.verbose(`[verbose] API response time: ${elapsed}ms`);
+
+    // Checked before the cache write: a response that lost a placeholder must
+    // not become a cache entry that reproduces the same output offline.
+    assertPlaceholdersSurvived(result.text, preservationMap);
 
     // Store in cache
     if (shouldUseCache) {

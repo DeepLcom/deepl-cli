@@ -3,6 +3,8 @@
  * Preserves code blocks and variables during translation by replacing them with placeholders
  */
 
+import { NetworkError } from './errors.js';
+
 export function preserveCodeBlocks(
   text: string,
   preservationMap: Map<string, string>
@@ -52,6 +54,66 @@ export function preserveVariables(
   }
 
   return processed;
+}
+
+/**
+ * The originals whose placeholder tokens are absent from `text`, in the order
+ * they were preserved.
+ *
+ * `restorePlaceholders` cannot report this itself: it replaces what it finds and
+ * has no way to say what it did not. An engine that re-cases or re-spaces a
+ * token it does not recognise (`__VAR_0__` → `__ Var_0 __`) leaves the CLI's own
+ * scaffolding in the output, so an empty result is the post-condition every
+ * caller without a validator needs to check.
+ */
+export function unresolvedPlaceholders(
+  text: string,
+  preservationMap: Map<string, string>
+): string[] {
+  const missing: string[] = [];
+  for (const [placeholder, original] of preservationMap.entries()) {
+    if (!text.includes(placeholder)) {
+      missing.push(original);
+    }
+  }
+  return missing;
+}
+
+/**
+ * Names what was lost, for a caller that reports rather than throws.
+ */
+export function unresolvedPlaceholderMessage(unresolved: string[]): string {
+  const one = unresolved.length === 1;
+  return (
+    `The translation lost ${one ? 'the placeholder' : 'the placeholders'} ${unresolved.join(', ')}. ` +
+    `The endpoint returned the ${one ? 'token' : 'tokens'} the CLI substituted for ` +
+    `${one ? 'it' : 'them'} in an altered form, so the text would carry the CLI's ` +
+    'internal placeholders instead. Nothing was written.'
+  );
+}
+
+const UNRESOLVED_PLACEHOLDER_SUGGESTION =
+  'Retry; if it repeats, check which endpoint this run used (--api-url, or ' +
+  'api.baseUrl in your config) — it is rewriting the placeholder tokens rather ' +
+  'than returning them unchanged.';
+
+/**
+ * Throws when the engine's output no longer carries every token that was
+ * substituted into the request. Callers with their own validator — sync, which
+ * withholds the key and offers `validation.check_placeholders: false` as an
+ * escape hatch — do not use this.
+ */
+export function assertPlaceholdersSurvived(
+  text: string,
+  preservationMap: Map<string, string>
+): void {
+  const unresolved = unresolvedPlaceholders(text, preservationMap);
+  if (unresolved.length > 0) {
+    throw new NetworkError(
+      unresolvedPlaceholderMessage(unresolved),
+      UNRESOLVED_PLACEHOLDER_SUGGESTION
+    );
+  }
 }
 
 export function restorePlaceholders(
