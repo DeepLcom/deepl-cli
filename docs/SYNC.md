@@ -436,7 +436,7 @@ Optional integration with a translation management system (TMS) for collaborativ
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `enabled` | `boolean` | Yes | -- | Enable TMS integration |
-| `server` | `string` | Yes | -- | TMS server URL (HTTPS required except for `localhost`/`127.0.0.1`). When the credential comes from the environment, the hostname must also be approved -- see [TMS destination trust](#tms-destination-trust) |
+| `server` | `string` | Yes | -- | TMS server URL. HTTPS required, waived only for `http://localhost` and `http://127.0.0.1` -- write a local TMS as `http://localhost`, which reaches it whether it is bound to `127.0.0.1`, to `::1` or to every interface; `http://[::1]` and other loopback spellings are refused. When the credential comes from the environment, the hostname must also be approved -- see [TMS destination trust](#tms-destination-trust) |
 | `project_id` | `string` | Yes | -- | TMS project identifier |
 | `api_key` | `string` | No | -- | API key for TMS authentication (prefer `TMS_API_KEY` env var) |
 | `token` | `string` | No | -- | Bearer token for TMS authentication (prefer `TMS_TOKEN` env var) |

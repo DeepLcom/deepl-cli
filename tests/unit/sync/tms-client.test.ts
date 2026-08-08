@@ -161,6 +161,65 @@ describe('TmsClient HTTPS validation', () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await expect(client.pushKey('k', 'de', 'v')).resolves.toBeUndefined();
   });
+
+  // Only those two spellings are waived, so a local TMS named any other way is
+  // refused correctly but has to be told how to proceed. `http://localhost`
+  // reaches a server bound to ::1 or to 0.0.0.0 as well as one bound to
+  // 127.0.0.1, which is why it is the whole of the remedy.
+  it('names the accepted spellings when refusing another loopback address', async () => {
+    const client = new TmsClient({
+      serverUrl: 'http://[::1]:3000',
+      projectId: 'proj-1',
+      apiKey: 'key',
+    });
+
+    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(ConfigError);
+    const err = await client.pushKey('k', 'de', 'v').catch((e: unknown) => e);
+    expect((err as ConfigError).message).toContain(
+      'TMS server URL must use HTTPS'
+    );
+    expect((err as ConfigError).message).toContain('http://[::1]:3000');
+    expect((err as ConfigError).suggestion).toContain('http://localhost');
+    expect((err as ConfigError).suggestion).toContain('127.0.0.1');
+  });
+
+  it('says the same for a host that is not loopback at all', async () => {
+    const client = new TmsClient({
+      serverUrl: 'http://tms.internal:3000',
+      projectId: 'proj-1',
+      apiKey: 'key',
+    });
+
+    const err = await client.pushKey('k', 'de', 'v').catch((e: unknown) => e);
+    expect((err as ConfigError).message).toContain('http://tms.internal:3000');
+    expect((err as ConfigError).suggestion).toContain('http://localhost');
+  });
+
+  // Over-rejection guard: the waiver is not widened by the message change. The
+  // URL parser normalizes these three to 127.0.0.1, so they were always accepted.
+  it.each([
+    'http://0x7f.0.0.1:3000',
+    'http://127.1:3000',
+    'http://2130706433:3000',
+  ])('still accepts %s, which normalizes to 127.0.0.1', async (serverUrl) => {
+    const client = new TmsClient({
+      serverUrl,
+      projectId: 'proj-1',
+      apiKey: 'key',
+    });
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
+    await expect(client.pushKey('k', 'de', 'v')).resolves.toBeUndefined();
+  });
+
+  it('still refuses http://0.0.0.0, which is not a loopback address', async () => {
+    const client = new TmsClient({
+      serverUrl: 'http://0.0.0.0:3000',
+      projectId: 'proj-1',
+      apiKey: 'key',
+    });
+
+    await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow(ConfigError);
+  });
 });
 
 describe('TmsClient URL construction', () => {

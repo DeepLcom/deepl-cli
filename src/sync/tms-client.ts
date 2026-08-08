@@ -267,10 +267,22 @@ export class TmsClient {
       );
     }
 
+    // Deliberately the same two spellings the API base URL waives
+    // (utils/validate-url.ts), and deliberately not widened to the rest of
+    // 127.0.0.0/8 or to [::1]: `http://localhost` reaches a server bound to
+    // ::1, to 0.0.0.0 or to 127.0.0.1 alike, so naming it in the refusal covers
+    // every local TMS without making this rule more permissive than that one.
+    // The URL parser normalizes 0x7f.0.0.1, 127.1 and 2130706433 to 127.0.0.1,
+    // so those spellings are already waived here.
     const isLocalhost =
       parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1';
     if (parsedUrl.protocol !== 'https:' && !isLocalhost) {
-      throw new ConfigError('TMS server URL must use HTTPS');
+      throw new ConfigError(
+        `TMS server URL must use HTTPS: ${sanitizeUrl(this.options.serverUrl)}`,
+        'Plain http:// is waived only for http://localhost and http://127.0.0.1. ' +
+          'Reach a local TMS as http://localhost — that resolves to this machine ' +
+          'whether the server is bound to 127.0.0.1, to ::1 or to every interface.'
+      );
     }
     if (parsedUrl.search || parsedUrl.hash) {
       throw new ConfigError(
