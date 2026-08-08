@@ -88,6 +88,14 @@ function isTranslation(path: readonly string[]): boolean {
 }
 
 /**
+ * The top-level `stats` object, matched on the path so an i18n key or source
+ * file of that name is not compacted with it.
+ */
+function isStats(path: readonly string[]): boolean {
+  return path.length === 1 && path[0] === 'stats';
+}
+
+/**
  * Own, enumerable, serializable members in key order. Enumerated as pairs rather
  * than read back by key: an i18n key named `__proto__` is a real own property,
  * and indexing a plain object for it would reach the prototype instead.
@@ -118,7 +126,12 @@ function serializeInline(value: unknown): string {
 // one node per translation per key, and a fresh array at each would allocate
 // once for every one of them.
 function serializeNode(value: unknown, indent: string, path: string[]): string {
-  if (isTranslation(path) || value === null || typeof value !== 'object') {
+  if (
+    isTranslation(path) ||
+    isStats(path) ||
+    value === null ||
+    typeof value !== 'object'
+  ) {
     return serializeInline(value);
   }
   const childIndent = `${indent}  `;
@@ -146,13 +159,22 @@ function serializeNode(value: unknown, indent: string, path: string[]): string {
 /**
  * The canonical on-disk form of a lock file, including its trailing newline.
  *
- * Every container is expanded one key per line, but each translation is emitted
- * on a single line. A translation is only meaningful whole — its hash, timestamp
- * and review status all describe one act of translating — and one field per line
- * makes those fields independently mergeable units, so `git merge` can combine
- * one side's hash with the other's review status and produce a translation that
- * existed on neither branch, with no conflict raised. One line per translation
- * makes the smallest region git can produce a whole entry.
+ * Every container is expanded one key per line, but each translation and the
+ * `stats` object are emitted on a single line. A translation is only meaningful
+ * whole — its hash, timestamp and review status all describe one act of
+ * translating — and one field per line makes those fields independently
+ * mergeable units, so `git merge` can combine one side's hash with the other's
+ * review status and produce a translation that existed on neither branch, with
+ * no conflict raised. One line per translation makes the smallest region git can
+ * produce a whole entry.
+ *
+ * `stats` is compacted for the neighbouring reason. Its counts and `last_sync`
+ * describe one sync run, and it sits two context lines below `generated_at`,
+ * which every write also changes — so git joins the two into one conflict
+ * region. Expanded, that region opens inside `stats` and closes outside it,
+ * which is not a member list `sync resolve` can parse, and the resolver falls
+ * back to picking a side by byte length. On one line the region stays a member
+ * list the resolver can merge.
  */
 export function serializeLockFile(lockFile: SyncLockFile): string {
   return `${serializeNode(lockFile, '', [])}\n`;

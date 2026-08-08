@@ -525,6 +525,14 @@ Each translation entry in the lockfile records:
 
 This is a merge-safety property, not a style choice. A translation is only meaningful whole — its hash, timestamp and review status all describe one act of translating. With one field per line, `git merge` treats those fields as independently mergeable units: a branch that changed only `review_status` and a branch that changed only `translated_at` merge **with no conflict at all** into an entry that existed on neither branch, labelling machine output `human_reviewed` while carrying a timestamp from the other branch. One line per entry makes the smallest region git can produce a whole entry, so such an overlap conflicts and reaches [`deepl sync resolve`](#deepl-sync-resolve) instead of being silently combined. Keys are sorted, so the diff for a changed translation is a single line.
 
+The `stats` block is written on one line for a neighbouring reason:
+
+```json
+"stats": {"last_sync": "2026-04-20T08:12:03Z", "total_keys": 412, "total_translations": 1236}
+```
+
+`stats` sits two lines below `generated_at`, and every write changes both, so git joins the two into a single conflict region. Expanded over five lines, that region opens inside `stats` and closes outside it — not a member list any parser can read, so `sync resolve` could not merge it and fell back to picking a side by byte length, warning about possible data loss on **every** ordinary lockfile merge. On one line the region stays a member list the resolver merges normally, and a `length-heuristic` warning again means what it says.
+
 Upgrading from an earlier release reformats every existing lockfile on the next write, which produces one large diff. It is a formatting change only — no entry's content changes.
 
 ### Multiple Buckets

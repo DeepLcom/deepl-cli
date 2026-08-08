@@ -141,6 +141,37 @@ describe('serializeLockFile()', () => {
     expect(line).toContain('"review_status": "machine_translated"');
   });
 
+  // `stats` sits two context lines below `generated_at`, and every write changes
+  // both, so git joins them into one conflict region. Expanded over five lines
+  // that region starts inside `stats` and ends outside it, which is not a member
+  // list any parser can read — `sync resolve` cannot merge it and falls back to
+  // picking a side by byte length. On one line the region stays a member list.
+  it('should put stats on one line', () => {
+    const lines = serializeLockFile(lockWith({ de }))
+      .split('\n')
+      .filter((line) => /^\s*"stats":/.test(line));
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.trimEnd().replace(/,$/, '')).toMatch(/\}$/);
+  });
+
+  it('should keep every field of stats on that one line', () => {
+    const lockFile = lockWith({ de });
+    lockFile.stats = {
+      total_keys: 7,
+      total_translations: 9,
+      last_sync: '2026-01-03T00:00:00.000Z',
+    };
+
+    const [line] = serializeLockFile(lockFile)
+      .split('\n')
+      .filter((l) => /^\s*"stats":/.test(l));
+
+    expect(line).toContain('"total_keys": 7');
+    expect(line).toContain('"total_translations": 9');
+    expect(line).toContain('"last_sync": "2026-01-03T00:00:00.000Z"');
+  });
+
   it('should still expand the containers above a translation', () => {
     const serialized = serializeLockFile(lockWith({ de }));
 
