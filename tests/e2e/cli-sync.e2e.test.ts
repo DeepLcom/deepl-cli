@@ -282,6 +282,46 @@ describe('CLI Sync E2E', () => {
     });
   });
 
+  // Recovering from a crash means re-running sync, and the startup sweep used
+  // to delete the crashed run's backup on age before that run's own
+  // COPYFILE_EXCL guard could protect it.
+  describe('recovery run over a backup left by a crashed run', () => {
+    it('keeps a stale backup whose target has diverged and says so', () => {
+      writeSyncConfig(testFiles.path, ['de']);
+      const dir = path.join(testFiles.path, 'locales');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, 'en.json'),
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
+      // What a `kill -9` mid-sync leaves behind: machine output in the target,
+      // the only copy of the human translations in the backup, no lockfile.
+      fs.writeFileSync(
+        path.join(dir, 'de.json'),
+        JSON.stringify({ greeting: 'machine output' }, null, 2) + '\n'
+      );
+      const bakPath = path.join(dir, 'de.json.deepl.bak');
+      fs.writeFileSync(
+        bakPath,
+        JSON.stringify({ greeting: 'Guten Tag' }, null, 2) + '\n'
+      );
+      const anHourAgo = new Date(Date.now() - 60 * 60_000);
+      fs.utimesSync(bakPath, anHourAgo, anHourAgo);
+
+      const result = runSyncExpectError('--yes');
+
+      expect(result.status).toBe(0);
+      expect(result.output).toContain('de.json.deepl.bak');
+      expect(result.output).toMatch(/from a run that did not finish/);
+      expect(fs.existsSync(bakPath)).toBe(true);
+      const parsed = JSON.parse(fs.readFileSync(bakPath, 'utf-8')) as Record<
+        string,
+        string
+      >;
+      expect(parsed['greeting']).toBe('Guten Tag');
+    });
+  });
+
   // A key colliding with an Object.prototype member reaches the insertion path
   // the second time round: the target file already exists, so a key the source
   // has just gained has to be added to it.

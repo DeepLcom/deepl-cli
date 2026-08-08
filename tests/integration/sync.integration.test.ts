@@ -849,6 +849,13 @@ buckets:
       const staleBak = path.join(tmpDir, 'locales', 'de.json.deepl.bak');
       fs.mkdirSync(path.dirname(staleBak), { recursive: true });
       fs.writeFileSync(staleBak, 'orphan from prior crash', 'utf-8');
+      // The target already holds the backup's content, so the backup is the
+      // litter this sweep exists to remove.
+      fs.writeFileSync(
+        path.join(tmpDir, 'locales', 'de.json'),
+        'orphan from prior crash',
+        'utf-8'
+      );
       // Backdate 10 minutes past the 5-minute default threshold.
       const tenMinAgo = new Date(Date.now() - 10 * 60_000);
       fs.utimesSync(staleBak, tenMinAgo, tenMinAgo);
@@ -879,6 +886,7 @@ sync:
       const staleBak = path.join(tmpDir, 'locales', 'de.json.deepl.bak');
       fs.mkdirSync(path.dirname(staleBak), { recursive: true });
       fs.writeFileSync(staleBak, 'orphan', 'utf-8');
+      fs.writeFileSync(path.join(tmpDir, 'locales', 'de.json'), 'orphan');
       // 2 minutes old — stale under the 60-second override, fresh under the default.
       const twoMinAgo = new Date(Date.now() - 2 * 60_000);
       fs.utimesSync(staleBak, twoMinAgo, twoMinAgo);
@@ -887,6 +895,44 @@ sync:
       await syncService.sync(config);
 
       expect(fs.existsSync(staleBak)).toBe(false);
+    });
+
+    // A crashed run leaves the target holding machine output and the backup
+    // holding the only copy of the human translations. Re-running sync is the
+    // natural recovery action, and the startup sweep used to delete that
+    // backup on age before the run's own COPYFILE_EXCL guard could protect it.
+    it('keeps a backup from a crashed run however old it is when the target has diverged', async () => {
+      writeYamlConfig(tmpDir, BASIC_CONFIG_YAML);
+      writeSourceFile(tmpDir, 'locales/en.json', '{"greeting":"Hello"}\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/de.json',
+        '{"greeting":"machine output"}\n'
+      );
+      const bakPath = path.join(tmpDir, 'locales', 'de.json.deepl.bak');
+      fs.writeFileSync(bakPath, '{"greeting":"Guten Tag"}\n', 'utf-8');
+      const anHourAgo = new Date(Date.now() - 60 * 60_000);
+      fs.utimesSync(bakPath, anHourAgo, anHourAgo);
+
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+          ],
+        });
+
+      const config = await loadSyncConfig(tmpDir);
+      await syncService.sync(config);
+
+      expect(fs.existsSync(bakPath)).toBe(true);
+      expect(fs.readFileSync(bakPath, 'utf-8')).toBe(
+        '{"greeting":"Guten Tag"}\n'
+      );
     });
 
     it('leaves fresh .bak files alone', async () => {

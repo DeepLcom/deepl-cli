@@ -294,6 +294,9 @@ describe('watch mode reliability', () => {
       const staleBak = path.join(tmpDir, 'locales', 'de.json.deepl.bak');
       fs.mkdirSync(path.dirname(staleBak), { recursive: true });
       fs.writeFileSync(staleBak, 'stale', 'utf-8');
+      // The target holds the same bytes, so the backup is redundant — a
+      // backup whose target has diverged is kept whatever its age.
+      fs.writeFileSync(path.join(tmpDir, 'locales', 'de.json'), 'stale');
       // backdate the mtime by 10 minutes
       const tenMinAgo = new Date(Date.now() - 10 * 60_000);
       fs.utimesSync(staleBak, tenMinAgo, tenMinAgo);

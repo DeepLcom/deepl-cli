@@ -70,8 +70,20 @@ export function bucketSweepRoots(
 
 /**
  * Walk `projectRoot` breadth-first and remove `.deepl.bak` files whose mtime
- * is older than `maxAgeMs`. Nothing is ever written: the sweep only unlinks,
- * and files with any other suffix (including plain `.bak`) are left untouched.
+ * is older than `maxAgeMs` **and** whose content the file beside them already
+ * holds. Nothing is ever written: the sweep only unlinks, and files with any
+ * other suffix (including plain `.bak`) are left untouched.
+ *
+ * Age alone is not a safe test. A run that reaches its end unlinks its own
+ * backups, so a backup still on disk is from a run that did not — and there it
+ * holds the only surviving copy of whatever that run had already overwritten.
+ * Deleting it on age made the natural recovery action (re-run `deepl sync`)
+ * destroy the user's translations at exit 0 once the crash was more than
+ * `bak_sweep_max_age_seconds` old, because the recovery run's
+ * `COPYFILE_EXCL` guard has nothing left to collide with. A backup whose
+ * target holds the same bytes is the litter this sweep exists for; one whose
+ * target does not is kept indefinitely and reported. Retention is bounded at
+ * one file per target, since the backup name is derived from the target's.
  *
  * It used to restore a zero-length sibling from its backup first. Because
  * every target write goes through `atomicWriteFile`, which renames a
@@ -105,15 +117,58 @@ export async function sweepStaleBackups(
     }
     roots = [projectRoot];
   }
+  const kept: string[] = [];
   for (const root of roots) {
-    await sweepDir(root, visited, threshold);
+    await sweepDir(root, visited, threshold, kept);
+  }
+  if (kept.length > 0) {
+    Logger.warn(keptBackupsWarning(projectRoot, kept));
+  }
+}
+
+function keptBackupsWarning(projectRoot: string, kept: string[]): string {
+  const rel = kept.map((p) => path.relative(projectRoot, p)).sort();
+  const shown = rel.slice(0, 3);
+  const more = rel.length > shown.length ? ', …' : '';
+  const one = rel.length === 1;
+  return (
+    `Keeping ${rel.length} leftover backup ${one ? 'file' : 'files'} whose content is not in the ` +
+    `${one ? 'file' : 'files'} beside ${one ? 'it' : 'them'}: ${shown.join(', ')}${more}. ` +
+    `${one ? 'It is' : 'They are'} from a run that did not finish, so ${one ? 'it' : 'they'} may hold ` +
+    `the only ${one ? 'copy' : 'copies'} of translations that run overwrote. Compare ` +
+    `${one ? 'it' : 'each'} with the file it backs up before removing it; ` +
+    `${one ? 'it is' : 'they are'} not swept while the two differ.`
+  );
+}
+
+/**
+ * True when a backup holds bytes its target no longer has, which makes it the
+ * last copy of that content. Errors count as unique: a target that cannot be
+ * read cannot be shown to hold the backup's content.
+ */
+async function holdsUnsavedContent(
+  bakPath: string,
+  bakSize: number
+): Promise<boolean> {
+  const targetPath = bakPath.slice(0, -BACKUP_SUFFIX.length);
+  try {
+    const targetStat = await fs.promises.stat(targetPath);
+    if (!targetStat.isFile() || targetStat.size !== bakSize) return true;
+    const [bakContent, targetContent] = await Promise.all([
+      fs.promises.readFile(bakPath),
+      fs.promises.readFile(targetPath),
+    ]);
+    return !bakContent.equals(targetContent);
+  } catch {
+    return true;
   }
 }
 
 async function sweepDir(
   dir: string,
   visited: Set<string>,
-  threshold: number
+  threshold: number,
+  kept: string[]
 ): Promise<void> {
   const real = (() => {
     try {
@@ -134,13 +189,17 @@ async function sweepDir(
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules' || entry.name === '.git') continue;
-      await sweepDir(full, visited, threshold);
+      await sweepDir(full, visited, threshold, kept);
       continue;
     }
     if (!entry.isFile() || !entry.name.endsWith(BACKUP_SUFFIX)) continue;
     try {
       const stat = await fs.promises.stat(full);
       if (stat.mtimeMs >= threshold) continue;
+      if (await holdsUnsavedContent(full, stat.size)) {
+        kept.push(full);
+        continue;
+      }
       try {
         await fs.promises.unlink(full);
       } catch {

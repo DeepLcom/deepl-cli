@@ -839,7 +839,18 @@ deepl sync --watch --dry-run
 
 **Event coalescing.** Only one sync runs at a time. If more file-change events arrive while a sync is in flight, they are coalesced into a **single** follow-up run that starts after the current sync completes — no matter how many bursts of edits fired in between. Earlier releases silently dropped these in-flight events, which could leave the final edit of a burst unsynced until the user triggered another change manually.
 
-**Stale `.deepl.bak` sweep.** On startup, the watcher sweeps for `.deepl.bak` siblings older than 5 minutes (files with any other suffix, including plain `.bak`, are never touched). The sweep only ever deletes: a stale backup is removed outright, and no target file is ever created or overwritten from one. Target writes go through an atomic write-then-rename, so a watcher killed mid-translation cannot leave a truncated or zero-length target that would need restoring. The sweep is scoped to the directories implied by each bucket's `include` globs; a glob that begins with a wildcard (`**/en.json`, `*.json`) has no literal directory prefix to scope to and is skipped, so a bucket configured that way may accumulate `.deepl.bak` files. Run with `--verbose` to see when a glob is skipped for this reason.
+**Stale `.deepl.bak` sweep.** On startup, the watcher sweeps for `.deepl.bak` siblings older than 5 minutes (files with any other suffix, including plain `.bak`, are never touched). The sweep only ever deletes: no target file is ever created or overwritten from a backup. Target writes go through an atomic write-then-rename, so a watcher killed mid-translation cannot leave a truncated or zero-length target that would need restoring. The sweep is scoped to the directories implied by each bucket's `include` globs; a glob that begins with a wildcard (`**/en.json`, `*.json`) has no literal directory prefix to scope to and is skipped, so a bucket configured that way may accumulate `.deepl.bak` files. Run with `--verbose` to see when a glob is skipped for this reason.
+
+**Age is not the only condition.** A stale backup is deleted only when the file beside it already holds the same bytes. A run that reaches its end unlinks its own backups, so a backup still on disk is from a run that did not — and there it holds the only surviving copy of whatever that run had already overwritten. One whose target has diverged is kept however old it is, and reported once per sweep:
+
+```
+Keeping 1 leftover backup file whose content is not in the file beside it:
+locales/de.json.deepl.bak. It is from a run that did not finish, so it may
+hold the only copy of translations that run overwrote. Compare it with the
+file it backs up before removing it; it is not swept while the two differ.
+```
+
+Retention is bounded at one file per target, because the backup's name is derived from the target's. `bak_sweep_max_age_seconds` still sets how long a redundant backup is left on disk; it no longer sets a deadline for recovering a crashed run.
 
 **Scope.** Watched paths are the `buckets.*.include` globs from `.deepl-sync.yaml`, plus `.deepl-sync.yaml` itself. When `.deepl-sync.yaml` changes, the config is reloaded from disk before the next sync cycle runs — YAML values like bucket definitions, `formality`, `glossary`, and `model_type` are picked up without restarting the watcher. Sending `SIGHUP` (`kill -HUP <pid>`) also force-reloads the config immediately, without waiting for a file-change event. Watch mode does not cross-talk with the separate `deepl watch` command (which is for translating individual plain-text files).
 

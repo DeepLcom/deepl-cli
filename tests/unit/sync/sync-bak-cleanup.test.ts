@@ -4,8 +4,10 @@ import * as path from 'path';
 import {
   sweepStaleBackups,
   bucketSweepRoots,
+  BACKUP_SUFFIX,
   DEFAULT_BAK_SWEEP_MAX_AGE_SECONDS,
 } from '../../../src/sync/sync-bak-cleanup';
+import { Logger } from '../../../src/utils/logger';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // bucketSweepRoots()
@@ -111,9 +113,11 @@ describe('sweepStaleBackups() with bucket config', () => {
     fs.mkdirSync(localesDir, { recursive: true });
     fs.mkdirSync(outsideDir, { recursive: true });
 
-    // Place a stale .deepl.bak in locales (should be swept)
+    // Place a stale .deepl.bak in locales (should be swept). Its target holds
+    // the same bytes, which is what makes the backup redundant and sweepable.
     const staleBak = path.join(localesDir, 'de.json.deepl.bak');
     fs.writeFileSync(staleBak, 'stale', 'utf-8');
+    fs.writeFileSync(path.join(localesDir, 'de.json'), 'stale', 'utf-8');
     const tenMinAgo = new Date(Date.now() - 10 * 60_000);
     fs.utimesSync(staleBak, tenMinAgo, tenMinAgo);
 
@@ -141,6 +145,7 @@ describe('sweepStaleBackups() with bucket config', () => {
 
     const staleBak = path.join(localesDir, 'fr.json.deepl.bak');
     fs.writeFileSync(staleBak, 'stale', 'utf-8');
+    fs.writeFileSync(path.join(localesDir, 'fr.json'), 'stale', 'utf-8');
     const tenMinAgo = new Date(Date.now() - 10 * 60_000);
     fs.utimesSync(staleBak, tenMinAgo, tenMinAgo);
 
@@ -198,7 +203,9 @@ describe('sweepStaleBackups() with bucket config', () => {
     });
 
     expect(fs.existsSync(sibling)).toBe(false);
-    expect(fs.existsSync(bakFile)).toBe(false);
+    // With no target to compare against, the backup is the only copy of its
+    // content, so it is kept rather than swept.
+    expect(fs.existsSync(bakFile)).toBe(true);
   });
 
   // The sweep used to overwrite any zero-length file from its `.deepl.bak`
@@ -207,7 +214,7 @@ describe('sweepStaleBackups() with bucket config', () => {
   // temp file into place and so can never leave a zero-length target, which
   // left the restore branch with no legitimate trigger and made it a way for a
   // hostile checkout to write chosen bytes into an empty tracked file.
-  it('leaves a zero-length sibling alone while removing the stale .deepl.bak', async () => {
+  it('leaves a zero-length sibling alone rather than restoring it from the .deepl.bak', async () => {
     const localesDir = path.join(tmpDir, 'locales');
     fs.mkdirSync(localesDir, { recursive: true });
 
@@ -223,7 +230,7 @@ describe('sweepStaleBackups() with bucket config', () => {
     });
 
     expect(fs.readFileSync(sibling, 'utf-8')).toBe('');
-    expect(fs.existsSync(bakFile)).toBe(false);
+    expect(fs.existsSync(bakFile)).toBe(true);
   });
 
   it('does not write attacker bytes into an unrelated empty source file', async () => {
@@ -267,7 +274,7 @@ describe('sweepStaleBackups() with bucket config', () => {
     expect(readdirCalls).toHaveLength(0);
   });
 
-  it('leaves a non-empty sibling untouched while removing the stale .deepl.bak', async () => {
+  it('leaves a non-empty sibling untouched when it differs from the stale .deepl.bak', async () => {
     const localesDir = path.join(tmpDir, 'locales');
     fs.mkdirSync(localesDir, { recursive: true });
 
@@ -283,7 +290,7 @@ describe('sweepStaleBackups() with bucket config', () => {
     });
 
     expect(fs.readFileSync(sibling, 'utf-8')).toBe('{"current":"content"}');
-    expect(fs.existsSync(bakFile)).toBe(false);
+    expect(fs.existsSync(bakFile)).toBe(true);
   });
 
   it('readdir call count is O(bucket dirs), not O(project)', async () => {
@@ -328,6 +335,7 @@ describe('sweepStaleBackups() without bucket config (fallback)', () => {
 
     const staleBak = path.join(nested, 'x.json.deepl.bak');
     fs.writeFileSync(staleBak, 'stale', 'utf-8');
+    fs.writeFileSync(path.join(nested, 'x.json'), 'stale', 'utf-8');
     const tenMinAgo = new Date(Date.now() - 10 * 60_000);
     fs.utimesSync(staleBak, tenMinAgo, tenMinAgo);
 
@@ -344,6 +352,113 @@ describe('sweepStaleBackups() without bucket config (fallback)', () => {
 
     await sweepStaleBackups(tmpDir, 5 * 60_000);
     expect(fs.existsSync(freshBak)).toBe(true);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// sweepStaleBackups() — retention of content the target no longer holds
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('sweepStaleBackups() retention', () => {
+  let tmpDir: string;
+  let localesDir: string;
+  const buckets = { json: { include: ['locales/**/*.json'] } };
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-bak-keep-'));
+    localesDir = path.join(tmpDir, 'locales');
+    fs.mkdirSync(localesDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function writeStaleBak(name: string, content: string): string {
+    const bakPath = path.join(localesDir, `${name}${BACKUP_SUFFIX}`);
+    fs.writeFileSync(bakPath, content, 'utf-8');
+    const tenMinAgo = new Date(Date.now() - 10 * 60_000);
+    fs.utimesSync(bakPath, tenMinAgo, tenMinAgo);
+    return bakPath;
+  }
+
+  it('keeps a stale backup whose target holds different content', async () => {
+    const bakPath = writeStaleBak('de.json', '{"greeting":"Guten Tag"}');
+    fs.writeFileSync(
+      path.join(localesDir, 'de.json'),
+      '{"greeting":"machine output"}',
+      'utf-8'
+    );
+
+    await sweepStaleBackups(tmpDir, 5 * 60_000, buckets);
+
+    expect(fs.existsSync(bakPath)).toBe(true);
+    expect(fs.readFileSync(bakPath, 'utf-8')).toBe('{"greeting":"Guten Tag"}');
+  });
+
+  it('keeps a stale backup whose target is the same size but different bytes', async () => {
+    const bakPath = writeStaleBak('fr.json', '{"a":"Bonjour!"}');
+    fs.writeFileSync(
+      path.join(localesDir, 'fr.json'),
+      '{"a":"Salut!!!"}'.padEnd('{"a":"Bonjour!"}'.length, ' '),
+      'utf-8'
+    );
+
+    await sweepStaleBackups(tmpDir, 5 * 60_000, buckets);
+
+    expect(fs.existsSync(bakPath)).toBe(true);
+  });
+
+  it('keeps a stale backup whose target no longer exists', async () => {
+    const bakPath = writeStaleBak('it.json', '{"greeting":"Buongiorno"}');
+
+    await sweepStaleBackups(tmpDir, 5 * 60_000, buckets);
+
+    expect(fs.existsSync(bakPath)).toBe(true);
+  });
+
+  it('names each kept backup and says what to do about it', async () => {
+    const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+    writeStaleBak('de.json', '{"greeting":"Guten Tag"}');
+    fs.writeFileSync(path.join(localesDir, 'de.json'), 'other', 'utf-8');
+
+    await sweepStaleBackups(tmpDir, 5 * 60_000, buckets);
+
+    const messages = warn.mock.calls.map((c) => String(c[0]));
+    const kept = messages.find((m) => m.includes(`de.json${BACKUP_SUFFIX}`));
+    expect(kept).toBeDefined();
+    expect(kept).toMatch(/did not finish/);
+    expect(kept).toMatch(/only copy/);
+    expect(kept).toMatch(/before removing it/);
+  });
+
+  // Over-rejection guards: a backup the target already holds is litter, and
+  // sweeping it is the reason this function exists.
+  it('removes a stale backup whose target holds identical content', async () => {
+    const bakPath = writeStaleBak('es.json', '{"greeting":"Hola"}');
+    fs.writeFileSync(
+      path.join(localesDir, 'es.json'),
+      '{"greeting":"Hola"}',
+      'utf-8'
+    );
+
+    await sweepStaleBackups(tmpDir, 5 * 60_000, buckets);
+
+    expect(fs.existsSync(bakPath)).toBe(false);
+    expect(fs.readFileSync(path.join(localesDir, 'es.json'), 'utf-8')).toBe(
+      '{"greeting":"Hola"}'
+    );
+  });
+
+  it('says nothing when every stale backup was redundant', async () => {
+    const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+    writeStaleBak('es.json', 'same');
+    fs.writeFileSync(path.join(localesDir, 'es.json'), 'same', 'utf-8');
+
+    await sweepStaleBackups(tmpDir, 5 * 60_000, buckets);
+
+    const messages = warn.mock.calls.map((c) => String(c[0]));
+    expect(messages.some((m) => m.includes(BACKUP_SUFFIX))).toBe(false);
   });
 });
 
