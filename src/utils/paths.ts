@@ -39,6 +39,24 @@ export function realpathOrAncestor(absPath: string): string {
 }
 
 /**
+ * A comparison key for a file path: symlinked ancestors resolved, the final
+ * component left exactly as given.
+ *
+ * Two spellings of one file — the path a user typed and the path a tool such as
+ * git reports — must compare equal, which requires resolving the directories
+ * they reach the file through. The last component is deliberately not resolved:
+ * a symlink that is itself the tracked file is a different file from its
+ * target, and resolving it would make the two stop matching.
+ */
+export function canonicalPathKey(absPath: string): string {
+  const resolved = path.resolve(absPath);
+  return path.join(
+    realpathOrAncestor(path.dirname(resolved)),
+    path.basename(resolved)
+  );
+}
+
+/**
  * Whether `target` is `root` itself or lies beneath it, with both sides
  * resolved through their symlinks first — so a symlink inside `root` that
  * points outside it is not counted as contained.

@@ -18,6 +18,7 @@ import {
 } from '../../services/watch.js';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
+import { canonicalPathKey } from '../../utils/paths.js';
 import {
   applyGlossarySourceLang,
   hasGlossarySelection,
@@ -143,7 +144,7 @@ export class WatchCommand {
       .trim()
       .split('\n')
       .filter((f) => f.length > 0);
-    return new Set(files.map((f) => path.resolve(root, f)));
+    return new Set(files.map((f) => canonicalPathKey(path.resolve(root, f))));
   }
 
   /**

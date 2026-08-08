@@ -13,7 +13,7 @@ import { Language, TranslationOptions } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
 import { errorMessage } from '../utils/error-message.js';
-import { isWithinDirectory } from '../utils/paths.js';
+import { canonicalPathKey, isWithinDirectory } from '../utils/paths.js';
 
 export interface FileTranslationResult {
   targetLang: Language;
@@ -229,10 +229,13 @@ export class WatchService {
       return;
     }
 
-    // Check if file is in the git-staged set
+    // Check if file is in the git-staged set. Both sides are keyed through
+    // their symlinked ancestors: the set comes from git, which reports the
+    // repository's real path, while a watched path is spelled the way the user
+    // gave it.
     if (
       this.options.stagedFiles &&
-      !this.options.stagedFiles.has(path.resolve(filePath))
+      !this.options.stagedFiles.has(canonicalPathKey(filePath))
     ) {
       return;
     }
@@ -358,11 +361,11 @@ export class WatchService {
    * without a word is indistinguishable from the watcher not seeing it.
    */
   private warnOnceAboutSkippedOutput(filePath: string): void {
-    const resolved = path.resolve(filePath);
-    if (this.writtenOutputs.has(resolved) || this.warnedOutputs.has(resolved)) {
+    const key = canonicalPathKey(filePath);
+    if (this.writtenOutputs.has(key) || this.warnedOutputs.has(key)) {
       return;
     }
-    this.warnedOutputs.add(resolved);
+    this.warnedOutputs.add(key);
     Logger.warn(
       `Skipping ${filePath}: it is inside the output directory and named like a translated output, so it is read as a translation rather than a source. Move it outside ${this.watchOptions?.outputDir ?? 'the output directory'} to have it translated.`
     );
@@ -419,7 +422,7 @@ export class WatchService {
         { preserveCode }
       );
 
-      this.writtenOutputs.add(path.resolve(outputPath));
+      this.writtenOutputs.add(canonicalPathKey(outputPath));
       this.stats.translationsCount++;
 
       if (this.watchOptions.onTranslate) {
@@ -439,7 +442,7 @@ export class WatchService {
 
       for (const result of results) {
         if (result.outputPath) {
-          this.writtenOutputs.add(path.resolve(result.outputPath));
+          this.writtenOutputs.add(canonicalPathKey(result.outputPath));
         }
       }
       this.stats.translationsCount += results.length;

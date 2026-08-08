@@ -965,6 +965,14 @@ describe('WatchService', () => {
   });
 
   describe('stagedFiles filtering', () => {
+    // git reports its files under the repository's real path, so a staged set
+    // is spelled with every symlinked ancestor resolved.
+    const stagedEntry = (filePath: string): string =>
+      path.join(
+        fs.realpathSync(path.dirname(filePath)),
+        path.basename(filePath)
+      );
+
     it('should skip files not in stagedFiles set', async () => {
       const testFile = path.join(testDir, 'unstaged.txt');
       fs.writeFileSync(testFile, 'Hello');
@@ -991,7 +999,7 @@ describe('WatchService', () => {
       fs.writeFileSync(testFile, 'Hello');
 
       const stagedService = new WatchService(mockFileTranslationService, {
-        stagedFiles: new Set([path.resolve(testFile)]),
+        stagedFiles: new Set([stagedEntry(testFile)]),
       });
 
       const onChange = jest.fn();
@@ -1013,7 +1021,7 @@ describe('WatchService', () => {
 
       // File is staged but doesn't match pattern *.md
       const stagedService = new WatchService(mockFileTranslationService, {
-        stagedFiles: new Set([path.resolve(testFile)]),
+        stagedFiles: new Set([stagedEntry(testFile)]),
         pattern: '*.md',
       });
 
@@ -1031,6 +1039,81 @@ describe('WatchService', () => {
       // but chokidar's ignored function would have already filtered by pattern
       // In handleFileChange, stagedFiles check happens after isSupportedFile
       expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+
+    it('should process a staged file whose path reaches it through a symlinked ancestor', () => {
+      // git names its files under the repository's real path; chokidar reports
+      // whatever spelling the session was started with.
+      const realDir = fs.realpathSync(testDir);
+      const workDir = path.join(realDir, 'work');
+      fs.mkdirSync(workDir);
+      const linkDir = path.join(realDir, 'link');
+      fs.symlinkSync(workDir, linkDir);
+      fs.writeFileSync(path.join(workDir, 'staged.txt'), 'Hello');
+
+      const stagedService = new WatchService(mockFileTranslationService, {
+        stagedFiles: new Set([path.join(workDir, 'staged.txt')]),
+      });
+
+      const onChange = jest.fn();
+      const watchedFile = path.join(linkDir, 'staged.txt');
+      stagedService.watch(linkDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      });
+      stagedService.handleFileChange(watchedFile);
+
+      expect(onChange).toHaveBeenCalledWith(watchedFile);
+    });
+
+    it('should still skip an unstaged file reached through a symlinked ancestor', () => {
+      const realDir = fs.realpathSync(testDir);
+      const workDir = path.join(realDir, 'work');
+      fs.mkdirSync(workDir);
+      const linkDir = path.join(realDir, 'link');
+      fs.symlinkSync(workDir, linkDir);
+      fs.writeFileSync(path.join(workDir, 'unstaged.txt'), 'Hello');
+
+      const stagedService = new WatchService(mockFileTranslationService, {
+        stagedFiles: new Set([path.join(workDir, 'staged.txt')]),
+      });
+
+      const onChange = jest.fn();
+      stagedService.watch(linkDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      });
+      stagedService.handleFileChange(path.join(linkDir, 'unstaged.txt'));
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('should process a staged file that is itself a symlink to a file outside the tree', () => {
+      // git stages the link, not its target, so the comparison must leave the
+      // final path component alone.
+      const realDir = fs.realpathSync(testDir);
+      const workDir = path.join(realDir, 'work');
+      fs.mkdirSync(workDir);
+      const outside = path.join(realDir, 'outside.txt');
+      fs.writeFileSync(outside, 'Hello');
+      const linkedFile = path.join(workDir, 'linked.txt');
+      fs.symlinkSync(outside, linkedFile);
+
+      const stagedService = new WatchService(mockFileTranslationService, {
+        stagedFiles: new Set([linkedFile]),
+      });
+
+      const onChange = jest.fn();
+      stagedService.watch(workDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      });
+      stagedService.handleFileChange(linkedFile);
+
+      expect(onChange).toHaveBeenCalledWith(linkedFile);
     });
 
     it('should not filter when stagedFiles is undefined', async () => {

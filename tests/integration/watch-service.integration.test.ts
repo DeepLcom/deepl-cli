@@ -645,6 +645,34 @@ console.log(JSON.stringify({ files: [...result] }));
       }
     });
 
+    it('names staged files under the repository real path when the watched path reaches it through a symlink', () => {
+      fs.writeFileSync(path.join(gitDir, 'file1.txt'), 'Hello');
+      execSyncChild('git add file1.txt', { cwd: gitDir, stdio: 'ignore' });
+
+      const linkParent = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'deepl-git-staged-link-')
+      );
+      const link = path.join(linkParent, 'link');
+      fs.symlinkSync(gitDir, link);
+
+      try {
+        const output = runScript(
+          gitDir,
+          `
+const result = await cmd.getStagedFiles(${JSON.stringify(link)});
+console.log(JSON.stringify({ files: [...result] }));
+`
+        );
+
+        const parsed = JSON.parse(output.trim());
+        expect(parsed.files).toEqual([
+          path.join(fs.realpathSync(gitDir), 'file1.txt'),
+        ]);
+      } finally {
+        fs.rmSync(linkParent, { recursive: true, force: true });
+      }
+    });
+
     it('should return empty set when no files are staged', () => {
       fs.writeFileSync(path.join(gitDir, 'file1.txt'), 'Hello');
 

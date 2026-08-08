@@ -96,6 +96,60 @@ describe('Watch output-file guard integration', () => {
     expect(warnings).toEqual([]);
   });
 
+  // The output directory is deliberately outside the watched directory in the
+  // two tests below, so every handleFileChange call is the test's own and no
+  // chokidar event can add one.
+  const symlinkedOutputLayout = (): {
+    src: string;
+    out: string;
+    link: string;
+  } => {
+    const realDir = fs.realpathSync(tmpDir);
+    const src = path.join(realDir, 'src');
+    const out = path.join(realDir, 'out');
+    fs.mkdirSync(src);
+    fs.mkdirSync(out);
+    const link = path.join(realDir, 'link');
+    fs.symlinkSync(out, link);
+    return { src, out, link };
+  };
+
+  it('stays silent about a file it wrote that is reported through a symlinked ancestor', async () => {
+    const { src, out, link } = symlinkedOutputLayout();
+    const source = path.join(src, 'doc.md');
+    fs.writeFileSync(source, 'Hello\n');
+
+    watchService.watch(src, { targetLangs: ['es'], outputDir: out });
+    watchService.handleFileChange(source);
+    await sleep(DEBOUNCE_MS * 5);
+
+    expect(fs.readFileSync(path.join(out, 'doc.es.md'), 'utf-8')).toBe(
+      'es:Hello\n'
+    );
+
+    // The same output file, spelled the way a session whose output directory is
+    // reached through a symlink sees it.
+    watchService.handleFileChange(path.join(link, 'doc.es.md'));
+    await sleep(DEBOUNCE_MS * 5);
+
+    expect(translationService.translate).toHaveBeenCalledTimes(1);
+    expect(warnings).toEqual([]);
+  });
+
+  it('still says once why it skips a user file reached through a symlinked ancestor', async () => {
+    const { src, out, link } = symlinkedOutputLayout();
+    fs.writeFileSync(path.join(out, 'pricing.es.md'), 'Precios\n');
+
+    watchService.watch(src, { targetLangs: ['es'], outputDir: out });
+    watchService.handleFileChange(path.join(link, 'pricing.es.md'));
+    watchService.handleFileChange(path.join(out, 'pricing.es.md'));
+    await sleep(DEBOUNCE_MS * 5);
+
+    expect(translationService.translate).not.toHaveBeenCalled();
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('pricing.es.md');
+  });
+
   it('says once why it skips a user file sitting in the output directory', async () => {
     const source = path.join(tmpDir, 'pricing.es.md');
     fs.writeFileSync(source, 'Precios\n');
