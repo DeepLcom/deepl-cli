@@ -14,6 +14,7 @@ interface PullOptions {
   locale?: string;
   syncConfig?: string;
   format?: string;
+  dryRun?: boolean;
 }
 
 export function registerSyncPull(
@@ -30,6 +31,10 @@ export function registerSyncPull(
         .default('text')
     )
     .option('--sync-config <path>', 'Path to .deepl-sync.yaml')
+    .option(
+      '--dry-run',
+      'Preview what the pull would change without writing any file'
+    )
     .addHelpText(
       'after',
       `
@@ -49,8 +54,17 @@ full field list and REST contract.
       options.format = resolveFormat(options, command);
       options.locale = resolveLocale(options, command);
       options.syncConfig = resolveSyncConfig(options, command);
+      // Commander routes --dry-run on the invocation line to the parent `sync`
+      // command (which also defines --dry-run). Fall back to the parent's value.
+      const parentDryRun = command.parent?.opts()['dryRun'] as
+        boolean | undefined;
+      options.dryRun = options.dryRun ?? parentDryRun ?? false;
       return handleSyncPull(options, deps.handleError);
     });
+}
+
+function plural(count: number): string {
+  return count === 1 ? 'translation' : 'translations';
 }
 
 export async function handleSyncPull(
@@ -85,23 +99,36 @@ export async function handleSyncPull(
         await import('../../../sync/tms-server-trust.js');
       const server = tmsServerOrigin(config.tms.server);
 
+      const dryRun = options.dryRun ?? false;
       const registry = await createDefaultRegistry();
       const result = await pullTranslations(config, client, registry, {
         localeFilter,
+        dryRun,
       });
       if (options.format === 'json') {
         process.stdout.write(
           JSON.stringify({
             ok: true,
             pulled: result.pulled,
+            replaced: result.replaced,
             skipped: result.skipped,
             server,
+            dryRun,
           }) + '\n'
         );
       } else {
+        const verb = dryRun ? 'Would pull' : 'Pulled';
+        const suffix = dryRun ? ' (dry-run: no files written)' : '';
         Logger.info(
-          `Pulled ${result.pulled} translations from TMS at ${server}${formatSkippedSummary(result.skipped)}`
+          `${verb} ${result.pulled} translations from TMS at ${server}${formatSkippedSummary(result.skipped)}${suffix}`
         );
+        if (result.replaced > 0) {
+          Logger.info(
+            dryRun
+              ? `Would replace ${result.replaced} existing local ${plural(result.replaced)} with the TMS version.`
+              : `Replaced ${result.replaced} existing local ${plural(result.replaced)} with the TMS version. Use --dry-run to preview a pull before it overwrites local edits.`
+          );
+        }
       }
     } finally {
       processLock.release();

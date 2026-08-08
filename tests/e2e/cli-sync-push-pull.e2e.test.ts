@@ -552,13 +552,85 @@ describe('CLI sync push/pull dispatch E2E', () => {
       const envelope = JSON.parse(run.stdout) as {
         ok: boolean;
         pulled: number;
+        replaced: number;
         skipped: unknown[];
         server: string;
+        dryRun: boolean;
       };
       expect(envelope.ok).toBe(true);
       expect(typeof envelope.pulled).toBe('number');
+      expect(typeof envelope.replaced).toBe('number');
       expect(Array.isArray(envelope.skipped)).toBe(true);
       expect(envelope.server).toBe(baseUrl);
+      expect(envelope.dryRun).toBe(false);
+    });
+
+    it('pull --dry-run: leaves the hand-edited target and the lockfile untouched, exit 0', async () => {
+      await configureMockServer({
+        pullResponses: { de: { greeting: 'Hallo vom TMS' } },
+      });
+
+      writeSyncYaml({ includeTmsBlock: true });
+      writeSource({ greeting: 'Hello' });
+      writeTarget('de', { greeting: 'Von Hand redigiert' });
+      const targetPath = path.join(testFiles.path, 'locales', 'de.json');
+      const before = fs.readFileSync(targetPath, 'utf-8');
+
+      const run = runCli(['sync', 'pull', '--dry-run'], {
+        TMS_API_KEY: 'push-pull-key',
+      });
+
+      expect(run.status).toBe(0);
+      expect(fs.readFileSync(targetPath, 'utf-8')).toBe(before);
+      expect(fs.existsSync(path.join(testFiles.path, '.deepl-sync.lock'))).toBe(
+        false
+      );
+    });
+
+    it('pull: discloses the local translation it replaced', async () => {
+      await configureMockServer({
+        pullResponses: { de: { greeting: 'Hallo vom TMS' } },
+      });
+
+      writeSyncYaml({ includeTmsBlock: true });
+      writeSource({ greeting: 'Hello' });
+      writeTarget('de', { greeting: 'Von Hand redigiert' });
+
+      const run = runCli(['sync', 'pull'], { TMS_API_KEY: 'push-pull-key' });
+
+      expect(run.status).toBe(0);
+      expect(run.stdout + run.stderr).toMatch(
+        /Replaced 1 existing local translation with the TMS version/
+      );
+      const target = JSON.parse(
+        fs.readFileSync(
+          path.join(testFiles.path, 'locales', 'de.json'),
+          'utf-8'
+        )
+      ) as Record<string, string>;
+      expect(target['greeting']).toBe('Hallo vom TMS');
+    });
+
+    it('pull: never writes source text for a key the TMS does not carry', async () => {
+      await configureMockServer({
+        pullResponses: { de: { greeting: 'Hallo vom TMS' } },
+      });
+
+      writeSyncYaml({ includeTmsBlock: true });
+      writeSource({ greeting: 'Hello', brand_new: 'Only in source' });
+      writeTarget('de', { greeting: 'Alt' });
+
+      const run = runCli(['sync', 'pull'], { TMS_API_KEY: 'push-pull-key' });
+
+      expect(run.status).toBe(0);
+      const target = JSON.parse(
+        fs.readFileSync(
+          path.join(testFiles.path, 'locales', 'de.json'),
+          'utf-8'
+        )
+      ) as Record<string, string>;
+      expect(target['greeting']).toBe('Hallo vom TMS');
+      expect(target).not.toHaveProperty('brand_new');
     });
 
     it('push --format json with missing tms block: emits canonical error envelope on stderr, exit 7', () => {

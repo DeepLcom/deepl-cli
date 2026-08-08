@@ -380,7 +380,7 @@ Each translation entry in the lockfile records:
 | `status` | `translated`, `failed`, or `pending` |
 | `character_count` | Characters billed by the DeepL API for this translation |
 | `context_sent` | `true` when source code context was included in the API request |
-| `review_status` | `machine_translated` or `human_reviewed` (set by `--flag-for-review`) |
+| `review_status` | `machine_translated` (set by `--flag-for-review`) or `human_reviewed`. The CLI only ever writes `machine_translated`; `human_reviewed` is honoured when a person or another tool sets it, and is never inferred from a TMS pull. Absent means unknown |
 
 **Formatting.** Containers are written one key per line, but each translation entry is written on a **single line**:
 
@@ -842,8 +842,15 @@ deepl sync pull [OPTIONS]
 | `--locale <langs>` | Pull specific locales only |
 | `--format <fmt>` | Output format: `text` (default), `json` |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
+| `--dry-run` | Preview what the pull would change without writing any file |
 
 Each target locale's approved dictionary is fetched exactly once per `sync pull` run (one GET per locale from the TMS export endpoint), then applied to every matching source file locally. Projects with many source files per bucket do not multiply wire bytes by the source-file count.
+
+**The TMS wins, and pull says how often it did.** For a key the export carries, the TMS value replaces whatever the target file holds -- there is no timestamp on either side to compare, so "which is newer" is not a question the CLI can answer. That is the intended direction of `pull` (the export is the reviewed copy), but it means a hand edit made locally since the last push is overwritten. Pull therefore reports the count of existing local translations it replaced, and `--verbose` names each key and file. Run `deepl sync pull --dry-run` first to see that count -- and, with `--verbose`, the exact keys -- before anything is written. `--dry-run` writes neither target files nor `.deepl-sync.lock`; the JSON output carries `replaced` and `dryRun` alongside `pulled`.
+
+**A key with no translation anywhere is left out.** When the export omits a key and the target file has no value for it either, the key is omitted from the reconstructed target rather than filled in with the source string. Writing the source text would put the source language in the target file and record it in the lockfile as translated, which no later run revisits. An empty string counts as a translation and is preserved.
+
+**Pull does not claim human review.** The export endpoint returns `{ "key": "value" }` with no per-entry review flag, so pulled entries are recorded with `status: translated` and **no** `review_status`, meaning "unknown". Earlier releases stamped `review_status: human_reviewed` on every pulled key, asserting a review the CLI had not verified and the response did not describe.
 
 **Key-count limit:** The pull response is capped at **50,000 keys** (`MAX_PULL_KEY_COUNT`). Responses exceeding this limit are rejected with a `ValidationError` before any data is written. If your TMS project exceeds this threshold, partition the export by locale or paginate the pull on the TMS side before invoking `deepl sync pull`.
 

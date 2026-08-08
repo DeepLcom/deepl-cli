@@ -18,10 +18,12 @@ import { LOCK_FILE_NAME } from './types.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { mapWithConcurrency, PUSH_CONCURRENCY } from '../utils/concurrency.js';
 import { partitionEntries, walkBuckets } from './sync-bucket-walker.js';
+import { Logger } from '../utils/logger.js';
 import { sweepStaleBackups, resolveBakSweepAgeMs } from './sync-bak-cleanup.js';
 
 export interface SyncPushPullOptions {
   localeFilter?: string[];
+  dryRun?: boolean;
 }
 
 export type SkipReason = 'target_missing' | 'no_matches' | 'pipe_pluralization';
@@ -40,6 +42,7 @@ export interface PushResult {
 
 export interface PullResult {
   pulled: number;
+  replaced: number;
   skipped: SkippedRecord[];
 }
 
@@ -157,6 +160,7 @@ export async function pullTranslations(
   const lockFile = await lockManager.read();
 
   let pulled = 0;
+  let replaced = 0;
   const skipped: SkippedRecord[] = [];
 
   try {
@@ -246,11 +250,24 @@ export async function pullTranslations(
         existingTargetEntries
       );
 
+      for (const entry of pulledEntries) {
+        const local = existingTargetEntries.get(entry.key);
+        if (local === undefined || local === entry.translation) continue;
+        replaced++;
+        Logger.verbose(
+          `[verbose] ${locale}: the TMS version of "${entry.key}" differs from the local translation in ${targetRelPath}`
+        );
+      }
+
       const reconstructed = isMultiLocale
         ? parser.reconstruct(templateContent, translatedEntries, locale)
         : parser.reconstruct(templateContent, translatedEntries);
-      await fs.promises.mkdir(path.dirname(targetAbsPath), { recursive: true });
-      await atomicWriteFile(targetAbsPath, reconstructed, 'utf-8');
+      if (!options?.dryRun) {
+        await fs.promises.mkdir(path.dirname(targetAbsPath), {
+          recursive: true,
+        });
+        await atomicWriteFile(targetAbsPath, reconstructed, 'utf-8');
+      }
       pulled += pulledEntries.length;
 
       const fileEntryMap = ensureFileEntries(lockFile, relPath);
@@ -263,11 +280,14 @@ export async function pullTranslations(
           source_text: existing?.source_text ?? entry.value,
           translations: {
             ...existingTranslations,
+            // No review_status: the export endpoint returns `{ key: value }`
+            // and carries no per-entry review flag, so the pull has nothing to
+            // base a claim of human review on. Leaving the field unset says
+            // "unknown" rather than asserting a review nobody verified.
             [locale]: {
               hash: sourceHash,
               translated_at: new Date().toISOString(),
               status: 'translated' as const,
-              review_status: 'human_reviewed' as const,
             },
           },
         });
@@ -275,9 +295,9 @@ export async function pullTranslations(
     }
   }
 
-  if (pulled > 0) {
+  if (pulled > 0 && !options?.dryRun) {
     await lockManager.write(lockFile);
   }
 
-  return { pulled, skipped };
+  return { pulled, replaced, skipped };
 }

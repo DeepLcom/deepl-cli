@@ -373,7 +373,7 @@ describe('mergePulledTranslations()', () => {
     ]);
   });
 
-  it('should fall back to source text when no existing target translation is available', () => {
+  it('should omit a key the pull response and the target file both lack', () => {
     const merged = mergePulledTranslations(
       [
         { key: 'greeting', value: 'Hello' },
@@ -390,13 +390,36 @@ describe('mergePulledTranslations()', () => {
         context: undefined,
         metadata: undefined,
       },
+    ]);
+  });
+
+  it('should keep an empty target translation rather than treating it as absent', () => {
+    const merged = mergePulledTranslations(
+      [{ key: 'optional_suffix', value: 'Ltd.' }],
+      {},
+      new Map([['optional_suffix', '']])
+    );
+
+    expect(merged).toEqual([
       {
-        key: 'farewell',
-        value: 'Goodbye',
-        translation: 'Goodbye',
+        key: 'optional_suffix',
+        value: 'Ltd.',
+        translation: '',
         context: undefined,
         metadata: undefined,
       },
     ]);
+  });
+
+  it('should omit every key when the pull response is empty and no target exists', () => {
+    expect(
+      mergePulledTranslations(
+        [
+          { key: 'greeting', value: 'Hello' },
+          { key: 'farewell', value: 'Goodbye' },
+        ],
+        {}
+      )
+    ).toEqual([]);
   });
 });

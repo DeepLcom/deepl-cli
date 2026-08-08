@@ -159,6 +159,18 @@ const RESOLVE_DRY_RUN: OptionSnapshot = {
   mandatory: false,
 };
 
+const PULL_DRY_RUN: OptionSnapshot = {
+  flags: '--dry-run',
+  description: 'Preview what the pull would change without writing any file',
+  defaultValue: undefined,
+  negate: false,
+  choices: undefined,
+  required: false,
+  optional: false,
+  variadic: false,
+  mandatory: false,
+};
+
 const PARENT_SYNC_CONFIG_OPT: OptionSnapshot = {
   flags: '--sync-config <path>',
   description: 'Path to .deepl-sync.yaml (default: auto-detect)',
@@ -550,9 +562,12 @@ const EXPECTED: CommandSnapshot = {
     {
       name: 'pull',
       description: 'Pull approved translations from a TMS',
-      options: [FORMAT_OPT, LOCALE_FILTER_OPT, SYNC_CONFIG_OPT].sort((a, b) =>
-        a.flags.localeCompare(b.flags)
-      ),
+      options: [
+        FORMAT_OPT,
+        LOCALE_FILTER_OPT,
+        PULL_DRY_RUN,
+        SYNC_CONFIG_OPT,
+      ].sort((a, b) => a.flags.localeCompare(b.flags)),
       subcommands: [],
     },
     {

@@ -94,7 +94,7 @@ describe('sync push/pull (TMS integration)', () => {
   });
 
   // ---- Case 2: pull happy path ----
-  it('pull: fetches translations, writes target file, updates lockfile with review_status=human_reviewed', async () => {
+  it('pull: fetches translations, writes target file, and does not claim human review', async () => {
     writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
     writeJson(tmpDir, 'locales/en.json', {
       greeting: 'Hello',
@@ -144,15 +144,97 @@ describe('sync push/pull (TMS integration)', () => {
       >;
     };
     const bucketEntries = lockContent.entries['locales/en.json']!;
-    expect(bucketEntries['greeting']!.translations['de']!.review_status).toBe(
-      'human_reviewed'
-    );
+    // The export endpoint returns `{ key: value }` with no per-entry review
+    // flag, so the pull has nothing to base a review claim on.
+    expect(
+      bucketEntries['greeting']!.translations['de']!.review_status
+    ).toBeUndefined();
     expect(bucketEntries['greeting']!.translations['de']!.status).toBe(
       'translated'
     );
     expect(
       typeof bucketEntries['greeting']!.translations['de']!.translated_at
     ).toBe('string');
+  });
+
+  // ---- Case 2b: a key with no translation on either side ----
+  it('pull: omits a key the TMS and the target file both lack instead of writing source text', async () => {
+    writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
+    writeJson(tmpDir, 'locales/en.json', {
+      greeting: 'Hello',
+      brand_new: 'Only in source',
+    });
+    writeJson(tmpDir, 'locales/de.json', { greeting: 'ALT' });
+
+    process.env['TMS_API_KEY'] = 'env-key';
+    const config = await loadSyncConfig(tmpDir);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
+    expectTmsPull('de', { greeting: 'Hallo' }, { auth: { apiKey: 'env-key' } });
+
+    const result = await pullTranslations(config, client, harness.registry);
+    expect(result.pulled).toBe(1);
+
+    const target = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, 'locales/de.json'), 'utf-8')
+    ) as Record<string, string>;
+    expect(target['greeting']).toBe('Hallo');
+    expect(target).not.toHaveProperty('brand_new');
+  });
+
+  // ---- Case 2c: overwriting an existing local translation is disclosed ----
+  it('pull: counts the existing local translations it replaced', async () => {
+    writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
+    writeJson(tmpDir, 'locales/en.json', {
+      greeting: 'Hello',
+      farewell: 'Goodbye',
+      thanks: 'Thanks',
+    });
+    // greeting differs from the TMS value, farewell matches it, thanks is
+    // absent locally — only the first is a replacement.
+    writeJson(tmpDir, 'locales/de.json', {
+      greeting: 'Von Hand redigiert',
+      farewell: 'Tschüss',
+    });
+
+    process.env['TMS_API_KEY'] = 'env-key';
+    const config = await loadSyncConfig(tmpDir);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
+    expectTmsPull(
+      'de',
+      { greeting: 'Hallo', farewell: 'Tschüss', thanks: 'Danke' },
+      { auth: { apiKey: 'env-key' } }
+    );
+
+    const result = await pullTranslations(config, client, harness.registry);
+    expect(result.pulled).toBe(3);
+    expect(result.replaced).toBe(1);
+  });
+
+  // ---- Case 2d: dry run ----
+  it('pull --dry-run: reports what it would do and writes neither target nor lockfile', async () => {
+    writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
+    writeJson(tmpDir, 'locales/en.json', { greeting: 'Hello' });
+    writeJson(tmpDir, 'locales/de.json', { greeting: 'Von Hand redigiert' });
+    const targetBefore = fs.readFileSync(
+      path.join(tmpDir, 'locales/de.json'),
+      'utf-8'
+    );
+
+    process.env['TMS_API_KEY'] = 'env-key';
+    const config = await loadSyncConfig(tmpDir);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
+    expectTmsPull('de', { greeting: 'Hallo' }, { auth: { apiKey: 'env-key' } });
+
+    const result = await pullTranslations(config, client, harness.registry, {
+      dryRun: true,
+    });
+    expect(result.pulled).toBe(1);
+    expect(result.replaced).toBe(1);
+
+    expect(fs.readFileSync(path.join(tmpDir, 'locales/de.json'), 'utf-8')).toBe(
+      targetBefore
+    );
+    expect(fs.existsSync(path.join(tmpDir, LOCK_FILE_NAME))).toBe(false);
   });
 
   // ---- Case 3: TMS_API_KEY env var precedence over config ----

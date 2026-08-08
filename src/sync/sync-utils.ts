@@ -17,21 +17,37 @@ export function getParserForBucket(
   return formatRegistry.getParserByFormatKey(formatKey);
 }
 
+/**
+ * Merge a TMS pull response over whatever the target file already holds: the
+ * pulled value wins, an existing target value is kept when the response omits
+ * the key, and a key neither side has is omitted from the result.
+ *
+ * Omitting matters because `reconstruct` writes exactly the entries it is
+ * handed. Handing it `entry.value` for a key with no translation anywhere
+ * would put source-language text in the target file and let the lockfile call
+ * it translated, which no later run revisits — the same reason the locale
+ * translator pushes nothing for a key it could not translate. An empty string
+ * is a translation and is preserved.
+ */
 export function mergePulledTranslations(
   sourceEntries: ExtractedEntry[],
   pulledKeys: Record<string, string>,
   existingTargetEntries: Map<string, string> = new Map()
 ): TranslatedEntry[] {
-  return sourceEntries.map((entry) => ({
-    key: entry.key,
-    value: entry.value,
-    context: entry.context,
-    metadata: entry.metadata,
-    translation:
-      pulledKeys[entry.key] ??
-      existingTargetEntries.get(entry.key) ??
-      entry.value,
-  }));
+  const merged: TranslatedEntry[] = [];
+  for (const entry of sourceEntries) {
+    const translation =
+      pulledKeys[entry.key] ?? existingTargetEntries.get(entry.key);
+    if (translation === undefined) continue;
+    merged.push({
+      key: entry.key,
+      value: entry.value,
+      context: entry.context,
+      metadata: entry.metadata,
+      translation,
+    });
+  }
+  return merged;
 }
 
 /**
