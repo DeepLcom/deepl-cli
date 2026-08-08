@@ -8,6 +8,21 @@ import { PendingCommentBuffer } from './pending-comment-buffer.js';
 const ENTRY_RE = /^([^=:#!\s][^=:]*?)\s*[=:]\s*(.*)/;
 const COMMENT_RE = /^\s*[#!]/;
 
+/**
+ * A trailing backslash continues the line only when the run of backslashes
+ * ending it is odd; an even run is one or more escaped literal backslashes,
+ * which is exactly what escapeValue emits for a value ending in `\`. Testing
+ * `endsWith('\\')` instead consumed the following entry and appended its raw
+ * `key=value` text to the previous value.
+ */
+function continuesOnNextLine(line: string): boolean {
+  let backslashes = 0;
+  for (let i = line.length - 1; i >= 0 && line[i] === '\\'; i--) {
+    backslashes++;
+  }
+  return backslashes % 2 === 1;
+}
+
 export class PropertiesFormatParser implements FormatParser {
   readonly name = 'Java Properties';
   readonly configKey = 'properties';
@@ -33,7 +48,7 @@ export class PropertiesFormatParser implements FormatParser {
       }
 
       // Handle line continuations (trailing backslash)
-      while (line.endsWith('\\') && i + 1 < lines.length) {
+      while (continuesOnNextLine(line) && i + 1 < lines.length) {
         i++;
         line = line.slice(0, -1) + lines[i]!.trimStart();
       }
@@ -80,7 +95,7 @@ export class PropertiesFormatParser implements FormatParser {
 
       // Handle line continuations
       const startLine = i;
-      while (line.endsWith('\\') && i + 1 < lines.length) {
+      while (continuesOnNextLine(line) && i + 1 < lines.length) {
         i++;
         line = line.slice(0, -1) + lines[i]!.trimStart();
       }

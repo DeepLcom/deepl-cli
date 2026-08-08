@@ -295,6 +295,69 @@ describe('PropertiesFormatParser', () => {
     });
   });
 
+  describe('escaped trailing backslash is not a line continuation', () => {
+    // The writer escapes a literal trailing backslash as `\\`, which the
+    // continuation test read as "this line continues" — swallowing the next
+    // entry and appending its raw `key=value` text to the previous value.
+    it('should not treat an even-length trailing backslash run as a continuation', () => {
+      const entries = parser.extract('greeting=Hallo\\\\\nnext=KEEPME\n');
+
+      expect(entries.map((e) => e.key)).toEqual(['greeting', 'next']);
+      expect(entries[0]!.value).toBe('Hallo\\');
+      expect(entries[1]!.value).toBe('KEEPME');
+    });
+
+    it('should still honour an odd-length trailing backslash run', () => {
+      const entries = parser.extract('greeting=Hallo\\\\\\\n  more\n');
+
+      expect(entries).toHaveLength(1);
+      expect(entries[0]!.value).toBe('Hallo\\more');
+    });
+
+    it('should still honour a single trailing backslash', () => {
+      const entries = parser.extract('greeting=Hallo\\\n  world\n');
+
+      expect(entries).toHaveLength(1);
+      expect(entries[0]!.value).toBe('Halloworld');
+    });
+
+    it.each([
+      ['x\\', 'x\\'],
+      ['\\', '\\'],
+      ['a\\b\\', 'a\\b\\'],
+      ['C:\\', 'C:\\'],
+      ['a\\\\b', 'a\\\\b'],
+    ])(
+      'should round-trip the value %j through reconstruct and back',
+      (value, expected) => {
+        const source = 'k=placeholder\nnext=KEEPME\n';
+        const written = parser.reconstruct(source, [
+          { key: 'k', value: 'placeholder', translation: value },
+          { key: 'next', value: 'KEEPME', translation: 'KEEPME' },
+        ]);
+        const back = parser.extract(written);
+
+        expect(back.find((e) => e.key === 'k')!.value).toBe(expected);
+        expect(back.find((e) => e.key === 'next')).toBeDefined();
+      }
+    );
+
+    it('should not swallow the following entry during reconstruct either', () => {
+      const source = 'greeting=Hello\napi_key=SECRET_VALUE\nfooter=Bye\n';
+      const written = parser.reconstruct(source, [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo\\' },
+        { key: 'api_key', value: 'SECRET_VALUE', translation: 'SECRET_VALUE' },
+        { key: 'footer', value: 'Bye', translation: 'Bye' },
+      ]);
+
+      expect(written).toContain('api_key=SECRET_VALUE');
+      const back = parser.extract(written);
+      expect(back.map((e) => e.key)).toEqual(['greeting', 'api_key', 'footer']);
+      expect(back[0]!.value).toBe('Hallo\\');
+      expect(back[0]!.value).not.toContain('SECRET_VALUE');
+    });
+  });
+
   describe('escapeValue()', () => {
     it('should escape \\r in output', () => {
       const content = 'key=Hello\n';
