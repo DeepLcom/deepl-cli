@@ -1804,4 +1804,119 @@ describe('WatchService', () => {
       expect(gate.pending).toHaveLength(1);
     });
   });
+
+  describe('onTranslate completion', () => {
+    const DEBOUNCE_MS = 5;
+    const settle = () =>
+      new Promise<void>((resolve) => setTimeout(resolve, DEBOUNCE_MS * 4));
+
+    it('waits for an async onTranslate before the path is free again', async () => {
+      let releaseNotify: (() => void) | undefined;
+      const onTranslate = jest.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseNotify = resolve;
+          })
+      );
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onTranslate,
+      });
+
+      service.handleFileChange(testFile);
+      await settle();
+      expect(onTranslate).toHaveBeenCalledTimes(1);
+
+      service.handleFileChange(testFile);
+      await settle();
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
+
+      releaseNotify!();
+      await settle();
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(2);
+      await service.stop();
+    });
+
+    it('reports a rejected onTranslate through onError', async () => {
+      const onError = jest.fn();
+      const onTranslate = jest.fn(() =>
+        Promise.reject(new Error('commit failed'))
+      );
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onTranslate,
+        onError,
+      });
+
+      service.handleFileChange(testFile);
+      await settle();
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0]![1]).toEqual(
+        expect.objectContaining({ message: 'commit failed' })
+      );
+      expect(service.getStats().errorsCount).toBe(1);
+      await service.stop();
+    });
+
+    it('waits for an async onTranslate on the multiple-target path', async () => {
+      let releaseNotify: (() => void) | undefined;
+      const onTranslate = jest.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseNotify = resolve;
+          })
+      );
+      mockFileTranslationService.translateFileToMultiple.mockResolvedValue([
+        { targetLang: 'es', text: 'Hola', outputPath: '/out/doc.es.txt' },
+        { targetLang: 'fr', text: 'Bonjour', outputPath: '/out/doc.fr.txt' },
+      ]);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const, 'fr' as const],
+        outputDir: path.join(testDir, 'output'),
+        onTranslate,
+      });
+
+      service.handleFileChange(testFile);
+      await settle();
+      service.handleFileChange(testFile);
+      await settle();
+
+      expect(
+        mockFileTranslationService.translateFileToMultiple
+      ).toHaveBeenCalledTimes(1);
+
+      releaseNotify!();
+      await settle();
+      expect(
+        mockFileTranslationService.translateFileToMultiple
+      ).toHaveBeenCalledTimes(2);
+      await service.stop();
+    });
+  });
 });

@@ -208,4 +208,45 @@ describe('Watch auto-commit integration', () => {
       expect.any(String)
     );
   });
+
+  it('serializes concurrent auto-commits so every translation lands', async () => {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    for (const name of files) {
+      fs.writeFileSync(path.join(tmpDir, `${name}.es.md`), `Hola ${name}`);
+    }
+
+    const origCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      await Promise.all(
+        files.map((name) =>
+          callAutoCommit(`${name}.md`, {
+            targetLang: 'es',
+            text: `Hola ${name}`,
+            outputPath: path.join(tmpDir, `${name}.es.md`),
+          })
+        )
+      );
+    } finally {
+      process.chdir(origCwd);
+    }
+
+    const failures = (Logger.error as jest.Mock).mock.calls.filter((call) =>
+      String(call[0]).includes('Auto-commit failed')
+    );
+    expect(failures).toEqual([]);
+
+    const log = execSync('git log --oneline', {
+      cwd: tmpDir,
+      encoding: 'utf-8',
+    });
+    for (const name of files) {
+      expect(log).toContain(`auto-translate ${name}.md to es`);
+    }
+    const status = execSync('git status --porcelain', {
+      cwd: tmpDir,
+      encoding: 'utf-8',
+    });
+    expect(status.trim()).toBe('');
+  }, 60000);
 });

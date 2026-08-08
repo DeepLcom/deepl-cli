@@ -43,7 +43,16 @@ export interface WatchOptions {
   abortSignal?: AbortSignal;
   onReady?: () => void;
   onChange?: (filePath: string) => void;
-  onTranslate?: (filePath: string, result: WatchTranslationResult) => void;
+  /**
+   * Called once a file's translations are on disk. A promise returned here is
+   * awaited before the path is considered done, so follow-up work such as
+   * `--auto-commit` runs inside the translation's slot and its failure is
+   * reported instead of being dropped.
+   */
+  onTranslate?: (
+    filePath: string,
+    result: WatchTranslationResult
+  ) => void | Promise<void>;
   onError?: (filePath: string, error: Error) => void;
 }
 
@@ -414,7 +423,7 @@ export class WatchService {
       this.stats.translationsCount++;
 
       if (this.watchOptions.onTranslate) {
-        this.watchOptions.onTranslate(filePath, {
+        await this.watchOptions.onTranslate(filePath, {
           text: '',
           outputPath,
           targetLang,
@@ -436,7 +445,7 @@ export class WatchService {
       this.stats.translationsCount += results.length;
 
       if (this.watchOptions.onTranslate) {
-        this.watchOptions.onTranslate(filePath, results);
+        await this.watchOptions.onTranslate(filePath, results);
       }
     }
   }

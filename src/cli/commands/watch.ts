@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
+import pLimit, { type LimitFunction } from 'p-limit';
 import { WatchService } from '../../services/watch.js';
 import { FileTranslationService } from '../../services/file-translation.js';
 import { TranslationService } from '../../services/translation.js';
@@ -44,6 +45,14 @@ export class WatchCommand {
   private glossaryService: GlossaryService;
   private config?: ConfigService;
   private watchService?: WatchService;
+  /**
+   * git takes `.git/index.lock` for the duration of an `add` or a `commit`, so
+   * two auto-commits running at once make one of them fail. Translations of
+   * different files do run in parallel, so the git work is queued one at a
+   * time behind this.
+   */
+  private gitLimit: LimitFunction = pLimit(1);
+  private autoCommitFailures = 0;
 
   /**
    * `config` supplies `defaults.sourceLang` for the glossary requirement below.
@@ -279,8 +288,13 @@ export class WatchCommand {
         Logger.info(chalk.gray(`Translations: ${stats.translationsCount}`));
         Logger.info(chalk.gray(`Errors: ${stats.errorsCount}`));
       }
+      if (this.autoCommitFailures > 0) {
+        Logger.info(
+          chalk.gray(`Auto-commit failures: ${this.autoCommitFailures}`)
+        );
+      }
       Logger.success(chalk.green('✓ Watch stopped'));
-      process.exit(0);
+      process.exit(this.sessionExitCode());
     };
 
     process.on('SIGINT', () => void cleanup());
@@ -297,6 +311,13 @@ export class WatchCommand {
    * SECURITY: Uses execFile instead of exec to prevent command injection
    */
   private async autoCommit(
+    sourceFile: string,
+    result: WatchTranslationResult
+  ): Promise<void> {
+    return this.gitLimit(() => this.commitTranslations(sourceFile, result));
+  }
+
+  private async commitTranslations(
     sourceFile: string,
     result: WatchTranslationResult
   ): Promise<void> {
@@ -357,11 +378,23 @@ export class WatchCommand {
 
       Logger.success(chalk.green('✓ Auto-committed translations'));
     } catch (error) {
+      this.autoCommitFailures++;
       Logger.error(
         chalk.red('✗ Auto-commit failed:'),
         error instanceof Error ? error.message : 'Unknown error'
       );
     }
+  }
+
+  /**
+   * Exit code for a watch session ending on SIGINT/SIGTERM. A translation or an
+   * auto-commit that failed during the session is a partial failure, not a
+   * clean run: the session used to report exit 0 with the failures only logged,
+   * so a script driving `deepl watch` had no way to notice.
+   */
+  private sessionExitCode(): number {
+    const errors = this.watchService?.getStats().errorsCount ?? 0;
+    return errors > 0 || this.autoCommitFailures > 0 ? 12 : 0;
   }
 
   /**

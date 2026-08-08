@@ -1110,7 +1110,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 **Behavior:**
 
 - Runs continuously until interrupted (Ctrl+C)
-- Shows translation statistics on exit
+- Shows translation statistics on exit, and exits **12** rather than 0 when the session recorded any failed translation or failed auto-commit
 - Detects file changes using filesystem watch
 - Debounces rapid changes to avoid duplicate translations
 - Translates one version of a file at a time. An edit arriving while a file's translation is still running queues exactly one re-translation, which starts after the running one has written. Two translations of the same file never overlap, so a slower translation of older content cannot overwrite a newer one, and an edit storm costs two translations rather than one per event
@@ -1136,7 +1136,7 @@ Monitor files or directories for changes and automatically translate them. Suppo
 
 **Git Integration:**
 
-- `--auto-commit` - Auto-commit translations to git after each change
+- `--auto-commit` - Auto-commit translations to git after each change. One commit per translated source file, queued one at a time: git holds `.git/index.lock` for the duration of an `add` or a `commit`, so parallel translations cannot commit in parallel. A failed commit is reported and counted, and the session exits 12 rather than 0 (see below)
 - `--git-staged` - Only watch git-staged files (snapshot taken once at startup)
 - `--dry-run` - Show what would be watched without starting the watcher
 
@@ -3332,7 +3332,7 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 | 9    | VoiceError     | Voice API unavailable or session failed                        | No        |
 | 10   | SyncDrift      | `sync --frozen` detected translations out of date              | No        |
 | 11   | SyncConflict   | `sync resolve` could not auto-resolve lockfile conflicts       | No        |
-| 12   | PartialFailure | `deepl sync` completed with at least one failed key            | Yes (per-locale retry) |
+| 12   | PartialFailure | `deepl sync` completed with at least one failed key, or a `deepl watch` session ended with a failed translation or auto-commit | Yes (per-locale retry) |
 
 ### Code details
 
@@ -3448,6 +3448,8 @@ Remediation: open `.deepl-sync.lock`, resolve the remaining `<<<<<<<` / `=======
 A key whose translation failed placeholder/ICU validation counts as failed here too: it is withheld from the target file rather than written corrupt. See [`validation`](SYNC.md#validation) in the sync configuration reference. With `validation.fail_on_error: true` the same run raises `ValidationError` (exit 6) instead.
 
 A key that translated successfully but that the target file's format could not be given a slot for also counts as failed. Every key is read back out of the content just written before the lockfile is updated, so the run reports it rather than recording a translation the file does not contain. See [A string added after the first sync](SYNC.md#a-string-added-after-the-first-sync).
+
+`deepl watch` uses the same code when the session ends: on Ctrl+C (SIGINT/SIGTERM) it exits 12 rather than 0 if it recorded any failed translation or any failed `--auto-commit`, so a script driving a watch session can tell a clean run from one that lost work. The counts are printed beside the translation total before the process exits.
 
 Authentication failures (401/403) abort the entire run and surface as exit code 2 (`AuthError`) instead of 12. Network / rate-limit / quota failures bubble up as 5 / 3 / 4 respectively. Code 12 specifically means "the run proceeded far enough to attempt per-locale work, and the result was mixed."
 
