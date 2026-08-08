@@ -4,6 +4,7 @@ import type {
   TranslatedEntry,
 } from './format.js';
 import { PendingCommentBuffer } from './pending-comment-buffer.js';
+import { isForbiddenControlChar } from './util/control-chars.js';
 
 const ENTRY_RE = /^([^=:#!\s][^=:]*?)\s*[=:]\s*(.*)/;
 const COMMENT_RE = /^\s*[#!]/;
@@ -215,7 +216,13 @@ export class PropertiesFormatParser implements FormatParser {
           result += '\\\\';
           break;
         default: {
-          if (ch.codePointAt(0)! > 0x7e) {
+          // `\uXXXX` also carries the C0 controls the earlier cases do not:
+          // written raw they survive into git, where a `git diff` or a CI log
+          // viewer renders an ESC sequence as a live terminal command.
+          if (
+            ch.codePointAt(0)! > 0x7e ||
+            isForbiddenControlChar(ch.codePointAt(0)!)
+          ) {
             // Emit every UTF-16 code unit: an astral character such as an
             // emoji is a surrogate pair, and writing only charCodeAt(0)
             // leaves a lone high surrogate that cannot be decoded back.

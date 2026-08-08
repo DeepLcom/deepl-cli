@@ -92,6 +92,21 @@ All parsers preserve format-specific metadata:
 
 The sync engine also supports **multi-locale formats** where all locales are stored in a single file (e.g., Apple `.xcstrings`). For these formats, the engine automatically serializes locale writes to prevent race conditions and passes the locale to the parser so it can scope extract/reconstruct operations to the correct locale section.
 
+### Control characters in a translation
+
+No writer emits a raw C0 control byte. Tab, newline and carriage return are escaped or legally emitted as usual; every other byte below U+0020 is either escaped or refused, because written raw it would survive into git — where `git diff`, `cat`, `less` and CI log viewers render an ESC sequence as a live terminal command — and because two of the formats cannot read it back:
+
+| Format | Behaviour |
+|--------|-----------|
+| JSON, YAML, ARB, Xcode String Catalog | Escaped by the underlying emitter |
+| TOML | Escaped as `\uXXXX`; a literal (single-quoted) string is promoted to the double-quoted form, which is the only one with an escape. U+007F is escaped too — TOML rejects it raw |
+| Java Properties | Escaped as `\uXXXX`, extending the existing rule for non-ASCII |
+| iOS Strings | Escaped as `\UXXXX` |
+| Gettext PO | `\r` escaped; anything else in C0 is refused, since the PO escape set cannot spell it |
+| Android XML, XLIFF | Refused. XML 1.0 has no escape and no numeric character reference for these bytes, so the file would stop being well-formed and `aapt2` or a CAT tool would reject it |
+
+A refusal is a `ValidationError` naming the resource or entry and the codepoint (`U+001B`) — never the byte itself, which prints as nothing.
+
 ### Key separators and colliding keys
 
 Every parser reduces a string's position in the file to a flat key, using a separator the format does not otherwise carry: PO joins `msgctxt` and `msgid` with U+0004, YAML joins path segments with U+0000, and JSON, Laravel PHP and Android XML join with `.`. A key component containing that separator makes two different strings share one key, and there is no correct way to write them back — one translation lands in the other's slot.

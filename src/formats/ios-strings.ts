@@ -3,6 +3,7 @@ import type {
   FormatParser,
   TranslatedEntry,
 } from './format.js';
+import { isForbiddenControlChar } from './util/control-chars.js';
 
 const ENTRY_RE = /^\s*"((?:[^"\\]|\\.)*)"\s*=\s*"((?:[^"\\]|\\.)*)"\s*;\s*$/;
 
@@ -211,7 +212,12 @@ export class IosStringsFormatParser implements FormatParser {
           result += '\\0';
           break;
         default:
-          result += ch;
+          // `\UXXXX`, which unescape() already decodes, for the remaining C0
+          // controls: written raw they survive into git, where a `git diff` or
+          // a CI log viewer renders an ESC sequence as a live terminal command.
+          result += isForbiddenControlChar(ch.charCodeAt(0))
+            ? '\\U' + ch.charCodeAt(0).toString(16).padStart(4, '0')
+            : ch;
           break;
       }
     }

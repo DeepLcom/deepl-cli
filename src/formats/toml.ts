@@ -5,6 +5,10 @@ import type {
   TranslatedEntry,
 } from './format.js';
 import { PendingCommentBuffer } from './pending-comment-buffer.js';
+import {
+  escapeControlChars,
+  findForbiddenControlChar,
+} from './util/control-chars.js';
 
 // `[section]` or `[a.b.c]` — captures the path. Matches only at the start of a
 // trimmed line; trailing whitespace and a `# comment` tail are allowed.
@@ -262,13 +266,29 @@ export class TomlFormatParser implements FormatParser {
   }
 }
 
+/** TOML rejects a raw U+007F in a string as well as the shared C0 set. */
+function isTomlDelete(code: number): boolean {
+  return code === 0x7f;
+}
+
+function tomlUnicodeEscape(code: number): string {
+  return '\\u' + code.toString(16).padStart(4, '0');
+}
+
 function encodeTomlString(value: string, useDoubleQuote: boolean): string {
   if (!useDoubleQuote) {
     // Literal strings (single-quoted) are raw — no escapes, cannot contain `'`
     // or a newline. U+2028/U+2029 also force the double-quoted fallback: left
     // raw they break ENTRY_LINE_RE on the next pass (JS `.` excludes line
-    // separators), so the key is re-appended as a duplicate.
-    if (value.includes("'") || /[\n\r\u2028\u2029]/.test(value)) {
+    // separators), so the key is re-appended as a duplicate. A control
+    // character forces it for a blunter reason: a literal string has no escape
+    // for one, and smol-toml then refuses its own output on the next read.
+    if (
+      value.includes("'") ||
+      /[\n\r\u2028\u2029]/.test(value) ||
+      findForbiddenControlChar(value) !== undefined ||
+      value.includes('\u{7f}')
+    ) {
       return encodeTomlString(value, true);
     }
     return `'${value}'`;
@@ -285,5 +305,7 @@ function encodeTomlString(value: string, useDoubleQuote: boolean): string {
     .replace(/\t/g, '\\t')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
-  return `"${escaped}"`;
+  // Applied last, so the backslashes it introduces are not doubled by the chain
+  // above.
+  return `"${escapeControlChars(escaped, tomlUnicodeEscape, isTomlDelete)}"`;
 }

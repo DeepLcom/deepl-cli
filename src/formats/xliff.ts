@@ -5,6 +5,10 @@ import type {
 } from './format.js';
 import { ValidationError } from '../utils/errors.js';
 import {
+  describeControlChar,
+  findForbiddenControlChar,
+} from './util/control-chars.js';
+import {
   findElement,
   replaceElements,
   scanElements,
@@ -107,6 +111,24 @@ function assertNoCdataInTranslatable(content: string): void {
         'Inline the literal text without the <![CDATA[...]]> wrapper, or preprocess the file to entity-escape CDATA content before syncing.'
       );
     }
+  }
+}
+
+/**
+ * Refuse a value XML 1.0 cannot carry. Every C0 byte except tab, LF and CR is
+ * outside the `Char` production, so there is no escape and no numeric character
+ * reference for it: written raw the file stops being well-formed and every
+ * conforming consumer rejects it. Fail fast naming the unit, the same stance
+ * this parser already takes on CDATA.
+ */
+function assertNoControlChars(id: string, value: string): void {
+  const found = findForbiddenControlChar(value);
+  if (found !== undefined) {
+    throw new ValidationError(
+      `XLIFF trans-unit "${id}" would contain ${describeControlChar(found)}, ` +
+        `which XML 1.0 cannot represent in any form.`,
+      'Remove the control character from the translation, or from the source string it came from.'
+    );
   }
 }
 
@@ -239,6 +261,7 @@ export class XliffFormatParser implements FormatParser {
     const result = replaceElements(content, TRANS_UNIT_EL, (element) => {
       const translation = translations.get(element.groups[0]!);
       if (translation === undefined) return '';
+      assertNoControlChars(element.groups[0]!, translation);
       return rewriteInner(
         element,
         applyTarget(element.inner, escapeXml(translation))
@@ -254,6 +277,7 @@ export class XliffFormatParser implements FormatParser {
     const result = replaceElements(content, UNIT_EL, (element) => {
       const translation = translations.get(element.groups[0]!);
       if (translation === undefined) return '';
+      assertNoControlChars(element.groups[0]!, translation);
 
       const segment = findElement(element.inner, SEGMENT_EL);
       if (!segment) return element.text;

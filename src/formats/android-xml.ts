@@ -6,6 +6,10 @@ import {
 } from './format.js';
 import { ValidationError } from '../utils/errors.js';
 import {
+  describeControlChar,
+  findForbiddenControlChar,
+} from './util/control-chars.js';
+import {
   replaceElements,
   scanElements,
   type ElementPattern,
@@ -138,6 +142,24 @@ function escapeAndroid(value: string): string {
  * Fail fast rather than rewrite the value into something the round-trip
  * cannot reproduce, matching the XLIFF parser's stance on CDATA.
  */
+/**
+ * Refuse a value XML 1.0 cannot carry. Every C0 byte except tab, LF and CR is
+ * outside the `Char` production, so there is no escape and no numeric character
+ * reference for it: written raw the file stops being well-formed and aapt2
+ * rejects the resource. Fail fast naming the resource, matching this parser's
+ * existing stance on a CDATA breakout.
+ */
+function assertNoControlChars(name: string, value: string): void {
+  const found = findForbiddenControlChar(value);
+  if (found !== undefined) {
+    throw new ValidationError(
+      `Android resource "${name}" would contain ${describeControlChar(found)}, ` +
+        `which XML 1.0 cannot represent in any form.`,
+      'Remove the control character from the translation, or from the source string it came from.'
+    );
+  }
+}
+
 function assertNoCdataBreakout(value: string): void {
   if (value.includes(']]>')) {
     throw new ValidationError(
@@ -212,7 +234,7 @@ export class AndroidXmlFormatParser implements FormatParser {
       }
       return this.rewriteInner(
         el,
-        this.escapeForReconstruct(el.inner, translation)
+        this.escapeForReconstruct(el.groups[0]!, el.inner, translation)
       );
     });
 
@@ -228,7 +250,7 @@ export class AndroidXmlFormatParser implements FormatParser {
         }
         return this.rewriteInner(
           item,
-          this.escapeForReconstruct(item.inner, translation)
+          this.escapeForReconstruct(el.groups[0]!, item.inner, translation)
         );
       });
       return this.rewriteInner(el, inner);
@@ -248,7 +270,7 @@ export class AndroidXmlFormatParser implements FormatParser {
         }
         return this.rewriteInner(
           item,
-          this.escapeForReconstruct(item.inner, translation)
+          this.escapeForReconstruct(el.groups[0]!, item.inner, translation)
         );
       });
       return this.rewriteInner(el, inner);
@@ -324,9 +346,11 @@ export class AndroidXmlFormatParser implements FormatParser {
   }
 
   private escapeForReconstruct(
+    name: string,
     originalInner: string,
     translation: string
   ): string {
+    assertNoControlChars(name, translation);
     if (originalInner.startsWith('<![CDATA[')) {
       assertNoCdataBreakout(translation);
       return `<![CDATA[${translation}]]>`;

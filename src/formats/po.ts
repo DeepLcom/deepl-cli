@@ -5,6 +5,11 @@ import {
   type FormatParser,
   type TranslatedEntry,
 } from './format.js';
+import {
+  describeControlChar,
+  findForbiddenControlChar,
+} from './util/control-chars.js';
+import { ValidationError } from '../utils/errors.js';
 
 interface PoEntry {
   translatorComments: string[];
@@ -52,6 +57,7 @@ function quote(value: string): string {
       .replace(/\\/g, '\\\\')
       .replace(/"/g, '\\"')
       .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
       .replace(/\t/g, '\\t') +
     '"'
   );
@@ -62,6 +68,7 @@ function quoteLong(value: string): string {
     .replace(/\\/g, '\\\\')
     .replace(/"/g, '\\"')
     .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
     .replace(/\t/g, '\\t');
 
   if (escaped.length <= 74) return `"${escaped}"`;
@@ -105,6 +112,24 @@ function assertNoContextSeparator(field: string, value: string): void {
       `PO: ${field} "${shown}" contains a U+0004 byte, which gettext reserves ` +
         `as the msgctxt separator, so the entry is indistinguishable from a ` +
         `msgctxt/msgid pair. Remove the byte.`
+    );
+  }
+}
+
+/**
+ * Refuse a translation carrying a control byte the PO escape set cannot spell.
+ * `\n`, `\r` and `\t` are escaped above; everything else in C0 has no escape
+ * this parser's own `unquote` understands, so writing it would put a live
+ * terminal-control sequence into a committed catalog that no later read could
+ * recover as text.
+ */
+function assertNoControlChars(key: string, value: string): void {
+  const found = findForbiddenControlChar(value);
+  if (found !== undefined) {
+    throw new ValidationError(
+      `PO entry "${describeKeyPath(key)}" would contain ` +
+        `${describeControlChar(found)}, which the PO escape set cannot represent.`,
+      'Remove the control character from the translation, or from the source string it came from.'
     );
   }
 }
@@ -338,6 +363,12 @@ export class PoFormatParser implements FormatParser {
   reconstruct(content: string, entries: TranslatedEntry[]): string {
     const translationMap = new Map<string, TranslatedEntry>();
     for (const entry of entries) {
+      assertNoControlChars(entry.key, entry.translation);
+      const plurals = entry.metadata?.['plural_forms'] as
+        Record<string, string> | undefined;
+      for (const form of Object.values(plurals ?? {})) {
+        assertNoControlChars(entry.key, form);
+      }
       translationMap.set(entry.key, entry);
     }
 
