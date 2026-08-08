@@ -15,6 +15,28 @@ describe('Hooks Command E2E', () => {
   const testConfig = createTestConfigDir('e2e-hooks');
   let tmpDir: string;
 
+  /**
+   * Machine-readable output only, taken from stdout alone.
+   *
+   * `run()` merges stderr into stdout so its callers can assert on warnings, but
+   * a JSON parse cannot survive anything else written to that stream: one
+   * `ExperimentalWarning` from the Node runtime is enough to turn the output into
+   * `(node:1234) ...{...}` and fail at the first token.
+   */
+  function runJson<T>(args: string): T {
+    const stdout = execSync(`node ${CLI_PATH} ${args}`, {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+        NO_COLOR: '1',
+      },
+    });
+    return JSON.parse(stdout) as T;
+  }
+
   function run(args: string): string {
     return execSync(`node ${CLI_PATH} ${args} 2>&1`, {
       encoding: 'utf-8',
@@ -123,7 +145,9 @@ describe('Hooks Command E2E', () => {
     });
 
     it('should report the state rather than a bare boolean in JSON', () => {
-      const parsed = JSON.parse(run('hooks list --format json'));
+      const parsed = runJson<Record<string, string>>(
+        'hooks list --format json'
+      );
 
       expect(parsed['pre-commit']).toBe('modified');
       expect(parsed['pre-push']).toBe('not-installed');

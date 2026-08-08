@@ -31,6 +31,28 @@ describe('CLI sync glob bomb containment', () => {
     stderr: string;
   }
 
+  /**
+   * The JSON error envelope goes to stderr, which is also where the CLI's own
+   * warnings and the Node runtime's go — an `ExperimentalWarning` ahead of it is
+   * enough to fail a parse of the whole stream. Take the envelope line instead of
+   * assuming stderr holds nothing else. `sanitizeMessage` strips control
+   * characters from the message, newline included, so the envelope is always one
+   * line.
+   */
+  function parseErrorEnvelope(stderr: string): {
+    ok: boolean;
+    error: { message: string };
+  } {
+    const line = stderr
+      .split('\n')
+      .filter((l) => l.trimStart().startsWith('{'))
+      .pop();
+    if (!line) {
+      throw new Error(`no JSON envelope on stderr, got: ${stderr}`);
+    }
+    return JSON.parse(line) as { ok: boolean; error: { message: string } };
+  }
+
   function runCli(args: string[]): Run {
     const result: SpawnSyncReturns<string> = spawnSync(
       'node',
@@ -138,10 +160,7 @@ describe('CLI sync glob bomb containment', () => {
 
     expect(result.signal).toBeNull();
     expect(result.status).toBe(CONFIG_EXIT_CODE);
-    const envelope = JSON.parse(result.stderr) as {
-      ok: boolean;
-      error: { message: string };
-    };
+    const envelope = parseErrorEnvelope(result.stderr);
     expect(envelope.ok).toBe(false);
     expect(envelope.error.message).toMatch(/expands to more than/i);
   });

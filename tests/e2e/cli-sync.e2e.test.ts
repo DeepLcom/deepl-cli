@@ -152,6 +152,26 @@ describe('CLI Sync E2E', () => {
     });
   }
 
+  /**
+   * Machine-readable output only, taken from stdout alone.
+   *
+   * `runSyncAll` merges stderr so its callers can assert on warnings, but a JSON
+   * parse cannot survive anything else written to that stream: one
+   * `ExperimentalWarning` from the Node runtime is enough to turn the output into
+   * `(node:1234) ...{...}` and fail at the first token.
+   */
+  function runSyncJson<T>(args: string = ''): T {
+    const stdout = execSync(`node ${CLI_PATH} sync ${args}`, {
+      encoding: 'utf-8',
+      shell: '/bin/sh',
+      cwd: testFiles.path,
+      env: buildEnv(),
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 15000,
+    });
+    return JSON.parse(stdout) as T;
+  }
+
   function runSyncExpectError(args: string = ''): {
     status: number;
     output: string;
@@ -582,10 +602,10 @@ describe('CLI Sync E2E', () => {
       it('carries the count in --format json', () => {
         damageTarget();
 
-        const parsed = JSON.parse(runSyncAll('status --format json')) as {
+        const parsed = runSyncJson<{
           locales: { locale: string; unwritten: number; complete: number }[];
           unwrittenByLocale: { locale: string; file: string; keys: string[] }[];
-        };
+        }>('status --format json');
 
         expect(parsed.locales[0]?.unwritten).toBe(1);
         expect(parsed.unwrittenByLocale).toEqual([
