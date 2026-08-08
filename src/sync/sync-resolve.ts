@@ -213,15 +213,22 @@ function deepMergeWithDecisions(
       continue;
     }
 
-    if (isTranslationEntry(ourValue) && isTranslationEntry(theirValue)) {
-      const ourDate = (ourValue as Record<string, unknown>)['translated_at'] as
-        string | undefined;
-      const theirDate = (theirValue as Record<string, unknown>)[
-        'translated_at'
-      ] as string | undefined;
-      if (ourDate && theirDate) {
-        if (ourDate >= theirDate) {
-          merged[key] = ourValue;
+    // One side is enough: a translation is only meaningful whole, so a pair
+    // where either side is one is arbitrated whole. Merging it member by member
+    // would emit a translation that existed on neither side — one side's hash
+    // and review status carrying the other side's timestamp.
+    if (isTranslationEntry(ourValue) || isTranslationEntry(theirValue)) {
+      const ourDate = translatedAt(ourValue);
+      const theirDate = translatedAt(theirValue);
+      if (ourDate !== undefined && theirDate !== undefined) {
+        if (ourDate === theirDate) {
+          decisions.push({
+            file,
+            key: childPath,
+            source: 'ours',
+            reason: `kept ours: same translated_at ${ourDate} on both sides`,
+          });
+        } else if (ourDate > theirDate) {
           decisions.push({
             file,
             key: childPath,
@@ -237,13 +244,20 @@ function deepMergeWithDecisions(
             reason: `kept theirs: newer translated_at ${theirDate}`,
           });
         }
-      } else if (theirDate) {
+      } else if (theirDate !== undefined) {
         merged[key] = theirValue;
         decisions.push({
           file,
           key: childPath,
           source: 'theirs',
-          reason: `kept theirs: ours lacked translated_at`,
+          reason: 'kept theirs: ours had no translated_at',
+        });
+      } else if (ourDate !== undefined) {
+        decisions.push({
+          file,
+          key: childPath,
+          source: 'ours',
+          reason: 'kept ours: theirs had no translated_at',
         });
       } else {
         decisions.push({
@@ -290,12 +304,30 @@ function deepMergeWithDecisions(
 function isTranslationEntry(obj: unknown): boolean {
   if (typeof obj !== 'object' || obj === null) return false;
   const record = obj as Record<string, unknown>;
-  if ('translated_at' in record) return true;
   // An object holding a `translations` map is a container, not a leaf: its
   // timestamps belong to the locales inside it, so it has to be merged one
-  // locale at a time rather than compared at this level.
+  // locale at a time rather than compared at this level. Checked before the
+  // fields below, since a container carries some of them too.
   if ('translations' in record) return false;
-  return 'source_hash' in record;
+  // `hash` is a translation's own field; `source_hash` belongs to the entry
+  // around it and identifies one that has lost its translations map. Nothing
+  // validates `translated_at` on read, so a translation missing it still has to
+  // be recognised as one.
+  return (
+    'translated_at' in record || 'hash' in record || 'source_hash' in record
+  );
+}
+
+/**
+ * The comparable timestamp of a translation, or `undefined` when it carries
+ * nothing a comparison can order. A lock file is read from the repository, so
+ * the field is untrusted: a non-string cannot be compared against an ISO
+ * timestamp and counts as absent rather than steering the tie-break.
+ */
+function translatedAt(value: unknown): string | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const stamp = (value as Record<string, unknown>)['translated_at'];
+  return typeof stamp === 'string' && stamp !== '' ? stamp : undefined;
 }
 
 export async function resolveLockFile(

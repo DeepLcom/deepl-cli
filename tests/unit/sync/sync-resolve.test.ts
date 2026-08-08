@@ -284,6 +284,15 @@ describe('resolveConflicts()', () => {
       return `{"hash": "${hash}", "review_status": "${review}", "status": "translated", "translated_at": "${stamp}"}`;
     }
 
+    /**
+     * A translation carrying no timestamp. Nothing validates the field on read,
+     * so a hand-edited lockfile — the only way `human_reviewed` is ever set —
+     * can commit this shape.
+     */
+    function undatedTranslation(hash: string, review: string): string {
+      return `{"hash": "${hash}", "review_status": "${review}", "status": "translated"}`;
+    }
+
     function surviving(resolved: string): Record<string, unknown> {
       const parsed = JSON.parse(resolved) as {
         entries: Record<
@@ -382,6 +391,114 @@ describe('resolveConflicts()', () => {
         hash: winner['hash'],
         review: winner['review_status'],
       });
+    });
+
+    it('should keep one whole side when only ours carries a timestamp', () => {
+      const { resolved } = resolveConflicts(
+        conflictedLock(
+          translation('ours_hash', '2026-02-01T00:00:00.000Z'),
+          undatedTranslation('them_hash', 'human_reviewed')
+        )
+      );
+
+      const winner = surviving(resolved);
+      expect([
+        { hash: 'ours_hash', review: 'machine_translated' },
+        { hash: 'them_hash', review: 'human_reviewed' },
+      ]).toContainEqual({
+        hash: winner['hash'],
+        review: winner['review_status'],
+      });
+    });
+
+    it('should keep one whole side when only theirs carries a timestamp', () => {
+      const { resolved } = resolveConflicts(
+        conflictedLock(
+          undatedTranslation('ours_hash', 'human_reviewed'),
+          translation('them_hash', '2026-03-01T00:00:00.000Z')
+        )
+      );
+
+      const winner = surviving(resolved);
+      expect([
+        { hash: 'ours_hash', review: 'human_reviewed' },
+        { hash: 'them_hash', review: 'machine_translated' },
+      ]).toContainEqual({
+        hash: winner['hash'],
+        review: winner['review_status'],
+      });
+    });
+
+    it('should not pair an undated side field by field', () => {
+      const { decisions } = resolveConflicts(
+        conflictedLock(
+          undatedTranslation('ours_hash', 'human_reviewed'),
+          translation('them_hash', '2026-03-01T00:00:00.000Z')
+        )
+      );
+
+      expect(decisions.map((d) => d.key)).toEqual(['de']);
+    });
+
+    it('should not carry the other side timestamp onto the kept translation', () => {
+      const { resolved } = resolveConflicts(
+        conflictedLock(
+          undatedTranslation('ours_hash', 'human_reviewed'),
+          translation('them_hash', '2026-03-01T00:00:00.000Z')
+        )
+      );
+
+      const winner = surviving(resolved);
+      if (winner['hash'] === 'ours_hash') {
+        expect(winner['translated_at']).toBeUndefined();
+      } else {
+        expect(winner['translated_at']).toBe('2026-03-01T00:00:00.000Z');
+      }
+    });
+
+    it('should not claim a timestamp is newer when both sides match', () => {
+      const stamp = '2026-01-01T00:00:00.000Z';
+      const { decisions } = resolveConflicts(
+        conflictedLock(
+          translation('machine_hash', stamp, 'machine_translated'),
+          translation('human_hash', stamp, 'human_reviewed')
+        )
+      );
+
+      expect(decisions.map((d) => d.reason)).toEqual([
+        `kept ours: same translated_at ${stamp} on both sides`,
+      ]);
+    });
+
+    it('should keep ours whole when neither side carries a timestamp', () => {
+      const { resolved, decisions } = resolveConflicts(
+        conflictedLock(
+          undatedTranslation('ours_hash', 'human_reviewed'),
+          undatedTranslation('them_hash', 'machine_translated')
+        )
+      );
+
+      expect(surviving(resolved)).toEqual({
+        hash: 'ours_hash',
+        review_status: 'human_reviewed',
+        status: 'translated',
+      });
+      expect(decisions.map((d) => d.reason)).toEqual([
+        'kept ours: neither side had translated_at',
+      ]);
+    });
+
+    it('should not claim neither side had a timestamp when ours did', () => {
+      const { decisions } = resolveConflicts(
+        conflictedLock(
+          translation('ours_hash', '2026-02-01T00:00:00.000Z'),
+          undatedTranslation('them_hash', 'human_reviewed')
+        )
+      );
+
+      expect(decisions.map((d) => d.reason)).toEqual([
+        'kept ours: theirs had no translated_at',
+      ]);
     });
   });
 

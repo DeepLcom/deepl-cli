@@ -874,6 +874,17 @@ WARN  locales/de/app.json:<conflict-region> — parse-error fallback used, JSON.
 Resolved 3 conflicts (1 theirs, 1 ours, 1 length-heuristic). Run "deepl sync" to fill any gaps.
 ```
 
+**The tie-break arbitrates a whole translation, never its fields.** A conflicting pair is arbitrated as one unit whenever *either* side looks like a translation, so the resolver cannot emit a translation whose fields come from both sides — the failure the one-line format described under [`.deepl-sync.lock`](#deepl-sync-lock) exists to prevent. That matters because `translated_at` is not guaranteed to be there: nothing validates it on read, and `human_reviewed` is only ever set by hand, so a hand-edited entry can be missing it. Each case is decided explicitly and named in the report:
+
+| Both sides | Kept | Reported as |
+|------------|------|-------------|
+| Different `translated_at` | The later one | `kept ours/theirs: newer translated_at <stamp>` |
+| The same `translated_at` | Ours | `kept ours: same translated_at <stamp> on both sides` |
+| Only one has `translated_at` | The side that has it | `kept ours/theirs: <other side> had no translated_at` |
+| Neither has one | Ours | `kept ours: neither side had translated_at` |
+
+A `translated_at` that is not a string counts as absent rather than being compared against an ISO timestamp.
+
 **Region terminators.** A conflict region that sits inside an object is a sequence of members, and unless it is the last one it ends with a comma joining it to the member that follows. The resolver takes that comma off before parsing the region and puts it back afterwards — without this, every region but the last failed to parse and fell to the length heuristic below, so the documented `translated_at` tie-break never ran. When the two sides *disagree* on whether the region ends a member list — one side deleted what the other modified — no terminator can be correct for both, so the region falls to the heuristic rather than risk emitting invalid JSON.
 
 **Canonical output.** Resolving rebuilds each merged region, so the resolved lockfile is written back in the canonical format described under [`.deepl-sync.lock`](#deepl-sync-lock) rather than with the resolver's own indentation. Committing a resolved lockfile therefore cannot leave translations expanded across lines for the next merge to recombine.
