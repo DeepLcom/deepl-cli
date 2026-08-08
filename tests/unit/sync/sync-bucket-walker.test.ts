@@ -7,6 +7,7 @@ import { FormatRegistry } from '../../../src/formats/index';
 import { JsonFormatParser } from '../../../src/formats/json';
 import type { ResolvedSyncConfig } from '../../../src/sync/sync-config';
 import { ValidationError } from '../../../src/utils/errors';
+import { Logger } from '../../../src/utils/logger';
 
 jest.mock('fast-glob', () => ({ __esModule: true, default: jest.fn() }));
 jest.mock('fs', () => {
@@ -246,6 +247,34 @@ describe('walkBuckets', () => {
       const result = await collect(walkBuckets(config, registry));
 
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('key-collision rejection', () => {
+    it('skips a file whose keys collide rather than ending the run', async () => {
+      mockFg.mockResolvedValue([
+        '/test/locales/en.json',
+        '/test/locales/other.json',
+      ] as never);
+      mockReadFile.mockImplementation((p: string) =>
+        Promise.resolve(
+          p.endsWith('en.json')
+            ? '{"a.b":"FLAT","a":{"b":"NESTED"}}'
+            : '{"ok":"Hello"}'
+        )
+      );
+
+      const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      const seen: string[] = [];
+      for await (const walked of walkBuckets(makeConfig(), makeRegistry())) {
+        seen.push(walked.relPath);
+      }
+
+      expect(seen).toEqual(['locales/other.json']);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping locales/en.json')
+      );
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("'a.b'"));
     });
   });
 });

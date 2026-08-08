@@ -1,6 +1,8 @@
 import * as YAML from 'yaml';
 import {
   FormatDepthExceededError,
+  FormatKeyCollisionError,
+  describeKeyPath,
   type FormatParser,
   type ExtractedEntry,
   type TranslatedEntry,
@@ -21,6 +23,28 @@ function assertNotStackExhaustion(messages: string): void {
     const location = messages.split('\n')[0] ?? messages;
     throw new FormatDepthExceededError(
       `YAML: nesting depth exhausted the stack while parsing (${location.trim()})`
+    );
+  }
+}
+
+const PATH_SEPARATOR = '\0';
+
+/**
+ * Path segments are joined with U+0000 to form a key, so a mapping key holding
+ * one resolves to the same key as an unrelated nested path. Where no such path
+ * exists, `doc.setIn` splits the key back apart and reconstruct writes a nested
+ * mapping the source never had. The byte prints as nothing, so the source diff
+ * shows an ordinary key.
+ */
+function assertNoPathSeparator(key: string): void {
+  if (key.includes(PATH_SEPARATOR)) {
+    // Escaped, not echoed: the byte prints as nothing, so quoting it verbatim
+    // would show the reader the key they already believe they have.
+    const shown = describeKeyPath(key).split(PATH_SEPARATOR).join('\\u0000');
+    throw new FormatKeyCollisionError(
+      `YAML: key "${shown}" contains a U+0000 byte, which separates path ` +
+        `segments, so the key is indistinguishable from a nested path. ` +
+        `Remove the byte.`
     );
   }
 }
@@ -169,6 +193,7 @@ export class YamlFormatParser implements FormatParser {
           const key = String(
             YAML.isScalar(pair.key) ? pair.key.value : pair.key
           );
+          assertNoPathSeparator(key);
           const childPath = [...path, key];
           const value = pair.value;
           recordAnchor(value);

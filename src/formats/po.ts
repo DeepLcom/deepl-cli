@@ -1,7 +1,9 @@
-import type {
-  ExtractedEntry,
-  FormatParser,
-  TranslatedEntry,
+import {
+  FormatKeyCollisionError,
+  describeKeyPath,
+  type ExtractedEntry,
+  type FormatParser,
+  type TranslatedEntry,
 } from './format.js';
 
 interface PoEntry {
@@ -84,8 +86,33 @@ function isHeaderEntry(entry: PoEntry): boolean {
 
 const CONTEXT_SEPARATOR = '\x04';
 
+/**
+ * gettext reserves U+0004 as the msgctxt/msgid separator, so a msgid carrying
+ * one is indistinguishable from a context-qualified entry. Left alone it lets a
+ * plain msgid claim the key of an unrelated `msgctxt "x" / msgid "y"` pair, or —
+ * where no such pair exists — makes reconstruct emit a msgctxt the source
+ * catalog never had. The byte prints as nothing, so the source diff shows an
+ * ordinary string.
+ */
+function assertNoContextSeparator(field: string, value: string): void {
+  if (value.includes(CONTEXT_SEPARATOR)) {
+    // Escaped, not echoed: the byte prints as nothing, so quoting it verbatim
+    // would show the reader the string they already believe they have.
+    const shown = describeKeyPath(value)
+      .split(CONTEXT_SEPARATOR)
+      .join('\\u0004');
+    throw new FormatKeyCollisionError(
+      `PO: ${field} "${shown}" contains a U+0004 byte, which gettext reserves ` +
+        `as the msgctxt separator, so the entry is indistinguishable from a ` +
+        `msgctxt/msgid pair. Remove the byte.`
+    );
+  }
+}
+
 function makeKey(entry: PoEntry): string {
+  assertNoContextSeparator('msgid', entry.msgid);
   if (entry.msgctxt !== undefined) {
+    assertNoContextSeparator('msgctxt', entry.msgctxt);
     return `${entry.msgctxt}${CONTEXT_SEPARATOR}${entry.msgid}`;
   }
   return entry.msgid;
@@ -412,6 +439,10 @@ export class PoFormatParser implements FormatParser {
         continue;
       }
 
+      assertNoContextSeparator('msgid', entryMsgid);
+      if (entryMsgctxt !== undefined) {
+        assertNoContextSeparator('msgctxt', entryMsgctxt);
+      }
       const key =
         entryMsgctxt !== undefined
           ? `${entryMsgctxt}${CONTEXT_SEPARATOR}${entryMsgid}`

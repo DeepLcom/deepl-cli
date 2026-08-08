@@ -1,5 +1,6 @@
 import {
   FormatDepthExceededError,
+  assertDistinctKeys,
   describeKeyPath,
   type ExtractedEntry,
   type FormatParser,
@@ -65,6 +66,7 @@ export class JsonFormatParser implements FormatParser {
     const data: unknown = JSON.parse(clean);
     const entries: ExtractedEntry[] = [];
     this.walk(data, '', entries);
+    assertDistinctKeys(entries, 'JSON', '.');
     return entries;
   }
 

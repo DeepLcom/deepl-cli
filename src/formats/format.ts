@@ -55,6 +55,45 @@ export class FormatDepthExceededError extends Error {
 }
 
 /**
+ * Thrown when a parser cannot give a file's strings distinct keys: a key
+ * component contains the byte the format uses to encode hierarchy, so two
+ * unrelated strings resolve to one key and reconstruct writes one translation
+ * into the other's slot. Walkers treat it like a depth rejection and skip the
+ * one file, since rewriting it is what does the damage.
+ */
+export class FormatKeyCollisionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FormatKeyCollisionError';
+  }
+}
+
+/**
+ * Refuse extract output in which two entries share a key. Only for formats
+ * whose container already guarantees distinct sibling keys, where a repeat
+ * therefore proves a separator collision rather than a duplicate the format
+ * permits — `.properties` and XLIFF allow literal repeats and must not use it.
+ */
+export function assertDistinctKeys(
+  entries: readonly ExtractedEntry[],
+  format: string,
+  separator: string
+): void {
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    if (seen.has(entry.key)) {
+      throw new FormatKeyCollisionError(
+        `${format}: '${describeKeyPath(entry.key)}' is the key of two different strings. ` +
+          `A literal '${separator}' inside a key is indistinguishable from the separator ` +
+          `between levels, so one translation would be written over the other. ` +
+          `Rename one of them.`
+      );
+    }
+    seen.add(entry.key);
+  }
+}
+
+/**
  * Renders a key path for a depth-limit message. At the depth these fire, the
  * full path is dozens of segments of no diagnostic value beyond the first few,
  * so it is clipped rather than printed in full.

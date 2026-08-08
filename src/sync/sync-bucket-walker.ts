@@ -3,6 +3,7 @@ import * as path from 'path';
 import fg from 'fast-glob';
 import {
   FormatDepthExceededError,
+  FormatKeyCollisionError,
   type ExtractedEntry,
   type FormatParser,
   type FormatRegistry,
@@ -176,7 +177,10 @@ export async function* walkBuckets(
             ? parser.extract(content, config.source_locale)
             : parser.extract(content);
       } catch (err) {
-        if (err instanceof FormatDepthExceededError) {
+        if (
+          err instanceof FormatDepthExceededError ||
+          err instanceof FormatKeyCollisionError
+        ) {
           Logger.warn(
             `Skipping ${path.relative(config.projectRoot, sourceFile)}: ${err.message}`
           );

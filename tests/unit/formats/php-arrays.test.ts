@@ -6,6 +6,7 @@ import {
   SKIP_REASON_PIPE_PLURALIZATION,
 } from '../../../src/formats/php-arrays';
 import { createDefaultRegistry } from '../../../src/formats/index';
+import { FormatKeyCollisionError } from '../../../src/formats/format';
 import { ValidationError } from '../../../src/utils/errors';
 import { Logger } from '../../../src/utils/logger';
 
@@ -550,24 +551,13 @@ return [
         expect(keys).toEqual(['errors.required', 'welcome']);
       });
 
-      it('11: literal-dot key coexists with a nested `user.name` path', () => {
-        const entries = parser.extract(load('11-dot-key-vs-nested.php'));
-        const map = Object.fromEntries(entries.map((e) => [e.key, e.value]));
-        // Both keys exist and collide at the dot-path level — this is a
-        // known Laravel ambiguity. The extract faithfully surfaces both;
-        // downstream diff/translate logic is responsible for choosing a
-        // resolution strategy (currently last-write-wins via Map semantics).
-        expect(map['user.name']).toBeDefined();
-        expect(
-          entries.some(
-            (e) => e.key === 'user.name' && e.value === 'Literal dot key'
-          )
-        ).toBe(true);
-        expect(
-          entries.some(
-            (e) => e.key === 'user.name' && e.value === 'Nested under user.name'
-          )
-        ).toBe(true);
+      it('11: a literal-dot key colliding with a nested path is refused', () => {
+        // Both strings resolve to the key `user.name`, and reconstruct maps a
+        // key to one source offset, so the two replacements splice over each
+        // other: the emitted file no longer parses. Refusing beats rewriting.
+        expect(() => parser.extract(load('11-dot-key-vs-nested.php'))).toThrow(
+          FormatKeyCollisionError
+        );
       });
 
       it('12: `"\\$100"` and `"\\${currency}"` decode to literal `$`', () => {

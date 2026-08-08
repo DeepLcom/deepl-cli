@@ -77,4 +77,4 @@ export type {
   ExtractedEntry,
   TranslatedEntry,
 } from './format.js';
-export { FormatDepthExceededError } from './format.js';
+export { FormatDepthExceededError, FormatKeyCollisionError } from './format.js';

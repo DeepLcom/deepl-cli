@@ -1,5 +1,6 @@
 import {
   FormatDepthExceededError,
+  assertDistinctKeys,
   type ExtractedEntry,
   type FormatParser,
   type TranslatedEntry,
@@ -144,6 +145,7 @@ export class PhpArraysFormatParser implements FormatParser {
 
     const entries: ExtractedEntry[] = [];
     walkArray(returnNode.expr as PhpArray, '', entries, 1, this.maxDepth);
+    assertDistinctKeys(entries, 'Laravel PHP', '.');
     return entries;
   }
 

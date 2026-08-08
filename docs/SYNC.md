@@ -92,6 +92,16 @@ All parsers preserve format-specific metadata:
 
 The sync engine also supports **multi-locale formats** where all locales are stored in a single file (e.g., Apple `.xcstrings`). For these formats, the engine automatically serializes locale writes to prevent race conditions and passes the locale to the parser so it can scope extract/reconstruct operations to the correct locale section.
 
+### Key separators and colliding keys
+
+Every parser reduces a string's position in the file to a flat key, using a separator the format does not otherwise carry: PO joins `msgctxt` and `msgid` with U+0004, YAML joins path segments with U+0000, and JSON, Laravel PHP and Android XML join with `.`. A key component containing that separator makes two different strings share one key, and there is no correct way to write them back — one translation lands in the other's slot.
+
+Such a file is **skipped with a warning naming the colliding key**, and the rest of the run continues at its normal exit code, the same way a file exceeding `limits.max_depth` is skipped. For PO and YAML the reserved byte is refused outright, and quoted back escaped (`\u0004`, `\u0000`) rather than printed, since it renders as nothing in a terminal or a diff. For the three `.`-separated formats the refusal triggers on two entries resolving to one key, which in those formats can only happen via the separator.
+
+`.properties` and XLIFF are exempt: a literally repeated key is legal in both (`Properties.load` is last-wins), so a repeat there is not evidence of a collision.
+
+On `deepl sync pull`, a **target** file whose keys collide is left exactly as it stands and reported under the `key_collision` skip reason. Pull does not fall back to rebuilding it from the source file, which would discard every local translation the TMS export does not carry.
+
 ## Configuration
 
 ### `.deepl-sync.yaml`
@@ -850,6 +860,8 @@ Each target locale's approved dictionary is fetched exactly once per `sync pull`
 **A key with no translation anywhere is left out.** When the export omits a key and the target file has no value for it either, the key is omitted from the reconstructed target rather than filled in with the source string. Writing the source text would put the source language in the target file and record it in the lockfile as translated, which no later run revisits. An empty string counts as a translation and is preserved.
 
 **Pull does not claim human review.** The export endpoint returns `{ "key": "value" }` with no per-entry review flag, so pulled entries are recorded with `status: translated` and **no** `review_status`, meaning "unknown". Earlier releases stamped `review_status: human_reviewed` on every pulled key, asserting a review the CLI had not verified and the response did not describe.
+
+**A target file whose keys collide is left untouched.** Pull reads the existing target file so it can keep translations the export does not carry. If that file cannot be keyed unambiguously (see [Key separators and colliding keys](#key-separators-and-colliding-keys)), the locale is skipped with a warning and reported under the `key_collision` reason, and the file is not written. Pull deliberately does not fall back to reconstructing it from the source file in this case: that would replace the whole file with just the keys the export happened to carry.
 
 **Key-count limit:** The pull response is capped at **50,000 keys** (`MAX_PULL_KEY_COUNT`). Responses exceeding this limit are rejected with a `ValidationError` before any data is written. If your TMS project exceeds this threshold, partition the export by locale or paginate the pull on the TMS side before invoking `deepl sync pull`.
 

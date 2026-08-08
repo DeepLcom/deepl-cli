@@ -1,7 +1,8 @@
-import type {
-  ExtractedEntry,
-  FormatParser,
-  TranslatedEntry,
+import {
+  assertDistinctKeys,
+  type ExtractedEntry,
+  type FormatParser,
+  type TranslatedEntry,
 } from './format.js';
 import { ValidationError } from '../utils/errors.js';
 import {
@@ -157,6 +158,8 @@ export class AndroidXmlFormatParser implements FormatParser {
     this.extractStrings(content, entries);
     this.extractPlurals(content, entries);
     this.extractStringArrays(content, entries);
+
+    assertDistinctKeys(entries, 'Android XML', '.');
 
     return entries;
   }

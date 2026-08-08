@@ -1,6 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { ExtractedEntry, FormatRegistry } from '../formats/index.js';
+import {
+  FormatKeyCollisionError,
+  type ExtractedEntry,
+  type FormatRegistry,
+} from '../formats/index.js';
 import type { TmsClient } from './tms-client.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import {
@@ -26,7 +30,8 @@ export interface SyncPushPullOptions {
   dryRun?: boolean;
 }
 
-export type SkipReason = 'target_missing' | 'no_matches' | 'pipe_pluralization';
+export type SkipReason =
+  'target_missing' | 'no_matches' | 'pipe_pluralization' | 'key_collision';
 
 export interface SkippedRecord {
   file: string;
@@ -50,6 +55,7 @@ const SKIP_REASON_LABELS: Record<SkipReason, string> = {
   target_missing: 'target file not yet present',
   no_matches: 'no matching keys',
   pipe_pluralization: 'pipe-pluralization (never sent to TMS)',
+  key_collision: 'target file keys collide (left untouched)',
 };
 
 /**
@@ -226,7 +232,16 @@ export async function pullTranslations(
         existingTargetEntries = new Map(
           existingEntries.map((entry) => [entry.key, entry.value])
         );
-      } catch {
+      } catch (err) {
+        // A target file whose keys collide cannot be merged into — and must not
+        // fall through to the source template either, which would rebuild it
+        // from source text and discard every local translation the export does
+        // not carry. Leave the file as it stands.
+        if (err instanceof FormatKeyCollisionError) {
+          Logger.warn(`Skipping ${targetRelPath}: ${err.message}`);
+          skipped.push({ file: relPath, locale, reason: 'key_collision' });
+          continue;
+        }
         templateContent = sourceContent;
       }
 
