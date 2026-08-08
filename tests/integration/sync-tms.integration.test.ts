@@ -237,6 +237,25 @@ describe('sync push/pull (TMS integration)', () => {
     expect(fs.existsSync(path.join(tmpDir, LOCK_FILE_NAME))).toBe(false);
   });
 
+  // ---- Case 2e: retired tms fields fail config load ----
+  it.each(['auto_push', 'auto_pull', 'require_review'])(
+    'loadSyncConfig rejects tms.%s written in real YAML',
+    async (field) => {
+      writeSyncConfig(tmpDir, {
+        targetLocales: ['de'],
+        tms: tmsConfig({
+          [field]: field === 'require_review' ? ['de'] : true,
+        }),
+      });
+      writeJson(tmpDir, 'locales/en.json', { greeting: 'Hello' });
+
+      await expect(loadSyncConfig(tmpDir)).rejects.toThrow(ConfigError);
+      await expect(loadSyncConfig(tmpDir)).rejects.toThrow(
+        `tms.${field} was never implemented and has been removed`
+      );
+    }
+  );
+
   // ---- Case 3: TMS_API_KEY env var precedence over config ----
   it('credential resolution: TMS_API_KEY env var overrides config.api_key', async () => {
     writeSyncConfig(tmpDir, { tms: tmsConfig({ api_key: 'from-config' }) });

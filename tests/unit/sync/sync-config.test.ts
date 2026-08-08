@@ -1268,13 +1268,76 @@ describe('sync-config', () => {
             project_id: 'test',
             api_key: 'secret',
             token: 'bearer',
-            auto_push: false,
-            auto_pull: false,
-            require_review: ['de'],
             timeout_ms: 30000,
           },
         };
         expect(() => validateSyncConfig(raw)).not.toThrow();
+      });
+
+      describe.each(['auto_push', 'auto_pull', 'require_review'])(
+        'tms.%s',
+        (field) => {
+          function configWith(value: unknown): unknown {
+            return {
+              version: 1,
+              source_locale: 'en',
+              target_locales: ['de'],
+              buckets: { json: { include: ['locales/en.json'] } },
+              tms: {
+                enabled: true,
+                server: 'https://example.com',
+                project_id: 'test',
+                [field]: value,
+              },
+            };
+          }
+
+          it('is rejected rather than accepted and ignored', () => {
+            const raw = configWith(field === 'require_review' ? ['de'] : true);
+            expect(() => validateSyncConfig(raw)).toThrow(ConfigError);
+          });
+
+          it('says it was never implemented instead of calling it a typo', () => {
+            const raw = configWith(field === 'require_review' ? ['de'] : true);
+            let message = '';
+            let suggestion = '';
+            try {
+              validateSyncConfig(raw);
+            } catch (err) {
+              message = (err as ConfigError).message;
+              suggestion = (err as ConfigError).suggestion ?? '';
+            }
+            expect(message).toContain(`tms.${field}`);
+            expect(message).toMatch(/never implemented/i);
+            expect(suggestion).toMatch(/deepl sync (push|pull)/);
+            // The levenshtein hint must not offer it back as a near miss.
+            expect(suggestion).not.toMatch(/Did you mean/);
+          });
+        }
+      );
+
+      it('no longer suggests a removed key for a near-miss typo', () => {
+        const raw = {
+          version: 1,
+          source_locale: 'en',
+          target_locales: ['de'],
+          buckets: { json: { include: ['locales/en.json'] } },
+          tms: {
+            enabled: true,
+            server: 'https://example.com',
+            project_id: 'test',
+            auto_pushh: true,
+          },
+        };
+        let suggestion = '';
+        expect.assertions(2);
+        try {
+          validateSyncConfig(raw);
+        } catch (err) {
+          expect(err).toBeInstanceOf(ConfigError);
+          suggestion = (err as ConfigError).suggestion ?? '';
+        }
+        expect(suggestion).not.toMatch(/Did you mean/);
       });
     });
 

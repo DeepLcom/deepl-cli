@@ -101,9 +101,6 @@ export interface SyncTmsConfig {
   project_id: string;
   api_key?: string;
   token?: string;
-  auto_push?: boolean;
-  auto_pull?: boolean;
-  require_review?: string[];
   timeout_ms?: number;
   push_concurrency?: number;
 }

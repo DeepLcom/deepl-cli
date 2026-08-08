@@ -633,6 +633,38 @@ describe('CLI sync push/pull dispatch E2E', () => {
       expect(target).not.toHaveProperty('brand_new');
     });
 
+    it.each(['auto_push', 'auto_pull', 'require_review'])(
+      'tms.%s in the YAML fails the run with exit 7 instead of being ignored',
+      (field) => {
+        const yaml = buildSyncConfigYaml({
+          targetLocales: ['de'],
+          buckets: { json: { include: ['locales/en.json'] } },
+          tms: {
+            enabled: true,
+            server: baseUrl,
+            project_id: PROJECT_ID,
+            [field]: field === 'require_review' ? ['de'] : true,
+          },
+        });
+        fs.writeFileSync(
+          path.join(testFiles.path, '.deepl-sync.yaml'),
+          yaml,
+          'utf-8'
+        );
+        writeSource({ greeting: 'Hello' });
+
+        const run = runCli(['sync', 'pull', '--format', 'json'], {
+          TMS_API_KEY: 'push-pull-key',
+        });
+
+        expect(run.status).toBe(7);
+        const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+        expect(envelope.error.message).toBe(
+          `tms.${field} was never implemented and has been removed`
+        );
+      }
+    );
+
     it('push --format json with missing tms block: emits canonical error envelope on stderr, exit 7', () => {
       writeSyncYaml({ includeTmsBlock: false });
       writeSource();

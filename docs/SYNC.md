@@ -308,11 +308,10 @@ Optional integration with a translation management system (TMS) for collaborativ
 | `project_id` | `string` | Yes | -- | TMS project identifier |
 | `api_key` | `string` | No | -- | API key for TMS authentication (prefer `TMS_API_KEY` env var) |
 | `token` | `string` | No | -- | Bearer token for TMS authentication (prefer `TMS_TOKEN` env var) |
-| `auto_push` | `boolean` | No | `false` | Automatically push after sync |
-| `auto_pull` | `boolean` | No | `false` | Automatically pull before sync |
-| `require_review` | `string[]` | No | -- | Locales that require human review before pull |
 | `timeout_ms` | `number` | No | `30000` | Per-request timeout in milliseconds for TMS HTTP calls (positive integer). Aborts the request via `AbortController` when exceeded. |
 | `push_concurrency` | `number` | No | `10` | Maximum number of in-flight `PUT /keys/{keyPath}` requests during `deepl sync push`. Positive integer. Applied per (file, locale) batch of entries; aborts remaining pushes on first failure. |
+
+**Removed fields.** `auto_push`, `auto_pull` and `require_review` were accepted by the schema and listed in this table, and no code ever read any of them -- a `require_review` a user configured expecting a human gate before pull got no gate and no warning. All three now fail config load with a `ConfigError` (exit 7) naming them, rather than being silently tolerated. Push and pull after or before a sync by running `deepl sync push` / `deepl sync pull` explicitly, which also keeps the credential and destination decision on a command you typed. A review gate cannot be enforced from the CLI side because the export contract below carries no per-entry review flag; use [`deepl sync pull --dry-run`](#deepl-sync-pull) to preview a pull and review the result before committing it.
 
 ##### TMS destination trust
 
