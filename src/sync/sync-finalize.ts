@@ -6,6 +6,7 @@ export interface FinalizeInputs {
   staleKeys: number;
   deletedKeys: number;
   currentKeys: number;
+  unwrittenKeys: number;
   totalCharsBilled: number;
   fileResults: SyncFileResult[];
   validationWarnings: number;
@@ -45,6 +46,7 @@ export function finalizeSyncResult(i: FinalizeInputs): SyncResult {
     staleKeys: i.staleKeys,
     deletedKeys: i.deletedKeys,
     currentKeys: i.currentKeys,
+    unwrittenKeys: i.unwrittenKeys,
     totalCharactersBilled: i.totalCharsBilled,
     fileResults: i.fileResults,
     validationWarnings: i.validationWarnings,

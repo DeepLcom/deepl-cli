@@ -81,6 +81,7 @@ function makeResult(overrides: Partial<SyncResult> = {}): SyncResult {
     staleKeys: 1,
     deletedKeys: 0,
     currentKeys: 7,
+    unwrittenKeys: 0,
     totalCharactersBilled: 100,
     fileResults: [],
     validationWarnings: 0,

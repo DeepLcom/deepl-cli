@@ -17,6 +17,7 @@ import {
   extractExistingTranslations,
   type WalkedBucketFile,
 } from './sync-bucket-walker.js';
+import { findTargetGaps } from './sync-target-audit.js';
 import type { LocaleTranslator } from './sync-locale-translator.js';
 import type { SyncFileResult, SyncOptions } from './sync-service.js';
 
@@ -50,6 +51,8 @@ export interface BucketContribution {
   staleKeysDelta: number;
   deletedKeysDelta: number;
   currentKeysDelta: number;
+  /** Keys the lockfile calls translated that the target file does not hold. */
+  unwrittenKeysDelta: number;
   totalCharsBilledDelta: number;
   estimatedCharactersDelta: number;
   validationWarningsDelta: number;
@@ -65,6 +68,7 @@ const EMPTY: BucketContribution = {
   staleKeysDelta: 0,
   deletedKeysDelta: 0,
   currentKeysDelta: 0,
+  unwrittenKeysDelta: 0,
   totalCharsBilledDelta: 0,
   estimatedCharactersDelta: 0,
   validationWarningsDelta: 0,
@@ -143,14 +147,40 @@ export async function processBucket(
     );
   });
 
+  /**
+   * Keys the lockfile calls translated that the target file does not hold.
+   *
+   * Computed lazily, and only where a decision would otherwise be made on the
+   * lockfile alone: `--frozen`, whose whole purpose is catching a locale that is
+   * not up to date, and the early return below, which used to leave a damaged
+   * target unrepaired for as long as no other key needed work. A run that has
+   * translating to do reads every target file a few lines further down anyway.
+   */
+  const unwrittenTargetKeys = async (): Promise<number> => {
+    const effective = options?.localeFilter?.length
+      ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
+      : config.target_locales;
+    const gaps = await findTargetGaps(
+      config,
+      walked,
+      fileLockEntries,
+      effective
+    );
+    let count = 0;
+    for (const keys of gaps.values()) count += keys.size;
+    return count;
+  };
+
   if (options?.frozen) {
     const failMissing = config.validation?.fail_on_missing !== false;
     const failStale = config.validation?.fail_on_stale !== false;
     const hasNew = toTranslate.some((d) => d.status === 'new') || hasNewLocale;
     const hasStale = toTranslate.some((d) => d.status === 'stale');
+    const unwritten = failMissing ? await unwrittenTargetKeys() : 0;
     if (
       (failMissing && (hasNew || deletedDiffs.length > 0)) ||
-      (failStale && hasStale)
+      (failStale && hasStale) ||
+      unwritten > 0
     ) {
       // Promote current keys missing a target-locale translation into newKeysDelta
       // so the displayed count matches dry-run for the same input state.
@@ -158,6 +188,7 @@ export async function processBucket(
         const currentDiffs = diffs.filter((d) => d.status === 'current');
         out.newKeysDelta += currentDiffs.length;
       }
+      out.unwrittenKeysDelta += unwritten;
       out.driftDetected = true;
       return out;
     }
@@ -208,7 +239,12 @@ export async function processBucket(
 
   const hasDeleted = diffs.some((d) => d.status === 'deleted');
 
-  if (toTranslate.length === 0 && !hasDeleted && !hasNewLocale) {
+  if (
+    toTranslate.length === 0 &&
+    !hasDeleted &&
+    !hasNewLocale &&
+    (await unwrittenTargetKeys()) === 0
+  ) {
     return out;
   }
 

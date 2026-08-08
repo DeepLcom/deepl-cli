@@ -103,6 +103,12 @@ export interface SyncResult {
   staleKeys: number;
   deletedKeys: number;
   currentKeys: number;
+  /**
+   * Keys the lockfile records as translated whose target file does not hold
+   * them. Counted only where a run stops on the lockfile alone — `--frozen` —
+   * since a run that proceeds re-translates them and reports them as work.
+   */
+  unwrittenKeys: number;
   totalCharactersBilled: number;
   fileResults: SyncFileResult[];
   validationWarnings: number;
@@ -247,6 +253,7 @@ export class SyncService {
     let validationWarnings = 0;
     let validationErrors = 0;
     let driftDetected = false;
+    let unwrittenKeys = 0;
     let lockDirty = false;
 
     // Resolution runs for a dry run too. It costs one listing per kind, the
@@ -460,6 +467,7 @@ export class SyncService {
       validationErrors += contribution.validationErrorsDelta;
       fileResults.push(...contribution.fileResults);
       if (contribution.driftDetected) driftDetected = true;
+      unwrittenKeys += contribution.unwrittenKeysDelta;
       if (contribution.lockDirty) lockDirty = true;
     }
 
@@ -585,6 +593,7 @@ export class SyncService {
       staleKeys,
       deletedKeys,
       currentKeys,
+      unwrittenKeys,
       totalCharsBilled,
       fileResults,
       validationWarnings,

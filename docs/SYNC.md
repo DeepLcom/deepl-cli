@@ -134,7 +134,23 @@ Two cases are deliberately left out, because writing them would mean inventing s
 
 Whatever the reason a key does not land, the run says so rather than recording it as translated. Every key is read back out of the content just written before the lockfile is updated, so a key the file does not hold is recorded `failed`: the run warns naming the file, the locale and the key, reports `✗ es: 0/1 keys` and exits **12** (`PartialFailure`), `deepl sync status` counts it against the locale, and `deepl sync --frozen` exits **10**. The next sync retries it.
 
-Note that `deepl sync status` and `deepl sync --frozen` compare the source file against `.deepl-sync.lock`, not against the target file. A target file edited by hand to remove a key the lockfile records as translated therefore still reports complete; the key is restored on the next sync that has anything to translate, or immediately if you delete the target file and let it be rebuilt.
+**A target file is also checked against what the lock file claims about it.** For every key the lock file records as `translated` against the current source text, `deepl sync status` and `deepl sync --frozen` open the locale's target file and check that the translation is in it. A key it does not hold is counted **`unwritten`** — a category of its own, distinct from `missing` (absent from the lock file) and `outdated` (recorded against an older source), and never counted as complete:
+
+```
+$ deepl sync status
+Source: en (2 keys)
+
+  es  [##########..........] 50%  (0 missing, 0 outdated, 1 unwritten)
+
+1 key is recorded as translated in the lock file but is not in the target file
+— es: locales/es.properties ("added"). Run `deepl sync` to translate it again.
+```
+
+`--frozen` treats it as drift and exits **10**; `deepl sync` no longer returns early on a project in that state, so the key is translated again and written. This catches a target file damaged by anything outside the CLI as well — a bad merge, a partial checkout, a hand deletion, a `git checkout` of an older locale file — and a target file that cannot be read or cannot be parsed, whose keys all count as `unwritten` because a file whose contents are unavailable cannot be shown to hold them.
+
+Two deliberate exemptions. A key whose **source value is empty** is never reported: an empty source can only produce an empty translation, and PO and XLIFF read an empty translation side as untranslated on purpose (see [Bilingual formats](#bilingual-formats-po-and-xliff)), so such a key is legitimately absent from a bilingual target. A key the lock file records as `failed`, or against an older source hash, is already reported as outdated and is not counted twice.
+
+The cost is one read and parse of each target file per locale, and it is only paid where the answer would otherwise come from the lock file alone: `sync status`, `sync --frozen`, and a `sync` run that has nothing else to do. A run with translating to do reads those files anyway. Measured on a 2.8 MiB XLIFF source with 20,316 keys across 6 locales (52 MiB of files): `sync status` 410 ms → 660 ms, `sync --frozen` 465 ms → 970 ms. A locale with no keys claimed by the lock file is not read at all.
 
 ### Key separators and colliding keys
 

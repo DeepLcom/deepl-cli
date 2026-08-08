@@ -73,9 +73,20 @@ async function handleSyncStatus(
         const bar = `${'#'.repeat(Math.floor(locale.coverage / 5))}${'.'.repeat(
           20 - Math.floor(locale.coverage / 5)
         )}`;
+        const unwrittenSuffix =
+          locale.unwritten > 0 ? `, ${locale.unwritten} unwritten` : '';
         Logger.output(
-          `  ${locale.locale}  [${bar}] ${locale.coverage}%  (${locale.missing} missing, ${locale.outdated} outdated)`
+          `  ${locale.locale}  [${bar}] ${locale.coverage}%  (${locale.missing} missing, ${locale.outdated} outdated${unwrittenSuffix})`
         );
+      }
+      const unwritten = status.unwrittenByLocale.filter(
+        (u) => !localeFilter || localeFilter.includes(u.locale)
+      );
+      if (unwritten.length > 0) {
+        const { targetGapsWarning } =
+          await import('../../../sync/sync-target-audit.js');
+        Logger.output('');
+        Logger.warn(targetGapsWarning(unwritten));
       }
     }
   } catch (error) {

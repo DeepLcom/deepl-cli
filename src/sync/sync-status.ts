@@ -6,12 +6,21 @@ import { computeDiff } from './sync-differ.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import { LOCK_FILE_NAME } from './types.js';
 import { walkBuckets } from './sync-bucket-walker.js';
+import { findTargetGaps } from './sync-target-audit.js';
+import { resolveTargetPath } from './sync-utils.js';
 
 export interface LocaleStatus {
   locale: string;
   complete: number;
   missing: number;
   outdated: number;
+  /**
+   * Keys the lockfile records as translated for this locale that the locale's
+   * target file does not hold. Counted separately from `missing` (absent from
+   * the lockfile) and `outdated` (recorded against an older source), and never
+   * counted as `complete`.
+   */
+  unwritten: number;
   coverage: number;
 }
 
@@ -25,6 +34,18 @@ export interface SyncStatusResult {
    */
   skippedKeys: number;
   locales: LocaleStatus[];
+  /**
+   * Per target file and locale, the keys behind each locale's `unwritten`
+   * count, so the report can name the file and the keys rather than only
+   * counting them.
+   */
+  unwrittenByLocale: UnwrittenTargetKeys[];
+}
+
+export interface UnwrittenTargetKeys {
+  locale: string;
+  file: string;
+  keys: string[];
 }
 
 export async function computeSyncStatus(
@@ -37,13 +58,19 @@ export async function computeSyncStatus(
   const lockFile = await lockManager.read();
   let totalKeys = 0;
   let skippedKeys = 0;
+  const unwrittenByLocale: UnwrittenTargetKeys[] = [];
   const localeStats = new Map<
     string,
-    { complete: number; missing: number; outdated: number }
+    { complete: number; missing: number; outdated: number; unwritten: number }
   >();
 
   for (const locale of config.target_locales) {
-    localeStats.set(locale, { complete: 0, missing: 0, outdated: 0 });
+    localeStats.set(locale, {
+      complete: 0,
+      missing: 0,
+      outdated: 0,
+      unwritten: 0,
+    });
   }
 
   for await (const walked of walkBuckets(config, formatRegistry)) {
@@ -53,6 +80,26 @@ export async function computeSyncStatus(
 
     const fileLockEntries = getOwnMember(lockFile.entries, relPath) ?? {};
     const diffs = computeDiff(fileLockEntries, entries);
+    // The lockfile alone cannot answer "is this locale complete": it records
+    // what a run intended, not what its target file ended up holding.
+    const gaps = await findTargetGaps(
+      config,
+      walked,
+      fileLockEntries,
+      config.target_locales
+    );
+    for (const [locale, keys] of gaps) {
+      unwrittenByLocale.push({
+        locale,
+        file: resolveTargetPath(
+          relPath,
+          config.source_locale,
+          locale,
+          walked.bucketConfig.target_path_pattern
+        ),
+        keys: [...keys],
+      });
+    }
 
     for (const locale of config.target_locales) {
       const stats = localeStats.get(locale);
@@ -76,6 +123,8 @@ export async function computeSyncStatus(
           stats.missing++;
         } else if (diff.status === 'stale' || localeOutdated) {
           stats.outdated++;
+        } else if (gaps.get(locale)?.has(diff.key)) {
+          stats.unwritten++;
         } else {
           stats.complete++;
         }
@@ -88,8 +137,10 @@ export async function computeSyncStatus(
       complete: 0,
       missing: 0,
       outdated: 0,
+      unwritten: 0,
     };
-    const total = stats.complete + stats.missing + stats.outdated;
+    const total =
+      stats.complete + stats.missing + stats.outdated + stats.unwritten;
     const coverage = total > 0 ? Math.round((stats.complete / total) * 100) : 0;
     return { locale, ...stats, coverage };
   });
@@ -99,5 +150,6 @@ export async function computeSyncStatus(
     totalKeys,
     skippedKeys,
     locales,
+    unwrittenByLocale,
   };
 }

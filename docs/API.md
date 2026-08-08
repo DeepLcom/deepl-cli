@@ -1391,6 +1391,8 @@ Source: en (142 keys)
   ja  [##################..]  91%  (12 missing, 0 outdated)
 ```
 
+A locale also reports **`unwritten`** keys — recorded as translated in `.deepl-sync.lock` but not in that locale's target file — when there are any, followed by a line naming the file and the keys. The suffix is omitted when the count is zero, so the line above is unchanged for a healthy project. `--format json` always carries `unwritten` on each locale plus a top-level `unwrittenByLocale` array of `{locale, file, keys}`. See [docs/SYNC.md](./SYNC.md#a-string-added-after-the-first-sync) for what is and is not counted.
+
 ##### `validate`
 
 Check translations for placeholder integrity and format consistency.
@@ -1604,7 +1606,7 @@ No other fields appear in the output. Fields not listed above are internal and m
 
 #### Notes
 
-- The `--frozen` flag makes no API calls. It compares the lockfile against source files and exits with code 10 if any translations are missing or outdated. This is the recommended mode for CI/CD pipelines.
+- The `--frozen` flag makes no API calls. It compares the lockfile against source files, and each target file against what the lockfile claims about it, and exits with code 10 if any translations are missing, outdated, or recorded as translated while absent from the target file. This is the recommended mode for CI/CD pipelines.
 - The lockfile (`.deepl-sync.lock`) should be committed to version control. It enables incremental sync by tracking content hashes.
 - The `push` and `pull` subcommands require a TMS that implements the REST contract documented in [docs/SYNC.md](./SYNC.md#tms-rest-contract). All other commands work with the standard DeepL Translation API.
 - By default, keys with extracted context are grouped by i18n section and translated in section batches. Use `--no-batch` to force individual per-key context translation. Use `--batch` to force all keys into plain batch calls (no context).

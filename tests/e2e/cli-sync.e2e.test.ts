@@ -552,6 +552,72 @@ describe('CLI Sync E2E', () => {
       expect(output).toContain('de');
       expect(output).toMatch(/\d+\s*keys/);
     });
+
+    // A target file that has lost translations the lockfile calls translated
+    // used to report 100% complete at exit 0 on every surface.
+    describe('a target file the lockfile over-reports', () => {
+      function damageTarget(): void {
+        writeSyncConfig(testFiles.path, ['de']);
+        writeSourceFile(testFiles.path);
+        runSyncAll('--yes');
+        const targetPath = path.join(testFiles.path, 'locales', 'de.json');
+        const parsed = JSON.parse(
+          fs.readFileSync(targetPath, 'utf-8')
+        ) as Record<string, string>;
+        delete parsed['farewell'];
+        fs.writeFileSync(targetPath, JSON.stringify(parsed, null, 2) + '\n');
+      }
+
+      it('names the count and the file in status', () => {
+        damageTarget();
+
+        const output = runSyncAll('status');
+
+        expect(output).toContain('1 unwritten');
+        expect(output).toContain('locales/de.json');
+        expect(output).toMatch(/recorded as translated/);
+        expect(output).not.toContain('100%');
+      });
+
+      it('carries the count in --format json', () => {
+        damageTarget();
+
+        const parsed = JSON.parse(runSyncAll('status --format json')) as {
+          locales: { locale: string; unwritten: number; complete: number }[];
+          unwrittenByLocale: { locale: string; file: string; keys: string[] }[];
+        };
+
+        expect(parsed.locales[0]?.unwritten).toBe(1);
+        expect(parsed.unwrittenByLocale).toEqual([
+          { locale: 'de', file: 'locales/de.json', keys: ['farewell'] },
+        ]);
+      });
+
+      it('is drift for --frozen, at exit 10', () => {
+        damageTarget();
+
+        const result = runSyncExpectError('--frozen');
+
+        expect(result.status).toBe(10);
+        expect(result.output).toContain('1 unwritten');
+        expect(result.output).toMatch(/not in the target file/);
+      });
+
+      it('is repaired by the next sync', () => {
+        damageTarget();
+
+        const result = runSyncExpectError('--yes');
+
+        expect(result.status).toBe(0);
+        const parsed = JSON.parse(
+          fs.readFileSync(
+            path.join(testFiles.path, 'locales', 'de.json'),
+            'utf-8'
+          )
+        ) as Record<string, string>;
+        expect(parsed['farewell']).toBeDefined();
+      });
+    });
   });
 
   describe('subcommand: validate', () => {
