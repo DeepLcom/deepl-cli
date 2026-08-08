@@ -583,7 +583,7 @@ ${body}
       const output = runScript(
         gitDir,
         `
-const result = await cmd.getStagedFiles();
+const result = await cmd.getStagedFiles(${JSON.stringify('.')});
 console.log(JSON.stringify({ size: result.size, files: [...result] }));
 `
       );
@@ -595,13 +595,63 @@ console.log(JSON.stringify({ size: result.size, files: [...result] }));
       );
     });
 
+    it('resolves staged paths against the watched repository, not the process cwd', () => {
+      const watchedDir = path.join(gitDir, 'docs');
+      fs.mkdirSync(watchedDir);
+      fs.writeFileSync(path.join(watchedDir, 'guide.md'), 'Hello');
+      execSyncChild('git add docs/guide.md', { cwd: gitDir, stdio: 'ignore' });
+
+      // The CLI is started from a sibling subdirectory of the same repository.
+      const runFrom = path.join(gitDir, 'tools');
+      fs.mkdirSync(runFrom);
+
+      const output = runScript(
+        runFrom,
+        `
+const result = await cmd.getStagedFiles(${JSON.stringify(watchedDir)});
+console.log(JSON.stringify({ files: [...result] }));
+`
+      );
+
+      const parsed = JSON.parse(output.trim());
+      expect(parsed.files).toEqual([
+        path.join(fs.realpathSync(gitDir), 'docs', 'guide.md'),
+      ]);
+    });
+
+    it('reads the index of the watched repository, not the one holding the cwd', () => {
+      const otherRepo = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'deepl-git-staged-other-')
+      );
+      execSyncChild('git init', { cwd: otherRepo, stdio: 'ignore' });
+      fs.writeFileSync(path.join(gitDir, 'file1.txt'), 'Hello');
+      execSyncChild('git add file1.txt', { cwd: gitDir, stdio: 'ignore' });
+
+      try {
+        const output = runScript(
+          otherRepo,
+          `
+const result = await cmd.getStagedFiles(${JSON.stringify(gitDir)});
+console.log(JSON.stringify({ files: [...result] }));
+`
+        );
+
+        const parsed = JSON.parse(output.trim());
+        expect(parsed.files).toEqual([
+          path.join(fs.realpathSync(gitDir), 'file1.txt'),
+        ]);
+      } finally {
+        fs.rmSync(otherRepo, { recursive: true, force: true });
+      }
+    });
+
     it('should return empty set when no files are staged', () => {
       fs.writeFileSync(path.join(gitDir, 'file1.txt'), 'Hello');
 
       const output = runScript(
         gitDir,
         `
-const result = await cmd.getStagedFiles();
+const result = await cmd.getStagedFiles(${JSON.stringify('.')});
 console.log(JSON.stringify({ size: result.size }));
 `
       );
@@ -619,7 +669,7 @@ console.log(JSON.stringify({ size: result.size }));
         runScript(
           nonGitDir,
           `
-await cmd.getStagedFiles();
+await cmd.getStagedFiles(${JSON.stringify('.')});
 `
         );
         fail('Should have thrown');

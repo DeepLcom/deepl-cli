@@ -55,6 +55,13 @@ jest.mock('fs');
 jest.mock('../../src/services/watch');
 jest.mock('../../src/services/file-translation');
 
+interface PrivateWatchCommand {
+  gitWorktreeRoot: (anchorDir: string) => Promise<string | null>;
+}
+
+const asPrivate = (command: WatchCommand): PrivateWatchCommand =>
+  command as unknown as PrivateWatchCommand;
+
 describe('WatchCommand', () => {
   let mockTranslationService: jest.Mocked<TranslationService>;
   let mockFileTranslationService: jest.Mocked<FileTranslationService>;
@@ -687,6 +694,9 @@ describe('WatchCommand', () => {
     it('should display initial watch message with all options', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+      jest
+        .spyOn(asPrivate(watchCommand), 'gitWorktreeRoot')
+        .mockResolvedValue('/some');
 
       // Mock the watch service watch method to return a resolved promise
       mockWatchService.watch.mockReturnValue(undefined);
@@ -761,6 +771,9 @@ describe('WatchCommand', () => {
 
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => false });
+      jest
+        .spyOn(asPrivate(watchCommand), 'gitWorktreeRoot')
+        .mockResolvedValue('/some');
     });
 
     it('should auto-commit translations when autoCommit is enabled for multiple languages', async () => {
@@ -830,11 +843,15 @@ describe('WatchCommand', () => {
       expect(mockLogger.success).toHaveBeenCalled();
     });
 
-    it('should handle auto-commit when not in git repository', async () => {
+    it('should warn and skip the commit when the output directory stops being a repository', async () => {
       expect.assertions(1);
       mockWatchService.watch.mockImplementation(() => {
         throw new Error('Test complete');
       });
+      jest
+        .spyOn(asPrivate(watchCommand), 'gitWorktreeRoot')
+        .mockResolvedValueOnce('/some')
+        .mockResolvedValue(null);
 
       try {
         await watchCommand.watch('/some/file.md', {
@@ -854,8 +871,9 @@ describe('WatchCommand', () => {
         outputPath: '/test/file.es.md',
       });
 
-      // Should not throw, just log warning
-      expect(mockLogger.success).toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Not a git repository')
+      );
     });
 
     it('should handle auto-commit with no output files', async () => {
@@ -911,6 +929,66 @@ describe('WatchCommand', () => {
 
       // Should not throw on auto-commit failure
       expect(mockLogger.success).toHaveBeenCalled();
+    });
+  });
+
+  describe('watch() with autoCommit', () => {
+    beforeEach(() => {
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.statSync as jest.Mock).mockReturnValue({ isDirectory: () => true });
+      jest.spyOn(process, 'on').mockImplementation(() => process);
+      mockWatchService.watch.mockImplementation(() => {
+        throw new Error('Test complete');
+      });
+    });
+
+    it('refuses before the watcher starts when the output directory is not in a repository', async () => {
+      expect.assertions(2);
+      jest
+        .spyOn(asPrivate(watchCommand), 'gitWorktreeRoot')
+        .mockResolvedValue(null);
+
+      await expect(
+        watchCommand.watch('/some/dir', {
+          to: 'es',
+          output: '/not/a/repo',
+          autoCommit: true,
+        })
+      ).rejects.toThrow('--auto-commit');
+
+      expect(mockWatchService.watch).not.toHaveBeenCalled();
+    });
+
+    it('starts the watcher when the output directory is in a repository', async () => {
+      expect.assertions(1);
+      jest
+        .spyOn(asPrivate(watchCommand), 'gitWorktreeRoot')
+        .mockResolvedValue('/repo');
+
+      try {
+        await watchCommand.watch('/repo/docs', {
+          to: 'es',
+          output: '/repo/out',
+          autoCommit: true,
+        });
+      } catch {
+        // Expected: the watcher is stubbed to throw once reached
+      }
+
+      expect(mockWatchService.watch).toHaveBeenCalled();
+    });
+
+    it('does not check for a repository when autoCommit is off', async () => {
+      expect.assertions(1);
+      const probe = jest.spyOn(asPrivate(watchCommand), 'gitWorktreeRoot');
+
+      try {
+        await watchCommand.watch('/some/dir', { to: 'es' });
+      } catch {
+        // Expected: the watcher is stubbed to throw once reached
+      }
+
+      expect(probe).not.toHaveBeenCalled();
     });
   });
 

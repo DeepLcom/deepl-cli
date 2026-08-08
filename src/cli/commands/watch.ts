@@ -40,6 +40,16 @@ interface WatchOptions {
   gitStaged?: boolean;
 }
 
+/**
+ * The directory a git command about `target` must run in: the watched path
+ * itself when it is a directory, and its parent when it is a single file.
+ */
+function watchedDirectory(target: string): string {
+  const isDirectory =
+    fs.existsSync(target) && fs.statSync(target).isDirectory();
+  return isDirectory ? target : path.dirname(target);
+}
+
 export class WatchCommand {
   private fileTranslationService: FileTranslationService;
   private glossaryService: GlossaryService;
@@ -79,32 +89,61 @@ export class WatchCommand {
   }
 
   /**
-   * Get the set of git-staged file paths (absolute).
-   * SECURITY: Uses execFile instead of exec to prevent command injection
+   * The working tree root of the repository containing `anchorDir`, or null
+   * when that directory is not inside one.
+   *
+   * git resolves a relative pathspec against its own working directory and
+   * refuses one that lies outside its working tree, so every git invocation is
+   * anchored on the files it acts on rather than on the directory the CLI
+   * happens to have been started in.
    */
-  async getStagedFiles(): Promise<Set<string>> {
+  private async gitWorktreeRoot(anchorDir: string): Promise<string | null> {
     const { execFile } = await import('child_process');
     const { promisify } = await import('util');
     const execFileAsync = promisify(execFile);
 
-    // Verify we're in a git repo
     try {
-      await execFileAsync('git', ['rev-parse', '--git-dir']);
+      const { stdout } = await execFileAsync(
+        'git',
+        ['rev-parse', '--show-toplevel'],
+        { cwd: anchorDir }
+      );
+      const root = stdout.trim();
+      return root.length > 0 ? root : null;
     } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get the set of git-staged file paths (absolute).
+   *
+   * The index that matters is the one belonging to the path being watched, and
+   * `git diff --cached` names its files relative to that repository's root, so
+   * both the query and the paths it returns are anchored there.
+   *
+   * SECURITY: Uses execFile instead of exec to prevent command injection
+   */
+  async getStagedFiles(pathToWatch: string): Promise<Set<string>> {
+    const root = await this.gitWorktreeRoot(watchedDirectory(pathToWatch));
+    if (root === null) {
       throw new ValidationError('--git-staged requires a git repository');
     }
 
-    const { stdout } = await execFileAsync('git', [
-      'diff',
-      '--cached',
-      '--name-only',
-      '--diff-filter=ACM',
-    ]);
+    const { execFile } = await import('child_process');
+    const { promisify } = await import('util');
+    const execFileAsync = promisify(execFile);
+
+    const { stdout } = await execFileAsync(
+      'git',
+      ['diff', '--cached', '--name-only', '--diff-filter=ACM'],
+      { cwd: root }
+    );
     const files = stdout
       .trim()
       .split('\n')
       .filter((f) => f.length > 0);
-    return new Set(files.map((f) => path.resolve(f)));
+    return new Set(files.map((f) => path.resolve(root, f)));
   }
 
   /**
@@ -145,7 +184,7 @@ export class WatchCommand {
     // Get git-staged files if requested
     let stagedFiles: Set<string> | undefined;
     if (options.gitStaged) {
-      stagedFiles = await this.getStagedFiles();
+      stagedFiles = await this.getStagedFiles(pathToWatch);
       if (stagedFiles.size === 0) {
         Logger.warn(
           chalk.yellow('No git-staged files found. Nothing to watch.')
@@ -187,6 +226,20 @@ export class WatchCommand {
     // Create output directory if it doesn't exist
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // git can only commit files inside its own working tree, so --auto-commit
+    // is answerable only by the repository holding the output directory. Asked
+    // here, before the first translation is billed, so a session that could
+    // never commit anything says so once instead of once per translated file.
+    if (options.autoCommit) {
+      const repoRoot = await this.gitWorktreeRoot(outputDir);
+      if (repoRoot === null) {
+        throw new ValidationError(
+          `--auto-commit needs a git repository, but the output directory "${outputDir}" is not inside one.`,
+          'Point --output at a path inside the repository the translations belong to, or drop --auto-commit.'
+        );
+      }
     }
 
     // Create watch service with optional debounce and concurrency
@@ -326,36 +379,38 @@ export class WatchCommand {
       const { promisify } = await import('util');
       const execFileAsync = promisify(execFile);
 
-      // Check if in a git repository
-      try {
-        await execFileAsync('git', ['rev-parse', '--git-dir']);
-      } catch {
-        Logger.warn(
-          chalk.yellow('⚠️  Not a git repository, skipping auto-commit')
-        );
-        return;
-      }
-
-      // Collect output files
+      // Collect output files. Resolved here, while the process working
+      // directory is still the one they were written relative to.
       const outputFiles: string[] = [];
       if (Array.isArray(result)) {
         result.forEach((r: FileTranslationResult) => {
           if (r.outputPath) {
-            outputFiles.push(r.outputPath);
+            outputFiles.push(path.resolve(r.outputPath));
           }
         });
       } else if (result.outputPath) {
-        outputFiles.push(result.outputPath);
+        outputFiles.push(path.resolve(result.outputPath));
       }
 
       if (outputFiles.length === 0) {
         return;
       }
 
+      // The translations decide which repository receives them: git can only
+      // commit files inside its own working tree, so the commit belongs to the
+      // repository holding the output directory.
+      const cwd = await this.gitWorktreeRoot(path.dirname(outputFiles[0]!));
+      if (cwd === null) {
+        Logger.warn(
+          chalk.yellow('⚠️  Not a git repository, skipping auto-commit')
+        );
+        return;
+      }
+
       // `--` stops git reading an output path that begins with a dash as an
       // option: execFile prevents shell injection, not git's own option parsing.
       for (const file of outputFiles) {
-        await execFileAsync('git', ['add', '--', file]);
+        await execFileAsync('git', ['add', '--', file], { cwd });
       }
 
       // Create commit message
@@ -367,14 +422,11 @@ export class WatchCommand {
 
       // --only restricts the commit to the translated outputs, so anything else
       // already staged in the index is not swept into an i18n commit.
-      await execFileAsync('git', [
-        'commit',
-        '--only',
-        '-m',
-        commitMsg,
-        '--',
-        ...outputFiles,
-      ]);
+      await execFileAsync(
+        'git',
+        ['commit', '--only', '-m', commitMsg, '--', ...outputFiles],
+        { cwd }
+      );
 
       Logger.success(chalk.green('✓ Auto-committed translations'));
     } catch (error) {

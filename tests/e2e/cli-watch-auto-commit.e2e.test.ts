@@ -62,11 +62,17 @@ describe('deepl watch --auto-commit exit status (subprocess)', () => {
     });
   }
 
-  function git(args: string[]): void {
-    execFileSync('git', args, { cwd: tmpDir, stdio: 'ignore' });
+  function git(args: string[], cwd: string = tmpDir): void {
+    execFileSync('git', args, { cwd, stdio: 'ignore' });
   }
 
-  async function startWatch(port: number): Promise<void> {
+  function initRepo(dir: string): void {
+    git(['init', '-q'], dir);
+    git(['config', 'user.email', 'test@test.com'], dir);
+    git(['config', 'user.name', 'Test'], dir);
+  }
+
+  async function startWatch(port: number, runFrom = tmpDir): Promise<void> {
     fs.writeFileSync(
       path.join(configDir, 'config.json'),
       JSON.stringify({
@@ -96,7 +102,7 @@ describe('deepl watch --auto-commit exit status (subprocess)', () => {
         outDir,
         '--auto-commit',
       ],
-      { cwd: tmpDir, env, stdio: ['ignore', 'pipe', 'pipe'] }
+      { cwd: runFrom, env, stdio: ['ignore', 'pipe', 'pipe'] }
     );
     const collect = (chunk: Buffer): void => {
       cliOutput += chunk.toString();
@@ -129,17 +135,19 @@ describe('deepl watch --auto-commit exit status (subprocess)', () => {
   }
 
   beforeEach(() => {
-    configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-ac-cfg-'));
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-ac-'));
+    configDir = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-ac-cfg-'))
+    );
+    tmpDir = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-ac-'))
+    );
     srcDir = path.join(tmpDir, 'src');
     outDir = path.join(tmpDir, 'out');
     fs.mkdirSync(srcDir, { recursive: true });
     fs.mkdirSync(outDir, { recursive: true });
     cliOutput = '';
 
-    git(['init', '-q']);
-    git(['config', 'user.email', 'test@test.com']);
-    git(['config', 'user.name', 'Test']);
+    initRepo(tmpDir);
     fs.writeFileSync(path.join(srcDir, 'doc.md'), 'BASE\n');
     git(['add', '-A']);
     git(['commit', '-qm', 'init']);
@@ -179,6 +187,106 @@ describe('deepl watch --auto-commit exit status (subprocess)', () => {
     expect(cliOutput).toContain('Auto-commit failures: 1');
     expect(code).toBe(12);
   }, 90000);
+
+  it('commits into the watched repository when started from another one', async () => {
+    // The terminal sits in an unrelated repository; the translations belong to
+    // the watched one.
+    const otherRepo = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-ac-other-'))
+    );
+    initRepo(otherRepo);
+    fs.writeFileSync(path.join(otherRepo, 'README.md'), 'other\n');
+    git(['add', '-A'], otherRepo);
+    git(['commit', '-qm', 'init'], otherRepo);
+
+    try {
+      const port = await startServer();
+      await startWatch(port, otherRepo);
+      expect(await editUntilTranslated(path.join(srcDir, 'doc.md'))).toBe(true);
+      expect(
+        await waitUntil(() => /Auto-committed/.test(cliOutput), 15000)
+      ).toBe(true);
+
+      const code = await stopAndWait();
+
+      expect(cliOutput).not.toContain('Auto-commit failed');
+      expect(code).toBe(0);
+
+      const watchedLog = execFileSync(
+        'git',
+        ['log', '--oneline', '--name-only'],
+        { cwd: tmpDir, encoding: 'utf-8' }
+      );
+      expect(watchedLog).toContain('auto-translate');
+      expect(watchedLog).toContain('out/doc.de.md');
+
+      const otherLog = execFileSync('git', ['log', '--oneline'], {
+        cwd: otherRepo,
+        encoding: 'utf-8',
+      });
+      expect(otherLog).not.toContain('auto-translate');
+    } finally {
+      fs.rmSync(otherRepo, { recursive: true, force: true });
+    }
+  }, 90000);
+
+  it('refuses before translating when the output directory is in no repository', async () => {
+    const plainOut = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-watch-ac-plain-'))
+    );
+    outDir = plainOut;
+
+    try {
+      const port = await startServer();
+      const configPath = path.join(configDir, 'config.json');
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify({
+          auth: { apiKey: 'mock-api-key-for-testing:fx' },
+          api: { baseUrl: `http://127.0.0.1:${port}`, usePro: false },
+          cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
+          output: { format: 'text', verbose: false, color: false },
+        })
+      );
+      const env: NodeJS.ProcessEnv = {
+        ...process.env,
+        DEEPL_CONFIG_DIR: configDir,
+        NO_COLOR: '1',
+      };
+      delete env['DEEPL_API_KEY'];
+
+      child = spawn(
+        'node',
+        [
+          CLI_PATH,
+          'watch',
+          srcDir,
+          '--to',
+          'de',
+          '--output',
+          plainOut,
+          '--auto-commit',
+        ],
+        { cwd: tmpDir, env, stdio: ['ignore', 'pipe', 'pipe'] }
+      );
+      const collect = (chunk: Buffer): void => {
+        cliOutput += chunk.toString();
+      };
+      child.stdout?.on('data', collect);
+      child.stderr?.on('data', collect);
+
+      const code = await new Promise<number | null>((resolve) => {
+        child?.once('exit', (exitCode) => resolve(exitCode));
+      });
+
+      expect(code).toBe(6);
+      expect(cliOutput).toContain('--auto-commit needs a git repository');
+      expect(cliOutput).not.toContain('Watching for changes');
+      expect(fs.readdirSync(plainOut)).toEqual([]);
+    } finally {
+      fs.rmSync(plainOut, { recursive: true, force: true });
+    }
+  }, 60000);
 
   it('exits 0 when every auto-commit succeeded', async () => {
     const port = await startServer();

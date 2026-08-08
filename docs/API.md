@@ -1136,8 +1136,8 @@ Monitor files or directories for changes and automatically translate them. Suppo
 
 **Git Integration:**
 
-- `--auto-commit` - Auto-commit translations to git after each change. One commit per translated source file, queued one at a time: git holds `.git/index.lock` for the duration of an `add` or a `commit`, so parallel translations cannot commit in parallel. A failed commit is reported and counted, and the session exits 12 rather than 0 (see below)
-- `--git-staged` - Only watch git-staged files (snapshot taken once at startup)
+- `--auto-commit` - Auto-commit translations to git after each change. One commit per translated source file, queued one at a time: git holds `.git/index.lock` for the duration of an `add` or a `commit`, so parallel translations cannot commit in parallel. A failed commit is reported and counted, and the session exits 12 rather than 0 (see below). The commit goes to the repository holding the **output directory**, whatever directory the CLI was started in — git can only commit files inside its own working tree, so that is the only repository the translations can reach. When the output directory is in no repository at all, the command exits 6 before the watcher starts rather than warning once per translated file
+- `--git-staged` - Only watch git-staged files (snapshot taken once at startup). The index read is the one belonging to the **watched path**'s repository, so the CLI need not be started from its root
 - `--dry-run` - Show what would be watched without starting the watcher
 
 #### Examples
@@ -1189,7 +1189,7 @@ git add docs/guide.md docs/faq.md
 deepl watch docs/ --to de,ja --git-staged --auto-commit
 ```
 
-> **Note:** `--git-staged` takes a one-time snapshot of staged files at startup. Files staged after the watcher starts are not included. Requires a git repository — exits with an error otherwise.
+> **Note:** `--git-staged` takes a one-time snapshot of staged files at startup. Files staged after the watcher starts are not included. The watched path must be inside a git repository — the command exits with an error otherwise — and it is that repository's index that is read, not the one belonging to the directory the CLI was started in.
 
 ---
 
