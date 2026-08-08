@@ -730,8 +730,9 @@ export class SyncCommand {
       Logger.info(`Sync drift detected: ${driftSummary} keys.`);
       if (result.unwrittenKeys > 0) {
         Logger.info(
-          'Unwritten keys are recorded as translated in the lock file but are not in the target file. ' +
-            'Run `deepl sync status` to see which, and `deepl sync` to translate them again.'
+          'Unwritten keys are recorded as translated in the lock file but could not be confirmed ' +
+            'in the target file. ' +
+            'Run `deepl sync status` to see which keys, in which file, and why.'
         );
       }
       return;

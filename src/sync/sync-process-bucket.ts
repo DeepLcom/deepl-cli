@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import { computeDiff } from './sync-differ.js';
 import {
@@ -18,6 +17,7 @@ import {
   type WalkedBucketFile,
 } from './sync-bucket-walker.js';
 import { findTargetGaps } from './sync-target-audit.js';
+import { readTargetFile, unusableTargetMessage } from './sync-target-read.js';
 import type { LocaleTranslator } from './sync-locale-translator.js';
 import type { SyncFileResult, SyncOptions } from './sync-service.js';
 
@@ -167,7 +167,7 @@ export async function processBucket(
       effective
     );
     let count = 0;
-    for (const keys of gaps.values()) count += keys.size;
+    for (const gap of gaps.values()) count += gap.keys.size;
     return count;
   };
 
@@ -296,6 +296,13 @@ export async function processBucket(
 
   // Pre-read existing target files to get current translations
   const existingTargetEntries = new Map<string, Map<string, string>>();
+  /**
+   * Locales whose target file is on disk and could not be read, with the reason.
+   * Such a locale is not translated for this file: its translations exist only in
+   * that file, so treating it as empty would re-bill every key and then write the
+   * result over the copy nobody managed to read.
+   */
+  const unusableTargets = new Map<string, string>();
   for (const locale of locales) {
     if (isMultiLocale) {
       existingTargetEntries.set(
@@ -311,18 +318,18 @@ export async function processBucket(
       );
       const targetAbsPath = path.join(config.projectRoot, targetRelPath);
       assertPathWithinRoot(targetAbsPath, config.projectRoot);
-      try {
-        const targetContent = await fs.promises.readFile(
-          targetAbsPath,
-          'utf-8'
-        );
-        existingTargetEntries.set(
+      const read = await readTargetFile(parser, targetAbsPath);
+      if (read.state === 'unusable') {
+        unusableTargets.set(
           locale,
-          extractExistingTranslations(parser, targetContent)
+          unusableTargetMessage(targetRelPath, read.reason)
         );
-      } catch {
-        existingTargetEntries.set(locale, new Map());
+        continue;
       }
+      existingTargetEntries.set(
+        locale,
+        read.state === 'usable' ? read.translations : new Map()
+      );
     }
   }
 
@@ -351,6 +358,8 @@ export async function processBucket(
         return;
       }
       try {
+        const unusable = unusableTargets.get(locale);
+        if (unusable) throw new Error(unusable);
         const result = await localeTranslator.translate({
           locale,
           relPath,

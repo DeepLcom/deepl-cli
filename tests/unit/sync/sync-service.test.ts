@@ -27,7 +27,11 @@ jest.mock('fs', () => ({
   promises: {
     readFile: jest.fn().mockResolvedValue('{}'),
     mkdir: jest.fn().mockResolvedValue(undefined),
-    access: jest.fn().mockRejectedValue(new Error('ENOENT')),
+    access: jest.fn().mockRejectedValue(
+      Object.assign(new Error('ENOENT: no such file or directory'), {
+        code: 'ENOENT',
+      })
+    ),
     copyFile: jest.fn().mockResolvedValue(undefined),
     unlink: jest.fn().mockResolvedValue(undefined),
   },
@@ -288,6 +292,17 @@ function setupLockManager(lockFile: SyncLockFile) {
   return { mockRead, mockWrite };
 }
 
+/**
+ * What `fs` rejects with for a missing file: the errno, not only a message. The
+ * sync write path tells "not there" from "there and unreadable" by the code, so a
+ * stub that carries no code models an unreadable file rather than an absent one.
+ */
+function enoent(): NodeJS.ErrnoException {
+  return Object.assign(new Error('ENOENT: no such file or directory'), {
+    code: 'ENOENT',
+  });
+}
+
 const SOURCE_JSON =
   JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n';
 
@@ -305,7 +320,7 @@ describe('SyncService', () => {
       mockReadFile.mockImplementation(async (p: unknown) => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig();
@@ -334,7 +349,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -424,7 +439,7 @@ describe('SyncService', () => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
         if (filePath === '/test/locales/de.json') return '{"greeting":"Alt"}';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -492,7 +507,7 @@ describe('SyncService', () => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
         if (filePath === '/test/locales/de.json') return '{"greeting":"Alt"}';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -560,7 +575,7 @@ describe('SyncService', () => {
       mockReadFile.mockImplementation(async (p: unknown) => {
         const filePath = String(p);
         if (filePath === '/test/Localizable.xcstrings') return XCSTRINGS_SOURCE;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeMultiLocaleConfig());
@@ -606,7 +621,7 @@ describe('SyncService', () => {
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/Localizable.xcstrings')
           return XCSTRINGS_SOURCE;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeMultiLocaleConfig());
@@ -638,7 +653,7 @@ describe('SyncService', () => {
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/Localizable.xcstrings')
           return XCSTRINGS_SOURCE;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeMultiLocaleConfig());
@@ -793,7 +808,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig(), { force: true });
@@ -829,7 +844,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig(), { force: true });
@@ -855,7 +870,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({ target_locales: ['de', 'fr', 'es'] });
@@ -901,7 +916,7 @@ describe('SyncService', () => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
         if (filePath === '/test/locales/de.json') return '';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -926,7 +941,7 @@ describe('SyncService', () => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.yaml') return 'greeting: Hello\n';
         if (filePath === '/test/locales/de.yaml') return '';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -975,7 +990,7 @@ describe('SyncService', () => {
         if (filePath.endsWith('a.json') || filePath.endsWith('b.json')) {
           return JSON.stringify({ key: 'value' }, null, 2) + '\n';
         }
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -1001,7 +1016,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1041,7 +1056,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1071,7 +1086,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1109,7 +1124,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -1141,7 +1156,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -1196,7 +1211,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({ target_locales: ['de', 'fr'] });
@@ -1223,7 +1238,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({ target_locales: ['de', 'fr', 'es'] });
@@ -1302,7 +1317,7 @@ describe('SyncService', () => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return sourceJson;
         if (filePath === '/test/locales/de.json') return targetDeJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1340,7 +1355,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -1369,7 +1384,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return '{}';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1409,7 +1424,7 @@ describe('SyncService', () => {
       );
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1456,7 +1471,7 @@ describe('SyncService', () => {
       );
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1483,7 +1498,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const { mockWrite } = setupLockManager(makeEmptyLockFile());
@@ -1525,7 +1540,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -1560,7 +1575,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1592,7 +1607,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1624,7 +1639,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return singleKeyJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       mockExtractAllKeyContexts.mockResolvedValue({
@@ -1660,7 +1675,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       mockExtractAllKeyContexts.mockResolvedValue({
@@ -1703,7 +1718,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       mockExtractAllKeyContexts.mockResolvedValue({
@@ -1747,7 +1762,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return threeKeyJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       // Only 'greeting' has context; 'farewell' and 'other' do not
@@ -1789,7 +1804,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const events: Array<{ type: string; key?: string; translated: number }> =
@@ -1828,7 +1843,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const events: Array<{ type: string; translated: number }> = [];
@@ -1849,7 +1864,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const progressEvents: unknown[] = [];
@@ -1875,7 +1890,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return singleKeyJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       mockExtractAllKeyContexts.mockResolvedValue({
@@ -1909,7 +1924,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -1940,7 +1955,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -1982,7 +1997,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2022,7 +2037,7 @@ describe('SyncService', () => {
       mockReadFile.mockImplementation(async (p: unknown) => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({ target_locales: ['de', 'fr'] });
@@ -2072,7 +2087,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -2135,7 +2150,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -2174,7 +2189,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2202,7 +2217,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2232,7 +2247,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2259,7 +2274,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2290,7 +2305,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2320,7 +2335,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2374,7 +2389,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -2973,7 +2988,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig();
@@ -3002,7 +3017,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig();

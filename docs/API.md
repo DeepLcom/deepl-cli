@@ -1391,7 +1391,7 @@ Source: en (142 keys)
   ja  [##################..]  91%  (12 missing, 0 outdated)
 ```
 
-A locale also reports **`unwritten`** keys — recorded as translated in `.deepl-sync.lock` but not in that locale's target file — when there are any, followed by a line naming the file and the keys. The suffix is omitted when the count is zero, so the line above is unchanged for a healthy project. `--format json` always carries `unwritten` on each locale plus a top-level `unwrittenByLocale` array of `{locale, file, keys}`. See [docs/SYNC.md](./SYNC.md#a-string-added-after-the-first-sync) for what is and is not counted.
+A locale also reports **`unwritten`** keys — recorded as translated in `.deepl-sync.lock` but not in that locale's target file — when there are any, followed by a line naming the file and the keys. The suffix is omitted when the count is zero, so the line above is unchanged for a healthy project. `--format json` always carries `unwritten` on each locale plus a top-level `unwrittenByLocale` array of `{locale, file, keys}`, each entry gaining an `unusable` field when the target file could not be read or parsed at all. See [docs/SYNC.md](./SYNC.md#a-string-added-after-the-first-sync) for what is and is not counted.
 
 ##### `validate`
 
@@ -3452,6 +3452,8 @@ Remediation: open `.deepl-sync.lock`, resolve the remaining `<<<<<<<` / `=======
 A key whose translation failed placeholder/ICU validation counts as failed here too: it is withheld from the target file rather than written corrupt. See [`validation`](SYNC.md#validation) in the sync configuration reference. With `validation.fail_on_error: true` the same run raises `ValidationError` (exit 6) instead.
 
 A key that translated successfully but that the target file's format could not be given a slot for also counts as failed. Every key is read back out of the content just written before the lockfile is updated, so the run reports it rather than recording a translation the file does not contain. See [A string added after the first sync](SYNC.md#a-string-added-after-the-first-sync).
+
+A locale whose **target file is on disk but could not be read or parsed** fails here as well, and fails before any translation is requested, so nothing is billed for it and the file is not written. That file is the only copy of its locale's translations, since the lockfile records source hashes rather than translated text. See [A target file that cannot be read](SYNC.md#a-target-file-that-cannot-be-read).
 
 `deepl watch` uses the same code when the session ends: on Ctrl+C (SIGINT/SIGTERM) it exits 12 rather than 0 if it recorded any failed translation or any failed `--auto-commit`, so a script driving a watch session can tell a clean run from one that lost work. The counts are printed beside the translation total before the process exits.
 

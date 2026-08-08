@@ -105,6 +105,113 @@ describe('sync pull with a colliding target file', () => {
     );
   });
 
+  // A collision is one of several ways a target file can turn out to be
+  // unreadable, and the fallback it was carved out of is ruinous for all of them.
+  it('leaves a target file that does not parse alone and records an unusable_target skip', async () => {
+    writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
+    writeFile(
+      tmpDir,
+      'locales/en.json',
+      JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n'
+    );
+    const conflicted =
+      '<<<<<<< HEAD\n' +
+      JSON.stringify(
+        { greeting: 'Hallo (hand-written)', farewell: 'LOCAL ONLY' },
+        null,
+        2
+      ) +
+      '\n=======\n{}\n>>>>>>> theirs\n';
+    writeFile(tmpDir, 'locales/de.json', conflicted);
+
+    const config = await loadSyncConfig(tmpDir);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
+    expectTmsPull(
+      'de',
+      { greeting: 'Hallo (from TMS)' },
+      { auth: { apiKey: 'env-key' } }
+    );
+
+    const warnings: string[] = [];
+    jest.spyOn(Logger, 'warn').mockImplementation((...args: unknown[]) => {
+      warnings.push(args.join(' '));
+    });
+
+    const result = await pullTranslations(config, client, harness.registry);
+
+    expect(result.pulled).toBe(0);
+    expect(result.skipped).toEqual([
+      { file: 'locales/en.json', locale: 'de', reason: 'unusable_target' },
+    ]);
+    expect(warnings.join('\n')).toContain('Skipping locales/de.json');
+    expect(fs.readFileSync(path.join(tmpDir, 'locales/de.json'), 'utf-8')).toBe(
+      conflicted
+    );
+  });
+
+  it('leaves a target file it cannot open alone', async () => {
+    writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
+    writeFile(
+      tmpDir,
+      'locales/en.json',
+      JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n'
+    );
+    const handWritten =
+      JSON.stringify(
+        { greeting: 'Hallo (hand-written)', farewell: 'LOCAL ONLY' },
+        null,
+        2
+      ) + '\n';
+    writeFile(tmpDir, 'locales/de.json', handWritten);
+    fs.chmodSync(path.join(tmpDir, 'locales/de.json'), 0o000);
+
+    const config = await loadSyncConfig(tmpDir);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
+    expectTmsPull(
+      'de',
+      { greeting: 'Hallo (from TMS)' },
+      { auth: { apiKey: 'env-key' } }
+    );
+
+    const result = await pullTranslations(config, client, harness.registry);
+
+    expect(result.pulled).toBe(0);
+    expect(result.skipped).toEqual([
+      { file: 'locales/en.json', locale: 'de', reason: 'unusable_target' },
+    ]);
+    fs.chmodSync(path.join(tmpDir, 'locales/de.json'), 0o644);
+    expect(fs.readFileSync(path.join(tmpDir, 'locales/de.json'), 'utf-8')).toBe(
+      handWritten
+    );
+  });
+
+  // Over-rejection guards: a locale with no file yet is still created from the
+  // source template, and a file that parses is still merged into.
+  it('still creates a target file that does not exist yet', async () => {
+    writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
+    writeFile(
+      tmpDir,
+      'locales/en.json',
+      JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+    );
+
+    const config = await loadSyncConfig(tmpDir);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
+    expectTmsPull(
+      'de',
+      { greeting: 'Hallo (from TMS)' },
+      { auth: { apiKey: 'env-key' } }
+    );
+
+    const result = await pullTranslations(config, client, harness.registry);
+
+    expect(result.pulled).toBe(1);
+    expect(result.skipped).toEqual([]);
+    expect(
+      JSON.parse(fs.readFileSync(path.join(tmpDir, 'locales/de.json'), 'utf-8'))
+    ).toEqual({ greeting: 'Hallo (from TMS)' });
+  });
+
   it('still pulls into a target file whose keys are distinct', async () => {
     writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
     writeFile(

@@ -89,7 +89,7 @@ describe('findTargetGaps()', () => {
       'es',
     ]);
 
-    expect([...(gaps.get('es') ?? [])]).toEqual(['added']);
+    expect([...(gaps.get('es')?.keys ?? [])]).toEqual(['added']);
   });
 
   it('reports nothing when the target holds every claimed key', async () => {
@@ -107,7 +107,10 @@ describe('findTargetGaps()', () => {
       'es',
     ]);
 
-    expect([...(gaps.get('es') ?? [])].sort()).toEqual(['added', 'greeting']);
+    expect([...(gaps.get('es')?.keys ?? [])].sort()).toEqual([
+      'added',
+      'greeting',
+    ]);
   });
 
   it('treats a target file the parser refuses as holding nothing', async () => {
@@ -129,7 +132,51 @@ describe('findTargetGaps()', () => {
       ['es']
     );
 
-    expect([...(gaps.get('es') ?? [])].sort()).toEqual(['added', 'greeting']);
+    expect([...(gaps.get('es')?.keys ?? [])].sort()).toEqual([
+      'added',
+      'greeting',
+    ]);
+  });
+
+  it('carries the reason a target file could not be parsed', async () => {
+    writeTarget('greeting=Hola\nadded=Traduceme\n');
+    const refusing: FormatParser = {
+      ...new PropertiesFormatParser(),
+      extract: () => {
+        throw new Error('two strings share one key');
+      },
+    } as unknown as FormatParser;
+
+    const gaps = await findTargetGaps(
+      config(),
+      walked({
+        parser: refusing,
+        entries: new PropertiesFormatParser().extract(SOURCE),
+      }),
+      lockEntries(),
+      ['es']
+    );
+
+    expect(gaps.get('es')?.unusable).toBe('two strings share one key');
+  });
+
+  it('says nothing about usability when the file was read and simply lacks a key', async () => {
+    writeTarget('greeting=Hola\n');
+
+    const gaps = await findTargetGaps(config(), walked(), lockEntries(), [
+      'es',
+    ]);
+
+    expect(gaps.get('es')?.unusable).toBeUndefined();
+  });
+
+  it('says nothing about usability when the file is not there at all', async () => {
+    const gaps = await findTargetGaps(config(), walked(), lockEntries(), [
+      'es',
+    ]);
+
+    expect(gaps.get('es')?.keys.size).toBe(2);
+    expect(gaps.get('es')?.unusable).toBeUndefined();
   });
 
   // An empty source can only produce an empty translation, and PO and XLIFF
@@ -266,7 +313,7 @@ describe('findTargetGaps() over a multi-locale format', () => {
       ['es']
     );
 
-    expect([...(gaps.get('es') ?? [])]).toEqual(['farewell']);
+    expect([...(gaps.get('es')?.keys ?? [])]).toEqual(['farewell']);
   });
 });
 
@@ -290,5 +337,43 @@ describe('targetGapsWarning()', () => {
     expect(message).toContain('5 keys are recorded as translated');
     expect(message).toContain('"a", "b", "c", …');
     expect(message).toContain('de: de.json ("a")');
+  });
+
+  // A file nobody could read has not been shown to be missing anything, and
+  // `deepl sync` refuses to overwrite it — so neither half of the sentence above
+  // is true of it.
+  it('says a target file could not be read rather than that its keys are missing', () => {
+    const message = targetGapsWarning([
+      {
+        locale: 'es',
+        file: 'locales/es.json',
+        keys: ['greeting'],
+        unusable: "JSON: 'a.b' is the key of two different strings",
+      },
+    ]);
+
+    expect(message).toContain('could not be read');
+    expect(message).toContain(
+      "es: locales/es.json (JSON: 'a.b' is the key of two different strings)"
+    );
+    expect(message).not.toContain('is not in the target file');
+    expect(message).not.toContain('translate it again');
+  });
+
+  it('reports an unreadable file and a genuinely incomplete one separately', () => {
+    const message = targetGapsWarning([
+      {
+        locale: 'es',
+        file: 'locales/es.json',
+        keys: ['a'],
+        unusable: 'EISDIR',
+      },
+      { locale: 'de', file: 'locales/de.json', keys: ['b'] },
+    ]);
+
+    expect(message).toContain('1 key is recorded as translated');
+    expect(message).toContain('de: locales/de.json ("b")');
+    expect(message).toContain('could not be read');
+    expect(message).toContain('es: locales/es.json (EISDIR)');
   });
 });

@@ -600,7 +600,10 @@ describe('CLI Sync E2E', () => {
 
         expect(result.status).toBe(10);
         expect(result.output).toContain('1 unwritten');
-        expect(result.output).toMatch(/not in the target file/);
+        expect(result.output).toMatch(
+          /could not be confirmed in the target file/
+        );
+        expect(result.output).toContain('deepl sync status');
       });
 
       it('is repaired by the next sync', () => {

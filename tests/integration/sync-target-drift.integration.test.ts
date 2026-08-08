@@ -177,3 +177,116 @@ describe('a target file missing translations the lockfile claims', () => {
     expect(result.driftDetected).toBe(false);
   });
 });
+
+/**
+ * A target file that is on disk but cannot be read is a different report from one
+ * that is missing keys: nobody has been shown what it holds, and `deepl sync`
+ * refuses to rebuild it, so telling the user to re-run sync would loop them.
+ */
+describe('a target file that cannot be read at all', () => {
+  let tmpDir: string;
+  let harness: ReturnType<typeof createSyncHarness>;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-unusable-'));
+    harness = createSyncHarness({ parsers: ['json'] });
+    writeSyncConfig(tmpDir, {
+      targetLocales: ['es'],
+      buckets: { json: { include: ['locales/en.json'] } },
+    });
+    const sourcePath = path.join(tmpDir, 'locales', 'en.json');
+    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+    fs.writeFileSync(
+      sourcePath,
+      JSON.stringify({ greeting: 'Hello', added: 'Translate me' }, null, 2),
+      'utf-8'
+    );
+  });
+
+  afterEach(() => {
+    harness.cleanup();
+    if (fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+    nock.cleanAll();
+  });
+
+  /** A healthy project, then a '.'-separator collision merged into the target. */
+  async function damage(): Promise<void> {
+    nock(DEEPL_FREE_API_URL)
+      .post('/v2/translate')
+      .reply(200, (_uri, body) => {
+        const parsed = new URLSearchParams(body as string);
+        return {
+          translations: parsed.getAll('text').map((t) => ({
+            text: `[es]${t}`,
+            detected_source_language: 'EN',
+            billed_characters: t.length,
+          })),
+        };
+      });
+    await harness.syncService.sync(await loadSyncConfig(tmpDir));
+    fs.writeFileSync(
+      path.join(tmpDir, 'locales', 'es.json'),
+      JSON.stringify(
+        {
+          greeting: '[es]Hello',
+          added: '[es]Translate me',
+          'menu.save': 'FLAT',
+          menu: { save: 'NESTED' },
+        },
+        null,
+        2
+      ),
+      'utf-8'
+    );
+  }
+
+  it('is reported with the reason rather than as missing keys', async () => {
+    await damage();
+
+    const status = await computeSyncStatus(
+      await loadSyncConfig(tmpDir),
+      harness.registry
+    );
+
+    const es = status.locales.find((l) => l.locale === 'es')!;
+    expect(es.unwritten).toBe(2);
+    const entry = status.unwrittenByLocale.find((u) => u.locale === 'es')!;
+    expect(entry.file).toBe('locales/es.json');
+    expect(entry.unusable).toContain(
+      "'menu.save' is the key of two different strings"
+    );
+  });
+
+  it('is drift as far as --frozen is concerned', async () => {
+    await damage();
+
+    const result = await harness.syncService.sync(
+      await loadSyncConfig(tmpDir),
+      { frozen: true }
+    );
+
+    expect(result.driftDetected).toBe(true);
+    expect(result.unwrittenKeys).toBe(2);
+  });
+
+  // Over-rejection guard: a file that reads fine keeps the missing-keys report.
+  it('reports a readable target that lacks a key as missing, not unreadable', async () => {
+    await damage();
+    fs.writeFileSync(
+      path.join(tmpDir, 'locales', 'es.json'),
+      JSON.stringify({ greeting: '[es]Hello' }, null, 2),
+      'utf-8'
+    );
+
+    const status = await computeSyncStatus(
+      await loadSyncConfig(tmpDir),
+      harness.registry
+    );
+
+    const entry = status.unwrittenByLocale.find((u) => u.locale === 'es')!;
+    expect(entry.keys).toEqual(['added']);
+    expect(entry.unusable).toBeUndefined();
+  });
+});

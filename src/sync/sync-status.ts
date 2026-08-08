@@ -46,6 +46,11 @@ export interface UnwrittenTargetKeys {
   locale: string;
   file: string;
   keys: string[];
+  /**
+   * Set when the file itself could not be read or parsed, in which case the keys
+   * are what the lockfile claims rather than what the file was shown to lack.
+   */
+  unusable?: string;
 }
 
 export async function computeSyncStatus(
@@ -88,7 +93,7 @@ export async function computeSyncStatus(
       fileLockEntries,
       config.target_locales
     );
-    for (const [locale, keys] of gaps) {
+    for (const [locale, gap] of gaps) {
       unwrittenByLocale.push({
         locale,
         file: resolveTargetPath(
@@ -97,7 +102,8 @@ export async function computeSyncStatus(
           locale,
           walked.bucketConfig.target_path_pattern
         ),
-        keys: [...keys],
+        keys: [...gap.keys],
+        ...(gap.unusable && { unusable: gap.unusable }),
       });
     }
 
@@ -123,7 +129,7 @@ export async function computeSyncStatus(
           stats.missing++;
         } else if (diff.status === 'stale' || localeOutdated) {
           stats.outdated++;
-        } else if (gaps.get(locale)?.has(diff.key)) {
+        } else if (gaps.get(locale)?.keys.has(diff.key)) {
           stats.unwritten++;
         } else {
           stats.complete++;

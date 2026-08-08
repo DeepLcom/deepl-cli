@@ -146,11 +146,57 @@ Source: en (2 keys)
 — es: locales/es.properties ("added"). Run `deepl sync` to translate it again.
 ```
 
-`--frozen` treats it as drift and exits **10**; `deepl sync` no longer returns early on a project in that state, so the key is translated again and written. This catches a target file damaged by anything outside the CLI as well — a bad merge, a partial checkout, a hand deletion, a `git checkout` of an older locale file — and a target file that cannot be read or cannot be parsed, whose keys all count as `unwritten` because a file whose contents are unavailable cannot be shown to hold them.
+`--frozen` treats it as drift and exits **10**; `deepl sync` no longer returns early on a project in that state, so the key is translated again and written. This catches a target file damaged by anything outside the CLI as well — a bad merge, a partial checkout, a hand deletion, a `git checkout` of an older locale file.
+
+A target file that **cannot be read or cannot be parsed** also has all of its claimed keys counted `unwritten` — a file whose contents are unavailable cannot be shown to hold them — but it is reported as its own case, because neither half of the sentence above applies to it: nobody has been shown what it holds, and `deepl sync` refuses to rebuild it (see [A target file that cannot be read](#a-target-file-that-cannot-be-read)).
+
+```
+$ deepl sync status
+Source: en (2 keys)
+
+  es  [....................] 0%  (0 missing, 0 outdated, 2 unwritten)
+
+2 keys are recorded as translated in the lock file for a target file that could
+not be read — es: locales/es.json (JSON: 'menu.save' is the key of two different
+strings. …). Fix the file: `deepl sync` will not overwrite it.
+```
+
+In `--format json` the locale's entry in `unwrittenByLocale` carries an extra `unusable` field holding that reason; an entry without the field is a file that was read and genuinely lacks the keys.
 
 Two deliberate exemptions. A key whose **source value is empty** is never reported: an empty source can only produce an empty translation, and PO and XLIFF read an empty translation side as untranslated on purpose (see [Bilingual formats](#bilingual-formats-po-and-xliff)), so such a key is legitimately absent from a bilingual target. A key the lock file records as `failed`, or against an older source hash, is already reported as outdated and is not counted twice.
 
 The cost is one read and parse of each target file per locale, and it is only paid where the answer would otherwise come from the lock file alone: `sync status`, `sync --frozen`, and a `sync` run that has nothing else to do. A run with translating to do reads those files anyway. Measured on a 2.8 MiB XLIFF source with 20,316 keys across 6 locales (52 MiB of files): `sync status` 410 ms → 660 ms, `sync --frozen` 465 ms → 970 ms. A locale with no keys claimed by the lock file is not read at all.
+
+### A target file that cannot be read
+
+Every command that opens a locale's target file distinguishes three answers, and only the first two let it write:
+
+| The file is | What follows |
+| --- | --- |
+| **not there** (`ENOENT`) | The locale has nothing yet. `sync` writes it from the source template; `pull` creates it. |
+| **there and parseable** | Its translations are merged with the run's, so anything the run does not touch survives. |
+| **there and unreadable** — any other errno (`EACCES`, `EISDIR`, `EIO`), or content the parser refuses | Nothing is translated, nothing is billed, and the file is not written. |
+
+The third case matters because the lock file stores a hash of each source string and not the translated text, so a target file is the only copy of its locale's translations. Treating it as empty means re-translating and re-billing every key and then writing the result over that copy.
+
+`deepl sync` therefore fails that locale for that file, before requesting any translation:
+
+```
+$ deepl sync --yes
+Sync failed for locale "es" on "locales/en.json": target file locales/es.json is
+on disk but could not be read (JSON: 'menu.save' is the key of two different
+strings. …) — it holds the only copy of this locale's translations, so it was left
+as it stands rather than rebuilt from the source. Fix it, then run `deepl sync`
+again.
+  ✗ es: 0/2 keys (locales/en.json)
+Sync complete: 2 current (2 translations failed)
+```
+
+Exit **12** (`PartialFailure`), 0 characters billed, and the file is byte-identical. Other locales of the same file, and other files, are unaffected. A key the source has just gained is recorded `failed` rather than `translated`, so the next run retries it once the file is fixed. `deepl sync status` reports the file under its own sentence (see above) and `--frozen` exits 10.
+
+`deepl sync pull` skips the locale under the `unusable_target` skip reason — or `key_collision` when that is the cause, which has its own remediation (see below) — and leaves the file exactly as it stands. `deepl sync push` reports a file that is not there under `target_missing` and surfaces every other failure, since it only reads.
+
+The distinction is deliberately strict: an errno the CLI does not recognise refuses the file rather than admitting it. A file that is genuinely absent produces `ENOENT` and nothing else.
 
 ### Key separators and colliding keys
 
@@ -952,7 +998,7 @@ Each target locale's approved dictionary is fetched exactly once per `sync pull`
 
 **Pull does not claim human review.** The export endpoint returns `{ "key": "value" }` with no per-entry review flag, so pulled entries are recorded with `status: translated` and **no** `review_status`, meaning "unknown". Earlier releases stamped `review_status: human_reviewed` on every pulled key, asserting a review the CLI had not verified and the response did not describe.
 
-**A target file whose keys collide is left untouched.** Pull reads the existing target file so it can keep translations the export does not carry. If that file cannot be keyed unambiguously (see [Key separators and colliding keys](#key-separators-and-colliding-keys)), the locale is skipped with a warning and reported under the `key_collision` reason, and the file is not written. Pull deliberately does not fall back to reconstructing it from the source file in this case: that would replace the whole file with just the keys the export happened to carry.
+**A target file that cannot be read is left untouched.** Pull reads the existing target file so it can keep translations the export does not carry. If that file cannot be opened, cannot be parsed, or cannot be keyed unambiguously, the locale is skipped with a warning naming the file and the reason, and the file is not written — under the `key_collision` reason when keys collide (see [Key separators and colliding keys](#key-separators-and-colliding-keys)), which has its own remediation, and `unusable_target` otherwise. Pull deliberately does not fall back to reconstructing it from the source file in either case: that would replace the whole file with just the keys the export happened to carry. Only a file that is genuinely not there yet takes that fallback. See [A target file that cannot be read](#a-target-file-that-cannot-be-read).
 
 **Key-count limit:** The pull response is capped at **50,000 keys** (`MAX_PULL_KEY_COUNT`). Responses exceeding this limit are rejected with a `ValidationError` before any data is written. If your TMS project exceeds this threshold, partition the export by locale or paginate the pull on the TMS side before invoking `deepl sync pull`.
 

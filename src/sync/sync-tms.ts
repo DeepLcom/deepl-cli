@@ -28,6 +28,7 @@ import {
 } from './sync-bucket-walker.js';
 import { Logger } from '../utils/logger.js';
 import { sweepStaleBackups, resolveBakSweepAgeMs } from './sync-bak-cleanup.js';
+import { readTargetFile } from './sync-target-read.js';
 
 export interface SyncPushPullOptions {
   localeFilter?: string[];
@@ -39,6 +40,7 @@ export type SkipReason =
   | 'no_matches'
   | 'pipe_pluralization'
   | 'key_collision'
+  | 'unusable_target'
   | 'untranslated';
 
 export interface SkippedRecord {
@@ -64,6 +66,7 @@ const SKIP_REASON_LABELS: Record<SkipReason, string> = {
   no_matches: 'no matching keys',
   pipe_pluralization: 'pipe-pluralization (never sent to TMS)',
   key_collision: 'target file keys collide (left untouched)',
+  unusable_target: 'target file could not be read (left untouched)',
   untranslated: 'no translation in the target file',
 };
 
@@ -256,27 +259,27 @@ export async function pullTranslations(
       const targetAbsPath = path.join(config.projectRoot, targetRelPath);
       assertPathWithinRoot(targetAbsPath, config.projectRoot);
 
-      let templateContent: string;
-      let existingTargetEntries = new Map<string, string>();
-      try {
-        templateContent = await fs.promises.readFile(targetAbsPath, 'utf-8');
-        existingTargetEntries = extractExistingTranslations(
-          parser,
-          templateContent,
-          locale
-        );
-      } catch (err) {
-        // A target file whose keys collide cannot be merged into — and must not
-        // fall through to the source template either, which would rebuild it
-        // from source text and discard every local translation the export does
-        // not carry. Leave the file as it stands.
-        if (err instanceof FormatKeyCollisionError) {
-          Logger.warn(`Skipping ${targetRelPath}: ${err.message}`);
-          skipped.push({ file: relPath, locale, reason: 'key_collision' });
-          continue;
-        }
-        templateContent = sourceContent;
+      // A target file that cannot be read or parsed must not fall through to the
+      // source template, which would rebuild it from source text and discard
+      // every local translation the export does not carry. Only a file that is
+      // genuinely not there yet takes that fallback.
+      const read = await readTargetFile(parser, targetAbsPath, locale);
+      if (read.state === 'unusable') {
+        Logger.warn(`Skipping ${targetRelPath}: ${read.reason}`);
+        skipped.push({
+          file: relPath,
+          locale,
+          reason:
+            read.error instanceof FormatKeyCollisionError
+              ? 'key_collision'
+              : 'unusable_target',
+        });
+        continue;
       }
+      const templateContent =
+        read.state === 'usable' ? read.content : sourceContent;
+      const existingTargetEntries =
+        read.state === 'usable' ? read.translations : new Map<string, string>();
 
       const pulledEntries = sourceEntries
         .filter((entry) => keys[entry.key] !== undefined)
