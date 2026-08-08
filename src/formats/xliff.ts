@@ -10,6 +10,8 @@ import {
 } from './util/control-chars.js';
 import {
   findElement,
+  insertBlocksAt,
+  lineIndentAt,
   replaceElements,
   scanElements,
   type ElementPattern,
@@ -50,6 +52,20 @@ const SEGMENT_EL: ElementPattern = {
   open: /<(?:\w+:)?segment(?:\s[^><]*)?>/iy,
   close: /<\/(?:\w+:)?segment>/iy,
 };
+
+// The element a new unit is written into when the document holds none to sit
+// beside: `<body>` in 1.2, `<file>` in 2.0 (which has no `<body>`).
+const BODY_EL: ElementPattern = {
+  open: /<(?:\w+:)?body(?:\s[^><]*)?>/iy,
+  close: /<\/(?:\w+:)?body>/iy,
+};
+
+const FILE_EL: ElementPattern = {
+  open: /<(?:\w+:)?file(?:\s[^><]*)?>/iy,
+  close: /<\/(?:\w+:)?file>/iy,
+};
+
+const INDENT_STEP = '  ';
 
 const TRANSLATABLE_EL: ElementPattern = {
   open: /<(?:\w+:)?(?:source|target)(?:\s[^><]*)?>/iy,
@@ -228,16 +244,17 @@ export class XliffFormatParser implements FormatParser {
 
   reconstruct(content: string, entries: TranslatedEntry[]): string {
     assertNoCdataInTranslatable(content);
-    const version = detectVersion(content);
+    const isV2 = detectVersion(content) === '2.0';
     const translations = new Map<string, string>();
     for (const entry of entries) {
       translations.set(entry.key, entry.translation);
     }
 
-    if (version === '2.0') {
-      return this.reconstructV2(content, translations);
-    }
-    return this.reconstructV12(content, translations);
+    const slotted = new Set<string>();
+    const rewritten = isV2
+      ? this.reconstructV2(content, translations, slotted)
+      : this.reconstructV12(content, translations, slotted);
+    return this.writeMissingUnits(rewritten, entries, slotted, isV2);
   }
 
   extractContext(content: string, key: string): string | undefined {
@@ -287,11 +304,74 @@ export class XliffFormatParser implements FormatParser {
     return entry;
   }
 
+  /**
+   * Write a unit for every entry the document has no `id` for. Such an entry is
+   * a key added to the source file after this target was written: the target is
+   * the reconstruct template, so it has no slot, and dropping the entry loses
+   * the string with nothing to distinguish it from a key never asked for.
+   */
+  private writeMissingUnits(
+    content: string,
+    entries: readonly TranslatedEntry[],
+    slotted: ReadonlySet<string>,
+    isV2: boolean
+  ): string {
+    const missing = entries.filter((entry) => !slotted.has(entry.key));
+    if (missing.length === 0) return content;
+
+    const units = scanElements(content, isV2 ? UNIT_EL : TRANS_UNIT_EL);
+    const anchor = units[units.length - 1];
+    let at: number;
+    let indent: string;
+    if (anchor) {
+      at = anchor.end;
+      indent = lineIndentAt(content, anchor.start);
+    } else {
+      const container = findElement(content, isV2 ? FILE_EL : BODY_EL);
+      if (!container) return content;
+      at = container.start + container.openTag.length;
+      indent = lineIndentAt(content, container.start) + INDENT_STEP;
+    }
+    // Namespace prefix taken from the element being written beside, the way
+    // applyTarget takes it from the <source> it inserts after.
+    const ns =
+      (anchor ? /^<(\w+:)/.exec(anchor.openTag)?.[1] : undefined) ?? '';
+
+    const blocks = missing.map((entry) => {
+      assertNoControlChars(entry.key, entry.translation);
+      const inner = isV2
+        ? indent + INDENT_STEP.repeat(2)
+        : indent + INDENT_STEP;
+      const body = [
+        `${inner}<${ns}source>${escapeXml(entry.value)}</${ns}source>`,
+        `${inner}<${ns}target>${escapeXml(entry.translation)}</${ns}target>`,
+      ];
+      if (!isV2) {
+        return [
+          `<${ns}trans-unit id="${entry.key}">`,
+          ...body,
+          `${indent}</${ns}trans-unit>`,
+        ].join('\n');
+      }
+      return [
+        `<${ns}unit id="${entry.key}">`,
+        `${indent}${INDENT_STEP}<${ns}segment>`,
+        ...body,
+        `${indent}${INDENT_STEP}</${ns}segment>`,
+        `${indent}</${ns}unit>`,
+      ].join('\n');
+    });
+
+    return insertBlocksAt(content, at, indent, blocks);
+  }
+
   private reconstructV12(
     content: string,
-    translations: Map<string, string>
+    translations: Map<string, string>,
+    slotted: Set<string>
   ): string {
     const result = replaceElements(content, TRANS_UNIT_EL, (element) => {
+      slotted.add(element.groups[0]!);
       const translation = translations.get(element.groups[0]!);
       if (translation === undefined) return '';
       assertNoControlChars(element.groups[0]!, translation);
@@ -305,9 +385,11 @@ export class XliffFormatParser implements FormatParser {
 
   private reconstructV2(
     content: string,
-    translations: Map<string, string>
+    translations: Map<string, string>,
+    slotted: Set<string>
   ): string {
     const result = replaceElements(content, UNIT_EL, (element) => {
+      slotted.add(element.groups[0]!);
       const translation = translations.get(element.groups[0]!);
       if (translation === undefined) return '';
       assertNoControlChars(element.groups[0]!, translation);

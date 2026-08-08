@@ -107,6 +107,22 @@ No writer emits a raw C0 control byte. Tab, newline and carriage return are esca
 
 A refusal is a `ValidationError` naming the resource or entry and the codepoint (`U+001B`) — never the byte itself, which prints as nothing.
 
+### A string added after the first sync
+
+The first sync has no target file, so the **source** file is the template every translation is written into, and every key has a slot. From the second run onwards the **target** file is the template -- that is how the translations it already holds survive -- and a key added to the source since has no slot in it. Every parser writes such an entry rather than dropping it, in the layout the target file already uses:
+
+| Format | Where the new string is written |
+|--------|---------------------------------|
+| JSON, YAML, TOML, ARB, Xcode String Catalog, Gettext PO | Appended by the underlying emitter, at the detected indentation |
+| Java Properties, iOS Strings | Appended as a line, keeping the file's trailing newline and leaving any dangling comment where it was |
+| Laravel PHP | Spliced into the array that owns the key, matching the file's quote style, indentation, one-line-or-many layout and trailing-comma style. `array(...)` and `[...]` are both handled |
+| Android XML | A `<string>`, or a whole `<plurals>` block, before `</resources>` |
+| XLIFF | A `<trans-unit>` with `<source>` and `<target>` in 1.2, a `<unit><segment>` in 2.0, carrying the namespace prefix of the unit it is written beside |
+
+Two cases are deliberately left out, because writing them would mean inventing structure the source file already defines: a new **`<string-array>` item** in Android XML, whose `name.index` key cannot be told apart from a plain resource whose name ends in a dot-integer; and a **Laravel PHP key whose parent array is absent** from the target file. Add the containing element to the target file once and the key is written on the next sync.
+
+Note that `deepl sync status` and `deepl sync --frozen` compare the source file against `.deepl-sync.lock`, not against the target file. A target file edited by hand to remove a key the lockfile records as translated therefore still reports complete; the key is restored on the next sync that has anything to translate, or immediately if you delete the target file and let it be rebuilt.
+
 ### Key separators and colliding keys
 
 Every parser reduces a string's position in the file to a flat key, using a separator the format does not otherwise carry: PO joins `msgctxt` and `msgid` with U+0004, YAML joins path segments with U+0000, and JSON, Laravel PHP and Android XML join with `.`. A key component containing that separator makes two different strings share one key, and there is no correct way to write them back — one translation lands in the other's slot.

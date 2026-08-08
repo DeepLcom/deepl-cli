@@ -96,6 +96,42 @@ describe('PropertiesFormatParser', () => {
       expect(result).not.toContain('farewell');
     });
 
+    it('should write a key with no line, keeping the trailing newline', () => {
+      const result = parser.reconstruct('greeting=Hello\n', [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        { key: 'added', value: 'Goodbye', translation: 'Tschuess' },
+      ]);
+      expect(result).toBe('greeting=Hallo\nadded=Tschuess\n');
+    });
+
+    it('should write a key with no line into a file with no trailing newline', () => {
+      const result = parser.reconstruct('greeting=Hello', [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        { key: 'added', value: 'Goodbye', translation: 'Tschuess' },
+      ]);
+      expect(result).toBe('greeting=Hallo\nadded=Tschuess');
+    });
+
+    it('should keep a dangling comment above a written key', () => {
+      const result = parser.reconstruct('# Header\n', [
+        { key: 'added', value: 'Goodbye', translation: 'Tschuess' },
+      ]);
+      expect(result).toBe('# Header\nadded=Tschuess\n');
+    });
+
+    it('should escape a written value the way an in-place one is escaped', () => {
+      const result = parser.reconstruct('greeting=Hello\n', [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        { key: 'added', value: 'x', translation: 'line\tone\\two' },
+      ]);
+      expect(result).toContain('added=line\\tone\\\\two');
+      expect(
+        new Map(parser.extract(result).map((e) => [e.key, e.value])).get(
+          'added'
+        )
+      ).toBe('line\tone\\two');
+    });
+
     it('should preserve comments for kept keys', () => {
       const content = '# Welcome\ngreeting=Hello\n';
       const entries: TranslatedEntry[] = [

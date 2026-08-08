@@ -3,6 +3,7 @@ import type {
   FormatParser,
   TranslatedEntry,
 } from './format.js';
+import { appendEntryLines } from './util/append-lines.js';
 import { isForbiddenControlChar } from './util/control-chars.js';
 
 const ENTRY_RE = /^\s*"((?:[^"\\]|\\.)*)"\s*=\s*"((?:[^"\\]|\\.)*)"\s*;\s*$/;
@@ -83,6 +84,7 @@ export class IosStringsFormatParser implements FormatParser {
 
     const lines = content.split(/\r?\n/);
     const result: string[] = [];
+    const slotted = new Set<string>();
     let pendingComments: string[] = [];
     let inBlockComment = false;
 
@@ -98,6 +100,7 @@ export class IosStringsFormatParser implements FormatParser {
       const match = ENTRY_RE.exec(line);
       if (match) {
         const key = this.unescape(match[1]!);
+        slotted.add(key);
         const translation = translations.get(key);
         if (translation !== undefined) {
           result.push(...pendingComments);
@@ -128,6 +131,16 @@ export class IosStringsFormatParser implements FormatParser {
       }
     }
     result.push(...pendingComments);
+
+    // A key with no line in the template is one added to the source since this
+    // target file was written. Dropping it loses the string with no trace: the
+    // caller has no way to tell a key it asked for from one it did not.
+    const appended: string[] = [];
+    for (const [key, translation] of translations) {
+      if (slotted.has(key)) continue;
+      appended.push(`"${this.escape(key)}" = "${this.escape(translation)}";`);
+    }
+    appendEntryLines(result, appended);
 
     return result.join('\n');
   }

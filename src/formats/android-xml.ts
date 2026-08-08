@@ -10,6 +10,9 @@ import {
   findForbiddenControlChar,
 } from './util/control-chars.js';
 import {
+  findElement,
+  insertBlocksAt,
+  lineIndentAt,
   replaceElements,
   scanElements,
   type ElementPattern,
@@ -47,6 +50,19 @@ const ARRAY_ITEM_EL: ElementPattern = {
   open: /<item>/y,
   close: /<\/item>/y,
 };
+
+const RESOURCES_EL: ElementPattern = {
+  open: /<resources(?:\s[^><]*)?>/y,
+  close: /<\/resources>/y,
+};
+
+const INDENT_STEP = '    ';
+
+// A `<string-array>` element's entries are keyed `<name>.<index>`, so a key
+// ending in a dot-integer cannot be told apart from a plain resource whose name
+// happens to end that way. Writing a new resource for one would invent a
+// `<string>` named after an array slot, so those are left to the caller.
+const ARRAY_ITEM_KEY_RE = /\.\d+$/;
 
 const TRANSLATABLE_FALSE_RE = /\btranslatable\s*=\s*"false"/;
 
@@ -276,7 +292,74 @@ export class AndroidXmlFormatParser implements FormatParser {
       return this.rewriteInner(el, inner);
     });
 
-    return result;
+    return this.writeMissingResources(result, translations, pluralTranslations);
+  }
+
+  /**
+   * Write a resource for every entry the document has no element for. Such an
+   * entry is a key added to the source file after this target was written: the
+   * target is the reconstruct template, so it has no slot, and dropping the
+   * entry loses the string with nothing to distinguish it from a key never
+   * asked for.
+   *
+   * A new `<string-array>` item is not written — see ARRAY_ITEM_KEY_RE.
+   */
+  private writeMissingResources(
+    content: string,
+    translations: Map<string, string>,
+    pluralTranslations: Map<string, Map<string, string>>
+  ): string {
+    const strings = scanElements(content, STRING_EL);
+    const plurals = scanElements(content, PLURALS_EL);
+    const arrays = scanElements(content, STRING_ARRAY_EL);
+    const slotted = new Set(
+      [...strings, ...plurals, ...arrays].map((el) => el.groups[0]!)
+    );
+
+    const missingStrings = [...translations].filter(
+      ([name]) => !slotted.has(name) && !ARRAY_ITEM_KEY_RE.test(name)
+    );
+    const missingPlurals = [...pluralTranslations].filter(
+      ([name, quantities]) => !slotted.has(name) && quantities.size > 0
+    );
+    if (missingStrings.length === 0 && missingPlurals.length === 0) {
+      return content;
+    }
+
+    const anchor =
+      strings[strings.length - 1] ??
+      plurals[plurals.length - 1] ??
+      arrays[arrays.length - 1];
+    let at: number;
+    let indent: string;
+    if (anchor) {
+      at = anchor.end;
+      indent = lineIndentAt(content, anchor.start);
+    } else {
+      const resources = findElement(content, RESOURCES_EL);
+      if (!resources) return content;
+      at = resources.start + resources.openTag.length;
+      indent = lineIndentAt(content, resources.start) + INDENT_STEP;
+    }
+
+    const blocks = [
+      ...missingStrings.map(([name, translation]) => {
+        assertNoControlChars(name, translation);
+        return `<string name="${name}">${escapeAndroid(translation)}</string>`;
+      }),
+      ...missingPlurals.map(([name, quantities]) =>
+        [
+          `<plurals name="${name}">`,
+          ...[...quantities].map(([quantity, value]) => {
+            assertNoControlChars(name, value);
+            return `${indent}${INDENT_STEP}<item quantity="${quantity}">${escapeAndroid(value)}</item>`;
+          }),
+          `${indent}</plurals>`,
+        ].join('\n')
+      ),
+    ];
+
+    return insertBlocksAt(content, at, indent, blocks);
   }
 
   private rewriteInner(element: ScannedElement, inner: string): string {

@@ -29,6 +29,7 @@ import { TomlFormatParser } from '../../src/formats/toml';
 import { ArbFormatParser } from '../../src/formats/arb';
 import { IosStringsFormatParser } from '../../src/formats/ios-strings';
 import { PropertiesFormatParser } from '../../src/formats/properties';
+import { PhpArraysFormatParser } from '../../src/formats/php-arrays';
 import type { FormatParser } from '../../src/formats/index';
 import type { SyncLockFile, SyncLockEntry } from '../../src/sync/types';
 import {
@@ -52,7 +53,8 @@ export type SupportedParser =
   | 'toml'
   | 'arb'
   | 'ios_strings'
-  | 'properties';
+  | 'properties'
+  | 'laravel_php';
 
 export interface SyncHarness {
   client: DeepLClient;
@@ -123,6 +125,8 @@ function parserFor(name: SupportedParser): FormatParser {
       return new IosStringsFormatParser();
     case 'properties':
       return new PropertiesFormatParser();
+    case 'laravel_php':
+      return new PhpArraysFormatParser();
   }
 }
 

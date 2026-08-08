@@ -4,6 +4,7 @@ import type {
   TranslatedEntry,
 } from './format.js';
 import { PendingCommentBuffer } from './pending-comment-buffer.js';
+import { appendEntryLines } from './util/append-lines.js';
 import { isForbiddenControlChar } from './util/control-chars.js';
 
 const ENTRY_RE = /^([^=:#!\s][^=:]*?)\s*[=:]\s*(.*)/;
@@ -79,6 +80,7 @@ export class PropertiesFormatParser implements FormatParser {
     const lines = content.split(/\r?\n/);
     const result: string[] = [];
     const pending = new PendingCommentBuffer();
+    const slotted = new Set<string>();
 
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i]!;
@@ -104,6 +106,7 @@ export class PropertiesFormatParser implements FormatParser {
       const match = ENTRY_RE.exec(line);
       if (match) {
         const key = this.unescapeKey(match[1]!.trim());
+        slotted.add(key);
         const translation = translations.get(key);
         if (translation !== undefined) {
           pending.flushToOutput(result);
@@ -124,6 +127,16 @@ export class PropertiesFormatParser implements FormatParser {
       }
     }
     pending.flushToOutput(result);
+
+    // A key with no line in the template is one added to the source since this
+    // target file was written. Dropping it loses the string with no trace: the
+    // caller has no way to tell a key it asked for from one it did not.
+    const appended: string[] = [];
+    for (const [key, translation] of translations) {
+      if (slotted.has(key)) continue;
+      appended.push(`${this.escapeKey(key)}=${this.escapeValue(translation)}`);
+    }
+    appendEntryLines(result, appended);
 
     return result.join('\n');
   }

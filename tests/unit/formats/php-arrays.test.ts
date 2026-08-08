@@ -378,13 +378,99 @@ return [
       );
     });
 
-    it('silently skips keys that are not present in the source (no insertion)', () => {
+    it('writes a key the file has no literal for, keeping the array on one line', () => {
       const content = `<?php return ['a' => 'one'];`;
       const out = parser.reconstruct(content, [
         { key: 'a', value: 'one', translation: 'uno' },
         { key: 'not_in_source', value: 'new', translation: 'nuevo' },
       ]);
+      expect(out).toBe(
+        `<?php return ['a' => 'uno', 'not_in_source' => 'nuevo'];`
+      );
+    });
+
+    it('leaves a nested key out when its parent array is absent', () => {
+      const content = `<?php return ['a' => 'one'];`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'missing.deep', value: 'new', translation: 'nuevo' },
+      ]);
       expect(out).toBe(`<?php return ['a' => 'uno'];`);
+    });
+
+    it('writes a new element into the nested array that owns it', () => {
+      const content = `<?php\n\nreturn [\n    'grp' => [\n        'a' => 'one',\n    ],\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'grp.a', value: 'one', translation: 'uno' },
+        { key: 'grp.b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn [\n    'grp' => [\n        'a' => 'uno',\n        'b' => 'dos',\n    ],\n];\n`
+      );
+    });
+
+    it('adds the separating comma when the last element has none', () => {
+      const content = `<?php\n\nreturn [\n    'a' => 'one'\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn [\n    'a' => 'uno',\n    'b' => 'dos'\n];\n`
+      );
+    });
+
+    it('writes a new element in the quote style of the one it follows', () => {
+      const content = `<?php\n\nreturn [\n    "a" => "one",\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn [\n    "a" => "uno",\n    "b" => "dos",\n];\n`
+      );
+    });
+
+    it('writes into an empty array literal', () => {
+      const out = parser.reconstruct(`<?php\n\nreturn [\n];\n`, [
+        { key: 'a', value: 'one', translation: 'uno' },
+      ]);
+      expect(out).toBe(`<?php\n\nreturn [\n    'a' => 'uno'\n];\n`);
+      expect(parser.extract(out).map((e) => e.key)).toEqual(['a']);
+    });
+
+    it('writes into a long-form array() literal', () => {
+      const content = `<?php\n\nreturn array(\n    'a' => 'one',\n);\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn array(\n    'a' => 'uno',\n    'b' => 'dos',\n);\n`
+      );
+    });
+
+    it('writes a new element at the indentation of the one it follows', () => {
+      const content = `<?php\n\nreturn [\n\t'a' => 'one',\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn [\n\t'a' => 'uno',\n\t'b' => 'dos',\n];\n`
+      );
+    });
+
+    it('escapes a written value the way an overwritten one is escaped', () => {
+      const content = `<?php\n\nreturn [\n    'a' => 'one',\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: "it's \\ here" },
+      ]);
+      expect(out).toContain(`'b' => 'it\\'s \\\\ here'`);
+      expect(
+        new Map(parser.extract(out).map((e) => [e.key, e.value])).get('b')
+      ).toBe("it's \\ here");
     });
 
     it('preserves comments, PHPDoc, trailing commas, and irregular whitespace', () => {

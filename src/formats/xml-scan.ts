@@ -147,6 +147,32 @@ export function findElement(
   return nextElement(content, 0, pattern);
 }
 
+/** The run of spaces and tabs starting the line `index` falls on. */
+export function lineIndentAt(content: string, index: number): string {
+  const lineStart = content.lastIndexOf('\n', index - 1) + 1;
+  return /^[ \t]*/.exec(content.slice(lineStart, index))![0];
+}
+
+/**
+ * Splice `blocks` into `content` at `at`, each opening on its own line at
+ * `indent`. Used to write an element the document has no slot for; a block
+ * spanning several lines carries its own indentation for the lines after the
+ * first.
+ */
+export function insertBlocksAt(
+  content: string,
+  at: number,
+  indent: string,
+  blocks: readonly string[]
+): string {
+  if (blocks.length === 0) return content;
+  return (
+    content.slice(0, at) +
+    blocks.map((block) => `\n${indent}${block}`).join('') +
+    content.slice(at)
+  );
+}
+
 /**
  * Rewrite every element matching `pattern`. Returning null drops the element
  * along with its leading indentation and the whitespace that follows it.

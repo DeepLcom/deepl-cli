@@ -62,12 +62,14 @@ interface PhpString extends PhpNode {
 interface PhpArray extends PhpNode {
   readonly kind: 'array';
   readonly items: readonly PhpEntry[];
+  readonly loc?: PhpLoc;
 }
 
 interface PhpEntry extends PhpNode {
   readonly kind: 'entry';
   readonly key: PhpNode | null;
   readonly value: PhpNode;
+  readonly loc?: PhpLoc;
 }
 
 interface PhpReturn extends PhpNode {
@@ -173,11 +175,6 @@ export class PhpArraysFormatParser implements FormatParser {
     const locMap = new Map<string, StringLoc>();
     collectStringLocs(returnNode.expr as PhpArray, '', locMap);
 
-    interface Replacement {
-      start: number;
-      end: number;
-      literal: string;
-    }
     const replacements: Replacement[] = [];
     for (const entry of entries) {
       const loc = locMap.get(entry.key);
@@ -188,6 +185,13 @@ export class PhpArraysFormatParser implements FormatParser {
         literal: encodePhpString(entry.translation, loc.isDoubleQuote),
       });
     }
+    replacements.push(
+      ...planInsertions(
+        body,
+        returnNode.expr as PhpArray,
+        entries.filter((entry) => !locMap.has(entry.key))
+      )
+    );
     replacements.sort((a, b) => b.start - a.start);
 
     let result = body;
@@ -202,6 +206,157 @@ interface StringLoc {
   readonly start: number;
   readonly end: number;
   readonly isDoubleQuote: boolean;
+}
+
+/** A span of `body` to overwrite; an insertion has `start === end`. */
+interface Replacement {
+  start: number;
+  end: number;
+  literal: string;
+}
+
+const PHP_INDENT_STEP = '    ';
+
+/** The run of spaces and tabs starting the line `offset` falls on. */
+function lineIndentAt(body: string, offset: number): string {
+  const lineStart = body.lastIndexOf('\n', offset - 1) + 1;
+  return /^[ \t]*/.exec(body.slice(lineStart, offset))![0];
+}
+
+function collectArrays(
+  arr: PhpArray,
+  prefix: string,
+  out: Map<string, PhpArray>
+): void {
+  out.set(prefix, arr);
+  for (const item of arr.items) {
+    if (item.kind !== 'entry' || item.key?.kind !== 'string') continue;
+    const keyStr = (item.key as PhpString).value;
+    const dotPath = prefix ? `${prefix}.${keyStr}` : keyStr;
+    if (item.value.kind === 'array') {
+      collectArrays(item.value as PhpArray, dotPath, out);
+    }
+  }
+}
+
+/** Where a new element goes in `arr`, and the style to write it in. */
+interface ArraySlot {
+  /** Offset to splice at. */
+  at: number;
+  /** Text opening each new element, carrying the array's own line layout. */
+  lead: string;
+  /** Text preceding the first new element, separating it from the last one. */
+  prefix: string;
+  /** Text following the last new element. */
+  suffix: string;
+  keyIsDoubleQuote: boolean;
+  valueIsDoubleQuote: boolean;
+}
+
+function arraySlot(body: string, arr: PhpArray): ArraySlot | undefined {
+  if (!arr.loc) return undefined;
+  const closeAt = arr.loc.end.offset - 1;
+  // An array written on one line stays on one line; one already spanning lines
+  // gets a line per element, indented like the element it follows.
+  const multiline = body
+    .slice(arr.loc.start.offset, arr.loc.end.offset)
+    .includes('\n');
+  const lastItem = arr.items[arr.items.length - 1];
+
+  if (!lastItem?.loc) {
+    // An empty array has no element to sit beside, so the new ones become its
+    // body, written just inside the opening bracket — `[` for the short form,
+    // `(` for `array(...)`. Writing before the closing bracket instead would
+    // leave the newline already separating the two, and emit a blank line.
+    const open = /[[(]/.exec(body.slice(arr.loc.start.offset, closeAt + 1));
+    if (!open) return undefined;
+    return {
+      at: arr.loc.start.offset + open.index + 1,
+      lead: multiline
+        ? `\n${lineIndentAt(body, arr.loc.start.offset)}${PHP_INDENT_STEP}`
+        : '',
+      prefix: '',
+      suffix: '',
+      keyIsDoubleQuote: false,
+      valueIsDoubleQuote: false,
+    };
+  }
+
+  // A trailing comma after the last element is optional in PHP. Where one is
+  // there the new elements follow it and keep it; where it is not, adding one
+  // to the previous last element is unavoidable but adding another to the new
+  // one would change a style the file chose.
+  const tail = body.slice(lastItem.loc.end.offset, closeAt);
+  const commaAt = tail.indexOf(',');
+  const terminated = commaAt !== -1 && tail.slice(0, commaAt).trim() === '';
+  const lastValue = lastItem.value;
+  return {
+    at: terminated
+      ? lastItem.loc.end.offset + commaAt + 1
+      : lastItem.loc.end.offset,
+    lead: multiline
+      ? `\n${lineIndentAt(body, lastItem.loc.start.offset)}`
+      : ' ',
+    prefix: terminated ? '' : ',',
+    suffix: terminated ? ',' : '',
+    keyIsDoubleQuote:
+      lastItem.key?.kind === 'string' &&
+      (lastItem.key as PhpString).isDoubleQuote,
+    valueIsDoubleQuote:
+      lastValue.kind === 'string' && (lastValue as PhpString).isDoubleQuote,
+  };
+}
+
+/**
+ * Plan an element for every entry the file has no string literal for. Such an
+ * entry is a key added to the source file after this target was written: the
+ * target is the reconstruct template, so a span-surgical rewrite has nothing to
+ * overwrite, and dropping the entry loses the string with nothing to
+ * distinguish it from a key never asked for.
+ *
+ * A key whose parent array is itself absent is left out: creating the
+ * intervening arrays would guess at a structure the source file already
+ * defines.
+ */
+function planInsertions(
+  body: string,
+  root: PhpArray,
+  missing: readonly TranslatedEntry[]
+): Replacement[] {
+  if (missing.length === 0) return [];
+
+  const arrays = new Map<string, PhpArray>();
+  collectArrays(root, '', arrays);
+
+  const byParent = new Map<string, TranslatedEntry[]>();
+  for (const entry of missing) {
+    const lastDot = entry.key.lastIndexOf('.');
+    const parent = lastDot === -1 ? '' : entry.key.slice(0, lastDot);
+    if (!arrays.has(parent)) continue;
+    const group = byParent.get(parent);
+    if (group) group.push(entry);
+    else byParent.set(parent, [entry]);
+  }
+
+  const insertions: Replacement[] = [];
+  for (const [parent, group] of byParent) {
+    const slot = arraySlot(body, arrays.get(parent)!);
+    if (!slot) continue;
+    const elements = group.map((entry) => {
+      const leaf = parent ? entry.key.slice(parent.length + 1) : entry.key;
+      return (
+        slot.lead +
+        `${encodePhpString(leaf, slot.keyIsDoubleQuote)} => ` +
+        `${encodePhpString(entry.translation, slot.valueIsDoubleQuote)}`
+      );
+    });
+    insertions.push({
+      start: slot.at,
+      end: slot.at,
+      literal: slot.prefix + elements.join(',') + slot.suffix,
+    });
+  }
+  return insertions;
 }
 
 function collectStringLocs(

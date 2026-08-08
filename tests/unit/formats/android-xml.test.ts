@@ -320,6 +320,123 @@ describe('android-xml parser', () => {
     });
   });
 
+  describe('writing a resource the document has no element for', () => {
+    it('should write into a <resources> holding nothing', () => {
+      const xml = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<resources>',
+        '</resources>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xml, [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+      ]);
+
+      expect(result).toContain('    <string name="greeting">Hallo</string>');
+      expect(parser.extract(result).map((e) => e.key)).toEqual(['greeting']);
+    });
+
+    it('should write a <plurals> block with every quantity', () => {
+      const xml = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<resources>',
+        '    <string name="greeting">Hallo</string>',
+        '</resources>',
+        '',
+      ].join('\n');
+      const entries: TranslatedEntry[] = [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        {
+          key: 'items',
+          value: 'items',
+          translation: 'Elemente',
+          metadata: {
+            plurals: [
+              { quantity: 'one', value: 'Ein Element' },
+              { quantity: 'other', value: 'Elemente' },
+            ],
+          },
+        },
+      ];
+      const result = parser.reconstruct(xml, entries);
+
+      expect(result).toContain('    <plurals name="items">');
+      expect(result).toContain(
+        '        <item quantity="one">Ein Element</item>'
+      );
+      expect(result).toContain(
+        '        <item quantity="other">Elemente</item>'
+      );
+      expect(result).toContain('    </plurals>');
+
+      const reread = parser.extract(result);
+      expect(reread.map((e) => e.key).sort()).toEqual(['greeting', 'items']);
+      expect(
+        reread.find((e) => e.key === 'items')?.metadata?.['plurals']
+      ).toEqual([
+        { quantity: 'one', value: 'Ein Element' },
+        { quantity: 'other', value: 'Elemente' },
+      ]);
+    });
+
+    it('should anchor beside a <plurals> when the file holds no <string>', () => {
+      const xml = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<resources>',
+        '    <plurals name="items">',
+        '        <item quantity="other">Elemente</item>',
+        '    </plurals>',
+        '</resources>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xml, [
+        {
+          key: 'items',
+          value: 'items',
+          translation: 'Elemente',
+          metadata: { plurals: [{ quantity: 'other', value: 'Elemente' }] },
+        },
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+      ]);
+
+      expect(result).toContain('    </plurals>\n    <string name="greeting">');
+      expect(
+        parser
+          .extract(result)
+          .map((e) => e.key)
+          .sort()
+      ).toEqual(['greeting', 'items']);
+    });
+
+    it('should leave a <string-array> item key alone rather than invent a resource for it', () => {
+      const xml = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<resources>',
+        '    <string-array name="colours">',
+        '        <item>Rot</item>',
+        '    </string-array>',
+        '</resources>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xml, [
+        { key: 'colours.0', value: 'Red', translation: 'Rot' },
+        { key: 'colours.1', value: 'Blue', translation: 'Blau' },
+      ]);
+
+      expect(result).not.toContain('name="colours.1"');
+      expect(parser.extract(result).map((e) => e.key)).toEqual(['colours.0']);
+    });
+
+    it('should leave a resource out when the document has no <resources>', () => {
+      const notResources = '<?xml version="1.0"?>\n<other/>\n';
+      expect(
+        parser.reconstruct(notResources, [
+          { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        ])
+      ).toBe(notResources);
+    });
+  });
+
   describe('elements with no closing tag', () => {
     const unclosed = `<?xml version="1.0" encoding="utf-8"?>
 <resources>

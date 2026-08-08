@@ -238,6 +238,110 @@ describe('xliff parser', () => {
     });
   });
 
+  describe('reconstruct writing a unit the document has no id for', () => {
+    it('should write into an empty <body> in v1.2', () => {
+      const xliff = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<xliff version="1.2">',
+        '  <file source-language="en" target-language="de" original="x">',
+        '    <body>',
+        '    </body>',
+        '  </file>',
+        '</xliff>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xliff, [
+        { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+      ]);
+
+      expect(parser.extract(result).map((e) => e.key)).toEqual(['msg1']);
+      expect(result).toContain('      <trans-unit id="msg1">');
+      expect(parser.extractTranslations(result).get('msg1')).toBe('Willkommen');
+    });
+
+    it('should write into a <file> holding no units in v2.0', () => {
+      const xliff = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<xliff version="2.0" srcLang="en" trgLang="de">',
+        '  <file id="f1">',
+        '  </file>',
+        '</xliff>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xliff, [
+        { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+      ]);
+
+      expect(parser.extract(result).map((e) => e.key)).toEqual(['msg1']);
+      expect(result).toContain('<segment>');
+      expect(parser.extractTranslations(result).get('msg1')).toBe('Willkommen');
+    });
+
+    it('should carry the namespace prefix of the unit it is written beside', () => {
+      const xliff = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<x:xliff version="1.2" xmlns:x="urn:oasis:names:tc:xliff:document:1.2">',
+        '  <x:file source-language="en" target-language="de" original="x">',
+        '    <x:body>',
+        '      <x:trans-unit id="msg1">',
+        '        <x:source>Welcome</x:source>',
+        '        <x:target>Willkommen</x:target>',
+        '      </x:trans-unit>',
+        '    </x:body>',
+        '  </x:file>',
+        '</x:xliff>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xliff, [
+        { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+        { key: 'msg2', value: 'Bye', translation: 'Tschuess' },
+      ]);
+
+      expect(result).toContain('<x:trans-unit id="msg2">');
+      expect(result).toContain('<x:target>Tschuess</x:target>');
+      expect(result).not.toContain('<trans-unit');
+      expect(parser.extract(result).map((e) => e.key)).toEqual([
+        'msg1',
+        'msg2',
+      ]);
+    });
+
+    it('should escape XML metacharacters in a written source and target', () => {
+      const xliff = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<xliff version="1.2">',
+        '  <file source-language="en" target-language="de" original="x">',
+        '    <body>',
+        '      <trans-unit id="msg1">',
+        '        <source>Welcome</source>',
+        '      </trans-unit>',
+        '    </body>',
+        '  </file>',
+        '</xliff>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xliff, [
+        { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+        { key: 'msg2', value: 'a < b & c', translation: 'x > y' },
+      ]);
+
+      expect(result).toContain('<source>a &lt; b &amp; c</source>');
+      expect(result).toContain('<target>x &gt; y</target>');
+      const reread = parser.extract(result);
+      expect(reread.find((e) => e.key === 'msg2')?.value).toBe('a < b & c');
+      expect(parser.extractTranslations(result).get('msg2')).toBe('x > y');
+    });
+
+    it('should leave a unit out when the document has no container for it', () => {
+      const notXliff = '<?xml version="1.0"?>\n<other/>\n';
+      expect(
+        parser.reconstruct(notXliff, [
+          { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+        ])
+      ).toBe(notXliff);
+    });
+  });
+
   describe('reconstruct with $-patterns in translations', () => {
     it('should preserve literal $1 and $& in v1.2 target replacement', () => {
       const xliff = `<?xml version="1.0" encoding="UTF-8"?>

@@ -222,6 +222,39 @@ describe('ios-strings parser', () => {
     });
   });
 
+  describe('reconstruct writing a key the file has no line for', () => {
+    it('should write the key and keep the trailing newline', () => {
+      const result = parser.reconstruct('"greeting" = "Hello";\n', [
+        { key: 'greeting', value: 'Hello', translation: 'Hola' },
+        { key: 'added', value: 'Goodbye', translation: 'Adios' },
+      ]);
+      expect(result).toBe('"greeting" = "Hola";\n"added" = "Adios";\n');
+    });
+
+    it('should keep a dangling comment above a written key', () => {
+      const result = parser.reconstruct('/* Header */\n', [
+        { key: 'added', value: 'Goodbye', translation: 'Adios' },
+      ]);
+      expect(result).toBe('/* Header */\n"added" = "Adios";\n');
+    });
+
+    it('should escape a written key and value', () => {
+      const result = parser.reconstruct('"greeting" = "Hello";\n', [
+        { key: 'greeting', value: 'Hello', translation: 'Hola' },
+        { key: 'say "it"', value: 'x', translation: 'di "eso"' },
+      ]);
+      expect(result).toContain('"say \\"it\\"" = "di \\"eso\\"";');
+      expect(
+        new Map(parser.extract(result).map((e) => [e.key, e.value]))
+      ).toEqual(
+        new Map([
+          ['greeting', 'Hola'],
+          ['say "it"', 'di "eso"'],
+        ])
+      );
+    });
+  });
+
   describe('reconstruct with $-patterns in translations', () => {
     it('should preserve literal dollar signs like Pay $5.99', () => {
       const content = '"price_label" = "Price";';
