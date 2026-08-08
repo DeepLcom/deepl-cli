@@ -11,7 +11,7 @@ describe('Structured File Translation E2E', () => {
   const testConfig = createTestConfigDir('structured-e2e-config');
   const testFiles = createTestDir('structured-e2e');
   const testDir = testFiles.path;
-  const { runCLI } = makeRunCLI(testConfig.path, {
+  const { runCLI, runCLIAll, runCLIExpectError } = makeRunCLI(testConfig.path, {
     apiKey: 'fake-key-for-e2e',
   });
 
@@ -216,6 +216,79 @@ describe('Structured File Translation E2E', () => {
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
       }
+    });
+  });
+
+  describe('input size ceiling', () => {
+    const OVER_CEILING_BYTES = 11 * 1024 * 1024;
+
+    /** Streams a large JSON file out without holding it in memory. */
+    function writeOversizeJson(filePath: string): void {
+      const handle = fs.openSync(filePath, 'w');
+      try {
+        fs.writeSync(handle, '{\n');
+        let written = 2;
+        let i = 0;
+        while (written < OVER_CEILING_BYTES) {
+          const line = `  "key_${i}": "value ${i}",\n`;
+          fs.writeSync(handle, line);
+          written += line.length;
+          i += 1;
+        }
+        fs.writeSync(handle, '  "last": "value"\n}\n');
+      } finally {
+        fs.closeSync(handle);
+      }
+    }
+
+    it('exits 6 naming the size and the limit, and writes no output', () => {
+      const inputPath = path.join(testDir, 'oversize.json');
+      const outputPath = path.join(testDir, 'oversize-es.json');
+      writeOversizeJson(inputPath);
+
+      const result = runCLIExpectError(
+        `deepl translate "${inputPath}" --to es --output "${outputPath}"`
+      );
+
+      expect(result.status).toBe(6);
+      expect(result.output).toMatch(/oversize\.json is 1[0-9.]+ MiB/);
+      expect(result.output).toContain('exceeds the maximum of 10 MiB');
+      expect(result.output).toContain('deepl sync');
+      expect(fs.existsSync(outputPath)).toBe(false);
+
+      fs.unlinkSync(inputPath);
+    });
+
+    it('fails only the oversize file in a directory run', () => {
+      const inputDir = path.join(testDir, 'oversize-dir');
+      const outputDir = path.join(testDir, 'oversize-dir-out');
+      fs.mkdirSync(inputDir, { recursive: true });
+      writeOversizeJson(path.join(inputDir, 'big.json'));
+      fs.writeFileSync(
+        path.join(inputDir, 'small.json'),
+        JSON.stringify({ a: 'Hello' })
+      );
+
+      // runCLIExpectError returns stderr whenever stderr is non-empty, which
+      // drops the per-file summary on stdout. runCLIAll merges the two with
+      // 2>&1, so the merged text survives on the thrown error's stdout.
+      let output: string;
+      try {
+        output = runCLIAll(
+          `deepl translate "${inputDir}" --to es --output "${outputDir}"`
+        );
+      } catch (error) {
+        output =
+          (error as { stdout?: Buffer | string }).stdout?.toString() ?? '';
+      }
+
+      // Both files fail here — big.json on the ceiling, small.json because the
+      // e2e key reaches no API — so the assertion is about which reason is
+      // reported for which file, not about the exit code.
+      expect(output).toMatch(/big\.json: big\.json is 1[0-9.]+ MiB/);
+      expect(output).not.toMatch(/small\.json: small\.json is/);
+
+      fs.rmSync(inputDir, { recursive: true, force: true });
     });
   });
 

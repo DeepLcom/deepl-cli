@@ -357,6 +357,8 @@ The following structured formats are parsed to extract only string values, trans
 
 An empty string value is copied to the output unchanged and is never sent to the API, so a placeholder key you have not written copy for yet costs nothing and stays in the file. Requests are capped at 50 strings each; if one of them fails, no output file is written and the command exits with that failure's own code (for example 3 for a rate limit), because a partly translated file is indistinguishable from a complete one.
 
+**Size ceiling: 10 MiB.** A structured file above that is refused with a `ValidationError` (exit 6) naming its size, before it is read, and a directory run fails just that file. The limit is lower than the 30 MB document ceiling because these two routes cost very different amounts of memory: a document is streamed to the API once, while a structured file is parsed into an object graph — roughly 7-13x its size resident — and the multi-target path (`--to de,fr,es`) builds a fresh copy per language, up to 5 at a time. 10 MiB matches the ceiling `sync.limits.max_file_bytes` can never be configured above, so nothing [`deepl sync`](SYNC.md) accepts is refused here. For anything larger, split the file or use `deepl sync`, which walks a locale directory file by file and translates only the keys that changed.
+
 ```bash
 # Translate JSON locale file
 deepl translate en.json --to es --output es.json

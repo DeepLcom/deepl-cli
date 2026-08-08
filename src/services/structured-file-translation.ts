@@ -30,6 +30,22 @@ import { describeKeyPath } from '../formats/format.js';
  */
 export const MAX_STRUCTURED_DEPTH = 100;
 
+/**
+ * Size ceiling for the direct `deepl translate <file.json|.yaml>` path, which
+ * has no `.deepl-sync.yaml` and therefore no `sync.limits.max_file_bytes` to
+ * consult. It matches `HARD_MAX_SYNC_LIMITS.max_file_bytes`, the value sync
+ * refuses to be configured above, so nothing sync can be made to accept is
+ * refused here.
+ *
+ * Parsing a structured file costs roughly 7-13x its size in resident memory,
+ * and the multi-target path parses a fresh copy per target language up to
+ * `MULTI_TARGET_CONCURRENCY` at a time: measured, a 19.2 MB file peaked at
+ * 252 MB for one target and 483 MB for five. The document route is capped far
+ * higher (`MAX_DOCUMENT_FILE_SIZE`, 30 MB) because it streams the bytes to the
+ * API once and never builds an object graph from them.
+ */
+export const MAX_STRUCTURED_FILE_BYTES = 10 * 1024 * 1024;
+
 interface FileTranslationOptions {
   preserveCode?: boolean;
   /** Bypasses the cache read and write, so `--no-cache` reaches the batch
@@ -179,6 +195,29 @@ export class StructuredFileTranslationService {
   }
 
   private async readFile(filePath: string): Promise<string> {
+    // Sized before the read, not after, so an oversize file is never resident:
+    // both entry points funnel through here, which is the only place the bound
+    // cannot be bypassed by a caller that forgets it.
+    try {
+      const stat = await fs.promises.stat(filePath);
+      if (stat.size > MAX_STRUCTURED_FILE_BYTES) {
+        const sizeMiB = (stat.size / (1024 * 1024)).toFixed(1);
+        const limitMiB = (MAX_STRUCTURED_FILE_BYTES / (1024 * 1024)).toFixed(0);
+        throw new ValidationError(
+          `${path.basename(filePath)} is ${sizeMiB} MiB, which exceeds the maximum of ${limitMiB} MiB for a JSON or YAML file translated in one command.`,
+          `Split the file, or use "deepl sync", which walks a locale directory file by file and translates only the keys that changed.`
+        );
+      }
+    } catch (err: unknown) {
+      if (err instanceof ValidationError) throw err;
+      const nodeErr = err as Error & { code?: string };
+      if (nodeErr.code === 'ENOENT') {
+        throw new ValidationError(`Input file not found: ${filePath}`);
+      }
+      // Any other stat failure flows through to the read below, which reports
+      // it in the terms the caller already handles.
+    }
+
     try {
       return await safeReadFile(filePath, 'utf-8');
     } catch (err: unknown) {

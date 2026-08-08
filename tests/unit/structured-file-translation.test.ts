@@ -580,6 +580,93 @@ describe('StructuredFileTranslationService', () => {
     });
   });
 
+  describe('input size ceiling', () => {
+    /**
+     * Writes a JSON file of at least `bytes` without holding it in memory.
+     * A real file is needed because the guard reads `fs.stat`, not the content.
+     */
+    function writeJsonOfSize(filePath: string, bytes: number): void {
+      const handle = fs.openSync(filePath, 'w');
+      try {
+        fs.writeSync(handle, '{\n');
+        let written = 2;
+        let i = 0;
+        while (written < bytes) {
+          const line = `  "key_${i}": "value ${i}",\n`;
+          fs.writeSync(handle, line);
+          written += line.length;
+          i += 1;
+        }
+        fs.writeSync(handle, '  "last": "value"\n}\n');
+      } finally {
+        fs.closeSync(handle);
+      }
+    }
+
+    it('refuses a file over the ceiling before reading or translating it', async () => {
+      const inputPath = path.join(testDir, 'huge.json');
+      writeJsonOfSize(inputPath, 11 * 1024 * 1024);
+
+      await expect(
+        service.translateFile(inputPath, path.join(testDir, 'huge.de.json'), {
+          targetLang: 'de',
+        } as never)
+      ).rejects.toThrow(/exceeds the maximum/i);
+      expect(mockTranslationService.translateBatch).not.toHaveBeenCalled();
+      expect(fs.existsSync(path.join(testDir, 'huge.de.json'))).toBe(false);
+    });
+
+    it('refuses it on the multi-target path too', async () => {
+      const inputPath = path.join(testDir, 'huge-multi.json');
+      writeJsonOfSize(inputPath, 11 * 1024 * 1024);
+
+      await expect(
+        service.translateFileToMultiple(inputPath, ['de', 'fr'], {
+          outputDir: testDir,
+        })
+      ).rejects.toThrow(/exceeds the maximum/i);
+      expect(mockTranslationService.translateBatch).not.toHaveBeenCalled();
+    });
+
+    it('names the size, the limit and a way forward', async () => {
+      const inputPath = path.join(testDir, 'huge-msg.json');
+      writeJsonOfSize(inputPath, 11 * 1024 * 1024);
+
+      let error: unknown;
+      expect.assertions(4);
+      try {
+        await service.translateFile(inputPath, path.join(testDir, 'out.json'), {
+          targetLang: 'de',
+        } as never);
+      } catch (err) {
+        error = err;
+      }
+      expect((error as Error).name).toBe('ValidationError');
+      expect((error as Error).message).toMatch(/huge-msg\.json/);
+      expect((error as Error).message).toMatch(/10 MiB/);
+      expect((error as Error & { suggestion?: string }).suggestion).toMatch(
+        /deepl sync/
+      );
+    });
+
+    it('translates a file just under the ceiling', async () => {
+      const inputPath = path.join(testDir, 'large-ok.json');
+      writeJsonOfSize(inputPath, 9 * 1024 * 1024);
+      mockTranslationService.translateBatch.mockImplementation(
+        async (texts: string[]) =>
+          texts.map((t) => ({ text: `[de] ${t}`, billedCharacters: t.length }))
+      );
+
+      await service.translateFile(
+        inputPath,
+        path.join(testDir, 'large-ok.de.json'),
+        { targetLang: 'de' } as never
+      );
+
+      expect(fs.existsSync(path.join(testDir, 'large-ok.de.json'))).toBe(true);
+    }, 120000);
+  });
+
   describe('translateFileToMultiple()', () => {
     it('should translate to multiple target languages', async () => {
       const inputPath = path.join(testDir, 'en.json');
