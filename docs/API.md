@@ -3325,7 +3325,7 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 | 2    | AuthError      | Authentication failed or API key missing                       | No        |
 | 3    | RateLimitError | Rate limit exceeded (HTTP 429)                                 | Yes       |
 | 4    | QuotaError     | Monthly character quota exhausted (HTTP 456)                   | No        |
-| 5    | NetworkError   | Connection timeout, refused, reset, or 503 Service Unavailable | Yes       |
+| 5    | NetworkError   | Connection timeout, refused, reset, truncated response body, or 503 Service Unavailable | Yes       |
 | 6    | InvalidInput   | Missing or malformed arguments, unsupported format             | No        |
 | 7    | ConfigError    | Configuration file or value invalid                            | No        |
 | 8    | CheckFailed    | A check-style command found actionable issues                  | No        |
@@ -3373,6 +3373,8 @@ Remediation: run `deepl usage` to see remaining characters, or upgrade the plan 
 Connection-layer failure or transient server outage. Covers TCP errors (`ECONNREFUSED`, `ENOTFOUND`, `ECONNRESET`, `ETIMEDOUT`, socket hang up), timeouts, proxy misconfigurations, and HTTP 503 responses. Also emitted for malformed or empty API responses thrown from `src/api/translation-client.ts` and `src/api/write-client.ts`, and from document/structured-file translation when the polling response is unparseable.
 
 A response that came back without the placeholder tokens the CLI substituted for your variables counts as malformed here too: `translate` names the variables it lost (`{username}`, `%s`) and writes nothing rather than leaving its own internal tokens in your text. A directory run fails only the affected files and reports each one in the summary, so its exit code follows the usual batch mapping (`1` when nothing translated, `12` when some did).
+
+A response the endpoint cuts off mid-body is exit 5 as well, even though the status line said 200. The HTTP status is what decides it: a rejection carrying a 2xx response means the exchange was accepted and then failed while the body was read — truncated, or undecodable — so the message names the status and what went wrong (`Network error: the API answered HTTP 200 but its response body did not arrive intact: stream has been aborted`) rather than reporting an API error your input could fix. **The replay policy is unchanged by this.** A 200 says the server accepted, and may have billed, the request, so a truncated response to a `POST` (`translate`, `write`, a `sync` batch) is still sent exactly once; an idempotent `GET` is still replayed up to `--max-retries` times.
 
 A document upload response whose `document_id` is not a document identifier is rejected here as well. That value is interpolated into the path of every follow-up request (`POST /v2/document/{id}`, `POST /v2/document/{id}/result`), so an ID containing `..` or `/` would send this client's own requests to a different route on the endpoint. Anything outside `[A-Za-z0-9_-]+` is refused before the next request is sent, the ID is quoted back in the message, and no output file is written.
 

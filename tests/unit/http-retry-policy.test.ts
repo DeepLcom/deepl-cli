@@ -7,6 +7,11 @@
  */
 
 import nock from 'nock';
+import {
+  AxiosError,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 import { HttpClient } from '../../src/api/http-client';
 import {
   AuthError,
@@ -346,6 +351,97 @@ describe('HttpClient retry policy', () => {
       ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(1);
+    });
+  });
+
+  // A response object is attached to the error, but its status is 200: the
+  // exchange was accepted and then failed while the body was being read.
+  // Measured shapes, both from a real loopback server — a declared
+  // Content-Length cut short and a chunked body with no terminating chunk —
+  // arrive as ERR_BAD_RESPONSE / 'stream has been aborted' / status 200.
+  describe('a response that fails while its body is read', () => {
+    function abortedStream(): AxiosError {
+      const config = { url: '/v2/translate' } as InternalAxiosRequestConfig;
+      const response = {
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+        data: undefined,
+      } as AxiosResponse;
+      return new AxiosError(
+        'stream has been aborted',
+        AxiosError.ERR_BAD_RESPONSE,
+        config,
+        {},
+        response
+      );
+    }
+
+    it('classifies a mid-body abort as a network error, not a validation error', () => {
+      const classified = makeClient().classify(abortedStream());
+
+      expect(classified).toBeInstanceOf(NetworkError);
+      expect(classified).not.toBeInstanceOf(ValidationError);
+      expect(exitCodeForError(classified)).toBe(ExitCode.NetworkError);
+    });
+
+    it('says the body was cut short rather than reporting an API error', () => {
+      const classified = makeClient().classify(abortedStream());
+
+      expect(classified.message).not.toMatch(/^API error/);
+      expect(classified.message).toMatch(/body/i);
+      expect(classified.message).toContain('stream has been aborted');
+    });
+
+    // Over-rejection guards: a status the server chose still speaks for
+    // itself, and the transport verdict must not swallow it.
+    it('still reports a 400 with a server message as a validation error', () => {
+      const config = { url: '/v2/translate' } as InternalAxiosRequestConfig;
+      const response = {
+        status: 400,
+        statusText: 'Bad Request',
+        headers: {},
+        config,
+        data: { message: 'Value for target_lang not supported' },
+      } as AxiosResponse;
+      const error = new AxiosError(
+        'Request failed with status code 400',
+        AxiosError.ERR_BAD_REQUEST,
+        config,
+        {},
+        response
+      );
+
+      const classified = makeClient().classify(error);
+
+      expect(classified).toBeInstanceOf(ValidationError);
+      expect(classified.message).toContain(
+        'API error: Value for target_lang not supported'
+      );
+    });
+
+    it('still reports a 500 as a network error naming the status', () => {
+      const config = { url: '/v2/translate' } as InternalAxiosRequestConfig;
+      const response = {
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: {},
+        config,
+        data: { message: 'boom' },
+      } as AxiosResponse;
+      const error = new AxiosError(
+        'Request failed with status code 500',
+        AxiosError.ERR_BAD_RESPONSE,
+        config,
+        {},
+        response
+      );
+
+      const classified = makeClient().classify(error);
+
+      expect(classified).toBeInstanceOf(NetworkError);
+      expect(classified.message).toContain('Server error (500)');
     });
   });
 

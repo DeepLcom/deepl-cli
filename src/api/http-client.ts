@@ -646,6 +646,22 @@ export class HttpClient {
           if (!error.response) {
             return this.transportError(error);
           }
+          // A response whose status the server chose to signal success, on an
+          // error, means the exchange was accepted and then failed while its
+          // body was read — cut off mid-body, or a body the transport could
+          // not decode. The status is what decides it: the axios code varies
+          // with how the peer failed (ERR_BAD_RESPONSE for an aborted stream,
+          // a socket or zlib code otherwise), while the mere presence of a
+          // response used to send all of these to `ValidationError`, telling
+          // the operator to check input that was never the problem and
+          // charging them exit 6 for a transport failure. Deadline aborts are
+          // restated before classification (see `makeRequest`), so what
+          // arrives here is the peer's doing.
+          if (status !== undefined && status >= 200 && status < 300) {
+            return new NetworkError(
+              `Network error: the API answered HTTP ${status} but its response body did not arrive intact: ${message}${traceIdSuffix}`
+            );
+          }
           return new ValidationError(`API error: ${message}${traceIdSuffix}`);
       }
     }
