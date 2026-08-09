@@ -1,4 +1,5 @@
 import * as fsSync from 'fs';
+import * as path from 'path';
 import {
   SyncService,
   type SyncResult,
@@ -17,6 +18,7 @@ import { ExitCode } from '../../utils/exit-codes.js';
 import { LOCK_FILE_NAME } from '../../sync/types.js';
 import {
   sweepStaleBackups as sweepStaleBackupsImpl,
+  BACKUP_SUFFIX,
   DEFAULT_BAK_SWEEP_MAX_AGE_SECONDS,
 } from '../../sync/sync-bak-cleanup.js';
 import { claimGracefulShutdown } from '../../utils/signal-exit.js';
@@ -132,21 +134,51 @@ export function createWatchController(
   const cancellationSignal: CancellationSignal = { cancelled: false };
   const activeBackups = new Set<string>();
 
+  /**
+   * Put back what a pass that did not finish had already overwritten.
+   *
+   * A pass that completes unlinks its own backups inside `SyncService.sync` and
+   * clears this tracker, so anything still here belongs to a pass that threw,
+   * was cancelled, or hit drift — none of which wrote a lockfile. Unlinking
+   * those deleted the only remaining copy of the user's translations and left
+   * the target holding machine output that nothing recorded, at exit 0: a loop
+   * pass that rewrote es.json and then aborted on fr destroyed es.json's
+   * reviewed content. Plain `deepl sync` restores from the signal path for the
+   * same reason; a watch pass is skipped there because it owns this tracker, so
+   * the restore has to happen here.
+   *
+   * Synchronous fs calls on purpose: reached from the shutdown path, where the
+   * deferred exit only guarantees work done synchronously in the handler. Each
+   * file is copied back before its backup is removed, so an interrupt mid-restore
+   * leaves the backup rather than nothing.
+   */
   async function cleanupTrackedBackups(): Promise<void> {
     if (activeBackups.size === 0) return;
+    const restored: string[] = [];
     for (const bakPath of activeBackups) {
+      const targetPath = bakPath.slice(0, -BACKUP_SUFFIX.length);
       try {
-        await fsSync.promises.unlink(bakPath);
+        fsSync.copyFileSync(bakPath, targetPath);
+        fsSync.unlinkSync(bakPath);
+        restored.push(path.relative(deps.projectRoot, targetPath));
       } catch (err) {
         const code = (err as NodeJS.ErrnoException).code;
         if (code !== 'ENOENT') {
+          // Left in place deliberately: it may be the only copy left.
           Logger.warn(
-            `Failed to remove backup ${bakPath}: ${err instanceof Error ? err.message : String(err)}`
+            `Could not restore ${targetPath} from its backup: ${err instanceof Error ? err.message : String(err)}. ` +
+              `${bakPath} holds the content from before this pass.`
           );
         }
       }
     }
     activeBackups.clear();
+    if (restored.length > 0) {
+      Logger.warn(
+        `Pass did not complete — restored ${restored.length} file(s) from backup: ${restored.join(', ')}. ` +
+          'No lockfile was written, so nothing was recorded; the next change re-translates.'
+      );
+    }
   }
 
   async function runOnce(): Promise<void> {
