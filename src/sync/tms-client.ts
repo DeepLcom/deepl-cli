@@ -332,7 +332,20 @@ export class TmsClient {
 
     const basePath = parsedUrl.pathname.replace(/\/+$/, '');
     const projectPath = `${basePath}/api/projects/${encodeURIComponent(this.options.projectId)}`;
-    return new URL(`${projectPath}${path}`, parsedUrl).toString();
+    const resolved = new URL(`${projectPath}${path}`, parsedUrl);
+    // A server pathname beginning with `//` is a protocol-relative reference:
+    // `new URL('//evil/…', https://approved)` resolves the request to `evil`,
+    // even though `parsedUrl.hostname` — what the destination-trust gate
+    // approved and what the https/localhost checks keyed off — is still
+    // `approved`. Pin the resolved origin to the approved one so the API key
+    // and every translated string cannot be redirected to another host.
+    if (resolved.origin !== parsedUrl.origin) {
+      throw new ConfigError(
+        `TMS server URL resolves requests to a different origin (${sanitizeUrl(resolved.origin)}) than the configured server (${sanitizeUrl(parsedUrl.origin)})`,
+        'Set server: to a bare origin with an optional base path; a path beginning with "//" is a protocol-relative reference that redirects the host.'
+      );
+    }
+    return resolved.toString();
   }
 
   private async request(

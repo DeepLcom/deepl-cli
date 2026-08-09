@@ -285,6 +285,35 @@ describe('TmsClient URL construction', () => {
       expect.anything()
     );
   });
+
+  it('should refuse a server URL whose path resolves the request to a different host', async () => {
+    // `https://approved//evil` parses with hostname=approved, which the trust
+    // gate approves and the https/localhost checks key off — but the base
+    // path `//evil…` is a protocol-relative reference, so the resolved request
+    // host becomes evil. The credential and every translated string would go
+    // there. Refuse before any request.
+    await expect(
+      clientFor('https://tms.example.com//evil.example.com').pullKeys('de')
+    ).rejects.toThrow(ConfigError);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('should refuse a localhost server URL whose path redirects to another host', async () => {
+    await expect(
+      clientFor('http://localhost//169.254.169.254').pullKeys('de')
+    ).rejects.toThrow(ConfigError);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('should still accept a legitimate base path that keeps the approved host', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
+    await clientFor('https://tms.example.com/tms').pullKeys('de');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://tms.example.com/tms/api/projects/proj-1/keys/export?format=json&locale=de',
+      expect.anything()
+    );
+  });
 });
 
 describe('TmsClient error message redaction', () => {
