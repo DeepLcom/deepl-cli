@@ -277,3 +277,104 @@ describe('Watch auto-commit integration', () => {
     expect(status.trim()).toBe('');
   }, 60000);
 });
+
+describe('Watch auto-commit: a re-save with unchanged bytes', () => {
+  // A `git commit --only` with nothing staged exits non-zero, and the
+  // undifferentiated catch counted that as an auto-commit failure -- which makes
+  // sessionExitCode() report 12 for a session in which nothing went wrong. The
+  // catch also discarded git's stderr, so the log said only "Auto-commit failed".
+  let tmpDir: string;
+  let watchCommand: WatchCommand;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    tmpDir = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-autocommit-noop-'))
+    );
+    execSync('git init', { cwd: tmpDir, stdio: 'ignore' });
+    execSync('git config user.email "test@test.com"', {
+      cwd: tmpDir,
+      stdio: 'ignore',
+    });
+    execSync('git config user.name "Test"', { cwd: tmpDir, stdio: 'ignore' });
+    fs.writeFileSync(path.join(tmpDir, 'README.md'), 'init');
+    execSync('git add . && git commit -m "init"', {
+      cwd: tmpDir,
+      stdio: 'ignore',
+    });
+    watchCommand = new WatchCommand(
+      createMockTranslationService(),
+      createMockGlossaryService()
+    );
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  function callAutoCommit(sourceFile: string, result: unknown): Promise<void> {
+    return (
+      watchCommand as unknown as {
+        autoCommit: (s: string, r: unknown) => Promise<void>;
+      }
+    ).autoCommit(sourceFile, result);
+  }
+
+  function failures(): number {
+    return (watchCommand as unknown as { autoCommitFailures: number })
+      .autoCommitFailures;
+  }
+
+  it('is not counted as an auto-commit failure', async () => {
+    const outFile = path.join(tmpDir, 'file.es.md');
+    fs.writeFileSync(outFile, 'Hola mundo');
+    const result = {
+      targetLang: 'es',
+      text: 'Hola mundo',
+      outputPath: outFile,
+    };
+
+    // First save commits normally.
+    await callAutoCommit('file.md', result);
+    expect(failures()).toBe(0);
+
+    // Re-save with identical bytes: there is nothing to commit.
+    fs.writeFileSync(outFile, 'Hola mundo');
+    await callAutoCommit('file.md', result);
+
+    expect(failures()).toBe(0);
+    expect(Logger.error as jest.Mock).not.toHaveBeenCalled();
+    // Exactly one commit exists for that message.
+    const log = execSync('git log --oneline', {
+      cwd: tmpDir,
+      encoding: 'utf-8',
+    });
+    expect(
+      log.split('\n').filter((l) => l.includes('auto-translate file.md')).length
+    ).toBe(1);
+  });
+
+  it("still reports a genuine failure, quoting git's own message", async () => {
+    const outFile = path.join(tmpDir, 'file.es.md');
+    fs.writeFileSync(outFile, 'Hola');
+    // A held index lock is a real git failure with a specific diagnosis, which
+    // the report has to carry: `execFile` puts the exit status in `message` and
+    // the diagnosis in `stderr`, and only `message` used to be logged.
+    fs.writeFileSync(path.join(tmpDir, '.git', 'index.lock'), '');
+
+    await callAutoCommit('file.md', {
+      targetLang: 'es',
+      text: 'Hola',
+      outputPath: outFile,
+    });
+
+    expect(failures()).toBe(1);
+    const logged = (Logger.error as jest.Mock).mock.calls
+      .flat()
+      .map(String)
+      .join(' ');
+    expect(logged).toMatch(/index\.lock/);
+  });
+});

@@ -51,6 +51,22 @@ function watchedDirectory(target: string): string {
   return isDirectory ? target : path.dirname(target);
 }
 
+/**
+ * What git said, rather than only that a command failed.
+ *
+ * `execFile` puts the exit status in `message` and the diagnosis in `stderr`, so
+ * reporting `message` alone discarded the one part that tells the user what to
+ * fix.
+ */
+function gitFailureDetail(error: unknown): string {
+  if (typeof error === 'object' && error !== null) {
+    const stderr = (error as { stderr?: unknown }).stderr;
+    const text = typeof stderr === 'string' ? stderr.trim() : '';
+    if (text) return text;
+  }
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
 export class WatchCommand {
   private fileTranslationService: FileTranslationService;
   private glossaryService: GlossaryService;
@@ -421,6 +437,27 @@ export class WatchCommand {
 
       const commitMsg = `chore(i18n): auto-translate ${sourceFile} to ${langs}`;
 
+      // A re-save whose bytes are unchanged stages nothing, and `git commit`
+      // then exits non-zero. That is not a failure — nothing needed committing —
+      // but the catch below counted it as one, which made `sessionExitCode()`
+      // report 12 for a session in which nothing had gone wrong. Asked as a
+      // diff rather than by matching git's "nothing to commit" wording, which is
+      // translated in a localized git.
+      const nothingStaged = await execFileAsync(
+        'git',
+        ['diff', '--cached', '--quiet', '--', ...outputFiles],
+        { cwd }
+      ).then(
+        () => true,
+        () => false
+      );
+      if (nothingStaged) {
+        Logger.info(
+          'Auto-commit: translated output unchanged, nothing to commit'
+        );
+        return;
+      }
+
       // --only restricts the commit to the translated outputs, so anything else
       // already staged in the index is not swept into an i18n commit.
       await execFileAsync(
@@ -432,10 +469,7 @@ export class WatchCommand {
       Logger.success(chalk.green('✓ Auto-committed translations'));
     } catch (error) {
       this.autoCommitFailures++;
-      Logger.error(
-        chalk.red('✗ Auto-commit failed:'),
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      Logger.error(chalk.red('✗ Auto-commit failed:'), gitFailureDetail(error));
     }
   }
 
