@@ -229,7 +229,7 @@ export class TomlFormatParser implements FormatParser {
         0,
         ...group.map(
           ({ leaf, entry }) =>
-            `${leaf} = ${encodeTomlString(entry.translation, true)}`
+            `${encodeTomlKey(leaf)} = ${encodeTomlString(entry.translation, true)}`
         )
       );
     }
@@ -238,9 +238,11 @@ export class TomlFormatParser implements FormatParser {
     for (const [section, group] of bySection) {
       if (sectionEnd.has(section)) continue;
       if (out.length > 0 && out[out.length - 1] !== '') out.push('');
-      out.push(`[${section}]`);
+      out.push(`[${encodeTomlSection(section)}]`);
       for (const { leaf, entry } of group) {
-        out.push(`${leaf} = ${encodeTomlString(entry.translation, true)}`);
+        out.push(
+          `${encodeTomlKey(leaf)} = ${encodeTomlString(entry.translation, true)}`
+        );
       }
     }
   }
@@ -273,6 +275,26 @@ function isTomlDelete(code: number): boolean {
 
 function tomlUnicodeEscape(code: number): string {
   return '\\u' + code.toString(16).padStart(4, '0');
+}
+
+const BARE_KEY_RE = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * A key spelled the way TOML requires: bare where the character set allows,
+ * otherwise a quoted key.
+ *
+ * Writing an unquoted `with space` produced a document smol-toml refuses on its
+ * next read, and the unusable-target guard then pins the locale permanently
+ * unreadable — the run that wrote the file is the run that broke it. Quoted keys
+ * take the same escaping as a basic string.
+ */
+function encodeTomlKey(key: string): string {
+  return BARE_KEY_RE.test(key) ? key : encodeTomlString(key, true);
+}
+
+/** A dotted section path with each component quoted as TOML requires. */
+function encodeTomlSection(section: string): string {
+  return section.split('.').map(encodeTomlKey).join('.');
 }
 
 function encodeTomlString(value: string, useDoubleQuote: boolean): string {

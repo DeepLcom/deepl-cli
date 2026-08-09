@@ -321,3 +321,52 @@ describe('TomlFormatParser', () => {
     });
   });
 });
+
+describe('TomlFormatParser — quoting a new key that is not a bare key', () => {
+  // The new-key insertion wrote `${leaf} = value` with no quoting, so a source
+  // key outside TOML's bare-key set (`with space`, `a.b` as one literal key, a
+  // key holding a quote) produced a file smol-toml refuses on the next read.
+  // The unusable-target guard then pins the locale permanently unreadable: the
+  // run that wrote the file is the run that broke it.
+  const TEMPLATE = ['[greeting]', 'hello = "Hola"', ''].join('\n');
+
+  function roundTrip(key: string, translation: string): string {
+    return parser.reconstruct(TEMPLATE, [
+      { key: 'greeting.hello', value: 'Hello', translation: 'Hola' },
+      { key, value: 'Source', translation },
+    ] as TranslatedEntry[]);
+  }
+
+  it('quotes a leaf key containing a space', () => {
+    const written = roundTrip('greeting.with space', 'Con espacio');
+    expect(() => parser.extract(written)).not.toThrow();
+    expect(parser.extract(written).map((e) => e.key)).toContain(
+      'greeting.with space'
+    );
+  });
+
+  it('quotes a leaf key containing a double quote', () => {
+    const written = roundTrip('greeting.say"hi', 'Hola');
+    expect(() => parser.extract(written)).not.toThrow();
+    const keys = parser.extract(written).map((e) => e.key);
+    expect(keys).toContain('greeting.say"hi');
+  });
+
+  it('quotes a section name that is not a bare key', () => {
+    const written = parser.reconstruct(TEMPLATE, [
+      { key: 'greeting.hello', value: 'Hello', translation: 'Hola' },
+      { key: 'my section.item', value: 'Source', translation: 'Destino' },
+    ] as TranslatedEntry[]);
+
+    expect(() => parser.extract(written)).not.toThrow();
+    expect(parser.extract(written).map((e) => e.key)).toContain(
+      'my section.item'
+    );
+  });
+
+  it('leaves a bare key unquoted', () => {
+    const written = roundTrip('greeting.farewell-2', 'Adios');
+    expect(written).toContain('farewell-2 = ');
+    expect(written).not.toContain('"farewell-2"');
+  });
+});
