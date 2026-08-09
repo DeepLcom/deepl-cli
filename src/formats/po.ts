@@ -27,35 +27,74 @@ interface PoEntry {
 type ParseTarget =
   'msgctxt' | 'msgid' | 'msgid_plural' | 'msgstr' | `msgstr[${number}]`;
 
+/**
+ * One PO escape sequence, decoded.
+ *
+ * `r` is in the set because `quote` writes it: without it an escaped CR read
+ * back as a literal backslash + 'r', whose backslash the next `quote` escaped in
+ * turn, so a carried entry grew a backslash on every run. msgfmt flags neither
+ * spelling.
+ */
+function unescapePoChar(ch: string): string {
+  switch (ch) {
+    case '\\':
+      return '\\';
+    case '"':
+      return '"';
+    case 'n':
+      return '\n';
+    case 't':
+      return '\t';
+    case 'r':
+      return '\r';
+    default:
+      return ch;
+  }
+}
+
+/**
+ * The string a PO value expresses, decoding escapes and concatenating adjacent
+ * literals.
+ *
+ * gettext joins adjacent string literals C-style, so `msgstr "Hola " "mundo"` is
+ * `Hola mundo`. Testing only that the value starts and ends with a quote and
+ * slicing read the inner `" "` as content, and the next write escaped those
+ * quotes — corrupting the string permanently, with `msgfmt -c` unable to flag it
+ * because both forms are well-formed.
+ *
+ * A value that is not a well-formed run of literals (an unterminated quote, or
+ * anything else between literals) is returned trimmed and untouched, which is
+ * what the previous single-literal test did for input it did not recognise.
+ */
 function unquote(line: string): string {
   const trimmed = line.trim();
-  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    return (
-      trimmed
-        .slice(1, -1)
-        // `r` is here because `quote` writes it: without it an escaped CR read
-        // back as a literal backslash + 'r', whose backslash the next `quote`
-        // escaped in turn, so a carried entry grew a backslash on every run.
-        // msgfmt flags neither spelling.
-        .replace(/\\(\\|"|n|t|r)/g, (_match, ch: string) => {
-          switch (ch) {
-            case '\\':
-              return '\\';
-            case '"':
-              return '"';
-            case 'n':
-              return '\n';
-            case 't':
-              return '\t';
-            case 'r':
-              return '\r';
-            default:
-              return ch;
-          }
-        })
-    );
+  if (!trimmed.startsWith('"')) return trimmed;
+
+  let result = '';
+  let i = 0;
+  while (i < trimmed.length) {
+    if (trimmed[i] !== '"') return trimmed;
+    i++;
+    let closed = false;
+    while (i < trimmed.length) {
+      const ch = trimmed[i]!;
+      if (ch === '\\' && i + 1 < trimmed.length) {
+        result += unescapePoChar(trimmed[i + 1]!);
+        i += 2;
+        continue;
+      }
+      if (ch === '"') {
+        closed = true;
+        i++;
+        break;
+      }
+      result += ch;
+      i++;
+    }
+    if (!closed) return trimmed;
+    while (i < trimmed.length && /\s/.test(trimmed[i]!)) i++;
   }
-  return trimmed;
+  return result;
 }
 
 function quote(value: string): string {

@@ -933,3 +933,60 @@ describe('PoFormatParser — carriage returns round-trip', () => {
     expect(parser.extractTranslations(mixed).get('K')).toBe('n\nt\tq"b\\end');
   });
 });
+
+describe('PoFormatParser — adjacent string literals on one line', () => {
+  // gettext concatenates adjacent literals C-style, so `msgstr "Hola " "mundo"`
+  // is the string `Hola mundo`. unquote tested only that the value starts and
+  // ends with a quote and sliced, reading the inner `" "` as content — then
+  // rewrote it with the quotes escaped, so the string became `Hola \" \"mundo`
+  // permanently. msgfmt -c cannot flag it: both forms are well-formed.
+  const parser = new PoFormatParser();
+  const HEADER = [
+    'msgid ""',
+    'msgstr ""',
+    '"Content-Type: text/plain; charset=UTF-8\\n"',
+    '',
+    '',
+  ].join('\n');
+
+  it('concatenates adjacent literals in a msgstr', () => {
+    const po =
+      HEADER + ['msgid "Hello"', 'msgstr "Hola " "mundo"', ''].join('\n');
+    expect(parser.extractTranslations(po).get('Hello')).toBe('Hola mundo');
+  });
+
+  it('concatenates adjacent literals in a msgid', () => {
+    const po =
+      HEADER + ['msgid "Good " "day"', 'msgstr "Buen día"', ''].join('\n');
+    expect(parser.extract(po).map((e) => e.key)).toEqual(['Good day']);
+  });
+
+  it('does not re-escape the joint when rewriting the entry', () => {
+    const po =
+      HEADER + ['msgid "Hello"', 'msgstr "Hola " "mundo"', ''].join('\n');
+    const written = parser.reconstruct(po, [
+      {
+        key: 'Hello',
+        value: 'Hello',
+        translation: parser.extractTranslations(po).get('Hello')!,
+      },
+    ]);
+    expect(written).toContain('msgstr "Hola mundo"');
+    expect(written).not.toContain('\\"');
+  });
+
+  it('keeps a quote that is genuinely part of the string', () => {
+    const po = HEADER + ['msgid "Q"', 'msgstr "say \\" here"', ''].join('\n');
+    expect(parser.extractTranslations(po).get('Q')).toBe('say " here');
+  });
+
+  it('still reads a plain single literal', () => {
+    const po = HEADER + ['msgid "Hello"', 'msgstr "Hola"', ''].join('\n');
+    expect(parser.extractTranslations(po).get('Hello')).toBe('Hola');
+  });
+
+  it('leaves an unterminated literal alone rather than mangling it', () => {
+    const po = HEADER + ['msgid "Hello"', 'msgstr "Hola', ''].join('\n');
+    expect(() => parser.extractTranslations(po)).not.toThrow();
+  });
+});
