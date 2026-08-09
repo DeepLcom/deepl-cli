@@ -713,7 +713,7 @@ Cost estimates use the DeepL Pro rate ($25 per 1 million characters). If you are
 
 With `--format json`, the result includes `estimatedCharacters`, `targetLocaleCount`, `estimatedCost`, and `rateAssumption: "pro"` (indicating the estimate is based on Pro-tier pricing). A `perLocale` array provides per-file per-locale breakdowns.
 
-**stdout/stderr split (stable contract).** The final success JSON payload is written to **stdout**, so `deepl sync --format json > out.json` captures the result in a parseable file. Progress events (both `key-translated` and `locale-complete`) are streamed to **stderr** as JSON lines during the sync, enabling programmatic progress monitoring without polluting the consumer contract on stdout. On failure, `--format json` emits the nested error envelope `{"ok":false,"error":{"code":"...","message":"...","suggestion":"..."},"exitCode":N}` to **stderr** and exits non-zero; the `error.code` field matches the error class name (e.g. `ConfigError`).
+**stdout/stderr split (stable contract).** The final JSON payload — the success result, or the error envelope when the command fails — is written to **stdout**, so `deepl sync --format json > out.json` captures a parseable file in both cases. Progress events (both `key-translated` and `locale-complete`) are streamed to **stderr** as JSON lines during the sync, enabling programmatic progress monitoring without polluting the consumer contract on stdout. On failure, `--format json` emits the nested error envelope `{"ok":false,"error":{"code":"...","message":"...","suggestion":"..."},"exitCode":N}` to **stdout** and exits non-zero; the `error.code` field matches the error class name (e.g. `ConfigError`). Warnings — the CLI's own and the Node runtime's — go to stderr, so they can never break a consumer parsing stdout.
 
 ### `deepl sync init`
 
@@ -838,7 +838,7 @@ deepl sync status --format json
 
 **`skippedKeys`** counts entries the parser tagged as untranslatable and excluded from the translation batch — currently only Laravel pipe-pluralization values (`|{n}`, `|[n,m]`, `|[n,*]`). Included in `totalKeys`; round-trip byte-verbatim via reconstruct.
 
-**JSON output contract.** The field set above is stable within a major version. `coverage` is an integer 0-100. The success payload is written to **stdout** so `deepl sync status --format json > status.json` captures it in a parseable file; diagnostic logs remain on stderr. On failure, `--format json` emits the nested error envelope `{"ok":false,"error":{"code":"...","message":"...","suggestion":"..."},"exitCode":N}` to **stderr** and exits non-zero; `error.code` matches the error class name (e.g. `ConfigError`). The same stdout/stderr split applies to `deepl sync validate --format json` and `deepl sync audit --format json`.
+**JSON output contract.** The field set above is stable within a major version. `coverage` is an integer 0-100. The success payload is written to **stdout** so `deepl sync status --format json > status.json` captures it in a parseable file; diagnostic logs remain on stderr. On failure, `--format json` emits the nested error envelope `{"ok":false,"error":{"code":"...","message":"...","suggestion":"..."},"exitCode":N}` to **stdout** as well — the envelope is the command's result in the failure case, and the non-zero exit code is the failure signal — so a consumer parses one stream in both cases. `error.code` matches the error class name (e.g. `ConfigError`). The same stdout/stderr split applies to `deepl sync validate --format json` and `deepl sync audit --format json`.
 
 **Casing.** CLI JSON output uses `camelCase`. The on-disk lockfile and config use `snake_case`. This split is deliberate — JSON is a consumer contract, files are authored configuration.
 
@@ -900,7 +900,7 @@ deepl sync export [OPTIONS]
 | `--locale <langs>` | Export for specific locales only |
 | `--output <path>` | Write to file instead of stdout |
 | `--overwrite` | Overwrite `--output` if it already exists (default: refuse to clobber) |
-| `--format <fmt>` | Output format: `text` (default), `json`. Success output is always XLIFF 1.2; `json` affects the **error** envelope on stderr so script consumers can parse failure shape uniformly with other sync subcommands |
+| `--format <fmt>` | Output format: `text` (default), `json`. Success output is always XLIFF 1.2; `json` affects the **error** envelope on stdout so script consumers can parse failure shape uniformly with other sync subcommands |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
 
 Without `--overwrite`, `deepl sync export --output` refuses to write over an existing file and exits 6 (ValidationError). Pass `--overwrite` to re-export:

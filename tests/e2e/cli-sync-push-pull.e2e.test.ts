@@ -366,7 +366,7 @@ describe('CLI sync push/pull dispatch E2E', () => {
       });
 
       expect(run.status).toBe(7);
-      const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       expect(envelope.error.message).toContain('localhost');
       expect(envelope.error.suggestion).toContain(
         'deepl config set tms.allowedServers'
@@ -658,7 +658,7 @@ describe('CLI sync push/pull dispatch E2E', () => {
         });
 
         expect(run.status).toBe(7);
-        const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+        const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
         expect(envelope.error.message).toBe(
           `tms.${field} was never implemented and has been removed`
         );
@@ -672,7 +672,7 @@ describe('CLI sync push/pull dispatch E2E', () => {
       const run = runCli(['sync', 'push', '--format', 'json']);
 
       expect(run.status).toBe(7);
-      const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       expect(envelope.error.message).toMatch(/TMS integration not configured/);
       expect(envelope.error.suggestion).toMatch(/tms:/);
     });
@@ -684,7 +684,7 @@ describe('CLI sync push/pull dispatch E2E', () => {
       const run = runCli(['sync', 'pull', '--format', 'json']);
 
       expect(run.status).toBe(7);
-      assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      assertErrorEnvelope(run.stdout, 'ConfigError', 7);
     });
   });
 });

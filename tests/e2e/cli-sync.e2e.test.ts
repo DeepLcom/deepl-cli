@@ -510,7 +510,7 @@ describe('CLI Sync E2E', () => {
       );
     });
 
-    it('emits a parseable JSON error envelope to stderr when --format json and config is missing', () => {
+    it('emits a parseable JSON error envelope when --format json and config is missing', () => {
       const result = runSyncExpectError('--format json');
 
       expect(result.status).toBe(7);
@@ -1584,7 +1584,7 @@ describe('CLI Sync E2E', () => {
       expect(Number.isInteger(first['coverage'])).toBe(true);
     });
 
-    it('emits a parseable JSON error envelope to stderr when config is missing', () => {
+    it('emits a parseable JSON error envelope when config is missing', () => {
       // No .deepl-sync.yaml in testFiles.path (beforeEach cleans it up).
       const result = runSyncExpectError('status --format json');
 

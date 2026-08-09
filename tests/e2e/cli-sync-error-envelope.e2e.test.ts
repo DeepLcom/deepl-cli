@@ -1,7 +1,9 @@
 /**
  * E2E tests for the shared JSON error envelope across every `deepl sync`
  * subcommand. When --format json is set and a command fails, every
- * subcommand must emit the canonical envelope to stderr:
+ * subcommand must emit the canonical envelope to stdout — the envelope is
+ * the command's result in the failure case, and stdout is the one stream
+ * warnings and runtime diagnostics never share:
  *
  *   { ok: false, error: { code, message, suggestion? }, exitCode }
  *
@@ -146,7 +148,7 @@ describe('CLI sync --format json error envelope', () => {
       it(`deepl sync ${sub} --format json → envelope ConfigError/7`, () => {
         const run = runCli(['sync', sub, '--format', 'json']);
         expect(run.status).toBe(7);
-        assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+        assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       });
     }
   });
@@ -158,7 +160,7 @@ describe('CLI sync --format json error envelope', () => {
 
       const run = runCli(['sync', 'push', '--format', 'json']);
       expect(run.status).toBe(7);
-      const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       expect(envelope.error.message).toMatch(/TMS integration not configured/);
       expect(envelope.error.suggestion).toMatch(/tms:/);
     });
@@ -169,7 +171,7 @@ describe('CLI sync --format json error envelope', () => {
 
       const run = runCli(['sync', 'pull', '--format', 'json']);
       expect(run.status).toBe(7);
-      assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      assertErrorEnvelope(run.stdout, 'ConfigError', 7);
     });
   });
 
@@ -185,7 +187,7 @@ describe('CLI sync --format json error envelope', () => {
         'en',
       ]);
       expect(run.status).toBe(6);
-      const envelope = assertErrorEnvelope(run.stderr, 'ValidationError', 6);
+      const envelope = assertErrorEnvelope(run.stdout, 'ValidationError', 6);
       expect(envelope.error.message).toMatch(/All four flags/);
     });
   });
@@ -239,7 +241,7 @@ describe('CLI sync --format json error envelope', () => {
       ]);
 
       expect(run.status).toBe(7);
-      const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       expect(envelope.error.message).toMatch(/already exists/);
     });
   });
@@ -275,7 +277,7 @@ describe('CLI sync --format json error envelope', () => {
 
       const run = runCli(['sync', 'resolve', '--format', 'json']);
       expect(run.status).toBe(11);
-      const envelope = assertErrorEnvelope(run.stderr, 'SyncConflict', 11);
+      const envelope = assertErrorEnvelope(run.stdout, 'SyncConflict', 11);
       expect(envelope.error.suggestion).toMatch(/conflict markers manually/);
     });
   });
@@ -287,9 +289,28 @@ describe('CLI sync --format json error envelope', () => {
     it('ConfigError envelope does not contain raw control chars in message', () => {
       const run = runCli(['sync', 'export', '--format', 'json']);
       expect(run.status).toBe(7);
-      const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       // eslint-disable-next-line no-control-regex -- intentional: assert sanitation
       expect(envelope.error.message).not.toMatch(/[\u0000-\u001F]/);
+    });
+  });
+
+  describe('a warning on stderr cannot break a consumer parsing the envelope', () => {
+    it('emits the envelope as the whole of stdout while the CLI warns on stderr', () => {
+      // A world-readable config file makes the CLI itself write a warning to
+      // stderr before anything else runs -- the same stream pollution as a
+      // Node runtime ExperimentalWarning, produced without shimming node.
+      const configPath = path.join(testConfig.path, 'config.json');
+      fs.chmodSync(configPath, 0o644);
+
+      const run = runCli(['sync', 'validate', '--format', 'json']);
+
+      expect(run.status).toBe(7);
+      expect(run.stderr).toContain('Warning');
+      // The whole stream parses -- no trailing-line extraction required.
+      const envelope = JSON.parse(run.stdout) as { ok: boolean };
+      expect(envelope.ok).toBe(false);
+      assertErrorEnvelope(run.stdout, 'ConfigError', 7);
     });
   });
 });

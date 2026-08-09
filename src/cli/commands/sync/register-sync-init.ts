@@ -103,18 +103,12 @@ async function handleSyncInit(
       if (options.format === 'json') {
         // Already-present config is not an error per se, but scripted
         // bootstrap flows need a non-ok envelope to branch on.
-        const envelope = {
-          ok: false,
-          error: {
-            code: 'ConfigError',
-            message: `Config file ${displayPath} already exists.`,
-            suggestion:
-              'Remove or rename the existing config file, or edit it directly.',
-          },
-          exitCode: ExitCode.ConfigError,
-        };
-        process.stderr.write(JSON.stringify(envelope) + '\n');
-        process.exit(ExitCode.ConfigError);
+        emitJsonErrorAndExit(
+          new ConfigError(
+            `Config file ${displayPath} already exists.`,
+            'Remove or rename the existing config file, or edit it directly.'
+          )
+        );
       }
       Logger.warn(chalk.yellow(`Config file ${displayPath} already exists.`));
       return;

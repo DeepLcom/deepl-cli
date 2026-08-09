@@ -208,7 +208,9 @@ echo "Phase 5: Status + Validate"
 deepl sync status 2>&1 | head -10
 assert_exit_code "status exits 0" 0 deepl sync status
 
-STATUS_JSON=$(deepl sync status --format json 2>&1)
+# stdout only: the JSON payload lands there in both the success and the
+# failure case, and merging stderr would splice warnings into the capture.
+STATUS_JSON=$(deepl sync status --format json)
 # Wrap pipelines inside helper functions so the assert helper runs them
 # atomically. Otherwise `assert "desc" echo $X | python3 ...` parses the
 # pipe at the assert call level — assert sees only `echo $X` (always 0)

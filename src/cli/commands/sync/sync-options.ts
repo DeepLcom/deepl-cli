@@ -101,9 +101,16 @@ function sanitizeMessage(message: string): string {
 }
 
 /**
- * Serialize an error to the canonical envelope on stderr and exit with the
+ * Serialize an error to the canonical envelope on stdout and exit with the
  * error's typed exit code. Shared by every subcommand that honors
  * --format json for machine-readable failures.
+ *
+ * stdout, not stderr: the envelope is the command's result in the failure
+ * case, and stderr is where every warning — the CLI's own and the Node
+ * runtime's — already goes, so an envelope there parses only when nothing
+ * else happened to be said. The non-zero exit code remains the failure
+ * signal; a consumer reads the reason off the same stream as the success
+ * payload.
  */
 export function emitJsonErrorAndExit(
   error: unknown,
@@ -125,7 +132,7 @@ export function emitJsonErrorAndExit(
     },
     exitCode,
   };
-  process.stderr.write(JSON.stringify(envelope) + '\n');
+  process.stdout.write(JSON.stringify(envelope) + '\n');
   process.exit(exitCode);
 }
 

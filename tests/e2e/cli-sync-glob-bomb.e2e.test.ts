@@ -32,23 +32,21 @@ describe('CLI sync glob bomb containment', () => {
   }
 
   /**
-   * The JSON error envelope goes to stderr, which is also where the CLI's own
-   * warnings and the Node runtime's go — an `ExperimentalWarning` ahead of it is
-   * enough to fail a parse of the whole stream. Take the envelope line instead of
-   * assuming stderr holds nothing else. `sanitizeMessage` strips control
-   * characters from the message, newline included, so the envelope is always one
-   * line.
+   * The JSON error envelope is the whole of stdout — warnings and runtime
+   * diagnostics go to stderr, so the machine stream parses as-is.
+   * `sanitizeMessage` strips control characters from the message, newline
+   * included, so the envelope is always one line.
    */
-  function parseErrorEnvelope(stderr: string): {
+  function parseErrorEnvelope(stdout: string): {
     ok: boolean;
     error: { message: string };
   } {
-    const line = stderr
+    const line = stdout
       .split('\n')
       .filter((l) => l.trimStart().startsWith('{'))
       .pop();
     if (!line) {
-      throw new Error(`no JSON envelope on stderr, got: ${stderr}`);
+      throw new Error(`no JSON envelope on stdout, got: ${stdout}`);
     }
     return JSON.parse(line) as { ok: boolean; error: { message: string } };
   }
@@ -160,7 +158,7 @@ describe('CLI sync glob bomb containment', () => {
 
     expect(result.signal).toBeNull();
     expect(result.status).toBe(CONFIG_EXIT_CODE);
-    const envelope = parseErrorEnvelope(result.stderr);
+    const envelope = parseErrorEnvelope(result.stdout);
     expect(envelope.ok).toBe(false);
     expect(envelope.error.message).toMatch(/expands to more than/i);
   });

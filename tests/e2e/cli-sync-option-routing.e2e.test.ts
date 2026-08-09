@@ -251,7 +251,7 @@ describe('CLI sync option routing E2E', () => {
       ]);
 
       expect(run.status).toBe(7);
-      const envelope = JSON.parse(run.stderr.trim()) as {
+      const envelope = JSON.parse(run.stdout.trim()) as {
         ok: boolean;
         error: { code: string };
         exitCode: number;

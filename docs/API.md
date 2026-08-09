@@ -1338,9 +1338,9 @@ Show translation coverage for all target locales.
 
 `skippedKeys` counts entries the parser tagged as untranslatable and excluded from the translation batch — currently only Laravel pipe-pluralization values (`|{n}`, `|[n,m]`, `|[n,*]`). Included in `totalKeys`.
 
-**stdout/stderr split (stable contract):** The success JSON payload is written to **stdout**, so `deepl sync status --format json > status.json` produces a parseable file. Diagnostic/progress logs stay on **stderr**. The same stdout/stderr split applies to `deepl sync --format json`, `deepl sync validate --format json`, and `deepl sync audit --format json`.
+**stdout/stderr split (stable contract):** The JSON payload — the success result, or the error envelope below when the command fails — is written to **stdout**, so `deepl sync status --format json > status.json` produces a parseable file in both cases. Diagnostic/progress logs and warnings stay on **stderr**, which means stdout parses even when the CLI or the Node runtime had something to say. The same stdout/stderr split applies to `deepl sync --format json`, `deepl sync validate --format json`, and `deepl sync audit --format json`.
 
-**Error envelope (shared across every `sync` subcommand):** On failure, `--format json` emits the following JSON envelope to **stderr** and exits with the typed exit code:
+**Error envelope (shared across every `sync` subcommand):** On failure, `--format json` emits the following JSON envelope to **stdout** — the envelope is the command's result in the failure case; the non-zero exit code is the failure signal — and exits with the typed exit code:
 
 ```json
 {
@@ -1468,7 +1468,7 @@ Export source strings to XLIFF 1.2 for CAT tool handoff.
 - `--locale LANGS` - Filter by locale (comma-separated)
 - `--output PATH` - Write to file instead of stdout. Path must stay within the project root; intermediate directories are created automatically
 - `--overwrite` - Required to overwrite an existing `--output` file. Without it, an existing file causes a non-zero exit and no write occurs
-- `--format FORMAT` - Output format: `text` (default), `json`. Success output is always XLIFF 1.2 regardless of format; `json` affects the **error** envelope on stderr (matching other sync subcommands) so script consumers can parse failure shape uniformly
+- `--format FORMAT` - Output format: `text` (default), `json`. Success output is always XLIFF 1.2 regardless of format; `json` affects the **error** envelope on stdout (matching other sync subcommands) so script consumers can parse failure shape uniformly
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
 
 **Examples:**

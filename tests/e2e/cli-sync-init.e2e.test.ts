@@ -110,7 +110,7 @@ describe('deepl sync init — no i18n files detected', () => {
     const run = runCli(['sync', 'init', '--format', 'json']);
 
     expect(run.status).toBe(7);
-    const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+    const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
     expect(envelope.error.message).toMatch(/No i18n files detected/);
 
     const configPath = path.join(testFiles.path, '.deepl-sync.yaml');
