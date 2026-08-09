@@ -30,22 +30,30 @@ type ParseTarget =
 function unquote(line: string): string {
   const trimmed = line.trim();
   if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    return trimmed
-      .slice(1, -1)
-      .replace(/\\(\\|"|n|t)/g, (_match, ch: string) => {
-        switch (ch) {
-          case '\\':
-            return '\\';
-          case '"':
-            return '"';
-          case 'n':
-            return '\n';
-          case 't':
-            return '\t';
-          default:
-            return ch;
-        }
-      });
+    return (
+      trimmed
+        .slice(1, -1)
+        // `r` is here because `quote` writes it: without it an escaped CR read
+        // back as a literal backslash + 'r', whose backslash the next `quote`
+        // escaped in turn, so a carried entry grew a backslash on every run.
+        // msgfmt flags neither spelling.
+        .replace(/\\(\\|"|n|t|r)/g, (_match, ch: string) => {
+          switch (ch) {
+            case '\\':
+              return '\\';
+            case '"':
+              return '"';
+            case 'n':
+              return '\n';
+            case 't':
+              return '\t';
+            case 'r':
+              return '\r';
+            default:
+              return ch;
+          }
+        })
+    );
   }
   return trimmed;
 }

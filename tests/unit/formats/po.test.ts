@@ -885,3 +885,51 @@ describe('PoFormatParser — carrying a wrapped plural form forward', () => {
     expect(written).not.toContain(LONG_ES);
   });
 });
+
+describe('PoFormatParser — carriage returns round-trip', () => {
+  // `quote` escapes CR to `\r`, but `unquote` had no `r` case, so reading the
+  // file back produced a literal backslash + 'r'. The next run then escaped that
+  // backslash, so a carried entry's CR became `\\r` and grew a backslash on
+  // every subsequent run. msgfmt cannot flag it: both spellings are valid.
+  const parser = new PoFormatParser();
+  const HEADER = [
+    'msgid ""',
+    'msgstr ""',
+    '"Content-Type: text/plain; charset=UTF-8\\n"',
+    '',
+    '',
+  ].join('\n');
+
+  const WITH_CR = HEADER + ['msgid "Hi"', 'msgstr "a\\rb"', ''].join('\n');
+
+  it('decodes an escaped CR back to a carriage return', () => {
+    expect(parser.extractTranslations(WITH_CR).get('Hi')).toBe('a\rb');
+  });
+
+  it('is idempotent across runs rather than growing a backslash', () => {
+    const first = parser.reconstruct(WITH_CR, [
+      {
+        key: 'Hi',
+        value: 'Hi',
+        translation: parser.extractTranslations(WITH_CR).get('Hi')!,
+      },
+    ]);
+    expect(first).toContain('msgstr "a\\rb"');
+
+    const second = parser.reconstruct(first, [
+      {
+        key: 'Hi',
+        value: 'Hi',
+        translation: parser.extractTranslations(first).get('Hi')!,
+      },
+    ]);
+    expect(second).toBe(first);
+    expect(parser.extractTranslations(second).get('Hi')).toBe('a\rb');
+  });
+
+  it('still decodes the escapes it already handled', () => {
+    const mixed =
+      HEADER + ['msgid "K"', 'msgstr "n\\nt\\tq\\"b\\\\end"', ''].join('\n');
+    expect(parser.extractTranslations(mixed).get('K')).toBe('n\nt\tq"b\\end');
+  });
+});
