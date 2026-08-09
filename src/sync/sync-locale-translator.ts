@@ -746,6 +746,17 @@ export class LocaleTranslator {
     }
 
     const translatedEntries: TranslatedEntry[] = [];
+    /**
+     * Existing translations of keys this run could not translate.
+     *
+     * `translateBatch` chunks at 50 texts and carries on when one chunk's
+     * request fails, so those texts come back as empty slots. The entry list is
+     * the complete desired key set, so omitting such a key deletes the
+     * translation the target already shipped — for a key the run touched only to
+     * re-translate it. Kept out of `successfulKeys` on purpose: the lockfile has
+     * to record `failed` so the next run retries.
+     */
+    const failedCarryEntries: TranslatedEntry[] = [];
     let translated = 0;
     let failed = 0;
     let localeBilled = 0;
@@ -774,6 +785,15 @@ export class LocaleTranslator {
         translated++;
       } else {
         failed++;
+        const previous = existingTranslations.get(diff.key);
+        if (previous !== undefined && diff.value !== undefined) {
+          failedCarryEntries.push({
+            key: diff.key,
+            value: diff.value,
+            translation: previous,
+            metadata: withoutPluralForms(diff.metadata),
+          });
+        }
       }
     }
 
@@ -785,7 +805,10 @@ export class LocaleTranslator {
 
     const successfulKeys: string[] = translatedEntries.map((te) => te.key);
 
-    const allTranslatedEntries: TranslatedEntry[] = [...translatedEntries];
+    const allTranslatedEntries: TranslatedEntry[] = [
+      ...translatedEntries,
+      ...failedCarryEntries,
+    ];
 
     // Carried-forward keys count as successful so the lockfile records the
     // translation the target file holds. Left out, they would come back `new` on
