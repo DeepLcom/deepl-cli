@@ -513,3 +513,98 @@ describe('android-xml parser', () => {
     });
   });
 });
+
+describe('single-quoted name and quantity attributes', () => {
+  // `<string name='greeting'>` is well-formed XML, and the scanners already
+  // accept either quote for every OTHER attribute — but the name/quantity
+  // capture required a double quote, so such an element was never extracted,
+  // never translated and never reported: `sync status` read 100% while the
+  // string shipped in the source language.
+  const SINGLE_QUOTED = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<resources>',
+    "    <string name='greeting'>Hello</string>",
+    '    <string name="farewell">Goodbye</string>',
+    "    <plurals name='file_count'>",
+    "        <item quantity='one'>One file</item>",
+    '        <item quantity="other">%d files</item>',
+    '    </plurals>',
+    "    <string-array name='menu'>",
+    '        <item>First</item>',
+    '    </string-array>',
+    '</resources>',
+    '',
+  ].join('\n');
+
+  it('extracts a single-quoted string name', () => {
+    const keys = parser.extract(SINGLE_QUOTED).map((e) => e.key);
+    expect(keys).toContain('greeting');
+    expect(keys).toContain('farewell');
+  });
+
+  it('extracts a single-quoted plurals name and its single-quoted quantity', () => {
+    const plural = parser
+      .extract(SINGLE_QUOTED)
+      .find((e) => e.key === 'file_count');
+    expect(plural).toBeDefined();
+    const forms = plural!.metadata?.['plurals'] as Array<{
+      quantity: string;
+      value: string;
+    }>;
+    expect(forms.map((f) => f.quantity)).toEqual(['one', 'other']);
+  });
+
+  it('extracts a single-quoted string-array name', () => {
+    const keys = parser.extract(SINGLE_QUOTED).map((e) => e.key);
+    expect(keys).toContain('menu.0');
+  });
+
+  it('writes a translation back into a single-quoted element', () => {
+    const written = parser.reconstruct(SINGLE_QUOTED, [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+      { key: 'farewell', value: 'Goodbye', translation: 'Adios' },
+      {
+        key: 'file_count',
+        value: '%d files',
+        translation: '%d archivos',
+        metadata: {
+          plurals: [
+            { quantity: 'one', value: 'Un archivo' },
+            { quantity: 'other', value: '%d archivos' },
+          ],
+        },
+      },
+      { key: 'menu.0', value: 'First', translation: 'Primero' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain("<string name='greeting'>Hola</string>");
+    expect(written).toContain('<string name="farewell">Adios</string>');
+    expect(written).toContain("<item quantity='one'>Un archivo</item>");
+    expect(written).toContain('<item quantity="other">%d archivos</item>');
+    expect(written).toContain('<item>Primero</item>');
+  });
+
+  it('keeps a double quote inside a single-quoted name', () => {
+    const keys = parser
+      .extract(
+        [
+          '<resources>',
+          `    <string name='say"hi'>Hello</string>`,
+          '</resources>',
+        ].join('\n')
+      )
+      .map((e) => e.key);
+    expect(keys).toEqual(['say"hi']);
+  });
+
+  it('does not swallow a following attribute into the name', () => {
+    const entries = parser.extract(
+      [
+        '<resources>',
+        '    <string name="greeting" translatable="true">Hello</string>',
+        '</resources>',
+      ].join('\n')
+    );
+    expect(entries.map((e) => e.key)).toEqual(['greeting']);
+  });
+});

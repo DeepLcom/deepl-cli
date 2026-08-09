@@ -28,22 +28,34 @@ interface PluralItem {
 const ATTRS = String.raw`((?:\s+[a-zA-Z_:][a-zA-Z0-9_:.-]*=(?:"[^"<]*"|'[^'<]*'))*)`;
 
 const STRING_EL: ElementPattern = {
-  open: new RegExp(String.raw`<string\s+name="([^"<]+)"${ATTRS}>`, 'y'),
+  open: new RegExp(
+    String.raw`<string\s+name=(["\'])((?:(?!\1)[^<])+)\1${ATTRS}>`,
+    'y'
+  ),
   close: /<\/string>/y,
 };
 
 const PLURALS_EL: ElementPattern = {
-  open: new RegExp(String.raw`<plurals\s+name="([^"<]+)"${ATTRS}>`, 'y'),
+  open: new RegExp(
+    String.raw`<plurals\s+name=(["\'])((?:(?!\1)[^<])+)\1${ATTRS}>`,
+    'y'
+  ),
   close: /<\/plurals>/y,
 };
 
 const PLURAL_ITEM_EL: ElementPattern = {
-  open: new RegExp(String.raw`<item\s+quantity="([^"<]+)"${ATTRS}>`, 'y'),
+  open: new RegExp(
+    String.raw`<item\s+quantity=(["\'])((?:(?!\1)[^<])+)\1${ATTRS}>`,
+    'y'
+  ),
   close: /<\/item>/y,
 };
 
 const STRING_ARRAY_EL: ElementPattern = {
-  open: new RegExp(String.raw`<string-array\s+name="([^"<]+)"${ATTRS}>`, 'y'),
+  open: new RegExp(
+    String.raw`<string-array\s+name=(["\'])((?:(?!\1)[^<])+)\1${ATTRS}>`,
+    'y'
+  ),
   close: /<\/string-array>/y,
 };
 
@@ -56,6 +68,25 @@ const RESOURCES_EL: ElementPattern = {
   open: /<resources(?:\s[^><]*)?>/y,
   close: /<\/resources>/y,
 };
+
+/**
+ * The `name` / `quantity` of a scanned element.
+ *
+ * Group 0 is the quote delimiter, captured so the value can exclude only the
+ * delimiter actually in use. Requiring a double quote made
+ * `<string name='greeting'>` — well-formed XML, and already accepted for every
+ * other attribute by ATTRS — invisible: never extracted, never translated and
+ * never reported, so `sync status` read 100% while the string shipped in the
+ * source language.
+ */
+function attrValue(element: ScannedElement): string {
+  return element.groups[1]!;
+}
+
+/** The element's remaining attributes, preserved verbatim on rewrite. */
+function otherAttrs(element: ScannedElement): string {
+  return element.groups[2] ?? '';
+}
 
 const INDENT_STEP = '    ';
 
@@ -222,8 +253,8 @@ export class AndroidXmlFormatParser implements FormatParser {
         const arrayName = entry.key.substring(0, lastDot);
         const index = parseInt(entry.key.substring(lastDot + 1), 10);
         arrayNames ??= new Set(
-          scanElements(originalContent, STRING_ARRAY_EL).map(
-            (el) => el.groups[0]!
+          scanElements(originalContent, STRING_ARRAY_EL).map((el) =>
+            attrValue(el)
           )
         );
 
@@ -241,43 +272,43 @@ export class AndroidXmlFormatParser implements FormatParser {
     }
 
     let result = replaceElements(originalContent, STRING_EL, (el) => {
-      const attrs = el.groups[1] ?? '';
+      const attrs = otherAttrs(el);
       if (TRANSLATABLE_FALSE_RE.test(attrs)) {
         return el.text;
       }
-      const translation = translations.get(el.groups[0]!);
+      const translation = translations.get(attrValue(el));
       if (translation === undefined) {
         return null;
       }
       return this.rewriteInner(
         el,
-        this.escapeForReconstruct(el.groups[0]!, el.inner, translation)
+        this.escapeForReconstruct(attrValue(el), el.inner, translation)
       );
     });
 
     result = replaceElements(result, PLURALS_EL, (el) => {
-      const quantityMap = pluralTranslations.get(el.groups[0]!);
+      const quantityMap = pluralTranslations.get(attrValue(el));
       if (!quantityMap) {
         // An entry handed over without per-form translations is one whose
         // plural forms this run did not translate: the element keeps the items
         // it already holds. Only a key absent from the entry list is removed.
-        return translations.has(el.groups[0]!) ? el.text : null;
+        return translations.has(attrValue(el)) ? el.text : null;
       }
       const inner = replaceElements(el.inner, PLURAL_ITEM_EL, (item) => {
-        const translation = quantityMap.get(item.groups[0]!);
+        const translation = quantityMap.get(attrValue(item));
         if (translation === undefined) {
           return item.text;
         }
         return this.rewriteInner(
           item,
-          this.escapeForReconstruct(el.groups[0]!, item.inner, translation)
+          this.escapeForReconstruct(attrValue(el), item.inner, translation)
         );
       });
       return this.rewriteInner(el, inner);
     });
 
     result = replaceElements(result, STRING_ARRAY_EL, (el) => {
-      const indexMap = arrayTranslations.get(el.groups[0]!);
+      const indexMap = arrayTranslations.get(attrValue(el));
       if (!indexMap) {
         return null;
       }
@@ -290,7 +321,7 @@ export class AndroidXmlFormatParser implements FormatParser {
         }
         return this.rewriteInner(
           item,
-          this.escapeForReconstruct(el.groups[0]!, item.inner, translation)
+          this.escapeForReconstruct(attrValue(el), item.inner, translation)
         );
       });
       return this.rewriteInner(el, inner);
@@ -317,7 +348,7 @@ export class AndroidXmlFormatParser implements FormatParser {
     const plurals = scanElements(content, PLURALS_EL);
     const arrays = scanElements(content, STRING_ARRAY_EL);
     const slotted = new Set(
-      [...strings, ...plurals, ...arrays].map((el) => el.groups[0]!)
+      [...strings, ...plurals, ...arrays].map((el) => attrValue(el))
     );
 
     const missingStrings = [...translations].filter(
@@ -372,10 +403,10 @@ export class AndroidXmlFormatParser implements FormatParser {
 
   private extractStrings(content: string, entries: ExtractedEntry[]): void {
     for (const el of scanElements(content, STRING_EL)) {
-      if (TRANSLATABLE_FALSE_RE.test(el.groups[1] ?? '')) {
+      if (TRANSLATABLE_FALSE_RE.test(otherAttrs(el))) {
         continue;
       }
-      entries.push({ key: el.groups[0]!, value: this.decodeValue(el.inner) });
+      entries.push({ key: attrValue(el), value: this.decodeValue(el.inner) });
     }
   }
 
@@ -383,14 +414,14 @@ export class AndroidXmlFormatParser implements FormatParser {
     for (const el of scanElements(content, PLURALS_EL)) {
       const plurals: PluralItem[] = scanElements(el.inner, PLURAL_ITEM_EL).map(
         (item) => ({
-          quantity: item.groups[0]!,
+          quantity: attrValue(item),
           value: this.decodeValue(item.inner),
         })
       );
 
       const defaultItem = primaryPluralItem(plurals);
       entries.push({
-        key: el.groups[0]!,
+        key: attrValue(el),
         value: defaultItem?.value ?? '',
         metadata: { plurals },
       });
@@ -402,7 +433,7 @@ export class AndroidXmlFormatParser implements FormatParser {
     entries: ExtractedEntry[]
   ): void {
     for (const el of scanElements(content, STRING_ARRAY_EL)) {
-      const name = el.groups[0]!;
+      const name = attrValue(el);
       let index = 0;
       for (const item of scanElements(el.inner, ARRAY_ITEM_EL)) {
         entries.push({
