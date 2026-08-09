@@ -118,6 +118,10 @@ echo "19. Check a file for improvements:"
 deepl write "$DEMO_FILE" --check --lang en-us || true
 echo
 
+echo "19b. Machine-readable check result for a CI gate:"
+deepl write "$DEMO_FILE" --check --lang en-us --format json || true
+echo
+
 echo "20. Auto-fix a file in place:"
 echo "Their going to the store tommorow." > "$DEMO_FILE"
 deepl write "$DEMO_FILE" --fix

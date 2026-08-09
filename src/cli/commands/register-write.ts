@@ -60,6 +60,23 @@ export type WriteDeps = Pick<
   'createDeepLClient' | 'getConfigService' | 'getCacheService' | 'handleError'
 >;
 
+/**
+ * Result payload for `write --check` / `correct --check` under `--format json`.
+ *
+ * `ok` is true whichever way the check comes out: the command did its job, and
+ * the verdict is `needsChanges` — which the exit code repeats as 0 or 8. A
+ * failure on this path emits the error envelope instead, so a consumer
+ * discriminates the two on `ok`.
+ */
+export interface WriteCheckJsonResult {
+  ok: true;
+  mode: 'write' | 'correct';
+  needsChanges: boolean;
+  changes: number;
+  /** Absolute path, present only when the input was a file. */
+  file?: string;
+}
+
 interface WriteActionOptions {
   lang?: string;
   to?: string;
@@ -188,29 +205,48 @@ export function createWriteAction(
       };
 
       if (options.check) {
+        const asJson = options.format === 'json';
         let needsImprovement: boolean;
         let changes = 0;
+        let checkedFile: string | undefined;
 
         if (existsSync(text)) {
           const result = await writeCommand.checkFile(text, writeOptions);
           needsImprovement = result.needsImprovement;
           changes = result.changes;
-          Logger.info(chalk.gray(`File: ${text}`));
+          checkedFile = result.filePath;
+          if (!asJson) {
+            Logger.info(chalk.gray(`File: ${text}`));
+          }
         } else {
           const result = await writeCommand.checkText(text, writeOptions);
           needsImprovement = result.needsImprovement;
           changes = result.changes;
         }
 
-        if (needsImprovement) {
+        // The payload replaces the human report rather than joining it: it
+        // carries the file path and the count the prose would have said.
+        if (asJson) {
+          const payload: WriteCheckJsonResult = {
+            ok: true,
+            mode,
+            needsChanges: needsImprovement,
+            changes,
+            ...(checkedFile ? { file: checkedFile } : {}),
+          };
+          process.stdout.write(JSON.stringify(payload) + '\n');
+        } else if (needsImprovement) {
           Logger.warn(
             chalk.yellow(
               `⚠ Text ${needsChangesLabel} (${changes} potential changes)`
             )
           );
-          process.exitCode = ExitCode.CheckFailed;
         } else {
           Logger.success(chalk.green('✓ Text looks good'));
+        }
+
+        if (needsImprovement) {
+          process.exitCode = ExitCode.CheckFailed;
         }
         return;
       }

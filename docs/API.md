@@ -775,7 +775,7 @@ The 14 languages are generated from `GET /v3/languages?resource=write` into `src
 - `--alternatives, -a` - Show all improvement alternatives
 - `--interactive, -i` - Interactive mode: choose from multiple alternatives
 - `--diff, -d` - Show diff between original and improved text
-- `--check` - Check if text needs improvement without modifying (exits with 0 if no changes, 8 if improvements suggested)
+- `--check` - Check if text needs improvement without modifying (exits with 0 if no changes, 8 if improvements suggested). With `--format json`, emits the check result payload on stdout
 - `--fix` - Auto-fix files in place
 - `--output, -o FILE` - Write output to file
 - `--in-place` - Edit file in place
@@ -876,6 +876,30 @@ deepl write "Text to improve." --lang en-us --interactive
 deepl write document.md --lang en-us --check
 ```
 
+`--check` reports a result rather than an error, so `--format json` gives it a
+success shape rather than the error envelope:
+
+```bash
+deepl write document.md --check --format json
+# {"ok":true,"mode":"write","needsChanges":true,"changes":3,"file":"/abs/path/document.md"}
+
+deepl write "This is fine." --check --format json
+# {"ok":true,"mode":"write","needsChanges":false,"changes":0}
+```
+
+| Field         | Meaning                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| `ok`          | Always `true` — the check ran. A failure emits the error envelope.    |
+| `mode`        | `write` or `correct`, so one parser serves both commands.             |
+| `needsChanges`| The verdict, repeated by the exit code (`0` clean, `8` needs changes).|
+| `changes`     | Number of word-level changes the API would make.                     |
+| `file`        | Absolute path of the checked file; absent when the input was text.    |
+
+The payload goes to **stdout** and replaces the human report — the `File: …` line
+and the `⚠ Text needs improvement` / `✓ Text looks good` verdict stay on stderr in
+text mode only. The exit code is unchanged either way, so a CI job may branch on
+the code, the payload, or both.
+
 **Diff view:**
 
 ```bash
@@ -936,7 +960,7 @@ Fixes spelling and grammar only, avoiding the broader rewording that `deepl writ
 
 **Fix Operations:**
 
-- `--check` - Check if text needs correction (exit 0 if clean, exit 8 if corrections needed)
+- `--check` - Check if text needs correction (exit 0 if clean, exit 8 if corrections needed). With `--format json`, emits the check result payload on stdout
 - `--fix` - Automatically fix file in place
 - `--backup, -b` - Create backup file before fixing (use with `--fix`)
 
@@ -961,6 +985,15 @@ deepl c "Their going too the store."
 
 ```bash
 deepl correct README.md --check
+```
+
+With `--format json` the check emits the same result payload `write --check`
+does, with `mode` set to `correct` (the field table is under `write`'s **Check
+mode** above):
+
+```bash
+deepl correct README.md --check --format json
+# {"ok":true,"mode":"correct","needsChanges":true,"changes":2,"file":"/abs/path/README.md"}
 ```
 
 **Fix a file in place with a backup:**
@@ -1361,7 +1394,7 @@ The `error.code` field matches the error class name (`ConfigError`, `ValidationE
 
 - A command with no `--format` flag, and any run in `text` or `table` mode, is unchanged: `Error:` / `Suggestion:` prose on stderr.
 - `config get`/`config list` default to `json`, so their failures carry the envelope with no flag passed.
-- A result that is not an error keeps its own shape: `write --check` / `correct --check` exit `8` to report that text needs changes, and no envelope is emitted for it.
+- A result that is not an error keeps its own shape: `write --check` / `correct --check` exit `8` to report that text needs changes, and emit their own `ok: true` result payload rather than an envelope. Discriminate on `ok`: `false` is a failure, `true` is a verdict whose detail is in the payload.
 - A malformed invocation commander rejects before the command runs (`unknown option`, a missing argument) still prints commander's own message on stderr and exits `6`. The envelope covers command failures, not parse failures.
 
 **`sync init --format json` success envelope:** For scripted project bootstrap, `deepl sync init --format json` emits a success envelope on **stdout** instead of the plain text confirmation:
@@ -3433,7 +3466,7 @@ Remediation: run `deepl config get` to inspect the current config, or edit the f
 
 A check-style command ran successfully but found actionable issues. Exit is *soft* — `process.exitCode` is set so cleanup still runs. Emitted by:
 
-- `deepl write --check <text|file>` when the Write API would suggest changes (`needsImprovement === true`)
+- `deepl write --check <text|file>` and `deepl correct --check <text|file>` when the Write API would suggest changes (`needsImprovement === true`). Under `--format json` the same run also emits the `ok: true` check result payload on stdout, so the count and the file are readable without parsing prose
 - `deepl sync validate` when validation surfaces one or more `error`-severity issues (missing placeholders, format-string mismatches, unbalanced HTML tags, or a target file on disk that could not be read — reported under an `unusable_target` check while every other locale is still validated)
 
 This code is specifically designed for CI use: a `check` step can block a merge without requiring try/catch wrappers in the calling script. It does **not** indicate a CLI failure.

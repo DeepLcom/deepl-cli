@@ -43,6 +43,26 @@ export class WriteCommand {
    * (rephrase by default; spelling/grammar correction when options.correct is set)
    */
   async improve(text: string, options: WriteOptions): Promise<string> {
+    const improved = await this.improvedText(text, options);
+
+    // Format output based on format option. The alternatives listing is its own
+    // presentation and has no JSON form, so it is returned as produced.
+    if (options.showAlternatives || options.format !== 'json') {
+      return improved;
+    }
+
+    return formatWriteJson(text, improved, options.lang ?? 'auto-detected');
+  }
+
+  /**
+   * The improvement as plain text, without the presentation formatting
+   * `improve()` applies. The check and fix workflows diff this text and write it
+   * to disk, so they need the text itself rather than a rendered document.
+   */
+  private async improvedText(
+    text: string,
+    options: WriteOptions
+  ): Promise<string> {
     const serviceOptions = { skipCache: options.noCache };
 
     if (options.showAlternatives) {
@@ -59,15 +79,6 @@ export class WriteCommand {
       options,
       serviceOptions
     );
-
-    // Format output based on format option
-    if (options.format === 'json') {
-      return formatWriteJson(
-        text,
-        improvement.text,
-        options.lang ?? 'auto-detected'
-      );
-    }
 
     return improvement.text;
   }
@@ -231,7 +242,7 @@ export class WriteCommand {
     improved: string;
     changes: number;
   }> {
-    const improvedText = await this.improve(text, options);
+    const improvedText = await this.improvedText(text, options);
 
     // Count the number of changes using diff
     const patches = Diff.diffWords(text, improvedText);

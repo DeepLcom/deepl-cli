@@ -255,6 +255,39 @@ describe('registerCorrect', () => {
       );
       expect(process.exitCode).toBeUndefined();
     });
+
+    it('emits the result payload under --format json with mode correct', async () => {
+      const stdout: string[] = [];
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation((chunk: unknown) => {
+          stdout.push(String(chunk));
+          return true;
+        });
+      mockWriteCommand.checkText.mockResolvedValue({
+        needsImprovement: true,
+        changes: 2,
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'correct',
+        'This is an test.',
+        '--check',
+        '--format',
+        'json',
+      ]);
+
+      expect(JSON.parse(stdout.join(''))).toEqual({
+        ok: true,
+        mode: 'correct',
+        needsChanges: true,
+        changes: 2,
+      });
+      expect(process.exitCode).toBe(8);
+      stdoutSpy.mockRestore();
+    });
   });
 
   describe('--fix', () => {

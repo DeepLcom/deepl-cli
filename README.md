@@ -644,6 +644,10 @@ deepl write "Text to improve." --lang en-us --style business --interactive
 # Check if text needs improvement (exit code 0 if no changes needed)
 deepl write document.md --lang en-us --check
 
+# Machine-readable check result for CI (exit code unchanged)
+deepl write document.md --check --format json
+# {"ok":true,"mode":"write","needsChanges":true,"changes":3,"file":"/abs/path/document.md"}
+
 # Auto-fix files in place
 deepl write document.md --lang en-us --fix
 

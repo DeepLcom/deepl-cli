@@ -694,6 +694,47 @@ describe('WriteCommand', () => {
       expect(result.needsImprovement).toBe(true);
       expect(result.changes).toBeGreaterThan(0);
     });
+
+    // `improve()` renders a JSON document when the caller asked for one, but the
+    // check compares and counts text, so the presentation format must not reach
+    // the comparison.
+    describe('with format json', () => {
+      it('should compare against the improved text, not a rendered document', async () => {
+        mockWriteService.getBestImprovement.mockResolvedValue({
+          text: 'Improved text.',
+          targetLanguage: 'en-US',
+        });
+
+        const withJson = await writeCommand.checkText('Original text.', {
+          lang: 'en-us',
+          format: 'json',
+        });
+        const withText = await writeCommand.checkText('Original text.', {
+          lang: 'en-us',
+          format: 'text',
+        });
+
+        expect(withJson.improved).toBe('Improved text.');
+        expect(withJson.changes).toBe(withText.changes);
+      });
+
+      it('should report clean text as clean', async () => {
+        const text = 'Perfect text.';
+        mockWriteService.getBestImprovement.mockResolvedValue({
+          text,
+          targetLanguage: 'en-US',
+        });
+
+        const result = await writeCommand.checkText(text, {
+          lang: 'en-us',
+          format: 'json',
+        });
+
+        expect(result.needsImprovement).toBe(false);
+        expect(result.changes).toBe(0);
+        expect(result.improved).toBe(text);
+      });
+    });
   });
 
   describe('checkFile()', () => {
@@ -828,6 +869,50 @@ describe('WriteCommand', () => {
           lang: 'en-us',
         })
       ).rejects.toThrow('File not found');
+    });
+
+    // --fix writes the improved text to the user's file, so what it writes must
+    // not depend on the output format the report was asked for.
+    describe('with format json', () => {
+      it('should write the improved text to the file', async () => {
+        await fs.mkdir(testDir, { recursive: true });
+        const testFile = join(testDir, 'test.txt');
+        await fs.writeFile(testFile, 'Original content', 'utf-8');
+
+        mockWriteService.getBestImprovement.mockResolvedValue({
+          text: 'Improved content.',
+          targetLanguage: 'en-US',
+        });
+
+        const result = await writeCommand.autoFixFile(testFile, {
+          lang: 'en-us',
+          format: 'json',
+        });
+
+        expect(result.fixed).toBe(true);
+        expect(await fs.readFile(testFile, 'utf-8')).toBe('Improved content.');
+      });
+
+      it('should leave a file needing no changes untouched', async () => {
+        await fs.mkdir(testDir, { recursive: true });
+        const testFile = join(testDir, 'perfect.txt');
+        const content = 'Perfect content.';
+        await fs.writeFile(testFile, content, 'utf-8');
+
+        mockWriteService.getBestImprovement.mockResolvedValue({
+          text: content,
+          targetLanguage: 'en-US',
+        });
+
+        const result = await writeCommand.autoFixFile(testFile, {
+          lang: 'en-us',
+          format: 'json',
+        });
+
+        expect(result.fixed).toBe(false);
+        expect(result.changes).toBe(0);
+        expect(await fs.readFile(testFile, 'utf-8')).toBe(content);
+      });
     });
   });
 

@@ -51,6 +51,10 @@ else
 fi
 echo
 
+echo "5b. Check mode as a machine-readable result (ok stays true; the verdict is needsChanges)"
+deepl correct "$TEST_DIR/draft.txt" --check --format json || true
+echo
+
 echo "6. Fix a file in place with a backup"
 deepl correct "$TEST_DIR/draft.txt" --fix --backup
 echo "Fixed content:"

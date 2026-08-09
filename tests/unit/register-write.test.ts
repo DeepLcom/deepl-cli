@@ -647,6 +647,112 @@ describe('registerWrite', () => {
       expect(exitSpy).not.toHaveBeenCalled();
       exitSpy.mockRestore();
     });
+
+    describe('--format json', () => {
+      let stdout: string[];
+      let stdoutSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        stdout = [];
+        stdoutSpy = jest
+          .spyOn(process.stdout, 'write')
+          .mockImplementation((chunk: unknown) => {
+            stdout.push(String(chunk));
+            return true;
+          });
+      });
+
+      afterEach(() => {
+        stdoutSpy.mockRestore();
+      });
+
+      it('should emit the result payload and keep exitCode 8', async () => {
+        mockWriteCommand.checkText.mockResolvedValue({
+          needsImprovement: true,
+          changes: 3,
+        });
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'bad text',
+          '--check',
+          '--format',
+          'json',
+        ]);
+
+        expect(JSON.parse(stdout.join(''))).toEqual({
+          ok: true,
+          mode: 'write',
+          needsChanges: true,
+          changes: 3,
+        });
+        expect(process.exitCode).toBe(8);
+      });
+
+      it('should emit the result payload and leave exitCode unset when clean', async () => {
+        mockWriteCommand.checkText.mockResolvedValue({
+          needsImprovement: false,
+          changes: 0,
+        });
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'good text',
+          '--check',
+          '--format',
+          'json',
+        ]);
+
+        expect(JSON.parse(stdout.join(''))).toEqual({
+          ok: true,
+          mode: 'write',
+          needsChanges: false,
+          changes: 0,
+        });
+        expect(process.exitCode).toBeUndefined();
+      });
+
+      it('should name the checked file and replace the human report', async () => {
+        mockExistsSync.mockReturnValue(true);
+        mockWriteCommand.checkFile.mockResolvedValue({
+          needsImprovement: true,
+          changes: 2,
+          filePath: '/abs/file.txt',
+        });
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'file.txt',
+          '--check',
+          '--format',
+          'json',
+        ]);
+
+        expect(JSON.parse(stdout.join(''))).toEqual({
+          ok: true,
+          mode: 'write',
+          needsChanges: true,
+          changes: 2,
+          file: '/abs/file.txt',
+        });
+        expect(Logger.info).not.toHaveBeenCalled();
+        expect(Logger.warn).not.toHaveBeenCalled();
+      });
+
+      it('should not emit a payload in text mode', async () => {
+        mockWriteCommand.checkText.mockResolvedValue({
+          needsImprovement: true,
+          changes: 1,
+        });
+        await program.parseAsync(['node', 'test', 'write', 'text', '--check']);
+
+        expect(stdout.join('')).toBe('');
+        expect(Logger.warn).toHaveBeenCalled();
+      });
+    });
   });
 
   describe('--fix mode', () => {
