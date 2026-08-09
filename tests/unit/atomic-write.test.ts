@@ -6,6 +6,7 @@ import {
   atomicWriteFileSync,
   __cleanupInFlightTmpFiles,
   __getInFlightTmpCount,
+  isAtomicWriteTempPath,
 } from '../../src/utils/atomic-write';
 
 describe('atomicWriteFile', () => {
@@ -261,5 +262,60 @@ describe('atomic-write crash cleanup', () => {
     // listeners detached back to baseline.
     expect(process.listenerCount('SIGINT')).toBe(sigintBase);
     expect(process.listenerCount('SIGTERM')).toBe(sigtermBase);
+  });
+});
+
+describe('isAtomicWriteTempPath', () => {
+  // The check was a name pattern rather than a membership test against the
+  // in-flight set, so a real document named `*.tmp.<digits>.<lc-alnum>` was
+  // silently dropped from watch -- before the warn-once branch, so nothing said
+  // it had been skipped.
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'atomic-tmp-name-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('does not claim a real file that merely looks like a temp sibling', () => {
+    const real = path.join(dir, 'report.tmp.12345.abc');
+    fs.writeFileSync(real, 'a genuine document');
+
+    expect(isAtomicWriteTempPath(real)).toBe(false);
+  });
+
+  it('claims a temp sibling while its write is in flight', async () => {
+    const target = path.join(dir, 'out.txt');
+    let seen: string | undefined;
+    const original = fs.promises.rename;
+    const spy = jest
+      .spyOn(fs.promises, 'rename')
+      .mockImplementation(async (from, to) => {
+        seen = String(from);
+        expect(isAtomicWriteTempPath(String(from))).toBe(true);
+        return original(from, to);
+      });
+    try {
+      await atomicWriteFile(target, 'content', 'utf-8');
+    } finally {
+      spy.mockRestore();
+    }
+    expect(seen).toBeDefined();
+    // Drained once the rename completed.
+    expect(isAtomicWriteTempPath(seen!)).toBe(true); // no longer on disk
+    expect(fs.existsSync(seen!)).toBe(false);
+  });
+
+  it('still claims a temp-shaped path that no longer exists', () => {
+    expect(isAtomicWriteTempPath(path.join(dir, 'gone.tmp.999.zz'))).toBe(true);
+  });
+
+  it('does not claim an ordinary file name', () => {
+    const plain = path.join(dir, 'notes.txt');
+    fs.writeFileSync(plain, 'x');
+    expect(isAtomicWriteTempPath(plain)).toBe(false);
   });
 });
