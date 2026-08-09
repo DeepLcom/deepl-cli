@@ -95,11 +95,13 @@ async function handleSyncStatus(
         const one = needingReview === 1;
         Logger.output('');
         Logger.warn(
-          `${needingReview} ${one ? 'key holds' : 'keys hold'} a translation marked as needing review — a gettext ` +
-            '`#, fuzzy` msgstr, which `msgfmt` leaves out of the compiled catalog, so the ' +
-            `application shows the source string instead. \`deepl sync\` carries ${one ? 'it' : 'them'} forward ` +
-            `untouched and never re-translates ${one ? 'it' : 'them'}: remove the flag once the translation ` +
-            `has been checked, or clear the msgstr to have ${one ? 'it' : 'them'} translated again.`
+          `${needingReview} ${one ? 'key holds' : 'keys hold'} a translation its target file marks as needing ` +
+            'review — a gettext `#, fuzzy` msgstr, which `msgfmt` leaves out of the compiled ' +
+            'catalog so the application shows the source string instead, or an XLIFF review ' +
+            '`state` such as `needs-review-translation`. ' +
+            `\`deepl sync\` carries ${one ? 'it' : 'them'} forward untouched and never re-translates ` +
+            `${one ? 'it' : 'them'}: clear the marker once the translation has been checked, or empty the ` +
+            `translation to have ${one ? 'it' : 'them'} made again.`
         );
       }
     }

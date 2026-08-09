@@ -72,6 +72,56 @@ const TRANSLATABLE_EL: ElementPattern = {
   close: /<\/(?:\w+:)?(?:source|target)>/iy,
 };
 
+// Matches only the `state` attribute: `state-qualifier` (1.2) and `subState`
+// (2.0) are different attributes carrying different vocabularies.
+const STATE_ATTR_RE = /(\sstate\s*=\s*["'])([^"'<]*)(["'])/i;
+
+/** The value written for a target this reconstruct has just filled in. */
+const TRANSLATED_STATE = 'translated';
+
+/**
+ * XLIFF states saying a translation is present but not ready to ship. 1.2 keeps
+ * `state` on `<target>`; 2.0 keeps it on `<segment>` with a four-value
+ * vocabulary.
+ *
+ * An ABSENT attribute is deliberately NOT read as 2.0's documented `initial`
+ * default: absent is what this parser writes and what a file from a toolchain
+ * with no review workflow carries, so reading it as unfinished would report
+ * every such project as needing review. Only an explicit claim counts, and an
+ * unrecognised value counts as shippable for the same reason — a string this
+ * list does not know is not evidence that the translation is unfinished.
+ */
+const UNFINISHED_STATES_V12: ReadonlySet<string> = new Set([
+  'new',
+  'needs-translation',
+  'needs-l10n',
+  'needs-adaptation',
+  'needs-review-translation',
+  'needs-review-l10n',
+  'needs-review-adaptation',
+]);
+
+const UNFINISHED_STATES_V2: ReadonlySet<string> = new Set(['initial']);
+
+function stateOf(attrs: string): string | undefined {
+  return STATE_ATTR_RE.exec(attrs)?.[2];
+}
+
+/**
+ * Say the element holds a translation, on an element whose translation this
+ * reconstruct has just replaced. Whatever the previous value claimed — that the
+ * string still needed translating, or that a human had signed the old one off —
+ * it does not describe the text now in the element. An element carrying no
+ * `state` gains none: absence is this parser's own output shape.
+ */
+function withTranslatedState(attrs: string): string {
+  return attrs.replace(
+    STATE_ATTR_RE,
+    (_match, open: string, _value: string, close: string) =>
+      `${open}${TRANSLATED_STATE}${close}`
+  );
+}
+
 const NAMED_ENTITIES: Record<string, string> = {
   amp: '&',
   lt: '<',
@@ -165,14 +215,31 @@ function rewriteInner(element: ScannedElement, inner: string): string {
 }
 
 /**
+ * True when the block's `<target>` already holds exactly this translation, so
+ * rewriting the element changes nothing it says. Compared in the terms
+ * `extractTranslations` reports, since that is where the translation being
+ * written back came from.
+ */
+function targetHolds(block: string, translation: string): boolean {
+  const target = findElement(block, TARGET_EL);
+  return target !== undefined && unescapeXml(target.inner) === translation;
+}
+
+/**
  * Replace the first `<target>` in a block, or insert one after `<source>`
  * when the block has none.
  */
-function applyTarget(block: string, escaped: string): string {
+function applyTarget(
+  block: string,
+  translation: string,
+  markTranslated: boolean
+): string {
+  const escaped = escapeXml(translation);
   const target = findElement(block, TARGET_EL);
   if (target) {
     const ns = target.groups[0] ?? '';
-    const attrs = target.groups[1] ?? '';
+    const existing = target.groups[1] ?? '';
+    const attrs = markTranslated ? withTranslatedState(existing) : existing;
     return (
       block.slice(0, target.start) +
       `<${ns}target${attrs}>${escaped}</${ns}target>` +
@@ -218,28 +285,76 @@ export class XliffFormatParser implements FormatParser {
    */
   extractTranslations(content: string): Map<string, string> {
     assertNoCdataInTranslatable(content);
-    const isV2 = detectVersion(content) === '2.0';
     const translations = new Map<string, string>();
+
+    for (const unit of this.translatedUnits(content)) {
+      translations.set(unit.key, unit.translation);
+    }
+
+    return translations;
+  }
+
+  /**
+   * Keys whose `<target>` holds a translation the file's own state attribute
+   * says is not ready to ship. The translation itself stays in
+   * `extractTranslations`: it belongs to whoever set that state, and a run has
+   * to carry it forward rather than replace it.
+   */
+  extractNeedsReview(content: string): Set<string> {
+    assertNoCdataInTranslatable(content);
+    const unfinished =
+      detectVersion(content) === '2.0'
+        ? UNFINISHED_STATES_V2
+        : UNFINISHED_STATES_V12;
+    const flagged = new Set<string>();
+
+    for (const unit of this.translatedUnits(content)) {
+      const state = stateOf(unit.stateAttrs);
+      if (state !== undefined && unfinished.has(state)) {
+        flagged.add(unit.key);
+      }
+    }
+
+    return flagged;
+  }
+
+  /**
+   * Every unit holding a translation, with the attributes of the element this
+   * XLIFF version records a review state on — `<target>` in 1.2, `<segment>` in
+   * 2.0. One walk, so the two readers above cannot disagree about which units
+   * count as translated. A unit with no `<target>`, or an empty one, is
+   * untranslated and is left out so a caller re-translates it. The element is
+   * located exactly as `applyTarget` locates the one it overwrites, so what is
+   * reported is what a write would replace.
+   */
+  private *translatedUnits(content: string): Generator<{
+    key: string;
+    translation: string;
+    stateAttrs: string;
+  }> {
+    const isV2 = detectVersion(content) === '2.0';
 
     for (const element of scanElements(
       content,
       isV2 ? UNIT_EL : TRANS_UNIT_EL
     )) {
       const scope = isV2
-        ? findElement(element.inner, SEGMENT_EL)?.inner
-        : element.inner;
+        ? findElement(element.inner, SEGMENT_EL)
+        : { inner: element.inner, openTag: element.openTag };
       if (scope === undefined) continue;
-      if (!findElement(scope, SOURCE_EL)) continue;
+      if (!findElement(scope.inner, SOURCE_EL)) continue;
 
-      const target = findElement(scope, TARGET_EL);
+      const target = findElement(scope.inner, TARGET_EL);
       if (!target) continue;
       const translation = unescapeXml(target.inner);
       if (translation === '') continue;
 
-      translations.set(element.groups[0]!, translation);
+      yield {
+        key: element.groups[0]!,
+        translation,
+        stateAttrs: isV2 ? scope.openTag : (target.groups[1] ?? ''),
+      };
     }
-
-    return translations;
   }
 
   reconstruct(content: string, entries: TranslatedEntry[]): string {
@@ -375,9 +490,10 @@ export class XliffFormatParser implements FormatParser {
       const translation = translations.get(element.groups[0]!);
       if (translation === undefined) return '';
       assertNoControlChars(element.groups[0]!, translation);
+      const changed = !targetHolds(element.inner, translation);
       return rewriteInner(
         element,
-        applyTarget(element.inner, escapeXml(translation))
+        applyTarget(element.inner, translation, changed)
       );
     });
     return result.replace(/\n{3,}/g, '\n\n');
@@ -397,12 +513,16 @@ export class XliffFormatParser implements FormatParser {
       const segment = findElement(element.inner, SEGMENT_EL);
       if (!segment) return element.text;
 
+      // 2.0 records the review state on the segment rather than the target.
+      const changed = !targetHolds(segment.inner, translation);
+      const openTag = changed
+        ? withTranslatedState(segment.openTag)
+        : segment.openTag;
       const inner =
         element.inner.slice(0, segment.start) +
-        rewriteInner(
-          segment,
-          applyTarget(segment.inner, escapeXml(translation))
-        ) +
+        openTag +
+        applyTarget(segment.inner, translation, changed) +
+        segment.closeTag +
         element.inner.slice(segment.end);
       return rewriteInner(element, inner);
     });

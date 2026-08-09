@@ -62,13 +62,26 @@ describe('XLIFF elements with attributes', () => {
       expect(parser.extract(out).map((e) => e.key)).toEqual(['greeting']);
     });
 
-    it('should preserve the segment state attribute', () => {
+    it('should say the segment is translated once it holds a new translation', () => {
       const parser = new XliffFormatParser();
       const entries = parser.extract(V20_WITH_STATE);
 
       const out = parser.reconstruct(
         V20_WITH_STATE,
         entries.map((e) => ({ ...e, translation: 'Guten Tag' }))
+      );
+
+      expect(out).toContain('state="translated"');
+      expect(out).not.toContain('state="initial"');
+    });
+
+    it('should leave the segment state alone when the translation is unchanged', () => {
+      const parser = new XliffFormatParser();
+      const entries = parser.extract(V20_WITH_STATE);
+
+      const out = parser.reconstruct(
+        V20_WITH_STATE,
+        entries.map((e) => ({ ...e, translation: 'Hallo alt' }))
       );
 
       expect(out).toContain('state="initial"');
@@ -91,7 +104,7 @@ describe('XLIFF elements with attributes', () => {
       expect(out).not.toContain('Hallo alt');
     });
 
-    it('should preserve the target state attribute', () => {
+    it('should say the target is translated once it holds a new translation', () => {
       const parser = new XliffFormatParser();
       const entries = parser.extract(V12_WITH_STATE);
 
@@ -100,7 +113,69 @@ describe('XLIFF elements with attributes', () => {
         entries.map((e) => ({ ...e, translation: 'Guten Tag' }))
       );
 
+      expect(out).toContain('<target state="translated">Guten Tag</target>');
+      expect(out).not.toContain('needs-translation');
+    });
+
+    it('should leave the target state alone when the translation is unchanged', () => {
+      const parser = new XliffFormatParser();
+      const entries = parser.extract(V12_WITH_STATE);
+
+      const out = parser.reconstruct(
+        V12_WITH_STATE,
+        entries.map((e) => ({ ...e, translation: 'Hallo alt' }))
+      );
+
       expect(out).toContain('state="needs-translation"');
+    });
+
+    it('should replace a signed-off state it has just written over', () => {
+      const parser = new XliffFormatParser();
+      const signedOff = V12_WITH_STATE.replace(
+        'needs-translation',
+        'signed-off'
+      );
+      const entries = parser.extract(signedOff);
+
+      const out = parser.reconstruct(
+        signedOff,
+        entries.map((e) => ({ ...e, translation: 'Guten Tag' }))
+      );
+
+      expect(out).toContain('state="translated"');
+      expect(out).not.toContain('signed-off');
+    });
+
+    it('should add no state attribute to a target that carries none', () => {
+      const parser = new XliffFormatParser();
+      const bare = V12_WITH_STATE.replace(' state="needs-translation"', '');
+      const entries = parser.extract(bare);
+
+      const out = parser.reconstruct(
+        bare,
+        entries.map((e) => ({ ...e, translation: 'Guten Tag' }))
+      );
+
+      expect(out).toContain('<target>Guten Tag</target>');
+      expect(out).not.toContain('state=');
+    });
+
+    it('should keep the attributes that are not the state', () => {
+      const parser = new XliffFormatParser();
+      const withMore = V12_WITH_STATE.replace(
+        '<target state="needs-translation">',
+        '<target xml:lang="de" state="needs-translation" approved="no">'
+      );
+      const entries = parser.extract(withMore);
+
+      const out = parser.reconstruct(
+        withMore,
+        entries.map((e) => ({ ...e, translation: 'Guten Tag' }))
+      );
+
+      expect(out).toContain(
+        '<target xml:lang="de" state="translated" approved="no">Guten Tag</target>'
+      );
     });
   });
 });

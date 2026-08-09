@@ -230,4 +230,38 @@ describe('CLI sync with a bilingual target file', () => {
     expect(output).toContain('1 needs review');
     expect(output).toContain('msgfmt');
   }, 120000);
+
+  it('reports an XLIFF needs-review state as needing review too', () => {
+    // Runs after the two tests above, so the PO key is still flagged fuzzy and
+    // the lockfile calls every key translated.
+    fs.writeFileSync(
+      xlfTarget(),
+      fs
+        .readFileSync(xlfTarget(), 'utf-8')
+        .replace('<target>', '<target state="needs-review-translation">')
+    );
+
+    const { CI: _ci, DEEPL_API_KEY: _key, ...rest } = process.env;
+    const run = (args: string[]): string => {
+      const result = spawnSync('node', [CLI_PATH, ...args], {
+        encoding: 'utf-8',
+        cwd: testFiles.path,
+        env: { ...rest, DEEPL_CONFIG_DIR: testConfig.path, NO_COLOR: '1' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 60000,
+      });
+      expect(result.status).toBe(0);
+      return (result.stdout ?? '') + (result.stderr ?? '');
+    };
+
+    const parsed = JSON.parse(run(['sync', 'status', '--format', 'json'])) as {
+      locales: { locale: string; needsReview: number }[];
+    };
+    // The flagged PO key plus the flagged XLIFF unit.
+    expect(parsed.locales.find((l) => l.locale === 'es')!.needsReview).toBe(2);
+
+    const text = run(['sync', 'status']);
+    expect(text).toContain('2 needs review');
+    expect(text).toContain('needs-review-translation');
+  }, 120000);
 });

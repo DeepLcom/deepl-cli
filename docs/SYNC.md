@@ -231,7 +231,7 @@ Nine of the eleven formats are monolingual -- a target file holds translations a
 | Path | What it reads from a PO / XLIFF target |
 |------|----------------------------------------|
 | `deepl sync` | The existing `msgstr` / `<target>` is carried forward for a key the lockfile calls up to date, so a reviewed translation survives a run that rewrites the file because a *sibling* key changed |
-| `deepl sync push` | The `msgstr` / `<target>` is what gets uploaded, unless it is flagged `fuzzy` |
+| `deepl sync push` | The `msgstr` / `<target>` is what gets uploaded, unless it is flagged `fuzzy` or carries a review `state` |
 | `deepl sync validate` | Placeholder and structure checks compare the `msgstr` against the `msgid` |
 | `deepl sync pull` | For a key the export does not carry, the existing `msgstr` is kept |
 | `deepl sync audit` | Terminology consistency is measured across translations |
@@ -242,7 +242,18 @@ Nine of the eleven formats are monolingual -- a target file holds translations a
 
 What the CLI does **not** do is act on it. The msgstr is a reviewer's draft and the lockfile records that key as translated against an unchanged source, so `deepl sync` carries the value and the flag forward untouched, re-translates nothing and bills nothing — reading it as untranslated would replace a human's in-progress work with machine output, which is the one outcome worse than an overstated percentage. `deepl sync push` skips the key under the `needs_review` reason rather than uploading a draft as approved. `sync --frozen` does not treat it as drift, because a fuzzy entry is a normal, transient state that only a human review clears. Two ways out, both measured: **remove the flag** and the key counts complete again (`msgfmt`: `2 translated messages`), or **clear the msgstr** and the next `deepl sync` translates it afresh (`msgfmt`: `1 translated, 1 untranslated`, then `2 translated messages`).
 
-XLIFF's `state="needs-review-translation"` and its siblings are the same idea in the other bilingual format and are **not** covered: XLIFF 1.2 and 2.0 spell the states differently, several values arguably qualify, and there is no external tool to arbitrate which — unlike gettext, where `msgfmt` decides. It is tracked separately.
+**An XLIFF review `state` says the same thing, and is read the same way.** XLIFF 1.2 records it on `<target>`, 2.0 on `<segment>`, and the CLI counts a unit whose translation is present as `needsReview` when that attribute makes an explicit claim that the translation is not finished:
+
+| Version | Where | Counted as needing review | Counted as complete |
+|---------|-------|---------------------------|---------------------|
+| 1.2 | `<target state="...">` | `new`, `needs-translation`, `needs-l10n`, `needs-adaptation`, `needs-review-translation`, `needs-review-l10n`, `needs-review-adaptation` | `translated`, `signed-off`, `final` |
+| 2.0 | `<segment state="...">` | `initial` | `translated`, `reviewed`, `final` |
+
+An **absent** attribute counts as complete in both versions, and so does a value neither list names. That is deliberate, and it is why an existing project's coverage does not move: absence is what the CLI itself writes and what a file from a toolchain with no review workflow carries, so reading it as unfinished would report every such project as needing review. It means the CLI does **not** apply 2.0's documented `initial` default to a segment with no `state` — only an explicit claim counts. `state-qualifier` (1.2) and `subState` (2.0) are different attributes with their own vocabularies and are not read. There is no `msgfmt` equivalent to arbitrate this, so unlike the PO numbers above these are the CLI's policy rather than an oracle's.
+
+Everything else matches the PO case: the `<target>` is carried forward untouched, nothing is re-translated or re-billed, `push` skips the key under `needs_review`, and `sync --frozen` does not treat it as drift. Two ways out, both measured: **change the state** to `translated` and the key counts complete again with **no API call**, or **empty the `<target>`** and the next `deepl sync` translates it afresh.
+
+**A state the CLI writes over describes what the CLI wrote.** When `reconstruct` replaces a `<target>`'s content, a `state` attribute already on that element (1.2) or on its `<segment>` (2.0) becomes `translated`. Otherwise the file would contradict itself: a source XLIFF exported with `<target state="needs-translation"></target>` placeholders — a common CAT-tool shape — produced a target file whose every unit said it still needed translating about a string the CLI had just translated, and every one of those keys would then be reported as needing review forever. An element carrying no `state` gains none. A `state` on a unit whose translation is **unchanged** is never touched, which is what keeps a reviewer's `needs-review-translation` alive through a run that translates a *sibling* key.
 
 **PO entries need no blank line between them.** The blank-line separator is a convention `msgfmt -c` does not require, and a catalog written without it — after the header or between messages — is read and written entry by entry all the same. An entry ends at the first line that is not a continuation of its translation: a comment, a `msgctxt`, or the next `msgid`. Layout is preserved either way, so a catalog that arrived without the separators keeps that shape on the way out.
 
@@ -1025,7 +1036,7 @@ deepl sync push [OPTIONS]
 | `--format <fmt>` | Output format: `text` (default), `json` |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
 
-**A key with no translation yet is not pushed.** Push reads each target file and uploads the translation it holds. A bilingual target file (see [Bilingual formats: PO and XLIFF](#bilingual-formats-po-and-xliff)) lists every key the source has, translated or not, so pushing such a key would upload its source text as the locale's translation and make the TMS the authority for it -- a later `pull` would then write English into the target file. Those keys are skipped and reported under the `untranslated` reason, with the pushed count reflecting only what was actually sent. A PO entry flagged `#, fuzzy` is skipped too, under `needs_review`: it has a translation, but one its own toolchain will not ship (see [Bilingual formats](#bilingual-formats-po-and-xliff)). For a monolingual format nothing is skipped on this account: every key the target file lists has a value.
+**A key with no translation yet is not pushed.** Push reads each target file and uploads the translation it holds. A bilingual target file (see [Bilingual formats: PO and XLIFF](#bilingual-formats-po-and-xliff)) lists every key the source has, translated or not, so pushing such a key would upload its source text as the locale's translation and make the TMS the authority for it -- a later `pull` would then write English into the target file. Those keys are skipped and reported under the `untranslated` reason, with the pushed count reflecting only what was actually sent. A PO entry flagged `#, fuzzy`, and an XLIFF unit whose review `state` says the translation is not finished, are skipped too, under `needs_review`: they have a translation, but one their own toolchain will not ship (see [Bilingual formats](#bilingual-formats-po-and-xliff)). For a monolingual format nothing is skipped on this account: every key the target file lists has a value.
 
 ### `deepl sync pull`
 

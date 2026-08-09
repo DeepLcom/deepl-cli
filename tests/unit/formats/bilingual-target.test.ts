@@ -347,6 +347,117 @@ describe('XliffFormatParser.extractTranslations', () => {
   });
 });
 
+describe('XliffFormatParser.extractNeedsReview', () => {
+  const parser = new XliffFormatParser();
+
+  const v12 = (targetTag: string): string =>
+    XLIFF_12_SOURCE.replace(
+      '<source>Hello</source>',
+      `<source>Hello</source>${targetTag}`
+    );
+
+  const v20 = (segmentAttrs: string, targetTag = '<target>Hola</target>') =>
+    XLIFF_20_SOURCE.replace(
+      '<segment><source>Hello</source></segment>',
+      `<segment${segmentAttrs}><source>Hello</source>${targetTag}</segment>`
+    );
+
+  describe('1.2, where the state is on the target', () => {
+    const UNFINISHED = [
+      'new',
+      'needs-translation',
+      'needs-l10n',
+      'needs-adaptation',
+      'needs-review-translation',
+      'needs-review-l10n',
+      'needs-review-adaptation',
+    ];
+
+    it.each(UNFINISHED)('names a key whose state is %s', (state) => {
+      const content = v12(`<target state="${state}">Hola</target>`);
+
+      expect([...parser.extractNeedsReview(content)]).toEqual(['greeting']);
+    });
+
+    it.each(['translated', 'signed-off', 'final'])(
+      'says nothing about a key whose state is %s',
+      (state) => {
+        const content = v12(`<target state="${state}">Hola</target>`);
+
+        expect([...parser.extractNeedsReview(content)]).toEqual([]);
+      }
+    );
+
+    it('says nothing about a target with no state attribute', () => {
+      expect([
+        ...parser.extractNeedsReview(v12('<target>Hola</target>')),
+      ]).toEqual([]);
+    });
+
+    it('says nothing about a state value XLIFF does not define', () => {
+      const content = v12('<target state="x-vendor-thing">Hola</target>');
+
+      expect([...parser.extractNeedsReview(content)]).toEqual([]);
+    });
+
+    it('leaves an empty target out, since it is simply untranslated', () => {
+      const content = v12('<target state="needs-translation"></target>');
+
+      expect([...parser.extractNeedsReview(content)]).toEqual([]);
+    });
+
+    it('does not read state-qualifier as the state', () => {
+      const content = v12(
+        '<target state-qualifier="fuzzy-match">Hola</target>'
+      );
+
+      expect([...parser.extractNeedsReview(content)]).toEqual([]);
+    });
+
+    it('still returns the flagged translation from extractTranslations', () => {
+      // A run must carry a reviewer's draft forward, not overwrite it.
+      const content = v12(
+        '<target state="needs-review-translation">Hola</target>'
+      );
+
+      expect(parser.extractTranslations(content).get('greeting')).toBe('Hola');
+    });
+  });
+
+  describe('2.0, where the state is on the segment', () => {
+    it('names a key whose segment state is initial', () => {
+      expect([...parser.extractNeedsReview(v20(' state="initial"'))]).toEqual([
+        'greeting',
+      ]);
+    });
+
+    it.each(['translated', 'reviewed', 'final'])(
+      'says nothing about a key whose segment state is %s',
+      (state) => {
+        expect([
+          ...parser.extractNeedsReview(v20(` state="${state}"`)),
+        ]).toEqual([]);
+      }
+    );
+
+    it('says nothing about a segment with no state attribute', () => {
+      expect([...parser.extractNeedsReview(v20(''))]).toEqual([]);
+    });
+
+    it('does not read subState as the state', () => {
+      const content = v20(' subState="vendor:draft"');
+
+      expect([...parser.extractNeedsReview(content)]).toEqual([]);
+    });
+
+    it('leaves an empty target out, since it is simply untranslated', () => {
+      const content = v20(' state="initial"', '<target></target>');
+
+      expect([...parser.extractNeedsReview(content)]).toEqual([]);
+    });
+  });
+});
+
 describe('monolingual parsers leave the read alone', () => {
   const MONOLINGUAL: Array<[string, FormatParser]> = [
     ['JSON', new JsonFormatParser()],
