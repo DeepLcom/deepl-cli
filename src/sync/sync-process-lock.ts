@@ -231,10 +231,10 @@ export function acquireSyncProcessLock(
 ): ProcessLockHandle {
   const pidFilePath = path.join(projectRoot, PROCESS_LOCK_FILE_NAME);
 
-  // Every acquisition goes through the same O_EXCL create, including the one
-  // after a stale file is cleared: taking the lock is the only step that may
-  // decide the winner, so a create that loses reports another running sync
-  // rather than crashing with a raw EEXIST.
+  // Every acquisition goes through the same exclusive link(2) create, including
+  // the one after a stale file is cleared: taking the lock is the only step
+  // that may decide the winner, so a create that loses reports another running
+  // sync rather than crashing with a raw EEXIST.
   for (let attempt = 1; ; attempt++) {
     try {
       writePidFile(pidFilePath);

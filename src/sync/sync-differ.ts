@@ -51,9 +51,9 @@ export function computeDiff(
       computeSourceHash(entry.value, entry.metadata) === lockEntry.source_hash
     ) {
       // Scope the check to the configured target locales when they are known: a
-      // whole-entry `some(failed)` check would mark the key stale for EVERY
-      // locale as soon as one had failed, re-translating locales that are already
-      // fine and overwriting human-edited files.
+      // whole-entry `some(failed)` check marks the key stale for EVERY locale as
+      // soon as one has failed, re-translating locales that are already fine and
+      // overwriting human-edited files.
       const needsWork = targetLocales
         ? hasOutdatedLocale(lockEntry, lockEntry.source_hash, targetLocales)
         : Object.values(lockEntry.translations).some(

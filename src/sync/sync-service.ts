@@ -157,12 +157,9 @@ export class SyncService {
      * Undo the writes this run has already made. Reached only from the signal
      * path, where the run is abandoned partway through: the lockfile is written
      * once at the end, so an interrupted run records nothing, and the targets it
-     * has rewritten hold machine output that nothing accounts for.
-     *
-     * This used to unlink the backups instead, which is right for a run that
-     * finished and wrong for one that did not — it deleted the only remaining
-     * copy of content the run had already overwritten, at which point the user's
-     * translations were gone with no record and no recovery path.
+     * has rewritten hold machine output that nothing accounts for. Unlinking the
+     * backups here instead — right for a run that finished — would delete the
+     * only remaining copy of content this run has already overwritten.
      *
      * Synchronous on purpose: `installSignalExit` defers the exit by one
      * `setImmediate`, so only work done synchronously in a handler is guaranteed
@@ -314,11 +311,11 @@ export class SyncService {
       );
     }
 
-    // Per-locale overrides are resolved here rather than inside the bucket loop,
-    // which repeated the work for every file: an override that does not cover its
-    // own locale has to fail before anything is translated, not after earlier
-    // files have already been written. `auto` names no glossary to resolve — it
-    // is managed by the auto-glossary pass after translation.
+    // Per-locale overrides are resolved once here rather than inside the bucket
+    // loop: an override that does not cover its own locale has to fail before
+    // anything is translated, not after earlier files have already been written.
+    // `auto` names no glossary to resolve — it is managed by the auto-glossary
+    // pass after translation.
     const localeGlossaryIds = new Map<string, string>();
     const localeTmIds = new Map<string, string>();
     for (const locale of effectiveLocales) {
@@ -480,7 +477,6 @@ export class SyncService {
       if (contribution.lockDirty) lockDirty = true;
     }
 
-    // Fix SPEC-02: Wire auto-glossary sync
     if (
       config.translation?.glossary === 'auto' &&
       !options?.dryRun &&

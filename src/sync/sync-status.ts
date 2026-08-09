@@ -102,8 +102,8 @@ export async function computeSyncStatus(
     const fileLockEntries = getOwnMember(lockFile.entries, relPath) ?? {};
     // Scoped to the configured locales, so staleness is judged per locale. With
     // no locales computeDiff falls back to a whole-entry "some locale failed"
-    // test, which reported a complete locale as outdated because a DIFFERENT
-    // locale had failed.
+    // test, which reports a complete locale as outdated when a DIFFERENT locale
+    // has failed.
     const diffs = computeDiff(fileLockEntries, entries, config.target_locales);
     // The lockfile alone cannot answer "is this locale complete": it records
     // what a run intended, not what its target file ended up holding.
@@ -141,9 +141,7 @@ export async function computeSyncStatus(
      * because one locale's own record lags behind.
      *
      * `stale` covers both, and only the first can speak for every locale: a key
-     * that failed for es is not outdated for de. Deciding from `diff.status`
-     * alone reported a complete locale as outdated because a different locale
-     * had failed.
+     * that failed for es is not outdated for de.
      */
     const sourceChangedKeys = new Set(
       diffs

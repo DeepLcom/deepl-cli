@@ -25,10 +25,9 @@ let _warnedNoScope = false;
  * of each glob (i.e. everything before the first `*`, `?`, `{`, or `[`).
  *
  * A glob that starts with a wildcard has no literal prefix and contributes no
- * root. Falling back to `projectRoot` there defeated the scoping this function
- * exists to provide: `**\/en.json` handed the sweep the entire project tree,
- * walked recursively. The cost is that such a bucket gets no stale-backup
- * cleanup, which leaves inert `.deepl.bak` files on disk.
+ * root, because falling back to `projectRoot` there would hand the sweep the
+ * entire project tree to walk recursively. The cost is that such a bucket gets
+ * no stale-backup cleanup, which leaves inert `.deepl.bak` files on disk.
  */
 export function bucketSweepRoots(
   projectRoot: string,
@@ -77,19 +76,18 @@ export function bucketSweepRoots(
  * Age alone is not a safe test. A run that reaches its end unlinks its own
  * backups, so a backup still on disk is from a run that did not — and there it
  * holds the only surviving copy of whatever that run had already overwritten.
- * Deleting it on age made the natural recovery action (re-run `deepl sync`)
- * destroy the user's translations at exit 0 once the crash was more than
- * `bak_sweep_max_age_seconds` old, because the recovery run's
- * `COPYFILE_EXCL` guard has nothing left to collide with. A backup whose
+ * Deleting it on age alone would let the natural recovery action (re-run
+ * `deepl sync`) destroy those translations at exit 0, because the recovery
+ * run's `COPYFILE_EXCL` guard has nothing left to collide with. A backup whose
  * target holds the same bytes is the litter this sweep exists for; one whose
  * target does not is kept indefinitely and reported. Retention is bounded at
  * one file per target, since the backup name is derived from the target's.
  *
- * It used to restore a zero-length sibling from its backup first. Because
- * every target write goes through `atomicWriteFile`, which renames a
- * fully-written temp file into place, a crash cannot leave a zero-length
- * target — so that branch had no legitimate trigger, and a hostile checkout
- * could use it to write chosen bytes into any empty file within a sweep root.
+ * There is deliberately no step that restores a zero-length sibling from its
+ * backup: every target write goes through `atomicWriteFile`, which renames a
+ * fully-written temp file into place, so a crash cannot leave a zero-length
+ * target, and such a branch would let a hostile checkout write chosen bytes
+ * into any empty file within a sweep root.
  *
  * When `buckets` is provided the sweep is scoped to the directories implied by
  * each bucket's `include` globs instead of the entire project tree, keeping

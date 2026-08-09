@@ -130,10 +130,7 @@ export interface WalkBucketsOptions {
  * key set, so the files delete each other's translations; `unwrittenKeys`
  * inspects only the string the current file produced, so the loser is still
  * recorded `translated`. Every later run re-translates, re-bills and re-loses the
- * same keys against a target that can never be complete — measured as a target
- * alternating between the two files' keys and two more texts billed per run, at
- * exit 0 throughout. `sync status` and `--frozen` report the incompleteness but
- * prescribe a cure that cannot succeed.
+ * same keys against a target that can never be complete.
  *
  * Checked against every configured locale, not just the ones a filtered run
  * would touch: the collision is a property of the configuration. A file whose

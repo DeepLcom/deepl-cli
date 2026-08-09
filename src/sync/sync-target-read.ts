@@ -42,16 +42,15 @@ export async function readTargetFile(
     }
     return { state: 'unusable', reason: describe(err), error: err };
   }
-  // `max_file_bytes` was enforced on SOURCE files only, so a target — the file a
-  // hostile or corrupt checkout actually controls — was parsed and rebuilt at any
-  // size. Reported as `unusable` rather than skipped, so the locale is refused
-  // instead of being treated as empty, re-translated in full and overwritten.
+  // `max_file_bytes` caps targets as well as source files: a target is the file a
+  // hostile or corrupt checkout actually controls. An oversized one is `unusable`
+  // rather than skipped, so the locale is refused instead of being treated as
+  // empty, re-translated in full and overwritten.
   //
   // Checked on the content rather than through a separate `stat`: the cap's
   // purpose is to bound the parse, the reconstruct and the comparison work that
-  // follow, which is where the cost was (a target with one long comment block
-  // took 47 seconds). Node's own string-length ceiling bounds the read itself,
-  // and it surfaces as a catchable error above.
+  // follow, which is where the cost is. Node's own string-length ceiling bounds
+  // the read itself, and it surfaces as a catchable error above.
   if (maxBytes !== undefined && Buffer.byteLength(content, 'utf8') > maxBytes) {
     return {
       state: 'unusable',

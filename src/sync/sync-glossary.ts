@@ -24,8 +24,8 @@ function isUnusableTerm(text: string): boolean {
 
 /**
  * Normalize the way the glossary TSV round trip does — the API returns entries
- * parsed back out of TSV, which trims each field. Comparing raw local terms
- * against that could never be equal, so every sync re-uploaded the dictionary.
+ * parsed back out of TSV, which trims each field. Raw local terms never compare
+ * equal to that, so every sync would re-upload the dictionary.
  */
 function normalizeForComparison(
   entries: Record<string, string>

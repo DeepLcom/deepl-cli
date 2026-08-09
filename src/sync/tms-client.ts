@@ -23,11 +23,11 @@ const VALUE_CONTROL_CHARS = /[\x00-\x1f\x7f]/g;
  *
  * Those three are the set `isForbiddenControlChar` exempts — the C0 bytes every
  * format either escapes or legally emits — and a multi-line or tabbed
- * translation is ordinary human content, not a hostile payload. Deleting them
- * (rather than letting the per-format writer escape them) fused adjacent words
- * of an approved translation at exit 0. Everything else is still removed here,
- * because a raw ESC reaching a locale file renders as a live terminal command in
- * `git diff` and CI logs.
+ * translation is ordinary human content, not a hostile payload, so deleting
+ * them (rather than letting the per-format writer escape them) would fuse
+ * adjacent words of an approved translation. Everything else is still removed
+ * here, because a raw ESC reaching a locale file renders as a live terminal
+ * command in `git diff` and CI logs.
  */
 // eslint-disable-next-line no-control-regex -- intentional: strip format-breaking control chars from untrusted TMS-returned values before they reach the filesystem
 const VALUE_FORBIDDEN_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g;

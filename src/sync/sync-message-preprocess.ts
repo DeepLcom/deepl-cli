@@ -50,8 +50,8 @@ export function expandPlurals(
       Array<{ quantity: string; value: string }> | undefined;
     if (androidPlurals) {
       // Reference identity against the primary form, not value equality: with
-      // coinciding source forms a value test skipped every matching form, so
-      // only one of them was ever translated.
+      // coinciding source forms a value test skips every matching form, so only
+      // one of them gets translated.
       const primary = primaryPluralItem(androidPlurals);
       for (const p of androidPlurals) {
         if (p === primary) continue;
@@ -96,8 +96,8 @@ export function detectIcu(extendedTexts: string[]): {
     if (icuResult.isIcu && icuResult.segments.length > 0) {
       icuMappings.push({ textIndex: ti, icuResult });
       // ICU strings skip the main batch and get translated segment-by-segment,
-      // so the slot holds nothing to translate. A marker token here was itself
-      // submitted as a text, billed, and cached under its own key.
+      // so the slot holds nothing to translate. A marker token here would itself
+      // be submitted as a text, billed, and cached under its own key.
       // `reassembleIcu` overwrites every mapped index, so the blank never
       // reaches a target file.
       out[ti] = '';
@@ -137,7 +137,7 @@ export async function reassembleIcu(
     // one would emit a part-source message reported as successfully translated,
     // so leave the result unset — the message is marked failed and retried.
     // An empty branch (`one {}`) translates to an empty string, which is a
-    // result: treating it as a failure lost the whole message permanently.
+    // result: treating it as a failure would lose the whole message permanently.
     const anySegmentFailed =
       segResults.length !== segTexts.length ||
       segResults.some((sr) => typeof sr?.text !== 'string');

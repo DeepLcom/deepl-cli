@@ -117,7 +117,7 @@ export async function processBucket(
    *
    * Staleness is judged against these rather than against every configured
    * locale: a key that failed for es is not stale for de, so `sync --locale de`
-   * used to re-translate, re-bill and overwrite de's reviewed keys because of a
+   * must not re-translate, re-bill and overwrite de's reviewed keys because of a
    * locale the run was not even asked to look at.
    */
   const effectiveLocales = options?.localeFilter?.length
@@ -171,9 +171,9 @@ export async function processBucket(
    *
    * Computed lazily, and only where a decision would otherwise be made on the
    * lockfile alone: `--frozen`, whose whole purpose is catching a locale that is
-   * not up to date, and the early return below, which used to leave a damaged
-   * target unrepaired for as long as no other key needed work. A run that has
-   * translating to do reads every target file a few lines further down anyway.
+   * not up to date, and the early return below, which would otherwise leave a
+   * damaged target unrepaired for as long as no other key needed work. A run
+   * that has translating to do reads every target file a few lines below anyway.
    */
   let gapsCache: TargetGaps | undefined;
   const targetGaps = async (): Promise<TargetGaps> => {
@@ -283,7 +283,6 @@ export async function processBucket(
     out.estimatedCharactersDelta += chars;
 
     if (hasNewLocale) {
-      // Count current keys needing translation for new locales
       out.newKeysDelta += diffs.filter((d) => d.status === 'current').length;
     }
 

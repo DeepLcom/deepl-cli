@@ -125,11 +125,11 @@ function screenTranslations(
  * The keys `reconstruct` did not put into the content it returned.
  *
  * A run records a key as translated on the strength of the translation call, so
- * without this a parser that cannot place an entry — one added to the source
- * since the target file was written, and so with no slot in the template — lost
- * the string at exit 0, with the lockfile calling it translated and every gate
- * reading that as complete. Verifying the write is what keeps the lockfile a
- * record of the file rather than of the API call.
+ * the write itself has to be checked: a parser that cannot place an entry — one
+ * added to the source since the target file was written, and so with no slot in
+ * the template — drops it silently, and every gate reads the lockfile as
+ * complete. Verifying the write is what keeps the lockfile a record of the file
+ * rather than of the API call.
  *
  * Presence is the test, not equality: whether a written value round-trips
  * byte-for-byte is the escaping contract, checked per parser. A translation that
@@ -207,10 +207,9 @@ function withheldKeysWarning(
  * it is removed from the file. For a key the lockfile records, that is the
  * intended prune of a key the source no longer has. A key the lockfile has never
  * heard of was not put there by this tool — a translator added it by hand — so
- * deleting it is outside what the run was asked to do. The prune itself is left
- * alone; what was undefensible is that it happened with no mention in the run
- * output, `sync status` or `sync validate`, and with the backup unlinked on
- * success, so nothing was recoverable and nothing said anything was lost.
+ * deleting it is outside what the run was asked to do. The prune itself stands;
+ * this only names the keys, so a hand-added one is not lost without a word in
+ * the run output.
  */
 function droppedTargetOnlyKeys(
   existingTranslations: ReadonlyMap<string, string>,
@@ -261,10 +260,6 @@ export interface TranslateLocaleResult {
 }
 
 export class LocaleTranslator {
-  // tmCache remains instance-level on SyncService. The orchestrator resolves
-  // TM IDs before calling LocaleTranslator.translate and passes the resolved
-  // per-locale Map through the context; LocaleTranslator itself does not
-  // resolve TM IDs.
   constructor(
     private readonly translationService: TranslationService,
     private readonly backupPaths: Set<string>,
@@ -387,7 +382,6 @@ export class LocaleTranslator {
     const instructionGroupCounts = new Map<string, number>();
 
     if (forceBatch === true || localeDiffs.length <= 1) {
-      // --batch mode or single key: use existing batch behavior
       const contextForSingle =
         localeDiffs.length === 1
           ? (config.context?.overrides?.[localeDiffs[0]?.key ?? ''] ??
@@ -417,7 +411,6 @@ export class LocaleTranslator {
         });
       }
     } else {
-      // Three-way partitioning: context (per-key) vs. element instruction (batched) vs. plain batch
       const localeSupportsInstructions = supportsCustomInstructions(locale);
       const contextIndices: number[] = [];
       const instructionGroups = new Map<string, number[]>(); // elementType → indices
@@ -1014,11 +1007,9 @@ export class LocaleTranslator {
 
     // The same guarded read the pre-read pass uses, rather than a bare readFile
     // whose catch cannot tell an absent file from one that is on disk and could
-    // not be opened. A target that became unreadable in the window between the
-    // two was reclassified as absent: the template fell back to the SOURCE,
-    // no backup was taken because `targetExists` stayed false, and a
-    // source-derived file was written over the very target the run had just
-    // failed to read. `deepl sync pull` gets this right with one guarded read.
+    // not be opened. A target misread as absent takes its template from the
+    // SOURCE and leaves `targetExists` false, so no backup is taken and a
+    // source-derived file goes over the very target the run just failed to read.
     //
     // Thrown rather than warned, matching how the pre-read treats the same
     // condition: processBucket catches it per locale, records the locale failed
@@ -1055,9 +1046,8 @@ export class LocaleTranslator {
         // COPYFILE_EXCL, because a backup already on disk is not ours to
         // replace. The guard above is per-process, so after a crash — where the
         // lockfile was never written and the backup holds the only surviving
-        // copy of the user's file — the natural recovery action of re-running
-        // sync used to overwrite that copy with machine output and then unlink
-        // it on success, destroying the data at exit 0.
+        // copy of the user's file — re-running sync must not overwrite that copy
+        // with machine output and then unlink it on success.
         await fs.promises.copyFile(
           targetAbsPath,
           bakPath,

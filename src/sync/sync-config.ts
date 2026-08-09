@@ -174,11 +174,9 @@ const KNOWN_TMS_KEYS: readonly string[] = [
 
 /**
  * `tms:` fields the schema once accepted, and documented, without any code
- * reading them. Membership in `KNOWN_TMS_KEYS` was the whole reason they were
- * tolerated, so a review gate a user configured did nothing and said nothing.
- * They are rejected by name rather than as unknown fields, because "unknown"
- * reads as a typo and sends the reader looking for the correct spelling of
- * something that never existed.
+ * reading them. They are rejected by name rather than as unknown fields,
+ * because "unknown" reads as a typo and sends the reader looking for the
+ * correct spelling of something that never existed.
  */
 const RETIRED_TMS_KEYS: Readonly<Record<string, string>> = {
   auto_push:

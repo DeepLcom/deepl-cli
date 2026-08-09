@@ -29,9 +29,9 @@ const PLURAL_FORM_METADATA_KEYS = ['plural_forms', 'plurals'] as const;
  *
  * A gettext entry declares `msgid_plural` even when it has no `msgstr[N]` lines
  * yet — a freshly extracted catalog is exactly that shape, since `plural_forms`
- * only appears once forms exist. Judging plurality from the payload alone let
+ * only appears once forms exist. Judging plurality from the payload alone makes
  * `deepl sync pull` treat such an entry as ordinary: one exported string cannot
- * fill a plural entry's forms, so the pull recorded a translation it had not
+ * fill a plural entry's forms, so the pull records a translation it has not
  * applied.
  *
  * Kept separate from `PLURAL_FORM_METADATA_KEYS`, which lists the payloads to
@@ -206,7 +206,7 @@ function assertNotDashLeading(targetPath: string): string {
  * under a symlinked directory (the common macOS case where `/tmp` is a
  * symlink to `/private/tmp`) would reject paths the user typed in their
  * unresolved form. Symlink-based escapes (a symlink inside the project
- * pointing outside) are now also caught.
+ * pointing outside) are caught by the same resolution.
  *
  * The forbidden-segment check belongs on the resolved path rather than on
  * `target_path_pattern` alone: the default locale-substitution branch of

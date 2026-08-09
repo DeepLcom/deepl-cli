@@ -59,12 +59,10 @@ function claimedKeys(
 /**
  * Compare a target file against what the lockfile claims about it.
  *
- * Nothing used to: `sync status` and `sync --frozen` both diffed the source
- * file against `.deepl-sync.lock` and never opened the target, so a locale
- * whose file had lost translations the lockfile calls translated — by an
- * earlier version of this tool dropping them, a bad merge, a partial checkout,
- * a hand deletion — reported 100% complete at exit 0 indefinitely, and `sync`
- * itself returned early without repairing it.
+ * A source-to-lockfile diff cannot see this: a locale whose file has lost
+ * translations the lockfile calls translated — a bad merge, a partial checkout,
+ * a hand deletion — would report 100% complete at exit 0 indefinitely, and
+ * `sync` itself would return early without repairing it.
  *
  * A file that cannot be read or cannot be parsed yields every claimed key: a
  * file whose contents are unavailable cannot be shown to hold anything.

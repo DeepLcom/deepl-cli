@@ -85,11 +85,8 @@ export async function findForeignKeyOwner(
 }
 
 /**
- * Why a target another configuration also writes was left alone.
- *
- * Phrased to follow the per-locale prefix its landing sites add, and to say what
- * the run did NOT do: the other configuration's translations are still on disk,
- * and nothing was recorded for this locale, so the next run retries it.
+ * Why a target another configuration also writes was left alone. Phrased to
+ * follow the per-locale prefix its landing sites add.
  */
 export function sharedTargetMessage(
   targetRelPath: string,
