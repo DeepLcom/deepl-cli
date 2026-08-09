@@ -17,6 +17,7 @@ import {
   resolveTargetPath,
   assertPathWithinRoot,
   mergePulledTranslations,
+  hasPluralForms,
 } from './sync-utils.js';
 import { LOCK_FILE_NAME } from './types.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
@@ -42,7 +43,8 @@ export type SkipReason =
   | 'key_collision'
   | 'unusable_target'
   | 'untranslated'
-  | 'needs_review';
+  | 'needs_review'
+  | 'plural_entry';
 
 export interface SkippedRecord {
   file: string;
@@ -70,6 +72,8 @@ const SKIP_REASON_LABELS: Record<SkipReason, string> = {
   unusable_target: 'target file could not be read (left untouched)',
   untranslated: 'no translation in the target file',
   needs_review: 'translation marked as needing review (not pushed)',
+  plural_entry:
+    'plural entry (one exported string cannot fill its forms; left as it stands)',
 };
 
 /**
@@ -301,23 +305,44 @@ export async function pullTranslations(
       const existingTargetEntries =
         read.state === 'usable' ? read.translations : new Map<string, string>();
 
+      // The export is one string per key, which cannot fill a plural entry's
+      // forms — gettext's msgstr[N], Android's <plurals> items. Applying it
+      // would replace the file's own forms with the source's, so such a key is
+      // reported skipped and the entry is carried forward as it stands.
+      const pluralEntries = sourceEntries.filter(
+        (entry) =>
+          keys[entry.key] !== undefined && hasPluralForms(entry.metadata)
+      );
+      const applicableKeys = { ...keys };
+      for (const entry of pluralEntries) {
+        skipped.push({
+          file: relPath,
+          locale,
+          reason: 'plural_entry',
+          key: entry.key,
+        });
+        delete applicableKeys[entry.key];
+      }
+
       const pulledEntries = sourceEntries
-        .filter((entry) => keys[entry.key] !== undefined)
+        .filter((entry) => applicableKeys[entry.key] !== undefined)
         .map((entry) => ({
           key: entry.key,
           value: entry.value,
-          translation: keys[entry.key]!,
+          translation: applicableKeys[entry.key]!,
           metadata: entry.metadata,
         }));
 
       if (pulledEntries.length === 0) {
-        skipped.push({ file: relPath, locale, reason: 'no_matches' });
+        if (pluralEntries.length === 0) {
+          skipped.push({ file: relPath, locale, reason: 'no_matches' });
+        }
         continue;
       }
 
       const translatedEntries = mergePulledTranslations(
         sourceEntries,
-        keys,
+        applicableKeys,
         existingTargetEntries
       );
 

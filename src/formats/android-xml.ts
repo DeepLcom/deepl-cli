@@ -257,7 +257,10 @@ export class AndroidXmlFormatParser implements FormatParser {
     result = replaceElements(result, PLURALS_EL, (el) => {
       const quantityMap = pluralTranslations.get(el.groups[0]!);
       if (!quantityMap) {
-        return null;
+        // An entry handed over without per-form translations is one whose
+        // plural forms this run did not translate: the element keeps the items
+        // it already holds. Only a key absent from the entry list is removed.
+        return translations.has(el.groups[0]!) ? el.text : null;
       }
       const inner = replaceElements(el.inner, PLURAL_ITEM_EL, (item) => {
         const translation = quantityMap.get(item.groups[0]!);

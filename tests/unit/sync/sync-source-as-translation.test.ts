@@ -44,6 +44,7 @@ jest.mock('../../../src/utils/logger', () => ({
 }));
 
 jest.mock('../../../src/sync/sync-utils', () => ({
+  ...jest.requireActual('../../../src/sync/sync-utils'),
   resolveTargetPath: jest.fn(),
   assertPathWithinRoot: jest.fn(),
 }));

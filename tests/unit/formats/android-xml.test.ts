@@ -238,6 +238,21 @@ describe('android-xml parser', () => {
       expect(result).not.toContain('Goodbye');
     });
 
+    it('should keep a plurals element verbatim for an entry handed over without per-form translations', () => {
+      const xml = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="items">
+        <item quantity="one">Un elemento</item>
+        <item quantity="other">%d elementos</item>
+    </plurals>
+</resources>`;
+      const translated: TranslatedEntry[] = [
+        { key: 'items', value: '%d items', translation: 'Un elemento' },
+      ];
+      const result = parser.reconstruct(xml, translated);
+      expect(result).toBe(xml);
+    });
+
     it('should remove plural elements not present in entries', () => {
       const xml = `<?xml version="1.0" encoding="utf-8"?>
 <resources>

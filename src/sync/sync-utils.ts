@@ -18,6 +18,45 @@ export function getParserForBucket(
 }
 
 /**
+ * The metadata payloads a parser rebuilds an entry's plural content from:
+ * gettext's `plural_forms` (`msgstr[N]`) and Android XML's `plurals` items.
+ */
+const PLURAL_FORM_METADATA_KEYS = ['plural_forms', 'plurals'] as const;
+
+/**
+ * True when `reconstruct` would rebuild this entry's plural forms from its
+ * metadata rather than keep the ones the target file holds.
+ */
+export function hasPluralForms(
+  metadata: Record<string, unknown> | undefined
+): boolean {
+  return (
+    metadata !== undefined &&
+    PLURAL_FORM_METADATA_KEYS.some((key) => key in metadata)
+  );
+}
+
+/**
+ * An entry's metadata with the plural-form payloads left out.
+ *
+ * In a source entry's metadata those payloads hold the source file's own
+ * forms — empty `msgstr[N]` for gettext, source-language items for Android —
+ * so handing them to `reconstruct` for an entry whose plural forms this run
+ * did not translate replaces the target's translated forms with them. Without
+ * the payloads the parsers keep the target file's own plural lines.
+ */
+export function withoutPluralForms(
+  metadata: Record<string, unknown> | undefined
+): Record<string, unknown> | undefined {
+  if (!hasPluralForms(metadata)) return metadata;
+  const rest = { ...metadata };
+  for (const key of PLURAL_FORM_METADATA_KEYS) {
+    delete rest[key];
+  }
+  return rest;
+}
+
+/**
  * Merge a TMS pull response over whatever the target file already holds: the
  * pulled value wins, an existing target value is kept when the response omits
  * the key, and a key neither side has is omitted from the result.
@@ -43,7 +82,9 @@ export function mergePulledTranslations(
       key: entry.key,
       value: entry.value,
       context: entry.context,
-      metadata: entry.metadata,
+      // A pull never carries per-form plural translations — the export is one
+      // string per key — so the target file's own forms must survive the write.
+      metadata: withoutPluralForms(entry.metadata),
       translation,
     });
   }

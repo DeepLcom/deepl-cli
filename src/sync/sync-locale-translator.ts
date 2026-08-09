@@ -22,7 +22,11 @@ import {
 } from './translation-validator.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { mapWithConcurrency } from '../utils/concurrency.js';
-import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
+import {
+  resolveTargetPath,
+  assertPathWithinRoot,
+  withoutPluralForms,
+} from './sync-utils.js';
 import { extractExistingTranslations } from './sync-bucket-walker.js';
 import { BACKUP_SUFFIX } from './sync-bak-cleanup.js';
 import { Logger } from '../utils/logger.js';
@@ -763,7 +767,7 @@ export class LocaleTranslator {
         key: rejected.key,
         value: rejected.source,
         translation: previous,
-        metadata: diff?.metadata,
+        metadata: withoutPluralForms(diff?.metadata),
       });
     }
     const currentDiffs = diffs.filter((d) => d.status === 'current');
@@ -777,12 +781,13 @@ export class LocaleTranslator {
         lockEntry?.translations[locale] !== undefined;
       if (existingTranslation !== undefined) {
         // Present in the target file — including a deliberately empty string,
-        // which must be preserved rather than treated as missing.
+        // which must be preserved rather than treated as missing. The same
+        // goes for its plural forms, which this run is not translating.
         allTranslatedEntries.push({
           key: cd.key,
           value: cd.value,
           translation: existingTranslation,
-          metadata: cd.metadata,
+          metadata: withoutPluralForms(cd.metadata),
         });
       } else {
         // No translation in the target file. Translate it, even when the

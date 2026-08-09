@@ -37,6 +37,7 @@ jest.mock('../../../src/utils/logger', () => ({
 }));
 
 jest.mock('../../../src/sync/sync-utils', () => ({
+  ...jest.requireActual('../../../src/sync/sync-utils'),
   resolveTargetPath: jest.fn(),
   assertPathWithinRoot: jest.fn(),
 }));
@@ -1864,7 +1865,7 @@ describe('LocaleTranslator', () => {
       expect(warnings).toContain('check_placeholders');
     });
 
-    it('should reconstruct a withheld entry from the plural forms it was extracted with', async () => {
+    it('should hand a withheld entry over without plural forms so the target keeps its own', async () => {
       mockValidateBatch.mockReturnValueOnce([
         {
           key: 'items',
@@ -1908,13 +1909,15 @@ describe('LocaleTranslator', () => {
       const entries = (parser.reconstruct as jest.Mock).mock
         .calls[0]![1] as Array<{
         key: string;
+        translation: string;
         metadata?: Record<string, unknown>;
       }>;
       expect(entries).toHaveLength(1);
-      expect(entries[0]!.metadata?.['plurals']).toEqual([
-        { quantity: 'one', value: '1 item' },
-        { quantity: 'other', value: '%d items' },
-      ]);
+      // The extracted payload holds the source-language items, and the fresh
+      // translation was withheld — handing either over would replace the
+      // target's own forms. Without the payload the parser keeps them.
+      expect(entries[0]!.metadata?.['plurals']).toBeUndefined();
+      expect(entries[0]!.translation).toBe('1 Element (vorher)');
     });
 
     it('should validate the new-locale backfill batch and withhold its errors', async () => {

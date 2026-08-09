@@ -6,6 +6,8 @@ import {
   assertPathWithinRoot,
   getParserForBucket,
   mergePulledTranslations,
+  hasPluralForms,
+  withoutPluralForms,
 } from '../../../src/sync/sync-utils';
 import { createDefaultRegistry } from '../../../src/formats';
 import { ValidationError } from '../../../src/utils/errors';
@@ -421,5 +423,76 @@ describe('mergePulledTranslations()', () => {
         {}
       )
     ).toEqual([]);
+  });
+
+  it('should strip the plural-form payloads so the target file keeps its own forms', () => {
+    const merged = mergePulledTranslations(
+      [
+        {
+          key: 'One %d file',
+          value: 'One %d file',
+          metadata: {
+            msgid_plural: '%d files',
+            plural_forms: { 'msgstr[0]': '', 'msgstr[1]': '' },
+          },
+        },
+        {
+          key: 'file_count',
+          value: 'One file',
+          metadata: {
+            plurals: [{ quantity: 'one', value: 'One file' }],
+          },
+        },
+      ],
+      {},
+      new Map([
+        ['One %d file', 'Un archivo'],
+        ['file_count', 'Un archivo'],
+      ])
+    );
+
+    expect(merged).toEqual([
+      {
+        key: 'One %d file',
+        value: 'One %d file',
+        translation: 'Un archivo',
+        context: undefined,
+        metadata: { msgid_plural: '%d files' },
+      },
+      {
+        key: 'file_count',
+        value: 'One file',
+        translation: 'Un archivo',
+        context: undefined,
+        metadata: {},
+      },
+    ]);
+  });
+});
+
+describe('hasPluralForms() / withoutPluralForms()', () => {
+  it('recognises gettext and Android plural payloads', () => {
+    expect(hasPluralForms({ plural_forms: {} })).toBe(true);
+    expect(hasPluralForms({ plurals: [] })).toBe(true);
+    expect(hasPluralForms({ msgid_plural: '%d files' })).toBe(false);
+    expect(hasPluralForms({ flags: ['fuzzy'] })).toBe(false);
+    expect(hasPluralForms(undefined)).toBe(false);
+  });
+
+  it('strips only the plural payloads and keeps everything else', () => {
+    expect(
+      withoutPluralForms({
+        flags: ['fuzzy'],
+        msgid_plural: '%d files',
+        plural_forms: { 'msgstr[0]': '' },
+        plurals: [{ quantity: 'one', value: 'One file' }],
+      })
+    ).toEqual({ flags: ['fuzzy'], msgid_plural: '%d files' });
+  });
+
+  it('returns metadata without plural payloads unchanged, same reference', () => {
+    const metadata = { flags: ['fuzzy'] };
+    expect(withoutPluralForms(metadata)).toBe(metadata);
+    expect(withoutPluralForms(undefined)).toBeUndefined();
   });
 });

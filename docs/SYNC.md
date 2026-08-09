@@ -169,6 +169,12 @@ The cost is one read and parse of each target file per locale, and it is only pa
 
 Within one source file the answer is computed once and reused, so no command reads a target file twice for it. On a 20,000-key, 6-locale JSON project (2.83 MiB source, 17.3 MiB of target files) that took `sync --frozen` from 1.13 s to 0.79 s, because a healthy project made it ask twice — once for the drift check and again for the "nothing to do" check.
 
+### A plural entry carried forward
+
+A run rewrites a whole target file even when only one key changed — that is how the file stays consistent — so every entry the run is *not* translating is carried forward. For an entry with plural forms (gettext `msgstr[N]`, an Android `<plurals>` element's items) the forms the target file holds are kept exactly as they stand: on a sync triggered by a sibling key, when a re-translation was withheld by validation, and on `deepl sync pull`. Only translating the entry itself — its source text changed, or it is new to the locale — rewrites the forms.
+
+A TMS export carries one string per key, which cannot fill a plural entry's forms, so `deepl sync pull` never applies an exported value to one: the key is reported under the `plural_entry` skip reason in the `(N skipped: …)` summary and in `--format json`, is not counted as pulled or replaced, and no lockfile entry is recorded for it. The entry stays exactly as the target file holds it; review plural strings in the local file, or empty the forms to have the next `deepl sync` translate them afresh.
+
 ### A target file that cannot be read
 
 Every command that opens a locale's target file distinguishes three answers, and only the first two let it write:
@@ -1062,6 +1068,8 @@ Each target locale's approved dictionary is fetched exactly once per `sync pull`
 **A key with no translation anywhere is left out.** When the export omits a key and the target file has no value for it either, the key is omitted from the reconstructed target rather than filled in with the source string. Writing the source text would put the source language in the target file and record it in the lockfile as translated, which no later run revisits. An empty string counts as a translation and is preserved.
 
 **Pull does not claim human review.** The export endpoint returns `{ "key": "value" }` with no per-entry review flag, so pulled entries are recorded with `status: translated` and **no** `review_status`, meaning "unknown". Earlier releases stamped `review_status: human_reviewed` on every pulled key, asserting a review the CLI had not verified and the response did not describe.
+
+**A plural entry is left as it stands.** The export carries one string per key, which cannot fill a plural entry's forms (gettext `msgstr[N]`, an Android `<plurals>` element). Such a key is skipped under the `plural_entry` reason, is not counted as pulled or replaced, and no lockfile entry is recorded for it — see [A plural entry carried forward](#a-plural-entry-carried-forward).
 
 **A target file that cannot be read is left untouched.** Pull reads the existing target file so it can keep translations the export does not carry. If that file cannot be opened, cannot be parsed, or cannot be keyed unambiguously, the locale is skipped with a warning naming the file and the reason, and the file is not written — under the `key_collision` reason when keys collide (see [Key separators and colliding keys](#key-separators-and-colliding-keys)), which has its own remediation, and `unusable_target` otherwise. Pull deliberately does not fall back to reconstructing it from the source file in either case: that would replace the whole file with just the keys the export happened to carry. Only a file that is genuinely not there yet takes that fallback. See [A target file that cannot be read](#a-target-file-that-cannot-be-read).
 
