@@ -28,6 +28,7 @@ import {
   withoutPluralForms,
 } from './sync-utils.js';
 import { extractExistingTranslations } from './sync-bucket-walker.js';
+import { primaryPluralItem } from '../formats/util/plurals.js';
 import { BACKUP_SUFFIX } from './sync-bak-cleanup.js';
 import { Logger } from '../utils/logger.js';
 import {
@@ -740,7 +741,7 @@ export class LocaleTranslator {
       const androidPlurals = diff.metadata['plurals'] as
         Array<{ quantity: string; value: string }> | undefined;
       if (androidPlurals) {
-        const primary = androidPlurals.find((p) => p.value === diff.value);
+        const primary = primaryPluralItem(androidPlurals);
         if (primary) primary.value = result.text;
       }
     }

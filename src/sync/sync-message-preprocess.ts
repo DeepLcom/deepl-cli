@@ -21,6 +21,7 @@ import type { TranslationService } from '../services/translation.js';
 import type { TranslationOptions } from '../types/api.js';
 import type { TranslationResult } from '../api/translation-client.js';
 import type { SyncDiff } from './types.js';
+import { primaryPluralItem } from '../formats/util/plurals.js';
 
 export interface PluralSlot {
   diffIndex: number;
@@ -48,8 +49,12 @@ export function expandPlurals(
     const androidPlurals = diff.metadata['plurals'] as
       Array<{ quantity: string; value: string }> | undefined;
     if (androidPlurals) {
+      // Reference identity against the primary form, not value equality: with
+      // coinciding source forms a value test skipped every matching form, so
+      // only one of them was ever translated.
+      const primary = primaryPluralItem(androidPlurals);
       for (const p of androidPlurals) {
-        if (p.value === diff.value) continue;
+        if (p === primary) continue;
         pluralSlots.push({
           diffIndex: di,
           format: 'android',
@@ -61,7 +66,11 @@ export function expandPlurals(
     }
 
     const msgidPlural = diff.metadata['msgid_plural'] as string | undefined;
-    if (msgidPlural && msgidPlural !== diff.value) {
+    // Expanded even when it equals `msgid`: `msgstr[1]` is a different form that
+    // needs its own translation, and a target language may distinguish the two
+    // where English does not. Identical texts deduplicate inside translateBatch,
+    // so this costs no extra characters.
+    if (msgidPlural) {
       pluralSlots.push({
         diffIndex: di,
         format: 'po',

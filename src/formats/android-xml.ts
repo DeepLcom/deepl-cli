@@ -18,6 +18,7 @@ import {
   type ElementPattern,
   type ScannedElement,
 } from './xml-scan.js';
+import { primaryPluralItem } from './util/plurals.js';
 
 interface PluralItem {
   quantity: string;
@@ -387,8 +388,7 @@ export class AndroidXmlFormatParser implements FormatParser {
         })
       );
 
-      const defaultItem =
-        plurals.find((p) => p.quantity === 'other') ?? plurals[0];
+      const defaultItem = primaryPluralItem(plurals);
       entries.push({
         key: el.groups[0]!,
         value: defaultItem?.value ?? '',
