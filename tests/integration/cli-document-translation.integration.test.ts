@@ -1,7 +1,8 @@
 /**
  * Integration Tests for Document Translation Workflow
  * Tests the multi-step upload -> poll -> download flow with nock HTTP mocking.
- * Validates API interaction contracts at both service and CLI levels.
+ * Every case is service-level; CLI flag and exit-code behavior lives in
+ * tests/e2e/cli-document-translation.e2e.test.ts.
  */
 
 import nock from 'nock';

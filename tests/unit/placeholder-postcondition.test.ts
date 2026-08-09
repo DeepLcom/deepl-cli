@@ -1,13 +1,13 @@
 /**
- * `restorePlaceholders` replaced the placeholders it could find and silently
- * left the rest alone, with nothing verifying that the tokens the CLI injected
- * came back intact. Re-casing or re-spacing an unknown token is ordinary MT
- * behaviour, so `__VAR_0__` returning as `__ Var_0 __` wrote the CLI's own
- * internal scaffolding into the user's file — or printed it to stdout — at
- * exit 0 with no warning.
+ * Every translate path must check that the placeholder tokens the CLI injected
+ * came back intact. `restorePlaceholders` replaces the ones it can find and
+ * leaves the rest alone, and re-casing or re-spacing an unknown token is
+ * ordinary MT behaviour — so without the check, `__VAR_0__` returning as
+ * `__ Var_0 __` writes the CLI's own internal scaffolding into the user's file,
+ * or prints it to stdout, at exit 0 with no warning.
  *
- * The sync path already catches this in the placeholder validator. The three
- * translate paths had no validator at all.
+ * The sync path has its own placeholder validator; these are the three
+ * translate paths.
  */
 
 import {

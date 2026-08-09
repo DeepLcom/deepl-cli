@@ -5,9 +5,6 @@
  *   - createSyncHarness()   -> wires up SyncService with the real deps and mock config/cache
  *   - buildSyncConfigYaml() -> serializes a .deepl-sync.yaml document from a plain object
  *   - seedLockFile()        -> writes a valid .deepl-sync.lock to a test project root
- *
- * These replace ad-hoc template strings and duplicated service-wiring code that
- * accumulated across the sync integration tests.
  */
 
 import * as fs from 'fs';

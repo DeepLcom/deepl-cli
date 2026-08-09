@@ -1,6 +1,8 @@
 /**
  * Integration Tests for Structured File (JSON/YAML) Translation
- * Tests both CLI argument validation (via subprocess) and service-level integration (in-process)
+ * Drives FileTranslationService in-process against nock. CLI argument
+ * validation and the exit codes of the built binary live in
+ * tests/e2e/cli-structured-file.e2e.test.ts.
  */
 
 import * as fs from 'fs';

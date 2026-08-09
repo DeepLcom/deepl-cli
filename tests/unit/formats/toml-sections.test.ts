@@ -1,10 +1,10 @@
 /**
  * Tests that new TOML keys land in the right section.
  *
- * New keys were appended at end of file using their full dotted path while
- * the last `[section]` header was still in scope, so `messages.newkey`
- * parsed back as `messages.messages.newkey`. Because the intended key was
- * then still missing, it was re-appended on every subsequent sync run.
+ * A key appended at end of file carries its full dotted path while the last
+ * `[section]` header is still in scope, so `messages.newkey` parses back as
+ * `messages.messages.newkey` — and because the intended key is then still
+ * missing, every subsequent sync run appends it again.
  */
 
 import { TomlFormatParser } from '../../../src/formats/toml';

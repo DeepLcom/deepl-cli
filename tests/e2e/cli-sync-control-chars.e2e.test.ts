@@ -1,5 +1,6 @@
 /**
- * E2E regression for the TOML self-DoS in cli-8kr2.42.
+ * E2E regression for the TOML self-DoS a control character in a committed
+ * target value causes.
  *
  * A contributor can commit a *valid* `locales/app.de.toml` holding
  * `greeting = "Hola[2J"` — TOML basic strings legally carry `\uXXXX`, and

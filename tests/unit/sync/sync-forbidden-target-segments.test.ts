@@ -1,15 +1,15 @@
 /**
  * `FORBIDDEN_TARGET_SEGMENTS` exists so a translated-locale name can never
- * become VCS metadata or CI workflow code. It had exactly one enforcement
- * site — inside the `if (target_path_pattern !== undefined)` branch of config
- * validation — so a bucket that simply omitted `target_path_pattern` reached
- * the default locale-substitution path with no check at all:
+ * become VCS metadata or CI workflow code. Enforcing it only inside the
+ * `if (target_path_pattern !== undefined)` branch of config validation is not
+ * enough: a bucket that simply omits `target_path_pattern` reaches the default
+ * locale-substitution path, where nothing would check it:
  *
  *   buckets.yaml.include: ['.github/workflows/en.yml']
  *   -> sync writes .github/workflows/de.yml from API-returned bytes
  *
- * `assertPathWithinRoot` accepted it, because the path never leaves the
- * project root. The guard now lives on the resolved path at that shared
+ * `assertPathWithinRoot` accepts that, because the path never leaves the
+ * project root. The guard therefore lives on the resolved path at that shared
  * boundary, so every read and write in the sync pipeline inherits it —
  * including the multi-locale branch, which writes back to the source path and
  * never calls `resolveTargetPath` at all.

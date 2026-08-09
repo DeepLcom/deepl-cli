@@ -4,10 +4,11 @@
  * When the detector finds zero i18n files the command must:
  *   - exit 7 (ConfigError) — not 0
  *   - print a remediation hint naming all four required flags
- *   - in --format json mode emit the canonical error envelope to stderr
+ *   - in --format json mode emit the canonical error envelope to stdout, the
+ *     one stream a consumer can parse whole
  *
- * Regression guard: successful interactive-equivalent path (all four flags
- * supplied, stdin not a TTY) must still exit 0.
+ * The successful interactive-equivalent path (all four flags supplied, stdin
+ * not a TTY) must still exit 0.
  */
 
 import { spawnSync } from 'child_process';

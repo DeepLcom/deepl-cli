@@ -1,11 +1,11 @@
 /**
  * The translation and write cache keys hash the request parameters, but the
  * resolved API endpoint is not a request parameter — and one cache DB is shared
- * by every endpoint a config dir has ever talked to. A single run against
- * `--api-url http://127.0.0.1:18111` therefore served its answers back for
- * api.deepl.com for the full 30-day TTL, with no network reachable at all.
- * Custom endpoints are a supported feature (proxies, regional endpoints), so
- * this needed no misuse to reach.
+ * by every endpoint a config dir has ever talked to. Unless the key carries the
+ * endpoint, a single run against `--api-url http://127.0.0.1:18111` has its
+ * answers served back for api.deepl.com for the full 30-day TTL, with no
+ * network reachable at all. Custom endpoints are a supported feature (proxies,
+ * regional endpoints), so this needs no misuse to reach.
  */
 
 import { TranslationService } from '../../../src/services/translation';

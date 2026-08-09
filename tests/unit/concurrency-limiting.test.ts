@@ -1,10 +1,12 @@
 /**
- * Tests that concurrency is genuinely bounded.
+ * Tests that concurrency is genuinely bounded, and that mapWithConcurrency
+ * processes every item without exceeding the requested limit.
  *
- * These deliberately do NOT mock p-limit. A manual mock under
- * tests/__mocks__/p-limit.ts is auto-applied repo-wide, which would leave
- * real concurrency limits unexercised everywhere. The first test here fails
- * if such a mock is ever introduced.
+ * These deliberately do NOT mock p-limit or fast-glob. A manual mock placed
+ * under tests/__mocks__/ is auto-applied repo-wide, so one for either package
+ * would leave real concurrency limits and every glob-walking path unexercised
+ * everywhere. The first test in each of those two blocks fails if such a mock
+ * is ever introduced.
  */
 
 import pLimit from 'p-limit';

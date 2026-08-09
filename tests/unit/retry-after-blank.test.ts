@@ -1,10 +1,12 @@
 /**
- * Tests Retry-After parsing for blank headers.
+ * Tests Retry-After parsing.
  *
- * `Number('')` is 0, which passed the finite check and produced a 0 ms delay.
- * Because 0 is a real number, the `retryAfterDelay ?? computeBackoffWithJitter`
- * fallback never engaged, so every 429 retry fired back-to-back against an
- * endpoint that was already rate-limiting the client.
+ * A blank header must read as absent, not as a delay. `Number('')` is 0, which
+ * satisfies a bare finite check, and because 0 is a real number the
+ * `retryAfterDelay ?? computeBackoffWithJitter` fallback would not engage —
+ * every 429 retry would then fire back-to-back against an endpoint already
+ * rate-limiting the client. A literal `0` is still honoured, so absent and zero
+ * have to stay distinguishable.
  */
 
 import { HttpClient } from '../../src/api/http-client';

@@ -1,6 +1,8 @@
 /**
  * Tests for WriteClient
- * Covers improveText with success/error cases
+ * Covers improveText and correctText with their success and error cases,
+ * including the documentation hint appended to a 400 only when a writing style
+ * or tone was sent.
  */
 
 import { WriteClient } from '../../src/api/write-client.js';

@@ -1,5 +1,6 @@
 /**
- * Tests for the lazy cache-service getter used by the CLI entry point.
+ * Tests for the cache wiring used by the CLI entry point: the translation of
+ * config values into cache-service options, and the lazy getter around them.
  * A cache backend that cannot load must degrade to "no cache" with a
  * single warning, not crash the command or retry on every call.
  */

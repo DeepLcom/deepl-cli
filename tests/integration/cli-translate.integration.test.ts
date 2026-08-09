@@ -1,6 +1,9 @@
 /**
- * Integration Tests for Translation Memory wiring on `deepl translate`
- * Drives handler -> resolver -> service -> HTTP in-process against nock.
+ * Integration Tests for Translation Memory and glossary wiring on
+ * `deepl translate`
+ * Drives handler -> resolver -> service -> HTTP in-process against nock, so the
+ * assertions are on the request body — including the order several glossaries
+ * are sent in, since that order decides which one wins.
  * CLI flag handling lives in tests/e2e/cli-translate-flags.e2e.test.ts.
  */
 

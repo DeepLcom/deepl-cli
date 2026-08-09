@@ -1,13 +1,13 @@
 /**
- * E2E regression for cli-8kr2.59.
+ * E2E cover for the translations `deepl sync` reads back out of a bilingual
+ * target file.
  *
  * PO and XLIFF carry both the source and the translation in one file, and their
- * `extract().value` is the source. `sync` built its "translations the target
- * file already has" map from that value, so on any run that rewrote the file —
- * one where a sibling key is new — a `current` key had the msgid carried
- * forward into its own msgstr. A reviewed translation became English, silently,
- * at exit 0, and the lockfile still called the key translated so no later run
- * corrected it.
+ * `extract().value` is the source, not the translation. A run that rewrites the
+ * file because a sibling key is new must therefore not take its "translations
+ * the target already has" map from that value: doing so carries the msgid
+ * forward into its own msgstr, replacing a reviewed translation with English at
+ * exit 0 while the lockfile still calls the key translated.
  */
 
 import { spawn, spawnSync, ChildProcess } from 'child_process';

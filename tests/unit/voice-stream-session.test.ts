@@ -1,7 +1,12 @@
 /**
  * Tests for VoiceStreamSession
- * Covers WebSocket lifecycle, reconnection, SIGINT handling, chunk streaming,
- * and transcript accumulation directly on the extracted class.
+ * Covers WebSocket lifecycle, reconnection, chunk streaming, transcript
+ * accumulation, callback proxying, and rejection of a stream that transcribed
+ * source audio but produced no text for a target — all directly on the
+ * extracted class.
+ *
+ * The session deliberately registers no SIGINT listener of its own; whichever
+ * caller owns the signal stops it through cancel().
  */
 
 import {

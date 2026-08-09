@@ -1,14 +1,13 @@
 /**
- * `--no-cache` was a silent no-op for all 11 structured i18n formats.
+ * `TranslationService.translateBatch()` takes its cache decision from the
+ * caller's `skipCache`, not from `cache.enabled` in persisted config alone.
  *
- * In one function 30 lines apart, the plain-text branch of the translate
- * command passed `skipCache: !options.cache` and the structured branch passed
- * only `{ preserveCode }` — because `TranslationService.translateBatch()` had
- * no service-options parameter at all and read `cache.enabled` from persisted
- * config alone. So a corrupt translation was permanent: re-running the
- * identical command with `--no-cache` against a different endpoint sent zero
- * requests and reproduced the poisoned output byte for byte, defeating the one
- * remedy a user would reach for.
+ * Every structured i18n format translates through this method, so without that
+ * parameter `--no-cache` is a silent no-op for all 11 of them — and a corrupt
+ * translation then becomes permanent: re-running the identical command with
+ * `--no-cache` against a different endpoint sends zero requests and reproduces
+ * the poisoned output byte for byte, defeating the one remedy a user would
+ * reach for.
  */
 
 import { TranslationService } from '../../../src/services/translation';

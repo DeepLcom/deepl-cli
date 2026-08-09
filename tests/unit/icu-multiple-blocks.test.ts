@@ -1,10 +1,11 @@
 /**
  * A string may contain more than one ICU block.
  *
- * Detection found one block and pushed the whole remaining suffix as a single
- * prose segment, so every block after the first was submitted to the MT engine
- * as translatable text — the exact exposure the module exists to prevent. The
- * engine translates the keyword and the selectors:
+ * Detection must find all of them rather than stopping at the first and
+ * pushing the remaining suffix on as a single prose segment: that submits
+ * every later block to the MT engine as translatable text — the exact exposure
+ * the module exists to prevent. The engine translates the keyword and the
+ * selectors:
  *
  *   in  You have {n, plural, one {# item} other {# items}} and
  *       {m, plural, one {# gift} other {# gifts}} waiting.

@@ -1,8 +1,8 @@
 /**
  * Retry-policy and transport-error classification tests for HttpClient.
  *
- * Every assertion here counts SERVER-SIDE requests: a replay of a
- * non-idempotent request is only observable from the server's side, so
+ * The retry assertions count SERVER-SIDE requests: a replay of a
+ * non-idempotent request is only observable on the server's side, so
  * `.rejects.toThrow()` alone cannot catch it.
  */
 

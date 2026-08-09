@@ -8,7 +8,8 @@
  * must re-apply that partition, or skipped pipe-plural values reach
  * `TmsClient.pushKey(...)` and the pull-merge translation set. These tests
  * lock the invariant in at each inline extract point plus the runtime guard on
- * `TmsClient.pushEntry(...)`.
+ * `TmsClient.pushEntry(...)`, and cover the per-reason summary a run prints for
+ * what it skipped.
  */
 import * as path from 'path';
 

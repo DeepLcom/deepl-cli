@@ -1,13 +1,13 @@
 /**
- * `translateBatch` returns one slot per input text, but leaves a slot `null`
- * both when a chunk request failed and when the input text was empty and
- * therefore never sent. Its declared return type was `TranslationResult[]`,
- * so no consumer was forced to handle either case: an empty i18n value crashed
- * structured file translation with a TypeError before any output was written,
- * and reached sync as a permanent per-key failure.
+ * `translateBatch` returns one slot per input text, and that array is sparse: a
+ * slot is `null` where the chunk request failed. An empty input text is not
+ * such a case — it is never sent, and round-trips as an empty translation, a
+ * result rather than a failure — so the null that remains means failure, and it
+ * is in the declared return type, which forces consumers to handle it. Left
+ * out of the type, an empty i18n value crashes structured file translation with
+ * a TypeError before any output is written, and reaches sync as a permanent
+ * per-key failure.
  *
- * An empty input now round-trips as an empty translation — a result, not a
- * failure — and the remaining null case is in the type.
  */
 
 import { StructuredFileTranslationService } from '../../../src/services/structured-file-translation';

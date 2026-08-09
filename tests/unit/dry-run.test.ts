@@ -1,6 +1,7 @@
 /**
  * Tests for --dry-run flag across CLI commands
- * Tests translate (file/directory), glossary delete, cache clear, and watch commands
+ * Tests translate (text/file/directory), glossary delete, cache clear, and
+ * watch commands
  */
 
 import { Command } from 'commander';

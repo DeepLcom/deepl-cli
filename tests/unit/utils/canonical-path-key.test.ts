@@ -4,9 +4,9 @@
  *
  * `fs.realpathSync` does not case-fold on a case-insensitive volume — APFS
  * returns `Docs` for `Docs` even when the directory is stored as `docs` — and
- * does not unify NFC with NFD. Two spellings reaching the same inode therefore
- * produced different keys, and `watch --git-staged` translated nothing when git
- * spelled a directory differently from the watcher: silently, at exit 0.
+ * does not unify NFC with NFD. Two spellings reaching the same inode still have
+ * to produce one key, or `watch --git-staged` translates nothing when git
+ * spells a directory differently from the watcher: silently, at exit 0.
  */
 
 import * as fs from 'fs';

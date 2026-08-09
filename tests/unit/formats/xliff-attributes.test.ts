@@ -1,13 +1,13 @@
 /**
  * Tests that XLIFF elements carrying attributes are handled.
  *
- * `state` is a standard XLIFF attribute that every CAT tool writes, but
- * SEGMENT_RE and TARGET_RE required bare `<segment>` / `<target>` tags. The
- * consequences were severe and silent: for XLIFF 2.0, extract returned no
- * entries and reconstruct then deleted every `<unit>`; for XLIFF 1.2, an
- * existing `<target state="...">` was treated as absent and a second
- * `<target>` was injected, producing schema-invalid output that retained
- * the stale translation.
+ * `state` is a standard XLIFF attribute that every CAT tool writes, so
+ * SEGMENT_RE and TARGET_RE have to match a tag carrying attributes and not
+ * only a bare `<segment>` / `<target>`. The failures otherwise are severe and
+ * silent: for XLIFF 2.0, extract returns no entries and reconstruct then
+ * deletes every `<unit>`; for XLIFF 1.2, an existing `<target state="...">`
+ * reads as absent and a second `<target>` is injected, producing
+ * schema-invalid output that retains the stale translation.
  */
 
 import { XliffFormatParser } from '../../../src/formats/xliff';

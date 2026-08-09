@@ -3,7 +3,9 @@
  *
  * Uses REAL fast-glob (not mocked) against real filesystem structures
  * to verify that detectI18nFiles() produces include patterns that
- * actually match source files — the exact bug that sync-qsn reported.
+ * actually match source files: a pattern that is syntactically plausible but
+ * matches nothing yields a config that detects an i18n project and then syncs
+ * no keys at all.
  */
 
 jest.unmock('fast-glob');

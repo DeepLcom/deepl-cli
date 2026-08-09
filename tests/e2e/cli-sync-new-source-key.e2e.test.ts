@@ -1,5 +1,6 @@
 /**
- * E2E regression for cli-8kr2.60.
+ * E2E regression for a key added to the source catalog after the first sync
+ * run.
  *
  * `deepl sync` uses an existing target file as the reconstruct template, so a
  * key added to the source after the first run has no slot in it. Five parsers

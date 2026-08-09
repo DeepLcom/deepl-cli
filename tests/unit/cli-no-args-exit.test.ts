@@ -1,7 +1,8 @@
 /**
  * Tests for CLI exit code when no arguments provided.
  *
- * Validates that running 'deepl' with no arguments exits with code 0.
+ * Validates that running 'deepl' with no arguments prints help and exits
+ * with code 0.
  */
 
 import { execSync } from 'child_process';

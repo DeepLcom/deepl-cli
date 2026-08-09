@@ -1,9 +1,10 @@
 /**
- * Tests for two localized-resource defects:
- *  - Xcode String Catalogs: reconstruct replaced a locale's entire
- *    localization object, destroying pre-existing plural `variations`.
- *  - ARB: a UTF-8 BOM made JSON.parse throw, so a BOM-prefixed Flutter
- *    resource file could not be read at all.
+ * Tests for two localized-resource invariants:
+ *  - Xcode String Catalogs: writing one locale's translation leaves the rest
+ *    of that key's localization object intact — plural `variations` above all
+ *    — and leaves the other locales alone.
+ *  - ARB: a UTF-8 BOM does not stop a Flutter resource file being extracted or
+ *    reconstructed, and yields the same entries as the same file without one.
  */
 
 import { XcstringsFormatParser } from '../../../src/formats/xcstrings';

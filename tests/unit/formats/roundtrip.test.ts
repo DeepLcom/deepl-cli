@@ -1,8 +1,9 @@
 /**
  * Round-trip stability tests: extract -> reconstruct -> extract must be a
  * fixed point. A parser that is not idempotent corrupts a little more on
- * every `deepl sync` run, which is how entity double-escaping went
- * unnoticed — a single run looks almost right.
+ * every `deepl sync` run, and a single run looks almost right, so drift of
+ * this kind — entity double-escaping above all — is easy to miss without a
+ * test that syncs the same content repeatedly.
  */
 
 import { AndroidXmlFormatParser } from '../../../src/formats/android-xml';
