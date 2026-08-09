@@ -139,13 +139,71 @@ export function countGlobExpansion(pattern: string): number {
 }
 
 /**
- * Reject a glob pattern whose brace expansion or raw length could wedge the
- * process inside fast-glob. `field` names the config path for the error.
+ * The first `*(…)` / `+(…)` extglob group whose body holds an unbounded
+ * wildcard, or undefined.
+ *
+ * Those two operators are repetitions, so a `*` or `+` inside one gives picomatch
+ * a nested quantifier and exponential backtracking. Measured against a
+ * 40-character directory name, the six-character pattern `+(a*)b` takes about 50
+ * SECONDS — and the expansion bound above never sees it, because a pattern can
+ * carry no brace at all. `@(…)`, `?(…)` and `!(…)` are not repetitions and stayed
+ * flat under the same measurement, so they are left alone.
+ *
+ * Both the pattern and the directory names it is matched against come from the
+ * checkout, so this is reachable from a merge request rather than only from a
+ * hand-edited config.
+ */
+function findNestedQuantifierExtglob(pattern: string): string | undefined {
+  for (let i = 0; i < pattern.length; i += 1) {
+    if (pattern[i] === '\\') {
+      i += 1;
+      continue;
+    }
+    const op = pattern[i];
+    if ((op !== '*' && op !== '+') || pattern[i + 1] !== '(') continue;
+
+    let depth = 1;
+    let body = '';
+    let j = i + 2;
+    for (; j < pattern.length; j += 1) {
+      const ch = pattern[j]!;
+      if (ch === '\\') {
+        body += ch + (pattern[j + 1] ?? '');
+        j += 1;
+        continue;
+      }
+      if (ch === '(') depth += 1;
+      if (ch === ')') {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+      body += ch;
+    }
+    if (/[*+]/.test(body)) {
+      return pattern.slice(i, Math.min(j + 1, pattern.length));
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Reject a glob pattern whose brace expansion, raw length or extglob nesting
+ * could wedge the process inside fast-glob. `field` names the config path for
+ * the error.
  */
 export function assertBoundedGlobExpansion(
   pattern: string,
   field: string
 ): void {
+  const nested = findNestedQuantifierExtglob(pattern);
+  if (nested !== undefined) {
+    throw new ConfigError(
+      `${field} entry contains the extglob group "${sanitizeForTerminal(nested)}", whose repetition wraps an unbounded wildcard. ` +
+        `That compiles to a regular expression with nested quantifiers, which can take minutes on a single directory name.`,
+      `Remove the "*" or "+" from inside the group in ${field} — "@(...)" matches one alternative without the repetition.`
+    );
+  }
+
   if (pattern.length > MAX_GLOB_PATTERN_LENGTH) {
     throw new ConfigError(
       `${field} entry is ${pattern.length} characters long, exceeding the ${MAX_GLOB_PATTERN_LENGTH}-character limit for a glob pattern`,

@@ -134,3 +134,54 @@ describe('assertBoundedGlobExpansion', () => {
     ).toThrow(ConfigError);
   });
 });
+
+describe('extglob nested-quantifier rejection', () => {
+  // The brace-count guard says nothing about extglobs, and `*(...)` / `+(...)`
+  // compile to a repetition — so an unbounded wildcard inside one hands picomatch
+  // a nested quantifier. Measured against a 40-character directory name, the
+  // six-character pattern `+(a*)b` takes ~50 SECONDS, wedging sync, validate,
+  // dry-run and watch alike. `@(...)`, `?(...)` and `!(...)` are not repetitions
+  // and stay flat, so they are left alone.
+  const field = 'buckets.json.include';
+
+  it.each([
+    ['+(a*)b'],
+    ['*(a*)b'],
+    ['locales/+(a*)/en.json'],
+    ['+(a+)b'],
+    ['*(*)'],
+    ['+(@(a*))b'],
+  ])('rejects %s', (pattern) => {
+    expect(() => assertBoundedGlobExpansion(pattern, field)).toThrow(
+      /extglob|backtrack/i
+    );
+  });
+
+  it.each([
+    ['locales/en.json'],
+    ['locales/**/*.json'],
+    ['locales/@(en|de)/*.json'],
+    ['?(a)b'],
+    ['!(node_modules)/**/*.json'],
+    ['+(en|de)/messages.json'],
+    ['res/values-*/strings.xml'],
+  ])('accepts %s', (pattern) => {
+    expect(() => assertBoundedGlobExpansion(pattern, field)).not.toThrow();
+  });
+
+  it('names the offending construct in the error', () => {
+    expect.assertions(2);
+    try {
+      assertBoundedGlobExpansion('locales/+(a*)/en.json', field);
+    } catch (err) {
+      expect((err as Error).message).toContain('+(a*)');
+      expect((err as Error).message).toContain(field);
+    }
+  });
+
+  it('does not treat an escaped extglob opener as one', () => {
+    expect(() =>
+      assertBoundedGlobExpansion('locales/\\+(a*)/en.json', field)
+    ).not.toThrow();
+  });
+});
