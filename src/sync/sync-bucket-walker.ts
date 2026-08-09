@@ -11,7 +11,7 @@ import {
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncBucketConfig } from './types.js';
 import { resolveSyncLimits } from './types.js';
-import { assertPathWithinRoot } from './sync-utils.js';
+import { assertPathWithinRoot, resolveTargetPath } from './sync-utils.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
 
@@ -121,6 +121,67 @@ export interface WalkBucketsOptions {
   fileCache?: BucketFileCache;
 }
 
+/**
+ * Refuse a bucket in which two source files resolve to the same target path.
+ *
+ * `target_path_pattern` need not contain `{basename}`, so `out/{locale}.json`
+ * makes every source file in the bucket claim one target. Each file's
+ * `reconstruct` is handed only its own keys and treats that list as the complete
+ * key set, so the files delete each other's translations; `unwrittenKeys`
+ * inspects only the string the current file produced, so the loser is still
+ * recorded `translated`. Every later run re-translates, re-bills and re-loses the
+ * same keys against a target that can never be complete — measured as a target
+ * alternating between the two files' keys and two more texts billed per run, at
+ * exit 0 throughout. `sync status` and `--frozen` report the incompleteness but
+ * prescribe a cure that cannot succeed.
+ *
+ * Checked against every configured locale, not just the ones a filtered run
+ * would touch: the collision is a property of the configuration. A file whose
+ * target path does not resolve for a locale is left to the run's own
+ * per-locale reporting rather than being turned into a config error here.
+ *
+ * Multi-locale (bilingual) parsers are exempt: they write back to the source
+ * file, so each file is its own target and a collision cannot arise.
+ */
+function assertDistinctTargetPaths(
+  bucket: string,
+  sourceFiles: readonly string[],
+  config: ResolvedSyncConfig,
+  targetPathPattern: string | undefined
+): void {
+  if (sourceFiles.length < 2) return;
+
+  for (const locale of config.target_locales) {
+    const owners = new Map<string, string>();
+    for (const sourceFile of sourceFiles) {
+      const relPath = path.relative(config.projectRoot, sourceFile);
+      let targetRelPath: string;
+      try {
+        targetRelPath = resolveTargetPath(
+          relPath,
+          config.source_locale,
+          locale,
+          targetPathPattern
+        );
+      } catch {
+        continue;
+      }
+      const previous = owners.get(targetRelPath);
+      if (previous !== undefined) {
+        throw new ValidationError(
+          `Bucket "${bucket}": source files "${previous}" and "${relPath}" both resolve to the target path ` +
+            `"${targetRelPath}" for locale "${locale}". Each would overwrite the other's translations, and ` +
+            `every later sync would re-translate and re-bill the keys it had just lost.`,
+          `Remove target_path_pattern so each source file's own path is used ("${previous}" -> its own ` +
+            `${locale} sibling), or split these sources into separate buckets. Note that {basename} is the ` +
+            `source file's name only, so it does not separate files that share a name in different directories.`
+        );
+      }
+      owners.set(targetRelPath, relPath);
+    }
+  }
+}
+
 export async function* walkBuckets(
   config: ResolvedSyncConfig,
   registry: FormatRegistry,
@@ -171,6 +232,15 @@ export async function* walkBuckets(
     }
 
     const isMultiLocale = !!parser.multiLocale;
+
+    if (!isMultiLocale) {
+      assertDistinctTargetPaths(
+        bucket,
+        sourceFiles,
+        config,
+        bucketConfig.target_path_pattern
+      );
+    }
 
     for (const sourceFile of sourceFiles) {
       assertPathWithinRoot(sourceFile, config.projectRoot);
