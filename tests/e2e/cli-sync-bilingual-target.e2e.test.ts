@@ -242,7 +242,7 @@ describe('CLI sync with a bilingual target file', () => {
     );
 
     const { CI: _ci, DEEPL_API_KEY: _key, ...rest } = process.env;
-    const run = (args: string[]): string => {
+    const run = (args: string[]): { stdout: string; combined: string } => {
       const result = spawnSync('node', [CLI_PATH, ...args], {
         encoding: 'utf-8',
         cwd: testFiles.path,
@@ -251,16 +251,22 @@ describe('CLI sync with a bilingual target file', () => {
         timeout: 60000,
       });
       expect(result.status).toBe(0);
-      return (result.stdout ?? '') + (result.stderr ?? '');
+      const stdout = result.stdout ?? '';
+      return { stdout, combined: stdout + (result.stderr ?? '') };
     };
 
-    const parsed = JSON.parse(run(['sync', 'status', '--format', 'json'])) as {
+    // `--format json` is a stdout-only contract; a diagnostic can share stderr
+    // (a config-mode-tightening notice, a node:sqlite ExperimentalWarning), so
+    // parse stdout alone rather than the merged streams.
+    const parsed = JSON.parse(
+      run(['sync', 'status', '--format', 'json']).stdout
+    ) as {
       locales: { locale: string; needsReview: number }[];
     };
     // The flagged PO key plus the flagged XLIFF unit.
     expect(parsed.locales.find((l) => l.locale === 'es')!.needsReview).toBe(2);
 
-    const text = run(['sync', 'status']);
+    const text = run(['sync', 'status']).combined;
     expect(text).toContain('2 needs review');
     expect(text).toContain('needs-review-translation');
   }, 120000);
