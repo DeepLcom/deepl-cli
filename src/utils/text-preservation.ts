@@ -5,23 +5,50 @@
 
 import { NetworkError } from './errors.js';
 
+/**
+ * The next placeholder token that does not already occur in `text`.
+ *
+ * The tokens are generated from a counter, so a source string carrying a literal
+ * `__VAR_0__` — which is ordinary text, not a variable — could be handed the same
+ * token as a real variable. Two occurrences then went to the engine and
+ * `restorePlaceholders` uses `replaceAll`, so the literal copy was rewritten into
+ * the preserved value. The same collision made `unresolvedPlaceholders` accept
+ * the literal copy as proof the substituted token had survived, reporting a
+ * genuine loss as intact.
+ *
+ * Compared against the ORIGINAL text, never the partly-substituted text: tokens
+ * this pass has already created are absent from the original, so they are not
+ * skipped, while anything the caller's own content carries is.
+ */
+function nextFreeToken(
+  prefix: string,
+  counter: { next: number },
+  text: string
+): string {
+  let token = `__${prefix}_${counter.next++}__`;
+  while (text.includes(token)) {
+    token = `__${prefix}_${counter.next++}__`;
+  }
+  return token;
+}
+
 export function preserveCodeBlocks(
   text: string,
   preservationMap: Map<string, string>
 ): string {
   let processed = text;
-  let counter = 0;
+  const counter = { next: 0 };
 
   // Preserve multi-line code blocks (```)
   processed = processed.replace(/```[\s\S]*?```/g, (match) => {
-    const placeholder = `__CODE_${counter++}__`;
+    const placeholder = nextFreeToken('CODE', counter, text);
     preservationMap.set(placeholder, match);
     return placeholder;
   });
 
   // Preserve inline code blocks (`)
   processed = processed.replace(/`[^`]+`/g, (match) => {
-    const placeholder = `__CODE_${counter++}__`;
+    const placeholder = nextFreeToken('CODE', counter, text);
     preservationMap.set(placeholder, match);
     return placeholder;
   });
@@ -34,7 +61,7 @@ export function preserveVariables(
   preservationMap: Map<string, string>
 ): string {
   let processed = text;
-  let counter = 0;
+  const counter = { next: 0 };
 
   // Preserve various variable formats (order matters - longest match first)
   const patterns = [
@@ -47,7 +74,7 @@ export function preserveVariables(
 
   for (const pattern of patterns) {
     processed = processed.replace(pattern, (match) => {
-      const placeholder = `__VAR_${counter++}__`;
+      const placeholder = nextFreeToken('VAR', counter, text);
       preservationMap.set(placeholder, match);
       return placeholder;
     });
