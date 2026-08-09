@@ -6,13 +6,10 @@ import { NetworkError } from '../utils/errors.js';
  * A response body is untrusted input: the endpoint can be redirected by
  * `--api-url`, an `api.baseUrl` in the config, or a proxy, and a redirected host
  * can return well-formed JSON of any shape. Declaring a TypeScript interface for
- * the body asserts nothing at runtime, so without these checks a wrong-shaped
- * value is carried all the way into terminal output, a written file, or an i18n
- * bucket.
+ * the body asserts nothing at runtime.
  *
- * Follows the contract `sanitizePullKeysResponse` sets for the TMS: reject
- * rather than coerce, and name the offending type so the endpoint is
- * diagnosable.
+ * The policy matches `sanitizePullKeysResponse`: reject rather than coerce, and
+ * name the offending type so the endpoint is diagnosable.
  */
 
 function describe(value: unknown): string {
@@ -24,10 +21,9 @@ function describe(value: unknown): string {
 /**
  * Require `body` to be `{ [field]: Array<object> }` and return that array.
  *
- * The string case is the one that mattered most in practice: a string has a
- * truthy `.length`, so a `!body[field]` guard followed by a length comparison
- * passed, `[0]` yielded `undefined`, and `undefined` was printed as the
- * translation at exit 0.
+ * A string is the case a truthiness-plus-length guard cannot catch: it has a
+ * truthy `.length` but indexing it yields characters rather than items, so the
+ * array-ness has to be tested explicitly.
  */
 export function requireItemArray(
   body: unknown,

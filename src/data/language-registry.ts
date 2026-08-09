@@ -45,8 +45,7 @@ export interface LanguageEntry {
  *
  * `LanguageEntry`'s fields are `readonly` because the accessors below hand out
  * these very objects: a caller mutating one would change the registry for the
- * whole process, which the generated `as const` tuple forbids but a widened
- * element type would have silently permitted.
+ * whole process.
  */
 const ENTRIES: readonly LanguageEntry[] = GENERATED_ENTRIES;
 

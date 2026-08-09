@@ -71,11 +71,11 @@ function isCorruptionError(error: unknown): boolean {
  * `PRAGMA user_version` on fresh DBs and checked on every open. Bumping
  * this number means "future callers will read a DB laid out differently."
  *
- * Version 2 marks a change in how translation cache keys are computed. Version 3
- * adds the resolved API endpoint to the translation, write, and correct keys, so
- * all three namespaces changed. Opening an older DB drops the rows whose keys can
- * no longer be reached and leaves every other namespace in place. The table layout
- * is identical in all versions, so nothing is migrated.
+ * The bumps so far changed how the translation, write and correct cache keys are
+ * computed — version 3 adds the resolved API endpoint to all three. Opening an
+ * older DB drops the rows whose keys can no longer be reached and leaves every
+ * other namespace in place. The table layout is identical in all versions, so
+ * nothing is migrated.
  */
 const CACHE_SCHEMA_VERSION = 3;
 
@@ -185,8 +185,8 @@ export class CacheService {
   private openDatabase(dbPath: string): void {
     const dir = path.dirname(dbPath);
     // Unconditional: a recursive mkdir does not fail on a directory that already
-    // exists, and the existsSync it replaces left a window for one to appear
-    // between the check and the create.
+    // exists, and an existence check first would leave a window for one to
+    // appear between the check and the create.
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     warnOnWritableDirectory(dir);
     this.db = new DatabaseSync(dbPath);
@@ -262,8 +262,7 @@ export class CacheService {
       // size budget and `cache stats` until its TTL expires. Dropping them is
       // also the point: a row poisoned by a run against a custom endpoint must
       // not survive the upgrade that stops it happening again. Other namespaces
-      // (glossary listings, language lists) are unaffected and stay. A fresh DB
-      // has no rows, so this is a no-op on first open.
+      // (glossary listings, language lists) are unaffected and stay.
       this.db.exec(
         "DELETE FROM cache WHERE key LIKE 'translation:%' OR key LIKE 'write:%' OR key LIKE 'correct:%'"
       );
@@ -284,9 +283,6 @@ export class CacheService {
     return row.total;
   }
 
-  /**
-   * Get value from cache
-   */
   get(key: string): unknown;
   get<T>(key: string, guard: (data: unknown) => data is T): T | null;
   get<T>(key: string, guard?: (data: unknown) => data is T): T | null {
@@ -294,7 +290,6 @@ export class CacheService {
       return null;
     }
 
-    // Clean up expired entries first
     this.cleanupExpired();
 
     const stmt = this.db.prepare(
@@ -306,9 +301,7 @@ export class CacheService {
       return null;
     }
 
-    // Check if entry is expired
     if (this.ttl > 0 && Date.now() - row.timestamp > this.ttl) {
-      // Delete expired entry
       this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
       return null;
     }
@@ -358,10 +351,8 @@ export class CacheService {
       return;
     }
 
-    // Clean up expired entries
     this.cleanupExpired();
 
-    // Check if key already exists and get its size
     const existingStmt = this.db.prepare(
       'SELECT size FROM cache WHERE key = ?'
     );
@@ -382,9 +373,6 @@ export class CacheService {
     this.db.exec('DELETE FROM cache');
   }
 
-  /**
-   * Get cache statistics
-   */
   stats(): CacheStats {
     const stmt = this.db.prepare(`
       SELECT COUNT(*) as count, COALESCE(SUM(size), 0) as total
@@ -400,23 +388,14 @@ export class CacheService {
     };
   }
 
-  /**
-   * Enable cache
-   */
   enable(): void {
     this.enabled = true;
   }
 
-  /**
-   * Disable cache
-   */
   disable(): void {
     this.enabled = false;
   }
 
-  /**
-   * Set maximum cache size
-   */
   setMaxSize(maxSize: number): void {
     if (maxSize < 0) {
       throw new ConfigError('Max size must be positive');
@@ -424,9 +403,6 @@ export class CacheService {
     this.maxSize = maxSize;
   }
 
-  /**
-   * Close database connection
-   */
   close(): void {
     if (!this.isClosed) {
       this.db.close();

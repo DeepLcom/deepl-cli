@@ -141,8 +141,6 @@ function isResponseTooLarge(error: AxiosError): boolean {
  * recommended variant for retry-storm dampening: it removes the fixed
  * lower bound of "equal jitter" entirely, so concurrent clients that
  * all 429 simultaneously see maximum decorrelation on the next attempt.
- * Exported for unit testing; the caller pulls the randomized value
- * and passes it straight to `sleep()`.
  */
 export function computeBackoffWithJitter(attempt: number): number {
   const cap = Math.min(
@@ -171,8 +169,7 @@ export class HttpClient {
 
   /**
    * Standard NO_PROXY matching: `*` bypasses everything, a leading dot or `*.`
-   * matches subdomains, and an entry may carry a port. Without this a corporate
-   * HTTPS_PROXY was applied even to a localhost endpoint.
+   * matches subdomains, and an entry may carry a port.
    */
   private static isProxyBypassed(targetUrl: string): boolean {
     const noProxy = process.env['NO_PROXY'] ?? process.env['no_proxy'];
@@ -314,13 +311,11 @@ export class HttpClient {
     const proxyConfig = options.proxy ?? HttpClient.parseProxyFromEnv(baseURL);
 
     if (proxyConfig) {
-      // SECURITY: a plain-http proxy sitting in front of an https: API
-      // endpoint is a MITM footgun. axios tunnels via CONNECT so TLS is
-      // nominally end-to-end, but a misconfigured or compromised proxy
-      // env var routes every DeepL call — including the Authorization
-      // header — through attacker infrastructure. Warn loud at startup;
-      // don't refuse the connection (users with legitimate corporate
-      // http-only proxies need the escape hatch).
+      // SECURITY: axios tunnels via CONNECT so TLS is nominally end-to-end,
+      // but a plain-http proxy in front of an https: endpoint is a MITM
+      // footgun — a compromised one that terminates TLS sees every DeepL call,
+      // Authorization header included. Warn rather than refuse: users with
+      // legitimate corporate http-only proxies need the escape hatch.
       if (proxyConfig.protocol === 'http' && baseURL.startsWith('https:')) {
         Logger.warn(
           `Warning: routing HTTPS traffic to ${baseURL} via HTTP proxy ${proxyConfig.host}:${proxyConfig.port}. ` +
@@ -604,8 +599,6 @@ export class HttpClient {
       // user-facing error strings. Defense-in-depth against a malicious or
       // buggy server scribbling ANSI escape codes / control chars on the
       // user's terminal, matching the sanitization in tms-client.ts.
-      // Coalesce to '' before sanitizing — some axios error shapes have no
-      // `.message` field, and sanitizeForTerminal expects a string.
       const message = sanitizeForTerminal(
         responseData?.message ?? error.message ?? ''
       );
@@ -651,12 +644,9 @@ export class HttpClient {
           // body was read — cut off mid-body, or a body the transport could
           // not decode. The status is what decides it: the axios code varies
           // with how the peer failed (ERR_BAD_RESPONSE for an aborted stream,
-          // a socket or zlib code otherwise), while the mere presence of a
-          // response used to send all of these to `ValidationError`, telling
-          // the operator to check input that was never the problem and
-          // charging them exit 6 for a transport failure. Deadline aborts are
-          // restated before classification (see `makeRequest`), so what
-          // arrives here is the peer's doing.
+          // a socket or zlib code otherwise). Deadline aborts are restated
+          // before classification (see `makeRequest`), so what arrives here is
+          // the peer's doing.
           if (status !== undefined && status >= 200 && status < 300) {
             return new NetworkError(
               `Network error: the API answered HTTP ${status} but its response body did not arrive intact: ${message}${traceIdSuffix}`

@@ -8,7 +8,6 @@ import { ValidationError } from '../utils/errors.js';
 
 /**
  * Raw API response from DeepL v3 glossary endpoints
- * This matches the actual API response structure
  */
 export interface GlossaryApiResponse {
   glossary_id: string;
@@ -48,7 +47,6 @@ export function normalizeGlossaryInfo(
   options: { warnOnEmpty?: boolean } = {}
 ): GlossaryInfo {
   const { warnOnEmpty = true } = options;
-  // Extract unique source and target languages from dictionaries
   const sourceLangs = new Set<Language>();
   const targetLangs = new Set<Language>();
 
@@ -100,7 +98,6 @@ export function getTargetLang(
   glossary: GlossaryInfo,
   targetLang?: Language
 ): Language {
-  // If specified, validate it exists
   if (targetLang) {
     if (!glossary.target_langs.includes(targetLang)) {
       throw new ValidationError(

@@ -369,12 +369,6 @@ export class TranslationClient extends HttpClient {
   }
 
   /**
-   * Lists languages via GET /v3/languages (v2 is deprecated). One response
-   * carries both roles as usable_as_source/usable_as_target flags, filtered
-   * here to preserve the per-type contract. Formality support comes from the
-   * per-language features matrix, which is what v2's supports_formality became.
-   */
-  /**
    * The raw translate_text language list, fetched at most once per client. The
    * request does not vary by role and both roles are filtered out of the one
    * payload, so a caller asking for both costs a single request. A failed fetch
@@ -394,6 +388,12 @@ export class TranslationClient extends HttpClient {
     return this.translateLanguages;
   }
 
+  /**
+   * Lists languages via GET /v3/languages (v2 is deprecated). One response
+   * carries both roles as usable_as_source/usable_as_target flags, filtered
+   * here to preserve the per-type contract. Formality support comes from the
+   * per-language features matrix, which is what v2's supports_formality became.
+   */
   async getSupportedLanguages(
     type: 'source' | 'target'
   ): Promise<LanguageInfo[]> {

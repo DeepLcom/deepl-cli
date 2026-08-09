@@ -145,11 +145,10 @@ export class ConfigService {
   }
 
   /**
-   * Get the entire configuration
-   * Returns a readonly reference to prevent accidental mutations
+   * A readonly reference to the live configuration.
    *
-   * IMPORTANT: Do not mutate the returned config object.
-   * If you need to modify the config, use set() method instead.
+   * IMPORTANT: Do not mutate the returned object. To change a setting, use
+   * `set()`, which validates the value and persists it.
    */
   get(): Readonly<DeepLConfig> {
     return this.config;
@@ -208,9 +207,6 @@ export class ConfigService {
     return current as T;
   }
 
-  /**
-   * Check if a configuration key exists
-   */
   has(key: string): boolean {
     const keys = key.split('.');
     let current: unknown = this.config;
@@ -231,9 +227,6 @@ export class ConfigService {
     return current !== undefined;
   }
 
-  /**
-   * Delete a configuration value
-   */
   delete(key: string): void {
     const keys = key.split('.');
     this.validateSegments(keys);
@@ -272,9 +265,6 @@ export class ConfigService {
     }
   }
 
-  /**
-   * Get default configuration
-   */
   static getDefaults(): DeepLConfig {
     return {
       auth: {
@@ -311,9 +301,6 @@ export class ConfigService {
     };
   }
 
-  /**
-   * Load configuration from disk
-   */
   private load(): DeepLConfig {
     try {
       if (fs.existsSync(this.configPath)) {
@@ -383,9 +370,6 @@ export class ConfigService {
     }
   }
 
-  /**
-   * Save configuration to disk
-   */
   private save(): void {
     // Unpredictable name, exclusive create. This file holds the API key in
     // plaintext, and at a guessable path a planted symlink would redirect the
@@ -394,8 +378,8 @@ export class ConfigService {
     const tmpPath = `${this.configPath}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
     try {
       // Unconditional: a recursive mkdir does not fail on a directory that
-      // already exists, and the existsSync it replaces left a window for one to
-      // appear between the check and the create.
+      // already exists, and an existence check first would leave a window for
+      // one to appear between the check and the create.
       fs.mkdirSync(path.dirname(this.configPath), {
         recursive: true,
         mode: 0o700,
@@ -477,7 +461,6 @@ export class ConfigService {
 
     const path = keys.join('.');
 
-    // Validate specific paths
     if (path === 'defaults.sourceLang' && value !== undefined) {
       this.validateLanguage(value as string, path, true);
     }
@@ -519,7 +502,6 @@ export class ConfigService {
       }
     }
 
-    // Validate boolean fields
     if (
       BOOLEAN_CONFIG_PATHS.includes(
         path as (typeof BOOLEAN_CONFIG_PATHS)[number]
@@ -536,8 +518,7 @@ export class ConfigService {
    * Validate language code. Codes the bundled snapshot does not list are
    * accepted when they are shaped like a language tag, because GET /v3/languages
    * is the authority on which languages exist and the snapshot can lag it.
-   */
-  /**
+   *
    * @param announceUnknown - warn when the code is well-formed but absent from
    *   the bundled snapshot. Only the write path announces: every command loads
    *   the config, and a note on each invocation is noise, not guidance.
@@ -568,9 +549,6 @@ export class ConfigService {
     }
   }
 
-  /**
-   * Validate formality value
-   */
   private validateFormality(formality: string, key?: string): void {
     if (!VALID_FORMALITY.includes(formality as Formality)) {
       const context = key ? ` for "${key}"` : '';
@@ -580,9 +558,6 @@ export class ConfigService {
     }
   }
 
-  /**
-   * Validate output format
-   */
   private validateOutputFormat(format: string, key?: string): void {
     if (!VALID_OUTPUT_FORMATS.includes(format as OutputFormat)) {
       const context = key ? ` for "${key}"` : '';
