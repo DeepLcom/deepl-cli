@@ -803,3 +803,85 @@ describe('PoFormatParser — entries with no blank line between them', () => {
     ]);
   });
 });
+
+describe('PoFormatParser — carrying a wrapped plural form forward', () => {
+  // gettext writes any msgstr[N] over 74 characters as `msgstr[N] ""` plus
+  // continuation lines. A carried plural entry supplies no `plural_forms`
+  // metadata, so reconstruct must keep the form the file already holds — but it
+  // re-emitted only the FIRST line and swallowed the continuations, leaving
+  // `msgstr[N] ""`. The reviewed translation was erased by a run whose only
+  // reason to rewrite the entry was a sibling key.
+  const LONG_ES =
+    'Esta es una traduccion deliberadamente larga para que gettext la envuelva en varias lineas.';
+
+  const CATALOG = [
+    'msgid ""',
+    'msgstr ""',
+    '"Content-Type: text/plain; charset=UTF-8\\n"',
+    '"Plural-Forms: nplurals=2; plural=(n != 1);\\n"',
+    '',
+    'msgid "One %d file"',
+    'msgid_plural "%d files"',
+    'msgstr[0] "Un archivo"',
+    'msgstr[1] ""',
+    `"${LONG_ES}"`,
+    '',
+    'msgid "Hello"',
+    'msgstr "Hola"',
+    '',
+  ].join('\n');
+
+  const parser = new PoFormatParser();
+
+  it('reads the wrapped form as its full value', () => {
+    const entries = parser.extract(CATALOG);
+    const plural = entries.find((e) => e.key === 'One %d file');
+    expect(
+      (plural?.metadata?.['plural_forms'] as Record<string, string>)?.[
+        'msgstr[1]'
+      ]
+    ).toBe(LONG_ES);
+  });
+
+  it('keeps every continuation line when the entry is carried, not retranslated', () => {
+    // The carry shape: the plural entry arrives with its plural_forms stripped
+    // (what `withoutPluralForms` produces), so the file's own forms must stand.
+    const written = parser.reconstruct(CATALOG, [
+      {
+        key: 'One %d file',
+        value: 'One %d file',
+        translation: 'Un archivo',
+        metadata: { msgid_plural: '%d files' },
+      },
+      { key: 'Hello', value: 'Hello', translation: 'Hola' },
+    ]);
+
+    expect(written).toContain(LONG_ES);
+    const reread = parser.extract(written);
+    const plural = reread.find((e) => e.key === 'One %d file');
+    expect(
+      (plural?.metadata?.['plural_forms'] as Record<string, string>)?.[
+        'msgstr[1]'
+      ]
+    ).toBe(LONG_ES);
+  });
+
+  it('still replaces a wrapped form when this run has a new translation for it', () => {
+    const fresh = 'Traduccion nueva y tambien bastante larga para envolverse.';
+    const written = parser.reconstruct(CATALOG, [
+      {
+        key: 'One %d file',
+        value: 'One %d file',
+        translation: 'Un archivo',
+        metadata: {
+          msgid_plural: '%d files',
+          plural_forms: { 'msgstr[0]': 'Un archivo', 'msgstr[1]': fresh },
+        },
+      },
+      { key: 'Hello', value: 'Hello', translation: 'Hola' },
+    ]);
+
+    expect(written).toContain(fresh);
+    expect(written).not.toContain(LONG_ES);
+  });
+});

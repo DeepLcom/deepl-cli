@@ -158,6 +158,38 @@ describe('sync with a plural entry carried forward', () => {
       expect(written).toContain('msgstr "[ES] Bye"');
     });
 
+    it('keeps a wrapped (continuation-line) reviewed form while translating a sibling', async () => {
+      await establishProject();
+
+      // gettext writes any msgstr[N] over 74 characters as `msgstr[N] ""` plus
+      // continuation lines. reconstruct re-emitted only the first of those
+      // lines for a form it was keeping, so the reviewed text became "".
+      const long =
+        'Esta es una traduccion deliberadamente larga para que gettext la envuelva.';
+      fs.writeFileSync(
+        targetPath(),
+        fs
+          .readFileSync(targetPath(), 'utf-8')
+          .replace('msgstr[1] "%d archivos"', `msgstr[1] ""\n"${long}"`),
+        'utf-8'
+      );
+
+      fs.writeFileSync(sourcePath(), PO_V2, 'utf-8');
+      const sent: string[] = [];
+      replyEchoing(sent);
+      const second = await harness.syncService.sync(
+        await loadSyncConfig(tmpDir)
+      );
+
+      expect(second.success).toBe(true);
+      expect(sent).toEqual(['Bye']);
+
+      const written = fs.readFileSync(targetPath(), 'utf-8');
+      expect(written).toContain(long);
+      expect(written).toContain('msgstr[0] "Un archivo"');
+      expect(written).not.toMatch(/msgstr\[1] ""\s*\n\s*(?:msgid|$)/);
+    });
+
     it('still rewrites the forms when the plural source itself changed', async () => {
       await establishProject();
 

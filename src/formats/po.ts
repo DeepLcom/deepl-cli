@@ -665,7 +665,14 @@ export class PoFormatParser implements FormatParser {
             result.push(el);
           }
           inMsgstr = false;
-          inMsgstrPlural = true;
+          // Only a form this run is REPLACING swallows its continuation lines,
+          // because `quoteLong` has just re-emitted the whole value. A form
+          // being kept — a carried plural entry supplies no `plural_forms`, so
+          // the file's own forms stand — must keep its continuations too:
+          // gettext writes any form over 74 characters as `msgstr[N] ""` plus
+          // continuations, so dropping them left the empty first line as the
+          // whole translation.
+          inMsgstrPlural = pluralVal !== undefined;
           continue;
         }
 
