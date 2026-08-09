@@ -70,13 +70,26 @@ export function unresolvedPlaceholders(
   text: string,
   preservationMap: Map<string, string>
 ): string[] {
+  // The preservation passes run in sequence over already-substituted text, so
+  // a span preserved later can hold an earlier pass's token (a fence token
+  // inside an inline code span, a code token inside a brace-shaped variable).
+  // Such an earlier token is legitimately absent from the engine's output: it
+  // survives inside the stored value of the later token. Scanning in reverse
+  // insertion order lets each token count the values already found intact.
   const missing: string[] = [];
-  for (const [placeholder, original] of preservationMap.entries()) {
-    if (!text.includes(placeholder)) {
+  const survivingValues: string[] = [];
+  const entries = [...preservationMap.entries()].reverse();
+  for (const [placeholder, original] of entries) {
+    if (
+      text.includes(placeholder) ||
+      survivingValues.some((value) => value.includes(placeholder))
+    ) {
+      survivingValues.push(original);
+    } else {
       missing.push(original);
     }
   }
-  return missing;
+  return missing.reverse();
 }
 
 /**
@@ -121,7 +134,13 @@ export function restorePlaceholders(
   preservationMap: Map<string, string>
 ): string {
   let restored = text;
-  for (const [placeholder, original] of preservationMap.entries()) {
+  // Reverse insertion order: a span preserved later can hold an earlier
+  // token, so the later token must be expanded first for the earlier one to
+  // be visible at all. A stored value can only contain tokens preserved
+  // before it — the value was captured from text as it stood then — so one
+  // pass in this order expands every level of nesting.
+  const entries = [...preservationMap.entries()].reverse();
+  for (const [placeholder, original] of entries) {
     // Single pass per placeholder: `original` may itself contain the
     // placeholder token (a locale value shaped like `{__VAR_0__}`), so any
     // loop that re-scans the output would never terminate.

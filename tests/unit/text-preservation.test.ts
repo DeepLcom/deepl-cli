@@ -2,6 +2,7 @@ import {
   preserveCodeBlocks,
   preserveVariables,
   restorePlaceholders,
+  unresolvedPlaceholders,
 } from '../../src/utils/text-preservation.js';
 
 describe('text-preservation', () => {
@@ -214,6 +215,54 @@ describe('text-preservation', () => {
       const restored = restorePlaceholders(processed, map);
 
       expect(restored).toBe(original);
+    });
+  });
+
+  describe('nested preservation (a later span wrapping an earlier token)', () => {
+    // FC_SEED=2139537717 FC_PATH="383:2:3:10:15:15:14" counterexample: the
+    // fence pass substitutes __CODE_0__, then the inline pass preserves
+    // "` __CODE_0__ `" as __CODE_1__, so __CODE_1__'s stored value carries an
+    // earlier token.
+    const OVERLAP = '` ```\nfenced block\n``` `inline code`';
+
+    it('round-trips a fence overlapping an inline code span byte for byte', () => {
+      const map = new Map<string, string>();
+      const processed = preserveVariables(
+        preserveCodeBlocks(OVERLAP, map),
+        map
+      );
+
+      expect(restorePlaceholders(processed, map)).toBe(OVERLAP);
+    });
+
+    it('round-trips a variable-shaped span wrapping a preserved code token', () => {
+      const original = 'set {`x`} here';
+      const map = new Map<string, string>();
+      const processed = preserveVariables(
+        preserveCodeBlocks(original, map),
+        map
+      );
+
+      expect(restorePlaceholders(processed, map)).toBe(original);
+    });
+
+    it('does not report a token that survives inside a later resolved span', () => {
+      const map = new Map<string, string>();
+      const processed = preserveVariables(
+        preserveCodeBlocks(OVERLAP, map),
+        map
+      );
+
+      expect(unresolvedPlaceholders(processed, map)).toEqual([]);
+    });
+
+    it('reports both spans lost when the outer token is gone', () => {
+      const map = new Map<string, string>();
+      preserveVariables(preserveCodeBlocks(OVERLAP, map), map);
+
+      const missing = unresolvedPlaceholders('the engine ate it all', map);
+
+      expect(missing).toEqual(['```\nfenced block\n```', '` __CODE_0__ `']);
     });
   });
 });
