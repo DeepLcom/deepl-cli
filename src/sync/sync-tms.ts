@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { resolveSyncLimits } from './types.js';
 import * as path from 'path';
 import {
   FormatKeyCollisionError,
@@ -287,7 +288,12 @@ export async function pullTranslations(
       // source template, which would rebuild it from source text and discard
       // every local translation the export does not carry. Only a file that is
       // genuinely not there yet takes that fallback.
-      const read = await readTargetFile(parser, targetAbsPath, locale);
+      const read = await readTargetFile(
+        parser,
+        targetAbsPath,
+        locale,
+        resolveSyncLimits(config).max_file_bytes
+      );
       if (read.state === 'unusable') {
         Logger.warn(`Skipping ${targetRelPath}: ${read.reason}`);
         skipped.push({

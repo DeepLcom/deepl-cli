@@ -27,7 +27,8 @@ export type TargetFileRead =
 export async function readTargetFile(
   parser: FormatParser,
   absPath: string,
-  locale?: string
+  locale?: string,
+  maxBytes?: number
 ): Promise<TargetFileRead> {
   let content: string;
   try {
@@ -41,6 +42,24 @@ export async function readTargetFile(
     }
     return { state: 'unusable', reason: describe(err), error: err };
   }
+  // `max_file_bytes` was enforced on SOURCE files only, so a target — the file a
+  // hostile or corrupt checkout actually controls — was parsed and rebuilt at any
+  // size. Reported as `unusable` rather than skipped, so the locale is refused
+  // instead of being treated as empty, re-translated in full and overwritten.
+  //
+  // Checked on the content rather than through a separate `stat`: the cap's
+  // purpose is to bound the parse, the reconstruct and the comparison work that
+  // follow, which is where the cost was (a target with one long comment block
+  // took 47 seconds). Node's own string-length ceiling bounds the read itself,
+  // and it surfaces as a catchable error above.
+  if (maxBytes !== undefined && Buffer.byteLength(content, 'utf8') > maxBytes) {
+    return {
+      state: 'unusable',
+      reason: `file size ${Buffer.byteLength(content, 'utf8')} bytes exceeds sync.limits.max_file_bytes (${maxBytes})`,
+      error: undefined,
+    };
+  }
+
   // A file holding only whitespace has no translations to lose, so `unusable` —
   // whose whole point is that the file holds the only copy of this locale's work
   // — does not describe it. Parsing it would fail for most formats

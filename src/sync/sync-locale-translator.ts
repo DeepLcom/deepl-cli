@@ -7,6 +7,7 @@ import type { TranslationResult } from '../api/translation-client.js';
 import type { Language } from '../types/common.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncBucketConfig, SyncDiff, SyncLockEntry } from './types.js';
+import { resolveSyncLimits } from './types.js';
 import type { KeyContext } from './sync-context.js';
 import { sectionContextKey, sectionToContext } from './sync-context.js';
 import {
@@ -1027,7 +1028,8 @@ export class LocaleTranslator {
     const templateRead = await readTargetFile(
       parser,
       targetAbsPath,
-      isMultiLocale ? locale : undefined
+      isMultiLocale ? locale : undefined,
+      resolveSyncLimits(config).max_file_bytes
     );
     if (templateRead.state === 'unusable') {
       throw new Error(

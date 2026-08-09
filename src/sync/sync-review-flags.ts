@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { resolveSyncLimits } from './types.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
 import type { WalkedBucketFile } from './sync-bucket-walker.js';
@@ -45,7 +46,12 @@ export async function findNeedsReview(
     );
     const targetAbsPath = path.join(config.projectRoot, targetRelPath);
     assertPathWithinRoot(targetAbsPath, config.projectRoot);
-    const read = await readTargetFile(walked.parser, targetAbsPath, locale);
+    const read = await readTargetFile(
+      walked.parser,
+      targetAbsPath,
+      locale,
+      resolveSyncLimits(config).max_file_bytes
+    );
     if (read.state !== 'usable') continue;
 
     const keys = extractNeedsReview.call(walked.parser, read.content, locale);

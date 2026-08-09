@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { resolveSyncLimits } from './types.js';
 import { computeDiff } from './sync-differ.js';
 import {
   mapWithConcurrency,
@@ -380,7 +381,12 @@ export async function processBucket(
       );
       const targetAbsPath = path.join(config.projectRoot, targetRelPath);
       assertPathWithinRoot(targetAbsPath, config.projectRoot);
-      const read = await readTargetFile(parser, targetAbsPath);
+      const read = await readTargetFile(
+        parser,
+        targetAbsPath,
+        undefined,
+        resolveSyncLimits(config).max_file_bytes
+      );
       if (read.state === 'unusable') {
         unusableTargets.set(
           locale,

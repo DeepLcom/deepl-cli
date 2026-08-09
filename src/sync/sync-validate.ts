@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { resolveSyncLimits } from './types.js';
 import type { FormatRegistry } from '../formats/index.js';
 import {
   validateBatch,
@@ -66,7 +67,12 @@ export async function validateTranslations(
         const targetAbsPath = path.join(config.projectRoot, targetRelPath);
         assertPathWithinRoot(targetAbsPath, config.projectRoot);
 
-        const read = await readTargetFile(parser, targetAbsPath);
+        const read = await readTargetFile(
+          parser,
+          targetAbsPath,
+          undefined,
+          resolveSyncLimits(config).max_file_bytes
+        );
         if (read.state === 'absent') {
           // A locale that has never been synced has nothing to validate.
           continue;

@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { resolveSyncLimits } from './types.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncLockEntry } from './types.js';
 import { getOwnMember } from '../utils/own-members.js';
@@ -104,7 +105,12 @@ export async function findTargetGaps(
       );
       const targetAbsPath = path.join(config.projectRoot, targetRelPath);
       assertPathWithinRoot(targetAbsPath, config.projectRoot);
-      const read = await readTargetFile(walked.parser, targetAbsPath);
+      const read = await readTargetFile(
+        walked.parser,
+        targetAbsPath,
+        undefined,
+        resolveSyncLimits(config).max_file_bytes
+      );
       if (read.state === 'usable') held = read.translations;
       if (read.state === 'unusable') unusable = read.reason;
     }
