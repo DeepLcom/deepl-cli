@@ -1551,6 +1551,8 @@ Both commands print the resolved destination origin on success, in text and JSON
 
 **JSON success envelope (stable within a major version):** `{ "ok": true, "pulled": <n>, "skipped": [...], "server": "<origin>" }`
 
+Each `skipped` entry carries a `reason`: `target_missing`, `no_matches`, `pipe_pluralization`, `key_collision`, `unusable_target`, `plural_entry`, or `shared_target` — the last for a target file another sync configuration's `.deepl-sync.lock` accounts for keys in, which is left untouched rather than rebuilt from this configuration's keys alone. See [docs/SYNC.md#two-configurations-writing-one-file](./SYNC.md#two-configurations-writing-one-file).
+
 #### Examples
 
 **Basic sync:**

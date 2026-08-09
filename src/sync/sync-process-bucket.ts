@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { resolveSyncLimits } from './types.js';
+import { LOCK_FILE_NAME, resolveSyncLimits } from './types.js';
 import { computeDiff } from './sync-differ.js';
 import {
   mapWithConcurrency,
@@ -8,6 +8,10 @@ import {
 import { ValidationError } from '../utils/errors.js';
 import { resolveTargetPath, assertPathWithinRoot } from './sync-utils.js';
 import { computeSourceHash, ensureFileEntries } from './sync-lock.js';
+import {
+  findForeignKeyOwner,
+  sharedTargetMessage,
+} from './sync-foreign-owner.js';
 import { getOwnMember, setOwnMember } from '../utils/own-members.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncLockFile, SyncLockTranslation } from './types.js';
@@ -366,6 +370,19 @@ export async function processBucket(
    * result over the copy nobody managed to read.
    */
   const unusableTargets = new Map<string, string>();
+  /**
+   * Locales whose target file holds keys another sync configuration's lockfile
+   * accounts for, with the explanation. Rewriting such a file emits only this
+   * configuration's keys, so the other configuration's translations would be
+   * deleted — and its next run would delete this one's.
+   *
+   * Judged before anything is translated, so a refusal costs nothing. Only
+   * single-locale targets can collide this way: a multi-locale (bilingual)
+   * parser writes back to the source file, which is this configuration's own.
+   */
+  const sharedTargets = new Map<string, string>();
+  const accountedKeys = new Set(diffs.map((diff) => diff.key));
+  const ownLockPath = path.join(config.projectRoot, LOCK_FILE_NAME);
   for (const locale of locales) {
     if (isMultiLocale) {
       existingTargetEntries.set(
@@ -398,6 +415,23 @@ export async function processBucket(
         locale,
         read.state === 'usable' ? read.translations : new Map()
       );
+      if (read.state === 'usable') {
+        const unaccountedFor = [...read.translations.keys()].filter(
+          (key) => !accountedKeys.has(key)
+        );
+        const owner = await findForeignKeyOwner({
+          targetAbsPath,
+          ownLockPath,
+          locale,
+          keys: unaccountedFor,
+        });
+        if (owner) {
+          sharedTargets.set(
+            locale,
+            sharedTargetMessage(targetRelPath, locale, owner)
+          );
+        }
+      }
     }
   }
 
@@ -428,6 +462,8 @@ export async function processBucket(
       try {
         const unusable = unusableTargets.get(locale);
         if (unusable) throw new Error(unusable);
+        const shared = sharedTargets.get(locale);
+        if (shared) throw new Error(shared);
         const result = await localeTranslator.translate({
           locale,
           relPath,

@@ -21,6 +21,10 @@ import {
   isPluralEntry,
 } from './sync-utils.js';
 import { LOCK_FILE_NAME } from './types.js';
+import {
+  findForeignKeyOwner,
+  sharedTargetMessage,
+} from './sync-foreign-owner.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { mapWithConcurrency, PUSH_CONCURRENCY } from '../utils/concurrency.js';
 import {
@@ -45,7 +49,8 @@ export type SkipReason =
   | 'unusable_target'
   | 'untranslated'
   | 'needs_review'
-  | 'plural_entry';
+  | 'plural_entry'
+  | 'shared_target';
 
 export interface SkippedRecord {
   file: string;
@@ -75,6 +80,8 @@ const SKIP_REASON_LABELS: Record<SkipReason, string> = {
   needs_review: 'translation marked as needing review (not pushed)',
   plural_entry:
     'plural entry (one exported string cannot fill its forms; left as it stands)',
+  shared_target:
+    'target file also written by another sync configuration (left untouched)',
 };
 
 /**
@@ -310,6 +317,34 @@ export async function pullTranslations(
         read.state === 'usable' ? read.content : sourceContent;
       const existingTargetEntries =
         read.state === 'usable' ? read.translations : new Map<string, string>();
+
+      // A pull rebuilds the file from this configuration's own source keys, so a
+      // target another configuration also writes loses that configuration's keys
+      // here exactly as `deepl sync` would. Judged from its lockfile, which is
+      // the only record of what it accounts for.
+      if (read.state === 'usable' && !isMultiLocale) {
+        const accounted = new Set(sourceEntries.map((entry) => entry.key));
+        for (const key of Object.keys(
+          getOwnMember(lockFile.entries, relPath) ?? {}
+        )) {
+          accounted.add(key);
+        }
+        const owner = await findForeignKeyOwner({
+          targetAbsPath,
+          ownLockPath: lockPath,
+          locale,
+          keys: [...existingTargetEntries.keys()].filter(
+            (key) => !accounted.has(key)
+          ),
+        });
+        if (owner) {
+          Logger.warn(
+            `Skipping ${targetRelPath}: ${sharedTargetMessage(targetRelPath, locale, owner, 'deepl sync pull')}`
+          );
+          skipped.push({ file: relPath, locale, reason: 'shared_target' });
+          continue;
+        }
+      }
 
       // The export is one string per key, which cannot fill a plural entry's
       // forms — gettext's msgstr[N], Android's <plurals> items. Applying it

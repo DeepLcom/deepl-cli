@@ -81,6 +81,18 @@ Check the file into git before re-running if another tool or a merge wrote it.
 
 It warns rather than refusing because by that point the target files are written and their translations billed; declining to record them would leave the next run to translate and bill all of them again.
 
+### Two configurations writing one file
+
+A rewrite emits exactly the keys its own configuration defines, so a target file has one owner. Two configurations can end up sharing one anyway when their project roots nest — a repository-level `.deepl-sync.yaml` and a package-level one whose `target_path_pattern` resolves into the same directory, or two config files in one directory used with `--sync-config`. Nothing about the process lock helps here: it is keyed on the project root, so nested configurations take different pidfiles, and even run strictly one after another they would delete each other's keys and re-translate them on every run — measured as a target alternating between the two key sets, at exit 0 throughout, with each run reporting success.
+
+A run that is about to delete keys from a target now looks for another sync configuration that accounts for them. The evidence is the other `.deepl-sync.lock`: a configuration writes only inside its own project root, so one that also writes this file is rooted at one of the file's ancestor directories, and a match requires that its lockfile record those exact keys for the same locale. When it does, the file is left exactly as it stands:
+
+- `deepl sync` fails that locale — nothing written, nothing billed for it, the keys recorded `failed` so the next run retries them — and the run ends with exit code 12.
+- `deepl sync pull` skips that locale under the `shared_target` reason.
+
+Both name the other lockfile, the shared keys and the remedy: give each configuration its own target file, or merge them into one. Keys someone added to a locale file by hand are unaffected — no lockfile accounts for them, so they are still pruned with the usual warning. If the lockfile named is left over from a configuration that no longer writes the file, remove it.
+
+
 ## Supported File Formats
 
 | Format | Extensions | Used By |
@@ -1082,6 +1094,8 @@ Each target locale's approved dictionary is fetched exactly once per `sync pull`
 **Pull does not claim human review.** The export endpoint returns `{ "key": "value" }` with no per-entry review flag, so pulled entries are recorded with `status: translated` and **no** `review_status`, meaning "unknown". Earlier releases stamped `review_status: human_reviewed` on every pulled key, asserting a review the CLI had not verified and the response did not describe.
 
 **A plural entry is left as it stands.** The export carries one string per key, which cannot fill a plural entry's forms (gettext `msgstr[N]`, an Android `<plurals>` element). Such a key is skipped under the `plural_entry` reason, is not counted as pulled or replaced, and no lockfile entry is recorded for it — see [A plural entry carried forward](#a-plural-entry-carried-forward).
+
+**A target file another sync configuration also writes is left untouched.** A pull rebuilds the target from this configuration's own source keys, so it would delete any key the file holds that this configuration does not account for. When a `.deepl-sync.lock` above that file — belonging to another configuration — records those keys for the same locale, the locale is skipped under the `shared_target` reason with a warning naming that lockfile, nothing is written and nothing is recorded. See [Two configurations writing one file](#two-configurations-writing-one-file).
 
 **A target file that cannot be read is left untouched.** Pull reads the existing target file so it can keep translations the export does not carry. If that file cannot be opened, cannot be parsed, or cannot be keyed unambiguously, the locale is skipped with a warning naming the file and the reason, and the file is not written — under the `key_collision` reason when keys collide (see [Key separators and colliding keys](#key-separators-and-colliding-keys)), which has its own remediation, and `unusable_target` otherwise. Pull deliberately does not fall back to reconstructing it from the source file in either case: that would replace the whole file with just the keys the export happened to carry. Only a file that is genuinely not there yet takes that fallback. See [A target file that cannot be read](#a-target-file-that-cannot-be-read).
 
