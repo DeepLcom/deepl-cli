@@ -190,6 +190,126 @@ describe('PoFormatParser reconstruct', () => {
     expect(result).toContain('msgstr "Hallo"');
   });
 
+  it('should keep the fuzzy flag on an entry whose msgstr this run does not change', () => {
+    const template = ['#, fuzzy', 'msgid "greeting"', 'msgstr "Hallo"'].join(
+      '\n'
+    );
+
+    const entries: TranslatedEntry[] = [
+      { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+    ];
+
+    const result = parser.reconstruct(template, entries);
+
+    expect(result).toContain('#, fuzzy');
+    expect(result).toContain('msgstr "Hallo"');
+  });
+
+  it('should keep a multi-flag comment line verbatim when the msgstr is unchanged', () => {
+    const template = [
+      '#, fuzzy, python-format',
+      'msgid "count: %d"',
+      'msgstr "Anzahl: %d"',
+    ].join('\n');
+
+    const entries: TranslatedEntry[] = [
+      { key: 'count: %d', value: 'count: %d', translation: 'Anzahl: %d' },
+    ];
+
+    const result = parser.reconstruct(template, entries);
+
+    expect(result).toContain('#, fuzzy, python-format');
+  });
+
+  it('should keep the fuzzy flag when the unchanged msgstr is wrapped across continuation lines', () => {
+    const template = [
+      '#, fuzzy',
+      'msgid "greeting"',
+      'msgstr ""',
+      '"Hallo "',
+      '"Welt"',
+    ].join('\n');
+
+    const entries: TranslatedEntry[] = [
+      { key: 'greeting', value: 'Hello world', translation: 'Hallo Welt' },
+    ];
+
+    const result = parser.reconstruct(template, entries);
+
+    expect(result).toContain('#, fuzzy');
+    expect(result).toContain('msgstr "Hallo Welt"');
+  });
+
+  it('should keep the fuzzy flag on a plural entry whose forms are carried forward', () => {
+    const template = [
+      '#, fuzzy',
+      'msgid "One file"',
+      'msgid_plural "%d files"',
+      'msgstr[0] "Un archivo"',
+      'msgstr[1] "%d archivos"',
+    ].join('\n');
+
+    // A carried-forward entry travels without plural payloads, so the forms
+    // in the file are kept and the flag with them.
+    const entries: TranslatedEntry[] = [
+      { key: 'One file', value: 'One file', translation: 'Un archivo' },
+    ];
+
+    const result = parser.reconstruct(template, entries);
+
+    expect(result).toContain('#, fuzzy');
+    expect(result).toContain('msgstr[0] "Un archivo"');
+    expect(result).toContain('msgstr[1] "%d archivos"');
+  });
+
+  it('should strip the fuzzy flag from a plural entry rewritten with fresh forms', () => {
+    const template = [
+      '#, fuzzy',
+      'msgid "One file"',
+      'msgid_plural "%d files"',
+      'msgstr[0] "Un archivo"',
+      'msgstr[1] "%d archivos"',
+    ].join('\n');
+
+    const entries: TranslatedEntry[] = [
+      {
+        key: 'One file',
+        value: 'One file',
+        translation: 'Una ficha',
+        metadata: {
+          plural_forms: {
+            'msgstr[0]': 'Una ficha',
+            'msgstr[1]': '%d fichas',
+          },
+        },
+      },
+    ];
+
+    const result = parser.reconstruct(template, entries);
+
+    expect(result).not.toContain('fuzzy');
+    expect(result).toContain('msgstr[0] "Una ficha"');
+    expect(result).toContain('msgstr[1] "%d fichas"');
+  });
+
+  it('should write a catalog with no flags byte-identically when nothing changes', () => {
+    const template =
+      [
+        'msgid "greeting"',
+        'msgstr "Hallo"',
+        '',
+        'msgid "farewell"',
+        'msgstr "Tschuess"',
+      ].join('\n') + '\n';
+
+    const entries: TranslatedEntry[] = [
+      { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+      { key: 'farewell', value: 'Bye', translation: 'Tschuess' },
+    ];
+
+    expect(parser.reconstruct(template, entries)).toBe(template);
+  });
+
   it('should use continuation line format for long msgstr with newlines', () => {
     const template = ['msgid "long_message"', 'msgstr ""'].join('\n');
 

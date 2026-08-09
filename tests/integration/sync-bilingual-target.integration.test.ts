@@ -441,6 +441,46 @@ describe('sync paths that read a bilingual target file', () => {
       ).toBe(before);
     });
 
+    it('keeps the reviewer flag on a carried-forward key while translating a new one', async () => {
+      await syncedThenFlagged();
+      write(
+        tmpDir,
+        'locales/en/app.po',
+        PO_HEADER +
+          'msgid "Hello"\nmsgstr ""\n\nmsgid "Bye"\nmsgstr ""\n\nmsgid "Welcome"\nmsgstr ""\n'
+      );
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .times(2)
+        .reply(200, (_uri, body) => {
+          const parsed = new URLSearchParams(body as string);
+          return {
+            translations: parsed.getAll('text').map((t) => ({
+              text: `[es]${t}`,
+              detected_source_language: 'EN',
+              billed_characters: t.length,
+            })),
+          };
+        });
+
+      await harness.syncService.sync(await loadSyncConfig(tmpDir));
+
+      const written = fs.readFileSync(
+        path.join(tmpDir, 'locales/es/app.po'),
+        'utf-8'
+      );
+      expect(written).toContain('#, fuzzy\nmsgid "Bye"');
+      expect(written).toContain('msgstr "[es]Welcome"');
+
+      const status = await computeSyncStatus(
+        await loadSyncConfig(tmpDir),
+        harness.registry
+      );
+      expect(status.locales.find((l) => l.locale === 'es')!.needsReview).toBe(
+        1
+      );
+    });
+
     it('reports a project with no flags exactly as before', async () => {
       writeSyncConfig(tmpDir, {
         targetLocales: ['es'],

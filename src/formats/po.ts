@@ -495,6 +495,8 @@ export class PoFormatParser implements FormatParser {
       const entryLines: string[] = [];
       let entryMsgctxt: string | undefined;
       let entryMsgid = '';
+      let entryMsgstr: string | undefined;
+      const entryMsgstrPlural = new Map<number, string>();
       let target: ParseTarget | undefined;
 
       let backtrack = result.length - 1;
@@ -544,13 +546,16 @@ export class PoFormatParser implements FormatParser {
 
         const strPluralM = /^msgstr\[(\d+)]\s+(.*)$/.exec(el);
         if (strPluralM?.[1] && strPluralM[2] !== undefined) {
-          target = `msgstr[${parseInt(strPluralM[1], 10)}]`;
+          const idx = parseInt(strPluralM[1], 10);
+          entryMsgstrPlural.set(idx, unquote(strPluralM[2]));
+          target = `msgstr[${idx}]`;
           i++;
           continue;
         }
 
         const strM = /^msgstr\s+(.*)$/.exec(el);
         if (strM?.[1]) {
+          entryMsgstr = unquote(strM[1]);
           target = 'msgstr';
           i++;
           continue;
@@ -562,6 +567,14 @@ export class PoFormatParser implements FormatParser {
             entryMsgctxt = (entryMsgctxt ?? '') + continued;
           } else if (target === 'msgid') {
             entryMsgid += continued;
+          } else if (target === 'msgstr') {
+            entryMsgstr = (entryMsgstr ?? '') + continued;
+          } else if (target.startsWith('msgstr[')) {
+            const idx = parseInt(target.slice('msgstr['.length), 10);
+            entryMsgstrPlural.set(
+              idx,
+              (entryMsgstrPlural.get(idx) ?? '') + continued
+            );
           }
           i++;
           continue;
@@ -604,10 +617,26 @@ export class PoFormatParser implements FormatParser {
 
       emittedKeys.add(key);
 
+      const translation = translatedEntry.translation;
+      const pluralTranslations = translatedEntry.metadata?.['plural_forms'] as
+        Record<string, string> | undefined;
+
+      // The fuzzy flag describes the translation the entry holds, so it is
+      // stripped only when this run writes different content over it — the
+      // same content test XLIFF applies to its review `state`. An entry
+      // rewritten only because a sibling key changed keeps its comment lines
+      // byte-for-byte, reviewer markers included.
+      const writesChange =
+        (entryMsgstr !== undefined && translation !== entryMsgstr) ||
+        [...entryMsgstrPlural].some(([idx, existing]) => {
+          const pluralVal = pluralTranslations?.[`msgstr[${idx}]`];
+          return pluralVal !== undefined && pluralVal !== existing;
+        });
+
       const commentStart = result.length - commentLines.length;
       result.splice(commentStart, commentLines.length);
       for (const cl of commentLines) {
-        if (/^#,/.test(cl)) {
+        if (writesChange && /^#,/.test(cl)) {
           const flags = cl
             .slice(2)
             .trim()
@@ -620,10 +649,6 @@ export class PoFormatParser implements FormatParser {
           result.push(cl);
         }
       }
-
-      const translation = translatedEntry.translation;
-      const pluralTranslations = translatedEntry.metadata?.['plural_forms'] as
-        Record<string, string> | undefined;
 
       let inMsgstr = false;
       let inMsgstrPlural = false;
