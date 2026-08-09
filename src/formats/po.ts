@@ -759,7 +759,35 @@ export class PoFormatParser implements FormatParser {
       } else {
         result.push(`msgid ${quote(entry.key)}`);
       }
-      result.push(`msgstr ${quoteLong(entry.translation)}`);
+
+      // A plural entry is `msgid_plural` + one `msgstr[N]` per form, never a bare
+      // `msgstr`. Writing only the singular shape lost the plural forms of a key
+      // added to the source after the target file existed, so ngettext returned
+      // the English source for every count while the lockfile called the key
+      // translated.
+      const msgidPlural = entry.metadata?.['msgid_plural'];
+      if (typeof msgidPlural === 'string') {
+        result.push(`msgid_plural ${quote(msgidPlural)}`);
+        const forms =
+          (entry.metadata?.['plural_forms'] as
+            Record<string, string> | undefined) ?? {};
+        const indices = new Set<number>([0, 1]);
+        for (const name of Object.keys(forms)) {
+          const match = /^msgstr\[(\d+)]$/.exec(name);
+          if (match?.[1] !== undefined) indices.add(Number(match[1]));
+        }
+        for (const index of [...indices].sort((a, b) => a - b)) {
+          // Index 0 falls back to `translation`, which is the same string the
+          // singular form would have carried; a form with no recorded value is
+          // written empty, which gettext and `msgfmt --statistics` both read as
+          // untranslated rather than as the source text.
+          const value =
+            forms[`msgstr[${index}]`] ?? (index === 0 ? entry.translation : '');
+          result.push(`msgstr[${index}] ${quoteLong(value)}`);
+        }
+      } else {
+        result.push(`msgstr ${quoteLong(entry.translation)}`);
+      }
     }
 
     return result.join('\n');

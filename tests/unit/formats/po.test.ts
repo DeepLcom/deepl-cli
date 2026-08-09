@@ -990,3 +990,72 @@ describe('PoFormatParser — adjacent string literals on one line', () => {
     expect(() => parser.extractTranslations(po)).not.toThrow();
   });
 });
+
+describe('PoFormatParser — appending a NEW plural entry', () => {
+  // The append path wrote `msgid` + `msgstr` only. A plural key added to the
+  // source after the target file existed therefore lost its `msgid_plural` and
+  // every `msgstr[N]`, so ngettext returned the English source for every count
+  // while the lockfile recorded the key translated.
+  const parser = new PoFormatParser();
+  const TARGET = [
+    'msgid ""',
+    'msgstr ""',
+    '"Content-Type: text/plain; charset=UTF-8\\n"',
+    '"Plural-Forms: nplurals=2; plural=(n != 1);\\n"',
+    '',
+    'msgid "Hello"',
+    'msgstr "Hola"',
+    '',
+  ].join('\n');
+
+  const NEW_PLURAL = {
+    key: 'One file',
+    value: 'One file',
+    translation: 'Un archivo',
+    metadata: {
+      msgid_plural: '%d files',
+      plural_forms: {
+        'msgstr[0]': 'Un archivo',
+        'msgstr[1]': '%d archivos',
+      },
+    },
+  };
+
+  it('writes msgid_plural and every msgstr[N]', () => {
+    const written = parser.reconstruct(TARGET, [
+      { key: 'Hello', value: 'Hello', translation: 'Hola' },
+      NEW_PLURAL,
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('msgid_plural "%d files"');
+    expect(written).toContain('msgstr[0] "Un archivo"');
+    expect(written).toContain('msgstr[1] "%d archivos"');
+    // A plural entry has no bare `msgstr` line.
+    expect(written).not.toMatch(/^msgstr "Un archivo"$/m);
+  });
+
+  it('round-trips the appended plural entry', () => {
+    const written = parser.reconstruct(TARGET, [
+      { key: 'Hello', value: 'Hello', translation: 'Hola' },
+      NEW_PLURAL,
+    ] as TranslatedEntry[]);
+
+    const reread = parser.extract(written).find((e) => e.key === 'One file');
+    expect(reread?.metadata?.['msgid_plural']).toBe('%d files');
+    expect(reread?.metadata?.['plural_forms']).toEqual({
+      'msgstr[0]': 'Un archivo',
+      'msgstr[1]': '%d archivos',
+    });
+  });
+
+  it('still appends a non-plural entry as msgid + msgstr', () => {
+    const written = parser.reconstruct(TARGET, [
+      { key: 'Hello', value: 'Hello', translation: 'Hola' },
+      { key: 'Bye', value: 'Bye', translation: 'Adios' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('msgid "Bye"');
+    expect(written).toContain('msgstr "Adios"');
+    expect(written).not.toContain('msgid_plural');
+  });
+});
