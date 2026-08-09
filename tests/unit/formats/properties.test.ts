@@ -432,3 +432,51 @@ describe('PropertiesFormatParser', () => {
     });
   });
 });
+
+describe('PropertiesFormatParser — a key containing an escaped separator', () => {
+  // `escapeKey` escapes `=`, `:`, space and backslash when writing a key, but
+  // ENTRY_RE's key part excluded `=` and `:` outright — so the parser could not
+  // read back a key it had just written. `greeting\:formal=Hello` split at the
+  // escaped colon, making the key `greeting\` and the value `formal=Hello`: half
+  // the key was sent for translation as the value, and the real key never
+  // reached the target file.
+  it('reads a key whose colon is escaped', () => {
+    const entries = parser.extract('greeting\\:formal=Hello\n');
+    expect(entries).toEqual([{ key: 'greeting:formal', value: 'Hello' }]);
+  });
+
+  it('reads a key whose equals sign is escaped', () => {
+    const entries = parser.extract('a\\=b=Hello\n');
+    expect(entries).toEqual([{ key: 'a=b', value: 'Hello' }]);
+  });
+
+  it('reads a key whose space is escaped', () => {
+    const entries = parser.extract('with\\ space=Hello\n');
+    expect(entries).toEqual([{ key: 'with space', value: 'Hello' }]);
+  });
+
+  it('round-trips a key containing a separator character', () => {
+    const written = parser.reconstruct('', [
+      { key: 'greeting:formal', value: 'Hello', translation: 'Buenos días' },
+    ]);
+    expect(parser.extract(written)).toEqual([
+      { key: 'greeting:formal', value: 'Buenos días' },
+    ]);
+  });
+
+  it('rewrites the translation of an escaped-separator key in place', () => {
+    const written = parser.reconstruct('greeting\\:formal=Hello\n', [
+      { key: 'greeting:formal', value: 'Hello', translation: 'Buenos dias' },
+    ]);
+    // The key keeps its own bytes; only the value is replaced.
+    expect(written).toContain('greeting\\:formal=Buenos dias');
+    expect(parser.extract(written)).toEqual([
+      { key: 'greeting:formal', value: 'Buenos dias' },
+    ]);
+  });
+
+  it('still splits an ordinary key at its first separator', () => {
+    expect(parser.extract('a.b=x=y\n')).toEqual([{ key: 'a.b', value: 'x=y' }]);
+    expect(parser.extract('a.b:x:y\n')).toEqual([{ key: 'a.b', value: 'x:y' }]);
+  });
+});

@@ -7,7 +7,20 @@ import { PendingCommentBuffer } from './pending-comment-buffer.js';
 import { appendEntryLines } from './util/append-lines.js';
 import { isForbiddenControlChar } from './util/control-chars.js';
 
-const ENTRY_RE = /^([^=:#!\s][^=:]*?)\s*[=:]\s*(.*)/;
+// A key, treating `\X` as one unit so an escaped separator belongs to the key
+// rather than ending it. Without that the parser could not read back a key it
+// had just written: `escapeKey` escapes `=`, `:`, space and backslash, so
+// `greeting:formal` is written `greeting\:formal` and was then split at the
+// escaped colon — key `greeting\`, value `formal=Hello`. Half the key went out
+// for translation as the value, and the real key never reached the target file.
+const KEY_CHARS = String.raw`(?:[^=:#!\s\\]|\\.)(?:[^=:\\]|\\.)*?`;
+
+// `key = value` / `key: value`.
+const ENTRY_RE = new RegExp(String.raw`^(${KEY_CHARS})\s*[=:]\s*(.*)`);
+
+// The key and its separator, byte for byte, so rewriting a value preserves the
+// author's spelling of the line (`:` versus `=`, and the spacing around it).
+const KEY_SEPARATOR_RE = new RegExp(String.raw`^(${KEY_CHARS}\s*[=:]\s*)`);
 const COMMENT_RE = /^\s*[#!]/;
 
 /**
@@ -112,7 +125,7 @@ export class PropertiesFormatParser implements FormatParser {
           pending.flushToOutput(result);
           const escapedValue = this.escapeValue(translation);
           const originalLine = lines[startLine]!;
-          const sepMatch = /^([^=:#!\s][^=:]*?\s*[=:]\s*)/.exec(originalLine);
+          const sepMatch = KEY_SEPARATOR_RE.exec(originalLine);
           if (sepMatch) {
             result.push(sepMatch[1] + escapedValue);
           } else {
