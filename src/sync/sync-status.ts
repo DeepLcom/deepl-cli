@@ -7,6 +7,7 @@ import type { ResolvedSyncConfig } from './sync-config.js';
 import { LOCK_FILE_NAME } from './types.js';
 import { walkBuckets } from './sync-bucket-walker.js';
 import { findTargetGaps } from './sync-target-audit.js';
+import { findNeedsReview } from './sync-review-flags.js';
 import { resolveTargetPath } from './sync-utils.js';
 
 export interface LocaleStatus {
@@ -21,6 +22,14 @@ export interface LocaleStatus {
    * counted as `complete`.
    */
   unwritten: number;
+  /**
+   * Keys whose target translation is present but marked as needing review, so
+   * the format's own toolchain will not ship it — a gettext `#, fuzzy` msgstr,
+   * which `msgfmt` leaves out of the compiled catalog. Never counted as
+   * `complete`, and never re-translated: the value is a reviewer's, not this
+   * tool's, so a run carries it forward untouched and reports it instead.
+   */
+  needsReview: number;
   coverage: number;
 }
 
@@ -66,7 +75,13 @@ export async function computeSyncStatus(
   const unwrittenByLocale: UnwrittenTargetKeys[] = [];
   const localeStats = new Map<
     string,
-    { complete: number; missing: number; outdated: number; unwritten: number }
+    {
+      complete: number;
+      missing: number;
+      outdated: number;
+      unwritten: number;
+      needsReview: number;
+    }
   >();
 
   for (const locale of config.target_locales) {
@@ -75,6 +90,7 @@ export async function computeSyncStatus(
       missing: 0,
       outdated: 0,
       unwritten: 0,
+      needsReview: 0,
     });
   }
 
@@ -93,6 +109,15 @@ export async function computeSyncStatus(
       fileLockEntries,
       config.target_locales
     );
+    // Keys whose target translation the format's own toolchain will not ship.
+    // Only asked of a parser that has the concept, so the nine monolingual
+    // formats cost nothing and no extra file is opened for them.
+    const needsReviewByLocale = await findNeedsReview(
+      config,
+      walked,
+      config.target_locales
+    );
+
     for (const [locale, gap] of gaps) {
       unwrittenByLocale.push({
         locale,
@@ -131,6 +156,8 @@ export async function computeSyncStatus(
           stats.outdated++;
         } else if (gaps.get(locale)?.keys.has(diff.key)) {
           stats.unwritten++;
+        } else if (needsReviewByLocale.get(locale)?.has(diff.key)) {
+          stats.needsReview++;
         } else {
           stats.complete++;
         }
@@ -144,9 +171,14 @@ export async function computeSyncStatus(
       missing: 0,
       outdated: 0,
       unwritten: 0,
+      needsReview: 0,
     };
     const total =
-      stats.complete + stats.missing + stats.outdated + stats.unwritten;
+      stats.complete +
+      stats.missing +
+      stats.outdated +
+      stats.unwritten +
+      stats.needsReview;
     const coverage = total > 0 ? Math.round((stats.complete / total) * 100) : 0;
     return { locale, ...stats, coverage };
   });

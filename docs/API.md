@@ -1391,6 +1391,8 @@ Source: en (142 keys)
   ja  [##################..]  91%  (12 missing, 0 outdated)
 ```
 
+A locale also reports **`needsReview`** keys — a translation is present but its format marks it as not ready to ship, which today means a gettext `#, fuzzy` msgstr. `msgfmt` leaves such an entry out of the compiled catalog, so the application shows the source string; counting it complete would report a project as done while it ships untranslated text. Such a key is never re-translated and the file is never rewritten for it — the value is a reviewer's draft — so the count is a report, not a repair, and nothing is billed. The suffix `, N needs review` and its explanatory line appear only when the count is non-zero, and `--format json` always carries `needsReview` on each locale. `deepl sync push` skips such a key under a `needs_review` skip reason rather than uploading it as an approved translation. `sync --frozen` deliberately does **not** treat it as drift: a fuzzy entry is a normal, transient state in a gettext workflow that only a human review clears, and nothing the CLI did caused it.
+
 A locale also reports **`unwritten`** keys — recorded as translated in `.deepl-sync.lock` but not in that locale's target file — when there are any, followed by a line naming the file and the keys. The suffix is omitted when the count is zero, so the line above is unchanged for a healthy project. `--format json` always carries `unwritten` on each locale plus a top-level `unwrittenByLocale` array of `{locale, file, keys}`, each entry gaining an `unusable` field when the target file could not be read or parsed at all. See [docs/SYNC.md](./SYNC.md#a-string-added-after-the-first-sync) for what is and is not counted.
 
 ##### `validate`

@@ -400,6 +400,36 @@ export class PoFormatParser implements FormatParser {
    * which is enough to report the entry as translated. The per-form values
    * travel separately in `metadata.plural_forms`.
    */
+  /**
+   * Keys carrying gettext's `fuzzy` flag with a translation to go with it.
+   *
+   * `msgfmt` leaves such an entry out of the compiled catalog, so the string the
+   * application shows is the msgid — a key this CLI would otherwise report as
+   * complete. A fuzzy entry with an empty msgstr is left out here: it has no
+   * translation at all, which every reader already reports as missing.
+   */
+  extractNeedsReview(content: string): Set<string> {
+    const flagged = new Set<string>();
+    if (!content.trim()) {
+      return flagged;
+    }
+
+    for (const pe of parseEntries(content)) {
+      if (isHeaderEntry(pe)) continue;
+      if (!pe.flags.includes('fuzzy')) continue;
+
+      const singular = pe.msgstr[0];
+      const hasTranslation =
+        (singular !== undefined && singular !== '') ||
+        [...pe.msgstrPlural.values()].some((v) => v !== '');
+      if (hasTranslation) {
+        flagged.add(makeKey(pe));
+      }
+    }
+
+    return flagged;
+  }
+
   extractTranslations(content: string): Map<string, string> {
     const translations = new Map<string, string>();
     if (!content.trim()) {

@@ -26,9 +26,11 @@ import nock from 'nock';
 import { createTmsClient } from '../../src/sync/tms-client';
 import { pushTranslations, pullTranslations } from '../../src/sync/sync-tms';
 import { validateTranslations } from '../../src/sync/sync-validate';
+import { computeSyncStatus } from '../../src/sync/sync-status';
 import { loadSyncConfig } from '../../src/sync/sync-config';
 
 import { createSyncHarness, writeSyncConfig } from '../helpers/sync-harness';
+import { DEEPL_FREE_API_URL } from '../helpers/nock-setup';
 import {
   TMS_BASE,
   TMS_PROJECT,
@@ -194,6 +196,89 @@ describe('sync paths that read a bilingual target file', () => {
         },
       ]);
     });
+
+    it('skips a fuzzy translation rather than uploading it as approved', async () => {
+      writeSyncConfig(tmpDir, {
+        targetLocales: ['es'],
+        tms: tmsConfig(),
+        buckets: { po: { include: ['locales/en/app.po'] } },
+      });
+      write(
+        tmpDir,
+        'locales/en/app.po',
+        PO_HEADER + 'msgid "Hello"\nmsgstr ""\n\nmsgid "Bye"\nmsgstr ""\n'
+      );
+      write(
+        tmpDir,
+        'locales/es/app.po',
+        PO_HEADER +
+          'msgid "Hello"\nmsgstr "Hola"\n\n#, fuzzy\nmsgid "Bye"\nmsgstr "Adios"\n'
+      );
+
+      const config = await loadSyncConfig(tmpDir);
+      const client = await createTmsClient(config.tms!, approvedTmsTrust);
+
+      const sent: Record<string, string> = {};
+      nock(TMS_BASE)
+        .put(new RegExp(`/api/projects/${TMS_PROJECT}/keys/.+`))
+        .times(2)
+        .reply(200, function reply(uri: string, body: unknown) {
+          sent[decodeURIComponent(uri.split('/keys/')[1]!)] = (
+            body as { value: string }
+          ).value;
+          return {};
+        });
+
+      const result = await pushTranslations(config, client, harness.registry);
+
+      expect(Object.keys(sent)).toEqual(['Hello']);
+      expect(result.pushed).toBe(1);
+      expect(result.skipped).toEqual([
+        {
+          file: 'locales/en/app.po',
+          locale: 'es',
+          reason: 'needs_review',
+          key: 'Bye',
+        },
+      ]);
+    });
+
+    it('still pushes a translation whose only flag is not fuzzy', async () => {
+      writeSyncConfig(tmpDir, {
+        targetLocales: ['es'],
+        tms: tmsConfig(),
+        buckets: { po: { include: ['locales/en/app.po'] } },
+      });
+      write(
+        tmpDir,
+        'locales/en/app.po',
+        PO_HEADER + 'msgid "Hi %s"\nmsgstr ""\n'
+      );
+      write(
+        tmpDir,
+        'locales/es/app.po',
+        PO_HEADER + '#, python-format\nmsgid "Hi %s"\nmsgstr "Hola %s"\n'
+      );
+
+      const config = await loadSyncConfig(tmpDir);
+      const client = await createTmsClient(config.tms!, approvedTmsTrust);
+
+      const sent: Record<string, string> = {};
+      nock(TMS_BASE)
+        .put(new RegExp(`/api/projects/${TMS_PROJECT}/keys/.+`))
+        .reply(200, function reply(uri: string, body: unknown) {
+          sent[decodeURIComponent(uri.split('/keys/')[1]!)] = (
+            body as { value: string }
+          ).value;
+          return {};
+        });
+
+      const result = await pushTranslations(config, client, harness.registry);
+
+      expect(result.pushed).toBe(1);
+      expect(sent['Hi %s']).toBe('Hola %s');
+      expect(result.skipped).toEqual([]);
+    });
   });
 
   describe('validate', () => {
@@ -284,6 +369,112 @@ describe('sync paths that read a bilingual target file', () => {
       expect(written).toContain('msgstr "REVIEWED"');
       expect(written).toContain('msgstr "Adios (from TMS)"');
       expect(written).not.toContain('msgstr "Hello"');
+    });
+  });
+
+  describe('status', () => {
+    /** A synced project, then one entry marked fuzzy with the source unchanged. */
+    async function syncedThenFlagged(): Promise<void> {
+      writeSyncConfig(tmpDir, {
+        targetLocales: ['es'],
+        buckets: { po: { include: ['locales/en/app.po'] } },
+      });
+      write(
+        tmpDir,
+        'locales/en/app.po',
+        PO_HEADER + 'msgid "Hello"\nmsgstr ""\n\nmsgid "Bye"\nmsgstr ""\n'
+      );
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .times(4)
+        .reply(200, (_uri, body) => {
+          const parsed = new URLSearchParams(body as string);
+          return {
+            translations: parsed.getAll('text').map((t) => ({
+              text: `[es]${t}`,
+              detected_source_language: 'EN',
+              billed_characters: t.length,
+            })),
+          };
+        });
+      await harness.syncService.sync(await loadSyncConfig(tmpDir));
+      const target = path.join(tmpDir, 'locales/es/app.po');
+      fs.writeFileSync(
+        target,
+        fs
+          .readFileSync(target, 'utf-8')
+          .replace('msgid "Bye"', '#, fuzzy\nmsgid "Bye"'),
+        'utf-8'
+      );
+    }
+
+    it('does not count a fuzzy msgstr as complete, the way msgfmt does not', async () => {
+      await syncedThenFlagged();
+
+      const status = await computeSyncStatus(
+        await loadSyncConfig(tmpDir),
+        harness.registry
+      );
+
+      const es = status.locales.find((l) => l.locale === 'es')!;
+      expect(es.needsReview).toBe(1);
+      expect(es.complete).toBe(1);
+      expect(es.coverage).toBe(50);
+      expect(es.missing).toBe(0);
+      expect(es.unwritten).toBe(0);
+    });
+
+    it('leaves the reviewer draft on disk and bills nothing to report it', async () => {
+      await syncedThenFlagged();
+      const before = fs.readFileSync(
+        path.join(tmpDir, 'locales/es/app.po'),
+        'utf-8'
+      );
+
+      const result = await harness.syncService.sync(
+        await loadSyncConfig(tmpDir)
+      );
+
+      expect(result.totalCharactersBilled).toBe(0);
+      expect(
+        fs.readFileSync(path.join(tmpDir, 'locales/es/app.po'), 'utf-8')
+      ).toBe(before);
+    });
+
+    it('reports a project with no flags exactly as before', async () => {
+      writeSyncConfig(tmpDir, {
+        targetLocales: ['es'],
+        buckets: { po: { include: ['locales/en/app.po'] } },
+      });
+      write(
+        tmpDir,
+        'locales/en/app.po',
+        PO_HEADER + 'msgid "Hello"\nmsgstr ""\n\nmsgid "Bye"\nmsgstr ""\n'
+      );
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .times(4)
+        .reply(200, (_uri, body) => {
+          const parsed = new URLSearchParams(body as string);
+          return {
+            translations: parsed.getAll('text').map((t) => ({
+              text: `[es]${t}`,
+              detected_source_language: 'EN',
+              billed_characters: t.length,
+            })),
+          };
+        });
+      await harness.syncService.sync(await loadSyncConfig(tmpDir));
+
+      const status = await computeSyncStatus(
+        await loadSyncConfig(tmpDir),
+        harness.registry
+      );
+
+      const es = status.locales.find((l) => l.locale === 'es')!;
+      expect(es.needsReview).toBe(0);
+      expect(es.complete).toBe(2);
+      expect(es.coverage).toBe(100);
     });
   });
 });

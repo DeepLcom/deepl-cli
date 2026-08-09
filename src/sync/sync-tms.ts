@@ -41,7 +41,8 @@ export type SkipReason =
   | 'pipe_pluralization'
   | 'key_collision'
   | 'unusable_target'
-  | 'untranslated';
+  | 'untranslated'
+  | 'needs_review';
 
 export interface SkippedRecord {
   file: string;
@@ -68,6 +69,7 @@ const SKIP_REASON_LABELS: Record<SkipReason, string> = {
   key_collision: 'target file keys collide (left untouched)',
   unusable_target: 'target file could not be read (left untouched)',
   untranslated: 'no translation in the target file',
+  needs_review: 'translation marked as needing review (not pushed)',
 };
 
 /**
@@ -121,6 +123,12 @@ export async function pushTranslations(
         let entries: ExtractedEntry[];
         let skippedEntries: ExtractedEntry[];
         let translations: Map<string, string>;
+        /**
+         * Keys whose translation the format's own toolchain will not ship — a
+         * `#, fuzzy` msgstr is the case. Uploading one would make the TMS the
+         * authority for a string a reviewer has marked as not ready.
+         */
+        let needsReview: Set<string>;
         if (isMultiLocale) {
           ({ entries, skippedEntries } = partitionEntries(
             parser.extract(sourceContent, locale)
@@ -130,6 +138,8 @@ export async function pushTranslations(
             sourceContent,
             locale
           );
+          needsReview =
+            parser.extractNeedsReview?.(sourceContent, locale) ?? new Set();
         } else {
           const targetPath = resolveTargetPath(
             relPath,
@@ -144,6 +154,7 @@ export async function pushTranslations(
             parser.extract(content)
           ));
           translations = extractExistingTranslations(parser, content);
+          needsReview = parser.extractNeedsReview?.(content) ?? new Set();
         }
         for (const skippedEntry of skippedEntries) {
           skipped.push({
@@ -165,6 +176,15 @@ export async function pushTranslations(
               file: relPath,
               locale,
               reason: 'untranslated',
+              key: entry.key,
+            });
+            continue;
+          }
+          if (needsReview.has(entry.key)) {
+            skipped.push({
+              file: relPath,
+              locale,
+              reason: 'needs_review',
               key: entry.key,
             });
             continue;

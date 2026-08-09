@@ -188,4 +188,46 @@ describe('CLI sync with a bilingual target file', () => {
     expect(xlf).toContain('<target>REVIEWED-XLF</target>');
     expect(xlf).not.toContain('<target>Hello</target>');
   }, 120000);
+
+  it('reports a fuzzy msgstr as needing review rather than as complete', () => {
+    // Runs after the test above, so the lockfile calls both PO keys translated.
+    fs.writeFileSync(
+      poTarget(),
+      fs
+        .readFileSync(poTarget(), 'utf-8')
+        .replace('msgid "Translate me"', '#, fuzzy\nmsgid "Translate me"')
+    );
+
+    const { CI: _ci, DEEPL_API_KEY: _key, ...rest } = process.env;
+    const status = spawnSync(
+      'node',
+      [CLI_PATH, 'sync', 'status', '--format', 'json'],
+      {
+        encoding: 'utf-8',
+        cwd: testFiles.path,
+        env: { ...rest, DEEPL_CONFIG_DIR: testConfig.path, NO_COLOR: '1' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 60000,
+      }
+    );
+
+    expect(status.status).toBe(0);
+    const parsed = JSON.parse(status.stdout) as {
+      locales: { locale: string; needsReview: number; coverage: number }[];
+    };
+    const es = parsed.locales.find((l) => l.locale === 'es')!;
+    expect(es.needsReview).toBe(1);
+    expect(es.coverage).toBeLessThan(100);
+
+    const text = spawnSync('node', [CLI_PATH, 'sync', 'status'], {
+      encoding: 'utf-8',
+      cwd: testFiles.path,
+      env: { ...rest, DEEPL_CONFIG_DIR: testConfig.path, NO_COLOR: '1' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 60000,
+    });
+    const output = (text.stdout ?? '') + (text.stderr ?? '');
+    expect(output).toContain('1 needs review');
+    expect(output).toContain('msgfmt');
+  }, 120000);
 });

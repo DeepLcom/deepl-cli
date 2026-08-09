@@ -49,6 +49,20 @@ export interface FormatParser {
    */
   extractTranslations?(content: string, locale?: string): Map<string, string>;
   /**
+   * Optional: keys whose translation is present but marked as needing review, so
+   * the format's own toolchain will not ship it.
+   *
+   * Gettext is the case this exists for: `msgfmt` leaves a `#, fuzzy` entry out
+   * of the compiled catalog, so a translation this CLI counted as done is one the
+   * application does not display. The value is still a translation and is
+   * deliberately still returned by `extractTranslations` — a run must carry it
+   * forward rather than overwrite a reviewer's draft — so the two answers travel
+   * separately.
+   *
+   * A format with no such concept leaves it undefined.
+   */
+  extractNeedsReview?(content: string, locale?: string): Set<string>;
+  /**
    * Optional: a copy of this parser bounded to `maxDepth` levels of nesting.
    * Parsers that walk their tree recursively implement it so `sync` can apply
    * `sync.limits.max_depth`; the walker skips the field for parsers without it.

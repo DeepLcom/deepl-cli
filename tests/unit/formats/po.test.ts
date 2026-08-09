@@ -480,6 +480,78 @@ describe('PoFormatParser — entries with no blank line between them', () => {
     ]);
   });
 
+  describe('extractNeedsReview', () => {
+    it('names a key whose translation is flagged fuzzy', () => {
+      const po = [
+        HEADER,
+        'msgid "Hello"',
+        'msgstr "Hola"',
+        '',
+        '#, fuzzy',
+        'msgid "Good morning"',
+        'msgstr "Buenas"',
+        '',
+      ].join('\n');
+
+      expect([...parser.extractNeedsReview(po)]).toEqual(['Good morning']);
+    });
+
+    it('still returns the flagged translation from extractTranslations', () => {
+      // A run must carry a reviewer's draft forward, not overwrite it.
+      const po = [
+        HEADER,
+        '#, fuzzy',
+        'msgid "Good morning"',
+        'msgstr "Buenas"',
+        '',
+      ].join('\n');
+
+      expect(parser.extractTranslations(po).get('Good morning')).toBe('Buenas');
+    });
+
+    it('leaves a fuzzy entry with no translation out, since it is simply missing', () => {
+      const po = [
+        HEADER,
+        '#, fuzzy',
+        'msgid "Good morning"',
+        'msgstr ""',
+        '',
+      ].join('\n');
+
+      expect([...parser.extractNeedsReview(po)]).toEqual([]);
+    });
+
+    it('keeps a key whose other flags do not mean needs-review', () => {
+      const po = [
+        HEADER,
+        '#, python-format',
+        'msgid "Hi %s"',
+        'msgstr "Hola %s"',
+        '',
+      ].join('\n');
+
+      expect([...parser.extractNeedsReview(po)]).toEqual([]);
+    });
+
+    it('names a flagged key that carries other flags too', () => {
+      const po = [
+        HEADER,
+        '#, fuzzy, python-format',
+        'msgid "Hi %s"',
+        'msgstr "Hola %s"',
+        '',
+      ].join('\n');
+
+      expect([...parser.extractNeedsReview(po)]).toEqual(['Hi %s']);
+    });
+
+    it('says nothing about a catalog with no flags at all', () => {
+      const po = [HEADER, 'msgid "Hello"', 'msgstr "Hola"', ''].join('\n');
+
+      expect([...parser.extractNeedsReview(po)]).toEqual([]);
+    });
+  });
+
   it('keeps the header and its charset when the first message follows it directly', () => {
     const po = [HEADER, 'msgid "Hello"', 'msgstr "REVIEWED"', ''].join('\n');
 

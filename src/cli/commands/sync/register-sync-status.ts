@@ -75,8 +75,10 @@ async function handleSyncStatus(
         )}`;
         const unwrittenSuffix =
           locale.unwritten > 0 ? `, ${locale.unwritten} unwritten` : '';
+        const needsReviewSuffix =
+          locale.needsReview > 0 ? `, ${locale.needsReview} needs review` : '';
         Logger.output(
-          `  ${locale.locale}  [${bar}] ${locale.coverage}%  (${locale.missing} missing, ${locale.outdated} outdated${unwrittenSuffix})`
+          `  ${locale.locale}  [${bar}] ${locale.coverage}%  (${locale.missing} missing, ${locale.outdated} outdated${unwrittenSuffix}${needsReviewSuffix})`
         );
       }
       const unwritten = status.unwrittenByLocale.filter(
@@ -87,6 +89,18 @@ async function handleSyncStatus(
           await import('../../../sync/sync-target-audit.js');
         Logger.output('');
         Logger.warn(targetGapsWarning(unwritten));
+      }
+      const needingReview = locales.reduce((sum, l) => sum + l.needsReview, 0);
+      if (needingReview > 0) {
+        const one = needingReview === 1;
+        Logger.output('');
+        Logger.warn(
+          `${needingReview} ${one ? 'key holds' : 'keys hold'} a translation marked as needing review — a gettext ` +
+            '`#, fuzzy` msgstr, which `msgfmt` leaves out of the compiled catalog, so the ' +
+            `application shows the source string instead. \`deepl sync\` carries ${one ? 'it' : 'them'} forward ` +
+            `untouched and never re-translates ${one ? 'it' : 'them'}: remove the flag once the translation ` +
+            `has been checked, or clear the msgstr to have ${one ? 'it' : 'them'} translated again.`
+        );
       }
     }
   } catch (error) {
