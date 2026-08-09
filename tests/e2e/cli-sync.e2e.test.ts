@@ -1070,6 +1070,29 @@ describe('CLI Sync E2E', () => {
       expect(result.output.toLowerCase()).toMatch(/placeholder|welcome/);
     });
 
+    it('exits with CheckFailed (8) on an unreadable target file, after validating the rest', () => {
+      writeSyncConfig(testFiles.path, ['de', 'fr']);
+      const dir = path.join(testFiles.path, 'locales');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, 'en.json'),
+        JSON.stringify({ welcome: 'Hello {name}' }, null, 2) + '\n'
+      );
+      fs.writeFileSync(
+        path.join(dir, 'de.json'),
+        JSON.stringify({ welcome: 'Hallo {name}' }, null, 2) + '\n'
+      );
+      fs.writeFileSync(path.join(dir, 'fr.json'), '{ not json at all');
+
+      const result = runSyncExpectError('validate');
+      expect(result.status).toBe(8);
+      // The healthy locale was still validated, and the unreadable file is
+      // reported as the issue rather than ending the command.
+      expect(result.output).toMatch(/Checked 1 translation/);
+      expect(result.output).toContain('fr.json');
+      expect(result.output).toMatch(/could not be read/);
+    });
+
     it('does not emit raw terminal control characters from a hostile i18n key', () => {
       writeSyncConfig(testFiles.path, ['de']);
       const dir = path.join(testFiles.path, 'locales');

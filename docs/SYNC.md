@@ -218,6 +218,8 @@ The locale is left out of the character estimate because the run bills nothing f
 
 `deepl sync pull` skips the locale under the `unusable_target` skip reason — or `key_collision` when that is the cause, which has its own remediation (see below) — and leaves the file exactly as it stands. `deepl sync push` reports a file that is not there under `target_missing` and surfaces every other failure, since it only reads.
 
+`deepl sync validate` reports the file as an error-severity issue under an `unusable_target` check and goes on to validate every other locale and file. A file nobody could read holds translations nobody validated, so skipping it with a warning would let the command exit 0 — CI green — over an unvalidated locale; the issue counts toward exit **8** like any other error. In `--format json` it appears in `issues` with the target path as its `key` and `file`, an empty `source`/`translation`, and the reason in its message; such a file's keys are not counted in `totalChecked` or `passed`, which keep meaning "pairs actually compared". A locale with no target file at all is still skipped silently — never having been synced is not a validation failure. `deepl sync audit` excludes the locale from the comparison and lists it under `missingTargets` at its normal exit code: audit is a report, not a gate.
+
 The distinction is deliberately strict: an errno the CLI does not recognise refuses the file rather than admitting it. A file that is genuinely absent produces `ENOENT` and nothing else.
 
 ### Key separators and colliding keys

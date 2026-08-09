@@ -133,8 +133,11 @@ describe('validateTranslations', () => {
 
   it('should skip missing target file gracefully', async () => {
     const source = [{ key: 'greeting', value: 'Hello' }] as ExtractedEntry[];
-    mockReadFile.mockResolvedValueOnce('source');
-    mockAccess.mockRejectedValueOnce(new Error('ENOENT'));
+    mockReadFile
+      .mockResolvedValueOnce('source')
+      .mockRejectedValueOnce(
+        Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' })
+      );
     const parser: FormatParser = {
       name: 'JSON',
       configKey: 'json',

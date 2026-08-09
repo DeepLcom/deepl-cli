@@ -3421,7 +3421,7 @@ Remediation: run `deepl config get` to inspect the current config, or edit the f
 A check-style command ran successfully but found actionable issues. Exit is *soft* — `process.exitCode` is set so cleanup still runs. Emitted by:
 
 - `deepl write --check <text|file>` when the Write API would suggest changes (`needsImprovement === true`)
-- `deepl sync validate` when validation surfaces one or more `error`-severity issues (missing placeholders, format-string mismatches, unbalanced HTML tags)
+- `deepl sync validate` when validation surfaces one or more `error`-severity issues (missing placeholders, format-string mismatches, unbalanced HTML tags, or a target file on disk that could not be read — reported under an `unusable_target` check while every other locale is still validated)
 
 This code is specifically designed for CI use: a `check` step can block a merge without requiring try/catch wrappers in the calling script. It does **not** indicate a CLI failure.
 

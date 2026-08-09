@@ -68,6 +68,22 @@ export function unusableTargetMessage(relPath: string, reason: string): string {
 }
 
 /**
+ * The same condition for `deepl sync validate`, which only reads: nothing was
+ * left unwritten, but nothing was checked either, and a pass that stayed
+ * silent about that would let CI go green over a file it never looked at.
+ */
+export function unvalidatedTargetMessage(
+  relPath: string,
+  reason: string
+): string {
+  return (
+    `target file ${relPath} is on disk but could not be read (${reason}) — ` +
+    'its translations were not validated. Fix the file, then run ' +
+    '`deepl sync validate` again.'
+  );
+}
+
+/**
  * The same condition as `unusableTargetMessage`, in the voice a preview needs:
  * `--dry-run` has not left the file anywhere yet, and saying that it had would
  * contradict the report it appears in.

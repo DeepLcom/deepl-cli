@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import type { FormatRegistry } from '../formats/index.js';
 import {
@@ -11,6 +10,10 @@ import {
   extractExistingTranslations,
   walkBuckets,
 } from './sync-bucket-walker.js';
+import {
+  readTargetFile,
+  unvalidatedTargetMessage,
+} from './sync-target-read.js';
 
 export interface ValidateIssue extends ValidationResult {
   locale: string;
@@ -31,6 +34,10 @@ export async function validateTranslations(
 ): Promise<ValidateResult> {
   const allIssues: ValidateIssue[] = [];
   let totalChecked = 0;
+  // File-level issues: an unreadable target holds translations nobody checked.
+  // They count toward `errors` (exit 8) but not toward `totalChecked`, so
+  // `passed` keeps meaning "checked pairs with no issue".
+  let unreadableTargets = 0;
 
   for await (const walked of walkBuckets(config, formatRegistry)) {
     const {
@@ -59,17 +66,34 @@ export async function validateTranslations(
         const targetAbsPath = path.join(config.projectRoot, targetRelPath);
         assertPathWithinRoot(targetAbsPath, config.projectRoot);
 
-        try {
-          await fs.promises.access(targetAbsPath);
-        } catch {
+        const read = await readTargetFile(parser, targetAbsPath);
+        if (read.state === 'absent') {
+          // A locale that has never been synced has nothing to validate.
           continue;
         }
-
-        const targetContent = await fs.promises.readFile(
-          targetAbsPath,
-          'utf-8'
-        );
-        targetMap = extractExistingTranslations(parser, targetContent);
+        if (read.state === 'unusable') {
+          // Skipping with a warning would let the command exit 0 over a file
+          // it never validated; dying on it would leave every other locale
+          // unreported. It is an error-severity issue like any other.
+          unreadableTargets++;
+          allIssues.push({
+            key: targetRelPath,
+            source: '',
+            translation: '',
+            severity: 'error',
+            issues: [
+              {
+                check: 'unusable_target',
+                severity: 'error',
+                message: unvalidatedTargetMessage(targetRelPath, read.reason),
+              },
+            ],
+            locale,
+            file: targetRelPath,
+          });
+          continue;
+        }
+        targetMap = read.translations;
       }
 
       const pairs = sourceEntries
@@ -91,7 +115,7 @@ export async function validateTranslations(
 
   const warnings = allIssues.filter((i) => i.severity === 'warn').length;
   const errors = allIssues.filter((i) => i.severity === 'error').length;
-  const passed = totalChecked - allIssues.length;
+  const passed = totalChecked - (allIssues.length - unreadableTargets);
 
   return { totalChecked, passed, warnings, errors, issues: allIssues };
 }

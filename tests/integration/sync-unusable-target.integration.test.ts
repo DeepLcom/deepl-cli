@@ -18,6 +18,7 @@ jest.unmock('fast-glob');
 import nock from 'nock';
 
 import { loadSyncConfig } from '../../src/sync/sync-config';
+import { validateTranslations } from '../../src/sync/sync-validate';
 import { Logger } from '../../src/utils/logger';
 import { createSyncHarness, writeSyncConfig } from '../helpers/sync-harness';
 import { DEEPL_FREE_API_URL } from '../helpers/nock-setup';
@@ -271,6 +272,95 @@ describe('sync over a target file that cannot be read', () => {
     expect(JSON.parse(fs.readFileSync(targetPath(), 'utf-8'))).toEqual({
       greeting: '[es]Hello',
       added: '[es]Translate me',
+    });
+  });
+});
+
+describe('sync validate over a target file that cannot be read', () => {
+  let tmpDir: string;
+  let harness: ReturnType<typeof createSyncHarness>;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-validate-unusable-'));
+    harness = createSyncHarness({ parsers: ['json'] });
+    writeSyncConfig(tmpDir, {
+      targetLocales: ['es', 'fr'],
+      buckets: { json: { include: ['locales/en.json'] } },
+    });
+    const dir = path.join(tmpDir, 'locales');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, 'en.json'),
+      JSON.stringify({ greeting: 'Hello {name}' }, null, 2) + '\n',
+      'utf-8'
+    );
+  });
+
+  afterEach(() => {
+    harness.cleanup();
+    if (fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  function write(locale: string, content: string): void {
+    fs.writeFileSync(path.join(tmpDir, 'locales', `${locale}.json`), content);
+  }
+
+  it('reports the unreadable file as an error and still validates the other locale', async () => {
+    // es drops the placeholder, so a validated es proves the walk went on.
+    write('es', JSON.stringify({ greeting: 'Hola' }, null, 2) + '\n');
+    write('fr', '{ "greeting": "Bonjour {name}", %%% not json');
+
+    const result = await validateTranslations(
+      await loadSyncConfig(tmpDir),
+      harness.registry
+    );
+
+    const frIssue = result.issues.find((i) => i.locale === 'fr');
+    expect(frIssue).toBeDefined();
+    expect(frIssue!.severity).toBe('error');
+    expect(frIssue!.issues[0]!.check).toBe('unusable_target');
+    expect(frIssue!.issues[0]!.message).toContain('locales/fr.json');
+    expect(frIssue!.issues[0]!.message).toContain('not validated');
+
+    const esIssue = result.issues.find((i) => i.locale === 'es');
+    expect(esIssue).toBeDefined();
+    expect(esIssue!.issues[0]!.message).toContain('{name}');
+
+    expect(result.totalChecked).toBe(1);
+    expect(result.passed).toBe(0);
+    expect(result.errors).toBe(2);
+  });
+
+  it('still skips a locale with no target file at all', async () => {
+    write('es', JSON.stringify({ greeting: 'Hola {name}' }, null, 2) + '\n');
+
+    const result = await validateTranslations(
+      await loadSyncConfig(tmpDir),
+      harness.registry
+    );
+
+    expect(result.issues).toEqual([]);
+    expect(result.totalChecked).toBe(1);
+    expect(result.passed).toBe(1);
+  });
+
+  it('leaves a healthy project result unchanged', async () => {
+    write('es', JSON.stringify({ greeting: 'Hola {name}' }, null, 2) + '\n');
+    write('fr', JSON.stringify({ greeting: 'Bonjour {name}' }, null, 2) + '\n');
+
+    const result = await validateTranslations(
+      await loadSyncConfig(tmpDir),
+      harness.registry
+    );
+
+    expect(result).toEqual({
+      totalChecked: 2,
+      passed: 2,
+      warnings: 0,
+      errors: 0,
+      issues: [],
     });
   });
 });
