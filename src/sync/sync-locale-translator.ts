@@ -197,6 +197,54 @@ function withheldKeysWarning(
   );
 }
 
+/**
+ * Keys the target file holds that this rewrite will not write back, and that
+ * neither the source file nor the lockfile accounts for.
+ *
+ * `reconstruct` is handed the complete desired key set, so anything absent from
+ * it is removed from the file. For a key the lockfile records, that is the
+ * intended prune of a key the source no longer has. A key the lockfile has never
+ * heard of was not put there by this tool — a translator added it by hand — so
+ * deleting it is outside what the run was asked to do. The prune itself is left
+ * alone; what was undefensible is that it happened with no mention in the run
+ * output, `sync status` or `sync validate`, and with the backup unlinked on
+ * success, so nothing was recoverable and nothing said anything was lost.
+ */
+function droppedTargetOnlyKeys(
+  existingTranslations: ReadonlyMap<string, string>,
+  written: readonly TranslatedEntry[],
+  diffs: readonly SyncDiff[]
+): string[] {
+  const writtenKeys = new Set(written.map((entry) => entry.key));
+  // A `deleted` diff is a key the lockfile recorded that the source no longer
+  // has, so pruning it is the point. The lockfile itself cannot answer this:
+  // processBucket removes those entries before the locale loop runs, which makes
+  // them indistinguishable there from a key it never recorded.
+  const prunedKeys = new Set(
+    diffs.filter((diff) => diff.status === 'deleted').map((diff) => diff.key)
+  );
+  return [...existingTranslations.keys()].filter(
+    (key) => !writtenKeys.has(key) && !prunedKeys.has(key)
+  );
+}
+
+function droppedTargetOnlyWarning(
+  locale: string,
+  targetRelPath: string,
+  dropped: readonly string[]
+): string {
+  const shown = dropped.slice(0, 3).map((key) => `"${key}"`);
+  const more = dropped.length > shown.length ? ', …' : '';
+  const one = dropped.length === 1;
+  return (
+    `${locale}: ${targetRelPath} holds ${dropped.length} ${one ? 'key' : 'keys'} that the source file ` +
+    `and .deepl-sync.lock both lack: ${shown.join(', ')}${more}. ` +
+    `${one ? 'It has' : 'They have'} been removed, because a rewrite emits exactly the keys the source defines. ` +
+    `If ${one ? 'it was' : 'they were'} added to the locale file on purpose, add ${one ? 'it' : 'them'} to the source ` +
+    `file as well — or recover ${one ? 'it' : 'them'} from ${targetRelPath}${BACKUP_SUFFIX} before the next run.`
+  );
+}
+
 export interface TranslateLocaleResult {
   fileResult: SyncFileResult;
   successfulKeys: string[];
@@ -1011,6 +1059,17 @@ export class LocaleTranslator {
           );
         }
       }
+    }
+
+    const droppedTargetOnly = droppedTargetOnlyKeys(
+      existingTranslations,
+      allTranslatedEntries,
+      diffs
+    );
+    if (droppedTargetOnly.length > 0) {
+      Logger.warn(
+        droppedTargetOnlyWarning(locale, targetRelPath, droppedTargetOnly)
+      );
     }
 
     const reconstructed = isMultiLocale
