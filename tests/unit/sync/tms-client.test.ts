@@ -1133,17 +1133,16 @@ describe('TmsClient.pullKeys response validation', () => {
     expect(result['greeting']).toBe('HalloWorld');
   });
 
-  it('should preserve printable content including tabs and newlines-as-content when stripping', async () => {
-    // Tabs (\x09), line feeds (\x0a), carriage returns (\x0d) are control chars
-    // per the spec but common in translation values; stripping them is the
-    // documented behavior (fail-closed on format-breaking bytes).
+  it('should keep tab, LF and CR, which are legitimate translation content', async () => {
+    // The three C0 bytes every format either escapes or legally emits, and the
+    // three this project's own rule exempts. Deleting them fused adjacent words
+    // of a human-approved multi-line translation.
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ greeting: 'line1\nline2\tend' }),
+      json: async () => ({ greeting: 'line1\nline2\tend\r\ntail' }),
     });
     const result = await client.pullKeys('de');
-    // The regex [\x00-\x1f\x7f] matches \n and \t. Expect both stripped.
-    expect(result['greeting']).toBe('line1line2end');
+    expect(result['greeting']).toBe('line1\nline2\tend\r\ntail');
   });
 
   it('should pass through normal payloads unchanged', async () => {

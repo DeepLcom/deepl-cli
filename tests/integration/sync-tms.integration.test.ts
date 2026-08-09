@@ -93,6 +93,33 @@ describe('sync push/pull (TMS integration)', () => {
     }
   });
 
+  it('pull: keeps a multi-line translation intact rather than fusing its lines', async () => {
+    writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });
+    writeJson(tmpDir, 'locales/en.json', { notice: 'Line one\nLine two' });
+    writeJson(tmpDir, 'locales/de.json', { notice: 'OLD' });
+
+    process.env['TMS_API_KEY'] = 'env-key';
+
+    const config = await loadSyncConfig(tmpDir);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
+
+    // A control byte that is never legitimate content is still removed, so the
+    // value-stripping is narrowed rather than abandoned.
+    expectTmsPull(
+      'de',
+      { notice: 'Zeile eins\nZeile zwei\tmit Tab\x1b[31m' },
+      { auth: { apiKey: 'env-key' } }
+    );
+
+    const result = await pullTranslations(config, client, harness.registry);
+    expect(result.pulled).toBe(1);
+
+    const targetContent = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, 'locales/de.json'), 'utf-8')
+    ) as Record<string, string>;
+    expect(targetContent['notice']).toBe('Zeile eins\nZeile zwei\tmit Tab[31m');
+  });
+
   // ---- Case 2: pull happy path ----
   it('pull: fetches translations, writes target file, and does not claim human review', async () => {
     writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });

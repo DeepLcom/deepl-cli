@@ -15,8 +15,22 @@ export const MAX_PULL_KEY_COUNT = 50000;
 export const MAX_PULL_BODY_BYTES = 32 * 1024 * 1024;
 // eslint-disable-next-line no-control-regex -- intentional: checking for control chars in untrusted TMS-returned keys
 const KEY_FORBIDDEN_CHARS = /[\x00-\x1f\x7f/\\]/;
-// eslint-disable-next-line no-control-regex -- intentional: strip control chars from untrusted TMS-returned values before they reach the filesystem
+// eslint-disable-next-line no-control-regex -- intentional: matching control chars in untrusted TMS-returned text before quoting it into an error message
 const VALUE_CONTROL_CHARS = /[\x00-\x1f\x7f]/g;
+/**
+ * Control characters stripped from an accepted pull value: C0 and DEL, minus
+ * tab, LF and CR.
+ *
+ * Those three are the set `isForbiddenControlChar` exempts — the C0 bytes every
+ * format either escapes or legally emits — and a multi-line or tabbed
+ * translation is ordinary human content, not a hostile payload. Deleting them
+ * (rather than letting the per-format writer escape them) fused adjacent words
+ * of an approved translation at exit 0. Everything else is still removed here,
+ * because a raw ESC reaching a locale file renders as a live terminal command in
+ * `git diff` and CI logs.
+ */
+// eslint-disable-next-line no-control-regex -- intentional: strip format-breaking control chars from untrusted TMS-returned values before they reach the filesystem
+const VALUE_FORBIDDEN_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g;
 
 export function sanitizePullKeysResponse(raw: unknown): Record<string, string> {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -59,7 +73,7 @@ export function sanitizePullKeysResponse(raw: unknown): Record<string, string> {
         'Split oversized translations into smaller keys, or raise the issue with your TMS administrator.'
       );
     }
-    result[key] = value.replace(VALUE_CONTROL_CHARS, '');
+    result[key] = value.replace(VALUE_FORBIDDEN_CHARS, '');
   }
   return result;
 }
