@@ -66,3 +66,22 @@ export function unusableTargetMessage(relPath: string, reason: string): string {
     'stands rather than rebuilt from the source. Fix it, then run `deepl sync` again.'
   );
 }
+
+/**
+ * The same condition as `unusableTargetMessage`, in the voice a preview needs:
+ * `--dry-run` has not left the file anywhere yet, and saying that it had would
+ * contradict the report it appears in.
+ */
+export function unusableTargetPreviewMessage(
+  locale: string,
+  relPath: string,
+  reason: string
+): string {
+  return (
+    `${locale}: target file ${relPath} is on disk but could not be read ` +
+    `(${reason}) — it holds the only copy of this locale's translations, so a ` +
+    'real run would leave it as it stands, translate nothing for this locale ' +
+    'and exit 12. It is left out of the estimate below. Fix it before running ' +
+    '`deepl sync`.'
+  );
+}

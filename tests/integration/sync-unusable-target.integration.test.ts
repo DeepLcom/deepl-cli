@@ -42,6 +42,7 @@ describe('sync over a target file that cannot be read', () => {
   let tmpDir: string;
   let harness: ReturnType<typeof createSyncHarness>;
   let errors: string[];
+  let warnings: string[];
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-unusable-'));
@@ -54,8 +55,12 @@ describe('sync over a target file that cannot be read', () => {
     fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
     fs.writeFileSync(sourcePath, SOURCE, 'utf-8');
     errors = [];
+    warnings = [];
     jest.spyOn(Logger, 'error').mockImplementation((...args: unknown[]) => {
       errors.push(args.join(' '));
+    });
+    jest.spyOn(Logger, 'warn').mockImplementation((...args: unknown[]) => {
+      warnings.push(args.join(' '));
     });
   });
 
@@ -170,8 +175,81 @@ describe('sync over a target file that cannot be read', () => {
     expect(scope.isDone()).toBe(false);
   });
 
+  it('is left out of the --dry-run estimate, which the real run bills nothing for', async () => {
+    await damage();
+    // A key the source has just gained, so there is work to estimate.
+    fs.writeFileSync(
+      path.join(tmpDir, 'locales', 'en.json'),
+      JSON.stringify(
+        { greeting: 'Hello', added: 'Translate me', fresh: 'Good morning' },
+        null,
+        2
+      ) + '\n',
+      'utf-8'
+    );
+
+    const dry = await harness.syncService.sync(await loadSyncConfig(tmpDir), {
+      dryRun: true,
+    });
+
+    // es is the only locale, and the real run refuses it and bills 0.
+    expect(dry.estimatedCharacters).toBe(0);
+  });
+
+  it('is named by --dry-run rather than left for the real run to discover', async () => {
+    await damage();
+
+    await harness.syncService.sync(await loadSyncConfig(tmpDir), {
+      dryRun: true,
+    });
+
+    const said = warnings.join('\n');
+    expect(said).toContain('locales/es.json');
+    expect(said).toContain("'menu.save' is the key of two different strings");
+  });
+
+  it('writes nothing while reporting the unreadable target', async () => {
+    await damage();
+    const before = fs.readFileSync(targetPath(), 'utf-8');
+    const lockBefore = fs.readFileSync(
+      path.join(tmpDir, '.deepl-sync.lock'),
+      'utf-8'
+    );
+
+    await harness.syncService.sync(await loadSyncConfig(tmpDir), {
+      dryRun: true,
+    });
+
+    expect(fs.readFileSync(targetPath(), 'utf-8')).toBe(before);
+    expect(
+      fs.readFileSync(path.join(tmpDir, '.deepl-sync.lock'), 'utf-8')
+    ).toBe(lockBefore);
+  });
+
   // Over-rejection guards: absent is not unusable, and a file that reads fine is
   // still repaired.
+  it('leaves a healthy project --dry-run estimate and output alone', async () => {
+    replyTranslating();
+    await harness.syncService.sync(await loadSyncConfig(tmpDir));
+    fs.writeFileSync(
+      path.join(tmpDir, 'locales', 'en.json'),
+      JSON.stringify(
+        { greeting: 'Hello', added: 'Translate me', fresh: 'Good morning' },
+        null,
+        2
+      ) + '\n',
+      'utf-8'
+    );
+
+    const dry = await harness.syncService.sync(await loadSyncConfig(tmpDir), {
+      dryRun: true,
+    });
+
+    expect(dry.estimatedCharacters).toBe('Good morning'.length);
+    expect(dry.unwrittenKeys).toBe(0);
+    expect(warnings).toEqual([]);
+  });
+
   it('still writes a locale that has never been synced', async () => {
     replyTranslating();
 

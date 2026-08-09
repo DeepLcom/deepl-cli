@@ -785,6 +785,18 @@ export class SyncCommand {
       }
     }
 
+    // The summary counts such a key as `current`, which it is as far as the lock
+    // file goes, so the estimate below would otherwise quote characters for work
+    // nothing in the report accounts for.
+    if (result.dryRun && result.unwrittenKeys > 0) {
+      const one = result.unwrittenKeys === 1;
+      Logger.info(
+        `${result.unwrittenKeys.toLocaleString()} ${one ? 'key is' : 'keys are'} recorded as translated in the lock file ` +
+          `but could not be confirmed in the target file, so a real run would translate ${one ? 'it' : 'them'} again. ` +
+          'Run `deepl sync status` to see which keys, in which file, and why.'
+      );
+    }
+
     if (result.dryRun && result.estimatedCharacters > 0) {
       Logger.info(
         `This sync: ~${result.estimatedCharacters.toLocaleString()} chars, ${formatCostEstimate(result.estimatedCharacters)} (Pro tier estimate)`

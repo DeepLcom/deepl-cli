@@ -1746,12 +1746,15 @@ buckets:
       const config = await loadSyncConfig(tmpDir);
       const dryResult = await syncService.sync(config, { dryRun: true });
 
-      // dry-run must estimate currentChars * newLocaleCount (10 keys * 50 chars * 1 new locale = 500)
-      expect(dryResult.estimatedCharacters).toBe(500);
+      // 10 keys * 50 chars for the added locale, plus the same again for `de`:
+      // the seeded lockfile calls every key translated for `de` and no `de`
+      // target file exists, so the run repairs all ten and bills for them too.
+      expect(dryResult.estimatedCharacters).toBe(1000);
+      expect(dryResult.unwrittenKeys).toBe(10);
 
       // The live path preflight must compute the same estimate; verify by setting cap just below it
       const configAtCap = await loadSyncConfig(tmpDir);
-      (configAtCap as any).sync = { ...configAtCap.sync, max_characters: 499 };
+      (configAtCap as any).sync = { ...configAtCap.sync, max_characters: 999 };
       await expect(syncService.sync(configAtCap)).rejects.toThrow(
         ValidationError
       );
@@ -1759,7 +1762,7 @@ buckets:
       const configAboveCap = await loadSyncConfig(tmpDir);
       (configAboveCap as any).sync = {
         ...configAboveCap.sync,
-        max_characters: 500,
+        max_characters: 1000,
       };
       nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')

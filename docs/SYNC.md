@@ -165,7 +165,9 @@ In `--format json` the locale's entry in `unwrittenByLocale` carries an extra `u
 
 Two deliberate exemptions. A key whose **source value is empty** is never reported: an empty source can only produce an empty translation, and PO and XLIFF read an empty translation side as untranslated on purpose (see [Bilingual formats](#bilingual-formats-po-and-xliff)), so such a key is legitimately absent from a bilingual target. A key the lock file records as `failed`, or against an older source hash, is already reported as outdated and is not counted twice.
 
-The cost is one read and parse of each target file per locale, and it is only paid where the answer would otherwise come from the lock file alone: `sync status`, `sync --frozen`, and a `sync` run that has nothing else to do. A run with translating to do reads those files anyway. Measured on a 2.8 MiB XLIFF source with 20,316 keys across 6 locales (52 MiB of files): `sync status` 410 ms → 660 ms, `sync --frozen` 465 ms → 970 ms. A locale with no keys claimed by the lock file is not read at all.
+The cost is one read and parse of each target file per locale, and it is only paid where the answer would otherwise come from the lock file alone: `sync status`, `sync --frozen`, `sync --dry-run`, the `sync.max_characters` cost cap, and a `sync` run that has nothing else to do. A run with translating to do reads those files anyway. Measured on a 2.8 MiB XLIFF source with 20,316 keys across 6 locales (52 MiB of files): `sync status` 410 ms → 660 ms, `sync --frozen` 465 ms → 970 ms. A locale with no keys claimed by the lock file is not read at all, so a project mid-first-sync pays nothing.
+
+Within one source file the answer is computed once and reused, so no command reads a target file twice for it. On a 20,000-key, 6-locale JSON project (2.83 MiB source, 17.3 MiB of target files) that took `sync --frozen` from 1.13 s to 0.79 s, because a healthy project made it ask twice — once for the drift check and again for the "nothing to do" check.
 
 ### A target file that cannot be read
 
@@ -193,6 +195,20 @@ Sync complete: 2 current (2 translations failed)
 ```
 
 Exit **12** (`PartialFailure`), 0 characters billed, and the file is byte-identical. Other locales of the same file, and other files, are unaffected. A key the source has just gained is recorded `failed` rather than `translated`, so the next run retries it once the file is fixed. `deepl sync status` reports the file under its own sentence (see above) and `--frozen` exits 10.
+
+`deepl sync --dry-run` says so before you get there, rather than leaving the exit 12 to the real run:
+
+```
+$ deepl sync --dry-run
+es: target file locales/es.json is on disk but could not be read (JSON:
+'menu.save' is the key of two different strings. …) — it holds the only copy of
+this locale's translations, so a real run would leave it as it stands, translate
+nothing for this locale and exit 12. It is left out of the estimate below. Fix it
+before running `deepl sync`.
+[dry-run] No translations performed.
+```
+
+The locale is left out of the character estimate because the run bills nothing for it. Dry run itself still exits **0** and writes nothing: it reports what a run would do rather than standing in for its exit code, which is what `--frozen` is for.
 
 `deepl sync pull` skips the locale under the `unusable_target` skip reason — or `key_collision` when that is the cause, which has its own remediation (see below) — and leaves the file exactly as it stands. `deepl sync push` reports a file that is not there under `target_missing` and surfaces every other failure, since it only reads.
 
@@ -649,12 +665,23 @@ Sync complete: 200 new (150 translations failed)
 
 The count totals every locale, so a run failing 4 keys in `de` and 3 in `fr` reports `7 translations failed`. Exit code is 12 (partial failure).
 
-In `--dry-run` mode, the output includes estimated characters and cost (computed from source string lengths × target locales, no API calls):
+In `--dry-run` mode, the output includes estimated characters and cost (computed from source string lengths × the target locales the run would actually translate, no API calls):
 
 ```
 [dry-run] No translations performed.
 Sync complete: 12 new, 3 updated across 5 languages
 This sync: ~4,500 chars, ~$0.11 (Pro tier estimate)
+```
+
+The estimate covers repair work as well as new work. A key the lock file calls translated that its target file no longer holds is counted `current` in the summary — it is current as far as the lock file goes — so the run says why the estimate is not zero:
+
+```
+[dry-run] No translations performed.
+Sync complete: 2 current across 1 language
+1 key is recorded as translated in the lock file but could not be confirmed in
+the target file, so a real run would translate it again. Run `deepl sync status`
+to see which keys, in which file, and why.
+This sync: ~12 chars, <$0.01 (Pro tier estimate)
 ```
 
 Cost estimates use the DeepL Pro rate ($25 per 1 million characters). If you are on the Free tier or a different plan, your actual cost will differ. Check your account tier at [deepl.com](https://deepl.com) to determine the applicable rate.

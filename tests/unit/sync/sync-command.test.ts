@@ -261,6 +261,48 @@ describe('SyncCommand', () => {
       expect(infoOutput).toContain('Pro tier estimate');
     });
 
+    it('should say why a dry-run estimate covers keys the summary calls current', async () => {
+      const result = makeResult({
+        dryRun: true,
+        estimatedCharacters: 12,
+        unwrittenKeys: 1,
+        currentKeys: 2,
+        totalCharactersBilled: 0,
+      });
+      const mockService = createMockSyncService(result);
+      const command = new SyncCommand(mockService);
+
+      await command.run({ dryRun: true });
+
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
+      expect(infoOutput).toContain(
+        '1 key is recorded as translated in the lock file'
+      );
+      expect(infoOutput).toContain('would translate it again');
+    });
+
+    it('should say nothing about unwritten keys when a dry run finds none', async () => {
+      const result = makeResult({
+        dryRun: true,
+        estimatedCharacters: 12,
+        unwrittenKeys: 0,
+        totalCharactersBilled: 0,
+      });
+      const mockService = createMockSyncService(result);
+      const command = new SyncCommand(mockService);
+
+      await command.run({ dryRun: true });
+
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
+      expect(infoOutput).not.toContain(
+        'recorded as translated in the lock file'
+      );
+    });
+
     it('should include estimatedCost in JSON output', async () => {
       const result = makeResult({ totalCharactersBilled: 1_000_000 });
       const mockService = createMockSyncService(result);

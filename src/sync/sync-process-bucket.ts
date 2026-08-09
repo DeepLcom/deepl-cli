@@ -16,8 +16,12 @@ import {
   extractExistingTranslations,
   type WalkedBucketFile,
 } from './sync-bucket-walker.js';
-import { findTargetGaps } from './sync-target-audit.js';
-import { readTargetFile, unusableTargetMessage } from './sync-target-read.js';
+import { findTargetGaps, type TargetGaps } from './sync-target-audit.js';
+import {
+  readTargetFile,
+  unusableTargetMessage,
+  unusableTargetPreviewMessage,
+} from './sync-target-read.js';
 import type { LocaleTranslator } from './sync-locale-translator.js';
 import type { SyncFileResult, SyncOptions } from './sync-service.js';
 
@@ -156,19 +160,87 @@ export async function processBucket(
    * target unrepaired for as long as no other key needed work. A run that has
    * translating to do reads every target file a few lines further down anyway.
    */
+  let gapsCache: TargetGaps | undefined;
+  const targetGaps = async (): Promise<TargetGaps> => {
+    if (gapsCache === undefined) {
+      const effective = options?.localeFilter?.length
+        ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
+        : config.target_locales;
+      gapsCache = await findTargetGaps(
+        config,
+        walked,
+        fileLockEntries,
+        effective
+      );
+    }
+    return gapsCache;
+  };
+
   const unwrittenTargetKeys = async (): Promise<number> => {
-    const effective = options?.localeFilter?.length
-      ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
-      : config.target_locales;
-    const gaps = await findTargetGaps(
-      config,
-      walked,
-      fileLockEntries,
-      effective
-    );
+    const gaps = await targetGaps();
     let count = 0;
     for (const gap of gaps.values()) count += gap.keys.size;
     return count;
+  };
+
+  /**
+   * Characters a real run would bill for this bucket, and the locales it would
+   * refuse.
+   *
+   * Counted: new and stale keys for every locale that will be translated,
+   * current keys for a locale that holds none of them yet, and keys the lockfile
+   * calls translated that the target file does not hold — the run translates
+   * those again. Not counted: a locale whose target file is on disk and
+   * unreadable, which the run refuses in full and bills nothing for.
+   *
+   * `--dry-run` and the `max_characters` cap both quote from here, so the number
+   * a preview shows is the number the cap enforces.
+   */
+  const estimateCharacters = async (
+    candidateLocales: readonly string[]
+  ): Promise<{
+    chars: number;
+    refused: ReadonlySet<string>;
+    gaps: TargetGaps;
+  }> => {
+    const gaps = await targetGaps();
+    const refused = new Set<string>();
+    for (const [locale, gap] of gaps) {
+      if (gap.unusable !== undefined) refused.add(locale);
+    }
+    const billable = candidateLocales.filter((locale) => !refused.has(locale));
+
+    let chars =
+      toTranslate.reduce((sum, d) => sum + (d.value?.length ?? 0), 0) *
+      billable.length;
+
+    if (hasNewLocale) {
+      const currentChars = diffs
+        .filter((d) => d.status === 'current')
+        .reduce((sum, d) => sum + (d.value?.length ?? 0), 0);
+      const newLocaleCount = billable.filter((locale) =>
+        diffs.some(
+          (d) =>
+            d.status === 'current' &&
+            !getOwnMember(fileLockEntries, d.key)?.translations[locale]
+        )
+      ).length;
+      chars += currentChars * newLocaleCount;
+    }
+
+    // Under `--force` every key is already counted above.
+    if (!options?.force) {
+      const sourceValues = new Map(entries.map((e) => [e.key, e.value]));
+      for (const locale of billable) {
+        const gap = gaps.get(locale);
+        if (gap === undefined) continue;
+        for (const key of gap.keys) {
+          chars += sourceValues.get(key)?.length ?? 0;
+        }
+      }
+    }
+
+    return { chars, refused, gaps };
   };
 
   if (options?.frozen) {
@@ -199,30 +271,36 @@ export async function processBucket(
       ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
       : config.target_locales;
 
-    // Estimate characters for new/stale keys across all effective locales
-    out.estimatedCharactersDelta +=
-      toTranslate.reduce((sum, d) => sum + (d.value?.length ?? 0), 0) *
-      effectiveLocales.length;
+    // The same target-file checks the real run makes, so the preview is of that
+    // run rather than of the lockfile.
+    const { chars, refused, gaps } = await estimateCharacters(effectiveLocales);
+    out.estimatedCharactersDelta += chars;
 
     if (hasNewLocale) {
       // Count current keys needing translation for new locales
-      const currentDiffs = diffs.filter((d) => d.status === 'current');
-      out.newKeysDelta += currentDiffs.length;
-
-      // Estimate characters for current keys needing translation for new locales only
-      const currentChars = currentDiffs.reduce(
-        (sum, d) => sum + (d.value?.length ?? 0),
-        0
-      );
-      const newLocaleCount = effectiveLocales.filter((locale) =>
-        diffs.some(
-          (d) =>
-            d.status === 'current' &&
-            !getOwnMember(fileLockEntries, d.key)?.translations[locale]
-        )
-      ).length;
-      out.estimatedCharactersDelta += currentChars * newLocaleCount;
+      out.newKeysDelta += diffs.filter((d) => d.status === 'current').length;
     }
+
+    for (const gap of gaps.values()) out.unwrittenKeysDelta += gap.keys.size;
+
+    for (const locale of refused) {
+      const targetRelPath = walked.isMultiLocale
+        ? relPath
+        : resolveTargetPath(
+            relPath,
+            config.source_locale,
+            locale,
+            bucketConfig.target_path_pattern
+          );
+      Logger.warn(
+        unusableTargetPreviewMessage(
+          locale,
+          targetRelPath,
+          gaps.get(locale)!.unusable!
+        )
+      );
+    }
+
     return out;
   }
 
@@ -265,24 +343,9 @@ export async function processBucket(
       MULTI_TARGET_CONCURRENCY);
 
   if (config.sync?.max_characters !== undefined && !options?.force) {
-    let estimatedChars =
-      toTranslate.reduce((sum, d) => sum + (d.value?.length ?? 0), 0) *
-      locales.length;
-    if (hasNewLocale) {
-      const currentDiffs = diffs.filter((d) => d.status === 'current');
-      const currentChars = currentDiffs.reduce(
-        (sum, d) => sum + (d.value?.length ?? 0),
-        0
-      );
-      const newLocaleCount = locales.filter((locale) =>
-        diffs.some(
-          (d) =>
-            d.status === 'current' &&
-            !getOwnMember(fileLockEntries, d.key)?.translations[locale]
-        )
-      ).length;
-      estimatedChars += currentChars * newLocaleCount;
-    }
+    // Quoted from the same place `--dry-run` quotes, so a run the preview priced
+    // above the cap is a run the cap refuses.
+    const { chars: estimatedChars } = await estimateCharacters(locales);
     if (
       currentTotalCharsBilled + out.totalCharsBilledDelta + estimatedChars >
       config.sync.max_characters

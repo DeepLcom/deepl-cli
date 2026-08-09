@@ -121,6 +121,37 @@ describe('a target file missing translations the lockfile claims', () => {
     );
   });
 
+  it('is carried by the --dry-run estimate, which the real run charges for', async () => {
+    await damage();
+
+    const dry = await harness.syncService.sync(await loadSyncConfig(tmpDir), {
+      dryRun: true,
+    });
+
+    // 'Translate me' is the source of the key the target lost, and repairing it
+    // is what the next real run spends.
+    expect(dry.estimatedCharacters).toBe('Translate me'.length);
+    expect(dry.unwrittenKeys).toBe(1);
+  });
+
+  it('writes nothing while estimating the repair', async () => {
+    await damage();
+    const before = fs.readFileSync(targetPath(), 'utf-8');
+    const lockBefore = fs.readFileSync(
+      path.join(tmpDir, '.deepl-sync.lock'),
+      'utf-8'
+    );
+
+    await harness.syncService.sync(await loadSyncConfig(tmpDir), {
+      dryRun: true,
+    });
+
+    expect(fs.readFileSync(targetPath(), 'utf-8')).toBe(before);
+    expect(
+      fs.readFileSync(path.join(tmpDir, '.deepl-sync.lock'), 'utf-8')
+    ).toBe(lockBefore);
+  });
+
   it('reports a target file that was deleted outright', async () => {
     await damage();
     fs.unlinkSync(targetPath());
@@ -163,6 +194,19 @@ describe('a target file missing translations the lockfile claims', () => {
     expect(es.unwritten).toBe(0);
     expect(es.missing).toBe(2);
     expect(es.coverage).toBe(0);
+  });
+
+  it('leaves a healthy project --dry-run estimate at zero', async () => {
+    replyTranslating();
+    await harness.syncService.sync(await loadSyncConfig(tmpDir));
+
+    const dry = await harness.syncService.sync(await loadSyncConfig(tmpDir), {
+      dryRun: true,
+    });
+
+    expect(dry.estimatedCharacters).toBe(0);
+    expect(dry.unwrittenKeys).toBe(0);
+    expect(dry.currentKeys).toBe(2);
   });
 
   it('leaves a healthy project alone on --frozen', async () => {
