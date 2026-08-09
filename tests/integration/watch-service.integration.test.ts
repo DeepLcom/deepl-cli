@@ -4,6 +4,7 @@
  */
 
 import * as fs from 'fs';
+import { canonicalPathKey } from '../../src/utils/paths';
 import * as path from 'path';
 import * as os from 'os';
 
@@ -575,7 +576,7 @@ ${body}
       }
     };
 
-    it('should return staged file paths as absolute paths', () => {
+    it('identifies the staged file, and only it', () => {
       fs.writeFileSync(path.join(gitDir, 'file1.txt'), 'Hello');
       fs.writeFileSync(path.join(gitDir, 'file2.txt'), 'World');
       execSyncChild('git add file1.txt', { cwd: gitDir, stdio: 'ignore' });
@@ -588,10 +589,16 @@ console.log(JSON.stringify({ size: result.size, files: [...result] }));
 `
       );
 
+      // The set holds comparison keys, which are inode-based for a file that
+      // exists — so the assertion is which FILE was identified, computed the same
+      // way the watcher will compute it when a change arrives.
       const parsed = JSON.parse(output.trim());
       expect(parsed.size).toBe(1);
       expect(parsed.files[0]).toBe(
-        path.resolve(fs.realpathSync(gitDir), 'file1.txt')
+        canonicalPathKey(path.resolve(fs.realpathSync(gitDir), 'file1.txt'))
+      );
+      expect(parsed.files[0]).not.toBe(
+        canonicalPathKey(path.resolve(fs.realpathSync(gitDir), 'file2.txt'))
       );
     });
 
@@ -615,7 +622,9 @@ console.log(JSON.stringify({ files: [...result] }));
 
       const parsed = JSON.parse(output.trim());
       expect(parsed.files).toEqual([
-        path.join(fs.realpathSync(gitDir), 'docs', 'guide.md'),
+        canonicalPathKey(
+          path.join(fs.realpathSync(gitDir), 'docs', 'guide.md')
+        ),
       ]);
     });
 
@@ -638,7 +647,7 @@ console.log(JSON.stringify({ files: [...result] }));
 
         const parsed = JSON.parse(output.trim());
         expect(parsed.files).toEqual([
-          path.join(fs.realpathSync(gitDir), 'file1.txt'),
+          canonicalPathKey(path.join(fs.realpathSync(gitDir), 'file1.txt')),
         ]);
       } finally {
         fs.rmSync(otherRepo, { recursive: true, force: true });
@@ -666,7 +675,7 @@ console.log(JSON.stringify({ files: [...result] }));
 
         const parsed = JSON.parse(output.trim());
         expect(parsed.files).toEqual([
-          path.join(fs.realpathSync(gitDir), 'file1.txt'),
+          canonicalPathKey(path.join(fs.realpathSync(gitDir), 'file1.txt')),
         ]);
       } finally {
         fs.rmSync(linkParent, { recursive: true, force: true });

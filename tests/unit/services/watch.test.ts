@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs';
+import { canonicalPathKey } from '../../../src/utils/paths';
 import * as path from 'path';
 import * as os from 'os';
 import * as chokidar from 'chokidar';
@@ -965,13 +966,12 @@ describe('WatchService', () => {
   });
 
   describe('stagedFiles filtering', () => {
-    // git reports its files under the repository's real path, so a staged set
-    // is spelled with every symlinked ancestor resolved.
+    // The staged set holds the same comparison keys the watcher computes for an
+    // incoming change, so it is built with the same function rather than a
+    // hand-rolled copy of it — a copy is exactly what let a change to the key
+    // format go unnoticed here.
     const stagedEntry = (filePath: string): string =>
-      path.join(
-        fs.realpathSync(path.dirname(filePath)),
-        path.basename(filePath)
-      );
+      canonicalPathKey(filePath);
 
     it('should skip files not in stagedFiles set', async () => {
       const testFile = path.join(testDir, 'unstaged.txt');
@@ -1052,7 +1052,7 @@ describe('WatchService', () => {
       fs.writeFileSync(path.join(workDir, 'staged.txt'), 'Hello');
 
       const stagedService = new WatchService(mockFileTranslationService, {
-        stagedFiles: new Set([path.join(workDir, 'staged.txt')]),
+        stagedFiles: new Set([stagedEntry(path.join(workDir, 'staged.txt'))]),
       });
 
       const onChange = jest.fn();
@@ -1076,7 +1076,7 @@ describe('WatchService', () => {
       fs.writeFileSync(path.join(workDir, 'unstaged.txt'), 'Hello');
 
       const stagedService = new WatchService(mockFileTranslationService, {
-        stagedFiles: new Set([path.join(workDir, 'staged.txt')]),
+        stagedFiles: new Set([stagedEntry(path.join(workDir, 'staged.txt'))]),
       });
 
       const onChange = jest.fn();
@@ -1102,7 +1102,7 @@ describe('WatchService', () => {
       fs.symlinkSync(outside, linkedFile);
 
       const stagedService = new WatchService(mockFileTranslationService, {
-        stagedFiles: new Set([linkedFile]),
+        stagedFiles: new Set([stagedEntry(linkedFile)]),
       });
 
       const onChange = jest.fn();

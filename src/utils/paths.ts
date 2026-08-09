@@ -50,10 +50,33 @@ export function realpathOrAncestor(absPath: string): string {
  */
 export function canonicalPathKey(absPath: string): string {
   const resolved = path.resolve(absPath);
-  return path.join(
-    realpathOrAncestor(path.dirname(resolved)),
-    path.basename(resolved)
-  );
+
+  // Where the file exists, its device + inode pair IS its identity, and that is
+  // what makes two spellings of one file compare equal. The string form cannot:
+  // `fs.realpathSync` does not case-fold on a case-insensitive volume (APFS
+  // returns `Docs` for `Docs` even when the directory is stored as `docs`) and
+  // does not unify NFC with NFD. Both were measured on APFS as reaching the same
+  // inode while producing different strings, which made `watch --git-staged`
+  // translate nothing when git spelled a directory differently from the watcher —
+  // silently, at exit 0.
+  //
+  // `lstat`, not `stat`: a symlink has its own inode, which keeps the rule below
+  // that a symlink is a different file from its target. On a case-SENSITIVE
+  // volume the other spelling simply does not exist, so the two paths keep
+  // distinct keys — no platform guesswork in either direction.
+  //
+  // Callers only ever compare these keys with each other (`Set.has`, map keys),
+  // never treat one as a path, so an opaque key is safe. A path with no file yet
+  // has no inode and falls back to the resolved string.
+  try {
+    const stat = fs.lstatSync(resolved);
+    return `inode:${stat.dev}:${stat.ino}`;
+  } catch {
+    return path.join(
+      realpathOrAncestor(path.dirname(resolved)),
+      path.basename(resolved)
+    );
+  }
 }
 
 /**
