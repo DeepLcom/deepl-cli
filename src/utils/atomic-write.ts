@@ -74,6 +74,24 @@ export function __getInFlightTmpCount(): number {
 }
 
 /**
+ * The `.tmp.<pid>.<random>` sibling `atomicWriteFile` renames from. It has to sit
+ * beside its target, since a rename is only atomic within one filesystem, which
+ * means anything watching the target's directory sees it appear and vanish.
+ */
+const TMP_SIBLING_PATTERN = /\.tmp\.\d+\.[a-z0-9]+$/;
+
+/**
+ * Whether `filePath` is a temp sibling of an in-flight atomic write.
+ *
+ * A watcher observing an output directory needs this: such a file is this
+ * process mid-write, not a document, so it is neither something to translate nor
+ * something to tell the user about.
+ */
+export function isAtomicWriteTempPath(filePath: string): boolean {
+  return TMP_SIBLING_PATTERN.test(filePath);
+}
+
+/**
  * Write a file atomically by writing to a temp file then renaming.
  * Prevents partial writes from corrupting output files. An existing
  * target's mode is preserved across the rename (chmod is not subject to

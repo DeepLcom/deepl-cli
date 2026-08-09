@@ -134,7 +134,7 @@ Two cases are deliberately left out, because writing them would mean inventing s
 
 Whatever the reason a key does not land, the run says so rather than recording it as translated. Every key is read back out of the content just written before the lockfile is updated, so a key the file does not hold is recorded `failed`: the run warns naming the file, the locale and the key, reports `✗ es: 0/1 keys` and exits **12** (`PartialFailure`), `deepl sync status` counts it against the locale, and `deepl sync --frozen` exits **10**. The next sync retries it.
 
-**A target file is also checked against what the lock file claims about it.** For every key the lock file records as `translated` against the current source text, `deepl sync status` and `deepl sync --frozen` open the locale's target file and check that the translation is in it. A key it does not hold is counted **`unwritten`** — a category of its own, distinct from `missing` (absent from the lock file) and `outdated` (recorded against an older source), and never counted as complete:
+**A target file is also checked against what the lock file claims about it.** For every key the lock file records as `translated` against the current source text, `deepl sync status` and `deepl sync --frozen` open the locale's target file and check that the translation is in it. A key it does not hold is counted **`unwritten`** — a category of its own, distinct from `missing` (absent from the lock file, or recorded as a failed attempt) and `outdated` (recorded against an older source), and never counted as complete:
 
 ```
 $ deepl sync status

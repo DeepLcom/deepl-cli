@@ -142,15 +142,18 @@ export async function computeSyncStatus(
         const translation = lockEntry?.translations[locale];
         const hasTranslation = translation !== undefined;
         // Judge staleness for THIS locale rather than inheriting the shared
-        // source-level status: a locale whose stored hash lags behind, or whose
-        // last attempt failed, is outdated even when the source is unchanged.
+        // source-level status: a locale whose stored hash lags behind is
+        // outdated even when the source is unchanged.
         const localeOutdated =
           lockEntry !== undefined &&
           translation !== undefined &&
-          (translation.status === 'failed' ||
-            translation.hash !== lockEntry.source_hash);
+          translation.hash !== lockEntry.source_hash;
+        // A failed attempt is recorded against the CURRENT source and produced
+        // no translation at all, so `outdated` — documented as recorded against
+        // an older source — would describe the wrong problem.
+        const localeFailed = translation?.status === 'failed';
 
-        if (diff.status === 'new' || !hasTranslation) {
+        if (diff.status === 'new' || !hasTranslation || localeFailed) {
           stats.missing++;
         } else if (diff.status === 'stale' || localeOutdated) {
           stats.outdated++;

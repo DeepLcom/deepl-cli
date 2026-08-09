@@ -157,6 +157,72 @@ describe('computeSyncStatus', () => {
     expect(result.locales[1]!.locale).toBe('fr');
   });
 
+  it('counts a failed translation as missing rather than outdated', async () => {
+    // `outdated` is documented as "recorded against an older source". A failed
+    // attempt is recorded against the CURRENT source and produced no
+    // translation at all, so the honest word for it is missing.
+    mockComputeDiff.mockReturnValue([
+      { key: 'greeting', status: 'current', value: 'Hello' },
+    ]);
+    (SyncLockManager as jest.Mock).mockImplementation(() => ({
+      read: jest.fn().mockResolvedValue({
+        entries: {
+          'locales/en.json': {
+            greeting: {
+              source_hash: 'a',
+              source_text: 'Hello',
+              translations: {
+                de: { hash: 'a', translated_at: '', status: 'failed' },
+              },
+            },
+          },
+        },
+        source_locale: 'en',
+        version: 1,
+        _comment: '',
+        generated_at: '',
+        stats: { total_keys: 1, total_translations: 0, last_sync: '' },
+      }),
+    }));
+    const parser = makeParser();
+    const result = await computeSyncStatus(makeConfig(), makeRegistry(parser));
+    const deStats = result.locales[0]!;
+    expect(deStats.missing).toBe(1);
+    expect(deStats.outdated).toBe(0);
+    expect(deStats.complete).toBe(0);
+  });
+
+  it('still counts a stale hash as outdated', async () => {
+    mockComputeDiff.mockReturnValue([
+      { key: 'greeting', status: 'current', value: 'Hello' },
+    ]);
+    (SyncLockManager as jest.Mock).mockImplementation(() => ({
+      read: jest.fn().mockResolvedValue({
+        entries: {
+          'locales/en.json': {
+            greeting: {
+              source_hash: 'NEW',
+              source_text: 'Hello',
+              translations: {
+                de: { hash: 'OLD', translated_at: '', status: 'translated' },
+              },
+            },
+          },
+        },
+        source_locale: 'en',
+        version: 1,
+        _comment: '',
+        generated_at: '',
+        stats: { total_keys: 1, total_translations: 1, last_sync: '' },
+      }),
+    }));
+    const parser = makeParser();
+    const result = await computeSyncStatus(makeConfig(), makeRegistry(parser));
+    const deStats = result.locales[0]!;
+    expect(deStats.outdated).toBe(1);
+    expect(deStats.missing).toBe(0);
+  });
+
   it('should not count deleted diffs in coverage stats', async () => {
     mockComputeDiff.mockReturnValue([
       { key: 'greeting', status: 'current', value: 'Hello' },

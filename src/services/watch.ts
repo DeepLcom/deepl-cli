@@ -14,6 +14,7 @@ import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
 import { errorMessage } from '../utils/error-message.js';
 import { canonicalPathKey, isWithinDirectory } from '../utils/paths.js';
+import { isAtomicWriteTempPath } from '../utils/atomic-write.js';
 
 export interface FileTranslationResult {
   targetLang: Language;
@@ -215,6 +216,13 @@ export class WatchService {
     // This prevents race conditions where stop() is called between the check above
     // and scheduling the timer below
     if (!this.stats.isWatching) {
+      return;
+    }
+
+    // A temp sibling of an in-flight atomic write is this process mid-write. It
+    // carries the output file's name plus a suffix, so the output-file check
+    // below would match it and warn about a file that is already gone.
+    if (isAtomicWriteTempPath(filePath)) {
       return;
     }
 

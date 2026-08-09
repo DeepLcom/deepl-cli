@@ -1134,6 +1134,44 @@ describe('WatchService', () => {
     });
   });
 
+  describe('atomic-write temp files', () => {
+    it('says nothing about the temp file it is writing through', () => {
+      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      const outputDir = path.join(testDir, 'output');
+      fs.mkdirSync(outputDir, { recursive: true });
+
+      const onChange = jest.fn();
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir,
+        onChange,
+      });
+      // The shape atomicWriteFile writes through: <target>.tmp.<pid>.<rand>
+      watchService.handleFileChange(
+        path.join(outputDir, 'doc.es.md.tmp.4242.a1b2c3')
+      );
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('still says why it skips a real output-looking file', () => {
+      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      const outputDir = path.join(testDir, 'output');
+      fs.mkdirSync(outputDir, { recursive: true });
+
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir,
+      });
+      watchService.handleFileChange(path.join(outputDir, 'doc.es.md'));
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      warnSpy.mockRestore();
+    });
+  });
+
   describe('translated output file filtering', () => {
     it('should ignore files that match translated output pattern (e.g. test.es.txt)', async () => {
       const testFile = path.join(testDir, 'test.es.txt');
