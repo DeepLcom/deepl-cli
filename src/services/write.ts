@@ -169,7 +169,7 @@ export class WriteService {
    *
    * `endpoint` is not a request parameter but decides who answers the request,
    * and one cache DB is shared by every endpoint a config dir has ever talked
-   * to. Without it, a run against a custom `--api-url` served its answers back
+   * to. Without it, a run against a custom `--api-url` serves its answers back
    * for api.deepl.com for the full TTL.
    */
   private generateCacheKey(

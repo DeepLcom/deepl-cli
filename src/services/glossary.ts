@@ -90,7 +90,6 @@ export class GlossaryService {
     targetLangs: Language[],
     entries: Record<string, string>
   ): Promise<GlossaryInfo> {
-    // Validate inputs
     if (!name || name.trim() === '') {
       throw new ValidationError('Glossary name is required');
     }
@@ -103,10 +102,8 @@ export class GlossaryService {
       throw new ValidationError('Glossary entries cannot be empty');
     }
 
-    // Convert entries to TSV format
     const tsv = GlossaryService.entriesToTSV(entries);
 
-    // Create glossary via API
     const result = await this.client.createGlossary(
       name,
       sourceLang,
@@ -515,24 +512,20 @@ export class GlossaryService {
     sourceLang: Language,
     targetLang: Language
   ): Promise<void> {
-    // Get glossary info to validate it's multilingual
     const glossary = await this.client.getGlossary(glossaryId);
 
-    // Check if glossary has multiple dictionaries
     if (!isMultilingual(glossary)) {
       throw new ValidationError(
         'Cannot delete dictionary from single-language glossary. Delete the entire glossary instead.'
       );
     }
 
-    // Check if this would be the last dictionary
     if (glossary.dictionaries.length === 1) {
       throw new ValidationError(
         'Cannot delete last dictionary from glossary. Delete the entire glossary instead.'
       );
     }
 
-    // Validate the dictionary exists
     const dictionaryExists = glossary.dictionaries.some(
       (dict) =>
         dict.source_lang.toUpperCase() === sourceLang.toUpperCase() &&
@@ -545,7 +538,6 @@ export class GlossaryService {
       );
     }
 
-    // Delete the dictionary using v3 DELETE endpoint
     await this.client.deleteGlossaryDictionary(
       glossaryId,
       sourceLang,
@@ -594,7 +586,6 @@ export class GlossaryService {
       lineNumber++;
       const trimmed = line.trim();
 
-      // Skip empty lines
       if (!trimmed) {
         continue;
       }
@@ -604,17 +595,14 @@ export class GlossaryService {
       if (isTabSeparated) {
         parts = trimmed.split('\t');
       } else if (trimmed.includes(',')) {
-        // Use proper CSV parsing for comma-separated values (handles quoted fields)
         parts = GlossaryService.parseCsvLine(trimmed);
       } else {
-        // Line has no separator - skip it
         Logger.warn(
           `Line ${lineNumber}: No tab or comma separator found, skipping`
         );
         continue;
       }
 
-      // Validate we have at least 2 columns
       if (parts.length < 2) {
         Logger.warn(
           `Line ${lineNumber}: Expected 2 columns, found ${parts.length}, skipping`
@@ -622,7 +610,7 @@ export class GlossaryService {
         continue;
       }
 
-      // Warn if more than 2 columns (extra data will be ignored)
+      // Columns past the second are ignored.
       if (parts.length > 2) {
         Logger.warn(
           `Line ${lineNumber}: Found ${parts.length} columns, expected 2. Using first 2 columns.`
@@ -632,7 +620,6 @@ export class GlossaryService {
       const source = parts[0]?.trim();
       const target = parts[1]?.trim();
 
-      // Validate both source and target are non-empty
       if (!source || !target) {
         Logger.warn(`Line ${lineNumber}: Empty source or target, skipping`);
         continue;
@@ -648,7 +635,7 @@ export class GlossaryService {
         continue;
       }
 
-      // Add to entries (duplicates will overwrite earlier entries)
+      // A repeated source term overwrites the earlier entry.
       if (Object.hasOwn(entries, source)) {
         Logger.warn(
           `Line ${lineNumber}: Duplicate source "${source}", overwriting previous entry`
@@ -673,27 +660,23 @@ export class GlossaryService {
 
       if (char === '"') {
         if (inQuotes && nextChar === '"') {
-          // Escaped quote (two consecutive quotes = one quote character)
+          // Two consecutive quotes inside a quoted field are one quote.
           currentField += '"';
           i += 2;
         } else {
-          // Toggle quote state (entering or leaving quoted field)
           inQuotes = !inQuotes;
           i++;
         }
       } else if (char === ',' && !inQuotes) {
-        // Field separator (only when not inside quotes)
         fields.push(currentField);
         currentField = '';
         i++;
       } else {
-        // Regular character
         currentField += char;
         i++;
       }
     }
 
-    // Add the last field
     fields.push(currentField);
 
     return fields;

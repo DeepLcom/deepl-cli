@@ -48,7 +48,7 @@ export interface WatchOptions {
    * Called once a file's translations are on disk. A promise returned here is
    * awaited before the path is considered done, so follow-up work such as
    * `--auto-commit` runs inside the translation's slot and its failure is
-   * reported instead of being dropped.
+   * reported.
    */
   onTranslate?: (
     filePath: string,
@@ -110,7 +110,6 @@ export class WatchService {
    * Start watching a file or directory
    */
   watch(watchPath: string, options: WatchOptions): void {
-    // Validate path exists
     if (!fs.existsSync(watchPath)) {
       throw new ValidationError(`Path not found: ${watchPath}`);
     }
@@ -124,7 +123,6 @@ export class WatchService {
       ? resolvedWatchPath
       : path.dirname(resolvedWatchPath);
 
-    // Create watcher
     const watcherOptions: {
       persistent: boolean;
       ignoreInitial: boolean;
@@ -212,17 +210,14 @@ export class WatchService {
 
   /**
    * Handle file change event
-   * Uses isWatching flag to prevent race conditions with stop()
    */
   handleFileChange(filePath: string): void {
-    // Check if watch has been started at least once
     if (!this.watchOptions) {
       throw new ValidationError('Watch not started');
     }
 
-    // Early check: Don't schedule new timers if watch is being stopped or has stopped
-    // This prevents race conditions where stop() is called between the check above
-    // and scheduling the timer below
+    // Checked before the timer is scheduled below, so a stop() that lands
+    // between the two never leaves a timer behind.
     if (!this.stats.isWatching) {
       return;
     }
@@ -240,15 +235,13 @@ export class WatchService {
       return;
     }
 
-    // Check if file is supported
     if (!this.fileTranslationService.isSupportedFile(filePath)) {
       return;
     }
 
-    // Check if file is in the git-staged set. Both sides are keyed through
-    // their symlinked ancestors: the set comes from git, which reports the
-    // repository's real path, while a watched path is spelled the way the user
-    // gave it.
+    // Both sides of the git-staged check are keyed through their symlinked
+    // ancestors: the set comes from git, which reports the repository's real
+    // path, while a watched path is spelled the way the user gave it.
     if (
       this.options.stagedFiles &&
       !this.options.stagedFiles.has(canonicalPathKey(filePath))
@@ -256,27 +249,23 @@ export class WatchService {
       return;
     }
 
-    // Call onChange callback
     if (this.watchOptions.onChange) {
       this.watchOptions.onChange(filePath);
     }
 
-    // Debounce file changes
     const existingTimer = this.debounceTimers.get(filePath);
     if (existingTimer) {
       clearTimeout(existingTimer);
     }
 
     const timer = setTimeout(() => {
-      // Drop the bookkeeping as soon as the timer fires, not after the
-      // translation finishes, and only if this timer is still the current one.
-      // Deleting unconditionally later would drop a NEWER pending timer for the
-      // same file, making it uncancellable and letting two translations race to
-      // write the same output path.
+      // Drop the bookkeeping as soon as the timer fires, and only while this
+      // timer is still the current one: deleting unconditionally would drop a
+      // newer pending timer for the same file, making it uncancellable and
+      // letting two translations race to write the same output path.
       if (this.debounceTimers.get(filePath) === timer) {
         this.debounceTimers.delete(filePath);
       }
-      // Wrap async code to handle Promise properly (void operator tells TypeScript we intentionally ignore the Promise)
       void this.runTranslation(filePath);
     }, this.options.debounceMs);
 
@@ -287,11 +276,11 @@ export class WatchService {
    * Translate one path, reporting any failure through onError.
    *
    * At most one translation per path is in flight. A change arriving while one
-   * runs records a single re-run instead of starting a second translation:
-   * two concurrent runs write the same output path in API-completion order, so
-   * a slower translation of older content would overwrite a newer one and the
-   * output would stay stale until the next edit. Coalescing also collapses an
-   * edit storm into one re-translation rather than one per event.
+   * runs records a single re-run instead of starting a second translation: two
+   * concurrent runs write the same output path in API-completion order, so a
+   * slower translation of older content can overwrite a newer one. Coalescing
+   * also collapses an edit storm into one re-translation rather than one per
+   * event.
    *
    * The re-run is dispatched from `finally` so a failed translation still picks
    * up the edit that arrived while it was running.
@@ -337,9 +326,8 @@ export class WatchService {
    * Detects patterns like name.{langCode}.ext where langCode matches a
    * configured target language, and only inside the output directory — every
    * file this service writes lands there, so requiring containment keeps the
-   * loop guard complete while letting a source file that merely carries a
-   * target-language segment in its name (pricing.es.md with --to es) be
-   * translated instead of skipped for the lifetime of the session.
+   * loop guard complete while still translating a source file that merely
+   * carries a target-language segment in its name (pricing.es.md with --to es).
    */
   private isTranslatedOutputFile(filePath: string): boolean {
     if (!this.watchOptions) {
@@ -358,7 +346,6 @@ export class WatchService {
     }
 
     const targetLangs = this.watchOptions.targetLangs;
-    // Check any segment between the first and last could be a target language code
     for (let i = 1; i < parts.length - 1; i++) {
       const segment = parts[i]!.toLowerCase();
       if (targetLangs.some((lang) => lang.toLowerCase() === segment)) {
@@ -424,7 +411,7 @@ export class WatchService {
       preserveCode,
     } = this.watchOptions;
 
-    // Build translation options base (targetLang will be set per operation)
+    // targetLang is set per operation below.
     const baseOptions: Partial<TranslationOptions> = {};
 
     if (sourceLang) {
@@ -439,13 +426,12 @@ export class WatchService {
       baseOptions.glossaryId = glossaryId;
     }
 
-    // Determine output path(s)
     const fileName = path.basename(filePath, path.extname(filePath));
     const ext = path.extname(filePath);
     const fileOutputDir = this.outputDirFor(filePath, outputDir);
 
     if (targetLangs.length === 1) {
-      // Single target language (length === 1 guarantees targetLangs[0] exists)
+      // length === 1 guarantees targetLangs[0] exists
       const targetLang = targetLangs[0]!;
       const outputPath = path.join(
         fileOutputDir,
@@ -470,7 +456,6 @@ export class WatchService {
         });
       }
     } else {
-      // Multiple target languages
       const results = await this.fileTranslationService.translateFileToMultiple(
         filePath,
         targetLangs as Language[],

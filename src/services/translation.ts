@@ -92,7 +92,7 @@ export class TranslationService {
   /**
    * The cache state is a property of the run, not of one request, so repeat it
    * no more than once. A file of more than `TRANSLATE_BATCH_SIZE` strings needs
-   * several requests, and one notice per request buried the output.
+   * several requests, and one notice per request would bury the output.
    */
   private announceCacheMode(cacheEnabled: boolean, skipCache: boolean): void {
     const notice = !cacheEnabled
@@ -114,7 +114,6 @@ export class TranslationService {
     options: TranslationOptions,
     serviceOptions: TranslateServiceOptions = {}
   ): Promise<TranslationResult> {
-    // Validate inputs
     if (!text || text.trim() === '') {
       throw new ValidationError('Text cannot be empty');
     }
@@ -131,11 +130,9 @@ export class TranslationService {
       );
     }
 
-    // Get defaults from config
     const configData = this.config.get();
     const defaults = configData.defaults;
 
-    // Merge options with defaults
     const translationOptions: TranslationOptions = {
       ...options,
       sourceLang: options.sourceLang ?? defaults.sourceLang,
@@ -144,7 +141,6 @@ export class TranslationService {
         options.preserveFormatting ?? defaults.preserveFormatting,
     };
 
-    // Preserve code blocks if requested
     let processedText = text;
     const preservationMap: Map<string, string> = new Map();
 
@@ -152,10 +148,8 @@ export class TranslationService {
       processedText = preserveCodeBlocks(text, preservationMap);
     }
 
-    // Always preserve variables
     processedText = preserveVariables(processedText, preservationMap);
 
-    // Check cache (only if cache is enabled AND skipCache is not set)
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
     const shouldUseCache = cacheEnabled && !serviceOptions.skipCache;
 
@@ -177,7 +171,6 @@ export class TranslationService {
       Logger.verbose('[verbose] Cache miss');
     }
 
-    // Translate via API
     const startTime = Date.now();
     const result = await this.client.translate(
       processedText,
@@ -190,7 +183,6 @@ export class TranslationService {
     // not become a cache entry that reproduces the same output offline.
     assertPlaceholdersSurvived(result.text, preservationMap);
 
-    // Store in cache
     if (shouldUseCache) {
       this.cache?.set(cacheKey, result);
     }
@@ -210,9 +202,8 @@ export class TranslationService {
    * @param texts - Array of texts to translate
    * @param options - Translation options
    * @param serviceOptions - `skipCache` bypasses both the cache read and the
-   *   cache write, matching `translate()`. Without it, `--no-cache` was a
-   *   silent no-op for every structured i18n format, so a corrupt translation
-   *   could not be re-fetched and the natural remedy did nothing.
+   *   cache write, matching `translate()`. Every structured i18n format goes
+   *   through this path, so it is what makes `--no-cache` reach them.
    * @returns One slot per input text, in input order. A slot is `null` when the
    *   request carrying that text failed; the surviving batches are still
    *   returned so callers that track failure per item can retry only those.
@@ -242,7 +233,6 @@ export class TranslationService {
       }
     }
 
-    // Get config defaults
     const configData = this.config.get();
     const defaults = configData.defaults;
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
@@ -250,7 +240,6 @@ export class TranslationService {
 
     this.announceCacheMode(cacheEnabled, serviceOptions.skipCache === true);
 
-    // Merge options with defaults
     const translationOptions: TranslationOptions = {
       ...options,
       sourceLang: options.sourceLang ?? defaults.sourceLang,
@@ -259,8 +248,6 @@ export class TranslationService {
         options.preserveFormatting ?? defaults.preserveFormatting,
     };
 
-    // Check cache and separate cached vs non-cached texts
-    // Use Set for deduplication and Map to track all indices for each text
     const textsToTranslateSet = new Set<string>();
     const textIndexMap = new Map<string, number[]>(); // Maps text to ALL original indices
     const results: (TranslationResult | null)[] =
@@ -269,10 +256,9 @@ export class TranslationService {
     for (let i = 0; i < texts.length; i++) {
       const text = texts[i];
       if (!text) {
-        // An empty source value has an empty translation. Sending it would be
-        // billed for nothing, and leaving the slot null made a text that was
-        // never sent indistinguishable from a request that failed — which
-        // crashed file translation and cost sync the key outright.
+        // An empty source value has an empty translation, filled in without a
+        // request: sending it is billed for nothing, and a null slot would be
+        // indistinguishable from a request that failed.
         results[i] = { text: '', billedCharacters: 0 };
         continue;
       }
@@ -287,35 +273,26 @@ export class TranslationService {
         }
       }
 
-      // Not cached, need to translate
-      // Track this text for translation (deduplicated via Set)
       textsToTranslateSet.add(text);
 
-      // Track ALL indices for this text (handles duplicates)
       if (!textIndexMap.has(text)) {
         textIndexMap.set(text, []);
       }
       textIndexMap.get(text)!.push(i);
     }
 
-    // Convert Set to Array for batch translation
     const textsToTranslate = Array.from(textsToTranslateSet);
 
-    // If all texts were cached, return results preserving positional correspondence
     if (textsToTranslate.length === 0) {
       return results;
     }
 
-    // Use batch API to translate all non-cached texts in a single request
-    // DeepL API supports up to TRANSLATE_BATCH_SIZE texts per request, so chunk if needed
     const BATCH_SIZE = TRANSLATE_BATCH_SIZE;
     const batches: string[][] = [];
     for (let i = 0; i < textsToTranslate.length; i += BATCH_SIZE) {
       batches.push(textsToTranslate.slice(i, i + BATCH_SIZE));
     }
 
-    // Process all batches and track failures
-    // Use a Map to correctly track which text maps to which result
     const textToResultMap = new Map<string, TranslationResult>();
     let lastError: Error | null = null;
 
@@ -326,7 +303,6 @@ export class TranslationService {
           translationOptions
         );
 
-        // Map each result to its corresponding text
         for (let i = 0; i < batch.length; i++) {
           const text = batch[i];
           const result = batchResults[i];
@@ -337,38 +313,31 @@ export class TranslationService {
       } catch (error) {
         lastError = error as Error;
         Logger.error(`Batch translation failed: ${errorMessage(error)}`);
-        // Mark all texts in this batch as processed (but failed)
-        // Continue with other batches rather than failing completely
+        // The other batches still run; only a run where every batch failed
+        // rejects.
       }
     }
 
-    // If all batches failed, throw the last error
     if (textToResultMap.size === 0 && lastError) {
       throw lastError;
     }
 
-    // Store results in cache and map back to ALL original indices
     for (const text of textsToTranslate) {
       const result = textToResultMap.get(text);
 
       if (!result) {
-        // Translation failed for this text
         continue;
       }
 
       const originalIndices = textIndexMap.get(text);
       if (originalIndices) {
-        // Assign result to ALL indices where this text appeared (handles
-        // duplicates). Each index gets its own copy: the returned array is
-        // typed as one result per index, and a caller editing results[i] in
-        // place was silently editing every other index whose text deduplicated
-        // to the same request item — which wrote one key's placeholder into
-        // another key's translation.
+        // Each of the indices this text deduplicated to gets its own copy: the
+        // returned array is typed as one result per index, so a caller editing
+        // results[i] in place must not reach any other index.
         for (const index of originalIndices) {
           results[index] = { ...result };
         }
 
-        // Cache the result (only once per unique text)
         if (shouldUseCache) {
           const cacheKey = this.generateCacheKey(text, translationOptions);
           this.cache?.set(cacheKey, result);
@@ -376,7 +345,6 @@ export class TranslationService {
       }
     }
 
-    // Calculate actual failures
     const actualFailures = results.filter((r) => r === null).length;
     if (actualFailures > 0) {
       Logger.warn(
@@ -451,19 +419,15 @@ export class TranslationService {
   async getSupportedLanguages(
     type: 'source' | 'target'
   ): Promise<LanguageInfo[]> {
-    // Check cache first
     const cached = this.languageCache.get(type);
     const now = Date.now();
 
-    // Return cached data if it exists and hasn't expired
     if (cached && now - cached.timestamp < this.LANGUAGE_CACHE_TTL) {
       return cached.data;
     }
 
-    // Fetch from API
     const languages = await this.client.getSupportedLanguages(type);
 
-    // Cache result with timestamp
     this.languageCache.set(type, { data: languages, timestamp: now });
 
     return languages;
@@ -472,13 +436,10 @@ export class TranslationService {
   /**
    * Generate cache key from text and options
    *
-   * IMPORTANT: This method creates a new object with properties in a FIXED order
-   * to ensure deterministic cache keys. Two translation requests with identical
-   * parameters must generate the same cache key, regardless of the order in which
-   * properties were specified in the input options object.
-   *
-   * The property order in `cacheData` is intentional and must not be changed,
-   * as it directly affects cache key generation via JSON.stringify().
+   * IMPORTANT: the property order in `cacheData` is fixed and must not be
+   * changed, because the key is a hash of its `JSON.stringify` output: two
+   * requests with identical parameters must produce the same key whatever order
+   * the caller specified those parameters in.
    *
    * The text is hashed byte-exact, with no Unicode normalization: NFC and NFD
    * encodings of the same visible string produce distinct cache keys. This is
@@ -508,7 +469,7 @@ export class TranslationService {
    * `endpoint` is not a request parameter but decides who answers the request,
    * and one cache DB is shared by every endpoint a config dir has ever talked
    * to. Without it, a single run against `--api-url http://localhost:1234`
-   * served its answers back for api.deepl.com for the full 30-day TTL, with no
+   * serves its answers back for api.deepl.com for the full 30-day TTL, with no
    * network involved. Custom endpoints are a supported feature — proxies,
    * regional endpoints — so this needs no misuse to reach.
    */
@@ -517,8 +478,6 @@ export class TranslationService {
     // naming one glossary share a key and an empty selection keys as no glossary
     const glossary = resolveGlossaryWireParams(options);
 
-    // Create a stable representation with deterministic property order
-    // Property order matters because JSON.stringify() preserves insertion order
     const cacheData = {
       text, // 1. Text to translate
       targetLang: options.targetLang, // 2. Target language
@@ -549,7 +508,6 @@ export class TranslationService {
       endpoint: this.client.resolvedBaseUrl, // 21. Who answered the request
     };
 
-    // Generate SHA-256 hash of the stable representation
     const hash = crypto
       .createHash('sha256')
       .update(JSON.stringify(cacheData))

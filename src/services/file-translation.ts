@@ -64,7 +64,6 @@ export class FileTranslationService {
     options: TranslationOptions,
     fileOptions: FileTranslationOptions = {}
   ): Promise<void> {
-    // Check file type is supported
     if (!this.isSupportedFile(inputPath)) {
       throw new ValidationError(
         `Unsupported file type: ${path.extname(inputPath)}`,
@@ -72,13 +71,12 @@ export class FileTranslationService {
       );
     }
 
-    // Delegate structured files (JSON/YAML) to StructuredFileTranslationService
     if (this.isStructuredExt(inputPath)) {
       const svc = await this.getStructuredService();
       return svc.translateFile(inputPath, outputPath, options, fileOptions);
     }
 
-    // Read file content using safeReadFile (rejects symlinks for security)
+    // safeReadFile rejects a symlinked input rather than following it.
     let content: string;
     try {
       content = await safeReadFile(inputPath, 'utf-8');
@@ -90,12 +88,10 @@ export class FileTranslationService {
       throw err;
     }
 
-    // Check for empty files
     if (!content || content.trim() === '') {
       throw new ValidationError('Cannot translate empty file');
     }
 
-    // Translate content
     const result = await this.translationService.translate(
       content,
       options,
@@ -108,11 +104,9 @@ export class FileTranslationService {
       return;
     }
 
-    // Create output directory if needed
     const outputDir = path.dirname(outputPath);
     await fs.promises.mkdir(outputDir, { recursive: true });
 
-    // Write translated content
     await atomicWriteFile(outputPath, result.text, 'utf-8');
   }
 
@@ -132,7 +126,6 @@ export class FileTranslationService {
       );
     }
 
-    // Delegate structured files (JSON/YAML) to StructuredFileTranslationService
     if (this.isStructuredExt(inputPath)) {
       const svc = await this.getStructuredService();
       return svc.translateFileToMultiple(
@@ -143,7 +136,7 @@ export class FileTranslationService {
       );
     }
 
-    // Read file content using safeReadFile (rejects symlinks for security)
+    // safeReadFile rejects a symlinked input rather than following it.
     let content: string;
     try {
       content = await safeReadFile(inputPath, 'utf-8');
@@ -159,20 +152,17 @@ export class FileTranslationService {
       throw new ValidationError('Cannot translate empty file');
     }
 
-    // Translate to multiple languages
     const translationResults =
       await this.translationService.translateToMultiple(content, targetLangs, {
         ...options,
         skipCache: fileOptions.skipCache,
       });
 
-    // Convert to FileMultiTargetResult
     const results: FileMultiTargetResult[] = translationResults.map((r) => ({
       targetLang: r.targetLang,
       text: r.text,
     }));
 
-    // If outputDir is specified, write files
     if (options.outputDir) {
       const outputDir = options.outputDir;
       await fs.promises.mkdir(outputDir, { recursive: true });
@@ -217,9 +207,7 @@ export class FileTranslationService {
       return true;
     }
 
-    // For existing files, perform security checks
     try {
-      // Resolve symlinks to get real path
       const realPath = fs.realpathSync(filePath);
       const realExt = path.extname(realPath).toLowerCase();
 

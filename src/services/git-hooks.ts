@@ -198,12 +198,10 @@ export class GitHooksService {
     const hookPath = this.getHookPath(hookType);
     const hookContent = this.generateHookContent(hookType);
 
-    // Create hooks directory if it doesn't exist
     if (!fs.existsSync(this.hooksDir)) {
       fs.mkdirSync(this.hooksDir, { recursive: true });
     }
 
-    // Backup existing hook if it exists and is not a DeepL hook
     let backupPath: string | null = null;
     if (fs.existsSync(hookPath)) {
       const existingContent = fs.readFileSync(hookPath, 'utf-8');
@@ -213,10 +211,8 @@ export class GitHooksService {
       }
     }
 
-    // Write the hook file
     fs.writeFileSync(hookPath, hookContent, 'utf-8');
 
-    // Make it executable
     fs.chmodSync(hookPath, 0o755);
 
     return { hookPath, backupPath };
@@ -255,7 +251,6 @@ export class GitHooksService {
       return;
     }
 
-    // Verify it's a DeepL hook before removing
     const content = fs.readFileSync(hookPath, 'utf-8');
     if (!this.isDeepLHook(content)) {
       throw new ValidationError(
@@ -265,7 +260,6 @@ export class GitHooksService {
 
     fs.unlinkSync(hookPath);
 
-    // Restore backup if it exists
     const backupPath = hookPath + '.backup';
     if (fs.existsSync(backupPath)) {
       fs.copyFileSync(backupPath, hookPath);
@@ -342,7 +336,6 @@ export class GitHooksService {
     // which never equals path.parse().root and loops forever.
     let currentPath = path.resolve(startPath ?? process.cwd());
 
-    // Traverse up the directory tree
     while (currentPath !== path.parse(currentPath).root) {
       const gitPath = path.join(currentPath, '.git');
       if (fs.existsSync(gitPath)) {

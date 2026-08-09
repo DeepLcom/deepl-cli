@@ -93,7 +93,6 @@ export class BatchTranslationService {
     this.fileTranslationService = fileTranslationService;
     this.translationService = options.translationService ?? null;
 
-    // Validate concurrency parameter
     const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
     if (concurrency < 1) {
       throw new ValidationError('Concurrency must be at least 1');
@@ -130,7 +129,6 @@ export class BatchTranslationService {
       return result;
     }
 
-    // Partition files into plain text (batchable) vs others (per-file)
     const plainTextFiles: string[] = [];
     const perFileFiles: string[] = [];
 
@@ -147,7 +145,6 @@ export class BatchTranslationService {
     const totalFiles = files.length;
     let completed = result.skipped.length;
 
-    // Report progress for skipped files
     for (const entry of result.skipped) {
       batchOptions.onProgress?.({
         completed,
@@ -156,7 +153,6 @@ export class BatchTranslationService {
       });
     }
 
-    // Batch-translate plain text files
     if (plainTextFiles.length > 0) {
       const batchResult = await this.translatePlainTextFilesBatched(
         plainTextFiles,
@@ -176,7 +172,6 @@ export class BatchTranslationService {
         batchResult.skipped.length;
     }
 
-    // Per-file translation for structured/other files
     if (perFileFiles.length > 0) {
       const limit = pLimit(this.concurrency);
       // Same reasoning as the batched path: an unsupported target_lang is a
@@ -334,7 +329,6 @@ export class BatchTranslationService {
         );
 
         if (results.length !== batch.length) {
-          // Result count mismatch — mark entire batch as failed
           for (const entry of batch) {
             failed.push({
               file: entry.file,
@@ -463,7 +457,6 @@ export class BatchTranslationService {
     translationOptions: TranslationOptions,
     batchOptions: Partial<BatchOptions> = {}
   ): Promise<BatchResult> {
-    // Check if directory exists
     if (!fs.existsSync(inputDir)) {
       throw new ValidationError(`Directory not found: ${inputDir}`);
     }
@@ -473,7 +466,6 @@ export class BatchTranslationService {
       throw new ValidationError(`Not a directory: ${inputDir}`);
     }
 
-    // Build glob pattern
     const pattern = batchOptions.pattern ?? '*';
     const depth = batchOptions.recursive === false ? 1 : undefined;
     const globPattern =
@@ -481,7 +473,6 @@ export class BatchTranslationService {
         ? path.join(inputDir, pattern)
         : path.join(inputDir, '**', pattern);
 
-    // Find all files
     const files = await fg(globPattern, {
       onlyFiles: true,
       absolute: true,
@@ -490,12 +481,10 @@ export class BatchTranslationService {
       followSymbolicLinks: false,
     });
 
-    // Filter to only supported files
     const supportedFiles = files.filter((file) =>
       this.fileTranslationService.isSupportedFile(file)
     );
 
-    // Translate files with preserved directory structure
     return this.translateFiles(supportedFiles, translationOptions, {
       ...batchOptions,
       outputDir: batchOptions.outputDir ?? inputDir,
@@ -528,7 +517,6 @@ export class BatchTranslationService {
     const ext = path.extname(inputPath);
     const basename = path.basename(inputPath, ext);
 
-    // Apply custom pattern if provided
     if (options.outputPattern) {
       const outputFilename = options.outputPattern
         .replace('{name}', basename)

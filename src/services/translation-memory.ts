@@ -15,19 +15,17 @@ export function sanitizeForError(input: string): string {
   return input.replace(/[\x00-\x1f\x7f]/g, '').slice(0, 80);
 }
 
-// Filter API-returned TM entries whose name contains suspicious codepoints
-// (ASCII control chars or zero-width chars) before name matching. Defense-
-// in-depth against server-side name pollution where an attacker-controlled
-// entry would otherwise participate in the find() candidate pool. Silent
-// skip — real TMs created via the DeepL dashboard cannot contain these.
+// Keeps an API-returned TM whose name carries ASCII control or zero-width
+// characters out of the name-matching candidate pool. Skipped in silence,
+// because a TM created through the DeepL dashboard cannot contain these.
 function hasSuspiciousChars(name: string): boolean {
   // eslint-disable-next-line no-control-regex -- intentional: checking for control chars in untrusted API-returned strings
   return /[\x00-\x1f\x7f\u200B-\u200D\uFEFF]/.test(name);
 }
 
-// Takes the expected pair ({from, targets}) and returns only the ID, so
-// language-pair validation is centralized here and text + file handlers
-// cannot drift. The UUID path trusts the caller and skips the check.
+// Language-pair validation lives here rather than in the callers, so the text
+// and file handlers cannot drift. The UUID path trusts the caller and skips the
+// check.
 export async function resolveTranslationMemoryId(
   client: TranslationMemoryLister,
   nameOrId: string,
