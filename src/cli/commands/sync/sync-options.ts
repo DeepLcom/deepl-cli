@@ -75,11 +75,8 @@ export function parseLocaleFilter(
 }
 
 /**
- * JSON error envelope shape emitted on stdout when --format json is set and a
- * command fails. Shared across every command that has a JSON mode so script
- * consumers can parse failures with one schema.
- *
- * @see tests/helpers/assert-error-envelope.ts for the canonical validator.
+ * Sync's alias for the shared failure envelope emitted on stdout when
+ * --format json is set.
  */
 export type { JsonErrorEnvelope as SyncJsonErrorEnvelope } from '../../json-error-envelope.js';
 
@@ -98,10 +95,6 @@ export interface SyncInitJsonSuccessEnvelope {
   };
 }
 
-/**
- * The sync surface's name for the shared envelope emitter, kept so every sync
- * subcommand imports its machine-readable failure path from one place.
- */
 export { emitJsonErrorAndExit } from '../../json-error-envelope.js';
 
 /**

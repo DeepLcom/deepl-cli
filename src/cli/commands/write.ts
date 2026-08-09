@@ -46,8 +46,8 @@ export class WriteCommand {
    * (rephrase by default; spelling/grammar correction when options.correct is set)
    */
   async improve(text: string, options: WriteOptions): Promise<string> {
-    // Format output based on format option. The alternatives listing is a set of
-    // results rather than one, so it has a payload of its own.
+    // The alternatives listing is a set of results rather than one, so it has a
+    // payload of its own.
     if (options.showAlternatives) {
       const alternatives = await this.alternativeTexts(text, options);
       return options.format === 'json'
@@ -99,9 +99,6 @@ export class WriteCommand {
     return improvements.map((i) => i.text);
   }
 
-  /**
-   * Dispatch to the rephrase or correct endpoint based on options.correct
-   */
   private fetchImprovements(
     text: string,
     options: WriteOptions,
@@ -169,13 +166,10 @@ export class WriteCommand {
     const absolutePath = resolve(filePath);
     const content = await this.readFileContent(filePath);
 
-    // Improve the content
     const improvedText = await this.improve(content, options);
 
-    // Handle output
     if (options.outputFile) {
       const outputPath = resolve(options.outputFile);
-      // Ensure output directory exists
       await fs.mkdir(dirname(outputPath), { recursive: true });
       await atomicWriteFile(outputPath, improvedText, 'utf-8');
     } else if (options.inPlace) {
@@ -199,7 +193,6 @@ export class WriteCommand {
   generateDiff(original: string, improved: string): string {
     const patch = this.generatePatch(original, improved);
 
-    // Color the diff output
     const lines = patch.split('\n');
     const coloredLines = lines.map((line) => {
       if (line.startsWith('+') && !line.startsWith('+++')) {
@@ -262,7 +255,6 @@ export class WriteCommand {
   }> {
     const improvedText = await this.improvedText(text, options);
 
-    // Count the number of changes using diff
     const patches = Diff.diffWords(text, improvedText);
     const changes = patches.filter((p) => p.added || p.removed).length;
 
@@ -321,7 +313,6 @@ export class WriteCommand {
     const absolutePath = resolve(filePath);
     const content = await this.readFileContent(filePath);
 
-    // Check if improvements are needed
     const checkResult = await this.checkText(content, options);
 
     if (!checkResult.needsImprovement) {
@@ -332,14 +323,12 @@ export class WriteCommand {
       };
     }
 
-    // Create backup if requested
     let backupPath: string | undefined;
     if (options.createBackup) {
       backupPath = `${absolutePath}.bak`;
       await fs.writeFile(backupPath, content, 'utf-8');
     }
 
-    // Write improved content
     await atomicWriteFile(absolutePath, checkResult.improved, 'utf-8');
 
     return {
@@ -399,11 +388,9 @@ export class WriteCommand {
       return selection === -1 ? text : improvements[0]!.text;
     }
 
-    // Generate multiple alternatives by calling API with different styles
     const styles: WritingStyle[] = ['simple', 'business', 'academic', 'casual'];
     const allImprovements: Array<{ text: string; label: string }> = [];
 
-    // Call API for each style
     for (const style of styles) {
       try {
         const improvements = await this.writeService.improve(
@@ -436,7 +423,6 @@ export class WriteCommand {
         index === self.findIndex((t) => t.text === improvement.text)
     );
 
-    // Create choices with style labels
     const maxLen = this.getPreviewWidth();
     const originalPreview = sanitizeForTerminal(text);
     const choices = [
@@ -455,15 +441,13 @@ export class WriteCommand {
       }),
     ];
 
-    // Prompt user to select
     const selection = await select({
       message: `Choose an improvement (${uniqueImprovements.length} alternatives):`,
       choices,
     });
 
-    // Return selected text
     if (selection === -1) {
-      return text; // Keep original
+      return text;
     }
 
     return uniqueImprovements[selection]!.text;
@@ -491,7 +475,6 @@ export class WriteCommand {
     });
     const alternatives = improvements.map((i) => i.text);
 
-    // Interactive selection
     const selected = await this.improveInteractive(content, options);
 
     return {
@@ -520,16 +503,10 @@ export class WriteCommand {
     }
   }
 
-  /**
-   * Calculate preview width based on terminal columns
-   */
   private getPreviewWidth(): number {
     return Math.max(40, (process.stdout.columns || 80) - 25);
   }
 
-  /**
-   * Truncate text for preview
-   */
   private truncate(text: string, maxLength: number): string {
     if (text.length <= maxLength) {
       return text;
@@ -537,16 +514,10 @@ export class WriteCommand {
     return text.substring(0, maxLength - 3) + '...';
   }
 
-  /**
-   * Capitalize first letter of string
-   */
   private capitalizeFirst(str: string): string {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  /**
-   * Format alternatives with numbering
-   */
   private formatAlternatives(alternatives: string[]): string {
     return alternatives
       .map((alt, index) => `${index + 1}. ${alt}`)

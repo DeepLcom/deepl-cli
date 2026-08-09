@@ -106,11 +106,11 @@ async function handleSyncAudit(
           }
           // Audit is the only sync read driven by lockfile keys rather than
           // globbed source paths, and a lockfile arrives with a clone like any
-          // other committed file — so its keys are untrusted input. A key of
-          // `../secret/en.json` otherwise read a file outside the project root
-          // and printed its string values in the report. Thrown rather than
-          // skipped, matching how a sync run treats a containment violation: it
-          // is a problem with the project, not with one locale.
+          // other committed file — so its keys are untrusted input, and a key
+          // like `../secret/en.json` would otherwise have its string values
+          // printed in the report. Thrown rather than skipped, matching how a
+          // sync run treats a containment violation: it is a problem with the
+          // project, not with one locale.
           assertPathWithinRoot(targetAbs, config.projectRoot);
           if (!fsMod.existsSync(targetAbs)) continue;
           try {

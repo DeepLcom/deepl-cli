@@ -200,10 +200,9 @@ export class LanguagesCommand {
   /**
    * Merge API languages with the bundled snapshot. API names take precedence.
    *
-   * The row set is the union of both: iterating only the snapshot meant a
-   * language the API offers but the snapshot predates was silently dropped from
-   * the listing, so `deepl languages` could not show what `translate` accepted.
-   * Snapshot entries the API omits are kept, so a partial response never makes
+   * The row set is the union of both: a language the API offers but the snapshot
+   * predates is listed, so `deepl languages` shows what `translate` accepts, and
+   * snapshot entries the API omits are kept, so a partial response never makes
    * languages disappear.
    */
   mergeWithRegistry(

@@ -360,7 +360,6 @@ export class VoiceCommand {
       // Move cursor up to overwrite previous output
       readline.moveCursor(process.stdout, 0, -lineCount);
 
-      // Render source line
       const src = state['source']!;
       readline.clearLine(process.stdout, 0);
       readline.cursorTo(process.stdout, 0);
@@ -368,7 +367,6 @@ export class VoiceCommand {
         `${chalk.bold('[source]')} ${src.concluded}${chalk.gray(src.tentative)}\n`
       );
 
-      // Render each target language
       for (const lang of targetLangs) {
         const tgt = state[lang]!;
         readline.clearLine(process.stdout, 0);
@@ -390,7 +388,7 @@ export class VoiceCommand {
       }
     };
 
-    // Print initial blank lines
+    // Reserve the lines `render` moves back over and overwrites.
     for (let i = 0; i < lineCount; i++) {
       process.stdout.write('\n');
     }

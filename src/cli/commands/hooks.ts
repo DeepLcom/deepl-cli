@@ -48,7 +48,6 @@ export class HooksCommand {
   private gitHooksService: GitHooksService | null = null;
 
   constructor(gitDir?: string) {
-    // Find git directory if not provided
     const gitDirectory = gitDir ?? GitHooksService.findGitRoot();
 
     if (!gitDirectory) {
@@ -58,9 +57,6 @@ export class HooksCommand {
     }
   }
 
-  /**
-   * Install a git hook
-   */
   /**
    * The `core.hooksPath` this repository uses to send hooks outside the working
    * tree, or null. The CLI asks before writing there; `install` refuses on its

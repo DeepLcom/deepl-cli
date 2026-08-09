@@ -191,7 +191,7 @@ async function handleSyncRoot(
     if (result.driftDetected) {
       // Soft exit — set exitCode and return so in-flight writes / auto-commit
       // steps / the --watch event loop drain cleanly instead of being killed
-      // mid-cycle. docs/API.md:2939 has promised this shape since 1.1.0.
+      // mid-cycle. docs/API.md documents this exit shape.
       process.exitCode = ExitCode.SyncDrift;
       return;
     }

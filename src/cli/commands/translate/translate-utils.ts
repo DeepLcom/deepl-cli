@@ -159,9 +159,9 @@ export interface TranslationLanguageConstraints extends ExtendedLanguageConstrai
 }
 
 /**
- * The language gate for every translate input mode. One entry point because a
- * mode that checked codes without the extended-tier arms accepted, and sent,
- * commands its siblings rejected locally.
+ * The language gate for every translate input mode. One entry point so no mode
+ * can check codes without also applying the extended-tier arms and send a
+ * command its siblings reject locally.
  */
 export function validateTranslationLanguages(
   targets: string[],

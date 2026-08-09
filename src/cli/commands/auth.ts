@@ -29,7 +29,6 @@ export class AuthCommand {
     apiKey: string,
     options: { verify?: boolean } = {}
   ): Promise<void> {
-    // Validate input
     if (!apiKey || apiKey.trim() === '') {
       throw new ValidationError('API key cannot be empty');
     }
@@ -39,11 +38,9 @@ export class AuthCommand {
       return;
     }
 
-    // Validate with DeepL API by making a test request
-    // Note: No format validation - let the API determine if the key is valid
-    // This supports production keys (:fx suffix), free keys, and test keys
+    // No local format check: the API decides, which keeps production (`:fx`),
+    // free and test keys all usable.
     try {
-      // Use configured API endpoint for validation
       const configBaseUrl = this.config.getValue<string>('api.baseUrl');
       const usePro = this.config.getValue<boolean>('api.usePro');
       const baseUrl = resolveEndpoint({ apiKey, configBaseUrl, usePro });
@@ -70,7 +67,6 @@ export class AuthCommand {
       throw new AuthError('Failed to validate API key');
     }
 
-    // Save to config
     this.config.set('auth.apiKey', apiKey);
   }
 
@@ -78,13 +74,10 @@ export class AuthCommand {
    * Get API key from config or environment
    */
   async getKey(): Promise<string | undefined> {
-    // Check environment variable first (for CI/CD)
     const envKey = process.env['DEEPL_API_KEY'];
 
-    // Check config
     const configKey = this.config.getValue<string>('auth.apiKey');
 
-    // Prefer config over environment
     return configKey ?? envKey;
   }
 

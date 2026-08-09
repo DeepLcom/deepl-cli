@@ -55,8 +55,7 @@ function watchedDirectory(target: string): string {
  * What git said, rather than only that a command failed.
  *
  * `execFile` puts the exit status in `message` and the diagnosis in `stderr`, so
- * reporting `message` alone discarded the one part that tells the user what to
- * fix.
+ * `stderr` is the part that tells the user what to fix.
  */
 function gitFailureDetail(error: unknown): string {
   if (typeof error === 'object' && error !== null) {
@@ -167,12 +166,10 @@ export class WatchCommand {
    * Start watching a file or directory
    */
   async watch(pathToWatch: string, options: WatchOptions): Promise<void> {
-    // Validate path exists
     if (!fs.existsSync(pathToWatch)) {
       throw new ValidationError(`Path not found: ${pathToWatch}`);
     }
 
-    // Parse target languages
     const targetLangs = options.to
       .split(',')
       .map((lang) => lang.trim())
@@ -186,10 +183,9 @@ export class WatchCommand {
     }
 
     // The API rejects any translation naming a glossary without source_lang, so
-    // an unguarded watch session fails once per file change instead of at launch.
-    // Settled from `defaults.sourceLang` when the flag is absent, the same way
-    // every other command does it, so a direct call and the CLI agree on what is
-    // runnable.
+    // the requirement is settled at launch, using the configured
+    // `defaults.sourceLang` when the flag is absent, rather than failing once
+    // per file change.
     if (hasGlossarySelection(options)) {
       applyGlossarySourceLang(
         options,
@@ -198,7 +194,6 @@ export class WatchCommand {
       );
     }
 
-    // Get git-staged files if requested
     let stagedFiles: Set<string> | undefined;
     if (options.gitStaged) {
       stagedFiles = await this.getStagedFiles(pathToWatch);
@@ -211,8 +206,8 @@ export class WatchCommand {
       Logger.info(chalk.gray(`Git-staged files: ${stagedFiles.size}`));
     }
 
-    // Resolve glossary ID if provided. The pair is known at launch, so the
-    // coverage check happens here rather than once per file change.
+    // The language pair is known at launch, so the glossary coverage check
+    // happens here rather than once per file change.
     let glossaryId: string | undefined;
     if (options.glossary) {
       glossaryId = await this.resolveGlossaryId(
@@ -223,12 +218,10 @@ export class WatchCommand {
       );
     }
 
-    // Determine output directory
     let outputDir: string;
     if (options.output) {
       outputDir = options.output;
     } else {
-      // Default: create translations/ subdirectory
       const isDirectory = fs.statSync(pathToWatch).isDirectory();
       if (isDirectory) {
         outputDir = `${pathToWatch}/translations`;
@@ -240,7 +233,6 @@ export class WatchCommand {
       }
     }
 
-    // Create output directory if it doesn't exist
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
@@ -248,7 +240,7 @@ export class WatchCommand {
     // git can only commit files inside its own working tree, so --auto-commit
     // is answerable only by the repository holding the output directory. Asked
     // here, before the first translation is billed, so a session that could
-    // never commit anything says so once instead of once per translated file.
+    // never commit anything says so once.
     if (options.autoCommit) {
       const repoRoot = await this.gitWorktreeRoot(outputDir);
       if (repoRoot === null) {
@@ -259,7 +251,6 @@ export class WatchCommand {
       }
     }
 
-    // Create watch service with optional debounce and concurrency
     const watchServiceOptions: {
       debounceMs?: number;
       concurrency?: number;
@@ -267,9 +258,8 @@ export class WatchCommand {
       stagedFiles?: Set<string>;
     } = { pattern: options.pattern, stagedFiles };
 
-    // The default is applied here rather than left to WatchService so that the
-    // documented value holds and `watch.debounceMs` takes effect: the flag wins,
-    // then configuration, then the documented default.
+    // Applied here rather than left to WatchService so that `watch.debounceMs`
+    // takes effect and the documented default holds.
     watchServiceOptions.debounceMs =
       options.debounce ??
       this.config?.getValue<number>('watch.debounceMs') ??
@@ -283,10 +273,8 @@ export class WatchCommand {
       watchServiceOptions
     );
 
-    // Create abort controller for cancellation
     const controller = new AbortController();
 
-    // Build watch options
     const watchOpts = {
       targetLangs,
       outputDir,
@@ -301,7 +289,6 @@ export class WatchCommand {
       },
       onTranslate: async (filePath: string, result: WatchTranslationResult) => {
         if (Array.isArray(result)) {
-          // Multiple languages
           Logger.success(
             chalk.green(
               `✓ Translated ${filePath} to ${result.length} languages`
@@ -311,12 +298,10 @@ export class WatchCommand {
             Logger.info(chalk.gray(`  → [${r.targetLang}] ${r.outputPath}`));
           });
         } else {
-          // Single language
           Logger.success(chalk.green(`✓ Translated ${filePath}`));
           Logger.info(chalk.gray(`  → ${result.outputPath}`));
         }
 
-        // Auto-commit if enabled
         if (options.autoCommit) {
           await this.autoCommit(filePath, result);
         }
@@ -329,10 +314,8 @@ export class WatchCommand {
       },
     };
 
-    // Start watching
     this.watchService.watch(pathToWatch, watchOpts);
 
-    // Display initial message
     Logger.success(chalk.green('👀 Watching for changes...'));
     Logger.info(chalk.gray(`Path: ${pathToWatch}`));
     Logger.info(chalk.gray(`Targets: ${targetLangs.join(', ')}`));
@@ -348,7 +331,6 @@ export class WatchCommand {
     }
     Logger.info(chalk.gray('Press Ctrl+C to stop\n'));
 
-    // Handle graceful shutdown
     const cleanup = async () => {
       Logger.warn(chalk.yellow('\n\n🛑 Stopping watch...'));
       controller.abort();
@@ -370,7 +352,6 @@ export class WatchCommand {
     process.on('SIGINT', () => void cleanup());
     process.on('SIGTERM', () => void cleanup());
 
-    // Keep process alive
     await new Promise(() => {
       // Intentionally never resolves - will exit via signal handlers
     });
@@ -396,8 +377,8 @@ export class WatchCommand {
       const { promisify } = await import('util');
       const execFileAsync = promisify(execFile);
 
-      // Collect output files. Resolved here, while the process working
-      // directory is still the one they were written relative to.
+      // Resolved here, while the process working directory is still the one
+      // they were written relative to.
       const outputFiles: string[] = [];
       if (Array.isArray(result)) {
         result.forEach((r: FileTranslationResult) => {
@@ -430,7 +411,6 @@ export class WatchCommand {
         await execFileAsync('git', ['add', '--', file], { cwd });
       }
 
-      // Create commit message
       const langs = Array.isArray(result)
         ? result.map((r: FileTranslationResult) => r.targetLang).join(', ')
         : result.targetLang;
@@ -438,11 +418,9 @@ export class WatchCommand {
       const commitMsg = `chore(i18n): auto-translate ${sourceFile} to ${langs}`;
 
       // A re-save whose bytes are unchanged stages nothing, and `git commit`
-      // then exits non-zero. That is not a failure — nothing needed committing —
-      // but the catch below counted it as one, which made `sessionExitCode()`
-      // report 12 for a session in which nothing had gone wrong. Asked as a
-      // diff rather than by matching git's "nothing to commit" wording, which is
-      // translated in a localized git.
+      // then exits non-zero — which is not a failure, since nothing needed
+      // committing. Asked as a diff rather than by matching git's "nothing to
+      // commit" wording, which a localized git translates.
       const nothingStaged = await execFileAsync(
         'git',
         ['diff', '--cached', '--quiet', '--', ...outputFiles],
@@ -476,8 +454,7 @@ export class WatchCommand {
   /**
    * Exit code for a watch session ending on SIGINT/SIGTERM. A translation or an
    * auto-commit that failed during the session is a partial failure, not a
-   * clean run: the session used to report exit 0 with the failures only logged,
-   * so a script driving `deepl watch` had no way to notice.
+   * clean run, so a script driving `deepl watch` can notice it.
    */
   private sessionExitCode(): number {
     const errors = this.watchService?.getStats().errorsCount ?? 0;

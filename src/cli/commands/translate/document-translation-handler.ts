@@ -35,7 +35,7 @@ export class DocumentTranslationHandler {
       'enableMinification',
     ]);
     warnIgnoredOptions('document', options, supported);
-    // Actually ignored, not just announced: leaving them set let shared
+    // Actually ignored, not just announced: left set, they let shared
     // validation reject a command over a flag this mode has just said it would
     // disregard.
     const {

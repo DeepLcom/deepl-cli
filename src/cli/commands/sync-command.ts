@@ -121,8 +121,7 @@ export interface WatchControllerDeps {
   buckets?: Record<string, { include: string[] }>;
   /**
    * Optional hook invoked at the start of `shutdown()` so the outer loop can
-   * cancel any pending debounce timer. Lets us guarantee that a "Change
-   * detected" log line cannot print after "Stopping watch".
+   * cancel any pending debounce timer.
    */
   clearPendingDebounce?: () => void;
 }
@@ -140,13 +139,10 @@ export function createWatchController(
    *
    * A pass that completes unlinks its own backups inside `SyncService.sync` and
    * clears this tracker, so anything still here belongs to a pass that threw,
-   * was cancelled, or hit drift — none of which wrote a lockfile. Unlinking
-   * those deleted the only remaining copy of the user's translations and left
-   * the target holding machine output that nothing recorded, at exit 0: a loop
-   * pass that rewrote es.json and then aborted on fr destroyed es.json's
-   * reviewed content. Plain `deepl sync` restores from the signal path for the
-   * same reason; a watch pass is skipped there because it owns this tracker, so
-   * the restore has to happen here.
+   * was cancelled, or hit drift — none of which wrote a lockfile, which makes a
+   * backup the only remaining copy of the user's translations. Plain
+   * `deepl sync` restores from the signal path for the same reason; a watch pass
+   * is skipped there because it owns this tracker, so the restore happens here.
    *
    * Synchronous fs calls on purpose: reached from the shutdown path, where the
    * deferred exit only guarantees work done synchronously in the handler. Each
@@ -407,18 +403,14 @@ export class SyncCommand {
       followSymlinks: false,
     });
 
-    // Configurable stale-bak sweep age. Falls back to the hardcoded
-    // STALE_BACKUP_AGE_MS when .deepl-sync.yaml doesn't set it.
     const configuredSweepSeconds = config.sync?.bak_sweep_max_age_seconds;
     const configuredSweepMs =
       configuredSweepSeconds !== undefined && configuredSweepSeconds > 0
         ? configuredSweepSeconds * 1000
         : STALE_BACKUP_AGE_MS;
 
-    // Cache the validated config for the watch session. loadSyncConfig +
-    // validateSyncConfig is ~O(file-read + YAML.parse + ajv-like checks);
-    // running it on every debounced tick is wasted work since config rarely
-    // changes during a watch session. The cache invalidates on SIGHUP or when
+    // The validated config is cached for the watch session rather than reloaded
+    // on every debounced tick. The cache invalidates on SIGHUP or when
     // .deepl-sync.yaml itself is one of the changed files.
     let cachedConfig: ResolvedSyncConfig = config;
     const configFileName = path.basename(configPathResolved);
@@ -740,8 +732,8 @@ export class SyncCommand {
         result.totalCharactersBilled || result.estimatedCharacters;
       const estimatedCost =
         charSource > 0 ? formatCostEstimate(charSource) : undefined;
-      // Success JSON payload routed to stdout so `deepl sync --format json > out.json`
-      // captures the final result. Progress events remain on stderr via Logger.info.
+      // The JSON payload goes to stdout so `deepl sync --format json > out.json`
+      // captures it; progress events stay on stderr via Logger.
       process.stdout.write(
         JSON.stringify(projectToPublicShape(result, estimatedCost), null, 2) +
           '\n'
@@ -783,9 +775,9 @@ export class SyncCommand {
     if (result.deletedKeys > 0) parts.push(`${result.deletedKeys} deleted`);
 
     const summary = parts.length > 0 ? parts.join(', ') : 'no changes';
-    // The key counts above describe the diff, not what landed, so on a partial
-    // failure the line would otherwise read as if every diffed key had been
-    // translated — contradicting the per-locale progress lines above it.
+    // The key counts above describe the diff, not what landed, so a partial
+    // failure has to be named for the summary line to match the per-locale
+    // progress lines above it.
     const failedTranslations = result.fileResults.reduce(
       (total, fileResult) => total + fileResult.failed,
       0
@@ -823,9 +815,9 @@ export class SyncCommand {
       }
     }
 
-    // The summary counts such a key as `current`, which it is as far as the lock
-    // file goes, so the estimate below would otherwise quote characters for work
-    // nothing in the report accounts for.
+    // The summary counts an unwritten key as `current`, which it is as far as
+    // the lock file goes; saying so here keeps the estimate below from quoting
+    // characters for work nothing else in the report accounts for.
     if (result.dryRun && result.unwrittenKeys > 0) {
       const one = result.unwrittenKeys === 1;
       Logger.info(

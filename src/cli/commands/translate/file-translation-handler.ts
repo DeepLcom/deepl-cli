@@ -126,8 +126,8 @@ export class FileTranslationHandler {
       this.ctx.documentTranslationService.isDocumentSupported(filePath);
 
     // Resolved once, ahead of every branch below: each of them writes to
-    // options.output, so deciding this per branch is what let a directory
-    // destination reach the write unnoticed.
+    // options.output, so a directory destination has to be turned into a file
+    // name before the branch is picked.
     const outputPath = resolveFileOutputPath(
       filePath,
       requestedOutput,

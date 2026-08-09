@@ -54,21 +54,18 @@ import { assertSupportedNodeVersion } from './node-version-check.js';
 
 assertSupportedNodeVersion();
 
-// Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Read version from package.json
 const packageJsonPath = join(__dirname, '../../package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as {
   version: string;
 };
 const { version } = packageJson;
 
-// Initialize services
 const paths = resolvePaths();
 
-// Create config service - can be overridden by --config flag
+// Reassigned by the preAction hook when --config names another file.
 let configService = new ConfigService(paths.configFile);
 
 // HTTP transport overrides from --timeout / --max-retries, applied to every
@@ -91,8 +88,7 @@ let activeOutputFormat: string | undefined;
  *
  * With `--format json` in effect the failure is the command's result, so it
  * goes to stdout as the same typed envelope every `deepl sync` subcommand
- * emits, and the prose is inside it rather than on stderr. Commands with no
- * JSON mode, and every text-mode run, are unchanged.
+ * emits, and the prose is inside it rather than on stderr.
  */
 function handleError(error: unknown): never {
   if (activeOutputFormat === 'json') {
@@ -187,7 +183,6 @@ async function createDeepLClient(
   return new Client(key, { baseUrl, usePro, ...httpOptions });
 }
 
-// Create program
 const program = new Command();
 program.showSuggestionAfterError(true);
 
@@ -225,13 +220,11 @@ program
     // the commands that declare --format have one at all.
     activeOutputFormat = actionCommand.opts()['format'] as string | undefined;
 
-    // Handle --config flag - reinitialize config service with custom path
     // SECURITY: Validate path to prevent traversal attacks
     if (options['config']) {
       const customConfigPath = options['config'] as string;
 
-      // Resolve to absolute path (handles both relative and absolute paths)
-      // resolve() automatically normalizes and resolves '..' sequences safely
+      // resolve() normalizes and resolves '..' sequences safely.
       const safePath = isAbsolute(customConfigPath)
         ? resolve(customConfigPath)
         : resolve(process.cwd(), customConfigPath);
@@ -253,7 +246,6 @@ program
       configService = new ConfigService(safePath);
     }
 
-    // Set quiet mode before any command runs
     if (options['quiet']) {
       Logger.setQuiet(true);
     }
@@ -277,7 +269,6 @@ program
       chalk.level = 0;
     }
 
-    // Set non-interactive mode
     if (options['input'] === false) {
       setNoInput(true);
     }
@@ -467,16 +458,14 @@ program.on('command:*', (operands: string[]) => {
 // call process.exit() and thereby preempt the others.
 installSignalExit();
 
-// Show help and exit 0 if no arguments provided
 if (!process.argv.slice(2).length) {
   program.outputHelp();
   process.exit(0);
 }
 
-// Parse arguments. Commander propagates non-CommanderError throws from option
-// coercers (e.g. --tm-threshold) uncaught, so route DeepLCLIError subclasses
-// through handleError here — otherwise pre-handler validation crashes with a
-// stack trace instead of the documented exit code.
+// Commander propagates non-CommanderError throws from option coercers (e.g.
+// --tm-threshold) uncaught, so pre-handler validation has to be routed through
+// handleError here to reach its documented exit code.
 try {
   await program.parseAsync(process.argv);
 } catch (error) {

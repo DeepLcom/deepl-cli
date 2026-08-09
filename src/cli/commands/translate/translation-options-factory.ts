@@ -9,9 +9,9 @@ import {
 } from './translate-utils.js';
 
 /**
- * Single source of truth for the *base* TranslateOptions mapping from CLI
- * flags — the shape all translate handlers (text, file, directory, document)
- * agreed on. Produces the same field set regardless of handler.
+ * Single source of truth for the *base* TranslateOptions mapping of CLI flags,
+ * producing the same field set for every translate handler (text, file,
+ * directory, document).
  *
  * Shared downstream shaping lives in `applySharedTmAndGlossary`; handlers
  * keep only handler-specific shaping (custom instructions, style id, XML tag
@@ -35,10 +35,9 @@ export function buildBaseTranslationOptions(
 
 /**
  * Resolve `--glossary` values to IDs and place them on `base`. One glossary is
- * assigned to `glossaryId` so the request keeps the shape — and cache key — it
- * had before multiple glossaries were supported; several go to `glossaryIds`,
- * in the order given, because the API applies the last glossary that defines a
- * conflicting term.
+ * assigned to `glossaryId`, keeping the single-glossary wire shape and its
+ * cache key; several go to `glossaryIds`, in the order given, because the API
+ * applies the last glossary that defines a conflicting term.
  *
  * Separate from `applySharedTmAndGlossary` because document translation
  * supports glossaries but not translation memories.
@@ -107,10 +106,10 @@ export interface SharedTmAndGlossaryDeps {
  * default onto a base `TranslationParams`-compatible object. Mutates `base`
  * in place so handlers can compose additional downstream shaping.
  *
- * Shared by the text + file handlers. All
- * validation (required `--from`, TM-requires-quality_optimized, extended-lang
- * constraints) remains in the caller so per-handler error messages are
- * preserved; this helper is called only after validation passes.
+ * Shared by the text + file handlers. All validation (required `--from`,
+ * TM-requires-quality_optimized, extended-lang constraints) remains in the
+ * caller so per-handler error messages are preserved; this helper is called
+ * only after validation passes.
  *
  * The generic `T` lets callers pass a `TranslationParams` (text handler), a
  * `TranslationParams & { outputDir: string }` (file multi-target), or the

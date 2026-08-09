@@ -29,11 +29,10 @@ function sanitizeMessage(message: string): string {
  * Serialize an error to the canonical envelope on stdout and exit with the
  * error's typed exit code.
  *
- * stdout, not stderr: the envelope is the command's result in the failure
- * case, and stderr is where every warning — the CLI's own and the Node
- * runtime's — already goes, so an envelope there parses only when nothing else
- * happened to be said. The non-zero exit code remains the failure signal; a
- * consumer reads the reason off the same stream as the success payload.
+ * stdout, not stderr: the envelope is the command's result in the failure case,
+ * and stderr already carries warnings from both the CLI and the Node runtime,
+ * which would break a parse there. The non-zero exit code remains the failure
+ * signal.
  */
 export function emitJsonErrorAndExit(
   error: unknown,

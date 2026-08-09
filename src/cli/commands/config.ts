@@ -51,7 +51,6 @@ export class ConfigCommand {
    * Set config value
    */
   async set(key: string, value: string): Promise<void> {
-    // Parse value based on type
     const parsedValue = this.parseValue(key, value);
     this.config.set(key, parsedValue);
   }
@@ -62,7 +61,6 @@ export class ConfigCommand {
   async list(): Promise<Record<string, unknown>> {
     const config = this.config.get();
 
-    // Mask sensitive values
     return this.maskSensitiveValues(config);
   }
 
@@ -114,11 +112,7 @@ export class ConfigCommand {
     }
   }
 
-  /**
-   * Parse value based on key
-   */
   private parseValue(key: string, value: string): unknown {
-    // Handle array values (comma-separated)
     if (
       ARRAY_KEYS.includes(key) ||
       key.includes('targetLangs') ||
@@ -127,13 +121,11 @@ export class ConfigCommand {
       return value.split(',').map((v) => v.trim());
     }
 
-    // Auto-coerce string values to booleans for known boolean config keys
     if (BOOLEAN_KEYS.includes(key)) {
       if (value === 'true') return true;
       if (value === 'false') return false;
     }
 
-    // Auto-coerce string values to numbers for known numeric config keys
     if (NUMERIC_KEYS.includes(key)) {
       const num = parseInt(value, 10);
       if (!isNaN(num)) return num;
@@ -142,9 +134,6 @@ export class ConfigCommand {
     return value;
   }
 
-  /**
-   * Mask sensitive values like API keys
-   */
   private maskSensitiveValues(
     config: Record<string, unknown>
   ): Record<string, unknown> {
@@ -153,7 +142,6 @@ export class ConfigCommand {
       unknown
     >;
 
-    // Mask API key
     if (masked['auth'] && typeof masked['auth'] === 'object') {
       const auth = masked['auth'] as Record<string, unknown>;
       if (auth['apiKey'] && typeof auth['apiKey'] === 'string') {

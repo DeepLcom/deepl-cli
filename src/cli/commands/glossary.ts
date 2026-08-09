@@ -57,11 +57,9 @@ export class GlossaryCommand {
    * Show glossary details
    */
   async show(nameOrId: string): Promise<GlossaryInfo> {
-    // Try to get by ID first
     try {
       return await this.glossaryService.getGlossary(nameOrId);
     } catch {
-      // If failed, try by name
       const glossary = await this.glossaryService.getGlossaryByName(nameOrId);
       if (!glossary) {
         throw new ConfigError(`Glossary not found: ${nameOrId}`);
@@ -74,7 +72,6 @@ export class GlossaryCommand {
    * Delete glossary
    */
   async delete(nameOrId: string): Promise<void> {
-    // Try to get glossary first to find ID
     const glossary = await this.show(nameOrId);
     await this.glossaryService.deleteGlossary(glossary.glossary_id);
   }
@@ -87,7 +84,6 @@ export class GlossaryCommand {
     targetLang?: Language
   ): Promise<Record<string, string>> {
     const glossary = await this.show(nameOrId);
-    // Get target language (will throw if glossary is multilingual and targetLang not provided)
     const target = getTargetLang(glossary, targetLang);
     return this.glossaryService.getGlossaryEntries(
       glossary.glossary_id,
@@ -113,7 +109,6 @@ export class GlossaryCommand {
     targetLang?: Language
   ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    // Get target language (will throw if glossary is multilingual and targetLang not provided)
     const target = getTargetLang(glossary, targetLang);
     await this.glossaryService.addEntry(
       glossary.glossary_id,
@@ -134,7 +129,6 @@ export class GlossaryCommand {
     targetLang?: Language
   ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    // Get target language (will throw if glossary is multilingual and targetLang not provided)
     const target = getTargetLang(glossary, targetLang);
     await this.glossaryService.updateEntry(
       glossary.glossary_id,
@@ -154,7 +148,6 @@ export class GlossaryCommand {
     targetLang?: Language
   ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    // Get target language (will throw if glossary is multilingual and targetLang not provided)
     const target = getTargetLang(glossary, targetLang);
     await this.glossaryService.removeEntry(
       glossary.glossary_id,
