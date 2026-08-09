@@ -24,6 +24,7 @@ import { WatchService } from '../../src/services/watch.js';
 import { FileTranslationService } from '../../src/services/file-translation.js';
 import { TranslationService } from '../../src/services/translation.js';
 import type { Language } from '../../src/types/index.js';
+import { isAtomicWriteTempPath } from '../../src/utils/atomic-write.js';
 import { createMockTranslationService } from '../helpers/mock-factories';
 
 const DEBOUNCE_MS = 20;
@@ -31,6 +32,11 @@ const DEBOUNCE_MS = 20;
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/**
+ * The output files on disk, ignoring the temp sibling an atomic write renames
+ * from: it appears and vanishes under the output directory, so counting it would
+ * report a write as finished while it is still in flight.
+ */
 const filesUnder = (dir: string): string[] => {
   const found: string[] = [];
   const walk = (current: string, relative: string): void => {
@@ -39,7 +45,7 @@ const filesUnder = (dir: string): string[] => {
       const childRelative = path.join(relative, entry.name);
       if (entry.isDirectory()) {
         walk(child, childRelative);
-      } else {
+      } else if (!isAtomicWriteTempPath(child)) {
         found.push(childRelative);
       }
     }
@@ -49,16 +55,19 @@ const filesUnder = (dir: string): string[] => {
 };
 
 /**
- * Waits for the writes to land rather than sleeping a fixed span: the
- * structured-format path imports its service on first use, which under a full
- * suite run takes longer than any debounce multiple worth hard-coding. Returns
- * whatever is on disk when the count is reached or the bound expires, so the
- * assertion still reports the real listing on a genuine failure.
+ * Waits for named files rather than sleeping a fixed span: the structured-format
+ * path imports its service on first use, which under a full suite run takes
+ * longer than any debounce multiple worth hard-coding. Returns whatever is on
+ * disk once every expected path is there or the bound expires, so the assertion
+ * still reports the real listing on a genuine failure.
  */
-const waitForFiles = async (dir: string, count: number): Promise<string[]> => {
+const waitForFiles = async (
+  dir: string,
+  expected: readonly string[]
+): Promise<string[]> => {
   for (let attempt = 0; attempt < 100; attempt++) {
     const found = filesUnder(dir);
-    if (found.length >= count) {
+    if (expected.every((relative) => found.includes(relative))) {
       return found;
     }
     await sleep(DEBOUNCE_MS);
@@ -139,10 +148,8 @@ describe('Watch output layout integration', () => {
     watchService.handleFileChange(a);
     watchService.handleFileChange(b);
 
-    expect(await waitForFiles(outDir, 2)).toEqual([
-      path.join('a', 'doc.es.md'),
-      path.join('b', 'doc.es.md'),
-    ]);
+    const expected = [path.join('a', 'doc.es.md'), path.join('b', 'doc.es.md')];
+    expect(await waitForFiles(outDir, expected)).toEqual(expected);
     expect(fs.readFileSync(path.join(outDir, 'a', 'doc.es.md'), 'utf-8')).toBe(
       'es:Hello\n'
     );
@@ -162,12 +169,13 @@ describe('Watch output layout integration', () => {
     watchService.handleFileChange(a);
     watchService.handleFileChange(b);
 
-    expect(await waitForFiles(outDir, 4)).toEqual([
+    const expected = [
       path.join('a', 'doc.es.md'),
       path.join('a', 'doc.fr.md'),
       path.join('b', 'doc.es.md'),
       path.join('b', 'doc.fr.md'),
-    ]);
+    ];
+    expect(await waitForFiles(outDir, expected)).toEqual(expected);
     expect(fs.readFileSync(path.join(outDir, 'a', 'doc.fr.md'), 'utf-8')).toBe(
       'fr:Hello\n'
     );
@@ -187,12 +195,13 @@ describe('Watch output layout integration', () => {
     watchService.handleFileChange(a);
     watchService.handleFileChange(b);
 
-    expect(await waitForFiles(outDir, 4)).toEqual([
+    const expected = [
       path.join('a', 'app.es.json'),
       path.join('a', 'app.fr.json'),
       path.join('b', 'app.es.json'),
       path.join('b', 'app.fr.json'),
-    ]);
+    ];
+    expect(await waitForFiles(outDir, expected)).toEqual(expected);
     expect(
       JSON.parse(
         fs.readFileSync(path.join(outDir, 'b', 'app.es.json'), 'utf-8')
@@ -207,7 +216,10 @@ describe('Watch output layout integration', () => {
     watchService.watch(sourceDir, { targetLangs: ['es'], outputDir: outDir });
     watchService.handleFileChange(a);
     watchService.handleFileChange(b);
-    await waitForFiles(outDir, 2);
+    await waitForFiles(outDir, [
+      path.join('a', 'doc.es.md'),
+      path.join('b', 'doc.es.md'),
+    ]);
     // A settling span on top, so a third call would have arrived by now.
     await sleep(DEBOUNCE_MS * 8);
 
@@ -223,7 +235,7 @@ describe('Watch output layout integration', () => {
     watchService.watch(sourceDir, { targetLangs: ['es'], outputDir: outDir });
     watchService.handleFileChange(doc);
 
-    expect(await waitForFiles(outDir, 1)).toEqual(['doc.es.md']);
+    expect(await waitForFiles(outDir, ['doc.es.md'])).toEqual(['doc.es.md']);
     expect(fs.readFileSync(path.join(outDir, 'doc.es.md'), 'utf-8')).toBe(
       'es:Hello\n'
     );
@@ -235,6 +247,6 @@ describe('Watch output layout integration', () => {
     watchService.watch(doc, { targetLangs: ['es'], outputDir: outDir });
     watchService.handleFileChange(doc);
 
-    expect(await waitForFiles(outDir, 1)).toEqual(['doc.es.md']);
+    expect(await waitForFiles(outDir, ['doc.es.md'])).toEqual(['doc.es.md']);
   });
 });
