@@ -107,10 +107,20 @@ export async function processBucket(
   const out: BucketContribution = { ...EMPTY, fileResults: [] };
 
   const fileLockEntries = getOwnMember(lockFile.entries, relPath) ?? {};
-  // Pass the configured locales so staleness is judged per locale: a key whose
-  // source is unchanged still needs work if any target locale's stored hash
-  // lags behind, or if that locale previously failed.
-  let diffs = computeDiff(fileLockEntries, entries, config.target_locales);
+  /**
+   * The locales this run will actually touch.
+   *
+   * Staleness is judged against these rather than against every configured
+   * locale: a key that failed for es is not stale for de, so `sync --locale de`
+   * used to re-translate, re-bill and overwrite de's reviewed keys because of a
+   * locale the run was not even asked to look at.
+   */
+  const effectiveLocales = options?.localeFilter?.length
+    ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
+    : config.target_locales;
+  // Per-locale staleness: a key whose source is unchanged still needs work if a
+  // locale in scope has a stale stored hash, or previously failed.
+  let diffs = computeDiff(fileLockEntries, entries, effectiveLocales);
 
   if (options?.force) {
     diffs = diffs.map((d) => ({ ...d, status: 'new' as const }));
@@ -162,17 +172,12 @@ export async function processBucket(
    */
   let gapsCache: TargetGaps | undefined;
   const targetGaps = async (): Promise<TargetGaps> => {
-    if (gapsCache === undefined) {
-      const effective = options?.localeFilter?.length
-        ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
-        : config.target_locales;
-      gapsCache = await findTargetGaps(
-        config,
-        walked,
-        fileLockEntries,
-        effective
-      );
-    }
+    gapsCache ??= await findTargetGaps(
+      config,
+      walked,
+      fileLockEntries,
+      effectiveLocales
+    );
     return gapsCache;
   };
 
@@ -267,10 +272,6 @@ export async function processBucket(
   }
 
   if (options?.dryRun) {
-    const effectiveLocales = options?.localeFilter?.length
-      ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
-      : config.target_locales;
-
     // The same target-file checks the real run makes, so the preview is of that
     // run rather than of the lockfile.
     const { chars, refused, gaps } = await estimateCharacters(effectiveLocales);
@@ -326,9 +327,7 @@ export async function processBucket(
     return out;
   }
 
-  const locales = options?.localeFilter?.length
-    ? config.target_locales.filter((l) => options.localeFilter!.includes(l))
-    : config.target_locales;
+  const locales = effectiveLocales;
 
   if (options?.localeFilter?.length && locales.length === 0) {
     Logger.warn(

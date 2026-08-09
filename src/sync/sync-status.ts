@@ -1,6 +1,6 @@
 import * as path from 'path';
 import type { FormatRegistry } from '../formats/index.js';
-import { SyncLockManager } from './sync-lock.js';
+import { SyncLockManager, computeSourceHash } from './sync-lock.js';
 import { getOwnMember } from '../utils/own-members.js';
 import { computeDiff } from './sync-differ.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
@@ -100,7 +100,11 @@ export async function computeSyncStatus(
     skippedKeys += skippedEntries.length;
 
     const fileLockEntries = getOwnMember(lockFile.entries, relPath) ?? {};
-    const diffs = computeDiff(fileLockEntries, entries);
+    // Scoped to the configured locales, so staleness is judged per locale. With
+    // no locales computeDiff falls back to a whole-entry "some locale failed"
+    // test, which reported a complete locale as outdated because a DIFFERENT
+    // locale had failed.
+    const diffs = computeDiff(fileLockEntries, entries, config.target_locales);
     // The lockfile alone cannot answer "is this locale complete": it records
     // what a run intended, not what its target file ended up holding.
     const gaps = await findTargetGaps(
@@ -132,6 +136,29 @@ export async function computeSyncStatus(
       });
     }
 
+    /**
+     * Keys whose SOURCE changed, as opposed to keys the differ called `stale`
+     * because one locale's own record lags behind.
+     *
+     * `stale` covers both, and only the first can speak for every locale: a key
+     * that failed for es is not outdated for de. Deciding from `diff.status`
+     * alone reported a complete locale as outdated because a different locale
+     * had failed.
+     */
+    const sourceChangedKeys = new Set(
+      diffs
+        .filter((diff) => {
+          if (diff.status !== 'stale' || diff.value === undefined) return false;
+          const lockEntry = getOwnMember(fileLockEntries, diff.key);
+          return (
+            lockEntry !== undefined &&
+            computeSourceHash(diff.value, diff.metadata) !==
+              lockEntry.source_hash
+          );
+        })
+        .map((diff) => diff.key)
+    );
+
     for (const locale of config.target_locales) {
       const stats = localeStats.get(locale);
       if (!stats) continue;
@@ -155,7 +182,7 @@ export async function computeSyncStatus(
 
         if (diff.status === 'new' || !hasTranslation || localeFailed) {
           stats.missing++;
-        } else if (diff.status === 'stale' || localeOutdated) {
+        } else if (sourceChangedKeys.has(diff.key) || localeOutdated) {
           stats.outdated++;
         } else if (gaps.get(locale)?.keys.has(diff.key)) {
           stats.unwritten++;
