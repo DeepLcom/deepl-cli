@@ -80,7 +80,10 @@ const RESOURCES_EL: ElementPattern = {
  * source language.
  */
 function attrValue(element: ScannedElement): string {
-  return element.groups[1]!;
+  // Entity-decoded, because the writer escapes `&`/`"` when it interpolates a
+  // key into the attribute. Without decoding here the key would not round-trip:
+  // extract would report `a&amp;b` for the key the writer was given as `a&b`.
+  return decodeXmlEntities(element.groups[1]!);
 }
 
 /** The element's remaining attributes, preserved verbatim on rewrite. */
@@ -166,6 +169,20 @@ function unescapeAndroid(value: string): string {
     }
   );
   return decodeXmlEntities(withoutBackslashEscapes);
+}
+
+/**
+ * A value written inside a double-quoted XML attribute.
+ *
+ * `name` / `quantity` used to be interpolated raw, so a key holding `&` or `"`
+ * produced an element no XML consumer can read.
+ */
+function escapeXmlAttr(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function escapeAndroid(value: string): string {
@@ -379,19 +396,26 @@ export class AndroidXmlFormatParser implements FormatParser {
 
     const blocks = [
       ...missingStrings.map(([name, translation]) => {
+        // The KEY is checked as well as the translation: it is interpolated into
+        // the `name` attribute, and XML 1.0 has no representation for a C0 byte
+        // in any form, so a control byte in a source key produced a file no
+        // consumer reads and a live terminal sequence in `git diff`.
+        assertNoControlChars(name, name);
         assertNoControlChars(name, translation);
-        return `<string name="${name}">${escapeAndroid(translation)}</string>`;
+        return `<string name="${escapeXmlAttr(name)}">${escapeAndroid(translation)}</string>`;
       }),
-      ...missingPlurals.map(([name, quantities]) =>
-        [
-          `<plurals name="${name}">`,
+      ...missingPlurals.map(([name, quantities]) => {
+        assertNoControlChars(name, name);
+        return [
+          `<plurals name="${escapeXmlAttr(name)}">`,
           ...[...quantities].map(([quantity, value]) => {
+            assertNoControlChars(name, quantity);
             assertNoControlChars(name, value);
-            return `${indent}${INDENT_STEP}<item quantity="${quantity}">${escapeAndroid(value)}</item>`;
+            return `${indent}${INDENT_STEP}<item quantity="${escapeXmlAttr(quantity)}">${escapeAndroid(value)}</item>`;
           }),
           `${indent}</plurals>`,
-        ].join('\n')
-      ),
+        ].join('\n');
+      }),
     ];
 
     return insertBlocksAt(content, at, indent, blocks);

@@ -38,7 +38,11 @@ const UNIT_EL: ElementPattern = {
 
 /** The `id` of a scanned `trans-unit`/`unit`; group 0 is the quote delimiter. */
 function unitId(element: ScannedElement): string {
-  return element.groups[1]!;
+  // Entity-decoded, because the writer escapes `&`/`"`/`<` when it interpolates
+  // a key into the `id` attribute. Without decoding here the key would not round
+  // trip: extract would report `a&amp;b` for the key the writer was given as
+  // `a&b`.
+  return unescapeXml(element.groups[1]!);
 }
 
 const SOURCE_EL: ElementPattern = {
@@ -214,6 +218,18 @@ function escapeXml(value: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+/**
+ * A value written inside a double-quoted attribute, where `"` also has to be
+ * escaped.
+ *
+ * The unit id used to be interpolated raw, so a key holding `"` or `&` produced
+ * an element no XML consumer can read — and the key can hold `"` legitimately,
+ * since a single-quoted `id` may contain one.
+ */
+function escapeXmlAttr(value: string): string {
+  return escapeXml(value).replace(/"/g, '&quot;');
 }
 
 function detectVersion(content: string): string {
@@ -460,6 +476,12 @@ export class XliffFormatParser implements FormatParser {
       (anchor ? /^<(\w+:)/.exec(anchor.openTag)?.[1] : undefined) ?? '';
 
     const blocks = missing.map((entry) => {
+      // The KEY is checked as well as the translation: it is interpolated into
+      // the `id` attribute, and XML 1.0 has no representation for a C0 byte in
+      // any form — not even a numeric character reference — so a control byte in
+      // a source key produced a file no consumer reads and a live terminal
+      // sequence in `git diff`.
+      assertNoControlChars(entry.key, entry.key);
       assertNoControlChars(entry.key, entry.translation);
       const inner = isV2
         ? indent + INDENT_STEP.repeat(2)
@@ -470,13 +492,13 @@ export class XliffFormatParser implements FormatParser {
       ];
       if (!isV2) {
         return [
-          `<${ns}trans-unit id="${entry.key}">`,
+          `<${ns}trans-unit id="${escapeXmlAttr(entry.key)}">`,
           ...body,
           `${indent}</${ns}trans-unit>`,
         ].join('\n');
       }
       return [
-        `<${ns}unit id="${entry.key}">`,
+        `<${ns}unit id="${escapeXmlAttr(entry.key)}">`,
         `${indent}${INDENT_STEP}<${ns}segment>`,
         ...body,
         `${indent}${INDENT_STEP}</${ns}segment>`,

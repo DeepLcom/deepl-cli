@@ -608,3 +608,52 @@ describe('single-quoted name and quantity attributes', () => {
     expect(entries.map((e) => e.key)).toEqual(['greeting']);
   });
 });
+
+describe('appending a resource whose KEY needs guarding', () => {
+  const EMPTY = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<resources>',
+    '</resources>',
+  ].join('\n');
+
+  it('refuses a key carrying a control byte XML cannot represent', () => {
+    expect(() =>
+      parser.reconstruct(EMPTY, [
+        { key: 'bad\x1bkey', value: 'Hello', translation: 'Hola' },
+      ] as TranslatedEntry[])
+    ).toThrow(/U\+001B|control/i);
+  });
+
+  it('escapes a key containing XML markup characters', () => {
+    const written = parser.reconstruct(EMPTY, [
+      { key: 'a&b"c"', value: 'Hello', translation: 'Hola' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('&amp;');
+    expect(written).toContain('&quot;');
+    expect(written).not.toContain('name="a&b');
+    expect(parser.extract(written).map((e) => e.key)).toEqual(['a&b"c"']);
+  });
+
+  it('refuses a control byte in a plurals key too', () => {
+    expect(() =>
+      parser.reconstruct(EMPTY, [
+        {
+          key: 'bad\x00name',
+          value: '%d files',
+          translation: '%d archivos',
+          metadata: {
+            plurals: [{ quantity: 'other', value: '%d archivos' }],
+          },
+        },
+      ] as TranslatedEntry[])
+    ).toThrow(/U\+0000|control/i);
+  });
+
+  it('still appends an ordinary key unescaped', () => {
+    const written = parser.reconstruct(EMPTY, [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+    ] as TranslatedEntry[]);
+    expect(written).toContain('<string name="greeting">Hola</string>');
+  });
+});

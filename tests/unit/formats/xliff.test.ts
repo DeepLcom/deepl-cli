@@ -666,3 +666,46 @@ describe('unit ids containing a quote character', () => {
     expect(entries.map((e) => e.key)).toEqual(["label.don't", "label.don'x"]);
   });
 });
+
+describe('appending a unit whose KEY needs guarding', () => {
+  // Both append paths ran assertNoControlChars on the TRANSLATION and then
+  // interpolated the key raw into `id="..."`. A control byte in a source key
+  // produced a file no XML consumer reads and a live terminal sequence in
+  // `git diff`; a quote or ampersand broke the attribute outright.
+  const EMPTY_V12 = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<xliff version="1.2">',
+    '  <file source-language="en" target-language="es">',
+    '    <body>',
+    '    </body>',
+    '  </file>',
+    '</xliff>',
+  ].join('\n');
+
+  it('refuses a key carrying a control byte XML cannot represent', () => {
+    expect(() =>
+      parser.reconstruct(EMPTY_V12, [
+        { key: 'bad\x1bkey', value: 'Hello', translation: 'Hola' },
+      ] as TranslatedEntry[])
+    ).toThrow(/U\+001B|control/i);
+  });
+
+  it('escapes a key containing XML markup characters', () => {
+    const written = parser.reconstruct(EMPTY_V12, [
+      { key: 'a&b<c>"d"', value: 'Hello', translation: 'Hola' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('&amp;');
+    expect(written).toContain('&quot;');
+    expect(written).not.toContain('id="a&b');
+    // The key round-trips: the escaped attribute decodes back to the original.
+    expect(parser.extract(written).map((e) => e.key)).toEqual(['a&b<c>"d"']);
+  });
+
+  it('still appends an ordinary key unescaped', () => {
+    const written = parser.reconstruct(EMPTY_V12, [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+    ] as TranslatedEntry[]);
+    expect(written).toContain('<trans-unit id="greeting">');
+  });
+});
