@@ -335,6 +335,40 @@ describe('WriteCommand', () => {
         expect(result).toMatch(/1\./);
         expect(result).toMatch(/2\./);
       });
+
+      it('should return the alternatives payload under format json', async () => {
+        mockWriteService.improve.mockResolvedValue([
+          { text: 'Option one.', targetLanguage: 'en-US' },
+          { text: 'Option two.', targetLanguage: 'en-US' },
+        ]);
+
+        const result = await writeCommand.improve('Test', {
+          lang: 'en-us',
+          showAlternatives: true,
+          format: 'json',
+        });
+
+        expect(JSON.parse(result)).toEqual({
+          ok: true,
+          original: 'Test',
+          alternatives: ['Option one.', 'Option two.'],
+        });
+      });
+
+      it('should call the API once for the alternatives payload', async () => {
+        mockWriteService.improve.mockResolvedValue([
+          { text: 'Option one.', targetLanguage: 'en-US' },
+        ]);
+
+        await writeCommand.improve('Test', {
+          lang: 'en-us',
+          showAlternatives: true,
+          format: 'json',
+        });
+
+        expect(mockWriteService.improve).toHaveBeenCalledTimes(1);
+        expect(mockWriteService.getBestImprovement).not.toHaveBeenCalled();
+      });
     });
 
     describe('parameter constraints', () => {
@@ -596,6 +630,34 @@ describe('WriteCommand', () => {
 
       expect(diff).toContain('+');
       expect(diff).toContain('New content');
+    });
+  });
+
+  describe('generatePatch()', () => {
+    it('should produce the unified patch the coloured diff is built from', () => {
+      const patch = writeCommand.generatePatch('Original.', 'Improved.');
+
+      expect(patch).toContain('-Original.');
+      expect(patch).toContain('+Improved.');
+      expect(patch).toContain('@@');
+    });
+  });
+
+  describe('improveWithDiff() with format json', () => {
+    it('should report the improved text, not a rendered document', async () => {
+      mockWriteService.getBestImprovement.mockResolvedValue({
+        text: 'Improved text.',
+        targetLanguage: 'en-US',
+      });
+
+      const result = await writeCommand.improveWithDiff('Original text.', {
+        lang: 'en-us',
+        format: 'json',
+      });
+
+      expect(result.original).toBe('Original text.');
+      expect(result.improved).toBe('Improved text.');
+      expect(result.diff).toContain('+Improved text.');
     });
   });
 

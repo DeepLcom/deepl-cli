@@ -143,6 +143,14 @@ echo "22. Show diff between original and improved text:"
 deepl write "Their going to the store tommorow." --diff --lang en-us
 echo
 
+echo "22b. Machine-readable diff (uncoloured patch in the payload):"
+deepl write "Their going to the store tommorow." --diff --lang en-us --format json
+echo
+
+echo "22c. Every alternative as a JSON array:"
+deepl write "This is a test." --lang en-us --alternatives --format json
+echo
+
 echo "23. Edit file in place:"
 echo "This text could be more better." > "$DEMO_FILE"
 deepl write "$DEMO_FILE" --in-place --lang en-us

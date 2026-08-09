@@ -37,6 +37,10 @@ echo "4. Diff view"
 deepl correct "This are a example sentence." --lang en-us --diff
 echo
 
+echo "4b. Diff view as a machine-readable payload"
+deepl correct "This are a example sentence." --lang en-us --diff --format json
+echo
+
 echo "5. Check mode (exit 8 would mean corrections needed)"
 echo "A sentence with an mistake." > "$TEST_DIR/draft.txt"
 if deepl correct "$TEST_DIR/draft.txt" --check; then

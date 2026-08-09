@@ -4,9 +4,11 @@
  * not depend on how many calls preceded it.
  *
  * Text containing the word `polished` comes back unchanged, which is what a
- * clean check looks like; anything else comes back with ` (improved)` appended,
- * which is a one-word change. Both `/v2/write/rephrase` and `/v2/write/correct`
- * answer, so `write` and `correct` share the server.
+ * clean check looks like; text containing `variants` comes back as three
+ * improvements, which is what `--alternatives` has to render; anything else comes
+ * back with ` (improved)` appended, which is a one-word change. Both
+ * `/v2/write/rephrase` and `/v2/write/correct` answer, so `write` and `correct`
+ * share the server.
  *
  * Prints `PORT=<port>` on stdout once listening. Runs in its own process because
  * the test driver blocks its own event loop on spawnSync and would otherwise
@@ -30,11 +32,20 @@ const server = http.createServer((req, res) => {
       (req.url === '/v2/write/rephrase' || req.url === '/v2/write/correct')
     ) {
       const params = new URLSearchParams(body);
-      const improvements = params.getAll('text').map((text) => ({
-        text: text.includes('polished') ? text : text + ' (improved)',
-        target_language: params.get('target_lang') || 'en-US',
-        detected_source_language: 'EN',
-      }));
+      const targetLanguage = params.get('target_lang') || 'en-US';
+      const improvements = [];
+      for (const text of params.getAll('text')) {
+        const variants = text.includes('variants')
+          ? [text + ' (simple)', text + ' (business)', text + ' (casual)']
+          : [text.includes('polished') ? text : text + ' (improved)'];
+        for (const variant of variants) {
+          improvements.push({
+            text: variant,
+            target_language: targetLanguage,
+            detected_source_language: 'EN',
+          });
+        }
+      }
 
       res.writeHead(200);
       res.end(JSON.stringify({ improvements }));

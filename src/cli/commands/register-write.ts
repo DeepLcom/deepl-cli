@@ -77,6 +77,20 @@ export interface WriteCheckJsonResult {
   file?: string;
 }
 
+/**
+ * Result payload for `write --diff` / `correct --diff` under `--format json`.
+ *
+ * `diff` is the uncoloured unified patch between `original` and `improved`, so a
+ * consumer gets the same three things the text report shows, without the colour
+ * escapes that report writes for a terminal.
+ */
+export interface WriteDiffJsonResult {
+  ok: true;
+  original: string;
+  improved: string;
+  diff: string;
+}
+
 interface WriteActionOptions {
   lang?: string;
   to?: string;
@@ -283,6 +297,17 @@ export function createWriteAction(
           result = await writeCommand.improveFileWithDiff(text, writeOptions);
         } else {
           result = await writeCommand.improveWithDiff(text, writeOptions);
+        }
+
+        if (options.format === 'json') {
+          const payload: WriteDiffJsonResult = {
+            ok: true,
+            original: result.original,
+            improved: result.improved,
+            diff: writeCommand.generatePatch(result.original, result.improved),
+          };
+          process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
+          return;
         }
 
         Logger.output(chalk.bold('Original:'));

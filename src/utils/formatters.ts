@@ -48,6 +48,19 @@ export interface WriteJsonOutput {
   language: string;
 }
 
+/**
+ * `write --alternatives` / `correct --alternatives` under `--format json`.
+ *
+ * `ok` marks it as a result rather than the `ok: false` error envelope, the same
+ * discrimination the `--check` payload offers. `WriteJsonOutput` predates the
+ * envelope and keeps its shape.
+ */
+export interface WriteAlternativesJsonOutput {
+  ok: true;
+  original: string;
+  alternatives: string[];
+}
+
 export interface MultiTranslateJsonOutput {
   translations: Array<{
     targetLang: Language;
@@ -125,6 +138,22 @@ export function formatWriteJson(
     improved,
     changes,
     language,
+  };
+
+  return JSON.stringify(output, null, 2);
+}
+
+/**
+ * Format every alternative the Write API offered as JSON
+ */
+export function formatWriteAlternativesJson(
+  original: string,
+  alternatives: string[]
+): string {
+  const output: WriteAlternativesJsonOutput = {
+    ok: true,
+    original,
+    alternatives,
   };
 
   return JSON.stringify(output, null, 2);

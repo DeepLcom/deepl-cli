@@ -660,6 +660,14 @@ deepl write file.txt --lang en-us --diff
 # Show diff for plain text
 deepl write "This text could be better." --lang en-us --diff
 
+# Machine-readable diff (uncoloured patch)
+deepl write file.txt --diff --format json
+# {"ok":true,"original":"...","improved":"...","diff":"Index: text\n===...\n"}
+
+# Every alternative the API offered, as an array
+deepl write "This is good." --alternatives --format json
+# {"ok":true,"original":"This is good.","alternatives":["This is fine.","This works."]}
+
 # Bypass cache for this request
 deepl write "Fresh improvement please." --lang en-us --no-cache
 ```

@@ -772,9 +772,9 @@ The 14 languages are generated from `GET /v3/languages?resource=write` into `src
 
 **Output Options:**
 
-- `--alternatives, -a` - Show all improvement alternatives
+- `--alternatives, -a` - Show all improvement alternatives. With `--format json`, emits them as an array
 - `--interactive, -i` - Interactive mode: choose from multiple alternatives
-- `--diff, -d` - Show diff between original and improved text
+- `--diff, -d` - Show diff between original and improved text. With `--format json`, emits the diff payload with an uncoloured patch
 - `--check` - Check if text needs improvement without modifying (exits with 0 if no changes, 8 if improvements suggested). With `--format json`, emits the check result payload on stdout
 - `--fix` - Auto-fix files in place
 - `--output, -o FILE` - Write output to file
@@ -915,6 +915,32 @@ deepl write "This are good." --lang en-us --format json
 # {"original":"This are good.","improved":"This is good.","changes":1,"language":"en-us"}
 ```
 
+Each output mode has its own JSON shape, because each answers a different
+question. `--check` and the two below carry `ok: true`, marking them as results
+rather than the `ok: false` error envelope; the plain improvement payload above
+predates the envelope and keeps its shape, so it has no `ok` field.
+
+```bash
+# --diff: the same three things the text report shows, with an uncoloured patch
+deepl write "This are good." --diff --format json
+# {"ok":true,"original":"This are good.","improved":"This is good.",
+#  "diff":"Index: text\n===...\n-This are good.\n+This is good.\n"}
+
+# --alternatives: every improvement the API offered, as an array
+deepl write "This are good." --alternatives --format json
+# {"ok":true,"original":"This are good.","alternatives":["This is good.","These are good."]}
+```
+
+`--diff`'s `diff` field is the unified patch with no colour escapes, whatever the
+terminal — the text report colours the same patch for a human, and that colouring
+never reaches the payload. `--diff` ignores `--output`/`--in-place`, so its payload
+only ever goes to stdout.
+
+`--output <file>` and `--in-place` receive whatever the improvement renders to, so
+under `--format json` they write the payload rather than the improved text — that
+is true of the plain payload and of `--alternatives` alike. To put improved *text*
+in a file, leave `--format` at its default.
+
 **Bypass cache:**
 
 ```bash
@@ -952,11 +978,11 @@ Fixes spelling and grammar only, avoiding the broader rewording that `deepl writ
 
 **Output Modes:**
 
-- `--alternatives, -a` - Show all alternative corrections
+- `--alternatives, -a` - Show all alternative corrections. With `--format json`, emits them as an array
 - `--output, -o FILE` - Write corrected text to file
 - `--in-place` - Edit file in place (use with file input)
 - `--interactive, -i` - Review the correction before accepting
-- `--diff, -d` - Show diff between original and corrected text
+- `--diff, -d` - Show diff between original and corrected text. With `--format json`, emits the diff payload with an uncoloured patch
 
 **Fix Operations:**
 
@@ -1020,6 +1046,10 @@ cat notes.txt | deepl correct
 deepl correct "Their going too the store." --format json
 # {"original":"Their going too the store.","improved":"They're going to the store.","changes":1,"language":"auto-detected"}
 ```
+
+`--check`, `--diff` and `--alternatives` each carry their own payload, identical to
+`write`'s (see **JSON output** under `write` above); only `--check`'s differs, in
+that its `mode` reads `correct`.
 
 ---
 
@@ -1394,7 +1424,7 @@ The `error.code` field matches the error class name (`ConfigError`, `ValidationE
 
 - A command with no `--format` flag, and any run in `text` or `table` mode, is unchanged: `Error:` / `Suggestion:` prose on stderr.
 - `config get`/`config list` default to `json`, so their failures carry the envelope with no flag passed.
-- A result that is not an error keeps its own shape: `write --check` / `correct --check` exit `8` to report that text needs changes, and emit their own `ok: true` result payload rather than an envelope. Discriminate on `ok`: `false` is a failure, `true` is a verdict whose detail is in the payload.
+- A result that is not an error keeps its own shape: `write --check` / `correct --check` exit `8` to report that text needs changes, and emit their own `ok: true` result payload rather than an envelope; `--diff` and `--alternatives` carry `ok: true` payloads of their own too. Discriminate on `ok`: `false` is a failure, `true` is a result whose detail is in the payload. The one exception is `write`/`correct`'s plain improvement payload (`{original, improved, changes, language}`), which predates the envelope and carries no `ok` field.
 - A malformed invocation commander rejects before the command runs (`unknown option`, a missing argument) still prints commander's own message on stderr and exits `6`. The envelope covers command failures, not parse failures.
 
 **`sync init --format json` success envelope:** For scripted project bootstrap, `deepl sync init --format json` emits a success envelope on **stdout** instead of the plain text confirmation:

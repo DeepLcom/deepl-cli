@@ -43,6 +43,7 @@ const mockWriteCommand = {
   checkFile: jest.fn(),
   autoFixFile: jest.fn(),
   improveWithDiff: jest.fn(),
+  generatePatch: jest.fn(),
   improveFileWithDiff: jest.fn(),
   improveInteractive: jest.fn(),
   improveFileInteractive: jest.fn(),
@@ -859,6 +860,77 @@ describe('registerWrite', () => {
         'file.txt',
         expect.any(Object)
       );
+    });
+
+    describe('--format json', () => {
+      let stdout: string[];
+      let stdoutSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        stdout = [];
+        stdoutSpy = jest
+          .spyOn(process.stdout, 'write')
+          .mockImplementation((chunk: unknown) => {
+            stdout.push(String(chunk));
+            return true;
+          });
+      });
+
+      afterEach(() => {
+        stdoutSpy.mockRestore();
+      });
+
+      it('should emit the diff payload with the uncoloured patch', async () => {
+        mockWriteCommand.improveWithDiff.mockResolvedValue({
+          original: 'old',
+          improved: 'new',
+          diff: 'coloured diff',
+        });
+        mockWriteCommand.generatePatch.mockReturnValue('-old\n+new');
+
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'some text',
+          '--diff',
+          '--format',
+          'json',
+        ]);
+
+        expect(mockWriteCommand.generatePatch).toHaveBeenCalledWith(
+          'old',
+          'new'
+        );
+        expect(JSON.parse(stdout.join(''))).toEqual({
+          ok: true,
+          original: 'old',
+          improved: 'new',
+          diff: '-old\n+new',
+        });
+        expect(Logger.output).not.toHaveBeenCalled();
+      });
+
+      it('should print the human report in text mode', async () => {
+        mockWriteCommand.improveWithDiff.mockResolvedValue({
+          original: 'old',
+          improved: 'new',
+          diff: 'coloured diff',
+        });
+
+        await program.parseAsync([
+          'node',
+          'test',
+          'write',
+          'some text',
+          '--diff',
+        ]);
+
+        expect(stdout.join('')).toBe('');
+        expect(Logger.output).toHaveBeenCalledWith(
+          expect.stringContaining('Original')
+        );
+      });
     });
   });
 

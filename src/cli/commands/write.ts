@@ -11,7 +11,10 @@ import { resolve, dirname } from 'path';
 import * as Diff from 'diff';
 import chalk from 'chalk';
 
-import { formatWriteJson } from '../../utils/formatters.js';
+import {
+  formatWriteAlternativesJson,
+  formatWriteJson,
+} from '../../utils/formatters.js';
 import { safeReadFile } from '../../utils/safe-read-file.js';
 import { Logger } from '../../utils/logger.js';
 import { sanitizeForTerminal } from '../../utils/control-chars.js';
@@ -43,11 +46,18 @@ export class WriteCommand {
    * (rephrase by default; spelling/grammar correction when options.correct is set)
    */
   async improve(text: string, options: WriteOptions): Promise<string> {
+    // Format output based on format option. The alternatives listing is a set of
+    // results rather than one, so it has a payload of its own.
+    if (options.showAlternatives) {
+      const alternatives = await this.alternativeTexts(text, options);
+      return options.format === 'json'
+        ? formatWriteAlternativesJson(text, alternatives)
+        : this.formatAlternatives(alternatives);
+    }
+
     const improved = await this.improvedText(text, options);
 
-    // Format output based on format option. The alternatives listing is its own
-    // presentation and has no JSON form, so it is returned as produced.
-    if (options.showAlternatives || options.format !== 'json') {
+    if (options.format !== 'json') {
       return improved;
     }
 
@@ -63,24 +73,30 @@ export class WriteCommand {
     text: string,
     options: WriteOptions
   ): Promise<string> {
-    const serviceOptions = { skipCache: options.noCache };
-
     if (options.showAlternatives) {
-      const improvements = await this.fetchImprovements(
-        text,
-        options,
-        serviceOptions
+      return this.formatAlternatives(
+        await this.alternativeTexts(text, options)
       );
-      return this.formatAlternatives(improvements.map((i) => i.text));
     }
 
-    const improvement = await this.fetchBestImprovement(
-      text,
-      options,
-      serviceOptions
-    );
+    const improvement = await this.fetchBestImprovement(text, options, {
+      skipCache: options.noCache,
+    });
 
     return improvement.text;
+  }
+
+  /**
+   * Every improvement the API offered, in the order it offered them.
+   */
+  private async alternativeTexts(
+    text: string,
+    options: WriteOptions
+  ): Promise<string[]> {
+    const improvements = await this.fetchImprovements(text, options, {
+      skipCache: options.noCache,
+    });
+    return improvements.map((i) => i.text);
   }
 
   /**
@@ -170,16 +186,18 @@ export class WriteCommand {
   }
 
   /**
+   * The unified patch between original and improved text, uncoloured — what a
+   * machine-readable diff carries, since a colour escape is meaningless there.
+   */
+  generatePatch(original: string, improved: string): string {
+    return Diff.createPatch('text', original, improved, 'original', 'improved');
+  }
+
+  /**
    * Generate a unified diff between original and improved text
    */
   generateDiff(original: string, improved: string): string {
-    const patch = Diff.createPatch(
-      'text',
-      original,
-      improved,
-      'original',
-      'improved'
-    );
+    const patch = this.generatePatch(original, improved);
 
     // Color the diff output
     const lines = patch.split('\n');
@@ -204,7 +222,7 @@ export class WriteCommand {
     text: string,
     options: WriteOptions
   ): Promise<{ original: string; improved: string; diff: string }> {
-    const improvedText = await this.improve(text, options);
+    const improvedText = await this.improvedText(text, options);
     const diff = this.generateDiff(text, improvedText);
 
     return {
