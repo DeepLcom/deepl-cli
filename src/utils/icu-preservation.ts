@@ -44,9 +44,8 @@ export function parseIcu(text: string): IcuParseResult {
     let template = '';
     let pos = 0;
 
-    // Every block is protected, not just the first. Pushing the whole suffix as
-    // one prose segment submitted the remaining blocks' syntax to the engine,
-    // which translates the keyword and the selectors.
+    // Every block is protected, not just the first: a block left inside a prose
+    // segment would reach the engine as raw ICU syntax.
     for (;;) {
       const match = ICU_DETECT_RE.exec(text.slice(pos));
       if (!match) break;
@@ -59,8 +58,7 @@ export function parseIcu(text: string): IcuParseResult {
         return { isIcu: false, segments: [], reassemble: () => text };
       }
 
-      // Text between blocks is ordinary prose and must be translated too —
-      // dropping it from the template silently deleted it.
+      // Text between blocks is ordinary prose and must be translated too.
       const prose = text.slice(pos, blockStart);
       if (prose !== '') {
         template += `__ICU_LEAF_${segments.length}__`;
@@ -90,8 +88,8 @@ export function parseIcu(text: string): IcuParseResult {
       segments,
       reassemble: (translations: string[]) => {
         if (translations.length !== segments.length) {
-          // Filling missing values with '' produced empty plural branches,
-          // which render nothing for that category.
+          // Filling the missing values with '' would produce empty plural
+          // branches, which render nothing for that category.
           throw new Error(
             `ICU reassemble expected ${segments.length} translations, received ${translations.length}`
           );
@@ -240,11 +238,9 @@ function tryParseNestedContent(
   inPluralContext: boolean,
   segments: IcuSegment[]
 ): { template: string } | null {
-  // Check if content contains a nested ICU block
-  // e.g., "{gender, select, male {He has # items} female {She has # items}}"
-  // Content might be mixed: "text before {var, plural, ...} text after"
-
-  // For MVP: only handle content that IS a full ICU block (starts with {var, keyword, ...})
+  // Only content that IS a full ICU block nests, e.g.
+  // "{gender, select, male {He has # items} female {She has # items}}".
+  // Mixed content — "text before {var, plural, ...} text after" — stays a leaf.
   const trimmed = content.trim();
   if (!ICU_DETECT_RE.test(trimmed)) return null;
 

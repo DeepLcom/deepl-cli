@@ -4,11 +4,11 @@ import { sanitizeForTerminal } from './control-chars.js';
 /**
  * fast-glob expands brace groups through `braces`, which bounds only its INPUT
  * length (10000 characters) and places no bound on the expansion it produces —
- * unlike `brace-expansion`, whose similar name hides a very different set of
- * caps. The expansion is the product of every group's alternatives, so 20
- * `{a,b}` groups fit in 107 characters and allocate ~600MB, and 22 groups end
- * the process with a V8 out-of-memory abort. An abort is not a catchable
- * exception, so patterns must be bounded before they reach fast-glob at all.
+ * unlike the similarly named `brace-expansion`, whose caps are different. The
+ * expansion is the product of every group's alternatives, so a pattern barely
+ * 100 characters long can exhaust the heap. A V8 out-of-memory abort is not a
+ * catchable exception, so patterns must be bounded before they reach fast-glob
+ * at all.
  *
  * The cap sits at or below the `braces` range limit (1000) so that a range
  * wider than the limit is rejected here rather than surfacing as a raw
@@ -143,11 +143,11 @@ export function countGlobExpansion(pattern: string): number {
  * wildcard, or undefined.
  *
  * Those two operators are repetitions, so a `*` or `+` inside one gives picomatch
- * a nested quantifier and exponential backtracking. Measured against a
- * 40-character directory name, the six-character pattern `+(a*)b` takes about 50
- * SECONDS — and the expansion bound above never sees it, because a pattern can
- * carry no brace at all. `@(…)`, `?(…)` and `!(…)` are not repetitions and stayed
- * flat under the same measurement, so they are left alone.
+ * a nested quantifier and exponential backtracking: a pattern as short as
+ * `+(a*)b` takes tens of seconds against a single 40-character directory name,
+ * and the expansion bound above never sees it, because such a pattern need carry
+ * no brace at all. `@(…)`, `?(…)` and `!(…)` are not repetitions, stay flat, and
+ * are left alone.
  *
  * Both the pattern and the directory names it is matched against come from the
  * checkout, so this is reachable from a merge request rather than only from a

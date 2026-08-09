@@ -1,10 +1,10 @@
 /**
  * Permission enforcement for the files the CLI keeps private.
  *
- * The 0600 file mode and 0700 directory mode are applied when the CLI creates
- * them and were never checked again, so a config file restored from a backup,
- * copied by another tool, or written by hand kept whatever mode it arrived
- * with — and `config.json` holds the API key in plaintext.
+ * The 0600 file mode and 0700 directory mode applied when the CLI creates them
+ * are not enough on their own: a config file restored from a backup, copied by
+ * another tool, or written by hand carries whatever mode it arrived with — and
+ * `config.json` holds the API key in plaintext.
  */
 
 import * as fs from 'fs';

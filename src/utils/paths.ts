@@ -55,10 +55,8 @@ export function canonicalPathKey(absPath: string): string {
   // what makes two spellings of one file compare equal. The string form cannot:
   // `fs.realpathSync` does not case-fold on a case-insensitive volume (APFS
   // returns `Docs` for `Docs` even when the directory is stored as `docs`) and
-  // does not unify NFC with NFD. Both were measured on APFS as reaching the same
-  // inode while producing different strings, which made `watch --git-staged`
-  // translate nothing when git spelled a directory differently from the watcher —
-  // silently, at exit 0.
+  // does not unify NFC with NFD, so on APFS two paths reaching the same inode can
+  // still produce different strings.
   //
   // `lstat`, not `stat`: a symlink has its own inode, which keeps the rule below
   // that a symlink is a different file from its target. On a case-SENSITIVE

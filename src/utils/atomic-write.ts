@@ -91,12 +91,11 @@ const TMP_SIBLING_PATTERN = /\.tmp\.\d+\.[a-z0-9]+$/;
 export function isAtomicWriteTempPath(filePath: string): boolean {
   const resolved = path.resolve(filePath);
   if (inFlightTmpPaths.has(resolved)) return true;
-  // Not one of ours. The name pattern alone used to be the whole test, which
-  // silently dropped any real document named `*.tmp.<digits>.<lc-alnum>` from
-  // watch — before the warn-once branch, so nothing said the file had been
-  // skipped. It is still honoured for a path that does not exist, which is what a
-  // temp sibling looks like once its rename has completed but the watcher's event
-  // is only now being delivered: there is nothing there to treat as a document.
+  // Not one of ours. The name pattern alone cannot be the whole test: it would
+  // drop a real document named `*.tmp.<digits>.<lc-alnum>` from watch. It is
+  // honoured only for a path that does not exist, which is what a temp sibling
+  // looks like once its rename has completed but the watcher's event is only now
+  // being delivered: there is nothing there to treat as a document.
   return TMP_SIBLING_PATTERN.test(resolved) && !fs.existsSync(resolved);
 }
 

@@ -8,9 +8,8 @@ import { neutralizeTerminalControls } from './control-chars.js';
 /**
  * Shortest credential value redacted by literal substring match. A DeepL key is
  * UUID-shaped and TMS credentials are longer still, so nothing real is below
- * this; anything that is would corrupt ordinary prose instead, because the
- * match has no token boundary — a one-character key turns every "Check" in
- * every diagnostic into "Chec[REDACTED]".
+ * this; anything shorter would corrupt ordinary prose instead, because the match
+ * has no token boundary.
  */
 const MIN_REDACTABLE_SECRET_LENGTH = 8;
 
@@ -36,30 +35,18 @@ class LoggerClass {
     this.registeredSecrets.clear();
   }
 
-  /**
-   * Enable or disable quiet mode
-   */
   setQuiet(enabled: boolean): void {
     this.quiet = enabled;
   }
 
-  /**
-   * Check if quiet mode is enabled
-   */
   isQuiet(): boolean {
     return this.quiet;
   }
 
-  /**
-   * Enable or disable verbose mode
-   */
   setVerbose(enabled: boolean): void {
     this.verboseMode = enabled;
   }
 
-  /**
-   * Check if verbose mode is enabled
-   */
   isVerbose(): boolean {
     return this.verboseMode;
   }
@@ -147,7 +134,6 @@ class LoggerClass {
     // Every remaining object — a plain one, an axios AxiosHeaders, a
     // ClientRequest — is rebuilt property by property on its own prototype, so
     // util.inspect still names the class but never sees the live original.
-    // Handing a redactor's caller the untouched instance is the wrong default.
     // Properties are defined rather than assigned so a key named `__proto__`
     // becomes an own property of the copy instead of reaching the setter.
     const copy = Object.create(
@@ -263,12 +249,11 @@ class LoggerClass {
    * Log essential output (ALWAYS shown, even in quiet mode)
    * Use this for translation results, command output, etc.
    *
-   * Terminal control sequences are neutralized only when stdout is a TTY.
-   * Redirected stdout is data — `deepl translate ... > out.txt` and command
-   * substitution must reproduce the translation byte for byte — and a control
-   * sequence can only act on a terminal that interprets it. Untrusted values
-   * interpolated into report lines are sanitized at their call site instead,
-   * so those stay safe whether or not stdout is a terminal.
+   * Terminal control sequences are neutralized only when stdout is a TTY:
+   * redirected stdout is data — `deepl translate ... > out.txt` and command
+   * substitution must reproduce the translation byte for byte. Untrusted values
+   * interpolated into report lines are sanitized at their call site instead, so
+   * those stay safe whether or not stdout is a terminal.
    */
   output(...args: unknown[]): void {
     if (process.stdout.isTTY) {
@@ -282,13 +267,12 @@ class LoggerClass {
    * Check if spinners should be shown.
    * Returns false in quiet mode or when stderr is not a TTY — ora writes to
    * stderr by default, so a non-TTY stderr means spinners would either no-op
-   * silently inside ora or (on older ora versions) leak ANSI escapes into CI
-   * logs. Gating at this single chokepoint covers every `ora(...)` callsite.
+   * inside ora or leak ANSI escapes into CI logs. Gating at this single
+   * chokepoint covers every `ora(...)` callsite.
    */
   shouldShowSpinner(): boolean {
     return !this.quiet && !!process.stderr.isTTY;
   }
 }
 
-// Export singleton instance
 export const Logger = new LoggerClass();

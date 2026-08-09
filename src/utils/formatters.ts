@@ -170,7 +170,6 @@ export function formatMultiTranslationTable(
     billedCharacters?: number;
   }>
 ): string {
-  // Check if any result has billedCharacters - if so, show the Characters column
   const showCharacters = results.some((r) => r.billedCharacters !== undefined);
   const colorDisabled = !isColorEnabled();
 
