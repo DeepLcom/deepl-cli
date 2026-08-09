@@ -24,6 +24,7 @@ jest.mock('../../../src/utils/logger', () => ({
 import {
   acquireSyncProcessLock,
   PROCESS_LOCK_FILE_NAME,
+  UNOWNED_HOLDER_MAX_AGE_MS,
 } from '../../../src/sync/sync-process-lock';
 import { Logger } from '../../../src/utils/logger';
 import { ConfigError } from '../../../src/utils/errors';
@@ -38,6 +39,11 @@ function errnoError(code: string): NodeJS.ErrnoException {
   const error = new Error(code) as NodeJS.ErrnoException;
   error.code = code;
   return error;
+}
+
+/** A start time the given number of milliseconds in the past, as a holder records it. */
+function startedMsAgo(ageMs: number): string {
+  return new Date(Date.now() - ageMs).toISOString();
 }
 
 describe('acquireSyncProcessLock', () => {
@@ -130,7 +136,7 @@ describe('acquireSyncProcessLock', () => {
     });
 
     it('refuses the lock when the probe reports EPERM, which means a process this user does not own', () => {
-      plantPidFile({ pid: 4242, startedAt: '2026-01-01T00:00:00.000Z' });
+      plantPidFile({ pid: 4242, startedAt: startedMsAgo(60_000) });
       jest.spyOn(process, 'kill').mockImplementation(() => {
         throw errnoError('EPERM');
       });
@@ -139,14 +145,28 @@ describe('acquireSyncProcessLock', () => {
     });
 
     it('names the holding PID and its start time when refusing', () => {
-      plantPidFile({ pid: 4242, startedAt: '2026-01-01T00:00:00.000Z' });
+      const startedAt = startedMsAgo(60_000);
+      plantPidFile({ pid: 4242, startedAt });
       jest.spyOn(process, 'kill').mockImplementation(() => {
         throw errnoError('EPERM');
       });
 
       expect(() => acquireSyncProcessLock(projectRoot)).toThrow(
-        /PID=4242, started 2026-01-01T00:00:00\.000Z/
+        new RegExp(`PID=4242, started ${startedAt.replace(/\./g, '\\.')}`)
       );
+    });
+
+    it('tells the operator how to break a lock it refuses', () => {
+      plantPidFile({ pid: process.pid, startedAt: startedMsAgo(60_000) });
+
+      let caught: unknown;
+      try {
+        acquireSyncProcessLock(projectRoot);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect((caught as ConfigError).suggestion).toMatch(/--break-lock/);
     });
 
     it('reclaims the lock when the probe reports ESRCH', () => {
@@ -174,6 +194,155 @@ describe('acquireSyncProcessLock', () => {
 
       expect(ownerPid()).toBe(process.pid);
       handle.release();
+    });
+  });
+
+  /**
+   * EPERM says the PID exists and belongs to someone else, which is equally
+   * what a PID recycled by an unrelated process looks like. Without an upper
+   * bound on the recorded start time such a pidfile refuses every later sync
+   * for as long as it exists.
+   */
+  describe('a holder this user cannot probe', () => {
+    function plantUnownedHolder(startedAt: unknown): void {
+      plantPidFile({ pid: 4242, startedAt });
+      jest.spyOn(process, 'kill').mockImplementation((pid: number) => {
+        if (pid === 4242) throw errnoError('EPERM');
+        return true;
+      });
+    }
+
+    it('reclaims the lock when the recorded start time is older than any sync can run', () => {
+      plantUnownedHolder(startedMsAgo(30 * UNOWNED_HOLDER_MAX_AGE_MS));
+
+      const handle = acquireSyncProcessLock(projectRoot);
+
+      expect(ownerPid()).toBe(process.pid);
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('PID=4242')
+      );
+      handle.release();
+    });
+
+    it('says why it distrusted the holder when it reclaims', () => {
+      plantUnownedHolder(startedMsAgo(30 * UNOWNED_HOLDER_MAX_AGE_MS));
+
+      const handle = acquireSyncProcessLock(projectRoot);
+
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('another user')
+      );
+      handle.release();
+    });
+
+    it('reclaims the lock when the recorded start time is not a date', () => {
+      plantUnownedHolder('halfway through last tuesday');
+
+      const handle = acquireSyncProcessLock(projectRoot);
+
+      expect(ownerPid()).toBe(process.pid);
+      handle.release();
+    });
+
+    it('reclaims the lock when the recorded start time is impossibly far ahead of this clock', () => {
+      plantUnownedHolder(startedMsAgo(-30 * UNOWNED_HOLDER_MAX_AGE_MS));
+
+      const handle = acquireSyncProcessLock(projectRoot);
+
+      expect(ownerPid()).toBe(process.pid);
+      handle.release();
+    });
+
+    it('refuses a holder that started moments ago', () => {
+      plantUnownedHolder(startedMsAgo(1_000));
+
+      expect(() => acquireSyncProcessLock(projectRoot)).toThrow(ConfigError);
+      expect(ownerPid()).toBe(4242);
+    });
+
+    it('refuses a holder still inside the age ceiling', () => {
+      plantUnownedHolder(startedMsAgo(UNOWNED_HOLDER_MAX_AGE_MS - 60_000));
+
+      expect(() => acquireSyncProcessLock(projectRoot)).toThrow(ConfigError);
+      expect(ownerPid()).toBe(4242);
+    });
+
+    it('refuses a holder whose clock runs a little ahead of this one', () => {
+      plantUnownedHolder(startedMsAgo(-60_000));
+
+      expect(() => acquireSyncProcessLock(projectRoot)).toThrow(ConfigError);
+      expect(ownerPid()).toBe(4242);
+    });
+
+    /**
+     * Ageing exists to escape a verdict nothing can disprove. A probe that
+     * succeeds is not that: taking the lock from a process known to be running
+     * is the concurrent-writer hazard the lock exists to prevent.
+     */
+    it('never ages out a holder the probe reports as genuinely running', () => {
+      plantPidFile({
+        pid: process.pid,
+        startedAt: startedMsAgo(365 * UNOWNED_HOLDER_MAX_AGE_MS),
+      });
+
+      expect(() => acquireSyncProcessLock(projectRoot)).toThrow(ConfigError);
+      expect(ownerPid()).toBe(process.pid);
+    });
+  });
+
+  describe('breakLock', () => {
+    it('takes the lock from a holder that is genuinely running', () => {
+      plantPidFile({ pid: 4242, startedAt: startedMsAgo(60_000) });
+      jest.spyOn(process, 'kill').mockImplementation(() => true);
+
+      const handle = acquireSyncProcessLock(projectRoot, { breakLock: true });
+
+      expect(ownerPid()).toBe(process.pid);
+      handle.release();
+    });
+
+    it('names the holder it broke and warns what that permits', () => {
+      const startedAt = startedMsAgo(60_000);
+      plantPidFile({ pid: 4242, startedAt });
+      jest.spyOn(process, 'kill').mockImplementation(() => true);
+
+      const handle = acquireSyncProcessLock(projectRoot, { breakLock: true });
+
+      const warnings = jest
+        .mocked(Logger.warn)
+        .mock.calls.map((args) => String(args[0]))
+        .join('\n');
+      expect(warnings).toContain('PID=4242');
+      expect(warnings).toContain(startedAt);
+      expect(warnings).toMatch(/concurrent|same files/i);
+      handle.release();
+    });
+
+    it('is silent when there was no lock to break', () => {
+      const handle = acquireSyncProcessLock(projectRoot, { breakLock: true });
+
+      expect(ownerPid()).toBe(process.pid);
+      expect(Logger.warn).not.toHaveBeenCalled();
+      handle.release();
+    });
+
+    it('reports the running sync rather than breaking twice when a new holder takes the freed slot', () => {
+      plantPidFile({ pid: 4242, startedAt: startedMsAgo(60_000) });
+      jest.spyOn(process, 'kill').mockImplementation(() => true);
+      const realRename = fsModule.renameSync;
+      let broken = false;
+      jest.spyOn(fsModule, 'renameSync').mockImplementation((from, to) => {
+        realRename(from, to);
+        if (!broken) {
+          broken = true;
+          plantPidFile({ pid: 5555, startedAt: startedMsAgo(1_000) });
+        }
+      });
+
+      expect(() =>
+        acquireSyncProcessLock(projectRoot, { breakLock: true })
+      ).toThrow(/PID=5555/);
+      expect(ownerPid()).toBe(5555);
     });
   });
 

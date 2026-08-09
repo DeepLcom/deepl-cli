@@ -171,6 +171,19 @@ const PULL_DRY_RUN: OptionSnapshot = {
   mandatory: false,
 };
 
+const SUBCOMMAND_BREAK_LOCK: OptionSnapshot = {
+  flags: '--break-lock',
+  description:
+    'Take the sync lock even when .deepl-sync.lock.pidfile names a process that looks alive',
+  defaultValue: undefined,
+  negate: false,
+  choices: undefined,
+  required: false,
+  optional: false,
+  variadic: false,
+  mandatory: false,
+};
+
 const PARENT_SYNC_CONFIG_OPT: OptionSnapshot = {
   flags: '--sync-config <path>',
   description: 'Path to .deepl-sync.yaml (default: auto-detect)',
@@ -238,6 +251,18 @@ const EXPECTED: CommandSnapshot = {
       {
         flags: '--batch',
         description: 'Force batch mode (fastest, no context or instructions)',
+        defaultValue: undefined,
+        negate: false,
+        choices: undefined,
+        required: false,
+        optional: false,
+        variadic: false,
+        mandatory: false,
+      },
+      {
+        flags: '--break-lock',
+        description:
+          'Take the sync lock even when .deepl-sync.lock.pidfile names a process that looks alive. Use only when that sync is definitely not running: two concurrent syncs overwrite the same target files.',
         defaultValue: undefined,
         negate: false,
         choices: undefined,
@@ -566,6 +591,7 @@ const EXPECTED: CommandSnapshot = {
         FORMAT_OPT,
         LOCALE_FILTER_OPT,
         PULL_DRY_RUN,
+        SUBCOMMAND_BREAK_LOCK,
         SYNC_CONFIG_OPT,
       ].sort((a, b) => a.flags.localeCompare(b.flags)),
       subcommands: [],
@@ -581,9 +607,12 @@ const EXPECTED: CommandSnapshot = {
     {
       name: 'resolve',
       description: 'Resolve git merge conflicts in .deepl-sync.lock',
-      options: [FORMAT_OPT, RESOLVE_DRY_RUN, SYNC_CONFIG_OPT].sort((a, b) =>
-        a.flags.localeCompare(b.flags)
-      ),
+      options: [
+        FORMAT_OPT,
+        RESOLVE_DRY_RUN,
+        SUBCOMMAND_BREAK_LOCK,
+        SYNC_CONFIG_OPT,
+      ].sort((a, b) => a.flags.localeCompare(b.flags)),
       subcommands: [],
     },
     {

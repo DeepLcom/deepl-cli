@@ -4,6 +4,7 @@ import { SyncConflictError } from '../../../utils/errors.js';
 import type { ServiceDeps } from '../service-factory.js';
 import {
   emitJsonErrorAndExit,
+  resolveBreakLock,
   resolveFormat,
   resolveSyncConfig,
 } from './sync-options.js';
@@ -12,6 +13,7 @@ interface ResolveOptions {
   syncConfig?: string;
   dryRun?: boolean;
   format?: string;
+  breakLock?: boolean;
 }
 
 export function registerSyncResolve(
@@ -30,6 +32,10 @@ export function registerSyncResolve(
     .option(
       '--dry-run',
       'Preview the decision report without writing the lockfile'
+    )
+    .option(
+      '--break-lock',
+      'Take the sync lock even when .deepl-sync.lock.pidfile names a process that looks alive'
     )
     .action((options: ResolveOptions, command: Command) =>
       handleSyncResolve(options, command, deps)
@@ -62,7 +68,9 @@ async function handleSyncResolve(
     // copy when it finishes, so a resolve landing in between is erased by the
     // sync's own write. Held for a dry run too, matching `sync pull`: the file
     // the report describes is about to be rewritten.
-    const processLock = acquireSyncProcessLock(config.projectRoot);
+    const processLock = acquireSyncProcessLock(config.projectRoot, {
+      breakLock: resolveBreakLock(options, command),
+    });
     try {
       const result = await resolveLockFile(lockPath, { dryRun });
 

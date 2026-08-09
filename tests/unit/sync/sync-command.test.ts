@@ -1521,6 +1521,64 @@ describe('SyncCommand', () => {
       processOnSpy.mockRestore();
     });
 
+    /**
+     * --break-lock removes a pidfile whose holder looks alive. Repeating it on
+     * every watch cycle would leave the session unable to arbitrate against
+     * another sync in the same directory for as long as it runs.
+     */
+    it('applies --break-lock to the initial sync only, not to later watch cycles', async () => {
+      const registeredHandlers: Array<(p?: string) => void> = [];
+      mockWatcherOn.mockImplementation(
+        (event: string, handler: (p?: string) => void) => {
+          if (event === 'change' || event === 'add') {
+            registeredHandlers.push(handler);
+          }
+          return mockWatcher;
+        }
+      );
+
+      const mockService = createMockSyncService(makeResult());
+      const command = new SyncCommand(mockService);
+
+      const sigintListeners: Array<() => void> = [];
+      const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+        event: string,
+        listener: () => void
+      ) => {
+        if (event === 'SIGINT') sigintListeners.push(listener);
+        return process;
+      }) as unknown as ProcessOn);
+
+      const runPromise = command.run({
+        watch: true,
+        debounce: 50,
+        breakLock: true,
+      });
+
+      await flushWatchSetup();
+
+      expect(mockService.sync).toHaveBeenCalledTimes(1);
+      expect(mockService.sync.mock.calls[0]![1]).toMatchObject({
+        breakLock: true,
+      });
+
+      expect(registeredHandlers.length).toBeGreaterThan(0);
+      registeredHandlers[0]!();
+      await jest.advanceTimersByTimeAsync(60);
+      await flushUntil(
+        () => mockService.sync.mock.calls.length >= 2,
+        'second sync from watch cycle'
+      );
+
+      expect(mockService.sync.mock.calls[1]![1]).toMatchObject({
+        breakLock: false,
+      });
+
+      for (const listener of sigintListeners) listener();
+      await runPromise;
+      processOnSpy.mockRestore();
+    });
+
     it('returns SIGINT/SIGTERM listener counts to their baseline after shutdown', async () => {
       const result = makeResult();
       const mockService = createMockSyncService(result);

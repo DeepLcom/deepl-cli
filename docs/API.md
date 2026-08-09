@@ -1244,6 +1244,7 @@ Scan, translate, and sync i18n resource files. The sync engine reads `.deepl-syn
   - Anywhere else the prompt cannot be shown — a git hook, cron job, `make` target, container entrypoint, `deepl sync --force < /dev/null`, or `--no-input` — `--force` is **refused** with exit 6 rather than assumed to be confirmed. `--yes` is the only way to run it unattended. `--force` overwrites every target file, including translations edited by hand, and no `.deepl.bak` survives a successful run, so there is nothing to recover from afterwards.
 
 - `--yes, -y` - Skip the `--force` confirmation prompt (required when `CI=true`, and whenever there is no terminal to prompt on)
+- `--break-lock` - Take the sync lock even when `.deepl-sync.lock.pidfile` names a process that looks alive, reporting the holder it removed. Also accepted by `sync pull` and `sync resolve`, which take the same lock. Use it only when that run is definitely not running: two concurrent syncs write the same target files and the same lockfile. Not carried into `--watch` cycles — it applies to the run you asked for, then the lock arbitrates normally again. See [Concurrent sync](SYNC.md#concurrent-sync)
 
 **Filtering:**
 
@@ -1496,6 +1497,7 @@ Resolve git merge conflicts in `.deepl-sync.lock`.
 - `--format FORMAT` - Output format: `text` (default), `json`
 - `--dry-run` - Preview conflict decisions without writing the lockfile
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
+- `--break-lock` - Take the sync lock even when `.deepl-sync.lock.pidfile` names a process that looks alive
 
 **JSON success envelope (stable within a major version):** `{ "ok": true, "resolved": <n>, "decisions": [...] }`
 
@@ -1532,6 +1534,8 @@ Pull approved translations from a TMS back into local files.
 - `--locale LANGS` - Pull specific locales only
 - `--format FORMAT` - Output format: `text` (default), `json`
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
+- `--dry-run` - Preview what the pull would change without writing any file
+- `--break-lock` - Take the sync lock even when `.deepl-sync.lock.pidfile` names a process that looks alive
 
 **Requires TMS integration.** Add a `tms:` block to `.deepl-sync.yaml` (at minimum `enabled: true`, `server`, `project_id`) and supply credentials via the `TMS_API_KEY` or `TMS_TOKEN` environment variable. Running `pull` without a configured `tms:` block exits 7 (ConfigError). See [docs/SYNC.md#tms-rest-contract](./SYNC.md#tms-rest-contract) for the full field reference and REST contract.
 

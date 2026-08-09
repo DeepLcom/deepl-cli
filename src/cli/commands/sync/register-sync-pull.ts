@@ -5,6 +5,7 @@ import type { ServiceDeps } from '../service-factory.js';
 import {
   emitJsonErrorAndExit,
   parseLocaleFilter,
+  resolveBreakLock,
   resolveFormat,
   resolveLocale,
   resolveSyncConfig,
@@ -15,6 +16,7 @@ interface PullOptions {
   syncConfig?: string;
   format?: string;
   dryRun?: boolean;
+  breakLock?: boolean;
 }
 
 export function registerSyncPull(
@@ -35,6 +37,10 @@ export function registerSyncPull(
       '--dry-run',
       'Preview what the pull would change without writing any file'
     )
+    .option(
+      '--break-lock',
+      'Take the sync lock even when .deepl-sync.lock.pidfile names a process that looks alive'
+    )
     .addHelpText(
       'after',
       `
@@ -54,6 +60,7 @@ full field list and REST contract.
       options.format = resolveFormat(options, command);
       options.locale = resolveLocale(options, command);
       options.syncConfig = resolveSyncConfig(options, command);
+      options.breakLock = resolveBreakLock(options, command);
       // Commander routes --dry-run on the invocation line to the parent `sync`
       // command (which also defines --dry-run). Fall back to the parent's value.
       const parentDryRun = command.parent?.opts()['dryRun'] as
@@ -92,7 +99,9 @@ export async function handleSyncPull(
       );
     }
 
-    const processLock = acquireSyncProcessLock(config.projectRoot);
+    const processLock = acquireSyncProcessLock(config.projectRoot, {
+      breakLock: options.breakLock,
+    });
     try {
       const client = await createTmsClient(config.tms);
       const { tmsServerOrigin } =

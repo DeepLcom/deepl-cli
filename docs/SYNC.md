@@ -60,6 +60,16 @@ Sync also refuses to read or write any path resolving into `.git/` or `.github/`
 
 Only one `deepl sync` run is supported at a time per project directory. At startup, sync writes a `.deepl-sync.lock.pidfile` containing its PID; a second invocation that sees an existing pidfile whose PID is still alive exits with `ConfigError` (exit code 7). If the PID is dead (e.g., a previous run crashed), sync removes the stale pidfile with a warning and proceeds. The pidfile is deleted automatically on normal completion and on SIGINT/SIGTERM.
 
+Three verdicts are possible for the PID a pidfile names, because `kill(pid, 0)` has three answers. A PID that is running holds the lock. A PID that does not exist is stale, and sync removes the pidfile with a warning and proceeds. A PID that exists but belongs to **another user** cannot be probed any further — and that is also what a PID recycled by an unrelated process looks like — so it is trusted only while the start time recorded in the pidfile keeps it plausible: a holder this user cannot signal whose recorded start is more than 24 hours old (or is not a readable date, or is impossibly far in the future) is treated as stale and reclaimed with a warning naming it. A holder that *is* running is never aged out, however old the lock: taking the lock from a live sync is the concurrent-writer hazard the lock exists to prevent.
+
+For that last case — a lock you know is dead but the machine still reports as alive, typically a recycled PID belonging to you — pass `--break-lock`:
+
+```bash
+deepl sync --break-lock          # also on `sync pull` and `sync resolve`
+```
+
+It removes the pidfile whatever its holder looks like, prints the PID and start time it removed, and takes the lock. Removing `.deepl-sync.lock.pidfile` by hand does the same thing. Both are unsafe if that sync really is running: two concurrent runs write the same target files and then overwrite each other's lockfile. `--break-lock` applies to the run you pass it to only — a `--watch` session breaks the lock for its first pass and then arbitrates normally for the rest of the session.
+
 Every command that writes `.deepl-sync.lock` takes the lock: `deepl sync`, `deepl sync pull` and `deepl sync resolve`, the last of these including `--dry-run`. A run reads the lockfile when it starts and writes its whole in-memory copy when it finishes, so anything written in between would be replaced. Read-only commands (`sync status`, `sync validate`, `sync audit`, `sync export`) do not take it.
 
 If the lockfile changes on disk between a run's read and its write anyway — a hand edit, a `git merge` or another tool, none of which take the lock — the run says so and still writes what it recorded:

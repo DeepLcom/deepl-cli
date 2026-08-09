@@ -51,6 +51,20 @@ export function resolveSyncConfig(
 }
 
 /**
+ * Resolve --break-lock across parent (`sync`) and subcommand scopes. Same
+ * parent/child binding rule as {@link resolveLocale}: the parent `sync`
+ * command also declares the flag, so a subcommand that reads only its own
+ * store would silently keep respecting a lock the operator asked it to break.
+ */
+export function resolveBreakLock(
+  opts: { breakLock?: boolean },
+  command: Command
+): boolean {
+  if (opts.breakLock !== undefined) return opts.breakLock;
+  return (command.parent?.opts()['breakLock'] as boolean | undefined) ?? false;
+}
+
+/**
  * Split a resolved --locale value into the comma-separated filter list that
  * `loadSyncConfig` validates against `target_locales`.
  */

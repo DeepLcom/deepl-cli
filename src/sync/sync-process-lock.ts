@@ -7,6 +7,14 @@ export const PROCESS_LOCK_FILE_NAME = '.deepl-sync.lock.pidfile';
 
 const MAX_ACQUIRE_ATTEMPTS = 5;
 
+/**
+ * How long a pidfile whose holder this user cannot probe is trusted, measured
+ * from the start time the holder recorded. Generous on purpose: the lock is
+ * held for one sync pass (watch mode retakes it per change), so a day is far
+ * beyond any run, while still bounding a pidfile nothing can disprove.
+ */
+export const UNOWNED_HOLDER_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 interface PidFilePayload {
   pid: number;
   startedAt: string;
@@ -23,18 +31,47 @@ function isPidFilePayload(value: unknown): value is PidFilePayload {
   );
 }
 
-function isProcessAlive(pid: number): boolean {
+/** `unowned`: the PID exists but belongs to a user this process cannot signal. */
+type ProcessLiveness = 'alive' | 'dead' | 'unowned';
+
+function probeProcess(pid: number): ProcessLiveness {
   try {
     process.kill(pid, 0);
-    return true;
+    return 'alive';
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
-    if (code === 'ESRCH') {
-      return false;
-    }
-    // EPERM means the PID exists but we don't own it — still alive.
-    return code === 'EPERM';
+    return code === 'EPERM' ? 'unowned' : 'dead';
   }
+}
+
+function isCredibleStartTime(startedAt: string): boolean {
+  const started = Date.parse(startedAt);
+  if (Number.isNaN(started)) return false;
+  // Absolute distance, so a start time far enough ahead of this clock to be
+  // impossible counts against the holder just as an ancient one does, while
+  // ordinary skew between two machines' clocks does not.
+  return Math.abs(Date.now() - started) <= UNOWNED_HOLDER_MAX_AGE_MS;
+}
+
+/**
+ * Describes why a recorded holder does not hold the lock, or null when it must
+ * be treated as still running.
+ *
+ * A probe that succeeds is conclusive and is never overridden: taking the lock
+ * from a process known to be running is the concurrent-writer hazard the lock
+ * exists to prevent. EPERM is not conclusive — it is equally what a PID
+ * recycled by an unrelated process looks like — so it is trusted only while the
+ * holder's own recorded start time keeps it plausible.
+ */
+function staleHolderReason(payload: PidFilePayload): string | null {
+  const liveness = probeProcess(payload.pid);
+  if (liveness === 'alive') return null;
+  if (liveness === 'dead') return `PID=${payload.pid} is not alive`;
+  if (isCredibleStartTime(payload.startedAt)) return null;
+  return (
+    `PID=${payload.pid} belongs to another user and its recorded start time ` +
+    `${payload.startedAt} is not one a running sync could have`
+  );
 }
 
 interface PidFileInspection {
@@ -173,7 +210,25 @@ export interface ProcessLockHandle {
   release(): void;
 }
 
-export function acquireSyncProcessLock(projectRoot: string): ProcessLockHandle {
+export interface SyncProcessLockOptions {
+  /**
+   * Removes an existing pidfile whatever its holder looks like. The operator's
+   * escape hatch for a lock whose holder cannot be disproved — a PID recycled
+   * by this user's own process, or one reported by a container's PID namespace.
+   */
+  breakLock?: boolean;
+}
+
+function holderLabel(inspection: PidFileInspection): string {
+  return inspection.payload
+    ? ` held by PID=${inspection.payload.pid} (started ${inspection.payload.startedAt})`
+    : '';
+}
+
+export function acquireSyncProcessLock(
+  projectRoot: string,
+  options?: SyncProcessLockOptions
+): ProcessLockHandle {
   const pidFilePath = path.join(projectRoot, PROCESS_LOCK_FILE_NAME);
 
   // Every acquisition goes through the same O_EXCL create, including the one
@@ -190,10 +245,26 @@ export function acquireSyncProcessLock(projectRoot: string): ProcessLockHandle {
     }
 
     const existing = inspectPidFile(pidFilePath);
-    if (existing?.payload && isProcessAlive(existing.payload.pid)) {
+
+    // Honoured on the first attempt only: it breaks the lock the operator saw,
+    // not whichever sync happens to take the freed slot afterwards.
+    if (existing !== null && attempt === 1 && options?.breakLock) {
+      if (reclaimStalePidFile(pidFilePath, existing)) {
+        Logger.warn(
+          `--break-lock: removed ${PROCESS_LOCK_FILE_NAME}${holderLabel(existing)}. ` +
+            'If that sync is still running, both runs can now write the same files concurrently.'
+        );
+      }
+      continue;
+    }
+
+    const staleReason = existing?.payload
+      ? staleHolderReason(existing.payload)
+      : null;
+    if (existing?.payload && staleReason === null) {
       throw new ConfigError(
         `Another \`deepl sync\` process is running in this directory (PID=${existing.payload.pid}, started ${existing.payload.startedAt}). Wait for it to finish or kill it before retrying.`,
-        `If the process is definitely not running, remove ${PROCESS_LOCK_FILE_NAME} manually and retry.`
+        `If the process is definitely not running, retry with --break-lock, or remove ${PROCESS_LOCK_FILE_NAME} manually.`
       );
     }
 
@@ -207,11 +278,8 @@ export function acquireSyncProcessLock(projectRoot: string): ProcessLockHandle {
     // A pidfile that vanished between the failed create and the read needs no
     // reclaim; retry the create directly.
     if (existing !== null && reclaimStalePidFile(pidFilePath, existing)) {
-      const stalePidLabel = existing.payload
-        ? `PID=${existing.payload.pid}`
-        : 'unknown PID';
       Logger.warn(
-        `Removed stale ${PROCESS_LOCK_FILE_NAME} (${stalePidLabel} is not alive); reclaiming lock.`
+        `Removed stale ${PROCESS_LOCK_FILE_NAME} (${staleReason ?? 'unknown PID is not alive'}); reclaiming lock.`
       );
     }
   }

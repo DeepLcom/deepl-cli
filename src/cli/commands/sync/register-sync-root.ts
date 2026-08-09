@@ -86,6 +86,10 @@ export function registerSyncRoot(program: Command, deps: ServiceDeps): Command {
       '-y, --yes',
       'Skip --force confirmation prompt (required when CI=true)'
     )
+    .option(
+      '--break-lock',
+      'Take the sync lock even when .deepl-sync.lock.pidfile names a process that looks alive. Use only when that sync is definitely not running: two concurrent syncs overwrite the same target files.'
+    )
     .optionsGroup('Output:')
     .addOption(
       new Option('--format <format>', 'Output format')

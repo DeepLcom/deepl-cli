@@ -79,6 +79,12 @@ export interface SyncOptions {
    * throws or is cancelled before its own successful-completion cleanup runs.
    */
   backupTracker?: Set<string>;
+  /**
+   * Removes an existing process-lock pidfile whatever its holder looks like.
+   * Operator-driven and per run: watch mode must not carry it into later
+   * passes, or the lock stops arbitrating for the rest of the session.
+   */
+  breakLock?: boolean;
 }
 
 export interface SyncFileResult {
@@ -138,7 +144,9 @@ export class SyncService {
     config: ResolvedSyncConfig,
     options?: SyncOptions
   ): Promise<SyncResult> {
-    const processLock = acquireSyncProcessLock(config.projectRoot);
+    const processLock = acquireSyncProcessLock(config.projectRoot, {
+      breakLock: options?.breakLock,
+    });
     // Watch mode owns its own sweep + backup cleanup via `backupTracker`;
     // only the non-watch runs (single `deepl sync`, `sync push/pull/export`,
     // etc.) need the startup sweep and per-run signal cleanup wired up here.

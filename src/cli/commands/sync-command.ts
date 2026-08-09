@@ -44,6 +44,7 @@ export interface CliSyncOptions {
   debounce?: number;
   flagForReview?: boolean;
   autoCommit?: boolean;
+  breakLock?: boolean;
 }
 
 /**
@@ -341,6 +342,7 @@ export class SyncCommand {
       localeFilter: overrides.localeFilter,
       concurrency: options.concurrency,
       batch: options.batch,
+      breakLock: options.breakLock,
       onProgress: (event) => this.renderProgress(event, format),
     };
 
@@ -474,6 +476,10 @@ export class SyncCommand {
         Logger.info(`[${timestamp}] Change detected, syncing...`);
         const result = await this.syncService.sync(activeConfig, {
           ...syncOptions,
+          // --break-lock applies to the run the operator asked for. Carrying it
+          // into every later pass would leave the whole watch session unable to
+          // arbitrate against another sync in the same directory.
+          breakLock: false,
           cancellationSignal: signal,
           backupTracker,
         });
