@@ -564,7 +564,15 @@ export class PoFormatParser implements FormatParser {
       // measured 28 ms at 20k comment lines, 109 ms at 40k and 437 ms at 80k,
       // which is 4x the time for 2x the input.
       let backtrack = result.length - 1;
-      while (backtrack >= 0 && result[backtrack]!.startsWith('#')) {
+      while (
+        backtrack >= 0 &&
+        result[backtrack]!.startsWith('#') &&
+        // `#~` marks gettext's retired-work region: those lines are an obsolete
+        // entry of their own, not this entry's comments. Claiming them meant that
+        // dropping an entry — a key the source no longer has — deleted the
+        // obsolete block sitting above it as well.
+        !result[backtrack]!.startsWith('#~')
+      ) {
         backtrack--;
       }
       const commentLines: string[] = result.slice(backtrack + 1);

@@ -1113,3 +1113,59 @@ describe('PoFormatParser — U+2028 / U+2029 in a value', () => {
     expect(parser.extractTranslations(written).get('K')).toBe('line1\nline2');
   });
 });
+
+describe('PoFormatParser — an obsolete #~ block above an entry', () => {
+  // reconstruct's comment backtrack claims every preceding line starting with `#`
+  // as the entry's comments, and `#~` starts with `#`. Dropping the entry (a key
+  // the source no longer has) therefore took the retired-work block with it, even
+  // though `#~` lines belong to no live entry at all.
+  const parser = new PoFormatParser();
+  const CATALOG = [
+    'msgid ""',
+    'msgstr ""',
+    '"Content-Type: text/plain; charset=UTF-8\\n"',
+    '',
+    '#~ msgid "Retired"',
+    '#~ msgstr "Retirado"',
+    '#. a real comment',
+    'msgid "Gone"',
+    'msgstr "Ido"',
+    '',
+    'msgid "Kept"',
+    'msgstr "Guardado"',
+    '',
+  ].join('\n');
+
+  it('keeps the #~ block when the entry below it is dropped', () => {
+    const written = parser.reconstruct(CATALOG, [
+      { key: 'Kept', value: 'Kept', translation: 'Guardado' },
+    ]);
+
+    expect(written).toContain('#~ msgid "Retired"');
+    expect(written).toContain('#~ msgstr "Retirado"');
+    // The dropped entry and its own comment are gone.
+    expect(written).not.toContain('msgid "Gone"');
+    expect(written).not.toContain('a real comment');
+  });
+
+  it("still drops the entry's own comments with it", () => {
+    const simple = [
+      'msgid ""',
+      'msgstr ""',
+      '"Content-Type: text/plain; charset=UTF-8\\n"',
+      '',
+      '#. belongs to Gone',
+      'msgid "Gone"',
+      'msgstr "Ido"',
+      '',
+      'msgid "Kept"',
+      'msgstr "Guardado"',
+      '',
+    ].join('\n');
+    const written = parser.reconstruct(simple, [
+      { key: 'Kept', value: 'Kept', translation: 'Guardado' },
+    ]);
+    expect(written).not.toContain('belongs to Gone');
+    expect(written).toContain('msgid "Kept"');
+  });
+});
