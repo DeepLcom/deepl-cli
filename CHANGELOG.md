@@ -145,7 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **cli**: The primary human-readable reports of `sync status`, `sync validate`, `sync audit`, `sync init`, and `auth show` print to stdout, so `deepl sync status > report.txt` and `deepl auth show > key.txt` capture output instead of producing empty files. Diagnostics, warnings, and progress stay on stderr, and `--format json` stdout purity is unchanged.
 
-- **glossary**: `create` and `show` render language codes uppercase and the creation timestamp as a locale-independent ISO string, and the create success line prints to stdout — matching the documented output instead of a locale-dependent date on stderr.
+- **glossary**: `create` and `show` render the creation timestamp as a locale-independent ISO string, and the create success line prints to stdout — matching the documented output instead of a locale-dependent date on stderr. Their language codes are covered by the lowercase sweep above.
 
 - **hooks**: The installed pre-commit hook now actually validates translations — when a `.deepl-sync.yaml` exists and the CLI is on PATH it runs `deepl sync validate` and blocks the commit on validation errors (with a `--no-verify` hint). It was previously a no-op that grepped staged files and always exited 0.
 
