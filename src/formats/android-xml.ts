@@ -256,6 +256,7 @@ export class AndroidXmlFormatParser implements FormatParser {
     const pluralTranslations = new Map<string, Map<string, string>>();
     const arrayTranslations = new Map<string, Map<number, string>>();
     let arrayNames: Set<string> | undefined;
+    let pluralsNames: Set<string> | undefined;
 
     for (const entry of entries) {
       if (entry.metadata?.['plurals']) {
@@ -274,8 +275,21 @@ export class AndroidXmlFormatParser implements FormatParser {
             attrValue(el)
           )
         );
+        // A key that NAMES a <plurals> element is that element, whatever shape it
+        // has. Routing on the key's shape alone sent a plurals entry called `x.0`
+        // into the string-array branch whenever a `<string-array name="x">` was
+        // present — so with the entry's plural metadata stripped, which is exactly
+        // what the carry-forward does, nothing claimed the element and the
+        // PLURALS_EL pass deleted it.
+        pluralsNames ??= new Set(
+          scanElements(originalContent, PLURALS_EL).map((el) => attrValue(el))
+        );
 
-        if (!isNaN(index) && arrayNames.has(arrayName)) {
+        if (
+          !isNaN(index) &&
+          arrayNames.has(arrayName) &&
+          !pluralsNames.has(entry.key)
+        ) {
           if (!arrayTranslations.has(arrayName)) {
             arrayTranslations.set(arrayName, new Map());
           }

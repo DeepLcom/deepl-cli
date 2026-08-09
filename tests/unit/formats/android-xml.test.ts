@@ -657,3 +657,58 @@ describe('appending a resource whose KEY needs guarding', () => {
     expect(written).toContain('<string name="greeting">Hola</string>');
   });
 });
+
+describe('a <plurals> element whose name looks like an array index', () => {
+  // Reconstruct routed an entry by the SHAPE of its key: a dot made it a
+  // `<string-array>` item. A plurals entry whose metadata was stripped -- which is
+  // exactly what the carry-forward does -- and whose name is `x.0`, alongside a
+  // sibling `<string-array name="x">`, was therefore routed into the array branch
+  // and its element deleted.
+  const XML = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<resources>',
+    '    <string-array name="x">',
+    '        <item>First</item>',
+    '    </string-array>',
+    '    <plurals name="x.0">',
+    '        <item quantity="one">One file</item>',
+    '        <item quantity="other">%d files</item>',
+    '    </plurals>',
+    '</resources>',
+    '',
+  ].join('\n');
+
+  it('keeps the element when the carried entry has no plural metadata', () => {
+    const written = parser.reconstruct(XML, [
+      { key: 'x.0', value: '%d files', translation: '%d archivos' },
+      { key: 'x.0', value: 'First', translation: 'Primero' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('<plurals name="x.0">');
+    expect(written).toContain('<item quantity="one">One file</item>');
+    expect(written).toContain('<item quantity="other">%d files</item>');
+  });
+
+  it('still fills a string-array item whose name is not a plurals element', () => {
+    const written = parser.reconstruct(XML, [
+      { key: 'x.0', value: 'First', translation: 'Primero' },
+    ] as TranslatedEntry[]);
+    // `x.0` names the <plurals>, so the array item is left as it stands rather
+    // than being fed the plurals entry's translation.
+    expect(written).toContain('<plurals name="x.0">');
+  });
+
+  it('still routes an ordinary array item by index', () => {
+    const arrayOnly = [
+      '<resources>',
+      '    <string-array name="menu">',
+      '        <item>First</item>',
+      '    </string-array>',
+      '</resources>',
+    ].join('\n');
+    const written = parser.reconstruct(arrayOnly, [
+      { key: 'menu.0', value: 'First', translation: 'Primero' },
+    ] as TranslatedEntry[]);
+    expect(written).toContain('<item>Primero</item>');
+  });
+});
