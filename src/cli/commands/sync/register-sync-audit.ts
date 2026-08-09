@@ -71,7 +71,8 @@ async function handleSyncAudit(
     const { extractExistingTranslations } =
       await import('../../../sync/sync-bucket-walker.js');
     const { createDefaultRegistry } = await import('../../../formats/index.js');
-    const { resolveTargetPath } = await import('../../../sync/sync-utils.js');
+    const { resolveTargetPath, assertPathWithinRoot } =
+      await import('../../../sync/sync-utils.js');
     const pathMod = await import('path');
     const fsMod = await import('fs');
 
@@ -90,6 +91,7 @@ async function handleSyncAudit(
       for (const relPath of Object.keys(lockFile.entries)) {
         const fileLocaleMap = new Map<string, Map<string, string>>();
         for (const locale of config.target_locales) {
+          let targetAbs: string;
           try {
             const targetRel = resolveTargetPath(
               relPath,
@@ -97,8 +99,21 @@ async function handleSyncAudit(
               locale,
               bucketConfig.target_path_pattern
             );
-            const targetAbs = pathMod.join(config.projectRoot, targetRel);
-            if (!fsMod.existsSync(targetAbs)) continue;
+            targetAbs = pathMod.join(config.projectRoot, targetRel);
+          } catch {
+            // A lockfile entry whose path no longer resolves for this locale.
+            continue;
+          }
+          // Audit is the only sync read driven by lockfile keys rather than
+          // globbed source paths, and a lockfile arrives with a clone like any
+          // other committed file — so its keys are untrusted input. A key of
+          // `../secret/en.json` otherwise read a file outside the project root
+          // and printed its string values in the report. Thrown rather than
+          // skipped, matching how a sync run treats a containment violation: it
+          // is a problem with the project, not with one locale.
+          assertPathWithinRoot(targetAbs, config.projectRoot);
+          if (!fsMod.existsSync(targetAbs)) continue;
+          try {
             const content = await fsMod.promises.readFile(targetAbs, 'utf-8');
             fileLocaleMap.set(
               locale,
