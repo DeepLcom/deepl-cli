@@ -80,6 +80,7 @@ export class WatchService {
   private watcher: FSWatcher | null = null;
   private options: WatchServiceOptions;
   private watchOptions: WatchOptions | null = null;
+  private watchRoot = '';
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private activeTranslations: Set<string> = new Set();
   private pendingTranslations: Set<string> = new Set();
@@ -115,6 +116,13 @@ export class WatchService {
     }
 
     this.watchOptions = options;
+    // The root every source path is made relative to when its output directory
+    // is built. A watched file has no tree of its own, so its directory is the
+    // root and its output stays at the top of the output directory.
+    const resolvedWatchPath = path.resolve(watchPath);
+    this.watchRoot = fs.statSync(resolvedWatchPath).isDirectory()
+      ? resolvedWatchPath
+      : path.dirname(resolvedWatchPath);
 
     // Create watcher
     const watcherOptions: {
@@ -380,6 +388,26 @@ export class WatchService {
   }
 
   /**
+   * Output directory for one source file.
+   *
+   * Every translation a session writes lands under the one output directory, so
+   * the source's directory relative to the watched root is carried over: named
+   * by basename alone, two same-named files in different directories write the
+   * same output path and the second translation replaces the first. This is the
+   * layout `deepl translate <dir> --output <dir>` already produces. A path
+   * outside the watched root has no directory to mirror, so it stays at the top.
+   */
+  private outputDirFor(filePath: string, outputDir: string): string {
+    const relativeDir = path.dirname(
+      path.relative(this.watchRoot, path.resolve(filePath))
+    );
+    if (relativeDir === '.' || relativeDir.startsWith('..')) {
+      return outputDir;
+    }
+    return path.join(outputDir, relativeDir);
+  }
+
+  /**
    * Translate a file with the configured options
    */
   private async translateFile(filePath: string): Promise<void> {
@@ -414,12 +442,13 @@ export class WatchService {
     // Determine output path(s)
     const fileName = path.basename(filePath, path.extname(filePath));
     const ext = path.extname(filePath);
+    const fileOutputDir = this.outputDirFor(filePath, outputDir);
 
     if (targetLangs.length === 1) {
       // Single target language (length === 1 guarantees targetLangs[0] exists)
       const targetLang = targetLangs[0]!;
       const outputPath = path.join(
-        outputDir,
+        fileOutputDir,
         `${fileName}.${targetLang}${ext}`
       );
 
@@ -445,7 +474,7 @@ export class WatchService {
       const results = await this.fileTranslationService.translateFileToMultiple(
         filePath,
         targetLangs as Language[],
-        { ...baseOptions, outputDir, preserveCode }
+        { ...baseOptions, outputDir: fileOutputDir, preserveCode }
       );
 
       for (const result of results) {
@@ -467,6 +496,7 @@ export class WatchService {
   async stop(): Promise<void> {
     this.stats.isWatching = false;
     this.watchOptions = null;
+    this.watchRoot = '';
 
     for (const timer of this.debounceTimers.values()) {
       clearTimeout(timer);

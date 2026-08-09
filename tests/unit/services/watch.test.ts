@@ -2040,4 +2040,126 @@ describe('WatchService', () => {
       await service.stop();
     });
   });
+
+  describe('output layout', () => {
+    const DEBOUNCE_MS = 5;
+    const settle = () =>
+      new Promise<void>((resolve) => setTimeout(resolve, DEBOUNCE_MS * 4));
+
+    let outputDir: string;
+    let service: WatchService;
+
+    beforeEach(() => {
+      outputDir = path.join(testDir, 'out');
+      fs.mkdirSync(outputDir, { recursive: true });
+      service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+      mockFileTranslationService.translateFileToMultiple.mockResolvedValue([]);
+    });
+
+    afterEach(async () => {
+      await service.stop();
+    });
+
+    const outputPathsOf = (): string[] =>
+      mockFileTranslationService.translateFile.mock.calls.map(
+        (call) => call[1]
+      );
+
+    it('gives two sources sharing a basename two different output paths', async () => {
+      const a = path.join(testDir, 'a', 'doc.md');
+      const b = path.join(testDir, 'b', 'doc.md');
+      fs.mkdirSync(path.dirname(a), { recursive: true });
+      fs.mkdirSync(path.dirname(b), { recursive: true });
+      fs.writeFileSync(a, 'Hello');
+      fs.writeFileSync(b, 'Good morning');
+
+      service.watch(testDir, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(a);
+      service.handleFileChange(b);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([
+        path.join(outputDir, 'a', 'doc.es.md'),
+        path.join(outputDir, 'b', 'doc.es.md'),
+      ]);
+    });
+
+    it('gives the multiple-target path a per-source output directory', async () => {
+      const a = path.join(testDir, 'a', 'doc.md');
+      fs.mkdirSync(path.dirname(a), { recursive: true });
+      fs.writeFileSync(a, 'Hello');
+
+      service.watch(testDir, { targetLangs: ['es', 'fr'], outputDir });
+      service.handleFileChange(a);
+      await settle();
+
+      expect(
+        mockFileTranslationService.translateFileToMultiple
+      ).toHaveBeenCalledWith(
+        a,
+        ['es', 'fr'],
+        expect.objectContaining({ outputDir: path.join(outputDir, 'a') })
+      );
+    });
+
+    it('leaves a source at the top of the watched directory flat', async () => {
+      const doc = path.join(testDir, 'doc.md');
+      fs.writeFileSync(doc, 'Hello');
+
+      service.watch(testDir, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(doc);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([path.join(outputDir, 'doc.es.md')]);
+    });
+
+    it('mirrors each nested source directory even when the basenames differ', async () => {
+      const a = path.join(testDir, 'a', 'one.md');
+      const b = path.join(testDir, 'b', 'two.md');
+      fs.mkdirSync(path.dirname(a), { recursive: true });
+      fs.mkdirSync(path.dirname(b), { recursive: true });
+      fs.writeFileSync(a, 'Hello');
+      fs.writeFileSync(b, 'Good morning');
+
+      service.watch(testDir, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(a);
+      service.handleFileChange(b);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([
+        path.join(outputDir, 'a', 'one.es.md'),
+        path.join(outputDir, 'b', 'two.es.md'),
+      ]);
+    });
+
+    it('leaves the output flat when the watched path is a single file', async () => {
+      const doc = path.join(testDir, 'a', 'doc.md');
+      fs.mkdirSync(path.dirname(doc), { recursive: true });
+      fs.writeFileSync(doc, 'Hello');
+
+      service.watch(doc, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(doc);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([path.join(outputDir, 'doc.es.md')]);
+    });
+
+    it('leaves the output flat for a path outside the watched root', async () => {
+      const outside = path.join(testDir, 'outside');
+      const doc = path.join(outside, 'doc.md');
+      const watched = path.join(testDir, 'watched');
+      fs.mkdirSync(outside, { recursive: true });
+      fs.mkdirSync(watched, { recursive: true });
+      fs.writeFileSync(doc, 'Hello');
+
+      service.watch(watched, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(doc);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([path.join(outputDir, 'doc.es.md')]);
+    });
+  });
 });
