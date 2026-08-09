@@ -32,6 +32,7 @@ For security policy and vulnerability reporting, see [SECURITY.md](SECURITY.md).
 ## 📋 Table of Contents
 
 - [Installation](#-installation)
+- [Upgrading from 1.x](#-upgrading-from-1x)
 - [Quick Start](#-quick-start)
 - [Global Options](#-global-options)
   - [Verbose Mode](#verbose-mode)
@@ -100,6 +101,14 @@ npm link
 # Verify installation
 deepl --version
 ```
+
+## 🔀 Upgrading from 1.x
+
+2.0.0 requires Node 24, renames the package to `@deepl/cli`, removes several
+deprecated flags, and changes a number of exit codes and output shapes that scripts
+read. If you have a pipeline built on 1.x, read
+**[docs/MIGRATION.md](./docs/MIGRATION.md)** before upgrading — it lists every
+change that needs action, with a before/after for each.
 
 ## 🚀 Quick Start
 
@@ -1668,6 +1677,7 @@ npm run examples:fast
 ## 📚 Documentation
 
 - **[API Reference](./docs/API.md)** - Complete API reference with all commands, flags, and options
+- **[Migrating from 1.x](./docs/MIGRATION.md)** - Removed flags, changed exit codes, and output that scripts parse
 - **[Sync Guide](./docs/SYNC.md)** - Continuous localization: `.deepl-sync.yaml` configuration, lockfile model, CI/CD recipes, TMS integration
 - **[Troubleshooting](./docs/TROUBLESHOOTING.md)** - Common issues, solutions, and exit codes reference
 - **[Examples](./examples/README.md)** - Practical usage examples for every feature

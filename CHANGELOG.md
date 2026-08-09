@@ -165,7 +165,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **deps**: `better-sqlite3` and `@types/better-sqlite3`. The production dependency tree no longer contains any native addon, removing the entire class of ABI-mismatch failures (`ERR_DLOPEN_FAILED` / `NODE_MODULE_VERSION` errors after a Node major upgrade, e.g. via `brew upgrade node`), a 1.9 MB platform-specific binary, and the C++ compilation-toolchain requirement for installs from source. The cacheless-degradation safety net remains: a runtime whose `node:sqlite` is missing (Node < 22.5.0) warns once and runs uncached rather than crashing, and never touches the cache database.
 
-- **BREAKING — sync**: `deepl sync init --source-lang` and `--target-langs`, the deprecated aliases introduced in 1.x, are removed and now fail with `unknown option` (exit 1). Use `--source-locale` and `--target-locales`. This is the documented removal of 1.x aliases at the 2.0 cut. `deepl translate --target-lang` is unaffected — it is the API's wire name, not a deprecated alias.
+- **BREAKING — sync**: `deepl sync init --source-lang` and `--target-langs`, the deprecated aliases introduced in 1.x, are removed and now fail with `error: unknown option` (exit 6, per the subcommand parse-error mapping also in this release). Use `--source-locale` and `--target-locales`. This is the documented removal of 1.x aliases at the 2.0 cut. `deepl translate --target-lang` is unaffected — it is the API's wire name, not a deprecated alias.
 
 ### Fixed
 

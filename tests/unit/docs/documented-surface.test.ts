@@ -136,6 +136,11 @@ const OPTION_CHOICES: Record<string, string[]> = {
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const CLI_ENTRY = path.join(ROOT, 'dist', 'cli', 'index.js');
+/**
+ * docs/MIGRATION.md is deliberately absent: it documents the 1.x surface a reader
+ * is migrating off, so it names flags this CLI no longer accepts and codes in the
+ * casing it no longer prints. Adding it here fails these checks by design.
+ */
 const DOCS = [
   'README.md',
   'docs/API.md',
