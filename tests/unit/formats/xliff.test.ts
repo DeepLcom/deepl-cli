@@ -575,3 +575,94 @@ describe('xliff parser', () => {
     });
   });
 });
+
+describe('unit ids containing a quote character', () => {
+  // The id scanner excluded BOTH quote characters from the value, so a
+  // double-quoted id truncated at its first apostrophe. Two ids differing only
+  // after the apostrophe collapsed to one key, and XLIFF is exempt from
+  // assertDistinctKeys, so the single fetched translation was written into both
+  // units with nothing reported.
+  const V12 = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2">
+  <file source-language="en" target-language="es">
+    <body>
+      <trans-unit id="label.don't">
+        <source>Good morning</source>
+      </trans-unit>
+      <trans-unit id="label.don'x">
+        <source>Good evening</source>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+
+  const V2 = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="2.0" srcLang="en" trgLang="es">
+  <file id="f1">
+    <unit id="label.don't">
+      <segment>
+        <source>Good morning</source>
+      </segment>
+    </unit>
+    <unit id="label.don'x">
+      <segment>
+        <source>Good evening</source>
+      </segment>
+    </unit>
+  </file>
+</xliff>`;
+
+  it('keeps an apostrophe in a double-quoted v1.2 trans-unit id', () => {
+    const entries = parser.extract(V12);
+    expect(entries.map((e) => e.key)).toEqual(["label.don't", "label.don'x"]);
+    expect(entries.map((e) => e.value)).toEqual([
+      'Good morning',
+      'Good evening',
+    ]);
+  });
+
+  it('keeps an apostrophe in a double-quoted v2.0 unit id', () => {
+    const entries = parser.extract(V2);
+    expect(entries.map((e) => e.key)).toEqual(["label.don't", "label.don'x"]);
+  });
+
+  it('writes each translation into its own unit rather than into both', () => {
+    const written = parser.reconstruct(V12, [
+      { key: "label.don't", value: 'Good morning', translation: 'Buenos días' },
+      {
+        key: "label.don'x",
+        value: 'Good evening',
+        translation: 'Buenas tardes',
+      },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('<target>Buenos días</target>');
+    expect(written).toContain('<target>Buenas tardes</target>');
+    // Round-trips: re-reading finds both ids and both translations.
+    const back = [...parser.extractTranslations(written).entries()];
+    expect(back).toEqual([
+      ["label.don't", 'Buenos días'],
+      ["label.don'x", 'Buenas tardes'],
+    ]);
+  });
+
+  it('still reads a single-quoted id, and keeps a double quote inside it', () => {
+    const singleQuoted = V12.replace(
+      `id="label.don't"`,
+      `id='label.say"hi'`
+    ).replace(`id="label.don'x"`, `id='plain'`);
+
+    const entries = parser.extract(singleQuoted);
+    expect(entries.map((e) => e.key)).toEqual(['label.say"hi', 'plain']);
+  });
+
+  it('does not swallow a following attribute into the id', () => {
+    const withAttrs = V12.replace(
+      `id="label.don't"`,
+      `id="label.don't" xml:space="preserve"`
+    );
+
+    const entries = parser.extract(withAttrs);
+    expect(entries.map((e) => e.key)).toEqual(["label.don't", "label.don'x"]);
+  });
+});

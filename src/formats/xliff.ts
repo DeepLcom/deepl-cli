@@ -20,15 +20,26 @@ import {
 
 const VERSION_RE = /<(?:\w+:)?xliff[^>]*version=["'](\d+\.\d+)["']/i;
 
+// The quote delimiter is captured so the value can exclude only the delimiter
+// actually in use. Excluding both quote characters truncated `id="label.don't"`
+// at the apostrophe — well-formed XML, and only the delimiter needs escaping
+// inside a value — so two ids differing after an apostrophe collapsed onto one
+// key. XLIFF is exempt from `assertDistinctKeys`, so nothing reported the
+// collision and one unit shipped the other's translation.
 const TRANS_UNIT_EL: ElementPattern = {
-  open: /<(?:\w+:)?trans-unit\s+id=["']([^"'<]+)["'][^><]*>/iy,
+  open: /<(?:\w+:)?trans-unit\s+id=(["'])((?:(?!\1)[^<])+)\1[^><]*>/iy,
   close: /<\/(?:\w+:)?trans-unit>/iy,
 };
 
 const UNIT_EL: ElementPattern = {
-  open: /<(?:\w+:)?unit\s+id=["']([^"'<]+)["'][^><]*>/iy,
+  open: /<(?:\w+:)?unit\s+id=(["'])((?:(?!\1)[^<])+)\1[^><]*>/iy,
   close: /<\/(?:\w+:)?unit>/iy,
 };
+
+/** The `id` of a scanned `trans-unit`/`unit`; group 0 is the quote delimiter. */
+function unitId(element: ScannedElement): string {
+  return element.groups[1]!;
+}
 
 const SOURCE_EL: ElementPattern = {
   open: /<(\w+:)?source>/iy,
@@ -350,7 +361,7 @@ export class XliffFormatParser implements FormatParser {
       if (translation === '') continue;
 
       yield {
-        key: element.groups[0]!,
+        key: unitId(element),
         translation,
         stateAttrs: isV2 ? scope.openTag : (target.groups[1] ?? ''),
       };
@@ -376,7 +387,7 @@ export class XliffFormatParser implements FormatParser {
     const unit = detectVersion(content) === '2.0' ? UNIT_EL : TRANS_UNIT_EL;
 
     for (const element of scanElements(content, unit)) {
-      if (element.groups[0] !== key) continue;
+      if (unitId(element) !== key) continue;
       const note = findElement(element.inner, NOTE_EL);
       return note ? unescapeXml(note.inner) : undefined;
     }
@@ -387,9 +398,7 @@ export class XliffFormatParser implements FormatParser {
     for (const element of scanElements(content, TRANS_UNIT_EL)) {
       const source = findElement(element.inner, SOURCE_EL);
       if (!source) continue;
-      entries.push(
-        this.toEntry(element.groups[0]!, source.inner, element.inner)
-      );
+      entries.push(this.toEntry(unitId(element), source.inner, element.inner));
     }
   }
 
@@ -400,9 +409,7 @@ export class XliffFormatParser implements FormatParser {
 
       const source = findElement(segment.inner, SOURCE_EL);
       if (!source) continue;
-      entries.push(
-        this.toEntry(element.groups[0]!, source.inner, element.inner)
-      );
+      entries.push(this.toEntry(unitId(element), source.inner, element.inner));
     }
   }
 
@@ -486,10 +493,11 @@ export class XliffFormatParser implements FormatParser {
     slotted: Set<string>
   ): string {
     const result = replaceElements(content, TRANS_UNIT_EL, (element) => {
-      slotted.add(element.groups[0]!);
-      const translation = translations.get(element.groups[0]!);
+      const id = unitId(element);
+      slotted.add(id);
+      const translation = translations.get(id);
       if (translation === undefined) return '';
-      assertNoControlChars(element.groups[0]!, translation);
+      assertNoControlChars(id, translation);
       const changed = !targetHolds(element.inner, translation);
       return rewriteInner(
         element,
@@ -505,10 +513,11 @@ export class XliffFormatParser implements FormatParser {
     slotted: Set<string>
   ): string {
     const result = replaceElements(content, UNIT_EL, (element) => {
-      slotted.add(element.groups[0]!);
-      const translation = translations.get(element.groups[0]!);
+      const id = unitId(element);
+      slotted.add(id);
+      const translation = translations.get(id);
       if (translation === undefined) return '';
-      assertNoControlChars(element.groups[0]!, translation);
+      assertNoControlChars(id, translation);
 
       const segment = findElement(element.inner, SEGMENT_EL);
       if (!segment) return element.text;
