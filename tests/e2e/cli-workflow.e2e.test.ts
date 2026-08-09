@@ -659,7 +659,10 @@ describe('CLI Workflow E2E', () => {
           { excludeApiKey: true }
         );
       } catch (error: any) {
-        const output = error.stderr ?? error.stdout ?? error.message;
+        // Under --format json the failure is the command's result and lands on
+        // stdout as the typed envelope, so both streams are searched: what this
+        // test is about is that the flag combination parsed at all.
+        const output = `${error.stdout ?? ''}\n${error.stderr ?? ''}`;
         // Should fail on auth, not on flag parsing
         expect(output).toMatch(/API key|auth/i);
         expect(output).not.toMatch(/unknown.*option/i);

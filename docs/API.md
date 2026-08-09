@@ -1341,7 +1341,7 @@ Show translation coverage for all target locales.
 
 **stdout/stderr split (stable contract):** The JSON payload — the success result, or the error envelope below when the command fails — is written to **stdout**, so `deepl sync status --format json > status.json` produces a parseable file in both cases. Diagnostic/progress logs and warnings stay on **stderr**, which means stdout parses even when the CLI or the Node runtime had something to say. The same stdout/stderr split applies to `deepl sync --format json`, `deepl sync validate --format json`, and `deepl sync audit --format json`.
 
-**Error envelope (shared across every `sync` subcommand):** On failure, `--format json` emits the following JSON envelope to **stdout** — the envelope is the command's result in the failure case; the non-zero exit code is the failure signal — and exits with the typed exit code:
+**Error envelope (shared across every command with a JSON mode):** On failure, `--format json` emits the following JSON envelope to **stdout** — the envelope is the command's result in the failure case; the non-zero exit code is the failure signal — and exits with the typed exit code:
 
 ```json
 {
@@ -1355,7 +1355,14 @@ Show translation coverage for all target locales.
 }
 ```
 
-The `error.code` field matches the error class name (`ConfigError`, `ValidationError`, `SyncConflict`, `AuthError`, etc.). `error.suggestion` is present when the underlying `DeepLCLIError` carries one. `exitCode` matches the process exit code, so a caller can branch on either field. The envelope shape is identical for `deepl sync`, `sync push`, `sync pull`, `sync resolve`, `sync export`, `sync validate`, `sync audit`, `sync init`, and `sync status`.
+The `error.code` field matches the error class name (`ConfigError`, `ValidationError`, `SyncConflict`, `AuthError`, etc.). `error.suggestion` is present when the underlying `DeepLCLIError` carries one. `exitCode` matches the process exit code, so a caller can branch on either field.
+
+**Which commands emit it:** every command whose effective `--format` is `json` — the nine `sync` subcommands plus `translate`, `write`, `correct`, `voice`, `usage`, `languages`, `detect`, and those subcommands of `glossary`, `tm`, `cache`, `config`, `hooks`, `admin` and `style-rules` that declare the flag. The shape and the stream are identical everywhere, so a script wrapping several `deepl` commands needs one failure path. Notes on the edges:
+
+- A command with no `--format` flag, and any run in `text` or `table` mode, is unchanged: `Error:` / `Suggestion:` prose on stderr.
+- `config get`/`config list` default to `json`, so their failures carry the envelope with no flag passed.
+- A result that is not an error keeps its own shape: `write --check` / `correct --check` exit `8` to report that text needs changes, and no envelope is emitted for it.
+- A malformed invocation commander rejects before the command runs (`unknown option`, a missing argument) still prints commander's own message on stderr and exits `6`. The envelope covers command failures, not parse failures.
 
 **`sync init --format json` success envelope:** For scripted project bootstrap, `deepl sync init --format json` emits a success envelope on **stdout** instead of the plain text confirmation:
 

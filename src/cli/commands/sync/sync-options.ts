@@ -1,6 +1,5 @@
 import type { Command } from 'commander';
-import { DeepLCLIError } from '../../../utils/errors.js';
-import { ExitCode, exitCodeForError } from '../../../utils/exit-codes.js';
+import { ExitCode } from '../../../utils/exit-codes.js';
 
 /**
  * Commander routes an invocation-line --format to the nearest command that
@@ -76,21 +75,13 @@ export function parseLocaleFilter(
 }
 
 /**
- * JSON error envelope shape emitted on stderr when --format json is set and
- * a command fails. Shared across every `deepl sync` subcommand so script
+ * JSON error envelope shape emitted on stdout when --format json is set and a
+ * command fails. Shared across every command that has a JSON mode so script
  * consumers can parse failures with one schema.
  *
  * @see tests/helpers/assert-error-envelope.ts for the canonical validator.
  */
-export interface SyncJsonErrorEnvelope {
-  ok: false;
-  error: {
-    code: string;
-    message: string;
-    suggestion?: string;
-  };
-  exitCode: number;
-}
+export type { JsonErrorEnvelope as SyncJsonErrorEnvelope } from '../../json-error-envelope.js';
 
 /**
  * Canonical success envelope for `sync init --format json`. Other subcommands
@@ -107,48 +98,11 @@ export interface SyncInitJsonSuccessEnvelope {
   };
 }
 
-// eslint-disable-next-line no-control-regex -- intentional: strip control chars from error messages before emitting envelope
-const CONTROL_CHAR_RE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g;
-
-function sanitizeMessage(message: string): string {
-  return message.replace(CONTROL_CHAR_RE, '');
-}
-
 /**
- * Serialize an error to the canonical envelope on stdout and exit with the
- * error's typed exit code. Shared by every subcommand that honors
- * --format json for machine-readable failures.
- *
- * stdout, not stderr: the envelope is the command's result in the failure
- * case, and stderr is where every warning — the CLI's own and the Node
- * runtime's — already goes, so an envelope there parses only when nothing
- * else happened to be said. The non-zero exit code remains the failure
- * signal; a consumer reads the reason off the same stream as the success
- * payload.
+ * The sync surface's name for the shared envelope emitter, kept so every sync
+ * subcommand imports its machine-readable failure path from one place.
  */
-export function emitJsonErrorAndExit(
-  error: unknown,
-  overrideExitCode?: number
-): never {
-  const err = error instanceof Error ? error : new Error(String(error));
-  const code = err instanceof DeepLCLIError ? err.name : 'UnknownError';
-  const exitCode =
-    overrideExitCode ??
-    (err instanceof DeepLCLIError ? err.exitCode : exitCodeForError(err));
-  const envelope: SyncJsonErrorEnvelope = {
-    ok: false,
-    error: {
-      code,
-      message: sanitizeMessage(err.message),
-      ...(err instanceof DeepLCLIError && err.suggestion
-        ? { suggestion: sanitizeMessage(err.suggestion) }
-        : {}),
-    },
-    exitCode,
-  };
-  process.stdout.write(JSON.stringify(envelope) + '\n');
-  process.exit(exitCode);
-}
+export { emitJsonErrorAndExit } from '../../json-error-envelope.js';
 
 /**
  * Serialize the canonical success envelope for `sync init --format json` to

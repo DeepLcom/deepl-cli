@@ -22,6 +22,7 @@ import { AuthError, DeepLCLIError } from '../utils/errors.js';
 import { ExitCode, exitCodeForError } from '../utils/exit-codes.js';
 import { isSymlink } from '../utils/safe-read-file.js';
 import { setNoInput } from '../utils/confirm.js';
+import { emitJsonErrorAndExit } from './json-error-envelope.js';
 import { registerAuth } from './commands/register-auth.js';
 import { registerUsage } from './commands/register-usage.js';
 import { registerLanguages } from './commands/register-languages.js';
@@ -79,9 +80,25 @@ const getCacheService = createCacheServiceGetter(() =>
 );
 
 /**
- * Handle error and exit with appropriate exit code
+ * Output format of the command commander is about to run, captured by the
+ * preAction hook. Read only by `handleError`, so a failure is reported in the
+ * shape the invocation asked for.
+ */
+let activeOutputFormat: string | undefined;
+
+/**
+ * Handle error and exit with appropriate exit code.
+ *
+ * With `--format json` in effect the failure is the command's result, so it
+ * goes to stdout as the same typed envelope every `deepl sync` subcommand
+ * emits, and the prose is inside it rather than on stderr. Commands with no
+ * JSON mode, and every text-mode run, are unchanged.
  */
 function handleError(error: unknown): never {
+  if (activeOutputFormat === 'json') {
+    emitJsonErrorAndExit(error);
+  }
+
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
   const exitCode = exitCodeForError(error);
 
@@ -201,8 +218,12 @@ program
     '--max-retries <n>',
     'Maximum automatic retries for retryable requests (default: 3)'
   )
-  .hook('preAction', (thisCommand) => {
+  .hook('preAction', (thisCommand, actionCommand) => {
     const options = thisCommand.opts();
+
+    // The format lives on the command being run, not on the program, and only
+    // the commands that declare --format have one at all.
+    activeOutputFormat = actionCommand.opts()['format'] as string | undefined;
 
     // Handle --config flag - reinitialize config service with custom path
     // SECURITY: Validate path to prevent traversal attacks
