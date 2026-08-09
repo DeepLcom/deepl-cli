@@ -33,10 +33,8 @@ const KEY_SEGMENT = String.raw`(?:[A-Za-z0-9_-]+|"(?:[^"\\]|\\.)*"|'[^']*')`;
 // Quoted key segments are included because `extract` surfaces them: TOML.parse
 // turns `"greeting.formal" = "…"` into a property literally called
 // `greeting.formal`, so the sync pipeline treats it as translatable. Excluding
-// them here made the two halves disagree — reconstruct passed the line through
-// untranslated and then appended a NEW nested `[greeting] formal` entry, so the
-// key the source actually has kept its source-language text while the lockfile
-// recorded it translated.
+// them here would make the two halves disagree: reconstruct would pass the line
+// through untranslated and then append a NEW nested `[greeting] formal` entry.
 const ENTRY_LINE_RE = new RegExp(
   String.raw`^(\s*)(${KEY_SEGMENT}(?:\s*\.\s*${KEY_SEGMENT})*)(\s*=\s*)(.*)$`
 );
@@ -350,10 +348,10 @@ const BARE_KEY_RE = /^[A-Za-z0-9_-]+$/;
  * A key spelled the way TOML requires: bare where the character set allows,
  * otherwise a quoted key.
  *
- * Writing an unquoted `with space` produced a document smol-toml refuses on its
- * next read, and the unusable-target guard then pins the locale permanently
- * unreadable — the run that wrote the file is the run that broke it. Quoted keys
- * take the same escaping as a basic string.
+ * An unquoted `with space` produces a document smol-toml refuses on its next
+ * read, and the unusable-target guard then pins the locale permanently
+ * unreadable — the run that writes the file is the run that breaks it. Quoted
+ * keys take the same escaping as a basic string.
  */
 function encodeTomlKey(key: string): string {
   return BARE_KEY_RE.test(key) ? key : encodeTomlString(key, true);

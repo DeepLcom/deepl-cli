@@ -73,11 +73,10 @@ const RESOURCES_EL: ElementPattern = {
  * The `name` / `quantity` of a scanned element.
  *
  * Group 0 is the quote delimiter, captured so the value can exclude only the
- * delimiter actually in use. Requiring a double quote made
+ * delimiter actually in use. Requiring a double quote would make
  * `<string name='greeting'>` — well-formed XML, and already accepted for every
- * other attribute by ATTRS — invisible: never extracted, never translated and
- * never reported, so `sync status` read 100% while the string shipped in the
- * source language.
+ * other attribute by ATTRS — invisible to the scan, so the string would be
+ * neither extracted nor reported while shipping in the source language.
  */
 function attrValue(element: ScannedElement): string {
   // Entity-decoded, because the writer escapes `&`/`"` when it interpolates a
@@ -172,10 +171,9 @@ function unescapeAndroid(value: string): string {
 }
 
 /**
- * A value written inside a double-quoted XML attribute.
- *
- * `name` / `quantity` used to be interpolated raw, so a key holding `&` or `"`
- * produced an element no XML consumer can read.
+ * A value written inside a double-quoted XML attribute. `name` and `quantity`
+ * are interpolated from keys, which may hold `&` or `"` — raw, either produces
+ * an element no XML consumer can read.
  */
 function escapeXmlAttr(value: string): string {
   return value
@@ -201,13 +199,6 @@ function escapeAndroid(value: string): string {
 }
 
 /**
- * Refuse a value that would close the CDATA section it is written into.
- * Nothing inside a CDATA body is entity-escaped, so the text after a "]]>"
- * would be parsed as XML — an injected element in a generated resource file.
- * Fail fast rather than rewrite the value into something the round-trip
- * cannot reproduce, matching the XLIFF parser's stance on CDATA.
- */
-/**
  * Refuse a value XML 1.0 cannot carry. Every C0 byte except tab, LF and CR is
  * outside the `Char` production, so there is no escape and no numeric character
  * reference for it: written raw the file stops being well-formed and aapt2
@@ -225,6 +216,13 @@ function assertNoControlChars(name: string, value: string): void {
   }
 }
 
+/**
+ * Refuse a value that would close the CDATA section it is written into.
+ * Nothing inside a CDATA body is entity-escaped, so the text after a "]]>"
+ * would be parsed as XML — an injected element in a generated resource file.
+ * Fail fast rather than rewrite the value into something the round-trip
+ * cannot reproduce, matching the XLIFF parser's stance on CDATA.
+ */
 function assertNoCdataBreakout(value: string): void {
   if (value.includes(']]>')) {
     throw new ValidationError(
@@ -276,11 +274,10 @@ export class AndroidXmlFormatParser implements FormatParser {
           )
         );
         // A key that NAMES a <plurals> element is that element, whatever shape it
-        // has. Routing on the key's shape alone sent a plurals entry called `x.0`
-        // into the string-array branch whenever a `<string-array name="x">` was
-        // present — so with the entry's plural metadata stripped, which is exactly
-        // what the carry-forward does, nothing claimed the element and the
-        // PLURALS_EL pass deleted it.
+        // has: a plurals key like `x.0` also reads as an item of
+        // `<string-array name="x">`, and a carried-forward entry arrives with its
+        // plural metadata stripped. Routing on the key's shape alone would leave
+        // the element unclaimed, for the PLURALS_EL pass to delete.
         pluralsNames ??= new Set(
           scanElements(originalContent, PLURALS_EL).map((el) => attrValue(el))
         );
@@ -412,7 +409,7 @@ export class AndroidXmlFormatParser implements FormatParser {
       ...missingStrings.map(([name, translation]) => {
         // The KEY is checked as well as the translation: it is interpolated into
         // the `name` attribute, and XML 1.0 has no representation for a C0 byte
-        // in any form, so a control byte in a source key produced a file no
+        // in any form, so a control byte in a source key yields a file no
         // consumer reads and a live terminal sequence in `git diff`.
         assertNoControlChars(name, name);
         assertNoControlChars(name, translation);

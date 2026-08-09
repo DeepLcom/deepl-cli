@@ -21,6 +21,10 @@ interface PoEntry {
   msgidPlural: string | undefined;
   msgstr: string[];
   msgstrPlural: Map<number, string>;
+  /**
+   * Written for every parsed line and never read back. Left in place on
+   * purpose — removing it is not the cleanup it looks like.
+   */
   rawLines: string[];
 }
 
@@ -30,10 +34,10 @@ type ParseTarget =
 /**
  * One PO escape sequence, decoded.
  *
- * `r` is in the set because `quote` writes it: without it an escaped CR read
- * back as a literal backslash + 'r', whose backslash the next `quote` escaped in
- * turn, so a carried entry grew a backslash on every run. msgfmt flags neither
- * spelling.
+ * `r` must stay in the set because `quote` writes it: an escape this decoder
+ * does not know reads back as a literal backslash, which the next `quote`
+ * escapes in turn, so the value grows a backslash on every round trip. msgfmt
+ * flags neither spelling.
  */
 function unescapePoChar(ch: string): string {
   switch (ch) {
@@ -57,14 +61,12 @@ function unescapePoChar(ch: string): string {
  * literals.
  *
  * gettext joins adjacent string literals C-style, so `msgstr "Hola " "mundo"` is
- * `Hola mundo`. Testing only that the value starts and ends with a quote and
- * slicing read the inner `" "` as content, and the next write escaped those
- * quotes — corrupting the string permanently, with `msgfmt -c` unable to flag it
- * because both forms are well-formed.
+ * `Hola mundo`. Treating the value as one literal instead would read the inner
+ * `" "` as content and the next write would escape those quotes — corruption
+ * `msgfmt -c` cannot flag, because both forms are well-formed.
  *
  * A value that is not a well-formed run of literals (an unterminated quote, or
- * anything else between literals) is returned trimmed and untouched, which is
- * what the previous single-literal test did for input it did not recognise.
+ * anything else between literals) is returned trimmed and untouched.
  */
 function unquote(line: string): string {
   const trimmed = line.trim();
@@ -194,12 +196,9 @@ function makeKey(entry: PoEntry): string {
  * Whether `line` can only be the start of the next entry.
  *
  * gettext ends an entry at the first line that is not a continuation of its
- * translation; the blank line convention is a convention, and `msgfmt -c`
- * accepts a catalog with none. Treating a blank line as the only terminator
- * collapsed such a catalog into a single entry, which cost the reader every
- * key but the last and made the writer put one translation into every `msgstr`
- * it walked past — the header's included, deleting the charset and
- * `Plural-Forms` lines with it.
+ * translation; the blank line between entries is a convention only, and
+ * `msgfmt -c` accepts a catalog with none. A blank-line-only terminator would
+ * read such a catalog as a single entry.
  *
  * Only a msgstr-ish `target` can be interrupted this way. Before that the
  * entry is still assembling its `msgctxt`/`msgid`, where a second `msgid` line
@@ -221,14 +220,12 @@ function startsNextEntry(
 /**
  * The value-capturing line patterns below all carry the `s` flag.
  *
- * Without it `.` excludes U+2028 and U+2029, so a `msgstr` carrying either did
- * not match its own pattern at all: the line was invisible to both scanners, the
- * key was reported unwritten — honestly, at exit 12 — but under a remediation
- * about adding a containing group, and no later run could converge. gettext
- * itself accepts the byte raw (`msgfmt -c` exits 0 on such a catalog), so the
- * file is valid and it was this parser that could not read it. Escaping is not an
- * option the way it is for TOML: the PO escape set has no `\uXXXX`, so an escape
- * would round-trip back as the literal text.
+ * Without it `.` excludes U+2028 and U+2029, so a `msgstr` carrying either
+ * matches no pattern at all and the line is invisible to both scanners. gettext
+ * accepts the byte raw (`msgfmt -c` exits 0 on such a catalog), so the file is
+ * valid and it is this parser that cannot read it. Escaping is not an option the
+ * way it is for TOML: the PO escape set has no `\uXXXX`, so an escape would
+ * round-trip back as the literal text.
  */
 function parseEntries(content: string): PoEntry[] {
   const lines = content.split(/\r?\n/);
@@ -450,16 +447,6 @@ export class PoFormatParser implements FormatParser {
   }
 
   /**
-   * PO is bilingual, so `extract().value` is the msgid even when the file being
-   * read is a target. The translation is the msgstr, and an empty msgstr is
-   * gettext's spelling of "not translated yet" — such a key is left out so a
-   * caller re-translates it rather than pinning the empty string.
-   *
-   * A plural entry has no bare msgstr; its first non-empty msgstr[n] stands in,
-   * which is enough to report the entry as translated. The per-form values
-   * travel separately in `metadata.plural_forms`.
-   */
-  /**
    * Keys carrying gettext's `fuzzy` flag with a translation to go with it.
    *
    * `msgfmt` leaves such an entry out of the compiled catalog, so the string the
@@ -489,6 +476,18 @@ export class PoFormatParser implements FormatParser {
     return flagged;
   }
 
+  /**
+   * PO is bilingual, so `extract().value` is the msgid even when the file being
+   * read is a target. The translation is the msgstr, and an empty msgstr is
+   * gettext's spelling of "not translated yet" — the opposite of what an empty
+   * value means in a monolingual format, where it is the translation. Such a key
+   * is left out so a caller re-translates it rather than pinning the empty
+   * string.
+   *
+   * A plural entry has no bare msgstr; its first non-empty msgstr[n] stands in,
+   * which is enough to report the entry as translated. The per-form values
+   * travel separately in `metadata.plural_forms`.
+   */
   extractTranslations(content: string): Map<string, string> {
     const translations = new Map<string, string>();
     if (!content.trim()) {
@@ -515,8 +514,12 @@ export class PoFormatParser implements FormatParser {
     return translations;
   }
 
-  // Comment bookkeeping is local rather than via PendingCommentBuffer: po
-  // backtracks into `result` at entry-start to slice trailing contiguous
+  // This walk is a second entry scanner alongside `parseEntries`, and the two
+  // must stay separate: `parseEntries` yields decoded entries, while this one
+  // rewrites the file line by line so untouched lines survive byte-for-byte.
+  //
+  // Comment bookkeeping is likewise local rather than via PendingCommentBuffer:
+  // po backtracks into `result` at entry-start to slice trailing contiguous
   // `#`-runs into `commentLines`, for pop-on-delete or splice-with-fuzzy-strip
   // on keep. That is incompatible with the buffer's forward-only flush/drop
   // semantics.
@@ -558,19 +561,17 @@ export class PoFormatParser implements FormatParser {
       let target: ParseTarget | undefined;
 
       // The run of comment lines immediately above the entry, taken with one
-      // slice. Walking backwards and `unshift`ing each line made this quadratic
-      // in the length of the run — `unshift` re-indexes the whole array every
-      // call — so a target file carrying one long comment block cost minutes:
-      // measured 28 ms at 20k comment lines, 109 ms at 40k and 437 ms at 80k,
-      // which is 4x the time for 2x the input.
+      // slice. Walking backwards and `unshift`ing each line is quadratic in the
+      // length of the run — `unshift` re-indexes the whole array every call —
+      // which costs minutes on a file carrying one long comment block.
       let backtrack = result.length - 1;
       while (
         backtrack >= 0 &&
         result[backtrack]!.startsWith('#') &&
         // `#~` marks gettext's retired-work region: those lines are an obsolete
-        // entry of their own, not this entry's comments. Claiming them meant that
-        // dropping an entry — a key the source no longer has — deleted the
-        // obsolete block sitting above it as well.
+        // entry of their own, not this entry's comments, so dropping an entry —
+        // a key the source no longer has — must not take the obsolete block
+        // above it along with it.
         !result[backtrack]!.startsWith('#~')
       ) {
         backtrack--;
@@ -742,8 +743,7 @@ export class PoFormatParser implements FormatParser {
           // being kept — a carried plural entry supplies no `plural_forms`, so
           // the file's own forms stand — must keep its continuations too:
           // gettext writes any form over 74 characters as `msgstr[N] ""` plus
-          // continuations, so dropping them left the empty first line as the
-          // whole translation.
+          // continuations, so its first line alone carries none of the text.
           inMsgstrPlural = pluralVal !== undefined;
           continue;
         }
@@ -786,10 +786,8 @@ export class PoFormatParser implements FormatParser {
       }
 
       // A plural entry is `msgid_plural` + one `msgstr[N]` per form, never a bare
-      // `msgstr`. Writing only the singular shape lost the plural forms of a key
-      // added to the source after the target file existed, so ngettext returned
-      // the English source for every count while the lockfile called the key
-      // translated.
+      // `msgstr`: written in the singular shape, ngettext falls back to the source
+      // string for every count.
       const msgidPlural = entry.metadata?.['msgid_plural'];
       if (typeof msgidPlural === 'string') {
         result.push(`msgid_plural ${quote(msgidPlural)}`);

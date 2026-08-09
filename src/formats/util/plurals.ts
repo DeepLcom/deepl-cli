@@ -14,9 +14,7 @@ export interface PluralItemLike {
  *
  * Chosen by quantity, never by matching `value`: English invariant nouns (fish,
  * sheep, series) and copy-pasted items make two forms carry the same source
- * text, and a value match then returned whichever came first — so the real
- * primary kept its source-language text, which was written to the target and
- * recorded as translated.
+ * text, so a value match would return whichever came first.
  */
 export function primaryPluralItem<T extends PluralItemLike>(
   plurals: readonly T[]

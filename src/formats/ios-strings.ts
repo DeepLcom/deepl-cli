@@ -39,7 +39,6 @@ export class IosStringsFormatParser implements FormatParser {
         continue;
       }
 
-      // Handle multi-line block comments
       if (trimmed.startsWith('/*') && !trimmed.endsWith('*/')) {
         let commentBody = trimmed;
         while (i + 1 < lines.length) {

@@ -21,11 +21,10 @@ import {
 const VERSION_RE = /<(?:\w+:)?xliff[^>]*version=["'](\d+\.\d+)["']/i;
 
 // The quote delimiter is captured so the value can exclude only the delimiter
-// actually in use. Excluding both quote characters truncated `id="label.don't"`
-// at the apostrophe — well-formed XML, and only the delimiter needs escaping
-// inside a value — so two ids differing after an apostrophe collapsed onto one
-// key. XLIFF is exempt from `assertDistinctKeys`, so nothing reported the
-// collision and one unit shipped the other's translation.
+// actually in use: only the delimiter needs escaping inside a value, so
+// `id="label.don't"` is well-formed and must not be truncated at the apostrophe.
+// Two ids differing only after one would otherwise collapse onto a single key,
+// and XLIFF is exempt from `assertDistinctKeys`, so nothing would report it.
 const TRANS_UNIT_EL: ElementPattern = {
   open: /<(?:\w+:)?trans-unit\s+id=(["'])((?:(?!\1)[^<])+)\1[^><]*>/iy,
   close: /<\/(?:\w+:)?trans-unit>/iy,
@@ -106,12 +105,10 @@ interface AttrMatch {
  * Find an attribute by name in an element's attribute run.
  *
  * Attributes are walked as whole pairs rather than searched for with a single
- * unanchored regex. The old `state` pattern returned the FIRST `state=…` in the
- * string, so a `state='…'` sequence inside another attribute's value shadowed the
- * real one: the review state was neither read (`extractNeedsReview` missed it)
- * nor rewritten (the decoy was corrupted instead), leaving a
- * `needs-review-translation` marker attached to freshly machine-translated text.
- * Comparing the captured name in full also means `xstate=` is not a `state`.
+ * unanchored regex, so a `state='…'` sequence sitting inside another attribute's
+ * value cannot shadow the real one — which would leave the review state neither
+ * read nor rewritten. Comparing the captured name in full also means `xstate=`
+ * is not a `state`.
  */
 function findAttr(attrs: string, name: string): AttrMatch | undefined {
   ATTR_PAIR_RE.lastIndex = 0;
@@ -292,9 +289,9 @@ function escapeXml(value: string): string {
  * A value written inside a double-quoted attribute, where `"` also has to be
  * escaped.
  *
- * The unit id used to be interpolated raw, so a key holding `"` or `&` produced
- * an element no XML consumer can read — and the key can hold `"` legitimately,
- * since a single-quoted `id` may contain one.
+ * The unit id is interpolated into the `id` attribute, and a key can hold `"`
+ * legitimately, since a single-quoted `id` may contain one. Written raw, that or
+ * an `&` produces an element no XML consumer can read.
  */
 function escapeXmlAttr(value: string): string {
   return escapeXml(value).replace(/"/g, '&quot;');
@@ -547,7 +544,7 @@ export class XliffFormatParser implements FormatParser {
       // The KEY is checked as well as the translation: it is interpolated into
       // the `id` attribute, and XML 1.0 has no representation for a C0 byte in
       // any form — not even a numeric character reference — so a control byte in
-      // a source key produced a file no consumer reads and a live terminal
+      // a source key yields a file no consumer reads and a live terminal
       // sequence in `git diff`.
       assertNoControlChars(entry.key, entry.key);
       assertNoControlChars(entry.key, entry.translation);

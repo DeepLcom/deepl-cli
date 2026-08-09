@@ -72,9 +72,9 @@ export class XcstringsFormatParser implements FormatParser {
       const def = (data.strings[entry.key] ??= {} as StringDefinition);
       def.localizations ??= {};
       const existing = def.localizations[locale];
-      // Replacing the whole localization discarded plural `variations`, which
-      // carry per-category translations this parser does not surface as
-      // entries — so they could never be restored.
+      // Merged rather than replaced: `variations` carry per-category
+      // translations this parser does not surface as entries, so nothing could
+      // restore them once discarded.
       if (existing?.variations) {
         def.localizations[locale] = {
           ...existing,

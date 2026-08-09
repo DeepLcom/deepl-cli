@@ -8,11 +8,10 @@ import { appendEntryLines } from './util/append-lines.js';
 import { isForbiddenControlChar } from './util/control-chars.js';
 
 // A key, treating `\X` as one unit so an escaped separator belongs to the key
-// rather than ending it. Without that the parser could not read back a key it
-// had just written: `escapeKey` escapes `=`, `:`, space and backslash, so
-// `greeting:formal` is written `greeting\:formal` and was then split at the
-// escaped colon — key `greeting\`, value `formal=Hello`. Half the key went out
-// for translation as the value, and the real key never reached the target file.
+// rather than ending it — without that the parser cannot read back a key it has
+// just written. `escapeKey` escapes `=`, `:`, space and backslash, so
+// `greeting:formal` is written `greeting\:formal`; split at that escaped colon
+// it would read as key `greeting\` with value `formal=Hello`.
 const KEY_CHARS = String.raw`(?:[^=:#!\s\\]|\\.)(?:[^=:\\]|\\.)*?`;
 
 // `key = value` / `key: value`.
@@ -27,8 +26,7 @@ const COMMENT_RE = /^\s*[#!]/;
  * A trailing backslash continues the line only when the run of backslashes
  * ending it is odd; an even run is one or more escaped literal backslashes,
  * which is exactly what escapeValue emits for a value ending in `\`. Testing
- * `endsWith('\\')` instead consumed the following entry and appended its raw
- * `key=value` text to the previous value.
+ * `endsWith('\\')` instead would consume the entry on the following line.
  */
 function continuesOnNextLine(line: string): boolean {
   let backslashes = 0;
@@ -62,7 +60,6 @@ export class PropertiesFormatParser implements FormatParser {
         continue;
       }
 
-      // Handle line continuations (trailing backslash)
       while (continuesOnNextLine(line) && i + 1 < lines.length) {
         i++;
         line = line.slice(0, -1) + lines[i]!.trimStart();
@@ -109,7 +106,6 @@ export class PropertiesFormatParser implements FormatParser {
         continue;
       }
 
-      // Handle line continuations
       const startLine = i;
       while (continuesOnNextLine(line) && i + 1 < lines.length) {
         i++;
