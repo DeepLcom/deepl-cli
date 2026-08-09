@@ -153,7 +153,12 @@ describe('validateTranslations', () => {
   });
 
   it('should return empty result for empty source', async () => {
-    mockReadFile.mockResolvedValueOnce('source');
+    // Both reads are stubbed: the source file and then the target file. Stubbing
+    // only the first left the target read resolving to `undefined`, which is not
+    // something `fs.readFile` can return.
+    mockReadFile
+      .mockResolvedValueOnce('source')
+      .mockResolvedValueOnce('target');
     const parser = makeParser([], []);
     const result = await validateTranslations(
       makeConfig(),

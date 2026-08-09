@@ -41,6 +41,15 @@ export async function readTargetFile(
     }
     return { state: 'unusable', reason: describe(err), error: err };
   }
+  // A file holding only whitespace has no translations to lose, so `unusable` —
+  // whose whole point is that the file holds the only copy of this locale's work
+  // — does not describe it. Parsing it would fail for most formats
+  // (`JSON.parse('  ')` throws), which would refuse the locale over an empty
+  // file; the callers treat a blank template as "use the source's structure".
+  if (content.trim() === '') {
+    return { state: 'usable', content, translations: new Map() };
+  }
+
   try {
     return {
       state: 'usable',

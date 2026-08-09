@@ -28,6 +28,7 @@ import {
   withoutPluralForms,
 } from './sync-utils.js';
 import { extractExistingTranslations } from './sync-bucket-walker.js';
+import { readTargetFile, unusableTargetMessage } from './sync-target-read.js';
 import { primaryPluralItem } from '../formats/util/plurals.js';
 import { BACKUP_SUFFIX } from './sync-bak-cleanup.js';
 import { Logger } from '../utils/logger.js';
@@ -1010,19 +1011,36 @@ export class LocaleTranslator {
       Logger.warn(withheldKeysWarning(locale, targetRelPath, withheld));
     }
 
+    // The same guarded read the pre-read pass uses, rather than a bare readFile
+    // whose catch cannot tell an absent file from one that is on disk and could
+    // not be opened. A target that became unreadable in the window between the
+    // two was reclassified as absent: the template fell back to the SOURCE,
+    // no backup was taken because `targetExists` stayed false, and a
+    // source-derived file was written over the very target the run had just
+    // failed to read. `deepl sync pull` gets this right with one guarded read.
+    //
+    // Thrown rather than warned, matching how the pre-read treats the same
+    // condition: processBucket catches it per locale, records the locale failed
+    // and leaves the file alone.
     let templateContent = content;
     let targetExists = false;
-    try {
-      const existingTargetContent = await fs.promises.readFile(
-        targetAbsPath,
-        'utf-8'
+    const templateRead = await readTargetFile(
+      parser,
+      targetAbsPath,
+      isMultiLocale ? locale : undefined
+    );
+    if (templateRead.state === 'unusable') {
+      throw new Error(
+        unusableTargetMessage(targetRelPath, templateRead.reason)
       );
-      if (existingTargetContent.trim()) {
-        templateContent = existingTargetContent;
-      }
+    }
+    if (templateRead.state === 'usable') {
       targetExists = true;
-    } catch {
-      templateContent = content;
+      // An empty file is a target that exists — so it is backed up — but holds no
+      // template, so the source's structure is used.
+      if (templateRead.content.trim()) {
+        templateContent = templateRead.content;
+      }
     }
 
     if (
