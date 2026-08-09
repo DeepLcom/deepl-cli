@@ -120,6 +120,57 @@ describe('sync push/pull (TMS integration)', () => {
     expect(targetContent['notice']).toBe('Zeile eins\nZeile zwei\tmit Tab[31m');
   });
 
+  it('pull: skips a plural entry that declares msgid_plural but holds no msgstr[N]', async () => {
+    // `plural_forms` metadata only appears once an entry HAS msgstr[N] lines, so a
+    // freshly extracted plural entry carries `msgid_plural` alone. Judging
+    // plurality from the payload made pull treat it as an ordinary key: one
+    // exported string cannot fill a plural entry's forms, so the pull reported a
+    // translation it had not applied.
+    writeSyncConfig(tmpDir, {
+      targetLocales: ['de'],
+      tms: tmsConfig(),
+      buckets: { po: { include: ['locales/en/app.po'] } },
+    });
+    const poHarness = createSyncHarness({ parsers: ['po'] });
+    try {
+      const source = path.join(tmpDir, 'locales', 'en', 'app.po');
+      fs.mkdirSync(path.dirname(source), { recursive: true });
+      fs.writeFileSync(
+        source,
+        [
+          'msgid ""',
+          'msgstr ""',
+          '"Content-Type: text/plain; charset=UTF-8\\n"',
+          '"Plural-Forms: nplurals=2; plural=(n != 1);\\n"',
+          '',
+          'msgid "One file"',
+          'msgid_plural "%d files"',
+          '',
+        ].join('\n'),
+        'utf-8'
+      );
+      const target = path.join(tmpDir, 'locales', 'de', 'app.po');
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(source, target);
+
+      process.env['TMS_API_KEY'] = 'env-key';
+      const config = await loadSyncConfig(tmpDir);
+      const client = await createTmsClient(config.tms!, approvedTmsTrust);
+      expectTmsPull(
+        'de',
+        { 'One file': 'Eine Datei' },
+        { auth: { apiKey: 'env-key' } }
+      );
+
+      const result = await pullTranslations(config, client, poHarness.registry);
+
+      expect(result.pulled).toBe(0);
+      expect(result.skipped.map((s) => s.reason)).toEqual(['plural_entry']);
+    } finally {
+      poHarness.cleanup();
+    }
+  });
+
   // ---- Case 2: pull happy path ----
   it('pull: fetches translations, writes target file, and does not claim human review', async () => {
     writeSyncConfig(tmpDir, { targetLocales: ['de'], tms: tmsConfig() });

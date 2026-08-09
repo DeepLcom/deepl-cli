@@ -18,7 +18,7 @@ import {
   resolveTargetPath,
   assertPathWithinRoot,
   mergePulledTranslations,
-  hasPluralForms,
+  isPluralEntry,
 } from './sync-utils.js';
 import { LOCK_FILE_NAME } from './types.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
@@ -317,7 +317,7 @@ export async function pullTranslations(
       // reported skipped and the entry is carried forward as it stands.
       const pluralEntries = sourceEntries.filter(
         (entry) =>
-          keys[entry.key] !== undefined && hasPluralForms(entry.metadata)
+          keys[entry.key] !== undefined && isPluralEntry(entry.metadata)
       );
       // Preserve the null prototype `sanitizePullKeysResponse` gave `keys`: a
       // plain-object spread would re-expose Object.prototype, so a source key

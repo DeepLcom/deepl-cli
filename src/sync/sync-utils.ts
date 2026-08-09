@@ -24,6 +24,37 @@ export function getParserForBucket(
 const PLURAL_FORM_METADATA_KEYS = ['plural_forms', 'plurals'] as const;
 
 /**
+ * The metadata that makes an entry a plural entry at all, whether or not it
+ * currently carries the forms.
+ *
+ * A gettext entry declares `msgid_plural` even when it has no `msgstr[N]` lines
+ * yet — a freshly extracted catalog is exactly that shape, since `plural_forms`
+ * only appears once forms exist. Judging plurality from the payload alone let
+ * `deepl sync pull` treat such an entry as ordinary: one exported string cannot
+ * fill a plural entry's forms, so the pull recorded a translation it had not
+ * applied.
+ *
+ * Kept separate from `PLURAL_FORM_METADATA_KEYS`, which lists the payloads to
+ * STRIP. Stripping `msgid_plural` would tell `reconstruct` the entry is not
+ * plural at all, and that is how both the carry-forward and the new-entry append
+ * know to emit `msgid_plural` and one `msgstr[N]` per form.
+ */
+const PLURAL_ENTRY_METADATA_KEYS = [
+  ...PLURAL_FORM_METADATA_KEYS,
+  'msgid_plural',
+] as const;
+
+/** True when the entry is a plural entry in its format's terms. */
+export function isPluralEntry(
+  metadata: Record<string, unknown> | undefined
+): boolean {
+  return (
+    metadata !== undefined &&
+    PLURAL_ENTRY_METADATA_KEYS.some((key) => key in metadata)
+  );
+}
+
+/**
  * True when `reconstruct` would rebuild this entry's plural forms from its
  * metadata rather than keep the ones the target file holds.
  */
