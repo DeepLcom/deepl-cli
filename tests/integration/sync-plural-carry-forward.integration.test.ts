@@ -403,5 +403,51 @@ describe('sync with a plural entry carried forward', () => {
         'translated'
       );
     });
+
+    it('does not treat a source key named toString as pulled when the export omits it', async () => {
+      // A source key named after an Object.prototype member, an export that
+      // does not carry it, and a reviewed local translation. The membership
+      // test must be own-key only, or `toString` resolves to the inherited
+      // function and the reviewed value is destroyed.
+      fs.mkdirSync(path.dirname(sourcePath()), { recursive: true });
+      fs.writeFileSync(
+        sourcePath(),
+        PO_HEADER +
+          [
+            'msgid "Hello"',
+            'msgstr ""',
+            '',
+            'msgid "toString"',
+            'msgstr ""',
+          ].join('\n'),
+        'utf-8'
+      );
+      fs.mkdirSync(path.dirname(targetPath()), { recursive: true });
+      fs.writeFileSync(
+        targetPath(),
+        PO_HEADER +
+          [
+            'msgid "Hello"',
+            'msgstr "Hola"',
+            '',
+            'msgid "toString"',
+            'msgstr "Convertir en texto"',
+          ].join('\n'),
+        'utf-8'
+      );
+      mockExport({ Hello: 'Hola TMS' });
+
+      const config = await loadSyncConfig(tmpDir);
+      const client = await createTmsClient(config.tms!, approvedTmsTrust);
+      const result = await pullTranslations(config, client, harness.registry);
+
+      // Only Hello is applied; toString is neither pulled nor replaced, and the
+      // reviewed local msgstr survives.
+      expect(result.pulled).toBe(1);
+      const written = fs.readFileSync(targetPath(), 'utf-8');
+      expect(written).toContain('msgstr "Hola TMS"');
+      expect(written).toContain('msgstr "Convertir en texto"');
+      expect(written).not.toMatch(/function toString/);
+    });
   });
 });

@@ -513,6 +513,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **config**: `config delete` and the config read paths can no longer walk or mutate the prototype chain — `__proto__`/`constructor`/`prototype` segments are rejected, completing the `config set` hardening.
 
+- **sync**: `deepl sync pull` no longer reads an inherited `Object.prototype` member as a pulled translation. `sanitizePullKeysResponse` returns a null-prototype object precisely so a source key named `toString`/`constructor`/`valueOf` cannot resolve to a function through `keys[key] !== undefined`, but the pull path had begun spreading it into a plain object literal (`{ ...keys }`), re-exposing the prototype — so on a monolingual bucket a source key with such a name, against a TMS export that omits it, read the inherited function as an approved value, reported `Pulled`/`Replaced`, and deleted the reviewed local translation (on a PO bucket it crashed `value is not iterable`). The spread now preserves the null prototype, and `mergePulledTranslations` tests membership with `Object.hasOwn` so it is immune to the shape of whatever object a caller hands it. All within unreleased work; no tagged release shipped it.
+
 - **perf**: `sync audit` registration no longer loads fast-glob on every CLI invocation (lazy import, matching its sibling subcommands).
 
 ### Security

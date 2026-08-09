@@ -75,8 +75,13 @@ export function mergePulledTranslations(
 ): TranslatedEntry[] {
   const merged: TranslatedEntry[] = [];
   for (const entry of sourceEntries) {
-    const translation =
-      pulledKeys[entry.key] ?? existingTargetEntries.get(entry.key);
+    // Own-key only: a source key named after a prototype member (`toString`,
+    // `constructor`) must not resolve to an inherited function when the pull
+    // response is a plain object that does not own it. `Object.hasOwn` is safe
+    // on a null-prototype response too.
+    const translation = Object.hasOwn(pulledKeys, entry.key)
+      ? pulledKeys[entry.key]
+      : existingTargetEntries.get(entry.key);
     if (translation === undefined) continue;
     merged.push({
       key: entry.key,

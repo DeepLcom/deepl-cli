@@ -425,6 +425,51 @@ describe('mergePulledTranslations()', () => {
     ).toEqual([]);
   });
 
+  it('does not read an inherited Object.prototype member as a pulled translation', () => {
+    // A source key named after a prototype member, with a plain-object pull
+    // response that does NOT own that key. Membership must be own-key only, or
+    // `toString` resolves to the inherited function and destroys the reviewed
+    // value the target file holds.
+    const merged = mergePulledTranslations(
+      [
+        { key: 'toString', value: 'Convert to text' },
+        { key: 'constructor', value: 'Builder' },
+      ],
+      {},
+      new Map([
+        ['toString', 'In Text umwandeln'],
+        ['constructor', 'Erbauer'],
+      ])
+    );
+
+    expect(merged).toEqual([
+      {
+        key: 'toString',
+        value: 'Convert to text',
+        translation: 'In Text umwandeln',
+        context: undefined,
+        metadata: undefined,
+      },
+      {
+        key: 'constructor',
+        value: 'Builder',
+        translation: 'Erbauer',
+        context: undefined,
+        metadata: undefined,
+      },
+    ]);
+    expect(typeof merged[0]!.translation).toBe('string');
+    expect(typeof merged[1]!.translation).toBe('string');
+  });
+
+  it('omits a prototype-named key the pull response and target both lack, rather than inheriting one', () => {
+    const merged = mergePulledTranslations(
+      [{ key: 'toString', value: 'Convert to text' }],
+      {}
+    );
+    expect(merged).toEqual([]);
+  });
+
   it('should strip the plural-form payloads so the target file keeps its own forms', () => {
     const merged = mergePulledTranslations(
       [

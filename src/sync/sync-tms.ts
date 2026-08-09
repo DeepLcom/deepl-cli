@@ -313,7 +313,13 @@ export async function pullTranslations(
         (entry) =>
           keys[entry.key] !== undefined && hasPluralForms(entry.metadata)
       );
-      const applicableKeys = { ...keys };
+      // Preserve the null prototype `sanitizePullKeysResponse` gave `keys`: a
+      // plain-object spread would re-expose Object.prototype, so a source key
+      // named `toString`/`constructor` would read as an approved translation.
+      const applicableKeys: Record<string, string> = Object.assign(
+        Object.create(null) as Record<string, string>,
+        keys
+      );
       for (const entry of pluralEntries) {
         skipped.push({
           file: relPath,
