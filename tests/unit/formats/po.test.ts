@@ -1059,3 +1059,57 @@ describe('PoFormatParser — appending a NEW plural entry', () => {
     expect(written).not.toContain('msgid_plural');
   });
 });
+
+describe('PoFormatParser — U+2028 / U+2029 in a value', () => {
+  // JS `.` excludes the line separators, so a msgstr carrying one did not match
+  // its own line pattern: the line was invisible to both scanners, the key was
+  // reported unwritten (honest, exit 12) but under a remediation about adding a
+  // containing group, and no later run converged. gettext accepts the byte raw --
+  // `msgfmt -c` exits 0 on such a catalog -- so the file is valid and it was this
+  // parser that could not read it. Escaping is not the remedy TOML uses here: the
+  // PO escape set has no \\uXXXX, so an escape would round-trip as literal text.
+  const parser = new PoFormatParser();
+  const HEADER = [
+    'msgid ""',
+    'msgstr ""',
+    '"Content-Type: text/plain; charset=UTF-8\\n"',
+    '',
+    '',
+  ].join('\n');
+
+  it.each([
+    ['U+2028', '\u2028'],
+    ['U+2029', '\u2029'],
+  ])('reads a msgstr containing %s', (_name, sep) => {
+    const po =
+      HEADER + ['msgid "K"', `msgstr "line1${sep}line2"`, ''].join('\n');
+    expect(parser.extractTranslations(po).get('K')).toBe(`line1${sep}line2`);
+  });
+
+  it.each([
+    ['U+2028', '\u2028'],
+    ['U+2029', '\u2029'],
+  ])('writes and re-reads a translation containing %s', (_name, sep) => {
+    const template = HEADER + ['msgid "K"', 'msgstr ""', ''].join('\n');
+    const written = parser.reconstruct(template, [
+      { key: 'K', value: 'K', translation: `line1${sep}line2` },
+    ]);
+    expect(parser.extractTranslations(written).get('K')).toBe(
+      `line1${sep}line2`
+    );
+  });
+
+  it('reads a msgid containing U+2028 as its key', () => {
+    const po =
+      HEADER + ['msgid "a\u2028b"', 'msgstr "translated"', ''].join('\n');
+    expect(parser.extract(po).map((e) => e.key)).toEqual(['a\u2028b']);
+  });
+
+  it('still round-trips an ordinary newline', () => {
+    const template = HEADER + ['msgid "K"', 'msgstr ""', ''].join('\n');
+    const written = parser.reconstruct(template, [
+      { key: 'K', value: 'K', translation: 'line1\nline2' },
+    ]);
+    expect(parser.extractTranslations(written).get('K')).toBe('line1\nline2');
+  });
+});

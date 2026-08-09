@@ -218,6 +218,18 @@ function startsNextEntry(
   );
 }
 
+/**
+ * The value-capturing line patterns below all carry the `s` flag.
+ *
+ * Without it `.` excludes U+2028 and U+2029, so a `msgstr` carrying either did
+ * not match its own pattern at all: the line was invisible to both scanners, the
+ * key was reported unwritten — honestly, at exit 12 — but under a remediation
+ * about adding a containing group, and no later run could converge. gettext
+ * itself accepts the byte raw (`msgfmt -c` exits 0 on such a catalog), so the
+ * file is valid and it was this parser that could not read it. Escaping is not an
+ * option the way it is for TOML: the PO escape set has no `\uXXXX`, so an escape
+ * would round-trip back as the literal text.
+ */
 function parseEntries(content: string): PoEntry[] {
   const lines = content.split(/\r?\n/);
   const entries: PoEntry[] = [];
@@ -273,7 +285,7 @@ function parseEntries(content: string): PoEntry[] {
       continue;
     }
 
-    const msgctxtMatch = /^msgctxt\s+(.*)$/.exec(line);
+    const msgctxtMatch = /^msgctxt\s+(.*)$/s.exec(line);
     if (msgctxtMatch?.[1]) {
       current.msgctxt = unquote(msgctxtMatch[1]);
       target = 'msgctxt';
@@ -281,7 +293,7 @@ function parseEntries(content: string): PoEntry[] {
       continue;
     }
 
-    const msgidPluralMatch = /^msgid_plural\s+(.*)$/.exec(line);
+    const msgidPluralMatch = /^msgid_plural\s+(.*)$/s.exec(line);
     if (msgidPluralMatch?.[1]) {
       current.msgidPlural = unquote(msgidPluralMatch[1]);
       target = 'msgid_plural';
@@ -289,7 +301,7 @@ function parseEntries(content: string): PoEntry[] {
       continue;
     }
 
-    const msgidMatch = /^msgid\s+(.*)$/.exec(line);
+    const msgidMatch = /^msgid\s+(.*)$/s.exec(line);
     if (msgidMatch?.[1]) {
       current.msgid = unquote(msgidMatch[1]);
       target = 'msgid';
@@ -297,7 +309,7 @@ function parseEntries(content: string): PoEntry[] {
       continue;
     }
 
-    const msgstrPluralMatch = /^msgstr\[(\d+)]\s+(.*)$/.exec(line);
+    const msgstrPluralMatch = /^msgstr\[(\d+)]\s+(.*)$/s.exec(line);
     if (msgstrPluralMatch?.[1] && msgstrPluralMatch[2] !== undefined) {
       const idx = parseInt(msgstrPluralMatch[1], 10);
       current.msgstrPlural.set(idx, unquote(msgstrPluralMatch[2]));
@@ -306,7 +318,7 @@ function parseEntries(content: string): PoEntry[] {
       continue;
     }
 
-    const msgstrMatch = /^msgstr\s+(.*)$/.exec(line);
+    const msgstrMatch = /^msgstr\s+(.*)$/s.exec(line);
     if (msgstrMatch?.[1]) {
       current.msgstr = [unquote(msgstrMatch[1])];
       target = 'msgstr';
@@ -573,7 +585,7 @@ export class PoFormatParser implements FormatParser {
         }
         entryLines.push(el);
 
-        const ctxtM = /^msgctxt\s+(.*)$/.exec(el);
+        const ctxtM = /^msgctxt\s+(.*)$/s.exec(el);
         if (ctxtM?.[1]) {
           entryMsgctxt = unquote(ctxtM[1]);
           target = 'msgctxt';
@@ -581,14 +593,14 @@ export class PoFormatParser implements FormatParser {
           continue;
         }
 
-        const idPluralM = /^msgid_plural\s+(.*)$/.exec(el);
+        const idPluralM = /^msgid_plural\s+(.*)$/s.exec(el);
         if (idPluralM?.[1]) {
           target = 'msgid_plural';
           i++;
           continue;
         }
 
-        const idM = /^msgid\s+(.*)$/.exec(el);
+        const idM = /^msgid\s+(.*)$/s.exec(el);
         if (idM?.[1]) {
           entryMsgid = unquote(idM[1]);
           target = 'msgid';
@@ -596,7 +608,7 @@ export class PoFormatParser implements FormatParser {
           continue;
         }
 
-        const strPluralM = /^msgstr\[(\d+)]\s+(.*)$/.exec(el);
+        const strPluralM = /^msgstr\[(\d+)]\s+(.*)$/s.exec(el);
         if (strPluralM?.[1] && strPluralM[2] !== undefined) {
           const idx = parseInt(strPluralM[1], 10);
           entryMsgstrPlural.set(idx, unquote(strPluralM[2]));
@@ -605,7 +617,7 @@ export class PoFormatParser implements FormatParser {
           continue;
         }
 
-        const strM = /^msgstr\s+(.*)$/.exec(el);
+        const strM = /^msgstr\s+(.*)$/s.exec(el);
         if (strM?.[1]) {
           entryMsgstr = unquote(strM[1]);
           target = 'msgstr';
@@ -706,7 +718,7 @@ export class PoFormatParser implements FormatParser {
       let inMsgstrPlural = false;
 
       for (const el of entryLines) {
-        const strPluralM = /^msgstr\[(\d+)]\s+(.*)$/.exec(el);
+        const strPluralM = /^msgstr\[(\d+)]\s+(.*)$/s.exec(el);
         if (strPluralM?.[1] && strPluralM[2] !== undefined) {
           const idx = parseInt(strPluralM[1], 10);
           const pluralKey = `msgstr[${idx}]`;
@@ -728,7 +740,7 @@ export class PoFormatParser implements FormatParser {
           continue;
         }
 
-        const strM = /^msgstr\s+(.*)$/.exec(el);
+        const strM = /^msgstr\s+(.*)$/s.exec(el);
         if (strM?.[1]) {
           result.push(`msgstr ${quoteLong(translation)}`);
           inMsgstr = true;
@@ -805,7 +817,7 @@ function isHeaderMsgidFromLines(msgid: string, entryLines: string[]): boolean {
   }
   let foundMsgstr = false;
   for (const line of entryLines) {
-    const strM = /^msgstr\s+(.*)$/.exec(line);
+    const strM = /^msgstr\s+(.*)$/s.exec(line);
     if (strM?.[1]) {
       const val = unquote(strM[1]);
       if (val !== '') {
