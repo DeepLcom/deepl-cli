@@ -87,9 +87,51 @@ const TRANSLATABLE_EL: ElementPattern = {
   close: /<\/(?:\w+:)?(?:source|target)>/iy,
 };
 
-// Matches only the `state` attribute: `state-qualifier` (1.2) and `subState`
-// (2.0) are different attributes carrying different vocabularies.
-const STATE_ATTR_RE = /(\sstate\s*=\s*["'])([^"'<]*)(["'])/i;
+// One `name="value"` pair. Scanned globally from the start of the attribute run
+// so pairs are consumed whole, which is what keeps a `state='…'` sequence sitting
+// INSIDE another attribute's value from being read as the element's state.
+const ATTR_PAIR_RE = /([a-zA-Z_:][\w:.-]*)\s*=\s*(["'])([\s\S]*?)\2/g;
+
+interface AttrMatch {
+  /** Offset of the value within the attribute run. */
+  valueStart: number;
+  valueEnd: number;
+  value: string;
+  /** Offsets of the whole `name="value"` pair, including any leading space. */
+  pairStart: number;
+  pairEnd: number;
+}
+
+/**
+ * Find an attribute by name in an element's attribute run.
+ *
+ * Attributes are walked as whole pairs rather than searched for with a single
+ * unanchored regex. The old `state` pattern returned the FIRST `state=…` in the
+ * string, so a `state='…'` sequence inside another attribute's value shadowed the
+ * real one: the review state was neither read (`extractNeedsReview` missed it)
+ * nor rewritten (the decoy was corrupted instead), leaving a
+ * `needs-review-translation` marker attached to freshly machine-translated text.
+ * Comparing the captured name in full also means `xstate=` is not a `state`.
+ */
+function findAttr(attrs: string, name: string): AttrMatch | undefined {
+  ATTR_PAIR_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = ATTR_PAIR_RE.exec(attrs)) !== null) {
+    if (match[1]!.toLowerCase() !== name) continue;
+    const value = match[3]!;
+    const valueEnd = match.index + match[0].length - 1;
+    let pairStart = match.index;
+    while (pairStart > 0 && /\s/.test(attrs[pairStart - 1]!)) pairStart--;
+    return {
+      valueStart: valueEnd - value.length,
+      valueEnd,
+      value,
+      pairStart,
+      pairEnd: match.index + match[0].length,
+    };
+  }
+  return undefined;
+}
 
 /** The value written for a target this reconstruct has just filled in. */
 const TRANSLATED_STATE = 'translated';
@@ -119,7 +161,7 @@ const UNFINISHED_STATES_V12: ReadonlySet<string> = new Set([
 const UNFINISHED_STATES_V2: ReadonlySet<string> = new Set(['initial']);
 
 function stateOf(attrs: string): string | undefined {
-  return STATE_ATTR_RE.exec(attrs)?.[2];
+  return findAttr(attrs, 'state')?.value;
 }
 
 /**
@@ -130,11 +172,37 @@ function stateOf(attrs: string): string | undefined {
  * `state` gains none: absence is this parser's own output shape.
  */
 function withTranslatedState(attrs: string): string {
-  return attrs.replace(
-    STATE_ATTR_RE,
-    (_match, open: string, _value: string, close: string) =>
-      `${open}${TRANSLATED_STATE}${close}`
-  );
+  let result = attrs;
+
+  // `state-qualifier` (1.2) and `subState` (2.0) qualify a state that no longer
+  // describes this element's text, so they are dropped rather than rewritten:
+  // their vocabularies have no "this is machine output now" value. Removed before
+  // `state` and `approved` are rewritten, so those offsets are still valid.
+  for (const name of ['state-qualifier', 'substate']) {
+    const found = findAttr(result, name);
+    if (found) {
+      result = result.slice(0, found.pairStart) + result.slice(found.pairEnd);
+    }
+  }
+
+  // `approved="yes"` is 1.2's other claim that a human signed this text off. It
+  // cannot describe text this run has just replaced.
+  const approved = findAttr(result, 'approved');
+  if (approved?.value.toLowerCase() === 'yes') {
+    result =
+      result.slice(0, approved.valueStart) +
+      'no' +
+      result.slice(approved.valueEnd);
+  }
+
+  const state = findAttr(result, 'state');
+  if (state) {
+    result =
+      result.slice(0, state.valueStart) +
+      TRANSLATED_STATE +
+      result.slice(state.valueEnd);
+  }
+  return result;
 }
 
 const NAMED_ENTITIES: Record<string, string> = {

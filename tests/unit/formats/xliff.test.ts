@@ -709,3 +709,81 @@ describe('appending a unit whose KEY needs guarding', () => {
     expect(written).toContain('<trans-unit id="greeting">');
   });
 });
+
+describe('review-state attributes on an element the run rewrites', () => {
+  // STATE_ATTR_RE was one unanchored, non-global regex, so it returned the FIRST
+  // `state=...` in the attribute string -- including one sitting inside ANOTHER
+  // attribute's value. The real review state was then neither read (needsReview
+  // missed it) nor rewritten (the decoy was corrupted instead), so a
+  // `needs-review-translation` marker stayed attached to freshly machine
+  // translated text.
+  const withDecoy = (targetAttrs: string): string =>
+    [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<xliff version="1.2">',
+      '  <file source-language="en" target-language="es">',
+      '    <body>',
+      '      <trans-unit id="greeting">',
+      '        <source>Hello</source>',
+      `        <target${targetAttrs}>Viejo</target>`,
+      '      </trans-unit>',
+      '    </body>',
+      '  </file>',
+      '</xliff>',
+    ].join('\n');
+
+  const DECOY_ATTRS = ` note="compare state='final' with the old one" state="needs-review-translation"`;
+
+  it('reads the real state, not a state= sequence inside another value', () => {
+    const flagged = parser.extractNeedsReview(withDecoy(DECOY_ATTRS));
+    expect([...flagged]).toEqual(['greeting']);
+  });
+
+  it('rewrites the real state and leaves the decoy value alone', () => {
+    const written = parser.reconstruct(withDecoy(DECOY_ATTRS), [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+    ]);
+
+    expect(written).toContain('state="translated"');
+    expect(written).not.toContain('state="needs-review-translation"');
+    // The other attribute's value is content, not a marker to rewrite.
+    expect(written).toContain(`note="compare state='final' with the old one"`);
+  });
+
+  it('does not treat an attribute merely ending in "state" as the state', () => {
+    const written = parser.reconstruct(
+      withDecoy(' xstate="needs-review-translation" state="new"'),
+      [{ key: 'greeting', value: 'Hello', translation: 'Hola' }]
+    );
+    expect(written).toContain('xstate="needs-review-translation"');
+    expect(written).toContain('state="translated"');
+  });
+
+  it('withdraws approved="yes" from text this run replaced', () => {
+    const written = parser.reconstruct(withDecoy(' approved="yes"'), [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+    ]);
+    expect(written).toContain('approved="no"');
+    expect(written).not.toContain('approved="yes"');
+  });
+
+  it('drops a state-qualifier that no longer describes the text', () => {
+    const written = parser.reconstruct(
+      withDecoy(
+        ' state="needs-review-translation" state-qualifier="mt-suggestion"'
+      ),
+      [{ key: 'greeting', value: 'Hello', translation: 'Hola' }]
+    );
+    expect(written).toContain('state="translated"');
+    expect(written).not.toContain('state-qualifier');
+  });
+
+  it('leaves every marker alone when the run writes the same text', () => {
+    const unchanged = withDecoy(' approved="yes" state="signed-off"');
+    const written = parser.reconstruct(unchanged, [
+      { key: 'greeting', value: 'Hello', translation: 'Viejo' },
+    ]);
+    expect(written).toContain('approved="yes"');
+    expect(written).toContain('state="signed-off"');
+  });
+});
