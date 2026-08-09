@@ -1,8 +1,9 @@
 import * as TOML from 'smol-toml';
-import type {
-  ExtractedEntry,
-  FormatParser,
-  TranslatedEntry,
+import {
+  assertDistinctKeys,
+  type ExtractedEntry,
+  type FormatParser,
+  type TranslatedEntry,
 } from './format.js';
 import { PendingCommentBuffer } from './pending-comment-buffer.js';
 import {
@@ -20,14 +21,52 @@ const SECTION_RE = /^\[([^[\]]+)\]\s*(?:#.*)?$/;
 // anyway, so no surgery is needed).
 const ARRAY_OF_TABLES_RE = /^\[\[([^[\]]+)\]\]\s*(?:#.*)?$/;
 
+// One segment of a key: bare, a basic string, or a literal string.
+const KEY_SEGMENT = String.raw`(?:[A-Za-z0-9_-]+|"(?:[^"\\]|\\.)*"|'[^']*')`;
+
 // `key = value[...]` — captures:
 //   1 indent
-//   2 key (bare or dotted bare; quoted keys deliberately excluded — they are
-//     rare in i18n TOML and would require careful dot-path round-tripping)
+//   2 key (dotted, each segment bare or quoted)
 //   3 `=` + surrounding whitespace
 //   4 rest of line (value + optional trailing whitespace + optional `#`)
-const ENTRY_LINE_RE =
-  /^(\s*)([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)(\s*=\s*)(.*)$/;
+//
+// Quoted key segments are included because `extract` surfaces them: TOML.parse
+// turns `"greeting.formal" = "…"` into a property literally called
+// `greeting.formal`, so the sync pipeline treats it as translatable. Excluding
+// them here made the two halves disagree — reconstruct passed the line through
+// untranslated and then appended a NEW nested `[greeting] formal` entry, so the
+// key the source actually has kept its source-language text while the lockfile
+// recorded it translated.
+const ENTRY_LINE_RE = new RegExp(
+  String.raw`^(\s*)(${KEY_SEGMENT}(?:\s*\.\s*${KEY_SEGMENT})*)(\s*=\s*)(.*)$`
+);
+
+/**
+ * The logical dot-path a written key denotes, with quoted segments decoded.
+ *
+ * Derived through `TOML.parse` for a key that contains a quote, so it agrees
+ * with `extract` — which reads the same document through the same parser — by
+ * construction rather than by a second hand-rolled unquoting. A key with no
+ * quote is its own path, which keeps the common case off the parser.
+ */
+function logicalKeyPath(keyPart: string): string {
+  if (!keyPart.includes('"') && !keyPart.includes("'")) {
+    return keyPart.replace(/\s*\.\s*/g, '.');
+  }
+  try {
+    const path: string[] = [];
+    let node: unknown = TOML.parse(`${keyPart} = 0`);
+    while (node !== null && typeof node === 'object' && !Array.isArray(node)) {
+      const names = Object.keys(node);
+      if (names.length !== 1) break;
+      path.push(names[0]!);
+      node = (node as Record<string, unknown>)[names[0]!];
+    }
+    return path.join('.');
+  } catch {
+    return keyPart;
+  }
+}
 
 // String-literal prefix of an entry's RHS. Captures:
 //   1 the quoted literal (including quotes)
@@ -48,7 +87,11 @@ export class TomlFormatParser implements FormatParser {
     if (!content.trim()) return [];
     const data = TOML.parse(content);
     const entries: ExtractedEntry[] = [];
-    this.walk(data, '', entries);
+    this.walk(data, '', entries, []);
+    // A literal '.' inside a key is indistinguishable from the separator between
+    // levels, so `"a.b" = …` and `[a] b = …` produce one key for two strings and
+    // one translation would be written over the other.
+    assertDistinctKeys(entries, 'TOML', '.');
     return entries;
   }
 
@@ -120,15 +163,15 @@ export class TomlFormatParser implements FormatParser {
             }
           }
           const multilineKey = currentSection
-            ? `${currentSection}.${keyPart}`
-            : keyPart;
+            ? `${currentSection}.${logicalKeyPath(keyPart)}`
+            : logicalKeyPath(keyPart);
           usedKeys.add(multilineKey);
           continue;
         }
 
         const fullKey = currentSection
-          ? `${currentSection}.${keyPart}`
-          : keyPart;
+          ? `${currentSection}.${logicalKeyPath(keyPart)}`
+          : logicalKeyPath(keyPart);
         const stringMatch = valuePart.match(STRING_VALUE_RE);
 
         if (stringMatch) {
@@ -209,9 +252,21 @@ export class TomlFormatParser implements FormatParser {
       { leaf: string; entry: TranslatedEntry }[]
     >();
     for (const entry of newEntries) {
-      const lastDot = entry.key.lastIndexOf('.');
-      const section = lastDot === -1 ? '' : entry.key.slice(0, lastDot);
-      const leaf = lastDot === -1 ? entry.key : entry.key.slice(lastDot + 1);
+      const recordedPath = entry.metadata?.['toml_key_path'];
+      let section: string;
+      let leaf: string;
+      if (Array.isArray(recordedPath) && recordedPath.length > 0) {
+        const segments = recordedPath as string[];
+        section = segments
+          .slice(0, -1)
+          .map((segment) => encodeTomlKey(segment))
+          .join('.');
+        leaf = segments[segments.length - 1]!;
+      } else {
+        const lastDot = entry.key.lastIndexOf('.');
+        section = lastDot === -1 ? '' : entry.key.slice(0, lastDot);
+        leaf = lastDot === -1 ? entry.key : entry.key.slice(lastDot + 1);
+      }
       const group = bySection.get(section);
       if (group) group.push({ leaf, entry });
       else bySection.set(section, [{ leaf, entry }]);
@@ -250,19 +305,31 @@ export class TomlFormatParser implements FormatParser {
   private walk(
     obj: Record<string, unknown>,
     prefix: string,
-    entries: ExtractedEntry[]
+    entries: ExtractedEntry[],
+    path: readonly string[]
   ): void {
     for (const [prop, val] of Object.entries(obj)) {
       const key = prefix ? `${prefix}.${prop}` : prop;
+      const propPath = [...path, prop];
       if (typeof val === 'string') {
-        entries.push({ key, value: val });
+        // `toml_key_path` is attached ONLY when a segment carries a literal dot,
+        // where the key string alone cannot say which dots are structural. New-key
+        // insertion needs that to write `"greeting.formal" = …` rather than
+        // inventing a `[greeting] formal` table the source does not have. Adding
+        // it unconditionally would change `computeSourceHash` for every TOML key
+        // and mark whole catalogues stale.
+        entries.push(
+          propPath.some((segment) => segment.includes('.'))
+            ? { key, value: val, metadata: { toml_key_path: propPath } }
+            : { key, value: val }
+        );
       } else if (
         typeof val === 'object' &&
         val !== null &&
         !Array.isArray(val) &&
         !(val instanceof Date)
       ) {
-        this.walk(val as Record<string, unknown>, key, entries);
+        this.walk(val as Record<string, unknown>, key, entries, propPath);
       }
     }
   }

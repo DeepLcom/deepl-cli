@@ -370,3 +370,127 @@ describe('TomlFormatParser — quoting a new key that is not a bare key', () => 
     expect(written).not.toContain('"farewell-2"');
   });
 });
+
+describe('TomlFormatParser — a quoted key containing a dot', () => {
+  // `"greeting.formal" = "Good day"` is ONE flat key whose name contains a dot.
+  // `extract` surfaced it (TOML.parse yields a property called `greeting.formal`)
+  // but ENTRY_LINE_RE excluded quoted keys, so reconstruct passed the line
+  // through untouched and instead wrote a NEW nested `[greeting] formal` entry.
+  // The source's own key kept its English while the lockfile recorded the key
+  // translated and status read 100%.
+  const FLAT = ['"greeting.formal" = "Good day"', ''].join('\n');
+
+  it('extracts the flat key, recording that its dot is literal', () => {
+    expect(parser.extract(FLAT)).toEqual([
+      {
+        key: 'greeting.formal',
+        value: 'Good day',
+        metadata: { toml_key_path: ['greeting.formal'] },
+      },
+    ]);
+  });
+
+  it('writes the translation into the quoted key itself', () => {
+    const written = parser.reconstruct(FLAT, [
+      { key: 'greeting.formal', value: 'Good day', translation: 'Buen día' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('"greeting.formal" = "Buen día"');
+    expect(written).not.toContain('[greeting]');
+    const reread = parser.extract(written);
+    expect(reread.map((e) => [e.key, e.value])).toEqual([
+      ['greeting.formal', 'Buen día'],
+    ]);
+  });
+
+  it('leaves a genuinely nested key nested', () => {
+    const nested = ['[greeting]', 'formal = "Good day"', ''].join('\n');
+    const written = parser.reconstruct(nested, [
+      { key: 'greeting.formal', value: 'Good day', translation: 'Buen día' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('[greeting]');
+    expect(written).toContain('formal = "Buen día"');
+  });
+
+  it('refuses a file where a flat quoted key collides with a nested one', () => {
+    const ambiguous = [
+      '"greeting.formal" = "Good day"',
+      '[greeting]',
+      'formal = "Hello"',
+      '',
+    ].join('\n');
+
+    expect(() => parser.extract(ambiguous)).toThrow(
+      /two different strings|key of two/i
+    );
+  });
+
+  it('handles a single-quoted (literal) key containing a dot', () => {
+    const literal = ['\'greeting.casual\' = "Hi"', ''].join('\n');
+    const written = parser.reconstruct(literal, [
+      { key: 'greeting.casual', value: 'Hi', translation: 'Hola' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('\'greeting.casual\' = "Hola"');
+  });
+});
+
+describe('TomlFormatParser — inserting a NEW key whose dot is literal', () => {
+  // The template has no line for the key, so the insertion path runs. Splitting
+  // at the last dot would invent a `[greeting]` table and leave the source's
+  // own `"greeting.formal"` key absent from the target.
+  it('writes a new flat quoted key at the top level', () => {
+    const template = ['other = "Otro"', ''].join('\n');
+    const written = parser.reconstruct(template, [
+      { key: 'other', value: 'Other', translation: 'Otro' },
+      {
+        key: 'greeting.formal',
+        value: 'Good day',
+        translation: 'Buen día',
+        metadata: { toml_key_path: ['greeting.formal'] },
+      },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('"greeting.formal" = "Buen día"');
+    expect(written).not.toContain('[greeting]');
+    expect(
+      parser
+        .extract(written)
+        .map((e) => e.key)
+        .sort()
+    ).toEqual(['greeting.formal', 'other']);
+  });
+
+  it('writes a new flat key inside its real table', () => {
+    const template = ['[greeting]', 'hello = "Hola"', ''].join('\n');
+    const written = parser.reconstruct(template, [
+      { key: 'greeting.hello', value: 'Hello', translation: 'Hola' },
+      {
+        key: 'greeting.a.b',
+        value: 'Source',
+        translation: 'Destino',
+        metadata: { toml_key_path: ['greeting', 'a.b'] },
+      },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('"a.b" = "Destino"');
+    expect(
+      parser
+        .extract(written)
+        .map((e) => e.key)
+        .sort()
+    ).toEqual(['greeting.a.b', 'greeting.hello']);
+  });
+
+  it('still nests a new key whose dots are structural', () => {
+    const template = ['other = "Otro"', ''].join('\n');
+    const written = parser.reconstruct(template, [
+      { key: 'other', value: 'Other', translation: 'Otro' },
+      { key: 'greeting.formal', value: 'Good day', translation: 'Buen día' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('[greeting]');
+    expect(written).toContain('formal = "Buen día"');
+  });
+});
