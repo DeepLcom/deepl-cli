@@ -178,6 +178,7 @@ describe('source text as translation', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       undefined
     );
 
@@ -203,6 +204,7 @@ describe('source text as translation', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       undefined
     );
 
@@ -223,6 +225,7 @@ describe('source text as translation', () => {
       service,
       new Set<string>(),
       makeConfig(),
+      undefined,
       undefined,
       undefined,
       undefined,

@@ -153,7 +153,10 @@ function makeCtx(
     content: '{}',
     parser: makeParser(),
     diffs,
-    toTranslate: diffs.filter((d) => d.status === 'new'),
+    // The same filter processBucket applies.
+    toTranslate: diffs.filter(
+      (d) => d.status === 'new' || d.status === 'stale'
+    ),
     fileLockEntries: {},
     existingTargetEntries: new Map(),
     keyContexts,
@@ -206,6 +209,7 @@ function makeTranslator(
     undefined,
     undefined,
     forceBatch,
+    undefined,
     undefined
   );
 }
@@ -651,6 +655,7 @@ describe('LocaleTranslator', () => {
         undefined,
         TM_ID,
         undefined,
+        undefined,
         undefined
       );
 
@@ -672,6 +677,7 @@ describe('LocaleTranslator', () => {
         new Set<string>(),
         config,
         GLOSSARY_ID,
+        undefined,
         undefined,
         undefined,
         undefined
@@ -1777,7 +1783,12 @@ describe('LocaleTranslator', () => {
         },
       ]);
 
-      const diffs = [makeDiff('b', 'Beta {name}')];
+      // Stale, not new: a key the target already has a translation for is only
+      // re-translated when its source changed, so that is the status from which
+      // a withholding is reachable.
+      const diffs: SyncDiff[] = [
+        { key: 'b', value: 'Beta {name}', status: 'stale' },
+      ];
       const { mock } = captureTranslateBatch(['B']);
       const parser = makeParser();
 

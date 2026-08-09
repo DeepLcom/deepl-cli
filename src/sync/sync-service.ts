@@ -429,7 +429,8 @@ export class SyncService {
       resolvedGlossaryId,
       resolvedTmId,
       options?.batch ?? config.sync?.batch,
-      options?.onProgress
+      options?.onProgress,
+      options?.force
     );
     const allContextSentKeys = new Set<string>();
     const allInstructionSentKeys = new Set<string>();

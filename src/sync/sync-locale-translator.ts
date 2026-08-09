@@ -221,7 +221,10 @@ export class LocaleTranslator {
     private readonly resolvedGlossaryId: string | undefined,
     private readonly resolvedTmId: string | undefined,
     private readonly forceBatch: boolean | undefined,
-    private readonly onProgress: ((e: SyncProgressEvent) => void) | undefined
+    private readonly onProgress: ((e: SyncProgressEvent) => void) | undefined,
+    // `--force`: every key arrives as `new`, and re-translation is the point, so
+    // the carry-forward below does not apply.
+    private readonly force: boolean | undefined
   ) {}
 
   async translate(
@@ -265,8 +268,40 @@ export class LocaleTranslator {
       showBilledCharacters: true,
     };
 
+    const existingTranslations =
+      existingTargetEntries.get(locale) ?? new Map<string, string>();
+
+    // A `new` key the target file already holds a translation for is not new to
+    // the translator, only to the lockfile: first adoption of the tool, or a CI
+    // checkout whose `.deepl-sync.lock` is gitignored, presents every key of an
+    // already-translated catalog as `new`. Translating those would replace the
+    // reviewer's text with machine output and drop the review markers the
+    // formats carry, so carry the existing value forward exactly as a `current`
+    // key's is below.
+    //
+    // A target value equal to the source is NOT a translation — a locale file
+    // copied from the source starts out that way — and neither is an empty one.
+    // Carrying either forward would record untranslated text as `translated`,
+    // which no later run would correct. `--force` asks for re-translation of
+    // every key by definition, so it skips the carry entirely.
+    const carriedForward: SyncDiff[] = [];
+    const needsTranslation = toTranslate.filter((d) => {
+      if (this.force || d.status !== 'new') return true;
+      const existing = existingTranslations.get(d.key);
+      if (existing === undefined || existing === '' || existing === d.value) {
+        return true;
+      }
+      carriedForward.push(d);
+      return false;
+    });
+    if (carriedForward.length > 0) {
+      Logger.verbose(
+        `[verbose] ${locale}: ${carriedForward.length} key(s) absent from the lockfile already have a translation in the target file — carrying it forward rather than re-translating`
+      );
+    }
+
     // Deep-clone metadata per locale to prevent concurrent mutation
-    const localeDiffs = toTranslate.map((d) => ({
+    const localeDiffs = needsTranslation.map((d) => ({
       ...d,
       metadata: d.metadata
         ? (JSON.parse(JSON.stringify(d.metadata)) as Record<string, unknown>)
@@ -750,10 +785,21 @@ export class LocaleTranslator {
 
     const successfulKeys: string[] = translatedEntries.map((te) => te.key);
 
-    // Use target file translations for current keys
-    const existingTranslations =
-      existingTargetEntries.get(locale) ?? new Map<string, string>();
     const allTranslatedEntries: TranslatedEntry[] = [...translatedEntries];
+
+    // Carried-forward keys count as successful so the lockfile records the
+    // translation the target file holds. Left out, they would come back `new` on
+    // every run — re-read, re-carried, and reported missing by `sync status`
+    // forever.
+    for (const diff of carriedForward) {
+      allTranslatedEntries.push({
+        key: diff.key,
+        value: diff.value!,
+        translation: existingTranslations.get(diff.key)!,
+        metadata: withoutPluralForms(diff.metadata),
+      });
+      successfulKeys.push(diff.key);
+    }
 
     // A withheld key still needs an entry: the list is the complete desired key
     // set, so leaving it out deletes the key from the target file rather than
@@ -978,7 +1024,7 @@ export class LocaleTranslator {
         file: targetRelPath,
         locale,
         translated,
-        skipped: currentDiffs.length,
+        skipped: currentDiffs.length + carriedForward.length,
         failed,
         written: true,
       },

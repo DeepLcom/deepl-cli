@@ -37,10 +37,11 @@ buckets:
 `;
 
 const SOURCE = JSON.stringify({ a: 'Alpha', b: 'Beta' }, null, 2) + '\n';
-const HUMAN_DE =
-  JSON.stringify({ a: 'HUMAN-DE-Alpha', b: 'HUMAN-DE-Beta' }, null, 2) + '\n';
-const HUMAN_FR =
-  JSON.stringify({ a: 'HUMAN-FR-Alpha', b: 'HUMAN-FR-Beta' }, null, 2) + '\n';
+// Each target holds a reviewed translation for `a` and is missing `b`, so every
+// run below has one key to translate and rewrites the file — while `a` shows
+// whether the reviewed text survived.
+const HUMAN_DE = JSON.stringify({ a: 'HUMAN-DE-Alpha' }, null, 2) + '\n';
+const HUMAN_FR = JSON.stringify({ a: 'HUMAN-FR-Alpha' }, null, 2) + '\n';
 
 function createServices(): { client: DeepLClient; syncService: SyncService } {
   const client = new DeepLClient(TEST_API_KEY, { maxRetries: 0 });
@@ -195,7 +196,9 @@ describe('sync interruption and crash recovery', () => {
     const result = await syncService.sync(config);
 
     expect(result.success).toBe(true);
-    expect(fs.readFileSync(dePath(), 'utf-8')).toContain('MT Alpha');
+    const written = fs.readFileSync(dePath(), 'utf-8');
+    expect(written).toContain('MT Beta');
+    expect(written).toContain('HUMAN-DE-Alpha');
     expect(fs.existsSync(deBakPath())).toBe(false);
   });
 });
