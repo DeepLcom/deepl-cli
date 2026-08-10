@@ -196,8 +196,9 @@ Contributions must be licensed under the same license as the project:
 2. **Write tests first**, then implement the feature (TDD).
 3. **Run the full check suite** before pushing:
    ```bash
-   npm run test:coverage && npm run lint && npm run type-check && npm run build
+   npm run format:check && npm run lint && npm run type-check && npm run check-deps && npm run build && npm run test:coverage
    ```
+   These are the same six gates CI runs, in the same order.
    `test:coverage` runs the same suite as `npm test` and additionally enforces
    the coverage thresholds, which is what CI gates on.
 4. **Open a PR** with a clear description covering:
@@ -217,6 +218,7 @@ Contributions must be licensed under the same license as the project:
 - [ ] `CHANGELOG.md` updated under **Unreleased** section
 - [ ] `README.md` updated if user-facing feature changed
 - [ ] `docs/API.md` updated if command/flag added or changed
+- [ ] `docs/MIGRATION.md` updated if the change is breaking or requires action from an existing user
 - [ ] Example script added/updated in `examples/` for new features
 - [ ] Added new example script to `examples/run-all.sh` EXAMPLES array (for new CLI commands)
 
