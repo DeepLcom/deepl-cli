@@ -463,6 +463,47 @@ describe('acquireSyncProcessLock', () => {
       expect(ownerPid()).toBe(winnerPid);
     });
 
+    /**
+     * The same race, on a filesystem that hands the freed inode straight back to
+     * the winner's replacement file — ext4 does, APFS does not. Identity cannot
+     * rest on the inode, so this forces the numbers to collide and leaves the
+     * recorded payload as the only thing telling the two files apart.
+     */
+    it('leaves a live pidfile alone even when the replacement reuses the inode', () => {
+      const winnerPid = 5555;
+      plantPidFile({ pid: 4242, startedAt: '2026-01-01T00:00:00.000Z' });
+      const staleIdentity = fs.statSync(pidFilePath);
+      const realKill = process.kill.bind(process);
+
+      jest
+        .spyOn(process, 'kill')
+        .mockImplementation((pid: number, signal?: string | number) => {
+          if (pid === 4242) {
+            fs.rmSync(pidFilePath, { force: true });
+            plantPidFile({
+              pid: winnerPid,
+              startedAt: '2026-06-01T00:00:00.000Z',
+            });
+            throw errnoError('ESRCH');
+          }
+          if (pid === winnerPid) return true;
+          return realKill(pid, signal);
+        });
+
+      // Report the stale file's inode for whatever the reclaim captures, so the
+      // cheap identity check passes and the payload has to carry the verdict.
+      const realFstat = fsModule.fstatSync.bind(fsModule);
+      jest.spyOn(fsModule, 'fstatSync').mockImplementation((fd: number) => {
+        const stats = realFstat(fd);
+        stats.ino = staleIdentity.ino;
+        stats.dev = staleIdentity.dev;
+        return stats;
+      });
+
+      expect(() => acquireSyncProcessLock(projectRoot)).toThrow(ConfigError);
+      expect(ownerPid()).toBe(winnerPid);
+    });
+
     it('reports the running sync rather than a raw EEXIST when the freed slot is taken first', () => {
       const winnerPid = 5555;
       plantPidFile({ pid: 4242, startedAt: '2026-01-01T00:00:00.000Z' });

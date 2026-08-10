@@ -114,15 +114,41 @@ function inspectPidFile(pidFilePath: string): PidFileInspection | null {
 }
 
 /**
+ * True when a captured file is the very file that was inspected, rather than a
+ * replacement written by a sync that won the race.
+ *
+ * Inode and device alone cannot answer this. An inode number is reused once the
+ * file holding it is unlinked, and a winner reclaims the lock by unlinking and
+ * re-creating in the same directory — on ext4 that hands the freed inode
+ * straight back, so the replacement compares equal. The recorded payload is
+ * what actually distinguishes them: a different holder carries a different
+ * `pid` and `startedAt`. Identity therefore requires both to agree, and content
+ * no sync wrote (a null payload) can only ever be matched by content that is
+ * still unparseable.
+ */
+function isSameFile(
+  captured: PidFileInspection,
+  stale: PidFileInspection
+): boolean {
+  if (captured.ino !== stale.ino || captured.dev !== stale.dev) return false;
+  if (stale.payload === null) return captured.payload === null;
+  if (captured.payload === null) return false;
+  return (
+    captured.payload.pid === stale.payload.pid &&
+    captured.payload.startedAt === stale.payload.startedAt
+  );
+}
+
+/**
  * Removes a pidfile already proven stale, without ever removing one this
  * process has not taken possession of.
  *
  * rename(2) is atomic, so of several syncs racing to break the same stale lock
  * exactly one can move that directory entry aside; the others get ENOENT.
- * Checking the inode *after* the move is what closes the read/unlink race: a
- * process whose staleness verdict has been overtaken by a winner captures the
- * winner's file, sees a different inode, and puts it back instead of deleting a
- * live lock.
+ * Re-reading the captured file *after* the move is what closes the read/unlink
+ * race: a process whose staleness verdict has been overtaken by a winner
+ * captures the winner's file, fails the identity check, and puts it back
+ * instead of deleting a live lock.
  *
  * Returns true when the stale file is gone and the lock is free to retake.
  */
@@ -139,14 +165,10 @@ function reclaimStalePidFile(
     throw err;
   }
 
-  let captured: fs.Stats;
-  try {
-    captured = fs.statSync(capturedPath);
-  } catch {
-    return false;
-  }
+  const captured = inspectPidFile(capturedPath);
+  if (captured === null) return false;
 
-  if (captured.ino !== stale.ino || captured.dev !== stale.dev) {
+  if (!isSameFile(captured, stale)) {
     try {
       fs.renameSync(capturedPath, pidFilePath);
     } catch {
