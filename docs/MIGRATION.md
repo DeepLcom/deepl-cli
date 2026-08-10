@@ -75,9 +75,10 @@ tms:
   enabled: true
   server: https://tms.example.com
   auto_push: true
+  auto_pull: true
   require_review: true
 
-# 2.0.0 — remove both; push explicitly instead
+# 2.0.0 — remove all three; push explicitly instead
 tms:
   enabled: true
   server: https://tms.example.com
@@ -87,6 +88,24 @@ Also gone: the `usage` command's "Speech-to-Text Usage" section and
 `speechToTextMilliseconds*` fields, following the API's deprecation of
 `speech_to_text_milliseconds_count`/`_limit`.
 
+### `.deepl-sync.yaml` is validated more strictly
+
+A config 1.x accepted can now be refused at load, which fails every `sync` subcommand
+rather than one run. All of these exit 7 with the offending value named:
+
+| Now refused | Fix |
+| --- | --- |
+| A `source_locale` or `target_locales` entry that is not a BCP-47 tag (1.x checked only three forbidden substrings) | Spell the locale as a language tag: `en`, `pt-BR`, `zh-Hans` |
+| A `target_path_pattern` containing a `.git` or `.github` path segment | Move the target out of those directories |
+| A target path that begins with `-` | Rename it, or prefix the pattern with `./` |
+| A bucket `include` glob that resolves outside the project root | Keep globs inside the repository |
+| `--locale <value>` not listed in `target_locales` | Add it to `target_locales`, or fix the spelling |
+
+**`.deepl-sync.yaml` is discovered only up to the repository boundary.** 1.x walked to the
+filesystem root, so a config in an ancestor directory outside the repo was adopted as
+project root. If yours lived there, `sync` now reports no config at all — move it inside
+the repository.
+
 ## Exit codes that moved
 
 Most of these are conditions that used to exit 0 while losing or skipping work,
@@ -95,12 +114,13 @@ should have accepted. In both directions the old code was the wrong answer.
 
 | Command | Condition | 1.x | 2.0.0 |
 | --- | --- | --- | --- |
+| any command | Unknown subcommand, unknown option, invalid `--choice` value, missing argument | 1 | 6 |
 | `sync` | Target file unreadable or unparseable | 0 | 12 |
 | `sync` | Key could not be written into the target | 0 | 12 |
 | `sync` | Validation error on a translation | 0 | 12 |
 | `sync` | File containing an empty string value | 12, every run | 0 |
 | `sync validate` | Target file cannot be read | 1 | 8 |
-| `sync validate` | PO/XLIFF project with untranslated keys | 0 | 8 |
+| `sync validate` | PO/XLIFF translation with a placeholder or ICU error the check previously could not see | 0 | 8 |
 | `sync push` / `pull` | TMS unreachable | 1 | 5 |
 | `sync --force` | Cannot prompt (piped stdin, cron, hook, `--no-input`) | 0 | 6 |
 | `watch` | Session recorded any failure | 0 | 12 |
@@ -109,8 +129,23 @@ should have accepted. In both directions the old code was the wrong answer.
 | `translate <file>` | File containing an empty string value | 1 | 0 |
 | `translate <file>` | Rate limit part-way through a structured file | 1 | 3 |
 | `write --check --format json` | Text needs no changes | 8, always | 0 |
+| `translate <dir>` | Every file in the directory failed | 0 | 12 |
+| `translate <dir>` | Stopped by one request-level rejection | 1 | That rejection's code (2, 4, 6) |
+| `translate <file>` | Structured file above the new size ceiling | 0 | 6 |
+| any command | Client-side timeout, or a response body cut off mid-send | 6 | 5 |
+| `sync` | One locale failed completely while others succeeded | 0 | 12 |
+| `sync` | `--concurrency` value is not a number | 0 | 6 |
+| `sync` | `--locale` value not listed in `target_locales` | 0 | 7 |
+| `voice` | Audio transcribed but a requested `--to` produced no translation | 0 | 9 |
+| any command | Interrupted with Ctrl-C | 0 | 130 |
 
-Three of these deserve a note:
+Four of these deserve a note:
+
+- **Every parse error is now exit 6, not exit 1.** An unknown subcommand, an unknown
+  option, an out-of-range `--choice` value and a missing argument all exited 1 in 1.x,
+  indistinguishable from a crash. Anything branching on exit 1 to mean "the CLI itself
+  failed" must now treat 6 as "I invoked it wrong" and keep 1 for genuinely unclassified
+  failures. This is also the code the removed flags above report.
 
 - **`sync --force` now needs `--yes` anywhere it cannot prompt**, not only under
   `CI=true`. Add `--yes` to any invocation from a git hook, cron job, `make`
@@ -122,8 +157,10 @@ Three of these deserve a note:
 - **`translate` with a lost placeholder now writes nothing and exits 5.** In 1.x
   it wrote output containing the CLI's own internal token, such as `__ Var_0 __`.
 
-Exit 3 and 5 are retriable; 12 is a partial failure with some locales succeeded.
-The full table is in [API.md](./API.md#exit-codes).
+Exit 3 and 5 are retriable; 12 is a partial failure with some locales succeeded; 130 is
+an interrupt, not a failure of the work. A client-side timeout used to report 6, which is
+*not* retriable — so a pipeline that gave up on 6 will now retry it. The full table is in
+[API.md](./API.md#exit-codes).
 
 ## Machine-readable output moved to stdout
 
@@ -140,10 +177,20 @@ deepl translate "hi" --to es --format json > out.json 2> err.txt
 deepl translate "hi" --to es --format json > out.json
 ```
 
-The exit code is still the failure signal. Warnings stay on stderr, so a check for
-*the presence of* stderr output still works; anything **parsing** stderr for the
-reason must switch to stdout. A human reading `--format json` output will see the
-envelope's `message` and `suggestion` fields where a prose sentence used to be.
+The exit code is still the failure signal. Warnings stay on stderr, but 2.0.0 emits
+warnings 1.x did not, so a check that treats *any* stderr output as failure will start
+tripping. Three are new and unconditional:
+
+- **A non-DeepL `--api-url` or `api_url` is announced** before the key is sent, loopback
+  included — so local mocks and self-hosted proxies see it on every run.
+- **A `--lang` shaped like a language tag but absent from the bundled Write list** notes
+  that it is deferring to the API instead of rejecting it.
+- **A `config.json` looser than `0600`** is repaired to `0600` with a note suggesting you
+  rotate the key. The settings in it are still honoured.
+
+Anything **parsing** stderr for a failure reason must switch to stdout. A human reading
+`--format json` output will see the envelope's `message` and `suggestion` fields where a
+prose sentence used to be.
 
 `config get` and `config list` default to `json`, so their failures carry the
 envelope with no flag passed.
@@ -235,6 +282,19 @@ of the watched directory, and a watched path that is a single file, are unchange
 replaced, where it used to leave the old value. A target that carried no `state` is
 written exactly as before.
 
+**`sync resolve` now takes the newer translation, as documented.** 1.x kept the local side
+of every conflict regardless of `translated_at`, so a teammate's newer translation was
+discarded silently. The same conflict may now resolve the other way. If you have been
+relying on resolve-keeps-mine, review the first few resolves after upgrading.
+
+**A YAML source file built on anchors and aliases yields a different key set.** Aliases are
+no longer expanded; aliased content is translated once, at its anchor. If your catalog uses
+`<<:` merges or repeated aliases, re-check `sync status` counts after the first run.
+
+**An Android XML translation containing `]]>` is refused rather than written.** It used to
+land inside a CDATA section, where it closed the section early. The key is withheld and
+counted as failed, so the run reports it.
+
 ## Tagged translation output
 
 **`--tag-handling` now pins `tag_handling_version=v2`** instead of letting the API
@@ -250,7 +310,7 @@ If you import this package's types, two published shapes changed. The `Language`
 union grew from 121 to 125 members with nothing removed, so it needs no action —
 but `WriteLanguage` did lose members.
 
-**`WriteLanguage` members are lowercase.** Four regional codes were re-spelled:
+**`WriteLanguage` members are lowercase.** Five regional codes were re-spelled:
 
 | 1.x | 2.0.0 |
 | --- | --- |
@@ -293,4 +353,5 @@ assigned it *to* a `WriteLanguage` variable needs a check or a cast.
 10. If you import the types, lowercase your `WriteLanguage` literals.
 
 The complete list of changes, including everything fixed that does not require
-action, is in [CHANGELOG.md](../CHANGELOG.md).
+action, is in
+[CHANGELOG.md](https://github.com/DeepL/deepl-cli/blob/main/CHANGELOG.md).
