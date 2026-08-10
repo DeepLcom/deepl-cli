@@ -202,6 +202,29 @@ describe('CompletionCommand', () => {
       const script = completionCommand.generate('fish');
       expect(script).toContain('.config/fish/completions/deepl.fish');
     });
+
+    // Inside fish single quotes only \\ and \' carry meaning, so a backslash has
+    // to be escaped before the quotes are. Escaping quotes alone leaves a
+    // description ending in a backslash escaping its own closing quote, which
+    // runs the rest of the generated line into the description.
+    it('should escape backslashes as well as quotes in descriptions', () => {
+      const prog = new Command();
+      prog.name('deepl');
+      prog
+        .command('quirky')
+        .description("ends with a backslash \\ and has an ' apostrophe");
+
+      const script = new CompletionCommand(prog).generate('fish');
+      const line = script.split('\n').find((l) => l.includes("-a 'quirky'"));
+
+      expect(line).toBeDefined();
+      expect(line).toContain(
+        "-d 'ends with a backslash \\\\ and has an \\' apostrophe'"
+      );
+      // The closing quote survives: an unescaped trailing backslash would make
+      // the description swallow it.
+      expect(line!.endsWith("'")).toBe(true);
+    });
   });
 
   describe('edge cases', () => {

@@ -2,6 +2,17 @@ import type { Command } from 'commander';
 
 export type ShellType = 'bash' | 'zsh' | 'fish';
 
+/**
+ * Escapes text for a fish single-quoted string, where only `\\` and `\'` carry
+ * meaning. Backslashes go first: escaping the quotes first would leave the
+ * backslashes this adds to be doubled by the second pass, and a description
+ * ending in a backslash would otherwise escape the closing quote and run the
+ * rest of the generated line together with it.
+ */
+function escapeFishSingleQuoted(text: string): string {
+  return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 export class CompletionCommand {
   private readonly program: Command;
 
@@ -239,7 +250,7 @@ _deepl "$@"
       const cmd = this.findCommand(cmdName);
       const desc = cmd ? cmd.description() : '';
       lines.push(
-        `complete -c deepl -n '${noSubcmdCondition}' -a '${cmdName}' -d '${desc.replace(/'/g, "\\'")}'`
+        `complete -c deepl -n '${noSubcmdCondition}' -a '${cmdName}' -d '${escapeFishSingleQuoted(desc)}'`
       );
     }
 
@@ -253,7 +264,7 @@ _deepl "$@"
       if (shortFlag) {
         line += ` -s '${shortFlag}'`;
       }
-      line += ` -d '${desc.replace(/'/g, "\\'")}'`;
+      line += ` -d '${escapeFishSingleQuoted(desc)}'`;
       lines.push(line);
     }
 
@@ -273,7 +284,7 @@ _deepl "$@"
       lines.push(`# ${parent} subcommands`);
       if (parentCmd) {
         for (const sub of this.visibleCommands(parentCmd)) {
-          const desc = sub.description().replace(/'/g, "\\'");
+          const desc = escapeFishSingleQuoted(sub.description());
           lines.push(
             `complete -c deepl -n '${seenCondition}${notSeenSub}' -a '${sub.name()}' -d '${desc}'`
           );
@@ -283,7 +294,7 @@ _deepl "$@"
       const cmdOpts = this.getCommandOptions(parent);
       for (const opt of cmdOpts) {
         const optObj = parentCmd?.options.find((o) => o.long === opt);
-        const desc = optObj ? optObj.description.replace(/'/g, "\\'") : '';
+        const desc = optObj ? escapeFishSingleQuoted(optObj.description) : '';
         const longFlag = opt.replace(/^--/, '');
         lines.push(
           `complete -c deepl -n '${seenCondition}' -l '${longFlag}' -d '${desc}'`
