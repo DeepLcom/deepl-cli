@@ -367,7 +367,7 @@ Each bucket maps a format name to a set of file patterns. The format name must b
 | `translation_memory_threshold` | `number` | No | `75` | Minimum match score 0–100 (requires `translation_memory`). Non-integer or out-of-range values exit 7 (ConfigError). |
 | `custom_instructions` | `string[]` | No | -- | Custom instructions passed to the DeepL API |
 | `style_id` | `string` | No | -- | Style ID for consistent translation style |
-| `locale_overrides` | `object` | No | -- | Per-locale overrides for `formality`, `glossary`, `translation_memory`, `translation_memory_threshold`, `custom_instructions`, `style_id` |
+| `locale_overrides` | `object` | No | -- | Per-locale overrides for `formality`, `glossary`, `translation_memory`, `translation_memory_threshold`, `custom_instructions`, `style_id`. A `model_type` here is accepted by the schema but not applied to that locale's requests — set `translation.model_type` at the top level instead |
 | `instruction_templates` | `object` | No | -- | Per-element-type instruction templates. Built-in defaults cover 16 element types: `button`, `a`, `h1`-`h6`, `th`, `label`, `option`, `input`, `title`, `summary`, `legend`, `caption`. User-provided templates override defaults. Only effective for locales supporting custom instructions: DE, EN, ES, FR, IT, JA, KO, ZH. See [Translation Strategies](#translation-strategies). |
 | `length_limits.enabled` | `boolean` | No | `false` | Enable length-aware translation instructions. Adds "Keep under N characters" per key based on source text length and locale expansion factors. Only applies to length-constrained element types (button, th, label, option, input, title) for keys sent via per-key API calls. |
 | `length_limits.expansion_factors` | `object` | No | built-in defaults | Per-locale expansion factors relative to English source. Built-in defaults: DE 1.3, FR 1.3, ES 1.25, JA 0.5, KO 0.7, ZH 0.5, etc. Based on industry-standard approximations (IBM, W3C). User-overridable. |
@@ -380,7 +380,7 @@ Setting `translation.glossary: auto` enables automatic project glossaries. Each 
 
 Set `translation.translation_memory` to a translation memory name or UUID to reuse approved translations across a sync run. Translation memories are authored and uploaded through the DeepL web UI; the CLI never creates or edits them. Names are resolved to UUIDs once via `GET /v3/translation_memories` and cached for the remainder of the invocation, so a multi-locale sync issues at most one list call per unique name. TM composes with glossary — both `glossary_id` and `translation_memory_id` are sent on the same translate call when both are configured.
 
-Translation memories require `model_type: quality_optimized`. Set `model_type: quality_optimized` at the same scope as `translation_memory` (top-level `translation.model_type`, or the matching per-locale override). Other values are rejected at config load with `ConfigError` (exit 7), before any API call is made. Threshold propagates from YAML into each translate request (default 75, range 0–100); `translation_memory_threshold` without `translation_memory` is inert. Per-locale `locale_overrides.<locale>.translation_memory` takes precedence over the top-level `translation.translation_memory`; `locale_overrides.<locale>.translation_memory_threshold` falls back to the top-level threshold when unset. See [Is translation memory actually being applied?](#is-translation-memory-actually-being-applied) for verification steps.
+Translation memories require `model_type: quality_optimized`. Set it at the **top level** (`translation.model_type: quality_optimized`) — that is the only scope the sync engine reads when it builds a translate request. A `model_type` inside `translation.locale_overrides.<locale>` is accepted and validated by the schema but is **not** applied to that locale's requests. Other values are rejected at config load with `ConfigError` (exit 7), before any API call is made. Threshold propagates from YAML into each translate request (default 75, range 0–100); `translation_memory_threshold` without `translation_memory` is inert. Per-locale `locale_overrides.<locale>.translation_memory` takes precedence over the top-level `translation.translation_memory`; `locale_overrides.<locale>.translation_memory_threshold` falls back to the top-level threshold when unset. See [Is translation memory actually being applied?](#is-translation-memory-actually-being-applied) for verification steps.
 
 #### `context`
 
@@ -487,6 +487,7 @@ output instead, or fix the source string.
 | `max_characters` | `number` | No | -- | Cost cap: abort sync if estimated characters exceed this limit (override with `--force`) |
 | `backup` | `boolean` | No | `true` | Create `.deepl.bak` copies of target files before overwriting; cleaned up after successful sync |
 | `max_scan_files` | `number` | No | `50000` | Hard ceiling on the number of files matched by `context.scan_paths`. Prevents a misconfigured pattern from wedging the CLI on shared CI with huge source trees and slow disks. Exceeding the cap throws `ValidationError` with a suggestion to narrow the pattern. Positive integer. |
+| `bak_sweep_max_age_seconds` | `number` | No | `300` (5 min) | How long a redundant `.deepl.bak` sibling is left on disk before the startup sweep removes it. Only ever applies to a backup whose target already holds the same bytes -- one whose target has diverged is kept however old it is (see [Watch Mode](#watch-mode-deepl-sync---watch)). Positive integer. |
 | `limits.max_entries_per_file` | `number` | No | `25000` | Per-file parser cap on extracted entry count. Files exceeding this are skipped with a warning. Hard ceiling: `100000`. Values above the ceiling fail at config load with `ConfigError` (exit 7). |
 | `limits.max_file_bytes` | `number` | No | `4194304` (4 MiB) | Per-file parser cap on on-disk size, checked via `fs.stat` before read. Files exceeding this are skipped with a warning. Hard ceiling: `10485760` (10 MiB). Values above the ceiling fail at config load with `ConfigError` (exit 7). |
 | `limits.max_depth` | `number` | No | `32` | Per-file parser cap on nesting depth. Protects against stack-overflow on adversarial input. Consumed by the Laravel PHP and JSON parsers (the ones that walk their tree recursively); other formats are bounded by their own parser instead. Files exceeding this are skipped with a warning, and the rest of the run continues. Hard ceiling: `64`. Values above the ceiling fail at config load with `ConfigError` (exit 7). |
@@ -506,7 +507,7 @@ Optional integration with a translation management system (TMS) for collaborativ
 | `timeout_ms` | `number` | No | `30000` | Per-request timeout in milliseconds for TMS HTTP calls (positive integer). Aborts the request via `AbortController` when exceeded. |
 | `push_concurrency` | `number` | No | `10` | Maximum number of in-flight `PUT /keys/{keyPath}` requests during `deepl sync push`. Positive integer. Applied per (file, locale) batch of entries; aborts remaining pushes on first failure. |
 
-**Removed fields.** `auto_push`, `auto_pull` and `require_review` were accepted by the schema and listed in this table, and no code ever read any of them -- a `require_review` a user configured expecting a human gate before pull got no gate and no warning. All three now fail config load with a `ConfigError` (exit 7) naming them, rather than being silently tolerated. Push and pull after or before a sync by running `deepl sync push` / `deepl sync pull` explicitly, which also keeps the credential and destination decision on a command you typed. A review gate cannot be enforced from the CLI side because the export contract below carries no per-entry review flag; use [`deepl sync pull --dry-run`](#deepl-sync-pull) to preview a pull and review the result before committing it.
+**Removed fields.** `auto_push`, `auto_pull` and `require_review` were accepted by the schema through `1.x`, and no code ever read any of them -- a `require_review` a user configured expecting a human gate before pull got no gate and no warning. All three now fail config load with a `ConfigError` (exit 7) naming them, rather than being silently tolerated. Push and pull after or before a sync by running `deepl sync push` / `deepl sync pull` explicitly, which also keeps the credential and destination decision on a command you typed. A review gate cannot be enforced from the CLI side because the export contract below carries no per-entry review flag; use [`deepl sync pull --dry-run`](#deepl-sync-pull) to preview a pull and review the result before committing it.
 
 ##### TMS destination trust
 
@@ -655,6 +656,8 @@ deepl sync [OPTIONS]
 | `--flag-for-review` | Mark translations as `machine_translated` in lock file for human review |
 | `--watch` | Watch source files and auto-sync on changes |
 | `--debounce <ms>` | Debounce delay for watch mode (default: 500ms) |
+| `-y`, `--yes` | Confirm `--force` without a prompt. Required to run `--force` unattended (no terminal, `--no-input`, CI) |
+| `--break-lock` | Take the sync lock even when `.deepl-sync.lock.pidfile` names a process that looks alive. Unsafe if that sync really is running -- see [Concurrent sync](#concurrent-sync) |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
 
 **Examples:**
@@ -752,7 +755,7 @@ deepl sync init [OPTIONS]
 | `--source-locale <code>` | Source locale code |
 | `--target-locales <codes>` | Target locales (comma-separated) |
 | `--file-format <type>` | File format (choices: `json`, `yaml`, `toml`, `po`, `android_xml`, `ios_strings`, `xcstrings`, `arb`, `xliff`, `properties`, `laravel_php`) |
-| `--path <glob>` | Source file path or glob pattern |
+| `--path <pattern>` | Source file path or glob pattern |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
 
 `--source-lang` and `--target-langs` were accepted as deprecated aliases during `1.x` and were removed in `2.0.0`; use `--source-locale` and `--target-locales`. The `--locale` filter on `sync push` / `pull` / `status` / `export` is unchanged. `deepl translate --target-lang` is unchanged — it operates on strings and stays aligned with the DeepL API's wire name.
@@ -834,7 +837,7 @@ Source: en (142 keys)
   ja  [##################..]  91%  (12 missing, 0 outdated)
 ```
 
-Each row shows: locale code, a 20-character ASCII progress bar (`#` = translated, `.` = missing/outdated), integer coverage percentage, and a parenthetical with missing and outdated key counts.
+Each row shows: locale code, a 20-character ASCII progress bar (`#` = complete, `.` = anything not complete), integer coverage percentage, and a parenthetical with the missing and outdated counts -- plus `N unwritten` and `N needs review` when either is non-zero.
 
 **JSON output:**
 
@@ -848,15 +851,18 @@ deepl sync status --format json
   "totalKeys": 142,
   "skippedKeys": 1,
   "locales": [
-    { "locale": "de", "complete": 140, "missing": 2, "outdated": 0, "coverage": 98 },
-    { "locale": "fr", "complete": 142, "missing": 0, "outdated": 0, "coverage": 100 },
-    { "locale": "es", "complete": 138, "missing": 4, "outdated": 0, "coverage": 97 },
-    { "locale": "ja", "complete": 130, "missing": 12, "outdated": 0, "coverage": 91 }
-  ]
+    { "locale": "de", "complete": 140, "missing": 2, "outdated": 0, "unwritten": 0, "needsReview": 0, "coverage": 98 },
+    { "locale": "fr", "complete": 142, "missing": 0, "outdated": 0, "unwritten": 0, "needsReview": 0, "coverage": 100 },
+    { "locale": "es", "complete": 138, "missing": 4, "outdated": 0, "unwritten": 0, "needsReview": 0, "coverage": 97 },
+    { "locale": "ja", "complete": 129, "missing": 12, "outdated": 0, "unwritten": 0, "needsReview": 1, "coverage": 90 }
+  ],
+  "unwrittenByLocale": []
 }
 ```
 
-**Per-locale fields:** `complete` — keys with a current translation; `missing` — keys with no translation entry; `outdated` — keys whose source content has changed since the last sync (translation exists but is stale); `coverage` — integer 0–100 computed as `complete / (complete + missing + outdated) * 100`.
+**Per-locale fields:** `complete` — keys with a current translation; `missing` — keys with no translation entry, or one recorded as a failed attempt; `outdated` — keys whose source content has changed since the last sync (translation exists but is stale); `unwritten` — keys the lock file records as translated that the target file does not hold (see [A string added after the first sync](#a-string-added-after-the-first-sync)); `needsReview` — keys whose translation is present but marked as needing review, a gettext `#, fuzzy` msgstr or an XLIFF review `state` (see [Bilingual formats: PO and XLIFF](#bilingual-formats-po-and-xliff)); `coverage` — integer 0–100 computed as `complete / (complete + missing + outdated + unwritten + needsReview) * 100`. Neither `unwritten` nor `needsReview` is ever counted as `complete`.
+
+**`unwrittenByLocale`** is a top-level array carrying the keys behind each locale's `unwritten` count: `{ "locale", "file", "keys": [...] }`, plus an `unusable` field holding the read or parse error when the target file itself could not be read.
 
 **`skippedKeys`** counts entries the parser tagged as untranslatable and excluded from the translation batch — currently only Laravel pipe-pluralization values (`|{n}`, `|[n,m]`, `|[n,*]`). Included in `totalKeys`; round-trip byte-verbatim via reconstruct.
 
@@ -883,29 +889,29 @@ deepl sync validate [OPTIONS]
 **Example output:**
 
 ```
-Validation Results:
+$ deepl sync validate
+Checked 4 translations
 
-  de:
-    ✓ 138/140 strings valid
-    ✗ 2 issues found:
-      - messages.welcome: placeholder {name} missing in translation
-      - errors.count: format specifier %d replaced with %s
+  ERROR  de/greeting: Missing placeholders in translation: {name}
+  WARN  de/bye: Translation is identical to source text
 
-  fr:
-    ✓ 142/142 strings valid
-
-  2 issues found across 1 locale.
+1 error(s), 1 warning(s)
 ```
+
+One line per issue, `ERROR` or `WARN` followed by `<locale>/<key>` and the check's message. A run with no issues prints the header and `All translations passed validation.` Any error-severity issue exits **8** (`CheckFailed`); warnings alone still exit 0.
+
+**JSON output** (`--format json`) carries `totalChecked`, `passed`, `warnings`, `errors`, and an `issues` array whose entries hold `key`, `source`, `translation`, `severity`, `locale`, `file`, and a nested `issues` array of `{ check, severity, message, details }`.
 
 **Checks performed:**
 
 - Named placeholders present in translation (e.g., `{name}`, `{{count}}`, `%{user}`)
 - Format specifiers match source (e.g., `%d`, `%s`, `%@`)
-- HTML/XML tags balanced and matching
+- Every HTML/XML tag in the source is still present in the translation (warning; tag nesting and balance are not checked, and extra tags in the translation are not reported)
 - ICU message syntax valid (plurals, selects)
 - No untranslated strings copied verbatim from source
 - Length ratio warnings (translation >150% of source length)
-- Key count matches between source and target files
+
+Key-level completeness is **not** a validate check: a target file missing keys the lock file claims is reported by `deepl sync status` as `unwritten` (see [A string added after the first sync](#a-string-added-after-the-first-sync)), not here. Validate compares source/translation pairs it can actually see.
 
 ### `deepl sync export`
 
@@ -945,6 +951,7 @@ deepl sync resolve [OPTIONS]
 |------|-------------|
 | `--format <fmt>` | Output format: `text` (default), `json` |
 | `--dry-run` | Print the per-entry decision report without writing the lockfile |
+| `--break-lock` | Take the sync lock even when `.deepl-sync.lock.pidfile` names a process that looks alive. Unsafe if that sync really is running -- see [Concurrent sync](#concurrent-sync) |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
 
 **Output.** The resolver now emits a per-entry report: one line per decision, plus a summary. Each line names the file, key, chosen side (`kept ours` / `kept theirs`), and the reason (typically the winning `translated_at` timestamp). Example:
@@ -956,7 +963,7 @@ WARN  locales/de/app.json:<conflict-region> — parse-error fallback used, JSON.
 Resolved 3 conflicts (1 theirs, 1 ours, 1 length-heuristic). Run "deepl sync" to fill any gaps.
 ```
 
-**The tie-break arbitrates a whole translation, never its fields.** A conflicting pair is arbitrated as one unit whenever *either* side looks like a translation, so the resolver cannot emit a translation whose fields come from both sides — the failure the one-line format described under [`.deepl-sync.lock`](#deepl-sync-lock) exists to prevent. That matters because `translated_at` is not guaranteed to be there: nothing validates it on read, and `human_reviewed` is only ever set by hand, so a hand-edited entry can be missing it. Each case is decided explicitly and named in the report:
+**The tie-break arbitrates a whole translation, never its fields.** A conflicting pair is arbitrated as one unit whenever *either* side looks like a translation, so the resolver cannot emit a translation whose fields come from both sides — the failure the one-line format described under [`.deepl-sync.lock`](#deepl-synclock) exists to prevent. That matters because `translated_at` is not guaranteed to be there: nothing validates it on read, and `human_reviewed` is only ever set by hand, so a hand-edited entry can be missing it. Each case is decided explicitly and named in the report:
 
 | Both sides | Kept | Reported as |
 |------------|------|-------------|
@@ -969,7 +976,7 @@ A `translated_at` that is not a string counts as absent rather than being compar
 
 **Region terminators.** A conflict region that sits inside an object is a sequence of members, and unless it is the last one it ends with a comma joining it to the member that follows. The resolver takes that comma off before parsing the region and puts it back afterwards — without this, every region but the last failed to parse and fell to the length heuristic below, so the documented `translated_at` tie-break never ran. When the two sides *disagree* on whether the region ends a member list — one side deleted what the other modified — no terminator can be correct for both, so the region falls to the heuristic rather than risk emitting invalid JSON.
 
-**Canonical output.** Resolving rebuilds each merged region, so the resolved lockfile is written back in the canonical format described under [`.deepl-sync.lock`](#deepl-sync-lock) rather than with the resolver's own indentation. Committing a resolved lockfile therefore cannot leave translations expanded across lines for the next merge to recombine.
+**Canonical output.** Resolving rebuilds each merged region, so the resolved lockfile is written back in the canonical format described under [`.deepl-sync.lock`](#deepl-synclock) rather than with the resolver's own indentation. Committing a resolved lockfile therefore cannot leave translations expanded across lines for the next merge to recombine.
 
 **Fallback behavior.** When `JSON.parse` fails on a conflict fragment (e.g., conflict markers landed mid-entry and split the JSON), the resolver falls back to a length-heuristic: the longer side wins. This is now **loud** — it logs a `WARN` line naming the file + conflict region with the truncated parse error, and the decision is tagged `length-heuristic` in the report. Earlier releases ran this heuristic silently, making auto-resolve a data-loss risk the user could not audit without a diff against git history. Inspect any `length-heuristic` entries and consider resolving them by hand.
 
@@ -1068,6 +1075,8 @@ deepl sync push [OPTIONS]
 
 **A key with no translation yet is not pushed.** Push reads each target file and uploads the translation it holds. A bilingual target file (see [Bilingual formats: PO and XLIFF](#bilingual-formats-po-and-xliff)) lists every key the source has, translated or not, so pushing such a key would upload its source text as the locale's translation and make the TMS the authority for it -- a later `pull` would then write English into the target file. Those keys are skipped and reported under the `untranslated` reason, with the pushed count reflecting only what was actually sent. A PO entry flagged `#, fuzzy`, and an XLIFF unit whose review `state` says the translation is not finished, are skipped too, under `needs_review`: they have a translation, but one their own toolchain will not ship (see [Bilingual formats](#bilingual-formats-po-and-xliff)). For a monolingual format nothing is skipped on this account: every key the target file lists has a value.
 
+Two further reasons can appear in the `(N skipped: …)` summary for either command: `no_matches`, when a bucket's source file yielded no keys for that locale, and `pipe_pluralization`, for Laravel pipe-pluralization values (`|{n}`, `|[n,m]`, `|[n,*]`), which are never sent to a TMS -- one exported string cannot fill their branches, the same reason `plural_entry` exists for gettext and Android plurals.
+
 ### `deepl sync pull`
 
 Pull approved translations from a TMS back into local files.
@@ -1084,6 +1093,7 @@ deepl sync pull [OPTIONS]
 | `--format <fmt>` | Output format: `text` (default), `json` |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
 | `--dry-run` | Preview what the pull would change without writing any file |
+| `--break-lock` | Take the sync lock even when `.deepl-sync.lock.pidfile` names a process that looks alive. Unsafe if that sync really is running -- see [Concurrent sync](#concurrent-sync) |
 
 Each target locale's approved dictionary is fetched exactly once per `sync pull` run (one GET per locale from the TMS export endpoint), then applied to every matching source file locally. Projects with many source files per bucket do not multiply wire bytes by the source-file count.
 
@@ -1140,7 +1150,7 @@ jobs:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
 ```
 
-The `--frozen` flag causes the sync engine to exit with code 10 if any translations are missing or outdated, without making any API calls. This is ideal for pull request checks.
+The `--frozen` flag causes the sync engine to exit with code 10 if any translations are missing or outdated. It performs the drift check entirely from `.deepl-sync.lock` and the target files and issues no API requests, but it still requires a configured API key and exits 2 (`AuthError`) without one — so a fork-originated pull request, where `secrets` are empty, needs either a key available to forks or a job condition that skips the check. This is ideal for same-repository pull request checks.
 
 ### GitHub Actions (auto-sync)
 
@@ -1287,6 +1297,9 @@ Each target locale translates independently. If the API returns a transient erro
 |------|---------|
 | 0 | Success -- all translations up to date |
 | 1 | General error -- unclassified failure (inspect stderr) |
+| 2 | Authentication error -- API key missing or rejected; aborts the whole run, since every locale shares the credential |
+| 3 | Rate limit exceeded -- retryable |
+| 5 | Network error -- DeepL API or TMS unreachable (connection refused, DNS failure, timeout); retryable |
 | 6 | Invalid input -- bad arguments or unsupported format |
 | 7 | Config error -- invalid or missing `.deepl-sync.yaml` |
 | 8 | Validation failed -- `deepl sync validate` found issues |
