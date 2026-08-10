@@ -3,6 +3,10 @@ name: Release
 # This workflow only records the GitHub Release for a tag. Publishing to npm
 # happens from GitLab, so no `npm publish` step or NPM_TOKEN secret belongs in
 # this repository.
+#
+# GitHub is upstream: GitLab pull-mirrors this repository and publishes from
+# there, so a tag pushed here reaches the publish pipeline on its own. Never
+# hand-push to GitLab.
 on:
   push:
     tags:
