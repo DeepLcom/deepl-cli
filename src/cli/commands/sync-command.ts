@@ -232,7 +232,7 @@ function formatCostEstimate(characters: number): string {
 
 /**
  * Stable public shape emitted by `deepl sync --format json`.
- * Every field listed here is guaranteed stable across 1.x.
+ * Every field listed here is guaranteed stable across 2.x.
  * Internal SyncResult fields not listed here are intentionally omitted.
  */
 export interface SyncJsonOutput {

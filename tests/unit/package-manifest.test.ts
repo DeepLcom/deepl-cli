@@ -117,7 +117,11 @@ describe('package.json manifest', () => {
     });
 
     it('should point repository metadata at the DeepL org, not the legacy DeepLcom redirect', () => {
-      expect(pkg.repository.url).toBe('https://github.com/DeepL/deepl-cli');
+      // `repository.url` carries npm's canonical `git+….git` form; `bugs` and
+      // `homepage` are plain browsable URLs.
+      expect(pkg.repository.url).toBe(
+        'git+https://github.com/DeepL/deepl-cli.git'
+      );
       expect(pkg.bugs.url).toBe('https://github.com/DeepL/deepl-cli/issues');
       expect(pkg.homepage).toBe('https://github.com/DeepL/deepl-cli#readme');
     });

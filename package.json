@@ -1,6 +1,6 @@
 {
   "name": "@deepl/cli",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "publishConfig": {
     "access": "public"
   },
@@ -19,6 +19,7 @@
     "!dist/**/*.tsbuildinfo",
     "!dist/**/*.js.map",
     "!dist/**/*.d.ts.map",
+    "docs",
     "README.md",
     "LICENSE",
     "SECURITY.md"
@@ -58,7 +59,13 @@
     "localization",
     "translation-tool",
     "command-line",
-    "typescript"
+    "typescript",
+    "deepl-write",
+    "glossary",
+    "translation-memory",
+    "gettext",
+    "xliff",
+    "continuous-localization"
   ],
   "author": "DeepL SE",
   "license": "MIT",
@@ -111,7 +118,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/DeepL/deepl-cli"
+    "url": "git+https://github.com/DeepL/deepl-cli.git"
   },
   "bugs": {
     "url": "https://github.com/DeepL/deepl-cli/issues"
