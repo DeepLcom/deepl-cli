@@ -22,11 +22,13 @@ removed flag it does not announce itself.
 
 ## Requirements
 
-**Node.js 24 or later** — up from 20. The cache now uses Node's built-in
+**Node.js 24.15.0 or later** — up from 20. The cache now uses Node's built-in
 `node:sqlite` instead of the `better-sqlite3` native addon, so there is no
 compilation step and no `ERR_DLOPEN_FAILED` after a Node upgrade, but the runtime
-floor is higher. Running under an older Node fails fast with a one-line error and
-exit 6 rather than crashing later.
+floor is higher. 24.15.0 is the release where `node:sqlite` stopped emitting an
+`ExperimentalWarning`, which would otherwise reach stderr on every cache-backed
+command. Running under an older Node fails fast with a one-line error and exit 6
+rather than crashing later.
 
 **The package is published as `@deepl/cli`.** The command is still `deepl`.
 
@@ -337,7 +339,7 @@ assigned it *to* a `WriteLanguage` variable needs a check or a cast.
 
 ## Upgrade checklist
 
-1. Move to Node 24 and reinstall from `@deepl/cli`.
+1. Move to Node 24.15.0 or later and reinstall from `@deepl/cli` (or `brew install deepl/tap/deepl`).
 2. Remove `--enable-beta-languages`; rename `sync init --source-lang`/`--target-langs`.
 3. Delete `tms.auto_push`, `tms.auto_pull` and `tms.require_review` from `.deepl-sync.yaml`.
 4. Add `--yes` to any non-interactive `deepl sync --force`.

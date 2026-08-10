@@ -58,7 +58,15 @@ For security policy and vulnerability reporting, see [SECURITY.md](https://githu
 
 ## 📦 Installation
 
-> **Prerequisite:** Node.js **24 or later**. The cache uses Node's built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html) module — no native compilation, no build toolchain needed.
+> **Prerequisite:** Node.js **24.15.0 or later**. The cache uses Node's built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html) module — no native compilation, no build toolchain needed. 24.15.0 is the release where `node:sqlite` stopped being experimental; Homebrew installs a suitable Node for you.
+
+### Homebrew (macOS / Linux)
+
+```bash
+brew install deepl/tap/deepl
+```
+
+This installs the `deepl` command and everything it needs, including Node.
 
 ### npm
 
@@ -70,16 +78,6 @@ deepl --version
 ```
 
 The package is scoped, but the command is just `deepl`.
-
-### Homebrew (macOS / Linux)
-
-_Not available yet. The `deepl/tap` formula is planned; until it exists, install with npm._
-
-```bash
-brew install deepl/tap/deepl
-```
-
-Once available, this installs the `deepl` command and everything it needs, including Node.
 
 ### From Source
 
@@ -103,7 +101,7 @@ deepl --version
 
 ## 🔀 Upgrading from 1.x
 
-2.0.0 requires Node 24, renames the package to `@deepl/cli`, removes several
+2.0.0 requires Node 24.15.0, renames the package to `@deepl/cli`, removes several
 deprecated flags, and changes a number of exit codes and output shapes that scripts
 read. If you have a pipeline built on 1.x, read
 **[docs/MIGRATION.md](https://github.com/DeepL/deepl-cli/blob/main/docs/MIGRATION.md)** before upgrading — it lists every

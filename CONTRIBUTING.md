@@ -12,7 +12,7 @@ project maintainer.
 
 ## Prerequisites
 
-- **Node.js** >= 24.0.0
+- **Node.js** >= 24.15.0 (the release where `node:sqlite` stopped being experimental)
 - **npm** >= 9.0.0
 - A [DeepL API key](https://www.deepl.com/pro-api) (free tier works for development)
 
