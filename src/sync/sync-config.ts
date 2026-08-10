@@ -259,14 +259,20 @@ function validateTmThreshold(value: unknown, keyPath: string): void {
 function validateTmModelType(
   translation: Record<string, unknown>,
   keyPath: string,
-  tmInherited: boolean
+  tmInherited: boolean,
+  inheritedModelType?: unknown
 ): void {
   const hasTm = tmInherited || translation['translation_memory'] !== undefined;
   if (!hasTm) return;
-  const mt = translation['model_type'];
+  // Mirrors how the translator resolves the value: a locale override wins, and
+  // otherwise the top-level setting applies to this locale too.
+  const own = translation['model_type'];
+  const mt = own ?? inheritedModelType;
   if (mt !== undefined && mt !== 'quality_optimized') {
+    const source =
+      own !== undefined ? `${keyPath}.model_type` : 'translation.model_type';
     throw new ConfigError(
-      `${keyPath}.model_type must be 'quality_optimized' when translation_memory is set, got: ${String(mt)}`,
+      `${source} must be 'quality_optimized' when translation_memory is set, got: ${String(mt)}`,
       `Set ${keyPath}.model_type: quality_optimized or remove translation_memory.`
     );
   }
@@ -673,7 +679,8 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
         validateTmModelType(
           ov,
           `translation.locale_overrides.${locale}`,
-          topLevelTm
+          topLevelTm,
+          t['model_type']
         );
       }
     }

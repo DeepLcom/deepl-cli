@@ -5,6 +5,7 @@ import type { ModelType } from '../types/api.js';
 
 export interface SyncLocaleOverrides {
   formality?: Formality;
+  model_type?: ModelType;
   glossary?: string;
   translation_memory?: string;
   translation_memory_threshold?: number;

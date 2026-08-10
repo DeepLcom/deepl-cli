@@ -1982,6 +1982,123 @@ describe('SyncService', () => {
     });
   });
 
+  describe('sync() — per-locale model_type override', () => {
+    const TM_UUID_DE = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+
+    const modelTypeOf = (calls: unknown[][], locale: string): unknown =>
+      (
+        calls.find(
+          (c) => (c[1] as Record<string, unknown>)['targetLang'] === locale
+        )![1] as Record<string, unknown>
+      )['modelType'];
+
+    it('should prefer the per-locale model_type and leave other locales on the top-level value', async () => {
+      setupLockManager(makeEmptyLockFile());
+      const translateBatch = jest.fn().mockResolvedValue([
+        { text: 'x', billedCharacters: 1 },
+        { text: 'y', billedCharacters: 1 },
+      ]);
+      const { service } = createService({ translateBatch });
+
+      mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
+      mockReadFile.mockImplementation(async (p: unknown) => {
+        if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
+        throw enoent();
+      });
+
+      await service.sync(
+        makeConfig({
+          target_locales: ['de', 'fr'],
+          translation: {
+            model_type: 'latency_optimized',
+            locale_overrides: { de: { model_type: 'quality_optimized' } },
+          },
+        })
+      );
+
+      expect(modelTypeOf(translateBatch.mock.calls, 'de')).toBe(
+        'quality_optimized'
+      );
+      expect(modelTypeOf(translateBatch.mock.calls, 'fr')).toBe(
+        'latency_optimized'
+      );
+    });
+
+    it('should send the per-locale model_type when no top-level model_type is set', async () => {
+      setupLockManager(makeEmptyLockFile());
+      const translateBatch = jest.fn().mockResolvedValue([
+        { text: 'x', billedCharacters: 1 },
+        { text: 'y', billedCharacters: 1 },
+      ]);
+      const { service } = createService({ translateBatch });
+
+      mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
+      mockReadFile.mockImplementation(async (p: unknown) => {
+        if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
+        throw enoent();
+      });
+
+      await service.sync(
+        makeConfig({
+          target_locales: ['de', 'fr'],
+          translation: {
+            locale_overrides: { de: { model_type: 'quality_optimized' } },
+          },
+        })
+      );
+
+      expect(modelTypeOf(translateBatch.mock.calls, 'de')).toBe(
+        'quality_optimized'
+      );
+      expect(modelTypeOf(translateBatch.mock.calls, 'fr')).toBeUndefined();
+    });
+
+    // The billing hazard the validator was guarding against: a per-locale TM is
+    // only honoured by the API under quality_optimized, so the model_type that
+    // sits beside it has to reach the same request.
+    it('should apply a per-locale translation_memory together with its model_type', async () => {
+      setupLockManager(makeEmptyLockFile());
+      const translateBatch = jest.fn().mockResolvedValue([
+        { text: 'x', billedCharacters: 1 },
+        { text: 'y', billedCharacters: 1 },
+      ]);
+      const { service, mockTranslation } = createService({ translateBatch });
+      mockTranslation.listTranslationMemories.mockResolvedValue([
+        {
+          translation_memory_id: TM_UUID_DE,
+          name: 'de-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
+      ]);
+
+      mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+
+      await service.sync(
+        makeConfig({
+          target_locales: ['de'],
+          translation: {
+            locale_overrides: {
+              de: {
+                translation_memory: 'de-tm',
+                model_type: 'quality_optimized',
+              },
+            },
+          },
+        })
+      );
+
+      const deCall = translateBatch.mock.calls.find(
+        (c) => (c[1] as Record<string, unknown>)['targetLang'] === 'de'
+      );
+      expect(deCall![1]).toMatchObject({
+        translationMemoryId: TM_UUID_DE,
+        modelType: 'quality_optimized',
+      });
+    });
+  });
+
   describe('sync() — per-locale glossary override resolution', () => {
     it('should resolve per-locale glossary name via glossaryService', async () => {
       setupLockManager(makeEmptyLockFile());

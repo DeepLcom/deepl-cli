@@ -306,7 +306,7 @@ export class LocaleTranslator {
       translationMemoryThreshold:
         localeOverrides?.translation_memory_threshold ??
         config.translation?.translation_memory_threshold,
-      modelType: config.translation?.model_type,
+      modelType: localeOverrides?.model_type ?? config.translation?.model_type,
       customInstructions:
         localeOverrides?.custom_instructions ??
         config.translation?.custom_instructions,

@@ -1033,6 +1033,42 @@ describe('sync-config', () => {
         });
         expect(result.translation?.model_type).toBe('latency_optimized');
       });
+
+      // The top-level model_type applies to a locale that does not override it,
+      // so a per-locale TM inherits it and the pairing has to be checked there.
+      it('should reject a per-locale TM that inherits a non-quality top-level model_type', () => {
+        expect(() =>
+          validateSyncConfig({
+            ...baseConfig,
+            translation: {
+              model_type: 'latency_optimized',
+              locale_overrides: {
+                de: { translation_memory: 'de-tm' },
+              },
+            },
+          })
+        ).toThrow(
+          "translation.model_type must be 'quality_optimized' when translation_memory is set, got: latency_optimized"
+        );
+      });
+
+      it('should accept a per-locale TM whose own model_type overrides a non-quality top-level value', () => {
+        const result = validateSyncConfig({
+          ...baseConfig,
+          translation: {
+            model_type: 'latency_optimized',
+            locale_overrides: {
+              de: {
+                translation_memory: 'de-tm',
+                model_type: 'quality_optimized',
+              },
+            },
+          },
+        });
+        expect(result.translation?.locale_overrides?.['de']?.model_type).toBe(
+          'quality_optimized'
+        );
+      });
     });
 
     describe('strict unknown-field rejection', () => {
