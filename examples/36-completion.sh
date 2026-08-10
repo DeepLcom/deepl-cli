@@ -46,5 +46,5 @@ echo "=== Shell Completions Examples Complete ==="
 echo
 echo "Tips:"
 echo "  - Completions cover all commands, subcommands, and flags"
-echo "  - Regenerate after upgrading deepl-cli"
+echo "  - Regenerate after upgrading @deepl/cli"
 echo "  - Works without an API key"

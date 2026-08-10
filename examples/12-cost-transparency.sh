@@ -89,7 +89,7 @@ cat > "$TEMP_DIR/technical.md" << 'EOF'
 Run the following command:
 
 ```bash
-npm install deepl-cli
+npm install -g @deepl/cli
 ```
 
 Then configure your API key: `deepl auth set-key YOUR_KEY`

@@ -117,6 +117,9 @@ cat << 'WORKFLOW'
        runs-on: ubuntu-latest
        steps:
          - uses: actions/checkout@v4
+         - uses: actions/setup-node@v4
+           with:
+             node-version: 24
          - run: npm install -g @deepl/cli
          - name: Check translations are up to date
            run: deepl sync --frozen
@@ -131,7 +134,7 @@ echo
 cat << 'GITLAB'
    i18n-check:
      stage: test
-     image: node:20
+     image: node:24
      script:
        - npm install -g @deepl/cli
        - deepl sync --frozen
@@ -158,6 +161,9 @@ cat << 'AUTOSYNC'
        runs-on: ubuntu-latest
        steps:
          - uses: actions/checkout@v4
+         - uses: actions/setup-node@v4
+           with:
+             node-version: 24
          - run: npm install -g @deepl/cli
          - name: Sync translations
            run: deepl sync --format json

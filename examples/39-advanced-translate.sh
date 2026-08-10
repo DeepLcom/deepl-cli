@@ -49,8 +49,8 @@ echo
 echo "✓ Translation with v2 tag handling complete"
 echo
 echo "Tag handling versions:"
-echo "  --tag-handling-version v1   Original tag handling (default)"
-echo "  --tag-handling-version v2   Improved structure handling"
+echo "  --tag-handling-version v2   Improved structure handling (default)"
+echo "  --tag-handling-version v1   Original tag handling (heading for deprecation)"
 echo "  (requires --tag-handling xml or --tag-handling html)"
 echo
 
@@ -157,7 +157,7 @@ echo "=== Advanced Options Summary ==="
 echo
 echo "Tag handling:"
 echo "  --tag-handling <xml|html>          Enable tag handling mode"
-echo "  --tag-handling-version <v1|v2>     Tag handling version (v2 = improved)"
+echo "  --tag-handling-version <v1|v2>     Tag handling version (v2 = improved, default)"
 echo
 echo "API endpoint:"
 echo "  --api-url <url>                    Custom API endpoint URL"
