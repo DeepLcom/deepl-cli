@@ -13,6 +13,7 @@ Common issues and solutions when using the DeepL CLI.
 - [Voice API Errors (Exit Code 9)](#voice-api-errors-exit-code-9)
 - [Write API Issues](#write-api-issues)
 - [Configuration Errors (Exit Code 7)](#configuration-errors-exit-code-7)
+  - ["Another sync is already running" (Exit Code 7)](#another-sync-is-already-running-exit-code-7)
 - [Input Validation Errors (Exit Code 6)](#input-validation-errors-exit-code-6)
 - [Cache Issues](#cache-issues)
 - [Document Translation Issues](#document-translation-issues)
@@ -202,6 +203,8 @@ Common issues and solutions when using the DeepL CLI.
 - **Exit 0** — Text is clean, no improvements suggested.
 - **Exit 8** — Improvements were found and suggested.
 
+The same code is returned by `deepl correct --check` and by `deepl sync validate`, which exits 8 when it finds any error-severity issue (a lost placeholder, rewritten ICU structure, or a target file it could not read). Warnings alone leave `sync validate` at exit 0.
+
 This exit code is useful in CI/CD pipelines or scripts to detect when text could be improved:
 
 ```bash
@@ -271,17 +274,17 @@ Supported formats: `audio/ogg`, `audio/webm`, `audio/flac`, `audio/mpeg`, `audio
 
 ### Style or tone not applied
 
-**Cause:** The formality or style parameter may not be supported for the target language, or the text already matches the requested style.
+**Cause:** The requested `--style` or `--tone` may not be supported for the target language, or the text already matches it. `deepl write` has no `--formality` flag — formality is a `deepl translate` / `deepl voice` option; on Write, register is controlled by `--style` (`simple`, `business`, `academic`, `casual`, and their `prefer_*` forms) and `--tone` (`enthusiastic`, `friendly`, `confident`, `diplomatic`, and their `prefer_*` forms).
 
 **Solutions:**
 
-1. Not all languages support formality settings. Check the DeepL API documentation for supported languages.
-
-2. Verify you are using valid formality values:
+1. Check the accepted values:
 
    ```bash
    deepl write --help
    ```
+
+2. Use a `prefer_*` value (e.g. `--style prefer_business`) so the API falls back rather than rejecting the request when the exact style is unavailable for that language.
 
 3. Use `--verbose` to inspect the API response and confirm the style was applied.
 
@@ -340,10 +343,11 @@ The config file location depends on your setup (see [Configuration Paths](../REA
    deepl config list
    ```
 
-2. Reset a specific setting:
+2. Overwrite a specific setting, or reset the whole config:
 
    ```bash
    deepl config set <key> <value>
+   deepl config reset            # clears every stored setting; add --yes to skip the prompt
    ```
 
 3. If the config file is corrupted, remove it and reconfigure:
@@ -357,6 +361,25 @@ The config file location depends on your setup (see [Configuration Paths](../REA
    ```bash
    export DEEPL_CONFIG_DIR=/path/to/config
    ```
+
+### "Another sync is already running" (Exit Code 7)
+
+**Cause:** `deepl sync`, `deepl sync pull` and `deepl sync resolve` take a per-project lock by writing `.deepl-sync.lock.pidfile`. A second invocation that finds a pidfile naming a live PID exits 7 rather than letting two runs overwrite each other's target files and lockfile.
+
+**Solutions:**
+
+1. Wait for the other run, or find it: the error names the PID and the time it started.
+2. If that sync is definitely not running — a crashed run whose PID has been recycled — take the lock explicitly:
+
+   ```bash
+   deepl sync --break-lock
+   ```
+
+   Deleting `.deepl-sync.lock.pidfile` by hand does the same thing. Both are unsafe if the sync really is running.
+
+3. A pidfile whose PID is simply gone is reclaimed automatically with a warning; no action needed.
+
+See [docs/SYNC.md — Concurrent sync](SYNC.md#concurrent-sync) for the full arbitration rules, and that guide's [Troubleshooting](SYNC.md#troubleshooting) section for sync-specific issues behind exit codes 10, 11 and 12.
 
 ---
 
@@ -451,7 +474,7 @@ deepl translate ./docs --to es --output ./docs-es
 
 ### Unsupported document format
 
-Supported document formats: PDF, DOCX, DOC, PPTX, XLSX, TXT, HTML, HTM, XLF, XLIFF, SRT, JPG, JPEG, PNG. See [docs/API.md](API.md) for the complete list of supported formats.
+Supported: PDF, DOCX, DOC, PPTX, XLSX, JPG, JPEG, PNG (document API); TXT, HTML, HTM, SRT, XLF, XLIFF (routed by size); MD (cached text API); JSON, YAML, YML (structured file API — string values extracted, translated, and reassembled). See [docs/API.md](API.md) for the per-format routing rules and size limits.
 
 ```bash
 deepl translate document.docx --to fr --output translated.docx
@@ -487,7 +510,7 @@ deepl translate document.docx --to fr --output translated.docx
 | 5    | Network error                      | Yes        |
 | 6    | Invalid input                      | No         |
 | 7    | Configuration error                | No         |
-| 8    | Check found issues (write --check) | No         |
+| 8    | Check found issues (`write --check`, `correct --check`, `sync validate`) | No |
 | 9    | Voice API error                    | No         |
 | 10   | Sync drift detected (sync --frozen) | No        |
 | 11   | Sync lockfile conflict             | No         |
