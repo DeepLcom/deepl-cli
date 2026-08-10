@@ -68,26 +68,40 @@ describe('CacheService size accounting', () => {
     svc.close();
   });
 
-  it('does not evict fresh entries after expired rows were deleted via get()', async () => {
-    const maxSize = 1500;
-    const svc = new CacheService({ dbPath, maxSize, ttl: 40 });
+  // Expiry is a Date.now() comparison made when a row is read, and the cache
+  // holds no timers of its own, so fake timers drive this exactly. They are also
+  // required rather than tidier: this is the one assertion in the suite that
+  // needs time NOT to pass, and against a real clock a scheduler pause between
+  // writing 'd' and reading it expires the entry and fails the test.
+  it('does not evict fresh entries after expired rows were deleted via get()', () => {
+    jest.useFakeTimers();
+    try {
+      const maxSize = 1500;
+      const ttl = 40;
+      const svc = new CacheService({ dbPath, maxSize, ttl });
 
-    for (const key of ['a', 'b', 'c']) {
-      svc.set(key, 'x'.repeat(478)); // 480 bytes each, 1440 total
+      for (const key of ['a', 'b', 'c']) {
+        svc.set(key, 'x'.repeat(478)); // 480 bytes each, 1440 total
+      }
+
+      jest.advanceTimersByTime(ttl * 2);
+
+      expect(svc.get('a')).toBeNull();
+      expect(svc.get('b')).toBeNull();
+      expect(svc.get('c')).toBeNull();
+
+      svc.set('d', 'x'.repeat(98)); // 100 bytes
+      svc.set('e', 'x'.repeat(98)); // 100 bytes; 200 total, far below the cap
+
+      // No time is advanced here, so neither entry can have expired: a null now
+      // means the sweep evicted a fresh row, which is the defect under test.
+      expect(svc.get('d')).not.toBeNull();
+      expect(svc.get('e')).not.toBeNull();
+
+      svc.close();
+    } finally {
+      jest.useRealTimers();
     }
-    await sleep(80);
-
-    expect(svc.get('a')).toBeNull();
-    expect(svc.get('b')).toBeNull();
-    expect(svc.get('c')).toBeNull();
-
-    svc.set('d', 'x'.repeat(98)); // 100 bytes
-    svc.set('e', 'x'.repeat(98)); // 100 bytes; 200 total, far below the cap
-
-    expect(svc.get('d')).not.toBeNull();
-    expect(svc.get('e')).not.toBeNull();
-
-    svc.close();
   });
 
   it('keeps enforcing the cap after sweeping rows another instance wrote', async () => {
