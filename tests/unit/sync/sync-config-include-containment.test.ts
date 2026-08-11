@@ -16,7 +16,9 @@ function configWithInclude(include: string[]): Record<string, unknown> {
     version: 1,
     source_locale: 'en',
     target_locales: ['de'],
-    buckets: { json: { include, target_path_pattern: 'locales/{locale}.json' } },
+    buckets: {
+      json: { include, target_path_pattern: 'locales/{locale}.json' },
+    },
   };
 }
 
@@ -32,14 +34,16 @@ describe('bucket include containment', () => {
 
   it('should reject a traversing entry even when other entries are fine', () => {
     expect(() =>
-      validateSyncConfig(configWithInclude(['locales/en.json', '../../etc/*.json'])),
+      validateSyncConfig(
+        configWithInclude(['locales/en.json', '../../etc/*.json'])
+      )
     ).toThrow();
   });
 
   it('should name the offending bucket and glob in the error', () => {
-    expect(() => validateSyncConfig(configWithInclude(['../evil/*.json']))).toThrow(
-      /include/i,
-    );
+    expect(() =>
+      validateSyncConfig(configWithInclude(['../evil/*.json']))
+    ).toThrow(/include/i);
   });
 
   it.each([
@@ -55,7 +59,7 @@ describe('bucket include containment', () => {
 
   it('should still reject a non-string include entry', () => {
     expect(() =>
-      validateSyncConfig(configWithInclude([42 as unknown as string])),
+      validateSyncConfig(configWithInclude([42 as unknown as string]))
     ).toThrow();
   });
 

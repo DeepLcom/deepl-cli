@@ -16,7 +16,10 @@ const PATTERNS_PER_FILE = 20;
 const KEY_COUNT = 10_000;
 const THRESHOLD_MS = 2_000;
 
-function buildFixture(): { patterns: TemplatePatternMatch[]; knownKeys: string[] } {
+function buildFixture(): {
+  patterns: TemplatePatternMatch[];
+  knownKeys: string[];
+} {
   const patterns: TemplatePatternMatch[] = [];
   for (let f = 0; f < FILE_COUNT; f++) {
     for (let p = 0; p < PATTERNS_PER_FILE; p++) {
@@ -48,17 +51,20 @@ describe('resolveTemplatePatterns dedup', () => {
       pattern: 'a.${k}.title',
       filePath: 'base.tsx',
       line: 1,
-      surroundingCode: "t(`a.${k}.title`)",
+      surroundingCode: 't(`a.${k}.title`)',
       matchedFunction: 't',
     };
 
-    const uniqueExtras: TemplatePatternMatch[] = Array.from({ length: UNIQUE_PATTERNS - 1 }, (_, i) => ({
-      pattern: `b.\${k${i}}.title`,
-      filePath: `extra${i}.tsx`,
-      line: i + 1,
-      surroundingCode: `t(\`b.\${k${i}}.title\`)`,
-      matchedFunction: 't',
-    }));
+    const uniqueExtras: TemplatePatternMatch[] = Array.from(
+      { length: UNIQUE_PATTERNS - 1 },
+      (_, i) => ({
+        pattern: `b.\${k${i}}.title`,
+        filePath: `extra${i}.tsx`,
+        line: i + 1,
+        surroundingCode: `t(\`b.\${k${i}}.title\`)`,
+        matchedFunction: 't',
+      })
+    );
 
     const singlePatterns = [base, ...uniqueExtras];
     const dupPatterns = [
@@ -85,7 +91,9 @@ describe('resolveTemplatePatterns dedup', () => {
 
       const start = Date.now();
       const seen = new Set<string>();
-      const deduped = patterns.filter((t) => !seen.has(t.pattern) && seen.add(t.pattern));
+      const deduped = patterns.filter(
+        (t) => !seen.has(t.pattern) && seen.add(t.pattern)
+      );
       const dedupMs = Date.now() - start;
 
       const startSlow = Date.now();
@@ -93,9 +101,13 @@ describe('resolveTemplatePatterns dedup', () => {
       const elapsed = Date.now() - startSlow;
 
       expect(deduped.length).toBeLessThan(patterns.length);
-      console.log(`[bench] patterns: ${patterns.length}, unique: ${seen.size}, keys: ${knownKeys.length}`);
+      console.log(
+        `[bench] patterns: ${patterns.length}, unique: ${seen.size}, keys: ${knownKeys.length}`
+      );
       console.log(`[bench] dedup cost: ${dedupMs}ms`);
-      console.log(`[bench] resolveTemplatePatterns (pre-dedup simulation): ${elapsed}ms`);
+      console.log(
+        `[bench] resolveTemplatePatterns (pre-dedup simulation): ${elapsed}ms`
+      );
     });
 
     it('deduped resolveTemplatePatterns completes in under 2s for 2K-file × 40K-pattern fixture', () => {
@@ -107,7 +119,9 @@ describe('resolveTemplatePatterns dedup', () => {
 
       expect(result.size).toBeGreaterThan(0);
       expect(elapsed).toBeLessThan(THRESHOLD_MS);
-      console.log(`[bench] resolveTemplatePatterns (deduped): ${elapsed}ms, matched keys: ${result.size}`);
+      console.log(
+        `[bench] resolveTemplatePatterns (deduped): ${elapsed}ms, matched keys: ${result.size}`
+      );
     });
   }
 });

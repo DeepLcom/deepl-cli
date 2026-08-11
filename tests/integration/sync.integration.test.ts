@@ -21,10 +21,14 @@ import { PropertiesFormatParser } from '../../src/formats/properties';
 import { AndroidXmlFormatParser } from '../../src/formats/android-xml';
 import { loadSyncConfig } from '../../src/sync/sync-config';
 import { computeSourceHash } from '../../src/sync/sync-lock';
+import { Logger } from '../../src/utils/logger';
 import { LOCK_FILE_NAME } from '../../src/sync/types';
 import { ConfigError, ValidationError } from '../../src/utils/errors';
 import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers/nock-setup';
-import { createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
+import {
+  createMockConfigService,
+  createMockCacheService,
+} from '../helpers/mock-factories';
 
 function parseNockBody(body: unknown): Record<string, string | string[]> {
   if (typeof body === 'string') {
@@ -36,16 +40,22 @@ function parseNockBody(body: unknown): Record<string, string | string[]> {
 function getTexts(body: unknown): string[] {
   const parsed = parseNockBody(body);
   const text = parsed['text'];
-  return Array.isArray(text) ? text : (text ? [text] : []);
+  return Array.isArray(text) ? text : text ? [text] : [];
 }
 
-function createServices(opts: { withYaml?: boolean; withAndroid?: boolean } = {}) {
+function createServices(
+  opts: { withYaml?: boolean; withAndroid?: boolean } = {}
+) {
   const client = new DeepLClient(TEST_API_KEY, { maxRetries: 0 });
   const mockConfig = createMockConfigService({
     get: jest.fn(() => ({
       auth: {},
       api: { baseUrl: '', usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: false,
+      },
       cache: { enabled: false },
       output: { format: 'text', color: true },
       proxy: {},
@@ -53,7 +63,11 @@ function createServices(opts: { withYaml?: boolean; withAndroid?: boolean } = {}
     getValue: jest.fn(() => false),
   });
   const mockCache = createMockCacheService();
-  const translationService = new TranslationService(client, mockConfig, mockCache);
+  const translationService = new TranslationService(
+    client,
+    mockConfig,
+    mockCache
+  );
   const glossaryService = new GlossaryService(client);
   const registry = new FormatRegistry();
   registry.register(new JsonFormatParser());
@@ -63,7 +77,11 @@ function createServices(opts: { withYaml?: boolean; withAndroid?: boolean } = {}
   if (opts.withAndroid) {
     registry.register(new AndroidXmlFormatParser());
   }
-  const syncService = new SyncService(translationService, glossaryService, registry);
+  const syncService = new SyncService(
+    translationService,
+    glossaryService,
+    registry
+  );
   return { client, syncService };
 }
 
@@ -87,11 +105,12 @@ buckets:
       - "locales/en.json"
 `;
 
-const SOURCE_JSON = JSON.stringify(
-  { greeting: 'Hello', farewell: 'Goodbye', welcome: 'Welcome' },
-  null,
-  2,
-) + '\n';
+const SOURCE_JSON =
+  JSON.stringify(
+    { greeting: 'Hello', farewell: 'Goodbye', welcome: 'Welcome' },
+    null,
+    2
+  ) + '\n';
 
 describe('Sync Integration', () => {
   let tmpDir: string;
@@ -122,9 +141,21 @@ describe('Sync Integration', () => {
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -144,6 +175,105 @@ describe('Sync Integration', () => {
       expect(translated).toHaveProperty('welcome');
     });
 
+    it('should restore each key’s own placeholder when two keys protect alike', async () => {
+      writeYamlConfig(tmpDir, BASIC_CONFIG_YAML);
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify(
+          {
+            alpha: 'Hello {name}',
+            beta: 'Hello {user}',
+            delta: 'Deleted %s files',
+            epsilon: 'Deleted %d files',
+          },
+          null,
+          2
+        ) + '\n'
+      );
+
+      // Each pair protects to the same placeholder text, so only two texts are
+      // sent. Echoing them back with a prefix keeps which source produced which
+      // translation readable in the target file.
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, (_uri, body) => ({
+          translations: new URLSearchParams(String(body))
+            .getAll('text')
+            .map((text) => ({
+              text: `XX ${text}`,
+              detected_source_language: 'EN',
+            })),
+        }));
+
+      const config = await loadSyncConfig(tmpDir);
+      await syncService.sync(config);
+
+      const translated = JSON.parse(
+        fs.readFileSync(path.join(tmpDir, 'locales', 'de.json'), 'utf-8')
+      );
+      expect(translated.alpha).toBe('XX Hello {name}');
+      expect(translated.beta).toBe('XX Hello {user}');
+      expect(translated.delta).toBe('XX Deleted %s files');
+      expect(translated.epsilon).toBe('XX Deleted %d files');
+    });
+
+    it('should skip a file nested past the depth cap and still finish the run', async () => {
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
+source_locale: en
+target_locales:
+  - de
+buckets:
+  json:
+    include:
+      - "locales/en.json"
+      - "deep/en.json"
+`
+      );
+      writeSourceFile(tmpDir, 'locales/en.json', SOURCE_JSON);
+      // 8,000 nested arrays, ~16KB: far below max_file_bytes, deep enough to
+      // exhaust the stack in a recursive walk.
+      writeSourceFile(
+        tmpDir,
+        'deep/en.json',
+        `{"a":${'['.repeat(8000)}"x"${']'.repeat(8000)}}`
+      );
+
+      const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, (_uri, body) => ({
+          translations: new URLSearchParams(String(body))
+            .getAll('text')
+            .map((text) => ({
+              text: `XX ${text}`,
+              detected_source_language: 'EN',
+            })),
+        }));
+
+      const config = await loadSyncConfig(tmpDir);
+      const result = await syncService.sync(config);
+
+      expect(result.success).toBe(true);
+      expect(
+        warn.mock.calls.some(
+          (call) =>
+            String(call[0]).includes('deep/en.json') &&
+            /nesting depth/i.test(String(call[0]))
+        )
+      ).toBe(true);
+      warn.mockRestore();
+
+      // The healthy file is translated and its work is recorded, rather than
+      // being paid for and then discarded when the run aborts.
+      expect(fs.existsSync(path.join(tmpDir, 'locales', 'de.json'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, 'deep', 'de.json'))).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, '.deepl-sync.lock'))).toBe(true);
+    });
+
     it('should create lock file', async () => {
       writeYamlConfig(tmpDir, BASIC_CONFIG_YAML);
       writeSourceFile(tmpDir, 'locales/en.json', SOURCE_JSON);
@@ -152,9 +282,21 @@ describe('Sync Integration', () => {
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -186,9 +328,21 @@ describe('Sync Integration', () => {
         })
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -218,9 +372,21 @@ buckets:
         })
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -230,9 +396,21 @@ buckets:
         })
         .reply(200, {
           translations: [
-            { text: 'Au revoir', detected_source_language: 'EN', billed_characters: 10 },
-            { text: 'Bonjour', detected_source_language: 'EN', billed_characters: 7 },
-            { text: 'Bienvenue', detected_source_language: 'EN', billed_characters: 9 },
+            {
+              text: 'Au revoir',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
+            {
+              text: 'Bonjour',
+              detected_source_language: 'EN',
+              billed_characters: 7,
+            },
+            {
+              text: 'Bienvenue',
+              detected_source_language: 'EN',
+              billed_characters: 9,
+            },
           ],
         });
 
@@ -254,9 +432,21 @@ buckets:
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -269,21 +459,29 @@ buckets:
       writeSourceFile(tmpDir, 'locales/en.json', SOURCE_JSON);
       await doFirstSync();
 
-      const updated = JSON.stringify(
-        { greeting: 'Hi there', farewell: 'Goodbye', welcome: 'Welcome' },
-        null,
-        2,
-      ) + '\n';
+      const updated =
+        JSON.stringify(
+          { greeting: 'Hi there', farewell: 'Goodbye', welcome: 'Welcome' },
+          null,
+          2
+        ) + '\n';
       writeSourceFile(tmpDir, 'locales/en.json', updated);
 
       const scope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const text = body['text'];
-          return text === 'Hi there' || (Array.isArray(text) && text.length === 1 && text[0] === 'Hi there');
+          return (
+            text === 'Hi there' ||
+            (Array.isArray(text) && text.length === 1 && text[0] === 'Hi there')
+          );
         })
         .reply(200, {
           translations: [
-            { text: 'Hallo zusammen', detected_source_language: 'EN', billed_characters: 8 },
+            {
+              text: 'Hallo zusammen',
+              detected_source_language: 'EN',
+              billed_characters: 8,
+            },
           ],
         });
 
@@ -300,21 +498,36 @@ buckets:
       writeSourceFile(tmpDir, 'locales/en.json', SOURCE_JSON);
       await doFirstSync();
 
-      const updated = JSON.stringify(
-        { greeting: 'Hello', farewell: 'Goodbye', welcome: 'Welcome', thanks: 'Thank you' },
-        null,
-        2,
-      ) + '\n';
+      const updated =
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+            farewell: 'Goodbye',
+            welcome: 'Welcome',
+            thanks: 'Thank you',
+          },
+          null,
+          2
+        ) + '\n';
       writeSourceFile(tmpDir, 'locales/en.json', updated);
 
       const scope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const text = body['text'];
-          return text === 'Thank you' || (Array.isArray(text) && text.length === 1 && text[0] === 'Thank you');
+          return (
+            text === 'Thank you' ||
+            (Array.isArray(text) &&
+              text.length === 1 &&
+              text[0] === 'Thank you')
+          );
         })
         .reply(200, {
           translations: [
-            { text: 'Danke', detected_source_language: 'EN', billed_characters: 9 },
+            {
+              text: 'Danke',
+              detected_source_language: 'EN',
+              billed_characters: 9,
+            },
           ],
         });
 
@@ -331,11 +544,9 @@ buckets:
       writeSourceFile(tmpDir, 'locales/en.json', SOURCE_JSON);
       await doFirstSync();
 
-      const reduced = JSON.stringify(
-        { greeting: 'Hello', farewell: 'Goodbye' },
-        null,
-        2,
-      ) + '\n';
+      const reduced =
+        JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) +
+        '\n';
       writeSourceFile(tmpDir, 'locales/en.json', reduced);
 
       const config = await loadSyncConfig(tmpDir);
@@ -370,9 +581,21 @@ buckets:
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -396,9 +619,21 @@ buckets:
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -406,7 +641,9 @@ buckets:
       await syncService.sync(configInitial);
 
       // Remove one key from the source and rerun with --frozen.
-      const reducedSource = JSON.stringify({ greeting: 'Hello', welcome: 'Welcome' }, null, 2) + '\n';
+      const reducedSource =
+        JSON.stringify({ greeting: 'Hello', welcome: 'Welcome' }, null, 2) +
+        '\n';
       writeSourceFile(tmpDir, 'locales/en.json', reducedSource);
 
       const configAfter = await loadSyncConfig(tmpDir);
@@ -428,9 +665,21 @@ buckets:
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -479,7 +728,9 @@ buckets:
       const config = await loadSyncConfig(tmpDir);
       await syncService.sync(config, { dryRun: true });
 
-      expect(fs.existsSync(path.join(tmpDir, 'locales', 'de.json'))).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, 'locales', 'de.json'))).toBe(
+        false
+      );
       expect(fs.existsSync(path.join(tmpDir, LOCK_FILE_NAME))).toBe(false);
     });
 
@@ -507,9 +758,21 @@ buckets:
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -523,9 +786,21 @@ buckets:
         })
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen!', detected_source_language: 'EN', billed_characters: 16 },
-            { text: 'Hallo!', detected_source_language: 'EN', billed_characters: 6 },
-            { text: 'Willkommen!', detected_source_language: 'EN', billed_characters: 11 },
+            {
+              text: 'Auf Wiedersehen!',
+              detected_source_language: 'EN',
+              billed_characters: 16,
+            },
+            {
+              text: 'Hallo!',
+              detected_source_language: 'EN',
+              billed_characters: 6,
+            },
+            {
+              text: 'Willkommen!',
+              detected_source_language: 'EN',
+              billed_characters: 11,
+            },
           ],
         });
 
@@ -547,7 +822,9 @@ buckets:
         .reply(403, { message: 'Invalid API key' });
 
       const config = await loadSyncConfig(tmpDir);
-      await expect(syncService.sync(config)).rejects.toThrow(/Authentication failed/);
+      await expect(syncService.sync(config)).rejects.toThrow(
+        /Authentication failed/
+      );
     });
 
     it('should handle empty source file', async () => {
@@ -572,6 +849,13 @@ buckets:
       const staleBak = path.join(tmpDir, 'locales', 'de.json.deepl.bak');
       fs.mkdirSync(path.dirname(staleBak), { recursive: true });
       fs.writeFileSync(staleBak, 'orphan from prior crash', 'utf-8');
+      // The target already holds the backup's content, so the backup is the
+      // litter this sweep exists to remove.
+      fs.writeFileSync(
+        path.join(tmpDir, 'locales', 'de.json'),
+        'orphan from prior crash',
+        'utf-8'
+      );
       // Backdate 10 minutes past the 5-minute default threshold.
       const tenMinAgo = new Date(Date.now() - 10 * 60_000);
       fs.utimesSync(staleBak, tenMinAgo, tenMinAgo);
@@ -583,7 +867,9 @@ buckets:
     });
 
     it('respects a user-configured bak_sweep_max_age_seconds override', async () => {
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -593,12 +879,14 @@ buckets:
       - "locales/en.json"
 sync:
   bak_sweep_max_age_seconds: 60
-`);
+`
+      );
       writeSourceFile(tmpDir, 'locales/en.json', '{}\n');
 
       const staleBak = path.join(tmpDir, 'locales', 'de.json.deepl.bak');
       fs.mkdirSync(path.dirname(staleBak), { recursive: true });
       fs.writeFileSync(staleBak, 'orphan', 'utf-8');
+      fs.writeFileSync(path.join(tmpDir, 'locales', 'de.json'), 'orphan');
       // 2 minutes old — stale under the 60-second override, fresh under the default.
       const twoMinAgo = new Date(Date.now() - 2 * 60_000);
       fs.utimesSync(staleBak, twoMinAgo, twoMinAgo);
@@ -607,6 +895,44 @@ sync:
       await syncService.sync(config);
 
       expect(fs.existsSync(staleBak)).toBe(false);
+    });
+
+    // A crashed run leaves the target holding machine output and the backup
+    // holding the only copy of the human translations. Re-running sync is the
+    // natural recovery action, and the startup sweep used to delete that
+    // backup on age before the run's own COPYFILE_EXCL guard could protect it.
+    it('keeps a backup from a crashed run however old it is when the target has diverged', async () => {
+      writeYamlConfig(tmpDir, BASIC_CONFIG_YAML);
+      writeSourceFile(tmpDir, 'locales/en.json', '{"greeting":"Hello"}\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/de.json',
+        '{"greeting":"machine output"}\n'
+      );
+      const bakPath = path.join(tmpDir, 'locales', 'de.json.deepl.bak');
+      fs.writeFileSync(bakPath, '{"greeting":"Guten Tag"}\n', 'utf-8');
+      const anHourAgo = new Date(Date.now() - 60 * 60_000);
+      fs.utimesSync(bakPath, anHourAgo, anHourAgo);
+
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+          ],
+        });
+
+      const config = await loadSyncConfig(tmpDir);
+      await syncService.sync(config);
+
+      expect(fs.existsSync(bakPath)).toBe(true);
+      expect(fs.readFileSync(bakPath, 'utf-8')).toBe(
+        '{"greeting":"Guten Tag"}\n'
+      );
     });
 
     it('leaves fresh .bak files alone', async () => {
@@ -638,7 +964,9 @@ sync:
 
       expect(fs.existsSync(userBak)).toBe(true);
       expect(fs.readFileSync(userBak, 'utf-8')).toBe('user data');
-      expect(fs.existsSync(path.join(tmpDir, 'locales', 'my-important-notes'))).toBe(false);
+      expect(
+        fs.existsSync(path.join(tmpDir, 'locales', 'my-important-notes'))
+      ).toBe(false);
     });
 
     it('registers a SIGINT/SIGTERM cleanup handler during a non-watch run that unlinks tracked .bak paths', async () => {
@@ -666,7 +994,18 @@ sync:
         .reply(() => {
           observedSigint = process.listenerCount('SIGINT') - sigintBefore;
           observedSigterm = process.listenerCount('SIGTERM') - sigtermBefore;
-          return [200, { translations: [{ text: 'übersetzt', detected_source_language: 'EN', billed_characters: 1 }] }];
+          return [
+            200,
+            {
+              translations: [
+                {
+                  text: 'übersetzt',
+                  detected_source_language: 'EN',
+                  billed_characters: 1,
+                },
+              ],
+            },
+          ];
         });
 
       const config = await loadSyncConfig(tmpDir);
@@ -685,7 +1024,9 @@ sync:
     let multiBucketService: SyncService;
 
     beforeEach(() => {
-      multiBucketDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-multi-'));
+      multiBucketDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'deepl-sync-multi-')
+      );
       const services = createServices({ withYaml: true });
       multiBucketClient = services.client;
       multiBucketService = services.syncService;
@@ -713,11 +1054,16 @@ buckets:
 `;
       writeYamlConfig(multiBucketDir, multiBucketConfig);
 
-      const jsonContent = JSON.stringify({ title: 'Hello', subtitle: 'World' }, null, 2) + '\n';
+      const jsonContent =
+        JSON.stringify({ title: 'Hello', subtitle: 'World' }, null, 2) + '\n';
       writeSourceFile(multiBucketDir, 'locales/en/messages.json', jsonContent);
 
       const yamlContent = 'nav:\n  home: Home\n  about: About\n';
-      writeSourceFile(multiBucketDir, 'locales/en/navigation.yaml', yamlContent);
+      writeSourceFile(
+        multiBucketDir,
+        'locales/en/navigation.yaml',
+        yamlContent
+      );
 
       const jsonScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
@@ -726,8 +1072,16 @@ buckets:
         })
         .reply(200, {
           translations: [
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Welt', detected_source_language: 'EN', billed_characters: 5 },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Welt',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
           ],
         });
 
@@ -738,8 +1092,16 @@ buckets:
         })
         .reply(200, {
           translations: [
-            { text: 'Uber', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Startseite', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Uber',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Startseite',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -752,10 +1114,20 @@ buckets:
       expect(jsonScope.isDone()).toBe(true);
       expect(yamlScope.isDone()).toBe(true);
 
-      const jsonTargetFile = path.join(multiBucketDir, 'locales', 'de', 'messages.json');
+      const jsonTargetFile = path.join(
+        multiBucketDir,
+        'locales',
+        'de',
+        'messages.json'
+      );
       expect(fs.existsSync(jsonTargetFile)).toBe(true);
 
-      const yamlTargetFile = path.join(multiBucketDir, 'locales', 'de', 'navigation.yaml');
+      const yamlTargetFile = path.join(
+        multiBucketDir,
+        'locales',
+        'de',
+        'navigation.yaml'
+      );
       expect(fs.existsSync(yamlTargetFile)).toBe(true);
 
       const lockPath = path.join(multiBucketDir, LOCK_FILE_NAME);
@@ -780,46 +1152,45 @@ buckets:
       writeYamlConfig(tmpDir, icuConfig);
 
       // Keys sorted alphabetically by JsonFormatParser: greeting (idx 0), items (idx 1)
-      // The ICU string at idx 1 becomes __ICU_PLACEHOLDER_1__ in the main batch.
-      const sourceContent = JSON.stringify(
-        {
-          items: '{count, plural, one {# item} other {# items}}',
-          greeting: 'Hello',
-        },
-        null,
-        2,
-      ) + '\n';
+      // The ICU string at idx 1 is blanked in the main batch and never sent.
+      const sourceContent =
+        JSON.stringify(
+          {
+            items: '{count, plural, one {# item} other {# items}}',
+            greeting: 'Hello',
+          },
+          null,
+          2
+        ) + '\n';
       writeSourceFile(tmpDir, 'locales/en.json', sourceContent);
 
-      // Main batch: "Hello" at idx 0 and the ICU placeholder at idx 1
+      // Main batch: "Hello" alone — the ICU slot carries nothing to translate
       const mainScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const texts = getTexts(body);
-          return texts.some(t => t === 'Hello') &&
-                 texts.some(t => t.startsWith('__ICU_PLACEHOLDER_'));
+          return texts.length === 1 && texts[0] === 'Hello';
         })
-        .reply(200, (_uri: string, rawBody: unknown) => {
-          const texts = getTexts(rawBody);
-          return {
-            translations: texts.map(t => ({
-              text: t.startsWith('__ICU_PLACEHOLDER_') ? t : 'Hallo',
+        .reply(200, () => ({
+          translations: [
+            {
+              text: 'Hallo',
               detected_source_language: 'EN',
               billed_characters: 5,
-            })),
-          };
-        });
+            },
+          ],
+        }));
 
       // ICU segments batch: the leaf texts extracted from the plural branches
       // "# item" and "# items" — with # protected as __VAR_HASH_0__
       const icuScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const texts = getTexts(body);
-          return texts.length === 2 && !texts.some(t => t.startsWith('__ICU_PLACEHOLDER_'));
+          return texts.length === 2;
         })
         .reply(200, (_uri: string, rawBody: unknown) => {
           const texts = getTexts(rawBody);
           return {
-            translations: texts.map(t => ({
+            translations: texts.map((t) => ({
               text: t.replace(/item(s?)/, 'Artikel'),
               detected_source_language: 'EN',
               billed_characters: 7,
@@ -880,41 +1251,43 @@ buckets:
 `;
       writeSourceFile(tmpDir, 'locales/en/strings.xml', sourceXml);
 
-      // Main batch: "Hello" plus one or two ICU placeholders for the plural quantities
+      // Main batch: "Hello" alone — the ICU plural quantities carry nothing to
+      // translate in the main batch and are never sent as texts of their own
       const mainScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const texts = getTexts(body);
-          return texts.some(t => t === 'Hello') &&
-                 texts.some(t => t.startsWith('__ICU_PLACEHOLDER_'));
+          return texts.length === 1 && texts[0] === 'Hello';
         })
-        .reply(200, (_uri: string, rawBody: unknown) => {
-          const texts = getTexts(rawBody);
-          return {
-            translations: texts.map(t => ({
-              text: t.startsWith('__ICU_PLACEHOLDER_') ? t : 'Hallo',
+        .reply(200, () => ({
+          translations: [
+            {
+              text: 'Hallo',
               detected_source_language: 'EN',
               billed_characters: 5,
-            })),
-          };
-        });
+            },
+          ],
+        }));
 
       // ICU segments batch: the leaf texts from the plural branches ("# widget", "# widgets")
       // — with # protected via __VAR_HASH_N__ preservation
       const icuScope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: Record<string, unknown>) => {
           const texts = getTexts(body);
-          return texts.length >= 1 && !texts.some(t => t.startsWith('__ICU_PLACEHOLDER_'));
+          return texts.length >= 1 && texts[0] !== 'Hello';
         })
         .reply(200, (_uri: string, rawBody: unknown) => {
           const texts = getTexts(rawBody);
           return {
-            translations: texts.map(t => ({
-              text: t.replace(/widget(s?)/, (_m, s: string) => s ? 'Widgets' : 'Widget'),
+            translations: texts.map((t) => ({
+              text: t.replace(/widget(s?)/, (_m, s: string) =>
+                s ? 'Widgets' : 'Widget'
+              ),
               detected_source_language: 'EN',
               billed_characters: 7,
             })),
           };
-        }).persist();
+        })
+        .persist();
 
       const config = await loadSyncConfig(tmpDir);
       const result = await localSyncService.sync(config);
@@ -936,8 +1309,12 @@ buckets:
       // BEFORE ICU-detect the quantity values go through ICU reassemble and contain
       // "Widget" / "Widgets". If the loop order is swapped, the "one" quantity bypasses
       // ICU detection and the mock's fallback returns "Hallo" — which we reject here.
-      const oneMatch = translatedXml.match(/<item\s+quantity="one"[^>]*>([\s\S]*?)<\/item>/);
-      const otherMatch = translatedXml.match(/<item\s+quantity="other"[^>]*>([\s\S]*?)<\/item>/);
+      const oneMatch = translatedXml.match(
+        /<item\s+quantity="one"[^>]*>([\s\S]*?)<\/item>/
+      );
+      const otherMatch = translatedXml.match(
+        /<item\s+quantity="other"[^>]*>([\s\S]*?)<\/item>/
+      );
       expect(oneMatch).not.toBeNull();
       expect(otherMatch).not.toBeNull();
       expect(oneMatch![1]).toContain('Widget');
@@ -970,17 +1347,18 @@ translation:
 `;
       writeYamlConfig(tmpDir, contextConfig);
 
-      const sourceJson = JSON.stringify(
-        {
-          'hero.title': 'Welcome',
-          'hero.subtitle': 'Start here',
-          'btn.save': 'Save',
-          'table.name': 'Name',
-          'misc': 'Other',
-        },
-        null,
-        2,
-      ) + '\n';
+      const sourceJson =
+        JSON.stringify(
+          {
+            'hero.title': 'Welcome',
+            'hero.subtitle': 'Start here',
+            'btn.save': 'Save',
+            'table.name': 'Name',
+            misc: 'Other',
+          },
+          null,
+          2
+        ) + '\n';
       writeSourceFile(tmpDir, 'locales/en.json', sourceJson);
 
       const tsxContent = `import { t } from 'i18n';
@@ -997,7 +1375,11 @@ export function Page() {
 `;
       writeSourceFile(tmpDir, 'src/components/Page.tsx', tsxContent);
 
-      const translateCalls: Array<{ texts: string[]; context?: string; instructions?: string[] }> = [];
+      const translateCalls: Array<{
+        texts: string[];
+        context?: string;
+        instructions?: string[];
+      }> = [];
 
       nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
@@ -1010,10 +1392,14 @@ export function Page() {
           translateCalls.push({
             texts,
             context: Array.isArray(context) ? context[0] : context,
-            instructions: instructions ? (Array.isArray(instructions) ? instructions : [instructions]) : undefined,
+            instructions: instructions
+              ? Array.isArray(instructions)
+                ? instructions
+                : [instructions]
+              : undefined,
           });
           return {
-            translations: texts.map(t => ({
+            translations: texts.map((t) => ({
               text: t + '_DE',
               detected_source_language: 'EN',
               billed_characters: t.length,
@@ -1030,7 +1416,9 @@ export function Page() {
       expect(result.strategy).toBeDefined();
       expect(result.strategy!.context).toBeGreaterThan(0);
 
-      const contextCalls = translateCalls.filter(c => c.context && c.context.length > 0);
+      const contextCalls = translateCalls.filter(
+        (c) => c.context && c.context.length > 0
+      );
       expect(contextCalls.length).toBeGreaterThan(0);
 
       const targetFile = path.join(tmpDir, 'locales', 'de.json');
@@ -1057,16 +1445,17 @@ context:
 `;
       writeYamlConfig(tmpDir, sectionConfig);
 
-      const sourceJson = JSON.stringify(
-        {
-          'nav.home': 'Home',
-          'nav.about': 'About',
-          'nav.contact': 'Contact',
-          'footer.copyright': 'Copyright',
-        },
-        null,
-        2,
-      ) + '\n';
+      const sourceJson =
+        JSON.stringify(
+          {
+            'nav.home': 'Home',
+            'nav.about': 'About',
+            'nav.contact': 'Contact',
+            'footer.copyright': 'Copyright',
+          },
+          null,
+          2
+        ) + '\n';
       writeSourceFile(tmpDir, 'locales/en.json', sourceJson);
 
       const tsxContent = `import { t } from 'i18n';
@@ -1099,7 +1488,7 @@ export function Layout() {
             context: Array.isArray(context) ? context[0] : context,
           });
           return {
-            translations: texts.map(t => ({
+            translations: texts.map((t) => ({
               text: t + '_DE',
               detected_source_language: 'EN',
               billed_characters: t.length,
@@ -1115,14 +1504,16 @@ export function Layout() {
 
       // Section batching: nav.* keys share section "nav" and should be batched together
       const navBatch = translateCalls.find(
-        c => c.context && c.context.includes('nav') && c.texts.length >= 3,
+        (c) => c.context && c.context.includes('nav') && c.texts.length >= 3
       );
       expect(navBatch).toBeDefined();
-      expect(navBatch!.texts).toEqual(expect.arrayContaining(['Home', 'About', 'Contact']));
+      expect(navBatch!.texts).toEqual(
+        expect.arrayContaining(['Home', 'About', 'Contact'])
+      );
 
       // Footer is a separate section batch
-      const footerBatch = translateCalls.find(
-        c => c.context?.includes('footer'),
+      const footerBatch = translateCalls.find((c) =>
+        c.context?.includes('footer')
       );
       expect(footerBatch).toBeDefined();
       expect(footerBatch!.texts).toContain('Copyright');
@@ -1137,7 +1528,9 @@ export function Layout() {
 
   describe('new locale addition', () => {
     it('should translate all keys for a newly added locale', async () => {
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1145,7 +1538,8 @@ buckets:
   json:
     include:
       - "locales/en.json"
-`);
+`
+      );
       writeSourceFile(tmpDir, 'locales/en.json', SOURCE_JSON);
 
       nock(DEEPL_FREE_API_URL)
@@ -1154,9 +1548,21 @@ buckets:
         })
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -1166,7 +1572,9 @@ buckets:
       expect(fs.existsSync(path.join(tmpDir, 'locales', 'de.json'))).toBe(true);
 
       // Second sync: add fr
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1175,7 +1583,8 @@ buckets:
   json:
     include:
       - "locales/en.json"
-`);
+`
+      );
 
       // Track which target_lang values the API is called with
       const calledLocales: string[] = [];
@@ -1185,12 +1594,26 @@ buckets:
         .reply(200, (_uri: string, rawBody: unknown) => {
           const parsed = parseNockBody(rawBody);
           const targetLang = parsed['target_lang'];
-          calledLocales.push(Array.isArray(targetLang) ? targetLang[0]! : targetLang as string);
+          calledLocales.push(
+            Array.isArray(targetLang) ? targetLang[0]! : (targetLang as string)
+          );
           return {
             translations: [
-              { text: 'Au revoir', detected_source_language: 'EN', billed_characters: 10 },
-              { text: 'Bonjour', detected_source_language: 'EN', billed_characters: 7 },
-              { text: 'Bienvenue', detected_source_language: 'EN', billed_characters: 9 },
+              {
+                text: 'Au revoir',
+                detected_source_language: 'EN',
+                billed_characters: 10,
+              },
+              {
+                text: 'Bonjour',
+                detected_source_language: 'EN',
+                billed_characters: 7,
+              },
+              {
+                text: 'Bienvenue',
+                detected_source_language: 'EN',
+                billed_characters: 9,
+              },
             ],
           };
         });
@@ -1224,27 +1647,48 @@ buckets:
   describe('cost cap (max_characters) — new locale addition', () => {
     // 10 keys, each ~50 chars → ~500 chars total for zh → exceeds cap of 100
     const KEYS_50_CHARS = Object.fromEntries(
-      Array.from({ length: 10 }, (_, i) => [`key${i}`, 'a'.repeat(50)]),
+      Array.from({ length: 10 }, (_, i) => [`key${i}`, 'a'.repeat(50)])
     );
 
-    function seedLockWithDeOnly(dir: string, keys: Record<string, string>): void {
+    function seedLockWithDeOnly(
+      dir: string,
+      keys: Record<string, string>
+    ): void {
       const now = '2026-01-01T00:00:00Z';
       const entries: Record<string, Record<string, unknown>> = {};
       const fileEntries: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(keys)) {
         const hash = computeSourceHash(val);
-        fileEntries[key] = { source_text: val, source_hash: hash, translations: { de: { hash, translated_at: now, status: 'translated' } } };
+        fileEntries[key] = {
+          source_text: val,
+          source_hash: hash,
+          translations: {
+            de: { hash, translated_at: now, status: 'translated' },
+          },
+        };
       }
       entries['locales/en.json'] = fileEntries;
       fs.writeFileSync(
         path.join(dir, LOCK_FILE_NAME),
-        JSON.stringify({ version: 1, generated_at: now, source_locale: 'en', entries, stats: {} }, null, 2) + '\n',
-        'utf-8',
+        JSON.stringify(
+          {
+            version: 1,
+            generated_at: now,
+            source_locale: 'en',
+            entries,
+            stats: {},
+          },
+          null,
+          2
+        ) + '\n',
+        'utf-8'
       );
     }
 
     it('should throw cost-cap ValidationError before any API call when adding a new locale', async () => {
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1255,12 +1699,19 @@ buckets:
   json:
     include:
       - "locales/en.json"
-`);
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify(KEYS_50_CHARS, null, 2) + '\n');
+`
+      );
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify(KEYS_50_CHARS, null, 2) + '\n'
+      );
       seedLockWithDeOnly(tmpDir, KEYS_50_CHARS);
 
       // No nock scope — any HTTP call must fail the test
-      nock(DEEPL_FREE_API_URL).post('/v2/translate').reply(200, { translations: [] });
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, { translations: [] });
 
       const config = await loadSyncConfig(tmpDir);
       await expect(syncService.sync(config)).rejects.toThrow(ValidationError);
@@ -1270,7 +1721,9 @@ buckets:
     });
 
     it('dry-run estimatedChars matches live-path preflight estimatedChars for new-locale addition', async () => {
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1281,26 +1734,48 @@ buckets:
   json:
     include:
       - "locales/en.json"
-`);
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify(KEYS_50_CHARS, null, 2) + '\n');
+`
+      );
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify(KEYS_50_CHARS, null, 2) + '\n'
+      );
       seedLockWithDeOnly(tmpDir, KEYS_50_CHARS);
 
       const config = await loadSyncConfig(tmpDir);
       const dryResult = await syncService.sync(config, { dryRun: true });
 
-      // dry-run must estimate currentChars * newLocaleCount (10 keys * 50 chars * 1 new locale = 500)
-      expect(dryResult.estimatedCharacters).toBe(500);
+      // 10 keys * 50 chars for the added locale, plus the same again for `de`:
+      // the seeded lockfile calls every key translated for `de` and no `de`
+      // target file exists, so the run repairs all ten and bills for them too.
+      expect(dryResult.estimatedCharacters).toBe(1000);
+      expect(dryResult.unwrittenKeys).toBe(10);
 
       // The live path preflight must compute the same estimate; verify by setting cap just below it
       const configAtCap = await loadSyncConfig(tmpDir);
-      (configAtCap as any).sync = { ...configAtCap.sync, max_characters: 499 };
-      await expect(syncService.sync(configAtCap)).rejects.toThrow(ValidationError);
+      (configAtCap as any).sync = { ...configAtCap.sync, max_characters: 999 };
+      await expect(syncService.sync(configAtCap)).rejects.toThrow(
+        ValidationError
+      );
 
       const configAboveCap = await loadSyncConfig(tmpDir);
-      (configAboveCap as any).sync = { ...configAboveCap.sync, max_characters: 500 };
-      nock(DEEPL_FREE_API_URL).post('/v2/translate').times(20).reply(200, {
-        translations: [{ text: 'zh-text', detected_source_language: 'EN', billed_characters: 1 }],
-      });
+      (configAboveCap as any).sync = {
+        ...configAboveCap.sync,
+        max_characters: 1000,
+      };
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate')
+        .times(20)
+        .reply(200, {
+          translations: [
+            {
+              text: 'zh-text',
+              detected_source_language: 'EN',
+              billed_characters: 1,
+            },
+          ],
+        });
       await expect(syncService.sync(configAboveCap)).resolves.not.toThrow();
     });
   });
@@ -1312,7 +1787,11 @@ buckets:
         get: jest.fn(() => ({
           auth: {},
           api: { baseUrl: '', usePro: false },
-          defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+          defaults: {
+            targetLangs: [],
+            formality: 'default',
+            preserveFormatting: false,
+          },
           cache: { enabled: false },
           output: { format: 'text', color: true },
           proxy: {},
@@ -1320,13 +1799,23 @@ buckets:
         getValue: jest.fn(() => false),
       });
       const mockCache = createMockCacheService();
-      const retryTranslation = new TranslationService(retryClient, mockConfig, mockCache);
+      const retryTranslation = new TranslationService(
+        retryClient,
+        mockConfig,
+        mockCache
+      );
       const retryGlossary = new GlossaryService(retryClient);
       const retryRegistry = new FormatRegistry();
       retryRegistry.register(new JsonFormatParser());
-      const retrySyncService = new SyncService(retryTranslation, retryGlossary, retryRegistry);
+      const retrySyncService = new SyncService(
+        retryTranslation,
+        retryGlossary,
+        retryRegistry
+      );
 
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1334,8 +1823,13 @@ buckets:
   json:
     include:
       - "locales/en.json"
-`);
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ hello: 'Hello' }, null, 2) + '\n');
+`
+      );
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ hello: 'Hello' }, null, 2) + '\n'
+      );
 
       // First request: 429 with Retry-After: 0
       nock(DEEPL_FREE_API_URL)
@@ -1347,7 +1841,11 @@ buckets:
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
           ],
         });
 
@@ -1371,7 +1869,11 @@ buckets:
         get: jest.fn(() => ({
           auth: {},
           api: { baseUrl: '', usePro: false },
-          defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+          defaults: {
+            targetLangs: [],
+            formality: 'default',
+            preserveFormatting: false,
+          },
           cache: { enabled: false },
           output: { format: 'text', color: true },
           proxy: {},
@@ -1379,14 +1881,26 @@ buckets:
         getValue: jest.fn(() => false),
       });
       const mockCache = createMockCacheService();
-      const retryTranslation = new TranslationService(retryClient, mockConfig, mockCache);
+      const retryTranslation = new TranslationService(
+        retryClient,
+        mockConfig,
+        mockCache
+      );
       const retryGlossary = new GlossaryService(retryClient);
       const retryRegistry = new FormatRegistry();
       retryRegistry.register(new JsonFormatParser());
-      const retrySyncService = new SyncService(retryTranslation, retryGlossary, retryRegistry);
+      const retrySyncService = new SyncService(
+        retryTranslation,
+        retryGlossary,
+        retryRegistry
+      );
 
       writeYamlConfig(tmpDir, BASIC_CONFIG_YAML);
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ hello: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ hello: 'Hello' }, null, 2) + '\n'
+      );
 
       const scope503 = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
@@ -1424,18 +1938,36 @@ buckets:
 
       // de: 200 with translations.
       const deScope = nock(DEEPL_FREE_API_URL)
-        .post('/v2/translate', (body: Record<string, unknown>) => body['target_lang'] === 'DE')
+        .post(
+          '/v2/translate',
+          (body: Record<string, unknown>) => body['target_lang'] === 'DE'
+        )
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
       // fr: 500 (transient server error — sync catches per-locale, does not throw globally).
       const frScope = nock(DEEPL_FREE_API_URL)
-        .post('/v2/translate', (body: Record<string, unknown>) => body['target_lang'] === 'FR')
+        .post(
+          '/v2/translate',
+          (body: Record<string, unknown>) => body['target_lang'] === 'FR'
+        )
         .reply(500, { message: 'Internal Server Error' });
 
       const config = await loadSyncConfig(tmpDir);
@@ -1459,8 +1991,16 @@ buckets:
 
     it('splits large key sets across multiple POST calls at the 50-key batch boundary', async () => {
       const sourceData: Record<string, string> = {};
-      const batch1: Array<{ text: string; detected_source_language: string; billed_characters: number }> = [];
-      const batch2: Array<{ text: string; detected_source_language: string; billed_characters: number }> = [];
+      const batch1: Array<{
+        text: string;
+        detected_source_language: string;
+        billed_characters: number;
+      }> = [];
+      const batch2: Array<{
+        text: string;
+        detected_source_language: string;
+        billed_characters: number;
+      }> = [];
       for (let i = 0; i < 100; i++) {
         const key = `key_${String(i).padStart(3, '0')}`;
         sourceData[key] = `source ${key}`;
@@ -1474,7 +2014,11 @@ buckets:
       }
 
       writeYamlConfig(tmpDir, BASIC_CONFIG_YAML);
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify(sourceData, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify(sourceData, null, 2) + '\n'
+      );
 
       const scope1 = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body: unknown) => getTexts(body).length === 50)
@@ -1505,7 +2049,9 @@ buckets:
     // reconstruct() mutates a file shared across locales. A parser regression
     // here would silently corrupt user translation files.
     it('translates en source into a de localization within the same .xcstrings file', async () => {
-      const { XcstringsFormatParser } = jest.requireActual<typeof import('../../src/formats/xcstrings')>('../../src/formats/xcstrings');
+      const { XcstringsFormatParser } = jest.requireActual<
+        typeof import('../../src/formats/xcstrings')
+      >('../../src/formats/xcstrings');
       const xcRegistry = new FormatRegistry();
       xcRegistry.register(new XcstringsFormatParser());
       const xcServices = createServicesWithRegistry(xcRegistry);
@@ -1538,14 +2084,26 @@ buckets:
           },
         },
       };
-      writeSourceFile(tmpDir, 'Localizable.xcstrings', JSON.stringify(xcFile, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'Localizable.xcstrings',
+        JSON.stringify(xcFile, null, 2) + '\n'
+      );
 
       nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
           ],
         });
 
@@ -1556,16 +2114,36 @@ buckets:
       expect(result.newKeys).toBe(2);
 
       const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, 'Localizable.xcstrings'), 'utf-8'),
-      ) as { strings: Record<string, { localizations: Record<string, { stringUnit: { value: string; state: string } }> }> };
+        fs.readFileSync(path.join(tmpDir, 'Localizable.xcstrings'), 'utf-8')
+      ) as {
+        strings: Record<
+          string,
+          {
+            localizations: Record<
+              string,
+              { stringUnit: { value: string; state: string } }
+            >;
+          }
+        >;
+      };
 
       // en localizations preserved
-      expect(written.strings['greeting']!.localizations['en']!.stringUnit.value).toBe('Hello');
-      expect(written.strings['farewell']!.localizations['en']!.stringUnit.value).toBe('Goodbye');
+      expect(
+        written.strings['greeting']!.localizations['en']!.stringUnit.value
+      ).toBe('Hello');
+      expect(
+        written.strings['farewell']!.localizations['en']!.stringUnit.value
+      ).toBe('Goodbye');
       // de localizations populated
-      expect(written.strings['greeting']!.localizations['de']!.stringUnit.value).toBe('Hallo');
-      expect(written.strings['greeting']!.localizations['de']!.stringUnit.state).toBe('translated');
-      expect(written.strings['farewell']!.localizations['de']!.stringUnit.value).toBe('Auf Wiedersehen');
+      expect(
+        written.strings['greeting']!.localizations['de']!.stringUnit.value
+      ).toBe('Hallo');
+      expect(
+        written.strings['greeting']!.localizations['de']!.stringUnit.state
+      ).toBe('translated');
+      expect(
+        written.strings['farewell']!.localizations['de']!.stringUnit.value
+      ).toBe('Auf Wiedersehen');
 
       xcServices.client.destroy();
     });
@@ -1577,7 +2155,9 @@ buckets:
       poRegistry.register(new PoFormatParser());
       const poServices = createServicesWithRegistry(poRegistry);
 
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1585,7 +2165,8 @@ buckets:
   po:
     include:
       - "locales/en.po"
-`);
+`
+      );
 
       const longSource =
         'This is a very long description that should wrap across multiple lines when reconstructed because gettext prefers shorter lines for readability.';
@@ -1598,7 +2179,7 @@ msgstr ""
 
 msgid "${longSource}"
 msgstr ""
-`,
+`
       );
 
       const longTranslation =
@@ -1608,8 +2189,16 @@ msgstr ""
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Speichern', detected_source_language: 'EN', billed_characters: 4 },
-            { text: longTranslation, detected_source_language: 'EN', billed_characters: longSource.length },
+            {
+              text: 'Speichern',
+              detected_source_language: 'EN',
+              billed_characters: 4,
+            },
+            {
+              text: longTranslation,
+              detected_source_language: 'EN',
+              billed_characters: longSource.length,
+            },
           ],
         });
 
@@ -1626,7 +2215,9 @@ msgstr ""
 
       expect(written).toContain('msgctxt "button/save"');
       expect(written).toContain('msgstr "Speichern"');
-      expect(written).toContain(longTranslation.split(' ').slice(0, 3).join(' '));
+      expect(written).toContain(
+        longTranslation.split(' ').slice(0, 3).join(' ')
+      );
 
       const reparsed = new PoFormatParser().extract(written);
       const byKey = new Map(reparsed.map((e) => [e.key, e.value]));
@@ -1642,7 +2233,9 @@ msgstr ""
       tomlRegistry.register(new TomlFormatParser());
       const tomlServices = createServicesWithRegistry(tomlRegistry);
 
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1650,7 +2243,8 @@ buckets:
   toml:
     include:
       - "locales/en.toml"
-`);
+`
+      );
       writeSourceFile(
         tmpDir,
         'locales/en.toml',
@@ -1659,15 +2253,23 @@ hello = "Hello"
 
 [farewells]
 goodbye = "Goodbye"
-`,
+`
       );
 
       const scope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
+            {
+              text: 'Auf Wiedersehen',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
           ],
         });
 
@@ -1697,7 +2299,9 @@ goodbye = "Goodbye"
       arbRegistry.register(new ArbFormatParser());
       const arbServices = createServicesWithRegistry(arbRegistry);
 
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1705,7 +2309,8 @@ buckets:
   arb:
     include:
       - "locales/en.arb"
-`);
+`
+      );
 
       const sourceArb = {
         greeting: 'Hello, {name}',
@@ -1715,14 +2320,26 @@ buckets:
         },
         welcome: 'Welcome',
       };
-      writeSourceFile(tmpDir, 'locales/en.arb', JSON.stringify(sourceArb, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.arb',
+        JSON.stringify(sourceArb, null, 2) + '\n'
+      );
 
       const scope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Hallo, {name}', detected_source_language: 'EN', billed_characters: 13 },
-            { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+            {
+              text: 'Hallo, {name}',
+              detected_source_language: 'EN',
+              billed_characters: 13,
+            },
+            {
+              text: 'Willkommen',
+              detected_source_language: 'EN',
+              billed_characters: 10,
+            },
           ],
         });
 
@@ -1735,7 +2352,9 @@ buckets:
 
       const targetPath = path.join(tmpDir, 'locales', 'de.arb');
       expect(fs.existsSync(targetPath)).toBe(true);
-      const written = JSON.parse(fs.readFileSync(targetPath, 'utf-8')) as Record<string, unknown>;
+      const written = JSON.parse(
+        fs.readFileSync(targetPath, 'utf-8')
+      ) as Record<string, unknown>;
 
       expect(written['greeting']).toBe('Hallo, {name}');
       expect(written['welcome']).toBe('Willkommen');
@@ -1754,7 +2373,9 @@ buckets:
       iosRegistry.register(new IosStringsFormatParser());
       const iosServices = createServicesWithRegistry(iosRegistry);
 
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1762,21 +2383,30 @@ buckets:
   ios_strings:
     include:
       - "locales/en.strings"
-`);
+`
+      );
       writeSourceFile(
         tmpDir,
         'locales/en.strings',
         `"button_save" = "Save \\"Now\\"";
 "greeting" = "Welcome %@";
-`,
+`
       );
 
       const scope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Jetzt "speichern"', detected_source_language: 'EN', billed_characters: 15 },
-            { text: 'Willkommen %@', detected_source_language: 'EN', billed_characters: 13 },
+            {
+              text: 'Jetzt "speichern"',
+              detected_source_language: 'EN',
+              billed_characters: 15,
+            },
+            {
+              text: 'Willkommen %@',
+              detected_source_language: 'EN',
+              billed_characters: 13,
+            },
           ],
         });
 
@@ -1809,7 +2439,9 @@ buckets:
       propRegistry.register(new PropertiesFormatParser());
       const propServices = createServicesWithRegistry(propRegistry);
 
-      writeYamlConfig(tmpDir, `version: 1
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
 source_locale: en
 target_locales:
   - de
@@ -1817,23 +2449,36 @@ buckets:
   properties:
     include:
       - "locales/en.properties"
-`);
+`
+      );
       writeSourceFile(
         tmpDir,
         'locales/en.properties',
         `greeting=Hello
 formula=x=5
 cafe label=Café
-`,
+`
       );
 
       const scope = nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
           translations: [
-            { text: 'Café', detected_source_language: 'EN', billed_characters: 4 },
-            { text: 'x=5', detected_source_language: 'EN', billed_characters: 3 },
-            { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
+            {
+              text: 'Café',
+              detected_source_language: 'EN',
+              billed_characters: 4,
+            },
+            {
+              text: 'x=5',
+              detected_source_language: 'EN',
+              billed_characters: 3,
+            },
+            {
+              text: 'Hallo',
+              detected_source_language: 'EN',
+              billed_characters: 5,
+            },
           ],
         });
 
@@ -1864,16 +2509,17 @@ describe('Sync Integration — glossary: auto', () => {
   let client: DeepLClient;
   let syncService: SyncService;
 
-  const sourceWithRepeatedTerm = JSON.stringify(
-    {
-      'button.save': 'Save',
-      'form.save': 'Save',
-      'menu.save': 'Save',
-      greeting: 'Hello',
-    },
-    null,
-    2,
-  ) + '\n';
+  const sourceWithRepeatedTerm =
+    JSON.stringify(
+      {
+        'button.save': 'Save',
+        'form.save': 'Save',
+        'menu.save': 'Save',
+        greeting: 'Hello',
+      },
+      null,
+      2
+    ) + '\n';
 
   const autoGlossaryConfig = `version: 1
 source_locale: en
@@ -1896,7 +2542,8 @@ translation:
 
   afterEach(() => {
     client.destroy();
-    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });
+    if (fs.existsSync(tmpDir))
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     nock.cleanAll();
   });
 
@@ -1911,8 +2558,16 @@ translation:
       .post('/v2/translate')
       .reply(200, {
         translations: [
-          { text: 'Speichern', detected_source_language: 'EN', billed_characters: 4 },
-          { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
+          {
+            text: 'Speichern',
+            detected_source_language: 'EN',
+            billed_characters: 4,
+          },
+          {
+            text: 'Hallo',
+            detected_source_language: 'EN',
+            billed_characters: 5,
+          },
         ],
       });
 
@@ -1928,7 +2583,9 @@ translation:
         glossary_id: 'gl-test-en-de',
         name: 'deepl-sync-en-de',
         creation_time: '2026-04-19T12:00:00Z',
-        dictionaries: [{ source_lang: 'EN', target_lang: 'DE', entry_count: 1 }],
+        dictionaries: [
+          { source_lang: 'EN', target_lang: 'DE', entry_count: 1 },
+        ],
       });
 
     const config = await loadSyncConfig(tmpDir);
@@ -1962,8 +2619,8 @@ translation:
           farewell: 'Goodbye',
         },
         null,
-        2,
-      ) + '\n',
+        2
+      ) + '\n'
     );
 
     // Pre-seed target file (previous sync's output).
@@ -1978,20 +2635,40 @@ translation:
           greeting: 'Hallo',
         },
         null,
-        2,
-      ) + '\n',
+        2
+      ) + '\n'
     );
 
     const now = '2026-04-19T11:00:00Z';
     const saveHash = computeSourceHash('Save');
     const helloHash = computeSourceHash('Hello');
-    const translatedDe = (hash: string) => ({ hash, translated_at: now, status: 'translated' as const });
+    const translatedDe = (hash: string) => ({
+      hash,
+      translated_at: now,
+      status: 'translated' as const,
+    });
     const seedEntries = {
       'locales/en.json': {
-        'button.save': { source_text: 'Save', source_hash: saveHash, translations: { de: translatedDe(saveHash) } },
-        'form.save': { source_text: 'Save', source_hash: saveHash, translations: { de: translatedDe(saveHash) } },
-        'menu.save': { source_text: 'Save', source_hash: saveHash, translations: { de: translatedDe(saveHash) } },
-        greeting: { source_text: 'Hello', source_hash: helloHash, translations: { de: translatedDe(helloHash) } },
+        'button.save': {
+          source_text: 'Save',
+          source_hash: saveHash,
+          translations: { de: translatedDe(saveHash) },
+        },
+        'form.save': {
+          source_text: 'Save',
+          source_hash: saveHash,
+          translations: { de: translatedDe(saveHash) },
+        },
+        'menu.save': {
+          source_text: 'Save',
+          source_hash: saveHash,
+          translations: { de: translatedDe(saveHash) },
+        },
+        greeting: {
+          source_text: 'Hello',
+          source_hash: helloHash,
+          translations: { de: translatedDe(helloHash) },
+        },
       },
     };
     fs.writeFileSync(
@@ -2007,9 +2684,9 @@ translation:
           stats: { total_keys: 4, total_translations: 4, last_sync: now },
         },
         null,
-        2,
+        2
       ) + '\n',
-      'utf-8',
+      'utf-8'
     );
 
     // The new key "farewell" triggers one translate call for "Goodbye".
@@ -2017,7 +2694,11 @@ translation:
       .post('/v2/translate')
       .reply(200, {
         translations: [
-          { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 7 },
+          {
+            text: 'Auf Wiedersehen',
+            detected_source_language: 'EN',
+            billed_characters: 7,
+          },
         ],
       });
 
@@ -2030,7 +2711,9 @@ translation:
             glossary_id: 'gl-existing',
             name: 'deepl-sync-en-de',
             creation_time: '2026-04-18T10:00:00Z',
-            dictionaries: [{ source_lang: 'EN', target_lang: 'DE', entry_count: 1 }],
+            dictionaries: [
+              { source_lang: 'EN', target_lang: 'DE', entry_count: 1 },
+            ],
           },
         ],
       });
@@ -2041,7 +2724,12 @@ translation:
       .query(true)
       .reply(200, {
         dictionaries: [
-          { source_lang: 'EN', target_lang: 'DE', entries: 'Save\tSpeichern', entries_format: 'tsv' },
+          {
+            source_lang: 'EN',
+            target_lang: 'DE',
+            entries: 'Save\tSpeichern',
+            entries_format: 'tsv',
+          },
         ],
       });
 
@@ -2057,7 +2745,9 @@ translation:
     expect(entriesScope.isDone()).toBe(true);
 
     // Lockfile glossary_id preserved — not overwritten, not cleared.
-    const lockContent = JSON.parse(fs.readFileSync(path.join(tmpDir, LOCK_FILE_NAME), 'utf-8'));
+    const lockContent = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, LOCK_FILE_NAME), 'utf-8')
+    );
     expect(lockContent.glossary_ids['en-de']).toBe('gl-existing');
   });
 });
@@ -2083,7 +2773,8 @@ describe('Sync Integration — translation memory', () => {
 
   afterEach(() => {
     client.destroy();
-    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });
+    if (fs.existsSync(tmpDir))
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     nock.cleanAll();
   });
 
@@ -2116,20 +2807,27 @@ describe('Sync Integration — translation memory', () => {
     body: Record<string, string | string[]>;
   }
 
-  function mockTranslateCapture(capture: CapturedCall[], times: number): nock.Scope {
+  function mockTranslateCapture(
+    capture: CapturedCall[],
+    times: number
+  ): nock.Scope {
     return nock(DEEPL_FREE_API_URL)
       .post('/v2/translate')
       .times(times)
       .reply(200, (_uri: string, rawBody: unknown) => {
         const parsed = parseNockBody(rawBody);
         const targetLangRaw = parsed['target_lang'];
-        const targetLang = Array.isArray(targetLangRaw) ? targetLangRaw[0]! : (targetLangRaw as string);
+        const targetLang = Array.isArray(targetLangRaw)
+          ? targetLangRaw[0]!
+          : (targetLangRaw as string);
         const tmIdRaw = parsed['translation_memory_id'];
         const tmThresholdRaw = parsed['translation_memory_threshold'];
         capture.push({
           targetLang,
-          tmId: Array.isArray(tmIdRaw) ? tmIdRaw[0] : (tmIdRaw),
-          tmThreshold: Array.isArray(tmThresholdRaw) ? tmThresholdRaw[0] : (tmThresholdRaw),
+          tmId: Array.isArray(tmIdRaw) ? tmIdRaw[0] : tmIdRaw,
+          tmThreshold: Array.isArray(tmThresholdRaw)
+            ? tmThresholdRaw[0]
+            : tmThresholdRaw,
           body: parsed,
         });
         const texts = getTexts(rawBody);
@@ -2163,9 +2861,13 @@ buckets:
       - "locales/en.json"
 translation:
   translation_memory: "my-tm"
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       const listScope = mockListTms([
         { id: TM_UUID_MY, name: 'my-tm', source: 'en', target: 'de' },
@@ -2209,16 +2911,25 @@ translation:
   locale_overrides:
     de:
       translation_memory: "de-specific-tm"
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       const listScope = mockListTms(
         [
           { id: TM_UUID_BASE, name: 'base-tm', source: 'en', target: 'de' },
-          { id: TM_UUID_DE_SPECIFIC, name: 'de-specific-tm', source: 'en', target: 'de' },
+          {
+            id: TM_UUID_DE_SPECIFIC,
+            name: 'de-specific-tm',
+            source: 'en',
+            target: 'de',
+          },
         ],
-        2,
+        2
       );
 
       const calls: CapturedCall[] = [];
@@ -2255,16 +2966,20 @@ translation:
       translation_memory: "de-tm"
     fr:
       translation_memory: "fr-tm"
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       const listScope = mockListTms(
         [
           { id: TM_UUID_DE, name: 'de-tm', source: 'en', target: 'de' },
           { id: TM_UUID_FR, name: 'fr-tm', source: 'en', target: 'fr' },
         ],
-        2,
+        2
       );
 
       const calls: CapturedCall[] = [];
@@ -2303,9 +3018,13 @@ translation:
   locale_overrides:
     de:
       translation_memory_threshold: 85
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       const listScope = mockListTms([
         { id: TM_UUID_MY, name: 'my-tm', source: 'en', target: 'de' },
@@ -2338,9 +3057,13 @@ buckets:
 translation:
   translation_memory: "my-tm"
   translation_memory_threshold: 60
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       const listScope = mockListTms([
         { id: TM_UUID_MY, name: 'my-tm', source: 'en', target: 'de' },
@@ -2374,9 +3097,13 @@ buckets:
       - "locales/en.json"
 translation:
   translation_memory: "my-tm"
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       const listScope = mockListTms([
         { id: TM_UUID_MY, name: 'my-tm', source: 'en', target: 'de' },
@@ -2399,7 +3126,11 @@ translation:
   describe('omit-both on no-TM config', () => {
     it('sends neither translation_memory_id nor translation_memory_threshold and makes zero list calls', async () => {
       writeYamlConfig(tmpDir, BASIC_CONFIG_YAML);
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       const calls: CapturedCall[] = [];
       const translateScope = mockTranslateCapture(calls, 1);
@@ -2415,7 +3146,9 @@ translation:
         expect(call.body['translation_memory_threshold']).toBeUndefined();
       }
 
-      const listMocksAfter = nock.pendingMocks().filter((m) => m.includes('/v3/translation_memories'));
+      const listMocksAfter = nock
+        .pendingMocks()
+        .filter((m) => m.includes('/v3/translation_memories'));
       expect(listMocksAfter).toEqual([]);
       expect(translateScope.isDone()).toBe(true);
     });
@@ -2436,9 +3169,13 @@ buckets:
       - "locales/en.json"
 translation:
   translation_memory: "my-tm"
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       const listScope = mockListTms([
         { id: TM_UUID_MY, name: 'my-tm', source: 'en', target: 'de' },
@@ -2450,7 +3187,7 @@ translation:
       expect(result.success).toBe(true);
 
       const lockContent = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, LOCK_FILE_NAME), 'utf-8'),
+        fs.readFileSync(path.join(tmpDir, LOCK_FILE_NAME), 'utf-8')
       ) as Record<string, unknown>;
       expect(lockContent['translation_memory_ids']).toBeUndefined();
       expect(listScope.isDone()).toBe(true);
@@ -2482,19 +3219,25 @@ translation:
   locale_overrides:
     fr:
       translation_memory: "shared"
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       const listScope = mockListTms(
         [{ id: TM_UUID_SHARED, name: 'shared', source: 'en', target: 'de' }],
-        1,
+        1
       );
 
       const config = await loadSyncConfig(tmpDir);
       const caught = await syncService.sync(config).catch((e: unknown) => e);
       expect(caught).toBeInstanceOf(ConfigError);
-      expect((caught as Error).message).toMatch(/does not support the requested language pair/);
+      expect((caught as Error).message).toMatch(
+        /does not support the requested language pair/
+      );
 
       expect(listScope.isDone()).toBe(true);
     });
@@ -2516,20 +3259,24 @@ buckets:
 translation:
   translation_memory: "my-tm"
   translation_memory_threshold: 999
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
       await expect(loadSyncConfig(tmpDir)).rejects.toThrow(ConfigError);
       await expect(loadSyncConfig(tmpDir)).rejects.toThrow(
-        /translation\.translation_memory_threshold must be an integer between 0 and 100/,
+        /translation\.translation_memory_threshold must be an integer between 0 and 100/
       );
     });
   });
 
-  // ---- 9. Dry-run suppression ----
-  describe('dry-run suppression', () => {
-    it('makes zero list calls and zero translate calls when dryRun is set even with TM configured', async () => {
+  // ---- 9. Dry-run resolution ----
+  describe('dry-run resolution', () => {
+    it('resolves configured TMs during a dry run but sends nothing to translate', async () => {
       writeYamlConfig(
         tmpDir,
         `version: 1
@@ -2545,29 +3292,93 @@ translation:
   locale_overrides:
     de:
       translation_memory: "de-specific-tm"
-`,
+`
       );
-      writeSourceFile(tmpDir, 'locales/en.json', JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n');
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
 
-      // No nock interceptors registered — any outbound request would
-      // surface as an unmatched-request error and fail the test.
+      // Only the listing is mocked. A /v2/translate request would be unmatched
+      // and fail the test, which is the invariant a dry run has to keep.
+      // Twice: the top-level name and the override name are separate cache keys.
+      const listScope = mockListTms(
+        [
+          { id: TM_UUID_MY, name: 'my-tm', source: 'en', target: 'de' },
+          {
+            id: TM_UUID_DE_SPECIFIC,
+            name: 'de-specific-tm',
+            source: 'en',
+            target: 'de',
+          },
+        ],
+        2
+      );
 
       const config = await loadSyncConfig(tmpDir);
       const result = await syncService.sync(config, { dryRun: true });
 
       expect(result.dryRun).toBe(true);
+      expect(listScope.isDone()).toBe(true);
       expect(nock.pendingMocks()).toEqual([]);
+    });
+
+    it('fails a dry run when a per-locale override TM does not cover its locale', async () => {
+      writeYamlConfig(
+        tmpDir,
+        `version: 1
+source_locale: en
+target_locales:
+  - de
+  - fr
+buckets:
+  json:
+    include:
+      - "locales/en.json"
+translation:
+  locale_overrides:
+    fr:
+      translation_memory: "de-only"
+`
+      );
+      writeSourceFile(
+        tmpDir,
+        'locales/en.json',
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
+
+      mockListTms([
+        { id: TM_UUID_DE, name: 'de-only', source: 'en', target: 'de' },
+      ]);
+
+      const config = await loadSyncConfig(tmpDir);
+      const caught = await syncService
+        .sync(config, { dryRun: true })
+        .catch((e: unknown) => e);
+
+      expect(caught).toBeInstanceOf(ConfigError);
+      expect((caught as Error).message).toMatch(
+        /does not support the requested language pair/
+      );
     });
   });
 });
 
-function createServicesWithRegistry(registry: FormatRegistry): { client: DeepLClient; syncService: SyncService } {
+function createServicesWithRegistry(registry: FormatRegistry): {
+  client: DeepLClient;
+  syncService: SyncService;
+} {
   const client = new DeepLClient(TEST_API_KEY, { maxRetries: 0 });
   const mockConfig = createMockConfigService({
     get: jest.fn(() => ({
       auth: {},
       api: { baseUrl: '', usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: false,
+      },
       cache: { enabled: false },
       output: { format: 'text', color: true },
       proxy: {},
@@ -2575,8 +3386,16 @@ function createServicesWithRegistry(registry: FormatRegistry): { client: DeepLCl
     getValue: jest.fn(() => false),
   });
   const mockCache = createMockCacheService();
-  const translationService = new TranslationService(client, mockConfig, mockCache);
+  const translationService = new TranslationService(
+    client,
+    mockConfig,
+    mockCache
+  );
   const glossaryService = new GlossaryService(client);
-  const syncService = new SyncService(translationService, glossaryService, registry);
+  const syncService = new SyncService(
+    translationService,
+    glossaryService,
+    registry
+  );
   return { client, syncService };
 }

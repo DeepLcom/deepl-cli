@@ -1,19 +1,24 @@
 /**
- * Tests that placeholder restoration terminates.
+ * Tests that placeholder restoration terminates, and still restores every
+ * ordinary placeholder while it does.
  *
- * restorePlaceholders looped `while (restored.includes(placeholder))`,
- * re-running a single `replace` each pass. When the preserved original itself
- * contained the placeholder token, every pass re-inserted it: the guard never
- * went false and the string grew by the original's length forever.
+ * restorePlaceholders must not loop on `restored.includes(placeholder)` while
+ * re-running a single `replace` each pass: when the preserved original itself
+ * contains the placeholder token, every pass re-inserts it, so the guard never
+ * goes false and the string grows by the original's length forever.
  *
- * `preserveVariables`' pattern is `/\{[\p{L}\p{N}_]+\}/u`, which matches
- * `{__VAR_0__}` because underscores and digits are in the class — so a locale
- * file containing a token of that shape triggers it, and because variable
- * preservation runs unconditionally and restoration also runs on cached
- * results, it hangs with no API call at all.
+ * That input is reachable. `preserveVariables`' pattern is
+ * `/\{[\p{L}\p{N}_]+\}/u`, which matches `{__VAR_0__}` because underscores and
+ * digits are in the class — so a locale file containing a token of that shape
+ * triggers it, and because variable preservation runs unconditionally and
+ * restoration also runs on cached results, the hang needs no API call at all.
  */
 
-import { preserveVariables, preserveCodeBlocks, restorePlaceholders } from '../../src/utils/text-preservation';
+import {
+  preserveVariables,
+  preserveCodeBlocks,
+  restorePlaceholders,
+} from '../../src/utils/text-preservation';
 
 describe('restorePlaceholders termination', () => {
   it('should terminate when the original contains its own placeholder token', () => {
@@ -47,7 +52,10 @@ describe('restorePlaceholders termination', () => {
 
   it('should restore ordinary placeholders correctly', () => {
     const map = new Map<string, string>();
-    const preserved = preserveVariables('Hello {name}, you have {count} items', map);
+    const preserved = preserveVariables(
+      'Hello {name}, you have {count} items',
+      map
+    );
 
     const restored = restorePlaceholders(preserved, map);
 

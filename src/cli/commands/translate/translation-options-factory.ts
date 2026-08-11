@@ -3,12 +3,15 @@ import type { GlossaryService } from '../../../services/glossary.js';
 import type { TranslationService } from '../../../services/translation.js';
 import { resolveTranslationMemoryId } from '../../../services/translation-memory.js';
 import type { TranslateOptions, TranslationParams } from './types.js';
-import { buildTranslationOptions as buildBaseLegacy, resolveGlossaryId } from './translate-utils.js';
+import {
+  buildTranslationOptions as buildBaseLegacy,
+  resolveGlossaryId,
+} from './translate-utils.js';
 
 /**
- * Single source of truth for the *base* TranslateOptions mapping from CLI
- * flags — the shape all translate handlers (text, file, directory, document)
- * agreed on. Produces the same field set regardless of handler.
+ * Single source of truth for the *base* TranslateOptions mapping of CLI flags,
+ * producing the same field set for every translate handler (text, file,
+ * directory, document).
  *
  * Shared downstream shaping lives in `applySharedTmAndGlossary`; handlers
  * keep only handler-specific shaping (custom instructions, style id, XML tag
@@ -24,8 +27,66 @@ import { buildTranslationOptions as buildBaseLegacy, resolveGlossaryId } from '.
  *  - XML tag-handling parameters (`outlineDetection`, `splittingTags`, etc.)
  *    are text-handler-specific.
  */
-export function buildBaseTranslationOptions(options: TranslateOptions): TranslationParams {
+export function buildBaseTranslationOptions(
+  options: TranslateOptions
+): TranslationParams {
   return buildBaseLegacy(options);
+}
+
+/**
+ * Resolve `--glossary` values to IDs and place them on `base`. One glossary is
+ * assigned to `glossaryId`, keeping the single-glossary wire shape and its
+ * cache key; several go to `glossaryIds`, in the order given, because the API
+ * applies the last glossary that defines a conflicting term.
+ *
+ * Separate from `applySharedTmAndGlossary` because document translation
+ * supports glossaries but not translation memories.
+ */
+export async function applyGlossarySelection<
+  T extends { glossaryId?: string; glossaryIds?: string[] },
+>(
+  base: T,
+  options: TranslateOptions,
+  glossaryService: GlossaryService,
+  targets?: Language[]
+): Promise<void> {
+  if (!options.glossary || options.glossary.length === 0) {
+    return;
+  }
+
+  // --glossary already requires --from, so the pair is always known here.
+  const expected =
+    options.from && targets && targets.length > 0
+      ? { from: options.from as Language, targets }
+      : undefined;
+
+  // Resolved sequentially so the service's resolution cache is populated
+  // before the next name-or-ID lookup needs the glossary list.
+  //
+  // Deduplicated after resolution, because a name and its own UUID resolve to
+  // the same glossary: a duplicate would flip the wire parameter from
+  // glossary_id to glossary_ids, key an identical request differently, and
+  // spend two of the five slots the API allows.
+  //
+  // A repeat keeps its LAST position, because the last glossary to define a term
+  // is the one the API applies -- dropping the later occurrence would hand the
+  // conflict to a glossary the user had deliberately overridden.
+  const ids: string[] = [];
+  for (const nameOrId of options.glossary) {
+    const id = await resolveGlossaryId(glossaryService, nameOrId, expected);
+    const existing = ids.indexOf(id);
+    if (existing !== -1) {
+      ids.splice(existing, 1);
+    }
+    ids.push(id);
+  }
+
+  const [only] = ids;
+  if (ids.length === 1 && only) {
+    base.glossaryId = only;
+  } else {
+    base.glossaryIds = ids;
+  }
 }
 
 export interface SharedTmAndGlossaryDeps {
@@ -45,10 +106,10 @@ export interface SharedTmAndGlossaryDeps {
  * default onto a base `TranslationParams`-compatible object. Mutates `base`
  * in place so handlers can compose additional downstream shaping.
  *
- * Shared by the text + file handlers. All
- * validation (required `--from`, TM-requires-quality_optimized, extended-lang
- * constraints) remains in the caller so per-handler error messages are
- * preserved; this helper is called only after validation passes.
+ * Shared by the text + file handlers. All validation (required `--from`,
+ * TM-requires-quality_optimized, extended-lang constraints) remains in the
+ * caller so per-handler error messages are preserved; this helper is called
+ * only after validation passes.
  *
  * The generic `T` lets callers pass a `TranslationParams` (text handler), a
  * `TranslationParams & { outputDir: string }` (file multi-target), or the
@@ -58,6 +119,7 @@ export interface SharedTmAndGlossaryDeps {
 export async function applySharedTmAndGlossary<
   T extends {
     glossaryId?: string;
+    glossaryIds?: string[];
     translationMemoryId?: string;
     translationMemoryThreshold?: number;
     modelType?: TranslationParams['modelType'];
@@ -65,11 +127,14 @@ export async function applySharedTmAndGlossary<
 >(
   base: T,
   options: TranslateOptions,
-  deps: SharedTmAndGlossaryDeps,
+  deps: SharedTmAndGlossaryDeps
 ): Promise<void> {
-  if (options.glossary) {
-    base.glossaryId = await resolveGlossaryId(deps.glossaryService, options.glossary);
-  }
+  await applyGlossarySelection(
+    base,
+    options,
+    deps.glossaryService,
+    deps.targets
+  );
 
   if (options.translationMemory) {
     const cache = deps.tmCache ?? new Map<string, string>();
@@ -77,7 +142,7 @@ export async function applySharedTmAndGlossary<
       deps.translationService,
       options.translationMemory,
       cache,
-      { from: options.from as Language, targets: deps.targets },
+      { from: options.from as Language, targets: deps.targets }
     );
     if (options.tmThreshold !== undefined) {
       base.translationMemoryThreshold = options.tmThreshold;

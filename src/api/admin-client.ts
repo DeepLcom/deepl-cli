@@ -1,5 +1,10 @@
 import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { AdminApiKey, AdminUsageOptions, AdminUsageReport, UsageBreakdown } from '../types/index.js';
+import {
+  AdminApiKey,
+  AdminUsageOptions,
+  AdminUsageReport,
+  UsageBreakdown,
+} from '../types/index.js';
 import { AuthError } from '../utils/errors.js';
 
 export class AdminClient extends HttpClient {
@@ -15,26 +20,31 @@ export class AdminClient extends HttpClient {
   protected override handleError(
     error: unknown,
     context?: string,
-    traceId?: string,
+    traceId?: string
   ): Error {
     const result = super.handleError(error, context, traceId);
     if (result instanceof AuthError) {
       return new AuthError(
         result.message,
-        'The admin API requires an administrator API key; a valid regular API key is not sufficient. Use a key created by your DeepL account administrator.',
+        'The admin API requires an administrator API key; a valid regular API key is not sufficient. Use a key created by your DeepL account administrator.'
       );
     }
     return result;
   }
 
   async listApiKeys(): Promise<AdminApiKey[]> {
-    const response = await this.makeJsonRequest<Array<{
-      key_id: string;
-      label: string;
-      creation_time: string;
-      is_deactivated: boolean;
-      usage_limits?: { characters?: number | null; speech_to_text_milliseconds?: number | null };
-    }>>('GET', '/v2/admin/developer-keys');
+    const response = await this.makeJsonRequest<
+      Array<{
+        key_id: string;
+        label: string;
+        creation_time: string;
+        is_deactivated: boolean;
+        usage_limits?: {
+          characters?: number | null;
+          speech_to_text_milliseconds?: number | null;
+        };
+      }>
+    >('GET', '/v2/admin/developer-keys');
 
     return response.map((key) => this.normalizeApiKey(key));
   }
@@ -51,7 +61,10 @@ export class AdminClient extends HttpClient {
       label: string;
       creation_time: string;
       is_deactivated: boolean;
-      usage_limits?: { characters?: number | null; speech_to_text_milliseconds?: number | null };
+      usage_limits?: {
+        characters?: number | null;
+        speech_to_text_milliseconds?: number | null;
+      };
     }>('POST', '/v2/admin/developer-keys', body);
 
     return this.normalizeApiKey(response);
@@ -59,27 +72,31 @@ export class AdminClient extends HttpClient {
 
   async deactivateApiKey(keyId: string): Promise<void> {
     await this.makeJsonRequest<void>(
-      'PUT', '/v2/admin/developer-keys/deactivate', { key_id: keyId }
+      'PUT',
+      '/v2/admin/developer-keys/deactivate',
+      { key_id: keyId }
     );
   }
 
   async renameApiKey(keyId: string, label: string): Promise<void> {
-    await this.makeJsonRequest<void>(
-      'PUT', '/v2/admin/developer-keys/label', { key_id: keyId, label }
-    );
+    await this.makeJsonRequest<void>('PUT', '/v2/admin/developer-keys/label', {
+      key_id: keyId,
+      label,
+    });
   }
 
   async setApiKeyLimit(
     keyId: string,
     characters: number | null,
-    speechToTextMilliseconds?: number | null,
+    speechToTextMilliseconds?: number | null
   ): Promise<void> {
     const body: Record<string, unknown> = { key_id: keyId, characters };
     if (speechToTextMilliseconds !== undefined) {
       body['speech_to_text_milliseconds'] = speechToTextMilliseconds;
     }
     await this.makeJsonRequest<void>(
-      'PUT', '/v2/admin/developer-keys/limits',
+      'PUT',
+      '/v2/admin/developer-keys/limits',
       body
     );
   }
@@ -152,7 +169,10 @@ export class AdminClient extends HttpClient {
     label: string;
     creation_time: string;
     is_deactivated: boolean;
-    usage_limits?: { characters?: number | null; speech_to_text_milliseconds?: number | null };
+    usage_limits?: {
+      characters?: number | null;
+      speech_to_text_milliseconds?: number | null;
+    };
   }): AdminApiKey {
     const result: AdminApiKey = {
       keyId: key.key_id,
@@ -164,7 +184,8 @@ export class AdminClient extends HttpClient {
       result.usageLimits = {
         characters: key.usage_limits.characters,
         ...(key.usage_limits.speech_to_text_milliseconds !== undefined && {
-          speechToTextMilliseconds: key.usage_limits.speech_to_text_milliseconds,
+          speechToTextMilliseconds:
+            key.usage_limits.speech_to_text_milliseconds,
         }),
       };
     }

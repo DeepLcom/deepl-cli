@@ -17,14 +17,14 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should still validate API key eagerly', () => {
-     
-    const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
+    const { DeepLClient } =
+      require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     expect(() => new DeepLClient('')).toThrow('API key is required');
   });
 
   it('should construct sub-clients lazily on first method call', async () => {
-     
-    const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
+    const { DeepLClient } =
+      require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
     // At this point, only static validation ran (no HttpClient instance created).
@@ -38,9 +38,11 @@ describe('DeepLClient lazy sub-client construction', () => {
     expect((client as any)._adminClient).toBeUndefined();
 
     // Now make a translate call - this should create TranslationClient
-    nock(baseUrl).post('/v2/translate').reply(200, {
-      translations: [{ text: 'Hola', detected_source_language: 'EN' }],
-    });
+    nock(baseUrl)
+      .post('/v2/translate')
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
 
     await client.translate('Hello', { targetLang: 'es' });
 
@@ -54,19 +56,23 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should reuse sub-client on subsequent calls', async () => {
-     
-    const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
+    const { DeepLClient } =
+      require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
-    nock(baseUrl).post('/v2/translate').reply(200, {
-      translations: [{ text: 'Hola', detected_source_language: 'EN' }],
-    });
+    nock(baseUrl)
+      .post('/v2/translate')
+      .reply(200, {
+        translations: [{ text: 'Hola', detected_source_language: 'EN' }],
+      });
     await client.translate('Hello', { targetLang: 'es' });
     const firstClient = (client as any)._translationClient;
 
-    nock(baseUrl).post('/v2/translate').reply(200, {
-      translations: [{ text: 'Bonjour', detected_source_language: 'EN' }],
-    });
+    nock(baseUrl)
+      .post('/v2/translate')
+      .reply(200, {
+        translations: [{ text: 'Bonjour', detected_source_language: 'EN' }],
+      });
     await client.translate('Hello', { targetLang: 'fr' });
     const secondClient = (client as any)._translationClient;
 
@@ -74,8 +80,8 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should construct GlossaryClient lazily on glossary method call', async () => {
-     
-    const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
+    const { DeepLClient } =
+      require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
     expect((client as any)._glossaryClient).toBeUndefined();
@@ -88,24 +94,26 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should construct WriteClient lazily on improveText call', async () => {
-     
-    const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
+    const { DeepLClient } =
+      require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
     expect((client as any)._writeClient).toBeUndefined();
 
-    nock(baseUrl).post('/v2/write/rephrase').reply(200, {
-      improvements: [{ text: 'Improved.', target_language: 'en-US' }],
-    });
-    await client.improveText('Test.', { targetLang: 'en-US' });
+    nock(baseUrl)
+      .post('/v2/write/rephrase')
+      .reply(200, {
+        improvements: [{ text: 'Improved.', target_language: 'en-US' }],
+      });
+    await client.improveText('Test.', { targetLang: 'en-us' });
 
     expect((client as any)._writeClient).not.toBeNull();
     expect((client as any)._translationClient).toBeUndefined();
   });
 
   it('should construct AdminClient lazily on listApiKeys call', async () => {
-     
-    const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
+    const { DeepLClient } =
+      require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
     expect((client as any)._adminClient).toBeUndefined();
@@ -118,8 +126,8 @@ describe('DeepLClient lazy sub-client construction', () => {
   });
 
   it('should construct StyleRulesClient lazily on getStyleRules call', async () => {
-     
-    const { DeepLClient } = require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
+    const { DeepLClient } =
+      require('../../src/api/deepl-client') as typeof import('../../src/api/deepl-client');
     const client = new DeepLClient(apiKey);
 
     expect((client as any)._styleRulesClient).toBeUndefined();

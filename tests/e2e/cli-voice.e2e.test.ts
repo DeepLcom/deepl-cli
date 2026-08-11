@@ -34,6 +34,8 @@ describe('Voice CLI E2E', () => {
       expect(output).toContain('--chunk-interval');
       expect(output).toContain('--no-stream');
       expect(output).toContain('--format');
+      expect(output).toContain('--no-reconnect');
+      expect(output).toContain('--max-reconnect-attempts');
     });
 
     it('should show voice in main help', () => {
@@ -46,6 +48,35 @@ describe('Voice CLI E2E', () => {
       expect(output).toContain('Examples:');
       expect(output).toContain('.ogg');
       expect(output).toContain('.mp3');
+    });
+  });
+
+  describe('Insecure API URL in config', () => {
+    // Its own config dir: the point of the test is a poisoned config.json, and
+    // the rest of this file shares one.
+    it('should reject an http:// base URL rather than sending audio to it', () => {
+      const insecureConfig = createTestConfigDir('voice-e2e-insecure');
+      const audioFile = path.join(testDir, 'insecure-url.mp3');
+      fs.writeFileSync(audioFile, Buffer.alloc(100));
+      fs.writeFileSync(
+        path.join(insecureConfig.path, 'config.json'),
+        JSON.stringify({
+          auth: { apiKey: 'test-key-for-url-validation' },
+          api: { baseUrl: 'http://evil-server.example.com/v2', usePro: false },
+        })
+      );
+      const { runCLIAll: runInsecure } = makeRunCLI(insecureConfig.path);
+
+      let output: string;
+      try {
+        output = runInsecure(`deepl voice ${audioFile} --to de`);
+      } catch (error) {
+        const failure = error as { stdout?: unknown; stderr?: unknown };
+        output = String(failure.stdout ?? '') + String(failure.stderr ?? '');
+      }
+      insecureConfig.cleanup();
+
+      expect(output).toMatch(/Insecure HTTP URL rejected/i);
     });
   });
 
@@ -77,22 +108,81 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'exit-code-nokey.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
+      const cleanEnv: Record<string, string | undefined> = {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+      };
       delete cleanEnv['DEEPL_API_KEY'];
 
       try {
-        execSync('deepl auth clear', { encoding: 'utf-8', env: cleanEnv, stdio: 'pipe' });
+        execSync('deepl auth clear', {
+          encoding: 'utf-8',
+          env: cleanEnv,
+          stdio: 'pipe',
+        });
       } catch {
         // Ignore
       }
 
       expect.assertions(1);
       try {
-        execSync(`deepl voice ${testFile} --to de`, { encoding: 'utf-8', env: cleanEnv });
+        execSync(`deepl voice ${testFile} --to de`, {
+          encoding: 'utf-8',
+          env: cleanEnv,
+        });
         throw new Error('Should have thrown');
       } catch (error: any) {
         expect(error.status).toBeGreaterThan(0);
       }
+    });
+  });
+
+  describe('Validation before the glossary round trip', () => {
+    // Resolving --glossary lists the account's glossaries, so a command that
+    // fails locally must fail before that request rather than after it. The
+    // config points at a dead port, so a regression that resolved first would
+    // report a network error instead of the local rejection.
+    const orderConfig = createTestConfigDir('voice-e2e-glossary-order');
+    const orderCLI = makeRunCLI(orderConfig.path, { noColor: true });
+
+    beforeAll(() => {
+      fs.writeFileSync(
+        path.join(orderConfig.path, 'config.json'),
+        JSON.stringify({
+          auth: { apiKey: 'mock-api-key-for-testing:fx' },
+          api: { baseUrl: 'http://127.0.0.1:9/v2', usePro: false },
+        })
+      );
+    });
+
+    afterAll(() => {
+      orderConfig.cleanup();
+    });
+
+    it('should reject an invalid target language ahead of glossary resolution', () => {
+      const testFile = path.join(testDir, 'glossary-order.mp3');
+      fs.writeFileSync(testFile, Buffer.alloc(100));
+
+      const result = orderCLI.runCLIExpectError(
+        `deepl voice ${testFile} --to bogus --glossary my-glossary`
+      );
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('Invalid voice target language');
+      expect(result.output).not.toMatch(/Network error/);
+    });
+
+    it('should reject an invalid content type ahead of glossary resolution', () => {
+      const testFile = path.join(testDir, 'glossary-order-ct.mp3');
+      fs.writeFileSync(testFile, Buffer.alloc(100));
+
+      const result = orderCLI.runCLIExpectError(
+        `deepl voice ${testFile} --to de --content-type audio/wav --glossary my-glossary`
+      );
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('Invalid voice content type');
+      expect(result.output).not.toMatch(/Network error/);
     });
   });
 
@@ -101,7 +191,10 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'error-msg-test.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
+      const cleanEnv: Record<string, string | undefined> = {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+      };
       delete cleanEnv['DEEPL_API_KEY'];
 
       try {
@@ -148,7 +241,10 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'format-text.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
+      const cleanEnv: Record<string, string | undefined> = {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+      };
       delete cleanEnv['DEEPL_API_KEY'];
 
       expect.assertions(1);
@@ -170,7 +266,10 @@ describe('Voice CLI E2E', () => {
       const testFile = path.join(testDir, 'format-json.mp3');
       fs.writeFileSync(testFile, Buffer.alloc(100));
 
-      const cleanEnv: Record<string, string | undefined> = { ...process.env, DEEPL_CONFIG_DIR: testConfig.path };
+      const cleanEnv: Record<string, string | undefined> = {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+      };
       delete cleanEnv['DEEPL_API_KEY'];
 
       expect.assertions(1);

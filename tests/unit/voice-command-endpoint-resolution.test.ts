@@ -21,8 +21,13 @@ jest.mock('chalk', () => {
   return {
     __esModule: true,
     default: {
-      red: passthrough, green: passthrough, blue: passthrough,
-      yellow: passthrough, gray: passthrough, bold: passthrough, level: 3,
+      red: passthrough,
+      green: passthrough,
+      blue: passthrough,
+      yellow: passthrough,
+      gray: passthrough,
+      bold: passthrough,
+      level: 3,
     },
   };
 });

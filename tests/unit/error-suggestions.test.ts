@@ -31,7 +31,9 @@ describe('Error suggestions', () => {
   describe('AuthError', () => {
     it('should have a default suggestion about setting the API key', () => {
       const error = new AuthError('Authentication failed');
-      expect(error.suggestion).toBe('Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>');
+      expect(error.suggestion).toBe(
+        'Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>'
+      );
     });
 
     it('should allow overriding the default suggestion', () => {
@@ -106,7 +108,10 @@ describe('Error suggestions', () => {
 
   describe('ValidationError', () => {
     it('should support optional suggestion', () => {
-      const error = new ValidationError('Invalid language', 'Run: deepl languages');
+      const error = new ValidationError(
+        'Invalid language',
+        'Run: deepl languages'
+      );
       expect(error.suggestion).toBe('Run: deepl languages');
     });
 
@@ -123,7 +128,10 @@ describe('Error suggestions', () => {
 
   describe('ConfigError', () => {
     it('should support optional suggestion', () => {
-      const error = new ConfigError('Config missing', 'Run: deepl config set ...');
+      const error = new ConfigError(
+        'Config missing',
+        'Run: deepl config set ...'
+      );
       expect(error.suggestion).toBe('Run: deepl config set ...');
     });
 
@@ -150,51 +158,44 @@ describe('HttpClient.handleError suggestions', () => {
     nock.cleanAll();
   });
 
-  async function createClientAndTranslate(statusCode: number, body: Record<string, unknown> = {}) {
+  async function createClientAndTranslate(
+    statusCode: number,
+    body: Record<string, unknown> = {}
+  ) {
     const { DeepLClient } = await import('../../src/api/deepl-client');
     const client = new DeepLClient('test-api-key', { maxRetries: 0 });
 
-    nock(baseUrl)
-      .post('/v2/translate')
-      .reply(statusCode, body);
+    nock(baseUrl).post('/v2/translate').reply(statusCode, body);
 
     return client.translate('Hello', { targetLang: 'es' });
   }
 
   it('should include suggestion for HTTP 403 (auth error)', async () => {
-    await expect(createClientAndTranslate(403))
-      .rejects
-      .toMatchObject({
-        message: expect.stringContaining('Authentication failed'),
-        suggestion: expect.stringContaining('deepl auth set-key'),
-      });
+    await expect(createClientAndTranslate(403)).rejects.toMatchObject({
+      message: expect.stringContaining('Authentication failed'),
+      suggestion: expect.stringContaining('deepl auth set-key'),
+    });
   });
 
   it('should include suggestion for HTTP 456 (quota exceeded)', async () => {
-    await expect(createClientAndTranslate(456))
-      .rejects
-      .toMatchObject({
-        message: expect.stringContaining('Quota exceeded'),
-        suggestion: expect.stringContaining('deepl usage'),
-      });
+    await expect(createClientAndTranslate(456)).rejects.toMatchObject({
+      message: expect.stringContaining('Quota exceeded'),
+      suggestion: expect.stringContaining('deepl usage'),
+    });
   });
 
   it('should include suggestion for HTTP 429 (rate limit)', async () => {
-    await expect(createClientAndTranslate(429))
-      .rejects
-      .toMatchObject({
-        message: expect.stringContaining('Rate limit exceeded'),
-        suggestion: expect.stringContaining('Wait a moment'),
-      });
+    await expect(createClientAndTranslate(429)).rejects.toMatchObject({
+      message: expect.stringContaining('Rate limit exceeded'),
+      suggestion: expect.stringContaining('Wait a moment'),
+    });
   });
 
   it('should include suggestion for HTTP 503 (service unavailable)', async () => {
-    await expect(createClientAndTranslate(503))
-      .rejects
-      .toMatchObject({
-        message: expect.stringContaining('Service temporarily unavailable'),
-        suggestion: expect.stringContaining('internet connection'),
-      });
+    await expect(createClientAndTranslate(503)).rejects.toMatchObject({
+      message: expect.stringContaining('Service temporarily unavailable'),
+      suggestion: expect.stringContaining('internet connection'),
+    });
   });
 
   it('should wrap unrecognized 4xx errors with ValidationError', async () => {
@@ -205,9 +206,9 @@ describe('HttpClient.handleError suggestions', () => {
       .post('/v2/translate')
       .reply(422, { message: 'Unprocessable Entity' });
 
-    await expect(client.translate('Hello', { targetLang: 'es' }))
-      .rejects
-      .toBeInstanceOf(ValidationError);
+    await expect(
+      client.translate('Hello', { targetLang: 'es' })
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 
   it('should wrap network-level errors with NetworkError and suggestion', async () => {
@@ -221,11 +222,11 @@ describe('HttpClient.handleError suggestions', () => {
       .post('/v2/translate')
       .replyWithError('connect ECONNREFUSED 127.0.0.1:1');
 
-    await expect(client.translate('Hello', { targetLang: 'es' }))
-      .rejects
-      .toMatchObject({
-        message: expect.stringContaining('ECONNREFUSED'),
-        suggestion: expect.stringContaining('internet connection'),
-      });
+    await expect(
+      client.translate('Hello', { targetLang: 'es' })
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('ECONNREFUSED'),
+      suggestion: expect.stringContaining('internet connection'),
+    });
   });
 });

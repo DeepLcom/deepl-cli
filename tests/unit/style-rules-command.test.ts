@@ -26,12 +26,17 @@ describe('StyleRulesCommand', () => {
 
     it('should pass detailed option', async () => {
       await command.list({ detailed: true });
-      expect(mockService.getStyleRules).toHaveBeenCalledWith({ detailed: true });
+      expect(mockService.getStyleRules).toHaveBeenCalledWith({
+        detailed: true,
+      });
     });
 
     it('should pass pagination options', async () => {
       await command.list({ page: 2, pageSize: 10 });
-      expect(mockService.getStyleRules).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
+      expect(mockService.getStyleRules).toHaveBeenCalledWith({
+        page: 2,
+        pageSize: 10,
+      });
     });
 
     it('should return rules from service', async () => {
@@ -92,7 +97,11 @@ describe('StyleRulesCommand', () => {
           },
           customInstructions: [
             { label: 'Formality', prompt: 'Keep it formal' },
-            { label: 'Tone', prompt: 'Use friendly tone', sourceLanguage: 'en' },
+            {
+              label: 'Tone',
+              prompt: 'Use friendly tone',
+              sourceLanguage: 'en',
+            },
           ],
         },
       ];
@@ -178,14 +187,16 @@ describe('StyleRulesCommand', () => {
     });
 
     it('should sanitize ANSI escapes in rule name when formatting list text', () => {
-      const evil: StyleRule[] = [{
-        styleId: 'sr-1',
-        name: 'Evil\u001b[31mred',
-        language: 'en',
-        version: 1,
-        creationTime: 'c',
-        updatedTime: 'u',
-      }];
+      const evil: StyleRule[] = [
+        {
+          styleId: 'sr-1',
+          name: 'Evil\u001b[31mred',
+          language: 'en',
+          version: 1,
+          creationTime: 'c',
+          updatedTime: 'u',
+        },
+      ];
       const result = command.formatStyleRulesList(evil);
       expect(result).not.toContain('\u001b[31m');
     });
@@ -194,7 +205,10 @@ describe('StyleRulesCommand', () => {
   describe('create', () => {
     it('should proxy to service.createStyleRule', async () => {
       await command.create({ name: 'X', language: 'en' });
-      expect(mockService.createStyleRule).toHaveBeenCalledWith({ name: 'X', language: 'en' });
+      expect(mockService.createStyleRule).toHaveBeenCalledWith({
+        name: 'X',
+        language: 'en',
+      });
     });
   });
 
@@ -213,7 +227,9 @@ describe('StyleRulesCommand', () => {
   describe('update', () => {
     it('should proxy to service.updateStyleRule', async () => {
       await command.update('sr-1', { name: 'Renamed' });
-      expect(mockService.updateStyleRule).toHaveBeenCalledWith('sr-1', { name: 'Renamed' });
+      expect(mockService.updateStyleRule).toHaveBeenCalledWith('sr-1', {
+        name: 'Renamed',
+      });
     });
   });
 
@@ -228,7 +244,10 @@ describe('StyleRulesCommand', () => {
     it('should proxy to service.replaceConfiguredRules', async () => {
       const rules = { punctuation: { quotation_mark: 'use_guillemets' } };
       await command.replaceRules('sr-1', rules);
-      expect(mockService.replaceConfiguredRules).toHaveBeenCalledWith('sr-1', rules);
+      expect(mockService.replaceConfiguredRules).toHaveBeenCalledWith(
+        'sr-1',
+        rules
+      );
     });
   });
 
@@ -290,7 +309,9 @@ describe('StyleRulesCommand', () => {
     it('should sanitize ANSI escapes in configured-rules keys and values', () => {
       const evil: StyleRuleDetailed = {
         ...baseRule,
-        configuredRules: { 'cat\u001b[31m': { 'key\u001b[32m': 'val\u001b[0m' } },
+        configuredRules: {
+          'cat\u001b[31m': { 'key\u001b[32m': 'val\u001b[0m' },
+        },
         customInstructions: [],
       };
       const result = command.formatStyleRule(evil);
@@ -303,8 +324,12 @@ describe('StyleRulesCommand', () => {
   describe('listInstructions', () => {
     it('should call service.getStyleRule with detailed=true and return the nested array', async () => {
       mockService.getStyleRule.mockResolvedValue({
-        styleId: 'sr-1', name: 'X', language: 'en', version: 1,
-        creationTime: 'c', updatedTime: 'u',
+        styleId: 'sr-1',
+        name: 'X',
+        language: 'en',
+        version: 1,
+        creationTime: 'c',
+        updatedTime: 'u',
         configuredRules: {},
         customInstructions: [
           { label: 'tone', prompt: 'Be formal' },
@@ -320,8 +345,12 @@ describe('StyleRulesCommand', () => {
 
     it('should return empty array when rule has no customInstructions field', async () => {
       mockService.getStyleRule.mockResolvedValue({
-        styleId: 'sr-1', name: 'X', language: 'en', version: 1,
-        creationTime: 'c', updatedTime: 'u',
+        styleId: 'sr-1',
+        name: 'X',
+        language: 'en',
+        version: 1,
+        creationTime: 'c',
+        updatedTime: 'u',
       });
 
       const result = await command.listInstructions('sr-1');
@@ -332,40 +361,57 @@ describe('StyleRulesCommand', () => {
   describe('addInstruction', () => {
     it('should proxy to service.createCustomInstruction', async () => {
       await command.addInstruction('sr-1', { label: 'L', prompt: 'P' });
-      expect(mockService.createCustomInstruction).toHaveBeenCalledWith('sr-1', { label: 'L', prompt: 'P' });
+      expect(mockService.createCustomInstruction).toHaveBeenCalledWith('sr-1', {
+        label: 'L',
+        prompt: 'P',
+      });
     });
   });
 
   describe('updateInstruction', () => {
     it('should proxy to service.updateCustomInstruction', async () => {
       await command.updateInstruction('sr-1', 'tone', { prompt: 'New text' });
-      expect(mockService.updateCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone', { prompt: 'New text' });
+      expect(mockService.updateCustomInstruction).toHaveBeenCalledWith(
+        'sr-1',
+        'tone',
+        { prompt: 'New text' }
+      );
     });
   });
 
   describe('removeInstruction', () => {
     it('should proxy to service.deleteCustomInstruction', async () => {
       await command.removeInstruction('sr-1', 'tone');
-      expect(mockService.deleteCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone');
+      expect(mockService.deleteCustomInstruction).toHaveBeenCalledWith(
+        'sr-1',
+        'tone'
+      );
     });
   });
 
   describe('formatCustomInstruction / formatCustomInstructionsList / formatCustomInstructionJson', () => {
     it('should render a single instruction in text', () => {
-      const result = command.formatCustomInstruction({ label: 'tone', prompt: 'Be formal' });
+      const result = command.formatCustomInstruction({
+        label: 'tone',
+        prompt: 'Be formal',
+      });
       expect(result).toContain('tone');
       expect(result).toContain('Be formal');
     });
 
     it('should append source-language suffix when present', () => {
       const result = command.formatCustomInstruction({
-        label: 'tone', prompt: 'Be formal', sourceLanguage: 'en',
+        label: 'tone',
+        prompt: 'Be formal',
+        sourceLanguage: 'en',
       });
       expect(result).toContain('[en]');
     });
 
     it('should render empty list as a friendly message', () => {
-      expect(command.formatCustomInstructionsList([])).toBe('No custom instructions found.');
+      expect(command.formatCustomInstructionsList([])).toBe(
+        'No custom instructions found.'
+      );
     });
 
     it('should render a list of instructions', () => {
@@ -387,7 +433,9 @@ describe('StyleRulesCommand', () => {
     });
 
     it('should emit valid JSON preserving raw strings', () => {
-      const json = command.formatCustomInstructionJson([{ label: 'L', prompt: 'P' }]);
+      const json = command.formatCustomInstructionJson([
+        { label: 'L', prompt: 'P' },
+      ]);
       expect(JSON.parse(json)).toEqual([{ label: 'L', prompt: 'P' }]);
     });
   });
@@ -439,7 +487,9 @@ describe('StyleRulesCommand', () => {
       const detailed: StyleRuleDetailed = {
         ...baseRule,
         // 2 leaf settings across 1 category — Rules count = 2
-        configuredRules: { punctuation: { quotation_mark: 'use_guillemets', spacing: 'tight' } },
+        configuredRules: {
+          punctuation: { quotation_mark: 'use_guillemets', spacing: 'tight' },
+        },
         customInstructions: [{ label: 'tone', prompt: 'formal' }],
       };
       const result = command.formatStyleRulesTable([detailed]);
@@ -463,7 +513,9 @@ describe('StyleRulesCommand', () => {
 
   describe('formatCustomInstructionsTable', () => {
     it('should return empty-state message when no instructions', () => {
-      expect(command.formatCustomInstructionsTable([])).toBe('No custom instructions found.');
+      expect(command.formatCustomInstructionsTable([])).toBe(
+        'No custom instructions found.'
+      );
     });
 
     it('should include label, prompt, and source columns', () => {

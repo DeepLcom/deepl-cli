@@ -13,14 +13,19 @@ describe('arb parser', () => {
 
   describe('reconstruct removes deleted keys', () => {
     it('should remove keys and their @metadata when absent from entries', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { description: 'A greeting' },
-        farewell: 'Goodbye',
-        '@farewell': { description: 'A farewell' },
-        deleted_key: 'Remove me',
-        '@deleted_key': { description: 'Should be removed' },
-      }, null, 2) + '\n';
+      const content =
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+            '@greeting': { description: 'A greeting' },
+            farewell: 'Goodbye',
+            '@farewell': { description: 'A farewell' },
+            deleted_key: 'Remove me',
+            '@deleted_key': { description: 'Should be removed' },
+          },
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },
@@ -38,9 +43,14 @@ describe('arb parser', () => {
 
   describe('reconstruct inserts new keys', () => {
     it('should add keys not present in the template', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-      }, null, 2) + '\n';
+      const content =
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+          },
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },
@@ -54,14 +64,78 @@ describe('arb parser', () => {
     });
   });
 
+  // A key colliding with an Object.prototype member is plausible in a real
+  // Flutter project, and the insertion path is reached whenever the source gains
+  // a key the existing target file does not have.
+  describe('reconstruct inserts a key that collides with Object.prototype', () => {
+    const COLLIDING = [
+      'toString',
+      'valueOf',
+      'constructor',
+      'hasOwnProperty',
+      'isPrototypeOf',
+      '__proto__',
+    ];
+
+    const template = JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n';
+
+    it.each(COLLIDING)('should insert a key named %s', (key) => {
+      const entries: TranslatedEntry[] = [
+        { key: 'greeting', value: 'Hello', translation: 'Hola' },
+        { key, value: `Source ${key}`, translation: `Translated ${key}` },
+      ];
+
+      const parsed = JSON.parse(
+        parser.reconstruct(template, entries)
+      ) as Record<string, unknown>;
+
+      expect(Object.hasOwn(parsed, key)).toBe(true);
+      expect(parsed[key]).toBe(`Translated ${key}`);
+    });
+
+    it('should insert every colliding key in one pass', () => {
+      const entries: TranslatedEntry[] = COLLIDING.map((key) => ({
+        key,
+        value: `Source ${key}`,
+        translation: `Translated ${key}`,
+      }));
+
+      const parsed = JSON.parse(
+        parser.reconstruct(template, entries)
+      ) as Record<string, unknown>;
+
+      expect(Object.keys(parsed).sort()).toEqual([...COLLIDING].sort());
+    });
+
+    it('should not reach the prototype setter when inserting __proto__', () => {
+      const entries: TranslatedEntry[] = [
+        { key: '__proto__', value: 'Source', translation: 'Translated' },
+      ];
+
+      const parsed = JSON.parse(
+        parser.reconstruct(template, entries)
+      ) as Record<string, unknown>;
+
+      expect(Object.getPrototypeOf(parsed)).toBe(Object.prototype);
+      expect(({} as Record<string, unknown>)['__proto__']).toBe(
+        Object.prototype
+      );
+    });
+  });
+
   describe('reconstruct() applies translations to existing keys', () => {
     it('should update values for all existing keys', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { description: 'A greeting' },
-        farewell: 'Goodbye',
-        '@farewell': { description: 'A farewell' },
-      }, null, 2) + '\n';
+      const content =
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+            '@greeting': { description: 'A greeting' },
+            farewell: 'Goodbye',
+            '@farewell': { description: 'A farewell' },
+          },
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Bonjour' },
@@ -77,12 +151,17 @@ describe('arb parser', () => {
 
   describe('reconstruct() preserves @metadata entries', () => {
     it('should keep @metadata for keys that are present in entries', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { description: 'A greeting', type: 'text' },
-        farewell: 'Goodbye',
-        '@farewell': { description: 'A farewell' },
-      }, null, 2) + '\n';
+      const content =
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+            '@greeting': { description: 'A greeting', type: 'text' },
+            farewell: 'Goodbye',
+            '@farewell': { description: 'A farewell' },
+          },
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },
@@ -91,17 +170,25 @@ describe('arb parser', () => {
 
       const result = parser.reconstruct(content, entries);
       const parsed = JSON.parse(result);
-      expect(parsed['@greeting']).toEqual({ description: 'A greeting', type: 'text' });
+      expect(parsed['@greeting']).toEqual({
+        description: 'A greeting',
+        type: 'text',
+      });
       expect(parsed['@farewell']).toEqual({ description: 'A farewell' });
     });
 
     it('should remove @metadata for deleted keys but keep @metadata for retained keys', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { description: 'A greeting' },
-        deleted: 'Remove',
-        '@deleted': { description: 'Will be removed' },
-      }, null, 2) + '\n';
+      const content =
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+            '@greeting': { description: 'A greeting' },
+            deleted: 'Remove',
+            '@deleted': { description: 'Will be removed' },
+          },
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },
@@ -118,11 +205,16 @@ describe('arb parser', () => {
 
   describe('reconstruct() preserves @@locale and top-level @ keys', () => {
     it('should preserve @@locale when present', () => {
-      const content = JSON.stringify({
-        '@@locale': 'en',
-        greeting: 'Hello',
-        '@greeting': { description: 'A greeting' },
-      }, null, 2) + '\n';
+      const content =
+        JSON.stringify(
+          {
+            '@@locale': 'en',
+            greeting: 'Hello',
+            '@greeting': { description: 'A greeting' },
+          },
+          null,
+          2
+        ) + '\n';
 
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },
@@ -137,53 +229,76 @@ describe('arb parser', () => {
 
   describe('extract() with @-prefixed keys', () => {
     it('should skip @@locale entry during extraction', () => {
-      const content = JSON.stringify({
-        '@@locale': 'en',
-        greeting: 'Hello',
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          '@@locale': 'en',
+          greeting: 'Hello',
+        },
+        null,
+        2
+      );
       const entries = parser.extract(content);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.key).toBe('greeting');
     });
 
     it('should skip @metadata keys during extraction', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { description: 'A greeting' },
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          '@greeting': { description: 'A greeting' },
+        },
+        null,
+        2
+      );
       const entries = parser.extract(content);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.key).toBe('greeting');
     });
 
     it('should skip non-string values during extraction', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        count: 42,
-        flag: true,
-        nested: { inner: 'val' },
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          count: 42,
+          flag: true,
+          nested: { inner: 'val' },
+        },
+        null,
+        2
+      );
       const entries = parser.extract(content);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.key).toBe('greeting');
     });
 
     it('should attach @key metadata and description as context', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { description: 'Used on the home page', type: 'text' },
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          '@greeting': { description: 'Used on the home page', type: 'text' },
+        },
+        null,
+        2
+      );
       const entries = parser.extract(content);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.context).toBe('Used on the home page');
-      expect(entries[0]!.metadata).toEqual({ description: 'Used on the home page', type: 'text' });
+      expect(entries[0]!.metadata).toEqual({
+        description: 'Used on the home page',
+        type: 'text',
+      });
     });
 
     it('should set metadata without context when @key has no description field', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { type: 'text', placeholders: {} },
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          '@greeting': { type: 'text', placeholders: {} },
+        },
+        null,
+        2
+      );
       const entries = parser.extract(content);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.context).toBeUndefined();
@@ -191,10 +306,14 @@ describe('arb parser', () => {
     });
 
     it('should handle entry with no @metadata at all', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        farewell: 'Goodbye',
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          farewell: 'Goodbye',
+        },
+        null,
+        2
+      );
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
       expect(entries[0]!.metadata).toBeUndefined();
@@ -202,10 +321,14 @@ describe('arb parser', () => {
     });
 
     it('should skip @metadata that is not an object (string value)', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': 'not an object',
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          '@greeting': 'not an object',
+        },
+        null,
+        2
+      );
       const entries = parser.extract(content);
       expect(entries).toHaveLength(1);
       expect(entries[0]!.metadata).toBeUndefined();
@@ -221,27 +344,39 @@ describe('arb parser', () => {
 
   describe('extractContext()', () => {
     it('should return description from @key metadata', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { description: 'A welcome message' },
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          '@greeting': { description: 'A welcome message' },
+        },
+        null,
+        2
+      );
       const result = parser.extractContext(content, 'greeting');
       expect(result).toBe('A welcome message');
     });
 
     it('should return undefined when @key has no description', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { type: 'text' },
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          '@greeting': { type: 'text' },
+        },
+        null,
+        2
+      );
       const result = parser.extractContext(content, 'greeting');
       expect(result).toBeUndefined();
     });
 
     it('should return undefined when @key does not exist', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+        },
+        null,
+        2
+      );
       const result = parser.extractContext(content, 'greeting');
       expect(result).toBeUndefined();
     });
@@ -253,19 +388,27 @@ describe('arb parser', () => {
     });
 
     it('should return undefined when @key is a string not an object', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': 'just a string',
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          '@greeting': 'just a string',
+        },
+        null,
+        2
+      );
       const result = parser.extractContext(content, 'greeting');
       expect(result).toBeUndefined();
     });
 
     it('should return undefined when description is not a string', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { description: 42 },
-      }, null, 2);
+      const content = JSON.stringify(
+        {
+          greeting: 'Hello',
+          '@greeting': { description: 42 },
+        },
+        null,
+        2
+      );
       const result = parser.extractContext(content, 'greeting');
       expect(result).toBeUndefined();
     });
@@ -301,10 +444,15 @@ describe('arb parser', () => {
     });
 
     it('should handle reconstruct with key absent from original (no translation match)', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        farewell: 'Goodbye',
-      }, null, 2) + '\n';
+      const content =
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+            farewell: 'Goodbye',
+          },
+          null,
+          2
+        ) + '\n';
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },
       ];
@@ -315,11 +463,16 @@ describe('arb parser', () => {
     });
 
     it('should handle reconstruct where deleted key has no @metadata', () => {
-      const content = JSON.stringify({
-        greeting: 'Hello',
-        '@greeting': { description: 'A greeting' },
-        orphan: 'No meta',
-      }, null, 2) + '\n';
+      const content =
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+            '@greeting': { description: 'A greeting' },
+            orphan: 'No meta',
+          },
+          null,
+          2
+        ) + '\n';
       const entries: TranslatedEntry[] = [
         { key: 'greeting', value: 'Hello', translation: 'Hola' },
       ];

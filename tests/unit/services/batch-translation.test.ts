@@ -7,10 +7,18 @@ import * as path from 'path';
 import * as os from 'os';
 import { BatchTranslationService } from '../../../src/services/batch-translation';
 import { FileTranslationService } from '../../../src/services/file-translation';
-import { TranslationService, MAX_TEXT_BYTES } from '../../../src/services/translation';
+import {
+  TranslationService,
+  MAX_TEXT_BYTES,
+} from '../../../src/services/translation';
 import pLimit from 'p-limit';
 import fg from 'fast-glob';
-import { createMockFileTranslationService, createMockTranslationService } from '../../helpers/mock-factories';
+import {
+  createMockFileTranslationService,
+  createMockTranslationService,
+} from '../../helpers/mock-factories';
+import { NetworkError, ValidationError } from '../../../src/utils/errors';
+import { isUnrecoverableRequestError } from '../../../src/utils/unrecoverable-request-error';
 
 // Mock ESM modules
 jest.mock('p-limit');
@@ -64,10 +72,9 @@ describe('BatchTranslationService', () => {
 
     it('should accept custom concurrency limit', async () => {
       mockPLimit.mockClear();
-      const service = new BatchTranslationService(
-        mockFileTranslationService,
-        { concurrency: 5 }
-      );
+      const service = new BatchTranslationService(mockFileTranslationService, {
+        concurrency: 5,
+      });
 
       const file = path.join(testDir, 'concurrency-test.txt');
       fs.writeFileSync(file, 'test content');
@@ -255,8 +262,8 @@ describe('BatchTranslationService', () => {
       fs.mkdirSync(inputDir);
 
       const files = ['file1.txt', 'file2.md', 'file3.txt'];
-      const absoluteFiles = files.map(f => path.join(inputDir, f));
-      files.forEach(file => {
+      const absoluteFiles = files.map((f) => path.join(inputDir, f));
+      files.forEach((file) => {
         fs.writeFileSync(path.join(inputDir, file), 'Content');
       });
 
@@ -286,7 +293,7 @@ describe('BatchTranslationService', () => {
         path.join(inputDir, 'sub1', 'file2.txt'),
         path.join(inputDir, 'sub2', 'file3.txt'),
       ];
-      absoluteFiles.forEach(file => fs.writeFileSync(file, 'Content'));
+      absoluteFiles.forEach((file) => fs.writeFileSync(file, 'Content'));
 
       mockFastGlob.mockResolvedValue(absoluteFiles);
       mockFileTranslationService.translateFile.mockResolvedValue(undefined);
@@ -347,7 +354,7 @@ describe('BatchTranslationService', () => {
         path.join(inputDir, 'file1.txt'),
         path.join(inputDir, 'sub', 'file2.txt'),
       ];
-      absoluteFiles.forEach(file => fs.writeFileSync(file, 'Content'));
+      absoluteFiles.forEach((file) => fs.writeFileSync(file, 'Content'));
 
       mockFastGlob.mockResolvedValue(absoluteFiles);
       mockFileTranslationService.translateFile.mockResolvedValue(undefined);
@@ -483,7 +490,7 @@ describe('BatchTranslationService', () => {
       }
 
       mockTranslationService.translateBatch.mockImplementation(async (texts) =>
-        texts.map(t => ({ text: `translated: ${t}` }))
+        texts.map((t) => ({ text: `translated: ${t}` }))
       );
 
       const result = await batchServiceWithTranslation.translateFiles(
@@ -496,10 +503,82 @@ describe('BatchTranslationService', () => {
       expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(2);
 
       // First batch should have 50, second should have 2
-      const firstCallTexts = mockTranslationService.translateBatch.mock.calls[0]![0];
-      const secondCallTexts = mockTranslationService.translateBatch.mock.calls[1]![0];
+      const firstCallTexts =
+        mockTranslationService.translateBatch.mock.calls[0]![0];
+      const secondCallTexts =
+        mockTranslationService.translateBatch.mock.calls[1]![0];
       expect(firstCallTexts).toHaveLength(50);
       expect(secondCallTexts).toHaveLength(2);
+    });
+
+    it('should stop requesting once the API rejects the target language', async () => {
+      const files: string[] = [];
+      for (let i = 0; i < 52; i++) {
+        const f = path.join(testDir, `reject${i}.txt`);
+        fs.writeFileSync(f, `Text ${i}`);
+        files.push(f);
+      }
+
+      mockTranslationService.translateBatch.mockRejectedValue(
+        new ValidationError("API error: Value for 'target_lang' not supported.")
+      );
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'ex' as never },
+        { outputDir: testDir }
+      );
+
+      // The same rejection applies to every batch, so it is asked once rather
+      // than once per batch.
+      expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(1);
+      expect(result.successful).toHaveLength(0);
+      // The first batch genuinely failed; the rest were never sent, so they are
+      // reported as skipped rather than as failures carrying another batch's error.
+      expect(result.failed).toHaveLength(50);
+      expect(result.skipped).toHaveLength(2);
+      expect(result.skipped[0]!.reason).toMatch(/target_lang/);
+    });
+
+    it('should keep going when a 5xx quotes the same phrase as a rejected language', () => {
+      // A gateway error interpolates the upstream body, so the message alone
+      // cannot distinguish it from a genuine rejection.
+      const transient = new NetworkError(
+        "Server error (502): upstream unavailable, value for 'target_lang' not supported by shard"
+      );
+      expect(isUnrecoverableRequestError(transient)).toBe(false);
+      expect(
+        isUnrecoverableRequestError(
+          new ValidationError(
+            "API error: Value for 'target_lang' not supported."
+          )
+        )
+      ).toBe(true);
+    });
+
+    it('should keep going when a batch fails for a reason specific to it', async () => {
+      const files: string[] = [];
+      for (let i = 0; i < 52; i++) {
+        const f = path.join(testDir, `partial${i}.txt`);
+        fs.writeFileSync(f, `Text ${i}`);
+        files.push(f);
+      }
+
+      mockTranslationService.translateBatch
+        .mockRejectedValueOnce(new Error('Too many requests'))
+        .mockImplementation(async (texts) =>
+          texts.map((t) => ({ text: `translated: ${t}` }))
+        );
+
+      const result = await batchServiceWithTranslation.translateFiles(
+        files,
+        { targetLang: 'es' },
+        { outputDir: testDir }
+      );
+
+      expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(2);
+      expect(result.successful).toHaveLength(2);
+      expect(result.failed).toHaveLength(50);
     });
 
     it('should split batches when cumulative bytes exceed MAX_TEXT_BYTES', async () => {
@@ -553,14 +632,16 @@ describe('BatchTranslationService', () => {
       const file = path.join(testDir, 'code.txt');
       fs.writeFileSync(file, 'Use `console.log()` with {name}');
 
-      mockTranslationService.translateBatch.mockImplementation(async (texts) => {
-        // Verify placeholders were applied before reaching translateBatch
-        expect(texts[0]).toContain('__CODE_');
-        expect(texts[0]).toContain('__VAR_');
-        expect(texts[0]).not.toContain('`console.log()`');
-        expect(texts[0]).not.toContain('{name}');
-        return texts.map(t => ({ text: t.replace('Use', 'Usa') }));
-      });
+      mockTranslationService.translateBatch.mockImplementation(
+        async (texts) => {
+          // Verify placeholders were applied before reaching translateBatch
+          expect(texts[0]).toContain('__CODE_');
+          expect(texts[0]).toContain('__VAR_');
+          expect(texts[0]).not.toContain('`console.log()`');
+          expect(texts[0]).not.toContain('{name}');
+          return texts.map((t) => ({ text: t.replace('Use', 'Usa') }));
+        }
+      );
 
       const result = await batchServiceWithTranslation.translateFiles(
         [file],
@@ -569,7 +650,10 @@ describe('BatchTranslationService', () => {
       );
 
       expect(result.successful).toHaveLength(1);
-      const outputContent = fs.readFileSync(result.successful[0]!.outputPath, 'utf-8');
+      const outputContent = fs.readFileSync(
+        result.successful[0]!.outputPath,
+        'utf-8'
+      );
       // Restored placeholders
       expect(outputContent).toContain('`console.log()`');
       expect(outputContent).toContain('{name}');
@@ -611,13 +695,12 @@ describe('BatchTranslationService', () => {
     });
 
     it('should handle batch API failure by marking all files in batch as failed', async () => {
-      const files = [
-        path.join(testDir, 'x.txt'),
-        path.join(testDir, 'y.txt'),
-      ];
-      files.forEach(f => fs.writeFileSync(f, 'content'));
+      const files = [path.join(testDir, 'x.txt'), path.join(testDir, 'y.txt')];
+      files.forEach((f) => fs.writeFileSync(f, 'content'));
 
-      mockTranslationService.translateBatch.mockRejectedValue(new Error('API 503'));
+      mockTranslationService.translateBatch.mockRejectedValue(
+        new Error('API 503')
+      );
 
       const result = await batchServiceWithTranslation.translateFiles(
         files,
@@ -636,7 +719,7 @@ describe('BatchTranslationService', () => {
         path.join(testDir, 'p1.txt'),
         path.join(testDir, 'p2.txt'),
       ];
-      files.forEach(f => fs.writeFileSync(f, 'hello'));
+      files.forEach((f) => fs.writeFileSync(f, 'hello'));
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'hola' },
@@ -649,7 +732,8 @@ describe('BatchTranslationService', () => {
         { targetLang: 'es' },
         {
           outputDir: testDir,
-          onProgress: (p) => progressCalls.push({ completed: p.completed, total: p.total }),
+          onProgress: (p) =>
+            progressCalls.push({ completed: p.completed, total: p.total }),
         }
       );
 
@@ -677,10 +761,12 @@ describe('BatchTranslationService', () => {
     });
 
     it('should route structured files (.json) through per-file path', async () => {
-      mockFileTranslationService.isSupportedFile.mockImplementation((filePath: string) => {
-        const ext = path.extname(filePath).toLowerCase();
-        return ['.txt', '.md', '.json', '.yaml', '.yml'].includes(ext);
-      });
+      mockFileTranslationService.isSupportedFile.mockImplementation(
+        (filePath: string) => {
+          const ext = path.extname(filePath).toLowerCase();
+          return ['.txt', '.md', '.json', '.yaml', '.yml'].includes(ext);
+        }
+      );
 
       const txtFile = path.join(testDir, 'plain.txt');
       const jsonFile = path.join(testDir, 'data.json');
@@ -709,7 +795,7 @@ describe('BatchTranslationService', () => {
         path.join(testDir, 'm1.txt'),
         path.join(testDir, 'm2.txt'),
       ];
-      files.forEach(f => fs.writeFileSync(f, 'content'));
+      files.forEach((f) => fs.writeFileSync(f, 'content'));
 
       // Return wrong number of results
       mockTranslationService.translateBatch.mockResolvedValue([
@@ -736,14 +822,16 @@ describe('BatchTranslationService', () => {
       }
       const lastFile = files[51]!;
 
-      mockTranslationService.translateBatch.mockImplementation(async (texts) => {
-        // Removing a later file while the first batch translates proves it
-        // has not been read yet when this call happens.
-        if (fs.existsSync(lastFile)) {
-          fs.rmSync(lastFile);
+      mockTranslationService.translateBatch.mockImplementation(
+        async (texts) => {
+          // Removing a later file while the first batch translates proves it
+          // has not been read yet when this call happens.
+          if (fs.existsSync(lastFile)) {
+            fs.rmSync(lastFile);
+          }
+          return texts.map((t) => ({ text: `translated: ${t}` }));
         }
-        return texts.map((t) => ({ text: `translated: ${t}` }));
-      });
+      );
 
       const result = await batchServiceWithTranslation.translateFiles(
         files,
@@ -890,8 +978,10 @@ describe('BatchTranslationService', () => {
 
       // First file succeeds (abort happens during its translation),
       // remaining files should be skipped
-      expect(result.successful.length + result.skipped.length + result.failed.length).toBe(files.length);
-      expect(result.skipped.some(s => s.reason === 'Aborted')).toBe(true);
+      expect(
+        result.successful.length + result.skipped.length + result.failed.length
+      ).toBe(files.length);
+      expect(result.skipped.some((s) => s.reason === 'Aborted')).toBe(true);
     });
 
     it('should not skip files when abort signal is not triggered', async () => {
@@ -914,13 +1004,13 @@ describe('BatchTranslationService', () => {
       );
 
       expect(result.successful).toHaveLength(2);
-      expect(result.skipped.filter(s => s.reason === 'Aborted')).toHaveLength(0);
+      expect(result.skipped.filter((s) => s.reason === 'Aborted')).toHaveLength(
+        0
+      );
     });
 
     it('should respect pre-aborted signal', async () => {
-      const files = [
-        path.join(testDir, 'file1.txt'),
-      ];
+      const files = [path.join(testDir, 'file1.txt')];
 
       files.forEach((file, i) => {
         fs.writeFileSync(file, `Content ${i + 1}`);
@@ -938,7 +1028,7 @@ describe('BatchTranslationService', () => {
       );
 
       // File should be skipped since signal was pre-aborted
-      expect(result.skipped.some(s => s.reason === 'Aborted')).toBe(true);
+      expect(result.skipped.some((s) => s.reason === 'Aborted')).toBe(true);
       expect(mockFileTranslationService.translateFile).not.toHaveBeenCalled();
     });
   });

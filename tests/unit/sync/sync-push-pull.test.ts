@@ -33,8 +33,12 @@ jest.mock('../../../src/sync/sync-lock', () => {
     ...actual,
     SyncLockManager: jest.fn().mockImplementation(() => ({
       read: jest.fn().mockResolvedValue({
-        _comment: '', version: 1, generated_at: '', source_locale: 'en',
-        entries: {}, stats: { total_keys: 0, total_translations: 0, last_sync: '' },
+        _comment: '',
+        version: 1,
+        generated_at: '',
+        source_locale: 'en',
+        entries: {},
+        stats: { total_keys: 0, total_translations: 0, last_sync: '' },
       }),
       write: jest.fn().mockResolvedValue(undefined),
     })),
@@ -73,7 +77,7 @@ describe('sync push/pull (TMS integration)', () => {
         expect.objectContaining({
           method: 'PUT',
           body: JSON.stringify({ locale: 'de', value: 'Hallo' }),
-        }),
+        })
       );
     });
 
@@ -83,7 +87,7 @@ describe('sync push/pull (TMS integration)', () => {
       await client.pushKey('nav/home', 'de', 'Startseite');
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('nav%2Fhome'),
-        expect.anything(),
+        expect.anything()
       );
     });
   });
@@ -105,7 +109,7 @@ describe('sync push/pull (TMS integration)', () => {
       await client.pullKeys('fr');
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('locale=fr'),
-        expect.anything(),
+        expect.anything()
       );
     });
   });
@@ -119,7 +123,10 @@ describe('sync push/pull (TMS integration)', () => {
         apiKey: 'my-key',
       });
       await client.pushKey('k', 'de', 'v');
-      const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<string, string>;
+      const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<
+        string,
+        string
+      >;
       expect(headers?.['Authorization']).toBe('ApiKey my-key');
     });
 
@@ -131,19 +138,28 @@ describe('sync push/pull (TMS integration)', () => {
         token: 'my-token',
       });
       await client.pushKey('k', 'de', 'v');
-      const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<string, string>;
+      const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<
+        string,
+        string
+      >;
       expect(headers?.['Authorization']).toBe('Bearer my-token');
     });
 
     it('should throw on API error responses', async () => {
-      mockFetch.mockResolvedValue({ ok: false, status: 401, statusText: 'Unauthorized' });
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      });
       const client = makeClient();
       await expect(client.pushKey('k', 'de', 'v')).rejects.toThrow('401');
     });
   });
 });
 
-function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -169,7 +185,9 @@ describe('pushTranslations()', () => {
     // Jest resetMocks:true wipes the module-level fs.promises.readFile default,
     // so re-establish it. walkBuckets reads the source file up front; push then
     // decides whether to use that content (isMultiLocale) or re-read a target.
-    (fs.promises.readFile as jest.Mock).mockResolvedValue('{"greeting":"Hello"}');
+    (fs.promises.readFile as jest.Mock).mockResolvedValue(
+      '{"greeting":"Hello"}'
+    );
   });
 
   it('should push entries from target files to TmsClient', async () => {
@@ -186,7 +204,9 @@ describe('pushTranslations()', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
     const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://tms.example.com/api/projects/proj-123/keys/greeting');
+    expect(url).toBe(
+      'https://tms.example.com/api/projects/proj-123/keys/greeting'
+    );
     expect(url).toContain('/keys/greeting');
     expect(init.method).toBe('PUT');
     expect(init.body).toBe(JSON.stringify({ locale: 'de', value: 'Hallo' }));
@@ -199,7 +219,9 @@ describe('pushTranslations()', () => {
 
     const client = makeClient();
     const config = makeConfig({ target_locales: ['de', 'fr'] });
-    const result = await pushTranslations(config, client, makeRegistry(), { localeFilter: ['fr'] });
+    const result = await pushTranslations(config, client, makeRegistry(), {
+      localeFilter: ['fr'],
+    });
 
     // One source file (en.json) x one key (greeting) x one included locale (fr)
     // = 1 push. The excluded locale (de) must contribute 0 pushes.
@@ -210,15 +232,23 @@ describe('pushTranslations()', () => {
       const init = call[1] as { body?: string } | undefined;
       return init?.body ?? '';
     });
-    expect(fetchBodies).toEqual([JSON.stringify({ locale: 'fr', value: 'Hallo' })]);
-    expect(fetchBodies.some((body) => body.includes('"locale":"fr"'))).toBe(true);
-    expect(fetchBodies.some((body) => body.includes('"locale":"de"'))).toBe(false);
+    expect(fetchBodies).toEqual([
+      JSON.stringify({ locale: 'fr', value: 'Hallo' }),
+    ]);
+    expect(fetchBodies.some((body) => body.includes('"locale":"fr"'))).toBe(
+      true
+    );
+    expect(fetchBodies.some((body) => body.includes('"locale":"de"'))).toBe(
+      false
+    );
   });
 
   it('should skip when target file does not exist', async () => {
     mockFg.mockResolvedValue(['/test/locales/en.json']);
     (fs.readFileSync as jest.Mock).mockImplementation(() => {
-      const err = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+      const err = new Error(
+        'ENOENT: no such file or directory'
+      ) as NodeJS.ErrnoException;
       err.code = 'ENOENT';
       throw err;
     });
@@ -235,10 +265,16 @@ describe('pushTranslations()', () => {
   it('should propagate non-ENOENT errors (e.g. auth failures) instead of swallowing them', async () => {
     mockFg.mockResolvedValue(['/test/locales/en.json']);
     (fs.readFileSync as jest.Mock).mockReturnValue('{"greeting":"Hallo"}');
-    mockFetch.mockResolvedValue({ ok: false, status: 401, statusText: 'Unauthorized' });
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    });
 
     const client = makeClient();
-    await expect(pushTranslations(makeConfig(), client, makeRegistry())).rejects.toThrow(/401/);
+    await expect(
+      pushTranslations(makeConfig(), client, makeRegistry())
+    ).rejects.toThrow(/401/);
   });
 
   describe('bounded concurrency', () => {
@@ -265,7 +301,11 @@ describe('pushTranslations()', () => {
       });
 
       const client = makeClient();
-      const result = await pushTranslations(makeConfig(), client, makeRegistry());
+      const result = await pushTranslations(
+        makeConfig(),
+        client,
+        makeRegistry()
+      );
 
       expect(result.pushed).toBe(30);
       expect(mockFetch).toHaveBeenCalledTimes(30);
@@ -313,13 +353,20 @@ describe('pushTranslations()', () => {
         const thisCall = callCount;
         await new Promise((resolve) => setTimeout(resolve, 5));
         if (thisCall === 2) {
-          return { ok: false, status: 500, statusText: 'Internal Server Error', text: async () => '' };
+          return {
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+            text: async () => '',
+          };
         }
         return { ok: true, json: async () => ({}) };
       });
 
       const client = makeClient();
-      await expect(pushTranslations(makeConfig(), client, makeRegistry())).rejects.toThrow(/500/);
+      await expect(
+        pushTranslations(makeConfig(), client, makeRegistry())
+      ).rejects.toThrow(/500/);
       expect(callCount).toBeLessThan(30);
     });
 
@@ -339,7 +386,11 @@ describe('pushTranslations()', () => {
 
       const client = makeClient();
       // No tms block at all on the resolved config -> default concurrency path.
-      const result = await pushTranslations(makeConfig(), client, makeRegistry());
+      const result = await pushTranslations(
+        makeConfig(),
+        client,
+        makeRegistry()
+      );
 
       expect(result.pushed).toBe(30);
       expect(peak).toBeLessThanOrEqual(10);
@@ -349,15 +400,21 @@ describe('pushTranslations()', () => {
 });
 
 describe('pullTranslations()', () => {
-  const { SyncLockManager: MockLockManager } = jest.requireMock('../../../src/sync/sync-lock');
+  const { SyncLockManager: MockLockManager } = jest.requireMock(
+    '../../../src/sync/sync-lock'
+  );
 
   beforeEach(() => {
     mockFetch.mockReset();
     mockFg.mockReset();
     MockLockManager.mockImplementation(() => ({
       read: jest.fn().mockResolvedValue({
-        _comment: '', version: 1, generated_at: '', source_locale: 'en',
-        entries: {}, stats: { total_keys: 0, total_translations: 0, last_sync: '' },
+        _comment: '',
+        version: 1,
+        generated_at: '',
+        source_locale: 'en',
+        entries: {},
+        stats: { total_keys: 0, total_translations: 0, last_sync: '' },
       }),
       write: jest.fn().mockResolvedValue(undefined),
     }));
@@ -365,7 +422,9 @@ describe('pullTranslations()', () => {
 
   it('should pull keys and write target files', async () => {
     mockFg.mockResolvedValue(['/test/locales/en.json']);
-    (fs.promises.readFile as jest.Mock).mockResolvedValue('{"greeting":"Hello"}');
+    (fs.promises.readFile as jest.Mock).mockResolvedValue(
+      '{"greeting":"Hello"}'
+    );
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ greeting: 'Hallo' }),
@@ -380,7 +439,9 @@ describe('pullTranslations()', () => {
 
   it('should return 0 when no keys are pulled', async () => {
     mockFg.mockResolvedValue(['/test/locales/en.json']);
-    (fs.promises.readFile as jest.Mock).mockResolvedValue('{"greeting":"Hello"}');
+    (fs.promises.readFile as jest.Mock).mockResolvedValue(
+      '{"greeting":"Hello"}'
+    );
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({}),
@@ -405,15 +466,19 @@ describe('pullTranslations()', () => {
       '/test/locales/en/marketing.json',
     ];
     mockFg.mockResolvedValue(sourceFiles);
-    (fs.promises.readFile as jest.Mock).mockResolvedValue('{"greeting":"Hello"}');
+    (fs.promises.readFile as jest.Mock).mockResolvedValue(
+      '{"greeting":"Hello"}'
+    );
 
     const pullKeysSpy = jest
       .spyOn(TmsClient.prototype, 'pullKeys')
-      .mockImplementation(async (locale: string): Promise<Record<string, string>> => {
-        if (locale === 'de') return { greeting: 'Hallo' };
-        if (locale === 'fr') return { greeting: 'Bonjour' };
-        return {};
-      });
+      .mockImplementation(
+        async (locale: string): Promise<Record<string, string>> => {
+          if (locale === 'de') return { greeting: 'Hallo' };
+          if (locale === 'fr') return { greeting: 'Bonjour' };
+          return {};
+        }
+      );
 
     try {
       const client = makeClient();

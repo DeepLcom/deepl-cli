@@ -26,7 +26,10 @@ import { XcstringsFormatParser } from '../../src/formats/xcstrings';
 import { createSyncHarness, writeSyncConfig } from '../helpers/sync-harness';
 import { DEEPL_FREE_API_URL } from '../helpers/nock-setup';
 
-const FIXTURE_DIR = path.resolve(__dirname, '../fixtures/sync/formats/xcstrings');
+const FIXTURE_DIR = path.resolve(
+  __dirname,
+  '../fixtures/sync/formats/xcstrings'
+);
 
 describe('sync xcstrings fixture round-trip', () => {
   let tmpDir: string;
@@ -46,10 +49,13 @@ describe('sync xcstrings fixture round-trip', () => {
   });
 
   it('translates source.xcstrings and writes the de localization in the same file matching the expected fixture', async () => {
-    const source = fs.readFileSync(path.join(FIXTURE_DIR, 'source.xcstrings'), 'utf-8');
+    const source = fs.readFileSync(
+      path.join(FIXTURE_DIR, 'source.xcstrings'),
+      'utf-8'
+    );
     const expected = fs.readFileSync(
       path.join(FIXTURE_DIR, 'expected-after-sync', 'de.xcstrings'),
-      'utf-8',
+      'utf-8'
     );
 
     writeSyncConfig(tmpDir, {
@@ -65,9 +71,21 @@ describe('sync xcstrings fixture round-trip', () => {
         // Order matches alphabetical sort from XcstringsFormatParser.extract():
         // farewell, greeting, welcome
         translations: [
-          { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-          { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-          { text: 'Willkommen', detected_source_language: 'EN', billed_characters: 10 },
+          {
+            text: 'Auf Wiedersehen',
+            detected_source_language: 'EN',
+            billed_characters: 15,
+          },
+          {
+            text: 'Hallo',
+            detected_source_language: 'EN',
+            billed_characters: 5,
+          },
+          {
+            text: 'Willkommen',
+            detected_source_language: 'EN',
+            billed_characters: 10,
+          },
         ],
       });
 
@@ -87,7 +105,15 @@ describe('sync xcstrings fixture round-trip', () => {
     const parser = new XcstringsFormatParser();
     const enEntries = parser.extract(written, 'en');
     const deEntries = parser.extract(written, 'de');
-    expect(enEntries.map((e) => e.value).sort()).toEqual(['Goodbye', 'Hello', 'Welcome']);
-    expect(deEntries.map((e) => e.value).sort()).toEqual(['Auf Wiedersehen', 'Hallo', 'Willkommen']);
+    expect(enEntries.map((e) => e.value).sort()).toEqual([
+      'Goodbye',
+      'Hello',
+      'Welcome',
+    ]);
+    expect(deEntries.map((e) => e.value).sort()).toEqual([
+      'Auf Wiedersehen',
+      'Hallo',
+      'Willkommen',
+    ]);
   });
 });

@@ -39,21 +39,27 @@ describe('sync export source-side path-traversal safety', () => {
   let harness: ReturnType<typeof createSyncHarness>;
 
   beforeEach(() => {
-    projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-export-traversal-proj-'));
-    outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-export-traversal-secret-'));
+    projectDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'deepl-sync-export-traversal-proj-')
+    );
+    outsideDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'deepl-sync-export-traversal-secret-')
+    );
     outsideSecret = path.join(outsideDir, 'secret.json');
     fs.writeFileSync(
       outsideSecret,
       JSON.stringify({ exfiltrated: 'TOP_SECRET_VALUE' }, null, 2),
-      'utf-8',
+      'utf-8'
     );
     harness = createSyncHarness({ parsers: ['json'] });
   });
 
   afterEach(() => {
     harness.cleanup();
-    if (fs.existsSync(projectDir)) fs.rmSync(projectDir, { recursive: true, force: true });
-    if (fs.existsSync(outsideDir)) fs.rmSync(outsideDir, { recursive: true, force: true });
+    if (fs.existsSync(projectDir))
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    if (fs.existsSync(outsideDir))
+      fs.rmSync(outsideDir, { recursive: true, force: true });
   });
 
   it('rejects an absolute include pattern at config load', async () => {
@@ -66,7 +72,9 @@ describe('sync export source-side path-traversal safety', () => {
 
     // Containment is now enforced at the boundary, so such a config never
     // loads — the export-time guard below is the second line of defence.
-    await expect(loadSyncConfig(projectDir)).rejects.toThrow(/relative to the project root/);
+    await expect(loadSyncConfig(projectDir)).rejects.toThrow(
+      /relative to the project root/
+    );
   });
 
   it('still rejects an out-of-root source file at export time', async () => {
@@ -84,10 +92,12 @@ describe('sync export source-side path-traversal safety', () => {
       buckets: { json: { include: [path.join(outsideDir, '*.json')] } },
     };
 
-    await expect(exportTranslations(escaping, harness.registry)).rejects.toThrow(ValidationError);
-    await expect(exportTranslations(escaping, harness.registry)).rejects.toThrow(
-      /escapes project root/,
-    );
+    await expect(
+      exportTranslations(escaping, harness.registry)
+    ).rejects.toThrow(ValidationError);
+    await expect(
+      exportTranslations(escaping, harness.registry)
+    ).rejects.toThrow(/escapes project root/);
   });
 
   it('does not embed outside-the-root file contents in the XLIFF output', async () => {
@@ -118,7 +128,9 @@ describe('sync export source-side path-traversal safety', () => {
     // And make sure the secret never leaked into an XLIFF buffer.
     // (result is undefined, so this is belt-and-braces.)
     if (result !== undefined) {
-      expect((result as { content: string }).content).not.toContain('TOP_SECRET_VALUE');
+      expect((result as { content: string }).content).not.toContain(
+        'TOP_SECRET_VALUE'
+      );
     }
   });
 

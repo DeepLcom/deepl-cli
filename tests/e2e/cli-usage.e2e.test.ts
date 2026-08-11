@@ -28,13 +28,23 @@ describe('Usage Command E2E', () => {
     it('should describe the command', () => {
       const output = runCLI('usage --help');
 
-      expect(output).toMatch(/character|usage|statistics|limit/i);
+      expect(output).toContain('Show API usage statistics');
     });
 
     it('should show available options', () => {
       const output = runCLI('usage --help');
 
       expect(output).toContain('help');
+    });
+
+    it('should take no positional arguments', () => {
+      const output = runCLI('usage --help');
+      const synopsis = output
+        .split('\n')
+        .find((line) => line.includes('Usage: deepl usage'));
+
+      expect(synopsis).toBeDefined();
+      expect(synopsis).not.toContain('<');
     });
   });
 
@@ -69,7 +79,7 @@ describe('Usage Command E2E', () => {
       const helpOutput = runCLI('--help');
 
       expect(helpOutput).toContain('usage');
-      expect(helpOutput).toMatch(/character|usage/i);
+      expect(helpOutput).toContain('Show API usage statistics');
     });
 
     it('should support --quiet flag', () => {

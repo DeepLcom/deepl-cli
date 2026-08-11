@@ -28,6 +28,73 @@ describe('Document Translation E2E', () => {
     );
   };
 
+  describe('--glossary on a document', () => {
+    // Handler-level validation runs after the API-key gate, so these need a key
+    // to be reachable. The dead endpoint keeps the run off the network for the
+    // cases that get past validation.
+    const DUMMY_KEY = 'e2e-doc-glossary-key:fx';
+    const DEAD_URL = 'http://127.0.0.1:9';
+
+    const pdfPath = (name: string): string => {
+      const file = path.join(testDir, `${name}.pdf`);
+      fs.writeFileSync(file, Buffer.from('%PDF-1.4 test content'));
+      return file;
+    };
+
+    const run = (args: string) =>
+      helpers.runCLIExpectError(args, { apiKey: DUMMY_KEY });
+
+    it('should require --from, which the API demands for a document glossary', () => {
+      const file = pdfPath('glossary-doc');
+      const out = path.join(testDir, 'glossary-doc.de.pdf');
+
+      const result = run(
+        `translate "${file}" --to de --output "${out}" --glossary my-glossary --api-url ${DEAD_URL}`
+      );
+
+      expect(result.status).toBeGreaterThan(0);
+      expect(result.output).toContain('--from');
+      expect(result.output).toMatch(/glossary/i);
+    });
+
+    it('should no longer report --glossary as unsupported for documents', () => {
+      const file = pdfPath('glossary-doc2');
+      const out = path.join(testDir, 'glossary-doc.de2.pdf');
+
+      const result = run(
+        `translate "${file}" --from en --to de --output "${out}" --glossary my-glossary --api-url ${DEAD_URL}`
+      );
+
+      expect(result.output).not.toMatch(/does not support/i);
+    });
+
+    it('should accept a repeated --glossary on a document', () => {
+      const file = pdfPath('glossary-doc3');
+      const out = path.join(testDir, 'glossary-doc.de3.pdf');
+
+      const result = run(
+        `translate "${file}" --from en --to de --output "${out}" ` +
+          `--glossary base-terms --glossary project-overrides --api-url ${DEAD_URL}`
+      );
+
+      expect(result.output).not.toMatch(/unknown option/i);
+      expect(result.output).not.toMatch(/does not support/i);
+    });
+
+    it('should still reject a sixth --glossary on a document', () => {
+      const file = pdfPath('glossary-doc4');
+      const out = path.join(testDir, 'glossary-doc.de4.pdf');
+
+      const result = run(
+        `translate "${file}" --from en --to de --output "${out}" ` +
+          `--glossary a --glossary b --glossary c --glossary d --glossary e --glossary f`
+      );
+
+      expect(result.status).toBeGreaterThan(0);
+      expect(result.output).toMatch(/at most 5 times/i);
+    });
+  });
+
   describe('--output-format flag', () => {
     it('should accept valid output formats', () => {
       // Create a test file

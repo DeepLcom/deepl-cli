@@ -23,7 +23,7 @@ afterEach(() => {
     // (e.g., to confirm a cache-hit path skips the network) can opt out by
     // calling `nock.cleanAll()` from their own afterEach before this hook runs.
     throw new Error(
-      `nock had ${pending.length} unasserted pending interceptor(s) at end of test:\n  ${pending.join('\n  ')}`,
+      `nock had ${pending.length} unasserted pending interceptor(s) at end of test:\n  ${pending.join('\n  ')}`
     );
   }
 });

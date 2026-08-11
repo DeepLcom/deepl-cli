@@ -4,54 +4,76 @@ import { sanitizeUrl } from '../utils/sanitize-url.js';
 import { Logger } from '../utils/logger.js';
 import type { ExtractedEntry } from '../formats/format.js';
 import type { SyncTmsConfig } from './types.js';
+import {
+  ensureTmsServerApproved,
+  type TmsCredentialSource,
+  type TmsServerTrustDeps,
+} from './tms-server-trust.js';
 
 const MAX_PULL_VALUE_BYTES = 64 * 1024;
 export const MAX_PULL_KEY_COUNT = 50000;
 export const MAX_PULL_BODY_BYTES = 32 * 1024 * 1024;
 // eslint-disable-next-line no-control-regex -- intentional: checking for control chars in untrusted TMS-returned keys
 const KEY_FORBIDDEN_CHARS = /[\x00-\x1f\x7f/\\]/;
-// eslint-disable-next-line no-control-regex -- intentional: strip control chars from untrusted TMS-returned values before they reach the filesystem
+// eslint-disable-next-line no-control-regex -- intentional: matching control chars in untrusted TMS-returned text before quoting it into an error message
 const VALUE_CONTROL_CHARS = /[\x00-\x1f\x7f]/g;
+/**
+ * Control characters stripped from an accepted pull value: C0 and DEL, minus
+ * tab, LF and CR.
+ *
+ * Those three are the set `isForbiddenControlChar` exempts — the C0 bytes every
+ * format either escapes or legally emits — and a multi-line or tabbed
+ * translation is ordinary human content, not a hostile payload, so deleting
+ * them (rather than letting the per-format writer escape them) would fuse
+ * adjacent words of an approved translation. Everything else is still removed
+ * here, because a raw ESC reaching a locale file renders as a live terminal
+ * command in `git diff` and CI logs.
+ */
+// eslint-disable-next-line no-control-regex -- intentional: strip format-breaking control chars from untrusted TMS-returned values before they reach the filesystem
+const VALUE_FORBIDDEN_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g;
 
 export function sanitizePullKeysResponse(raw: unknown): Record<string, string> {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new ValidationError(
       'TMS pull response must be a JSON object mapping keys to string values',
-      'Check that your TMS server returns the documented shape: {"<key>": "<translation>", ...}.',
+      'Check that your TMS server returns the documented shape: {"<key>": "<translation>", ...}.'
     );
   }
   const keys = Object.keys(raw);
   if (keys.length > MAX_PULL_KEY_COUNT) {
     throw new ValidationError(
       `TMS pull response exceeds MAX_PULL_KEY_COUNT (${MAX_PULL_KEY_COUNT})`,
-      `Partition the TMS export by locale, or paginate the pull.`,
+      `Partition the TMS export by locale, or paginate the pull.`
     );
   }
   // Null-prototype: callers test membership with `result[key] !== undefined`
   // and `??`, so an inherited Object.prototype member for a key named
   // "toString" or "constructor" would read as an approved translation and
   // silently replace the real one.
-  const result: Record<string, string> = Object.create(null) as Record<string, string>;
+  const result: Record<string, string> = Object.create(null) as Record<
+    string,
+    string
+  >;
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     if (KEY_FORBIDDEN_CHARS.test(key)) {
       throw new ValidationError(
         `TMS pull response contains invalid key "${key.replace(VALUE_CONTROL_CHARS, '?')}" (path separators and control chars are not permitted)`,
-        'Check your TMS for keys containing "/", "\\", or control characters; these cannot be written to the filesystem safely.',
+        'Check your TMS for keys containing "/", "\\", or control characters; these cannot be written to the filesystem safely.'
       );
     }
     if (typeof value !== 'string') {
       throw new ValidationError(
         `TMS pull response contains non-string value for key "${key.replace(VALUE_CONTROL_CHARS, '?')}" (got ${value === null ? 'null' : typeof value})`,
-        'Check that your TMS server returns string translations; nested objects, arrays, numbers, and null are not supported.',
+        'Check that your TMS server returns string translations; nested objects, arrays, numbers, and null are not supported.'
       );
     }
     if (Buffer.byteLength(value, 'utf8') > MAX_PULL_VALUE_BYTES) {
       throw new ValidationError(
         `TMS pull response value for key "${key.replace(VALUE_CONTROL_CHARS, '?')}" exceeds the ${MAX_PULL_VALUE_BYTES / 1024}KiB per-value limit`,
-        'Split oversized translations into smaller keys, or raise the issue with your TMS administrator.',
+        'Split oversized translations into smaller keys, or raise the issue with your TMS administrator.'
       );
     }
-    result[key] = value.replace(VALUE_CONTROL_CHARS, '');
+    result[key] = value.replace(VALUE_FORBIDDEN_CHARS, '');
   }
   return result;
 }
@@ -59,7 +81,10 @@ export function sanitizePullKeysResponse(raw: unknown): Record<string, string> {
 /** A TMS request that hit the client-side timeout; classified as a network error (exit 5). */
 export class TmsTimeoutError extends NetworkError {
   constructor(message: string) {
-    super(message, 'Raise timeout_ms in the tms: block of .deepl-sync.yaml, or check that the TMS server is reachable.');
+    super(
+      message,
+      'Raise timeout_ms in the tms: block of .deepl-sync.yaml, or check that the TMS server is reachable.'
+    );
     this.name = 'TmsTimeoutError';
   }
 }
@@ -88,16 +113,23 @@ const DEFAULT_RETRY_MAX_DELAY_MS = 10000;
 const ERROR_BODY_MAX_BYTES = 1024;
 
 const RETRIABLE_STATUS = new Set([429, 503]);
-const RETRIABLE_NETWORK_CODES = new Set(['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN']);
+const RETRIABLE_NETWORK_CODES = new Set([
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ECONNREFUSED',
+  'EAI_AGAIN',
+]);
 
 function isRetriableNetworkError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const code = (err as NodeJS.ErrnoException).code;
-  if (typeof code === 'string' && RETRIABLE_NETWORK_CODES.has(code)) return true;
+  if (typeof code === 'string' && RETRIABLE_NETWORK_CODES.has(code))
+    return true;
   const cause = (err as { cause?: unknown }).cause;
   if (cause && typeof cause === 'object') {
     const causeCode = (cause as { code?: unknown }).code;
-    if (typeof causeCode === 'string' && RETRIABLE_NETWORK_CODES.has(causeCode)) return true;
+    if (typeof causeCode === 'string' && RETRIABLE_NETWORK_CODES.has(causeCode))
+      return true;
   }
   return false;
 }
@@ -106,11 +138,50 @@ function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError';
 }
 
+/**
+ * Restate a rejection from the fetch call as a network failure that names the
+ * request.
+ *
+ * Everything the request loop catches is a transport failure by construction:
+ * `fetchOnce` only awaits the fetch implementation, and every response-level
+ * outcome — a status, a body, a shape — is judged after it returns. `fetch`
+ * rejects with `TypeError: fetch failed` and puts the errno on `cause`, so the
+ * raw rejection names neither the host nor the code, and exits as an
+ * unclassified failure rather than as the retriable network error it is. An
+ * error that is already a NetworkError (the client-side timeout) keeps its own
+ * message.
+ */
+function asTransportFailure(
+  err: unknown,
+  method: string,
+  url: string
+): unknown {
+  if (err instanceof NetworkError || !(err instanceof Error)) return err;
+  const cause = (err as { cause?: unknown }).cause;
+  const causeCode =
+    cause && typeof cause === 'object'
+      ? (cause as { code?: unknown }).code
+      : undefined;
+  const causeMessage =
+    cause instanceof Error && cause.message ? cause.message : undefined;
+  const detail =
+    (typeof (err as NodeJS.ErrnoException).code === 'string'
+      ? (err as NodeJS.ErrnoException).code
+      : undefined) ??
+    (typeof causeCode === 'string' ? causeCode : undefined) ??
+    causeMessage ??
+    err.message;
+  return new NetworkError(
+    `TMS request failed: ${method} ${sanitizeUrl(url)}: ${detail}`,
+    'Check that the TMS server is running and reachable at the server: URL in the tms: block of .deepl-sync.yaml.'
+  );
+}
+
 function computeBackoffDelay(
   attempt: number,
   baseDelayMs: number,
   maxDelayMs: number,
-  jitter: boolean,
+  jitter: boolean
 ): number {
   const exp = Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs);
   if (!jitter) return exp;
@@ -127,7 +198,10 @@ async function readErrorBody(response: Response): Promise<string> {
   try {
     const text = await response.text();
     if (!text) return '';
-    const truncated = text.length > ERROR_BODY_MAX_BYTES ? text.slice(0, ERROR_BODY_MAX_BYTES) + '...' : text;
+    const truncated =
+      text.length > ERROR_BODY_MAX_BYTES
+        ? text.slice(0, ERROR_BODY_MAX_BYTES) + '...'
+        : text;
     return sanitizeForTerminal(truncated);
   } catch {
     return '';
@@ -137,7 +211,7 @@ async function readErrorBody(response: Response): Promise<string> {
 function oversizedBodyError(): ValidationError {
   return new ValidationError(
     `TMS pull response exceeds the ${MAX_PULL_BODY_BYTES / (1024 * 1024)}MiB response size limit`,
-    'Partition the TMS export by locale, or paginate the pull.',
+    'Partition the TMS export by locale, or paginate the pull.'
   );
 }
 
@@ -180,6 +254,11 @@ export class TmsClient {
   private readonly retry: Required<TmsClientRetryOptions>;
 
   constructor(private readonly options: TmsClientOptions) {
+    // Either credential may have come from .deepl-sync.yaml rather than the
+    // environment, where the redactor cannot find it.
+    Logger.registerSecret(options.apiKey);
+    Logger.registerSecret(options.token);
+
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TMS_TIMEOUT_MS;
     this.retry = {
       maxAttempts: options.retry?.maxAttempts ?? DEFAULT_RETRY_MAX_ATTEMPTS,
@@ -190,26 +269,35 @@ export class TmsClient {
   }
 
   private getAuthHeader(): Record<string, string> {
-    if (this.options.apiKey) return { Authorization: `ApiKey ${this.options.apiKey}` };
-    if (this.options.token) return { Authorization: `Bearer ${this.options.token}` };
+    if (this.options.apiKey)
+      return { Authorization: `ApiKey ${this.options.apiKey}` };
+    if (this.options.token)
+      return { Authorization: `Bearer ${this.options.token}` };
     return {};
   }
 
-  private async fetchOnce(url: string, method: string, body?: unknown): Promise<Response> {
+  private async fetchOnce(
+    url: string,
+    method: string,
+    body?: unknown
+  ): Promise<Response> {
     const fetchImpl = this.options.fetch ?? globalThis.fetch;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       return await fetchImpl(url, {
         method,
-        headers: { 'Content-Type': 'application/json', ...this.getAuthHeader() },
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getAuthHeader(),
+        },
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
     } catch (err) {
       if (isAbortError(err)) {
         throw new TmsTimeoutError(
-          `TMS request timed out after ${this.timeoutMs}ms: ${method} ${sanitizeUrl(url)}`,
+          `TMS request timed out after ${this.timeoutMs}ms: ${method} ${sanitizeUrl(url)}`
         );
       }
       throw err;
@@ -227,26 +315,58 @@ export class TmsClient {
     try {
       parsedUrl = new URL(this.options.serverUrl);
     } catch {
-      throw new ConfigError(`Invalid TMS server URL: ${sanitizeUrl(this.options.serverUrl)}`);
+      throw new ConfigError(
+        `Invalid TMS server URL: ${sanitizeUrl(this.options.serverUrl)}`
+      );
     }
 
-    const isLocalhost = parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1';
+    // Deliberately the same two spellings the API base URL waives
+    // (utils/validate-url.ts), and deliberately not widened to the rest of
+    // 127.0.0.0/8 or to [::1]: `http://localhost` reaches a server bound to
+    // ::1, to 0.0.0.0 or to 127.0.0.1 alike, so naming it in the refusal covers
+    // every local TMS without making this rule more permissive than that one.
+    // The URL parser normalizes 0x7f.0.0.1, 127.1 and 2130706433 to 127.0.0.1,
+    // so those spellings are already waived here.
+    const isLocalhost =
+      parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1';
     if (parsedUrl.protocol !== 'https:' && !isLocalhost) {
-      throw new ConfigError('TMS server URL must use HTTPS');
+      throw new ConfigError(
+        `TMS server URL must use HTTPS: ${sanitizeUrl(this.options.serverUrl)}`,
+        'Plain http:// is waived only for http://localhost and http://127.0.0.1. ' +
+          'Reach a local TMS as http://localhost — that resolves to this machine ' +
+          'whether the server is bound to 127.0.0.1, to ::1 or to every interface.'
+      );
     }
     if (parsedUrl.search || parsedUrl.hash) {
       throw new ConfigError(
         `TMS server URL must not contain a query string or fragment: ${sanitizeUrl(this.options.serverUrl)}`,
-        'Set server: to the bare origin (plus a base path if your TMS is mounted under one).',
+        'Set server: to the bare origin (plus a base path if your TMS is mounted under one).'
       );
     }
 
     const basePath = parsedUrl.pathname.replace(/\/+$/, '');
     const projectPath = `${basePath}/api/projects/${encodeURIComponent(this.options.projectId)}`;
-    return new URL(`${projectPath}${path}`, parsedUrl).toString();
+    const resolved = new URL(`${projectPath}${path}`, parsedUrl);
+    // A server pathname beginning with `//` is a protocol-relative reference:
+    // `new URL('//evil/…', https://approved)` resolves the request to `evil`,
+    // even though `parsedUrl.hostname` — what the destination-trust gate
+    // approved and what the https/localhost checks keyed off — is still
+    // `approved`. Pin the resolved origin to the approved one so the API key
+    // and every translated string cannot be redirected to another host.
+    if (resolved.origin !== parsedUrl.origin) {
+      throw new ConfigError(
+        `TMS server URL resolves requests to a different origin (${sanitizeUrl(resolved.origin)}) than the configured server (${sanitizeUrl(parsedUrl.origin)})`,
+        'Set server: to a bare origin with an optional base path; a path beginning with "//" is a protocol-relative reference that redirects the host.'
+      );
+    }
+    return resolved.toString();
   }
 
-  private async request(method: string, path: string, body?: unknown): Promise<Response> {
+  private async request(
+    method: string,
+    path: string,
+    body?: unknown
+  ): Promise<Response> {
     const url = this.buildUrl(path);
 
     let lastError: unknown;
@@ -256,9 +376,20 @@ export class TmsClient {
         response = await this.fetchOnce(url, method, body);
       } catch (err) {
         lastError = err;
-        const retriable = err instanceof TmsTimeoutError || isRetriableNetworkError(err);
-        if (!retriable || attempt === this.retry.maxAttempts - 1) throw err;
-        const delay = computeBackoffDelay(attempt, this.retry.baseDelayMs, this.retry.maxDelayMs, this.retry.jitter);
+        const retriable =
+          err instanceof TmsTimeoutError || isRetriableNetworkError(err);
+        // Retry eligibility is decided first and independently of how the error
+        // is classified, so naming the failure cannot change how often a
+        // billable push is replayed.
+        if (!retriable || attempt === this.retry.maxAttempts - 1) {
+          throw asTransportFailure(err, method, url);
+        }
+        const delay = computeBackoffDelay(
+          attempt,
+          this.retry.baseDelayMs,
+          this.retry.maxDelayMs,
+          this.retry.jitter
+        );
         await sleep(delay);
         continue;
       }
@@ -268,12 +399,20 @@ export class TmsClient {
       if (response.status === 401 || response.status === 403) {
         throw new ConfigError(
           `TMS authentication failed (${response.status} ${response.statusText})`,
-          'Check that TMS_API_KEY or TMS_TOKEN is set correctly, and that the server and project_id in your .deepl-sync.yaml match the TMS you intended to reach.',
+          'Check that TMS_API_KEY or TMS_TOKEN is set correctly, and that the server and project_id in your .deepl-sync.yaml match the TMS you intended to reach.'
         );
       }
 
-      if (RETRIABLE_STATUS.has(response.status) && attempt < this.retry.maxAttempts - 1) {
-        const delay = computeBackoffDelay(attempt, this.retry.baseDelayMs, this.retry.maxDelayMs, this.retry.jitter);
+      if (
+        RETRIABLE_STATUS.has(response.status) &&
+        attempt < this.retry.maxAttempts - 1
+      ) {
+        const delay = computeBackoffDelay(
+          attempt,
+          this.retry.baseDelayMs,
+          this.retry.maxDelayMs,
+          this.retry.jitter
+        );
         await sleep(delay);
         lastError = response;
         continue;
@@ -281,7 +420,9 @@ export class TmsClient {
 
       const bodyText = await readErrorBody(response);
       const suffix = bodyText ? `: ${bodyText}` : '';
-      throw new Error(`TMS API error: ${response.status} ${sanitizeForTerminal(response.statusText)}${suffix}`);
+      throw new Error(
+        `TMS API error: ${response.status} ${sanitizeForTerminal(response.statusText)}${suffix}`
+      );
     }
 
     throw lastError instanceof Error
@@ -290,22 +431,37 @@ export class TmsClient {
   }
 
   async pushKey(keyPath: string, locale: string, value: string): Promise<void> {
-    await this.request('PUT', `/keys/${encodeURIComponent(keyPath)}`, { locale, value });
+    await this.request('PUT', `/keys/${encodeURIComponent(keyPath)}`, {
+      locale,
+      value,
+    });
   }
 
-  async pushEntry(entry: ExtractedEntry, locale: string): Promise<void> {
+  /**
+   * `translation` is passed explicitly rather than read off `entry.value`: for a
+   * bilingual format `value` is the source text even when the entry came from a
+   * target file, so defaulting to it would upload English as the translation.
+   */
+  async pushEntry(
+    entry: ExtractedEntry,
+    locale: string,
+    translation: string
+  ): Promise<void> {
     if (entry.metadata && 'skipped' in entry.metadata) {
       throw new Error(
         `TmsClient.pushEntry refused to push key "${entry.key}" (locale=${locale}): ` +
-        `entry is tagged metadata.skipped and must be filtered by the walker ` +
-        `skip-partition (partitionEntries in src/sync/sync-bucket-walker.ts) before reaching push.`,
+          `entry is tagged metadata.skipped and must be filtered by the walker ` +
+          `skip-partition (partitionEntries in src/sync/sync-bucket-walker.ts) before reaching push.`
       );
     }
-    await this.pushKey(entry.key, locale, entry.value);
+    await this.pushKey(entry.key, locale, translation);
   }
 
   async pullKeys(locale: string): Promise<Record<string, string>> {
-    const resp = await this.request('GET', `/keys/export?format=json&locale=${encodeURIComponent(locale)}`);
+    const resp = await this.request(
+      'GET',
+      `/keys/export?format=json&locale=${encodeURIComponent(locale)}`
+    );
     return sanitizePullKeysResponse(await readJsonBounded(resp));
   }
 
@@ -315,22 +471,50 @@ export class TmsClient {
   }
 }
 
-export function resolveTmsCredentials(config: { api_key?: string; token?: string }): { apiKey?: string; token?: string } {
+export function resolveTmsCredentials(config: {
+  api_key?: string;
+  token?: string;
+}): { apiKey?: string; token?: string; source: TmsCredentialSource } {
   const apiKey = process.env['TMS_API_KEY'] ?? config.api_key;
   const token = process.env['TMS_TOKEN'] ?? config.token;
 
   if (!process.env['TMS_API_KEY'] && config.api_key) {
-    Logger.warn('Warning: TMS API key found in config file. Use TMS_API_KEY env var instead to avoid committing secrets.');
+    Logger.warn(
+      'Warning: TMS API key found in config file. Use TMS_API_KEY env var instead to avoid committing secrets.'
+    );
   }
   if (!process.env['TMS_TOKEN'] && config.token) {
-    Logger.warn('Warning: TMS token found in config file. Use TMS_TOKEN env var instead to avoid committing secrets.');
+    Logger.warn(
+      'Warning: TMS token found in config file. Use TMS_TOKEN env var instead to avoid committing secrets.'
+    );
   }
 
-  return { apiKey, token };
+  return { apiKey, token, source: credentialSource(apiKey, token) };
 }
 
-export function createTmsClient(config: SyncTmsConfig): TmsClient {
-  const { apiKey, token } = resolveTmsCredentials({ api_key: config.api_key, token: config.token });
+/**
+ * Where the credential that `getAuthHeader` will actually attach came from.
+ * It prefers apiKey, so an env-held token behind a config-held api_key is
+ * never sent and does not make the destination a leak.
+ */
+function credentialSource(
+  apiKey: string | undefined,
+  token: string | undefined
+): TmsCredentialSource {
+  if (apiKey) return process.env['TMS_API_KEY'] ? 'env' : 'config';
+  if (token) return process.env['TMS_TOKEN'] ? 'env' : 'config';
+  return 'none';
+}
+
+export async function createTmsClient(
+  config: SyncTmsConfig,
+  trustDeps: TmsServerTrustDeps = {}
+): Promise<TmsClient> {
+  const { apiKey, token, source } = resolveTmsCredentials({
+    api_key: config.api_key,
+    token: config.token,
+  });
+  await ensureTmsServerApproved(config.server, source, trustDeps);
   return new TmsClient({
     serverUrl: config.server,
     projectId: config.project_id,

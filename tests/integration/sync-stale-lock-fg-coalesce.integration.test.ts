@@ -13,7 +13,10 @@ const fgCalls: Array<string | string[]> = [];
 jest.mock('fast-glob', () => {
   const real = jest.requireActual<any>('fast-glob');
   const realFn = real.default ?? real;
-  const wrapped: any = async (patterns: string | string[], opts?: object): Promise<string[]> => {
+  const wrapped: any = async (
+    patterns: string | string[],
+    opts?: object
+  ): Promise<string[]> => {
     fgCalls.push(patterns);
     return realFn(patterns, opts);
   };
@@ -31,7 +34,10 @@ import { FormatRegistry } from '../../src/formats/index';
 import { JsonFormatParser } from '../../src/formats/json';
 import { loadSyncConfig } from '../../src/sync/sync-config';
 import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers/nock-setup';
-import { createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
+import {
+  createMockConfigService,
+  createMockCacheService,
+} from '../helpers/mock-factories';
 
 const STALE_COUNT = 50;
 
@@ -53,7 +59,11 @@ function createServices(): { client: DeepLClient; syncService: SyncService } {
     get: jest.fn(() => ({
       auth: {},
       api: { baseUrl: '', usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: false,
+      },
       cache: { enabled: false },
       output: { format: 'text', color: true },
       proxy: {},
@@ -61,11 +71,19 @@ function createServices(): { client: DeepLClient; syncService: SyncService } {
     getValue: jest.fn(() => false),
   });
   const mockCache = createMockCacheService();
-  const translationService = new TranslationService(client, mockConfig, mockCache);
+  const translationService = new TranslationService(
+    client,
+    mockConfig,
+    mockCache
+  );
   const glossaryService = new GlossaryService(client);
   const registry = new FormatRegistry();
   registry.register(new JsonFormatParser());
-  const syncService = new SyncService(translationService, glossaryService, registry);
+  const syncService = new SyncService(
+    translationService,
+    glossaryService,
+    registry
+  );
   return { client, syncService };
 }
 
@@ -96,26 +114,28 @@ describe('sync-service stale-lock fg coalesce', () => {
 
     const localeDir = path.join(tmpDir, 'locales');
     fs.mkdirSync(localeDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(localeDir, 'en.json'),
-      SOURCE_JSON,
-      'utf-8',
-    );
+    fs.writeFileSync(path.join(localeDir, 'en.json'), SOURCE_JSON, 'utf-8');
     fs.writeFileSync(
       path.join(localeDir, 'de.json'),
       JSON.stringify({ greeting: 'Hallo' }, null, 2) + '\n',
-      'utf-8',
+      'utf-8'
     );
 
     // Seed lock file with STALE_COUNT entries for files that no longer exist.
     // Each entry must have the correct SyncLockFile shape:
     //   entries[filePath][keyName] = { source_hash, source_text, translations }
     const lockPath = path.join(tmpDir, '.deepl-sync.lock');
-    const entries: Record<string, Record<string, {
-      source_hash: string;
-      source_text: string;
-      translations: Record<string, { hash: string; status: string }>;
-    }>> = {};
+    const entries: Record<
+      string,
+      Record<
+        string,
+        {
+          source_hash: string;
+          source_text: string;
+          translations: Record<string, { hash: string; status: string }>;
+        }
+      >
+    > = {};
     for (let i = 0; i < STALE_COUNT; i++) {
       const filePath = 'old/path/stale_' + String(i) + '.json';
       entries[filePath] = {
@@ -139,22 +159,32 @@ describe('sync-service stale-lock fg coalesce', () => {
     const now = new Date().toISOString();
     fs.writeFileSync(
       lockPath,
-      JSON.stringify({
-        _comment: 'test',
-        version: 1,
-        generated_at: now,
-        source_locale: 'en',
-        entries,
-        stats: { total_keys: STALE_COUNT + 1, total_translations: STALE_COUNT, last_sync: now },
-        glossary_ids: {},
-      }, null, 2),
-      'utf-8',
+      JSON.stringify(
+        {
+          _comment: 'test',
+          version: 1,
+          generated_at: now,
+          source_locale: 'en',
+          entries,
+          stats: {
+            total_keys: STALE_COUNT + 1,
+            total_translations: STALE_COUNT,
+            last_sync: now,
+          },
+          glossary_ids: {},
+        },
+        null,
+        2
+      ),
+      'utf-8'
     );
 
     nock(DEEPL_FREE_API_URL)
       .persist()
       .post('/v2/translate')
-      .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] });
+      .reply(200, {
+        translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+      });
 
     const config = await loadSyncConfig(configPath, {});
     await syncService.sync(config, {});

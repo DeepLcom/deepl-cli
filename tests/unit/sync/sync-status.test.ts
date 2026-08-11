@@ -1,6 +1,10 @@
 import { computeSyncStatus } from '../../../src/sync/sync-status';
 import type { ResolvedSyncConfig } from '../../../src/sync/sync-config';
-import type { FormatRegistry, FormatParser, ExtractedEntry } from '../../../src/formats/index';
+import type {
+  FormatRegistry,
+  FormatParser,
+  ExtractedEntry,
+} from '../../../src/formats/index';
 
 jest.mock('fs', () => ({
   promises: {
@@ -9,7 +13,12 @@ jest.mock('fs', () => ({
   },
 }));
 jest.mock('fast-glob', () => jest.fn());
-jest.mock('../../../src/sync/sync-lock');
+// Only SyncLockManager is stubbed. A bare automock would also replace the
+// module's pure entry-map accessors, which the code under test relies on.
+jest.mock('../../../src/sync/sync-lock', () => {
+  const actual = jest.requireActual('../../../src/sync/sync-lock');
+  return { ...actual, SyncLockManager: jest.fn() };
+});
 jest.mock('../../../src/sync/sync-differ');
 
 import * as fs from 'fs';
@@ -18,10 +27,14 @@ import { SyncLockManager } from '../../../src/sync/sync-lock';
 import { computeDiff } from '../../../src/sync/sync-differ';
 
 const mockFg = fg as jest.MockedFunction<typeof fg>;
-const mockReadFile = fs.promises.readFile as jest.MockedFunction<typeof fs.promises.readFile>;
+const mockReadFile = fs.promises.readFile as jest.MockedFunction<
+  typeof fs.promises.readFile
+>;
 const mockComputeDiff = computeDiff as jest.MockedFunction<typeof computeDiff>;
 
-function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -60,7 +73,14 @@ function makeRegistry(parser: FormatParser): FormatRegistry {
 describe('computeSyncStatus', () => {
   beforeEach(() => {
     (SyncLockManager as jest.Mock).mockImplementation(() => ({
-      read: jest.fn().mockResolvedValue({ entries: {}, source_locale: 'en', version: 1, _comment: '', generated_at: '', stats: { total_keys: 0, total_translations: 0, last_sync: '' } }),
+      read: jest.fn().mockResolvedValue({
+        entries: {},
+        source_locale: 'en',
+        version: 1,
+        _comment: '',
+        generated_at: '',
+        stats: { total_keys: 0, total_translations: 0, last_sync: '' },
+      }),
     }));
     mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
     mockReadFile.mockResolvedValue('{}');
@@ -92,11 +112,27 @@ describe('computeSyncStatus', () => {
       read: jest.fn().mockResolvedValue({
         entries: {
           'locales/en.json': {
-            greeting: { source_hash: 'a', source_text: 'Hello', translations: { de: { hash: 'a', translated_at: '', status: 'translated' } } },
-            farewell: { source_hash: 'c', source_text: 'Goodbye', translations: { de: { hash: 'c', translated_at: '', status: 'translated' } } },
+            greeting: {
+              source_hash: 'a',
+              source_text: 'Hello',
+              translations: {
+                de: { hash: 'a', translated_at: '', status: 'translated' },
+              },
+            },
+            farewell: {
+              source_hash: 'c',
+              source_text: 'Goodbye',
+              translations: {
+                de: { hash: 'c', translated_at: '', status: 'translated' },
+              },
+            },
           },
         },
-        source_locale: 'en', version: 1, _comment: '', generated_at: '', stats: { total_keys: 2, total_translations: 2, last_sync: '' },
+        source_locale: 'en',
+        version: 1,
+        _comment: '',
+        generated_at: '',
+        stats: { total_keys: 2, total_translations: 2, last_sync: '' },
       }),
     }));
     const parser = makeParser();
@@ -121,6 +157,72 @@ describe('computeSyncStatus', () => {
     expect(result.locales[1]!.locale).toBe('fr');
   });
 
+  it('counts a failed translation as missing rather than outdated', async () => {
+    // `outdated` is documented as "recorded against an older source". A failed
+    // attempt is recorded against the CURRENT source and produced no
+    // translation at all, so the honest word for it is missing.
+    mockComputeDiff.mockReturnValue([
+      { key: 'greeting', status: 'current', value: 'Hello' },
+    ]);
+    (SyncLockManager as jest.Mock).mockImplementation(() => ({
+      read: jest.fn().mockResolvedValue({
+        entries: {
+          'locales/en.json': {
+            greeting: {
+              source_hash: 'a',
+              source_text: 'Hello',
+              translations: {
+                de: { hash: 'a', translated_at: '', status: 'failed' },
+              },
+            },
+          },
+        },
+        source_locale: 'en',
+        version: 1,
+        _comment: '',
+        generated_at: '',
+        stats: { total_keys: 1, total_translations: 0, last_sync: '' },
+      }),
+    }));
+    const parser = makeParser();
+    const result = await computeSyncStatus(makeConfig(), makeRegistry(parser));
+    const deStats = result.locales[0]!;
+    expect(deStats.missing).toBe(1);
+    expect(deStats.outdated).toBe(0);
+    expect(deStats.complete).toBe(0);
+  });
+
+  it('still counts a stale hash as outdated', async () => {
+    mockComputeDiff.mockReturnValue([
+      { key: 'greeting', status: 'current', value: 'Hello' },
+    ]);
+    (SyncLockManager as jest.Mock).mockImplementation(() => ({
+      read: jest.fn().mockResolvedValue({
+        entries: {
+          'locales/en.json': {
+            greeting: {
+              source_hash: 'NEW',
+              source_text: 'Hello',
+              translations: {
+                de: { hash: 'OLD', translated_at: '', status: 'translated' },
+              },
+            },
+          },
+        },
+        source_locale: 'en',
+        version: 1,
+        _comment: '',
+        generated_at: '',
+        stats: { total_keys: 1, total_translations: 1, last_sync: '' },
+      }),
+    }));
+    const parser = makeParser();
+    const result = await computeSyncStatus(makeConfig(), makeRegistry(parser));
+    const deStats = result.locales[0]!;
+    expect(deStats.outdated).toBe(1);
+    expect(deStats.missing).toBe(0);
+  });
+
   it('should not count deleted diffs in coverage stats', async () => {
     mockComputeDiff.mockReturnValue([
       { key: 'greeting', status: 'current', value: 'Hello' },
@@ -130,11 +232,27 @@ describe('computeSyncStatus', () => {
       read: jest.fn().mockResolvedValue({
         entries: {
           'locales/en.json': {
-            greeting: { source_hash: 'a', source_text: 'Hello', translations: { de: { hash: 'a', translated_at: '', status: 'translated' } } },
-            removed_key: { source_hash: 'abc123', source_text: 'Old text', translations: { de: { hash: 'abc123', translated_at: '', status: 'translated' } } },
+            greeting: {
+              source_hash: 'a',
+              source_text: 'Hello',
+              translations: {
+                de: { hash: 'a', translated_at: '', status: 'translated' },
+              },
+            },
+            removed_key: {
+              source_hash: 'abc123',
+              source_text: 'Old text',
+              translations: {
+                de: { hash: 'abc123', translated_at: '', status: 'translated' },
+              },
+            },
           },
         },
-        source_locale: 'en', version: 1, _comment: '', generated_at: '', stats: { total_keys: 2, total_translations: 2, last_sync: '' },
+        source_locale: 'en',
+        version: 1,
+        _comment: '',
+        generated_at: '',
+        stats: { total_keys: 2, total_translations: 2, last_sync: '' },
       }),
     }));
     const parser = makeParser();
@@ -154,7 +272,7 @@ describe('computeSyncStatus', () => {
       makeConfig({
         buckets: { android_xml: { include: ['res/values/strings.xml'] } },
       }),
-      registry,
+      registry
     );
 
     expect(registry.getParserByFormatKey).toHaveBeenCalledWith('android_xml');

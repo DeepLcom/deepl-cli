@@ -1,6 +1,12 @@
-import { expandPlurals, detectIcu, writebackPlurals } from '../../../src/sync/sync-message-preprocess';
+import {
+  expandPlurals,
+  detectIcu,
+  reassembleIcu,
+  writebackPlurals,
+} from '../../../src/sync/sync-message-preprocess';
 import type { SyncDiff } from '../../../src/sync/types';
 import type { TranslationResult } from '../../../src/api/translation-client';
+import type { TranslationService } from '../../../src/services/translation';
 
 function makeDiff(partial: Partial<SyncDiff>): SyncDiff {
   return {
@@ -26,7 +32,7 @@ describe('expandPlurals', () => {
 
     const { extendedTexts, pluralSlots } = expandPlurals(
       ['{count, plural, other {# apples}}'],
-      [diff],
+      [diff]
     );
 
     expect(extendedTexts).toHaveLength(2);
@@ -62,13 +68,16 @@ describe('expandPlurals', () => {
 });
 
 describe('detectIcu', () => {
-  it('replaces ICU positions with __ICU_PLACEHOLDER_{ti}__ and preserves positions', () => {
+  it('blanks ICU positions and preserves positions', () => {
     const input = ['plain text', '{n, plural, one {# item} other {# items}}'];
 
     const { extendedTexts, icuMappings } = detectIcu(input);
 
     expect(extendedTexts[0]).toBe('plain text');
-    expect(extendedTexts[1]).toBe('__ICU_PLACEHOLDER_1__');
+    // An ICU string is translated segment-by-segment, so its slot in the main
+    // batch holds nothing to translate. A marker token was itself submitted and
+    // billed as a text, and cached under its own key.
+    expect(extendedTexts[1]).toBe('');
     expect(icuMappings).toHaveLength(1);
     expect(icuMappings[0]!.textIndex).toBe(1);
   });
@@ -79,6 +88,45 @@ describe('detectIcu', () => {
     detectIcu(input);
 
     expect(input[0]).toBe('{n, plural, one {x} other {y}}');
+  });
+});
+
+describe('reassembleIcu', () => {
+  function serviceReturning(
+    impl: (texts: string[]) => (TranslationResult | null)[]
+  ): TranslationService {
+    return {
+      translateBatch: (texts: string[]) => Promise.resolve(impl(texts)),
+    } as unknown as TranslationService;
+  }
+
+  it('accepts an empty plural branch as translated', async () => {
+    const source = '{count, plural, one {} other {# items}}';
+    const { extendedTexts, icuMappings } = detectIcu([source]);
+    const results: (TranslationResult | null)[] = [null];
+    const service = serviceReturning((texts) =>
+      texts.map((t) => ({ text: t === '' ? '' : `DE ${t}` }))
+    );
+
+    await reassembleIcu(service, results, icuMappings, { targetLang: 'de' });
+
+    expect(extendedTexts[0]).toBe('');
+    expect(results[0]).not.toBeNull();
+    expect(results[0]?.text).toBe('{count, plural, one {} other {DE # items}}');
+  });
+
+  it('still marks the message failed when a segment has no result at all', async () => {
+    const { icuMappings } = detectIcu([
+      '{count, plural, one {# item} other {# items}}',
+    ]);
+    const results: (TranslationResult | null)[] = [null];
+    const service = serviceReturning((texts) =>
+      texts.map((t, i) => (i === 0 ? null : { text: `DE ${t}` }))
+    );
+
+    await reassembleIcu(service, results, icuMappings, { targetLang: 'de' });
+
+    expect(results[0]).toBeNull();
   });
 });
 
@@ -98,14 +146,22 @@ describe('writebackPlurals', () => {
       { text: '1 Artikel', billedCharacters: 9 },
     ];
     const slots = [
-      { diffIndex: 0, format: 'android' as const, slotKey: 'one', textIndex: 1 },
+      {
+        diffIndex: 0,
+        format: 'android' as const,
+        slotKey: 'one',
+        textIndex: 1,
+      },
     ];
 
     writebackPlurals(results, slots, [diff]);
 
-    const plurals = diff.metadata!['plurals'] as Array<{ quantity: string; value: string }>;
-    expect(plurals.find(p => p.quantity === 'one')!.value).toBe('1 Artikel');
-    expect(plurals.find(p => p.quantity === 'other')!.value).toBe('%d items'); // untouched
+    const plurals = diff.metadata!['plurals'] as Array<{
+      quantity: string;
+      value: string;
+    }>;
+    expect(plurals.find((p) => p.quantity === 'one')!.value).toBe('1 Artikel');
+    expect(plurals.find((p) => p.quantity === 'other')!.value).toBe('%d items'); // untouched
   });
 
   it('writes msgstr[1] for PO msgid_plural slots and propagates to higher msgstr[N]', () => {
@@ -121,7 +177,12 @@ describe('writebackPlurals', () => {
       { text: 'Artikel (pl)', billedCharacters: 12 },
     ];
     const slots = [
-      { diffIndex: 0, format: 'po' as const, slotKey: 'msgid_plural', textIndex: 1 },
+      {
+        diffIndex: 0,
+        format: 'po' as const,
+        slotKey: 'msgid_plural',
+        textIndex: 1,
+      },
     ];
 
     writebackPlurals(results, slots, [diff]);
@@ -138,12 +199,20 @@ describe('writebackPlurals', () => {
     });
     const results: (TranslationResult | null)[] = [null, null];
     const slots = [
-      { diffIndex: 0, format: 'android' as const, slotKey: 'one', textIndex: 1 },
+      {
+        diffIndex: 0,
+        format: 'android' as const,
+        slotKey: 'one',
+        textIndex: 1,
+      },
     ];
 
     writebackPlurals(results, slots, [diff]);
 
-    const plurals = diff.metadata!['plurals'] as Array<{ quantity: string; value: string }>;
+    const plurals = diff.metadata!['plurals'] as Array<{
+      quantity: string;
+      value: string;
+    }>;
     expect(plurals[0]!.value).toBe('original');
   });
 });

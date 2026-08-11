@@ -4,17 +4,23 @@ describe('icu-preservation', () => {
   describe('parseIcu', () => {
     describe('detection', () => {
       it('should detect plural pattern', () => {
-        const result = parseIcu('{count, plural, one {# item} other {# items}}');
+        const result = parseIcu(
+          '{count, plural, one {# item} other {# items}}'
+        );
         expect(result.isIcu).toBe(true);
       });
 
       it('should detect select pattern', () => {
-        const result = parseIcu('{gender, select, male {He} female {She} other {They}}');
+        const result = parseIcu(
+          '{gender, select, male {He} female {She} other {They}}'
+        );
         expect(result.isIcu).toBe(true);
       });
 
       it('should detect selectordinal pattern', () => {
-        const result = parseIcu('{count, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}');
+        const result = parseIcu(
+          '{count, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}'
+        );
         expect(result.isIcu).toBe(true);
       });
 
@@ -41,7 +47,9 @@ describe('icu-preservation', () => {
 
     describe('plural extraction', () => {
       it('should extract leaf text from plural branches', () => {
-        const result = parseIcu('{count, plural, one {# item} other {# items}}');
+        const result = parseIcu(
+          '{count, plural, one {# item} other {# items}}'
+        );
         expect(result.isIcu).toBe(true);
         expect(result.segments).toHaveLength(2);
         expect(result.segments[0]!.text).toBe('# item');
@@ -49,13 +57,17 @@ describe('icu-preservation', () => {
       });
 
       it('should mark segments as plural branches', () => {
-        const result = parseIcu('{count, plural, one {# item} other {# items}}');
+        const result = parseIcu(
+          '{count, plural, one {# item} other {# items}}'
+        );
         expect(result.segments[0]!.isPluralBranch).toBe(true);
         expect(result.segments[1]!.isPluralBranch).toBe(true);
       });
 
       it('should handle =0 selector', () => {
-        const result = parseIcu('{count, plural, =0 {No items} one {# item} other {# items}}');
+        const result = parseIcu(
+          '{count, plural, =0 {No items} one {# item} other {# items}}'
+        );
         expect(result.segments).toHaveLength(3);
         expect(result.segments[0]!.text).toBe('No items');
         expect(result.segments[1]!.text).toBe('# item');
@@ -63,14 +75,18 @@ describe('icu-preservation', () => {
       });
 
       it('should handle many plural categories', () => {
-        const result = parseIcu('{count, plural, zero {none} one {single} two {pair} few {several} many {lots} other {some}}');
+        const result = parseIcu(
+          '{count, plural, zero {none} one {single} two {pair} few {several} many {lots} other {some}}'
+        );
         expect(result.segments).toHaveLength(6);
       });
     });
 
     describe('select extraction', () => {
       it('should extract leaf text from select branches', () => {
-        const result = parseIcu('{gender, select, male {He liked your post} female {She liked your post} other {They liked your post}}');
+        const result = parseIcu(
+          '{gender, select, male {He liked your post} female {She liked your post} other {They liked your post}}'
+        );
         expect(result.isIcu).toBe(true);
         expect(result.segments).toHaveLength(3);
         expect(result.segments[0]!.text).toBe('He liked your post');
@@ -87,7 +103,9 @@ describe('icu-preservation', () => {
 
     describe('selectordinal extraction', () => {
       it('should extract ordinal branches', () => {
-        const result = parseIcu('{count, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}');
+        const result = parseIcu(
+          '{count, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}'
+        );
         expect(result.segments).toHaveLength(4);
         expect(result.segments[0]!.text).toBe('#st');
         expect(result.segments[3]!.text).toBe('#th');
@@ -97,19 +115,29 @@ describe('icu-preservation', () => {
 
     describe('reassembly', () => {
       it('should reassemble plural with translated text', () => {
-        const result = parseIcu('{count, plural, one {# item} other {# items}}');
+        const result = parseIcu(
+          '{count, plural, one {# item} other {# items}}'
+        );
         const translated = result.reassemble(['# Artikel', '# Artikel']);
-        expect(translated).toBe('{count, plural, one {# Artikel} other {# Artikel}}');
+        expect(translated).toBe(
+          '{count, plural, one {# Artikel} other {# Artikel}}'
+        );
       });
 
       it('should reassemble select with translated text', () => {
-        const result = parseIcu('{gender, select, male {He} female {She} other {They}}');
+        const result = parseIcu(
+          '{gender, select, male {He} female {She} other {They}}'
+        );
         const translated = result.reassemble(['Er', 'Sie', 'Sie']);
-        expect(translated).toBe('{gender, select, male {Er} female {Sie} other {Sie}}');
+        expect(translated).toBe(
+          '{gender, select, male {Er} female {Sie} other {Sie}}'
+        );
       });
 
       it('should preserve variable name and keyword exactly', () => {
-        const result = parseIcu('{myCount, plural, one {one thing} other {many things}}');
+        const result = parseIcu(
+          '{myCount, plural, one {one thing} other {many things}}'
+        );
         const translated = result.reassemble(['eine Sache', 'viele Sachen']);
         expect(translated).toContain('myCount');
         expect(translated).toContain('plural');
@@ -126,7 +154,9 @@ describe('icu-preservation', () => {
 
     describe('offset', () => {
       it('should parse plural with offset:1', () => {
-        const result = parseIcu('{count, plural, offset:1 one {you and # other} other {you and # others}}');
+        const result = parseIcu(
+          '{count, plural, offset:1 one {you and # other} other {you and # others}}'
+        );
         expect(result.isIcu).toBe(true);
         expect(result.segments).toHaveLength(2);
         expect(result.segments[0]!.text).toBe('you and # other');
@@ -134,39 +164,49 @@ describe('icu-preservation', () => {
       });
 
       it('should preserve offset:1 verbatim on reassembly', () => {
-        const input = '{count, plural, offset:1 one {you and # other} other {you and # others}}';
+        const input =
+          '{count, plural, offset:1 one {you and # other} other {you and # others}}';
         const result = parseIcu(input);
         const roundTrip = result.reassemble(result.segments.map((s) => s.text));
         expect(roundTrip).toBe(input);
       });
 
       it('should parse offset:0', () => {
-        const result = parseIcu('{count, plural, offset:0 one {# item} other {# items}}');
+        const result = parseIcu(
+          '{count, plural, offset:0 one {# item} other {# items}}'
+        );
         expect(result.isIcu).toBe(true);
         expect(result.reassemble(['# item', '# items'])).toBe(
-          '{count, plural, offset:0 one {# item} other {# items}}',
+          '{count, plural, offset:0 one {# item} other {# items}}'
         );
       });
 
       it('should parse selectordinal with offset', () => {
-        const result = parseIcu('{count, selectordinal, offset:2 one {#st} other {#th}}');
+        const result = parseIcu(
+          '{count, selectordinal, offset:2 one {#st} other {#th}}'
+        );
         expect(result.isIcu).toBe(true);
         expect(result.segments).toHaveLength(2);
         expect(result.reassemble(['#st', '#th'])).toBe(
-          '{count, selectordinal, offset:2 one {#st} other {#th}}',
+          '{count, selectordinal, offset:2 one {#st} other {#th}}'
         );
       });
 
       it('should parse nested plural with offset', () => {
-        const input = '{count, plural, offset:1 one {{gender, select, male {He} other {They}}} other {# guests}}';
+        const input =
+          '{count, plural, offset:1 one {{gender, select, male {He} other {They}}} other {# guests}}';
         const result = parseIcu(input);
         expect(result.isIcu).toBe(true);
         expect(result.segments).toHaveLength(3);
-        expect(result.reassemble(result.segments.map((s) => s.text))).toBe(input);
+        expect(result.reassemble(result.segments.map((s) => s.text))).toBe(
+          input
+        );
       });
 
       it('should NOT treat offset as valid for select', () => {
-        const result = parseIcu('{gender, select, offset:1 male {He} other {They}}');
+        const result = parseIcu(
+          '{gender, select, offset:1 male {He} other {They}}'
+        );
         expect(result.isIcu).toBe(false);
       });
     });
@@ -255,7 +295,9 @@ describe('icu-preservation', () => {
 
     describe('edge cases', () => {
       it('should handle whitespace variations', () => {
-        const result = parseIcu('{ count , plural , one { # item } other { # items } }');
+        const result = parseIcu(
+          '{ count , plural , one { # item } other { # items } }'
+        );
         expect(result.isIcu).toBe(true);
         expect(result.segments).toHaveLength(2);
         expect(result.segments[0]!.text).toBe(' # item ');
@@ -270,7 +312,9 @@ describe('icu-preservation', () => {
       });
 
       it('should handle branches with simple variables inside', () => {
-        const result = parseIcu('{count, plural, one {{name} has # item} other {{name} has # items}}');
+        const result = parseIcu(
+          '{count, plural, one {{name} has # item} other {{name} has # items}}'
+        );
         expect(result.isIcu).toBe(true);
         expect(result.segments).toHaveLength(2);
         expect(result.segments[0]!.text).toContain('{name}');
@@ -289,7 +333,8 @@ describe('icu-preservation', () => {
       });
 
       it('should handle nested ICU (select inside plural)', () => {
-        const input = '{count, plural, one {{gender, select, male {He has # item} female {She has # item} other {They have # item}}} other {{gender, select, male {He has # items} female {She has # items} other {They have # items}}}}';
+        const input =
+          '{count, plural, one {{gender, select, male {He has # item} female {She has # item} other {They have # item}}} other {{gender, select, male {He has # items} female {She has # items} other {They have # items}}}}';
         const result = parseIcu(input);
         expect(result.isIcu).toBe(true);
         // Nested: 2 plural branches × 3 select branches = 6 leaf segments
@@ -298,7 +343,9 @@ describe('icu-preservation', () => {
 
       it('should handle long branch text', () => {
         const longText = 'A'.repeat(500);
-        const result = parseIcu(`{n, plural, one {${longText}} other {${longText}s}}`);
+        const result = parseIcu(
+          `{n, plural, one {${longText}} other {${longText}s}}`
+        );
         expect(result.isIcu).toBe(true);
         expect(result.segments[0]!.text).toBe(longText);
       });

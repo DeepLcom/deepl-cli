@@ -32,7 +32,9 @@ jest.mock('fs', () => {
 import * as fs from 'fs';
 
 const mockFastGlob = fg as jest.MockedFunction<typeof fg>;
-const mockReadFile = fs.promises.readFile as jest.MockedFunction<typeof fs.promises.readFile>;
+const mockReadFile = fs.promises.readFile as jest.MockedFunction<
+  typeof fs.promises.readFile
+>;
 
 describe('sync-context', () => {
   describe('buildKeyPatterns', () => {
@@ -76,7 +78,12 @@ describe('sync-context', () => {
 
     it('should match intl.formatMessage() calls', () => {
       const source = `intl.formatMessage({ id: 'items_count' })`;
-      const matches = extractContextFromSource(source, 'app.tsx', ['intl.formatMessage'], 0);
+      const matches = extractContextFromSource(
+        source,
+        'app.tsx',
+        ['intl.formatMessage'],
+        0
+      );
       expect(matches).toHaveLength(1);
       expect(matches[0]!.key).toBe('items_count');
       expect(matches[0]!.matchedFunction).toBe('intl.formatMessage');
@@ -91,7 +98,12 @@ describe('sync-context', () => {
 
     it('should return empty array when no matches found', () => {
       const source = `const x = 42;\nconsole.log(x);`;
-      const matches = extractContextFromSource(source, 'math.ts', DEFAULT_FUNCTION_NAMES, 0);
+      const matches = extractContextFromSource(
+        source,
+        'math.ts',
+        DEFAULT_FUNCTION_NAMES,
+        0
+      );
       expect(matches).toHaveLength(0);
     });
 
@@ -161,7 +173,12 @@ describe('sync-context', () => {
 
     it('should use correct file path in matches', () => {
       const source = `t('test')`;
-      const matches = extractContextFromSource(source, 'src/components/Header.tsx', ['t'], 0);
+      const matches = extractContextFromSource(
+        source,
+        'src/components/Header.tsx',
+        ['t'],
+        0
+      );
       expect(matches[0]!.filePath).toBe('src/components/Header.tsx');
     });
   });
@@ -235,11 +252,16 @@ describe('sync-context', () => {
 
   describe('extractAllKeyContexts', () => {
     it('should aggregate keys from multiple files', async () => {
-      mockFastGlob.mockResolvedValue(['/project/src/a.ts', '/project/src/b.ts']);
+      mockFastGlob.mockResolvedValue([
+        '/project/src/a.ts',
+        '/project/src/b.ts',
+      ]);
 
       mockReadFile.mockImplementation((filePath: unknown) => {
-        if (String(filePath).includes('a.ts')) return Promise.resolve(`t('shared_key')`);
-        if (String(filePath).includes('b.ts')) return Promise.resolve(`t('shared_key')\nt('unique_key')`);
+        if (String(filePath).includes('a.ts'))
+          return Promise.resolve(`t('shared_key')`);
+        if (String(filePath).includes('b.ts'))
+          return Promise.resolve(`t('shared_key')\nt('unique_key')`);
         return Promise.resolve('');
       });
 
@@ -254,10 +276,14 @@ describe('sync-context', () => {
     });
 
     it('should skip unreadable files gracefully', async () => {
-      mockFastGlob.mockResolvedValue(['/project/src/good.ts', '/project/src/bad.ts']);
+      mockFastGlob.mockResolvedValue([
+        '/project/src/good.ts',
+        '/project/src/bad.ts',
+      ]);
 
       mockReadFile.mockImplementation((filePath: unknown) => {
-        if (String(filePath).includes('bad.ts')) return Promise.reject(new Error('EACCES'));
+        if (String(filePath).includes('bad.ts'))
+          return Promise.reject(new Error('EACCES'));
         return Promise.resolve(`t('found')`);
       });
 
@@ -323,7 +349,7 @@ describe('sync-context', () => {
           cwd: '/project',
           absolute: true,
           onlyFiles: true,
-        }),
+        })
       );
     });
 
@@ -422,14 +448,21 @@ describe('sync-context', () => {
           rootDir: '/project',
         });
 
-        expect(mockFastGlob).toHaveBeenCalledWith(['/project/src/**/*.ts'], expect.any(Object));
+        expect(mockFastGlob).toHaveBeenCalledWith(
+          ['/project/src/**/*.ts'],
+          expect.any(Object)
+        );
       });
     });
   });
 
   describe('buildTemplateLiteralPatterns', () => {
     it('should return a regex for each non-intl function name', () => {
-      const patterns = buildTemplateLiteralPatterns(['t', 'i18n.t', 'intl.formatMessage']);
+      const patterns = buildTemplateLiteralPatterns([
+        't',
+        'i18n.t',
+        'intl.formatMessage',
+      ]);
       expect(patterns).toHaveLength(2);
       patterns.forEach((p) => expect(p).toBeInstanceOf(RegExp));
     });
@@ -451,11 +484,15 @@ describe('sync-context', () => {
     });
 
     it('should replace interpolation in middle', () => {
-      expect(templateToGlobPattern('features.${key}.title')).toBe('features.*.title');
+      expect(templateToGlobPattern('features.${key}.title')).toBe(
+        'features.*.title'
+      );
     });
 
     it('should replace multiple interpolations', () => {
-      expect(templateToGlobPattern('pricing.${tier}.features.${fi}')).toBe('pricing.*.features.*');
+      expect(templateToGlobPattern('pricing.${tier}.features.${fi}')).toBe(
+        'pricing.*.features.*'
+      );
     });
 
     it('should pass through strings with no interpolations', () => {
@@ -463,14 +500,21 @@ describe('sync-context', () => {
     });
 
     it('should handle complex interpolation expressions', () => {
-      expect(templateToGlobPattern('items.${i + 1}.label')).toBe('items.*.label');
+      expect(templateToGlobPattern('items.${i + 1}.label')).toBe(
+        'items.*.label'
+      );
     });
   });
 
   describe('extractTemplateLiteralMatches', () => {
     it('should match t() calls with template literals', () => {
       const source = 'const x = t(`nav.${key}`);';
-      const matches = extractTemplateLiteralMatches(source, 'app.tsx', ['t'], 0);
+      const matches = extractTemplateLiteralMatches(
+        source,
+        'app.tsx',
+        ['t'],
+        0
+      );
       expect(matches).toHaveLength(1);
       expect(matches[0]!.pattern).toBe('nav.${key}');
       expect(matches[0]!.matchedFunction).toBe('t');
@@ -479,40 +523,70 @@ describe('sync-context', () => {
 
     it('should match i18n.t() with template literals', () => {
       const source = 'i18n.t(`section.${name}`)';
-      const matches = extractTemplateLiteralMatches(source, 'app.tsx', ['i18n.t'], 0);
+      const matches = extractTemplateLiteralMatches(
+        source,
+        'app.tsx',
+        ['i18n.t'],
+        0
+      );
       expect(matches).toHaveLength(1);
       expect(matches[0]!.pattern).toBe('section.${name}');
     });
 
     it('should match $t() with template literals', () => {
       const source = '{{ $t(`items.${idx}`) }}';
-      const matches = extractTemplateLiteralMatches(source, 'comp.vue', ['$t'], 0);
+      const matches = extractTemplateLiteralMatches(
+        source,
+        'comp.vue',
+        ['$t'],
+        0
+      );
       expect(matches).toHaveLength(1);
       expect(matches[0]!.pattern).toBe('items.${idx}');
     });
 
     it('should not match when preceded by a dot', () => {
       const source = 'obj.t(`nav.${key}`)';
-      const matches = extractTemplateLiteralMatches(source, 'app.tsx', ['t'], 0);
+      const matches = extractTemplateLiteralMatches(
+        source,
+        'app.tsx',
+        ['t'],
+        0
+      );
       expect(matches).toHaveLength(0);
     });
 
     it('should ignore template literals without interpolation', () => {
       const source = 't(`static.key`)';
-      const matches = extractTemplateLiteralMatches(source, 'app.tsx', ['t'], 0);
+      const matches = extractTemplateLiteralMatches(
+        source,
+        'app.tsx',
+        ['t'],
+        0
+      );
       expect(matches).toHaveLength(0);
     });
 
     it('should include surrounding code context', () => {
       const source = 'line1\nline2\nt(`nav.${key}`)\nline4\nline5';
-      const matches = extractTemplateLiteralMatches(source, 'app.tsx', ['t'], 1);
+      const matches = extractTemplateLiteralMatches(
+        source,
+        'app.tsx',
+        ['t'],
+        1
+      );
       expect(matches).toHaveLength(1);
       expect(matches[0]!.surroundingCode).toBe('line2\nt(`nav.${key}`)\nline4');
     });
 
     it('should find multiple matches', () => {
       const source = 't(`a.${x}`)\nt(`b.${y}`)';
-      const matches = extractTemplateLiteralMatches(source, 'app.tsx', ['t'], 0);
+      const matches = extractTemplateLiteralMatches(
+        source,
+        'app.tsx',
+        ['t'],
+        0
+      );
       expect(matches).toHaveLength(2);
       expect(matches[0]!.pattern).toBe('a.${x}');
       expect(matches[1]!.pattern).toBe('b.${y}');
@@ -520,13 +594,21 @@ describe('sync-context', () => {
 
     it('should return empty array when no template literals found', () => {
       const source = "t('static_key')";
-      const matches = extractTemplateLiteralMatches(source, 'app.tsx', ['t'], 0);
+      const matches = extractTemplateLiteralMatches(
+        source,
+        'app.tsx',
+        ['t'],
+        0
+      );
       expect(matches).toHaveLength(0);
     });
   });
 
   describe('resolveTemplatePatterns', () => {
-    function makeTemplateMatch(pattern: string, overrides: Partial<TemplatePatternMatch> = {}): TemplatePatternMatch {
+    function makeTemplateMatch(
+      pattern: string,
+      overrides: Partial<TemplatePatternMatch> = {}
+    ): TemplatePatternMatch {
       return {
         pattern,
         filePath: 'app.tsx',
@@ -549,7 +631,11 @@ describe('sync-context', () => {
 
     it('should match known keys against a multi-wildcard pattern', () => {
       const patterns = [makeTemplateMatch('pricing.${tier}.features.${fi}')];
-      const knownKeys = ['pricing.free.features.0', 'pricing.pro.features.1', 'pricing.heading'];
+      const knownKeys = [
+        'pricing.free.features.0',
+        'pricing.pro.features.1',
+        'pricing.heading',
+      ];
       const result = resolveTemplatePatterns(patterns, knownKeys);
       expect(result.size).toBe(2);
       expect(result.has('pricing.free.features.0')).toBe(true);
@@ -585,7 +671,9 @@ describe('sync-context', () => {
     });
 
     it('should produce ContextMatch objects with correct fields', () => {
-      const patterns = [makeTemplateMatch('nav.${key}', { filePath: 'Navbar.tsx', line: 15 })];
+      const patterns = [
+        makeTemplateMatch('nav.${key}', { filePath: 'Navbar.tsx', line: 15 }),
+      ];
       const result = resolveTemplatePatterns(patterns, ['nav.home']);
       const matches = result.get('nav.home')!;
       expect(matches[0]!.key).toBe('nav.home');
@@ -598,12 +686,21 @@ describe('sync-context', () => {
       const DUPS = 1_000;
       const knownKeys = ['features.a.title', 'features.b.title', 'other.key'];
 
-      const canonical = makeTemplateMatch('features.${k}.title', { filePath: 'comp.tsx', line: 1 });
-      const dupPatterns = Array.from({ length: DUPS }, () => ({ ...canonical }));
-      dupPatterns.push(makeTemplateMatch('other.${x}', { filePath: 'other.tsx', line: 1 }));
+      const canonical = makeTemplateMatch('features.${k}.title', {
+        filePath: 'comp.tsx',
+        line: 1,
+      });
+      const dupPatterns = Array.from({ length: DUPS }, () => ({
+        ...canonical,
+      }));
+      dupPatterns.push(
+        makeTemplateMatch('other.${x}', { filePath: 'other.tsx', line: 1 })
+      );
 
       const singlePattern = [canonical];
-      singlePattern.push(makeTemplateMatch('other.${x}', { filePath: 'other.tsx', line: 1 }));
+      singlePattern.push(
+        makeTemplateMatch('other.${x}', { filePath: 'other.tsx', line: 1 })
+      );
 
       const resultSingle = resolveTemplatePatterns(singlePattern, knownKeys);
       const resultDup = resolveTemplatePatterns(dupPatterns, knownKeys);
@@ -612,19 +709,28 @@ describe('sync-context', () => {
       expect(resultDup.has('features.b.title')).toBe(true);
       expect(resultDup.has('other.key')).toBe(true);
 
-      const singleCtx = synthesizeContext(resultSingle.get('features.a.title')!, { key: 'features.a.title' });
-      const dupCtx = synthesizeContext(resultDup.get('features.a.title')!, { key: 'features.a.title' });
+      const singleCtx = synthesizeContext(
+        resultSingle.get('features.a.title')!,
+        { key: 'features.a.title' }
+      );
+      const dupCtx = synthesizeContext(resultDup.get('features.a.title')!, {
+        key: 'features.a.title',
+      });
       expect(dupCtx).toBe(singleCtx);
     });
 
     it('should not throw on a pattern containing an unbalanced group metacharacter', () => {
       const patterns = [makeTemplateMatch('item(${i}')];
-      expect(() => resolveTemplatePatterns(patterns, ['item(1', 'item.a'])).not.toThrow();
+      expect(() =>
+        resolveTemplatePatterns(patterns, ['item(1', 'item.a'])
+      ).not.toThrow();
     });
 
     it('should not throw on a pattern containing an unbalanced character class', () => {
       const patterns = [makeTemplateMatch('a[${i}')];
-      expect(() => resolveTemplatePatterns(patterns, ['a[0', 'ab'])).not.toThrow();
+      expect(() =>
+        resolveTemplatePatterns(patterns, ['a[0', 'ab'])
+      ).not.toThrow();
     });
 
     it('should match regex metacharacters in patterns literally', () => {
@@ -637,7 +743,11 @@ describe('sync-context', () => {
 
     it('should treat + and ? in patterns as literal characters', () => {
       const patterns = [makeTemplateMatch('count+?.${x}')];
-      const result = resolveTemplatePatterns(patterns, ['count+?.a', 'count.a', 'coun.a']);
+      const result = resolveTemplatePatterns(patterns, [
+        'count+?.a',
+        'count.a',
+        'coun.a',
+      ]);
       expect(result.has('count+?.a')).toBe(true);
       expect(result.has('count.a')).toBe(false);
       expect(result.has('coun.a')).toBe(false);
@@ -655,41 +765,57 @@ describe('sync-context', () => {
 
   describe('keyPathToContext', () => {
     it('should produce context for cta role', () => {
-      expect(keyPathToContext('pricing.free.cta')).toBe('Call-to-action in the pricing > free section.');
+      expect(keyPathToContext('pricing.free.cta')).toBe(
+        'Call-to-action in the pricing > free section.'
+      );
     });
 
     it('should produce context for title role', () => {
-      expect(keyPathToContext('nav.features.title')).toBe('Title in the nav > features section.');
+      expect(keyPathToContext('nav.features.title')).toBe(
+        'Title in the nav > features section.'
+      );
     });
 
     it('should produce context for heading role', () => {
-      expect(keyPathToContext('page.heading')).toBe('Heading in the page section.');
+      expect(keyPathToContext('page.heading')).toBe(
+        'Heading in the page section.'
+      );
     });
 
     it('should produce context for description role', () => {
       expect(keyPathToContext('settings.notifications.email.description')).toBe(
-        'Description in the settings > notifications > email section.',
+        'Description in the settings > notifications > email section.'
       );
     });
 
     it('should produce context for placeholder role', () => {
-      expect(keyPathToContext('form.name.placeholder')).toBe('Placeholder in the form > name section.');
+      expect(keyPathToContext('form.name.placeholder')).toBe(
+        'Placeholder in the form > name section.'
+      );
     });
 
     it('should produce context for tooltip role', () => {
-      expect(keyPathToContext('dashboard.tooltip')).toBe('Tooltip in the dashboard section.');
+      expect(keyPathToContext('dashboard.tooltip')).toBe(
+        'Tooltip in the dashboard section.'
+      );
     });
 
     it('should produce context for save role', () => {
-      expect(keyPathToContext('buttons.save')).toBe('Save action in the buttons section.');
+      expect(keyPathToContext('buttons.save')).toBe(
+        'Save action in the buttons section.'
+      );
     });
 
     it('should produce context for quote role', () => {
-      expect(keyPathToContext('testimonials.items.0.quote')).toBe('Quote in the testimonials > items section.');
+      expect(keyPathToContext('testimonials.items.0.quote')).toBe(
+        'Quote in the testimonials > items section.'
+      );
     });
 
     it('should handle compound segments with modifier suffix', () => {
-      expect(keyPathToContext('hero.cta_primary')).toBe('Primary call-to-action in the hero section.');
+      expect(keyPathToContext('hero.cta_primary')).toBe(
+        'Primary call-to-action in the hero section.'
+      );
     });
 
     it('should return empty string for single-segment key', () => {
@@ -701,19 +827,27 @@ describe('sync-context', () => {
     });
 
     it('should skip numeric segments in the section path', () => {
-      expect(keyPathToContext('items.0.label')).toBe('Label in the items section.');
+      expect(keyPathToContext('items.0.label')).toBe(
+        'Label in the items section.'
+      );
     });
 
     it('should handle deeply nested keys (4+ levels)', () => {
-      expect(keyPathToContext('a.b.c.d.title')).toBe('Title in the a > b > c > d section.');
+      expect(keyPathToContext('a.b.c.d.title')).toBe(
+        'Title in the a > b > c > d section.'
+      );
     });
 
     it('should capitalize unknown role segments', () => {
-      expect(keyPathToContext('errors.generic')).toBe('Generic in the errors section.');
+      expect(keyPathToContext('errors.generic')).toBe(
+        'Generic in the errors section.'
+      );
     });
 
     it('should handle underscored unknown segments', () => {
-      expect(keyPathToContext('settings.dark_mode')).toBe('Dark mode in the settings section.');
+      expect(keyPathToContext('settings.dark_mode')).toBe(
+        'Dark mode in the settings section.'
+      );
     });
 
     it('should return empty string for empty input', () => {
@@ -725,15 +859,21 @@ describe('sync-context', () => {
     });
 
     it('should produce context for two-segment key with known role', () => {
-      expect(keyPathToContext('nav.features')).toBe('Features in the nav section.');
+      expect(keyPathToContext('nav.features')).toBe(
+        'Features in the nav section.'
+      );
     });
 
     it('should honor NUL separator for YAML-style flattened keys', () => {
-      expect(keyPathToContext('nav\0features\0title')).toBe('Title in the nav > features section.');
+      expect(keyPathToContext('nav\0features\0title')).toBe(
+        'Title in the nav > features section.'
+      );
     });
 
     it('should treat a literal dot as part of a single NUL-separated segment', () => {
-      expect(keyPathToContext('app\0version.major')).toBe('Version.major in the app section.');
+      expect(keyPathToContext('app\0version.major')).toBe(
+        'Version.major in the app section.'
+      );
     });
   });
 
@@ -772,11 +912,15 @@ describe('sync-context', () => {
 
   describe('sectionToContext', () => {
     it('should format dot-separated section keys', () => {
-      expect(sectionToContext('nav.features')).toBe('Used in the nav > features section.');
+      expect(sectionToContext('nav.features')).toBe(
+        'Used in the nav > features section.'
+      );
     });
 
     it('should format NUL-separated section keys', () => {
-      expect(sectionToContext('nav\0features')).toBe('Used in the nav > features section.');
+      expect(sectionToContext('nav\0features')).toBe(
+        'Used in the nav > features section.'
+      );
     });
 
     it('should return empty string for empty section key', () => {
@@ -790,7 +934,9 @@ describe('sync-context', () => {
     });
 
     it('should extract h2 element with className', () => {
-      expect(extractElementType('<h2 className="heading">Title</h2>')).toBe('h2');
+      expect(extractElementType('<h2 className="heading">Title</h2>')).toBe(
+        'h2'
+      );
     });
 
     it('should extract th element', () => {
@@ -798,7 +944,9 @@ describe('sync-context', () => {
     });
 
     it('should extract self-closing input', () => {
-      expect(extractElementType('<input placeholder="search" />')).toBe('input');
+      expect(extractElementType('<input placeholder="search" />')).toBe(
+        'input'
+      );
     });
 
     it('should extract self-closing textarea', () => {
@@ -806,7 +954,11 @@ describe('sync-context', () => {
     });
 
     it('should extract button with complex JSX attributes', () => {
-      expect(extractElementType('<button onClick={handleClick} disabled={true}>Save</button>')).toBe('button');
+      expect(
+        extractElementType(
+          '<button onClick={handleClick} disabled={true}>Save</button>'
+        )
+      ).toBe('button');
     });
 
     it('should return null when no recognized element found', () => {
@@ -818,7 +970,9 @@ describe('sync-context', () => {
     });
 
     it('should return last match when multiple elements present', () => {
-      expect(extractElementType('<div><span>text</span><button>click</button></div>')).toBe('button');
+      expect(
+        extractElementType('<div><span>text</span><button>click</button></div>')
+      ).toBe('button');
     });
 
     it('should handle multiline JSX', () => {
@@ -827,7 +981,9 @@ describe('sync-context', () => {
     });
 
     it('should not match elements inside HTML comments', () => {
-      expect(extractElementType('<!-- <button>old</button> -->\n<div>content</div>')).toBeNull();
+      expect(
+        extractElementType('<!-- <button>old</button> -->\n<div>content</div>')
+      ).toBeNull();
     });
 
     it('should extract anchor element', () => {

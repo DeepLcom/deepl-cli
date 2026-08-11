@@ -8,7 +8,6 @@ import { ValidationError } from '../utils/errors.js';
 
 /**
  * Raw API response from DeepL v3 glossary endpoints
- * This matches the actual API response structure
  */
 export interface GlossaryApiResponse {
   glossary_id: string;
@@ -45,14 +44,13 @@ export interface LanguagePairInfo {
  */
 export function normalizeGlossaryInfo(
   response: GlossaryApiResponse,
-  options: { warnOnEmpty?: boolean } = {},
+  options: { warnOnEmpty?: boolean } = {}
 ): GlossaryInfo {
   const { warnOnEmpty = true } = options;
-  // Extract unique source and target languages from dictionaries
   const sourceLangs = new Set<Language>();
   const targetLangs = new Set<Language>();
 
-  response.dictionaries.forEach(dict => {
+  response.dictionaries.forEach((dict) => {
     sourceLangs.add(dict.source_lang.toLowerCase() as Language);
     targetLangs.add(dict.target_lang.toLowerCase() as Language);
   });
@@ -64,7 +62,9 @@ export function normalizeGlossaryInfo(
     source_lang = Array.from(sourceLangs)[0]!;
   } else {
     if (warnOnEmpty) {
-      Logger.warn('Glossary has empty dictionaries; defaulting source language to "en"');
+      Logger.warn(
+        'Glossary has empty dictionaries; defaulting source language to "en"'
+      );
     }
     source_lang = 'en';
   }
@@ -94,8 +94,10 @@ export function getTotalEntryCount(glossary: GlossaryInfo): number {
  * Helper: Get target language (specified or default to first)
  * Throws error if target is required but not provided
  */
-export function getTargetLang(glossary: GlossaryInfo, targetLang?: Language): Language {
-  // If specified, validate it exists
+export function getTargetLang(
+  glossary: GlossaryInfo,
+  targetLang?: Language
+): Language {
   if (targetLang) {
     if (!glossary.target_langs.includes(targetLang)) {
       throw new ValidationError(

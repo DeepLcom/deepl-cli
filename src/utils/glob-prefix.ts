@@ -1,7 +1,19 @@
 import { ConfigError } from './errors.js';
 import { sanitizeForTerminal } from './control-chars.js';
 
-const META_CHARS = new Set(['*', '?', '[', ']', '{', '}', '(', ')', '!', '+', '@']);
+const META_CHARS = new Set([
+  '*',
+  '?',
+  '[',
+  ']',
+  '{',
+  '}',
+  '(',
+  ')',
+  '!',
+  '+',
+  '@',
+]);
 
 interface SegmentScan {
   isDynamic: boolean;
@@ -61,7 +73,13 @@ function scanSegment(segment: string): SegmentScan {
 
     if (ch === '(' && i > 0) {
       const prev = segment[i - 1];
-      if (prev === '@' || prev === '+' || prev === '?' || prev === '*' || prev === '!') {
+      if (
+        prev === '@' ||
+        prev === '+' ||
+        prev === '?' ||
+        prev === '*' ||
+        prev === '!'
+      ) {
         depth += 1;
         altStart = i + 1;
         continue;
@@ -119,7 +137,7 @@ export function extractGlobLiteralPrefix(pattern: string): string {
     if (isDotDotSegment(segment)) {
       throw new ConfigError(
         `scan_paths pattern contains parent-directory traversal: "${sanitizeForTerminal(pattern)}"`,
-        'Remove ".." segments from scan_paths in .deepl-sync.yaml; scan paths must stay within the project root.',
+        'Remove ".." segments from scan_paths in .deepl-sync.yaml; scan paths must stay within the project root.'
       );
     }
 
@@ -128,7 +146,7 @@ export function extractGlobLiteralPrefix(pattern: string): string {
     if (scan.containsTraversal) {
       throw new ConfigError(
         `scan_paths pattern contains parent-directory traversal in brace/extglob: "${sanitizeForTerminal(pattern)}"`,
-        'Remove ".." alternatives from brace or extglob groups in scan_paths; scan paths must stay within the project root.',
+        'Remove ".." alternatives from brace or extglob groups in scan_paths; scan paths must stay within the project root.'
       );
     }
 

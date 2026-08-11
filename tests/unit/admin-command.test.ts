@@ -100,24 +100,39 @@ describe('AdminCommand', () => {
   describe('renameKey', () => {
     it('should call renameApiKey', async () => {
       await command.renameKey('key-1', 'New Label');
-      expect(mockService.renameApiKey).toHaveBeenCalledWith('key-1', 'New Label');
+      expect(mockService.renameApiKey).toHaveBeenCalledWith(
+        'key-1',
+        'New Label'
+      );
     });
   });
 
   describe('setKeyLimit', () => {
     it('should call setApiKeyLimit with number', async () => {
       await command.setKeyLimit('key-1', 1000000);
-      expect(mockService.setApiKeyLimit).toHaveBeenCalledWith('key-1', 1000000, undefined);
+      expect(mockService.setApiKeyLimit).toHaveBeenCalledWith(
+        'key-1',
+        1000000,
+        undefined
+      );
     });
 
     it('should call setApiKeyLimit with null for unlimited', async () => {
       await command.setKeyLimit('key-1', null);
-      expect(mockService.setApiKeyLimit).toHaveBeenCalledWith('key-1', null, undefined);
+      expect(mockService.setApiKeyLimit).toHaveBeenCalledWith(
+        'key-1',
+        null,
+        undefined
+      );
     });
 
     it('should pass sttLimit to service', async () => {
       await command.setKeyLimit('key-1', 500000, 3600000);
-      expect(mockService.setApiKeyLimit).toHaveBeenCalledWith('key-1', 500000, 3600000);
+      expect(mockService.setApiKeyLimit).toHaveBeenCalledWith(
+        'key-1',
+        500000,
+        3600000
+      );
     });
   });
 
@@ -216,7 +231,10 @@ describe('AdminCommand', () => {
           label: 'STT Key',
           creationTime: '2024-01-01T00:00:00Z',
           isDeactivated: false,
-          usageLimits: { characters: 1000000, speechToTextMilliseconds: 3600000 },
+          usageLimits: {
+            characters: 1000000,
+            speechToTextMilliseconds: 3600000,
+          },
         },
       ];
 
@@ -450,7 +468,7 @@ describe('AdminCommand', () => {
               textTranslationCharacters: 2000,
               documentTranslationCharacters: 500,
               textImprovementCharacters: 500,
-          speechToTextMilliseconds: 0,
+              speechToTextMilliseconds: 0,
             },
           },
         ],
@@ -600,20 +618,26 @@ describe('AdminCommand', () => {
 
     it('should propagate renameKey errors from service', async () => {
       mockService.renameApiKey.mockRejectedValue(new Error('Unauthorized'));
-      await expect(command.renameKey('key-x', 'name')).rejects.toThrow('Unauthorized');
+      await expect(command.renameKey('key-x', 'name')).rejects.toThrow(
+        'Unauthorized'
+      );
     });
 
     it('should propagate setKeyLimit errors from service', async () => {
       mockService.setApiKeyLimit.mockRejectedValue(new Error('Bad request'));
-      await expect(command.setKeyLimit('key-x', 100)).rejects.toThrow('Bad request');
+      await expect(command.setKeyLimit('key-x', 100)).rejects.toThrow(
+        'Bad request'
+      );
     });
 
     it('should propagate getUsage errors from service', async () => {
       mockService.getAdminUsage.mockRejectedValue(new Error('Server error'));
-      await expect(command.getUsage({
-        startDate: '2024-01-01',
-        endDate: '2024-01-31',
-      })).rejects.toThrow('Server error');
+      await expect(
+        command.getUsage({
+          startDate: '2024-01-01',
+          endDate: '2024-01-31',
+        })
+      ).rejects.toThrow('Server error');
     });
   });
 

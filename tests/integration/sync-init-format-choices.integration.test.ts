@@ -25,10 +25,14 @@ function makeDeps(): ServiceDeps {
   };
 }
 
-function findFileFormatChoices(program: Command): readonly string[] | undefined {
+function findFileFormatChoices(
+  program: Command
+): readonly string[] | undefined {
   const syncCmd = program.commands.find((c) => c.name() === 'sync');
   const initCmd = syncCmd?.commands.find((c) => c.name() === 'init');
-  const fileFormatOpt = initCmd?.options.find((o) => o.long === '--file-format');
+  const fileFormatOpt = initCmd?.options.find(
+    (o) => o.long === '--file-format'
+  );
   return fileFormatOpt?.argChoices;
 }
 
@@ -75,7 +79,9 @@ describe('deepl sync init --file-format choices mirror the format registry', () 
   it('rejects a --file-format value outside the registry keys', async () => {
     const program = buildProgram();
     await expect(
-      program.parseAsync(['sync', 'init', '--file-format', 'bogus'], { from: 'user' })
+      program.parseAsync(['sync', 'init', '--file-format', 'bogus'], {
+        from: 'user',
+      })
     ).rejects.toMatchObject({ code: 'commander.invalidArgument' });
   });
 });

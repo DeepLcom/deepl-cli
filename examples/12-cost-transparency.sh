@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 12: Cost Transparency with Billed Characters
+# Cost Transparency with Billed Characters
 # Demonstrates tracking actual billed characters for translation cost analysis
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 12: Cost Transparency ==="
+echo "=== DeepL CLI: Cost Transparency ==="
 echo
 
 # Check if API key is configured
@@ -89,7 +89,7 @@ cat > "$TEMP_DIR/technical.md" << 'EOF'
 Run the following command:
 
 ```bash
-npm install deepl-cli
+npm install -g @deepl/cli
 ```
 
 Then configure your API key: `deepl auth set-key YOUR_KEY`

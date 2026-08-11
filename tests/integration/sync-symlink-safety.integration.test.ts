@@ -25,7 +25,12 @@ import { validateTranslations } from '../../src/sync/sync-validate';
 import { loadSyncConfig } from '../../src/sync/sync-config';
 
 import { createSyncHarness, writeSyncConfig } from '../helpers/sync-harness';
-import { expectTmsPush, expectTmsPull, tmsConfig } from '../helpers/tms-nock';
+import {
+  expectTmsPush,
+  expectTmsPull,
+  tmsConfig,
+  approvedTmsTrust,
+} from '../helpers/tms-nock';
 
 function writeJson(dir: string, relPath: string, obj: unknown): void {
   const abs = path.join(dir, relPath);
@@ -61,13 +66,17 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-symlink-proj-'));
-    outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-symlink-secret-'));
+    projectDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'deepl-sync-symlink-proj-')
+    );
+    outsideDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'deepl-sync-symlink-secret-')
+    );
     outsideSecret = path.join(outsideDir, 'secret.json');
     fs.writeFileSync(
       outsideSecret,
       JSON.stringify({ exfiltrated: 'TOP_SECRET_VALUE' }, null, 2),
-      'utf-8',
+      'utf-8'
     );
     harness = createSyncHarness({ parsers: ['json'] });
     delete process.env['TMS_API_KEY'];
@@ -76,8 +85,10 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
 
   afterEach(() => {
     harness.cleanup();
-    if (fs.existsSync(projectDir)) fs.rmSync(projectDir, { recursive: true, force: true });
-    if (fs.existsSync(outsideDir)) fs.rmSync(outsideDir, { recursive: true, force: true });
+    if (fs.existsSync(projectDir))
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    if (fs.existsSync(outsideDir))
+      fs.rmSync(outsideDir, { recursive: true, force: true });
     nock.cleanAll();
     process.env = { ...originalEnv };
   });
@@ -95,10 +106,18 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
     //
     // With followSymbolicLinks:false, the symlinked locales/secrets/en.json is
     // silently skipped and only greeting is pushed.
-    if (!trySymlink(path.join(projectDir, 'locales', 'secrets', 'en.json'), outsideSecret)) return;
+    if (
+      !trySymlink(
+        path.join(projectDir, 'locales', 'secrets', 'en.json'),
+        outsideSecret
+      )
+    )
+      return;
     writeJson(projectDir, 'locales/en.json', { greeting: 'Hello' });
     writeJson(projectDir, 'locales/de.json', { greeting: 'Hallo' });
-    writeJson(projectDir, 'locales/secrets/de.json', { exfiltrated: 'SHOULD_NOT_PUSH' });
+    writeJson(projectDir, 'locales/secrets/de.json', {
+      exfiltrated: 'SHOULD_NOT_PUSH',
+    });
     writeSyncConfig(projectDir, {
       targetLocales: ['de'],
       buckets: { json: { include: ['locales/**/en.json'] } },
@@ -107,11 +126,13 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
     process.env['TMS_API_KEY'] = 'env-key';
 
     const config = await loadSyncConfig(projectDir);
-    const client = createTmsClient(config.tms!);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
 
     // Only the real file's key is expected on the wire; the symlinked secret
     // must not be read or transmitted.
-    const scope = expectTmsPush('greeting', 'de', 'Hallo', { auth: { apiKey: 'env-key' } });
+    const scope = expectTmsPush('greeting', 'de', 'Hallo', {
+      auth: { apiKey: 'env-key' },
+    });
 
     const result = await pushTranslations(config, client, harness.registry);
     expect(result.pushed).toBe(1);
@@ -121,7 +142,13 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
   });
 
   it('pull: does not treat a symlink as a source file when scanning for locale targets', async () => {
-    if (!trySymlink(path.join(projectDir, 'locales', 'secrets', 'en.json'), outsideSecret)) return;
+    if (
+      !trySymlink(
+        path.join(projectDir, 'locales', 'secrets', 'en.json'),
+        outsideSecret
+      )
+    )
+      return;
     writeJson(projectDir, 'locales/en.json', { greeting: 'Hello' });
     writeSyncConfig(projectDir, {
       targetLocales: ['de'],
@@ -131,7 +158,7 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
     process.env['TMS_API_KEY'] = 'env-key';
 
     const config = await loadSyncConfig(projectDir);
-    const client = createTmsClient(config.tms!);
+    const client = await createTmsClient(config.tms!, approvedTmsTrust);
 
     // The TMS server returns translations for BOTH "greeting" and
     // "exfiltrated". If the symlinked source is read, pullTranslations will
@@ -140,7 +167,7 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
     const pullScope = expectTmsPull(
       'de',
       { greeting: 'Hallo', exfiltrated: 'SHOULD_NEVER_APPEAR' },
-      { auth: { apiKey: 'env-key' } },
+      { auth: { apiKey: 'env-key' } }
     );
 
     const result = await pullTranslations(config, client, harness.registry);
@@ -149,11 +176,19 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
 
     // The target file derived from the symlink (locales/secrets/de.json) must
     // never have been written.
-    expect(fs.existsSync(path.join(projectDir, 'locales', 'secrets', 'de.json'))).toBe(false);
+    expect(
+      fs.existsSync(path.join(projectDir, 'locales', 'secrets', 'de.json'))
+    ).toBe(false);
   });
 
   it('export: does not embed symlinked-file contents in XLIFF output', async () => {
-    if (!trySymlink(path.join(projectDir, 'locales', 'secrets', 'en.json'), outsideSecret)) return;
+    if (
+      !trySymlink(
+        path.join(projectDir, 'locales', 'secrets', 'en.json'),
+        outsideSecret
+      )
+    )
+      return;
     writeJson(projectDir, 'locales/en.json', { greeting: 'Hello' });
     writeSyncConfig(projectDir, {
       targetLocales: ['de'],
@@ -177,9 +212,15 @@ describe('sync symlink safety (push/pull/export/validate)', () => {
     fs.writeFileSync(
       maliciousSource,
       JSON.stringify({ greeting: 'LEAKED %s %d %x' }, null, 2),
-      'utf-8',
+      'utf-8'
     );
-    if (!trySymlink(path.join(projectDir, 'locales', 'secrets', 'en.json'), maliciousSource)) return;
+    if (
+      !trySymlink(
+        path.join(projectDir, 'locales', 'secrets', 'en.json'),
+        maliciousSource
+      )
+    )
+      return;
     writeJson(projectDir, 'locales/en.json', { greeting: 'Hello %s' });
     writeJson(projectDir, 'locales/de.json', { greeting: 'Hallo %s' });
     // Target for the symlinked "source" -- no placeholder mismatches here so

@@ -8,25 +8,32 @@ export function registerConfig(
   deps: {
     getConfigService: () => ConfigService;
     handleError: (error: unknown) => never;
-  },
+  }
 ): void {
   const { getConfigService, handleError } = deps;
 
   program
     .command('config')
     .description('Manage configuration')
-    .addHelpText('after', `
+    .addHelpText(
+      'after',
+      `
 Examples:
   $ deepl config set api.usePro true
   $ deepl config get auth.apiKey
   $ deepl config list
   $ deepl config reset
-`)
+`
+    )
     .addCommand(
       new Command('get')
         .description('Get configuration value')
         .argument('[key]', 'Config key (dot notation) or empty for all')
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('json'))
+        .addOption(
+          new Option('--format <format>', 'Output format')
+            .choices(['text', 'json'])
+            .default('json')
+        )
         .action(async (key?: string, options?: { format?: string }) => {
           try {
             const { ConfigCommand: ConfigCmd } = await import('./config.js');
@@ -39,7 +46,6 @@ Examples:
             }
           } catch (error) {
             handleError(error);
-
           }
         })
     )
@@ -55,19 +61,25 @@ Examples:
             await configCommand.set(key, value);
             let displayValue: string = value;
             if (key === 'auth.apiKey' && value.length > 8) {
-              displayValue = value.substring(0, 4) + '...' + value.substring(value.length - 4);
+              displayValue =
+                value.substring(0, 4) +
+                '...' +
+                value.substring(value.length - 4);
             }
             Logger.success(chalk.green(`\u2713 Set ${key} = ${displayValue}`));
           } catch (error) {
             handleError(error);
-
           }
         })
     )
     .addCommand(
       new Command('list')
         .description('List all configuration values')
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('json'))
+        .addOption(
+          new Option('--format <format>', 'Output format')
+            .choices(['text', 'json'])
+            .default('json')
+        )
         .action(async (options: { format?: string }) => {
           try {
             const { ConfigCommand: ConfigCmd } = await import('./config.js');
@@ -80,7 +92,6 @@ Examples:
             }
           } catch (error) {
             handleError(error);
-
           }
         })
     )
@@ -92,7 +103,9 @@ Examples:
           try {
             if (!options.yes) {
               const { confirm } = await import('../../utils/confirm.js');
-              const confirmed = await confirm({ message: 'Reset all configuration to defaults?' });
+              const confirmed = await confirm({
+                message: 'Reset all configuration to defaults?',
+              });
               if (!confirmed) {
                 Logger.info('Aborted.');
                 return;
@@ -102,10 +115,11 @@ Examples:
             const { ConfigCommand: ConfigCmd } = await import('./config.js');
             const configCommand = new ConfigCmd(getConfigService());
             await configCommand.reset();
-            Logger.success(chalk.green('\u2713 Configuration reset to defaults'));
+            Logger.success(
+              chalk.green('\u2713 Configuration reset to defaults')
+            );
           } catch (error) {
             handleError(error);
-
           }
         })
     );

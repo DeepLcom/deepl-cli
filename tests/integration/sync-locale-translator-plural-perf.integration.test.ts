@@ -18,12 +18,20 @@ const PLURAL_COUNT = 5_000;
 const LOCALE_COUNT = 50;
 const THRESHOLD_MS = 1_000;
 
-function buildFixture(n: number): { batchIndices: number[]; pluralSlots: PluralSlot[] } {
+function buildFixture(n: number): {
+  batchIndices: number[];
+  pluralSlots: PluralSlot[];
+} {
   const batchIndices: number[] = [];
   const pluralSlots: PluralSlot[] = [];
   for (let i = 0; i < n; i++) {
     batchIndices.push(i);
-    pluralSlots.push({ diffIndex: i, format: 'po', slotKey: 'msgid_plural', textIndex: n + i });
+    pluralSlots.push({
+      diffIndex: i,
+      format: 'po',
+      slotKey: 'msgid_plural',
+      textIndex: n + i,
+    });
   }
   return { batchIndices, pluralSlots };
 }
@@ -32,7 +40,7 @@ describe('pluralSlots batchIndices membership lookup', () => {
   it('Set.has produces identical membership results to Array.includes for known inputs', () => {
     const batchIndices = [0, 2, 4, 6, 8];
     const batchSet = new Set(batchIndices);
-    const slots: PluralSlot[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => ({
+    const slots: PluralSlot[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => ({
       diffIndex: i,
       format: 'po',
       slotKey: 'msgid_plural',
@@ -40,7 +48,9 @@ describe('pluralSlots batchIndices membership lookup', () => {
     }));
 
     for (const slot of slots) {
-      expect(batchSet.has(slot.diffIndex)).toBe(batchIndices.includes(slot.diffIndex));
+      expect(batchSet.has(slot.diffIndex)).toBe(
+        batchIndices.includes(slot.diffIndex)
+      );
     }
   });
 
@@ -58,7 +68,9 @@ describe('pluralSlots batchIndices membership lookup', () => {
       }
       const elapsed = Date.now() - start;
       expect(hits).toBe(PLURAL_COUNT * LOCALE_COUNT);
-      console.log(`[bench] Array.includes baseline: ${elapsed}ms (hits=${hits})`);
+      console.log(
+        `[bench] Array.includes baseline: ${elapsed}ms (hits=${hits})`
+      );
     });
 
     it('Set.has O(N) lookup completes in under 1s for 50 locales × 5K pluralSlots', () => {

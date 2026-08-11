@@ -19,15 +19,24 @@ import { DirectoryTranslationHandler } from '../../src/cli/commands/translate/di
 import { BatchTranslationService } from '../../src/services/batch-translation';
 import { ValidationError } from '../../src/utils/errors';
 import { Logger } from '../../src/utils/logger';
-import type { HandlerContext, TranslateOptions } from '../../src/cli/commands/translate/types';
+import type {
+  HandlerContext,
+  TranslateOptions,
+} from '../../src/cli/commands/translate/types';
 
 jest.mock('../../src/services/translation');
 
 jest.mock('ora', () => {
   const mockSpinner = {
-    start: jest.fn(function(this: any) { return this; }),
-    succeed: jest.fn(function(this: any) { return this; }),
-    fail: jest.fn(function(this: any) { return this; }),
+    start: jest.fn(function (this: any) {
+      return this;
+    }),
+    succeed: jest.fn(function (this: any) {
+      return this;
+    }),
+    fail: jest.fn(function (this: any) {
+      return this;
+    }),
     text: '',
   };
   return jest.fn(() => mockSpinner);
@@ -51,7 +60,7 @@ jest.mock('../../src/services/batch-translation', () => ({
 
 jest.mock('../../src/cli/commands/translate/translate-utils', () => ({
   warnIgnoredOptions: jest.fn(),
-  validateLanguageCodes: jest.fn(),
+  validateTranslationLanguages: jest.fn(),
   buildTranslationOptions: jest.fn().mockReturnValue({ targetLang: 'de' }),
 }));
 
@@ -85,7 +94,11 @@ describe('FileTranslationService – directory/multi-target handler', () => {
         { targetLang: 'es', text: 'Hola mundo' },
       ]);
 
-      const results = await service.translateFileToMultiple(inputPath, ['de', 'fr', 'es']);
+      const results = await service.translateFileToMultiple(inputPath, [
+        'de',
+        'fr',
+        'es',
+      ]);
 
       expect(results).toHaveLength(3);
       expect(results[0]?.targetLang).toBe('de');
@@ -115,7 +128,9 @@ describe('FileTranslationService – directory/multi-target handler', () => {
       expect(results[1]?.outputPath).toBe(path.join(outputDir, 'doc.ja.txt'));
 
       expect(fs.readFileSync(results[0]!.outputPath!, 'utf-8')).toBe('Hallo');
-      expect(fs.readFileSync(results[1]!.outputPath!, 'utf-8')).toBe('こんにちは');
+      expect(fs.readFileSync(results[1]!.outputPath!, 'utf-8')).toBe(
+        'こんにちは'
+      );
     });
 
     it('should create output directory if it does not exist', async () => {
@@ -128,7 +143,9 @@ describe('FileTranslationService – directory/multi-target handler', () => {
 
       const nested = path.join(testDir, 'a', 'b', 'c');
 
-      await service.translateFileToMultiple(inputPath, ['es'], { outputDir: nested });
+      await service.translateFileToMultiple(inputPath, ['es'], {
+        outputDir: nested,
+      });
 
       expect(fs.existsSync(path.join(nested, 'file.es.txt'))).toBe(true);
     });
@@ -154,11 +171,9 @@ describe('FileTranslationService – directory/multi-target handler', () => {
         { targetLang: 'fr', text: '# Bonjour' },
       ]);
 
-      const results = await service.translateFileToMultiple(
-        inputPath,
-        ['fr'],
-        { outputDir: testDir }
-      );
+      const results = await service.translateFileToMultiple(inputPath, ['fr'], {
+        outputDir: testDir,
+      });
 
       expect(results[0]?.outputPath).toBe(path.join(testDir, 'readme.fr.md'));
     });
@@ -216,10 +231,13 @@ describe('FileTranslationService – directory/multi-target handler', () => {
       fs.writeFileSync(inputPath, JSON.stringify({ key: 'Hello' }, null, 2));
 
       // The structured service is lazily loaded; mock translateBatch for it
-      mockTranslationService.translateBatch.mockImplementation(async (_texts, opts) => {
-        if (opts.targetLang === 'de') return [{ text: 'Hallo', detectedSourceLang: 'en' }];
-        return [];
-      });
+      mockTranslationService.translateBatch.mockImplementation(
+        async (_texts, opts) => {
+          if (opts.targetLang === 'de')
+            return [{ text: 'Hallo', detectedSourceLang: 'en' }];
+          return [];
+        }
+      );
 
       const results = await service.translateFileToMultiple(inputPath, ['de']);
 
@@ -266,12 +284,21 @@ describe('DirectoryTranslationHandler', () => {
     getStatistics: jest.Mock;
   };
 
+  // The handler reports a failed run through process.exitCode, which is this
+  // process's own: left set, it makes jest exit non-zero even when every test
+  // passed, so a real failure elsewhere would be indistinguishable.
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
   beforeEach(() => {
     // Re-apply mock implementations cleared by resetMocks: true in jest.config
     const translateUtilsMock = jest.requireMock(
       '../../src/cli/commands/translate/translate-utils'
     );
-    translateUtilsMock.buildTranslationOptions.mockReturnValue({ targetLang: 'de' });
+    translateUtilsMock.buildTranslationOptions.mockReturnValue({
+      targetLang: 'de',
+    });
 
     mockBatchService = {
       translateDirectory: jest.fn().mockResolvedValue({
@@ -290,7 +317,8 @@ describe('DirectoryTranslationHandler', () => {
     ctx = {
       translationService: createMockTranslationService(),
       fileTranslationService: createMockFileTranslationService(),
-      batchTranslationService: mockBatchService as unknown as BatchTranslationService,
+      batchTranslationService:
+        mockBatchService as unknown as BatchTranslationService,
       documentTranslationService: createMockDocumentTranslationService(),
       glossaryService: createMockGlossaryService(),
       config: createMockConfigService(),
@@ -314,15 +342,17 @@ describe('DirectoryTranslationHandler', () => {
     it('should throw ValidationError when output is not provided', async () => {
       const options: TranslateOptions = { to: 'de' };
 
-      await expect(handler.translateDirectory('/some/dir', options))
-        .rejects.toThrow(ValidationError);
+      await expect(
+        handler.translateDirectory('/some/dir', options)
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should include helpful message about --output flag', async () => {
       const options: TranslateOptions = { to: 'de' };
 
-      await expect(handler.translateDirectory('/some/dir', options))
-        .rejects.toThrow('Output directory is required');
+      await expect(
+        handler.translateDirectory('/some/dir', options)
+      ).rejects.toThrow('Output directory is required');
     });
   });
 
@@ -429,11 +459,83 @@ describe('DirectoryTranslationHandler', () => {
 
       await handler.translateDirectory('/some/dir', options);
 
-      const { validateLanguageCodes } = jest.requireMock(
+      const { validateTranslationLanguages } = jest.requireMock(
         '../../src/cli/commands/translate/translate-utils'
       );
 
-      expect(validateLanguageCodes).toHaveBeenCalledWith(['de', 'fr']);
+      expect(validateTranslationLanguages).toHaveBeenCalledWith(
+        ['de', 'fr'],
+        expect.anything()
+      );
+    });
+
+    it('should classify the exit code from a request-level rejection', async () => {
+      // A rejected target_lang aborts the whole run, so it is user input rather
+      // than an unclassified failure: exit 6, not the generic 1 that a run where
+      // every file failed for its own reason gets.
+      mockBatchService.translateDirectory.mockResolvedValue({
+        successful: [],
+        failed: [
+          { file: 'a.txt', error: "Value for 'target_lang' not supported." },
+        ],
+        skipped: [],
+        requestRejected: new ValidationError(
+          "Value for 'target_lang' not supported."
+        ),
+      });
+      mockBatchService.getStatistics.mockReturnValue({
+        total: 1,
+        successful: 0,
+        failed: 1,
+        skipped: 0,
+      });
+
+      await handler.translateDirectory('/some/dir', baseOptions);
+
+      expect(process.exitCode).toBe(6);
+    });
+
+    it('should still exit 1 when every file failed for its own reason', async () => {
+      mockBatchService.translateDirectory.mockResolvedValue({
+        successful: [],
+        failed: [{ file: 'a.txt', error: 'Network error' }],
+        skipped: [],
+      });
+      mockBatchService.getStatistics.mockReturnValue({
+        total: 1,
+        successful: 0,
+        failed: 1,
+        skipped: 0,
+      });
+
+      await handler.translateDirectory('/some/dir', baseOptions);
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it('should validate the flags this mode passes on, and not --glossary', async () => {
+      // Directory mode announces --glossary as ignored and resolves none, so the
+      // extended-tier glossary arm must not fail a run that would have worked.
+      const options: TranslateOptions = {
+        ...baseOptions,
+        to: 'de, fr',
+        from: 'en',
+        formality: 'more',
+        modelType: 'latency_optimized',
+        glossary: ['my-glossary'],
+      };
+
+      await handler.translateDirectory('/some/dir', options);
+
+      const { validateTranslationLanguages } = jest.requireMock(
+        '../../src/cli/commands/translate/translate-utils'
+      );
+
+      expect(validateTranslationLanguages).toHaveBeenCalledWith(['de', 'fr'], {
+        from: 'en',
+        formality: 'more',
+        modelType: 'latency_optimized',
+      });
     });
 
     it('should call buildTranslationOptions with each individual language', async () => {
@@ -470,7 +572,10 @@ describe('DirectoryTranslationHandler', () => {
           skipped: [],
         }),
         getStatistics: jest.fn().mockReturnValue({
-          total: 1, successful: 1, failed: 0, skipped: 0,
+          total: 1,
+          successful: 1,
+          failed: 0,
+          skipped: 0,
         }),
       }));
 
@@ -481,10 +586,10 @@ describe('DirectoryTranslationHandler', () => {
 
       await handler.translateDirectory('/some/dir', options);
 
-      expect(MockedBTS).toHaveBeenCalledWith(
-        ctx.fileTranslationService,
-        { concurrency: 10, translationService: ctx.translationService }
-      );
+      expect(MockedBTS).toHaveBeenCalledWith(ctx.fileTranslationService, {
+        concurrency: 10,
+        translationService: ctx.translationService,
+      });
     });
 
     it('should not create new BatchTranslationService when concurrency is not set', async () => {
@@ -685,23 +790,27 @@ describe('DirectoryTranslationHandler', () => {
       const error = new Error('Translation service unavailable');
       mockBatchService.translateDirectory.mockRejectedValue(error);
 
-      await expect(handler.translateDirectory('/some/dir', baseOptions))
-        .rejects.toThrow('Translation service unavailable');
+      await expect(
+        handler.translateDirectory('/some/dir', baseOptions)
+      ).rejects.toThrow('Translation service unavailable');
     });
 
     it('should rethrow the exact error instance', async () => {
       const error = new Error('Specific error');
       mockBatchService.translateDirectory.mockRejectedValue(error);
 
-      await expect(handler.translateDirectory('/some/dir', baseOptions))
-        .rejects.toBe(error);
+      await expect(
+        handler.translateDirectory('/some/dir', baseOptions)
+      ).rejects.toBe(error);
     });
   });
 
   describe('spinner behavior', () => {
     function setupSpinnerMock() {
       const mockSpinner = {
-        start: jest.fn(function(this: any) { return this; }),
+        start: jest.fn(function (this: any) {
+          return this;
+        }),
         succeed: jest.fn(),
         fail: jest.fn(),
         text: '',
@@ -716,8 +825,9 @@ describe('DirectoryTranslationHandler', () => {
       (Logger.shouldShowSpinner as jest.Mock).mockReturnValue(true);
       mockBatchService.translateDirectory.mockRejectedValue(new Error('fail'));
 
-      await expect(handler.translateDirectory('/some/dir', baseOptions))
-        .rejects.toThrow('fail');
+      await expect(
+        handler.translateDirectory('/some/dir', baseOptions)
+      ).rejects.toThrow('fail');
 
       expect(mockSpinner.fail).toHaveBeenCalledWith('Translation failed');
     });
@@ -756,7 +866,10 @@ describe('DirectoryTranslationHandler', () => {
 
       await handler.translateDirectory('/some/dir', baseOptions);
 
-      expect(removeListenerSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+      expect(removeListenerSpy).toHaveBeenCalledWith(
+        'SIGINT',
+        expect.any(Function)
+      );
       removeListenerSpy.mockRestore();
     });
 
@@ -764,10 +877,14 @@ describe('DirectoryTranslationHandler', () => {
       const removeListenerSpy = jest.spyOn(process, 'removeListener');
       mockBatchService.translateDirectory.mockRejectedValue(new Error('fail'));
 
-      await expect(handler.translateDirectory('/some/dir', baseOptions))
-        .rejects.toThrow();
+      await expect(
+        handler.translateDirectory('/some/dir', baseOptions)
+      ).rejects.toThrow();
 
-      expect(removeListenerSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+      expect(removeListenerSpy).toHaveBeenCalledWith(
+        'SIGINT',
+        expect.any(Function)
+      );
       removeListenerSpy.mockRestore();
     });
 
@@ -777,9 +894,11 @@ describe('DirectoryTranslationHandler', () => {
 
       await handler.translateDirectory('/some/dir', baseOptions);
 
-      const sigintOnCall = onSpy.mock.calls.find(call => call[0] === 'SIGINT');
+      const sigintOnCall = onSpy.mock.calls.find(
+        (call) => call[0] === 'SIGINT'
+      );
       const sigintRemoveCall = removeListenerSpy.mock.calls.find(
-        call => call[0] === 'SIGINT'
+        (call) => call[0] === 'SIGINT'
       );
 
       expect(sigintOnCall).toBeDefined();

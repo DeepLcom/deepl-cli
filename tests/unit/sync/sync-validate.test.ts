@@ -1,6 +1,10 @@
 import { validateTranslations } from '../../../src/sync/sync-validate';
 import type { ResolvedSyncConfig } from '../../../src/sync/sync-config';
-import type { FormatParser, FormatRegistry, ExtractedEntry } from '../../../src/formats/index';
+import type {
+  FormatParser,
+  FormatRegistry,
+  ExtractedEntry,
+} from '../../../src/formats/index';
 
 jest.mock('fs', () => ({
   promises: {
@@ -14,10 +18,16 @@ import * as fs from 'fs';
 import fg from 'fast-glob';
 
 const mockFg = fg as jest.MockedFunction<typeof fg>;
-const mockReadFile = fs.promises.readFile as jest.MockedFunction<typeof fs.promises.readFile>;
-const mockAccess = fs.promises.access as jest.MockedFunction<typeof fs.promises.access>;
+const mockReadFile = fs.promises.readFile as jest.MockedFunction<
+  typeof fs.promises.readFile
+>;
+const mockAccess = fs.promises.access as jest.MockedFunction<
+  typeof fs.promises.access
+>;
 
-function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -30,11 +40,21 @@ function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncCo
   };
 }
 
-function makeParser(sourceEntries: ExtractedEntry[], targetEntries: ExtractedEntry[]): FormatParser {
-  const extract = jest.fn()
+function makeParser(
+  sourceEntries: ExtractedEntry[],
+  targetEntries: ExtractedEntry[]
+): FormatParser {
+  const extract = jest
+    .fn()
     .mockReturnValueOnce(sourceEntries)
     .mockReturnValueOnce(targetEntries);
-  return { name: 'JSON', configKey: 'json', extensions: ['.json'], extract, reconstruct: jest.fn() };
+  return {
+    name: 'JSON',
+    configKey: 'json',
+    extensions: ['.json'],
+    extract,
+    reconstruct: jest.fn(),
+  };
 }
 
 function makeRegistry(parser: FormatParser): FormatRegistry {
@@ -54,22 +74,38 @@ describe('validateTranslations', () => {
   });
 
   it('should pass when all translations preserve placeholders', async () => {
-    const source = [{ key: 'greeting', value: 'Hello {name}' }] as ExtractedEntry[];
-    const target = [{ key: 'greeting', value: 'Hallo {name}' }] as ExtractedEntry[];
-    mockReadFile.mockResolvedValueOnce('source').mockResolvedValueOnce('target');
+    const source = [
+      { key: 'greeting', value: 'Hello {name}' },
+    ] as ExtractedEntry[];
+    const target = [
+      { key: 'greeting', value: 'Hallo {name}' },
+    ] as ExtractedEntry[];
+    mockReadFile
+      .mockResolvedValueOnce('source')
+      .mockResolvedValueOnce('target');
     const parser = makeParser(source, target);
-    const result = await validateTranslations(makeConfig(), makeRegistry(parser));
+    const result = await validateTranslations(
+      makeConfig(),
+      makeRegistry(parser)
+    );
     expect(result.errors).toBe(0);
     expect(result.warnings).toBe(0);
     expect(result.passed).toBe(1);
   });
 
   it('should detect missing placeholder as error', async () => {
-    const source = [{ key: 'greeting', value: 'Hello {name}' }] as ExtractedEntry[];
+    const source = [
+      { key: 'greeting', value: 'Hello {name}' },
+    ] as ExtractedEntry[];
     const target = [{ key: 'greeting', value: 'Hallo' }] as ExtractedEntry[];
-    mockReadFile.mockResolvedValueOnce('source').mockResolvedValueOnce('target');
+    mockReadFile
+      .mockResolvedValueOnce('source')
+      .mockResolvedValueOnce('target');
     const parser = makeParser(source, target);
-    const result = await validateTranslations(makeConfig(), makeRegistry(parser));
+    const result = await validateTranslations(
+      makeConfig(),
+      makeRegistry(parser)
+    );
     expect(result.errors).toBeGreaterThan(0);
   });
 
@@ -82,9 +118,14 @@ describe('validateTranslations', () => {
       { key: 'a', value: 'Hallo' },
       { key: 'b', value: 'OK' },
     ] as ExtractedEntry[];
-    mockReadFile.mockResolvedValueOnce('source').mockResolvedValueOnce('target');
+    mockReadFile
+      .mockResolvedValueOnce('source')
+      .mockResolvedValueOnce('target');
     const parser = makeParser(source, target);
-    const result = await validateTranslations(makeConfig(), makeRegistry(parser));
+    const result = await validateTranslations(
+      makeConfig(),
+      makeRegistry(parser)
+    );
     expect(result.totalChecked).toBe(2);
     expect(result.errors).toBe(1);
     expect(result.warnings).toBe(1);
@@ -92,29 +133,51 @@ describe('validateTranslations', () => {
 
   it('should skip missing target file gracefully', async () => {
     const source = [{ key: 'greeting', value: 'Hello' }] as ExtractedEntry[];
-    mockReadFile.mockResolvedValueOnce('source');
-    mockAccess.mockRejectedValueOnce(new Error('ENOENT'));
+    mockReadFile
+      .mockResolvedValueOnce('source')
+      .mockRejectedValueOnce(
+        Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' })
+      );
     const parser: FormatParser = {
-      name: 'JSON', configKey: 'json', extensions: ['.json'],
+      name: 'JSON',
+      configKey: 'json',
+      extensions: ['.json'],
       extract: jest.fn().mockReturnValue(source),
       reconstruct: jest.fn(),
     };
-    const result = await validateTranslations(makeConfig(), makeRegistry(parser));
+    const result = await validateTranslations(
+      makeConfig(),
+      makeRegistry(parser)
+    );
     expect(result.totalChecked).toBe(0);
   });
 
   it('should return empty result for empty source', async () => {
-    mockReadFile.mockResolvedValueOnce('source');
+    // Both reads are stubbed: the source file and then the target file. Stubbing
+    // only the first left the target read resolving to `undefined`, which is not
+    // something `fs.readFile` can return.
+    mockReadFile
+      .mockResolvedValueOnce('source')
+      .mockResolvedValueOnce('target');
     const parser = makeParser([], []);
-    const result = await validateTranslations(makeConfig(), makeRegistry(parser));
+    const result = await validateTranslations(
+      makeConfig(),
+      makeRegistry(parser)
+    );
     expect(result.totalChecked).toBe(0);
     expect(result.issues).toEqual([]);
   });
 
   it('should resolve documented ios_strings bucket keys via the registry config-key lookup', async () => {
-    const source = [{ key: 'greeting', value: 'Hello {name}' }] as ExtractedEntry[];
-    const target = [{ key: 'greeting', value: 'Hallo {name}' }] as ExtractedEntry[];
-    mockReadFile.mockResolvedValueOnce('source').mockResolvedValueOnce('target');
+    const source = [
+      { key: 'greeting', value: 'Hello {name}' },
+    ] as ExtractedEntry[];
+    const target = [
+      { key: 'greeting', value: 'Hallo {name}' },
+    ] as ExtractedEntry[];
+    mockReadFile
+      .mockResolvedValueOnce('source')
+      .mockResolvedValueOnce('target');
     const parser = makeParser(source, target);
     const registry = makeRegistry(parser);
 
@@ -122,7 +185,7 @@ describe('validateTranslations', () => {
       makeConfig({
         buckets: { ios_strings: { include: ['en.lproj/Localizable.strings'] } },
       }),
-      registry,
+      registry
     );
 
     expect(registry.getParserByFormatKey).toHaveBeenCalledWith('ios_strings');

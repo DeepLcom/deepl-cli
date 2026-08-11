@@ -1,6 +1,8 @@
 /**
  * Tests for WriteClient
- * Covers improveText with success/error cases
+ * Covers improveText and correctText with their success and error cases,
+ * including the documentation hint appended to a 400 only when a writing style
+ * or tone was sent.
  */
 
 import { WriteClient } from '../../src/api/write-client.js';
@@ -25,7 +27,9 @@ describe('WriteClient', () => {
     jest.spyOn(axios, 'isAxiosError').mockReturnValue(false);
 
     client = new WriteClient('test-api-key');
-    jest.spyOn(HttpClient.prototype, 'sleep' as any).mockResolvedValue(undefined);
+    jest
+      .spyOn(HttpClient.prototype, 'sleep' as any)
+      .mockResolvedValue(undefined);
   });
 
   afterAll(() => {
@@ -45,7 +49,7 @@ describe('WriteClient', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
           baseURL: 'https://api-free.deepl.com',
-        }),
+        })
       );
     });
 
@@ -54,7 +58,7 @@ describe('WriteClient', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
           baseURL: 'https://custom.example.com',
-        }),
+        })
       );
     });
   });
@@ -86,30 +90,26 @@ describe('WriteClient', () => {
     it('should pass targetLang option', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: {
-          improvements: [
-            { text: 'Improved', target_language: 'en-GB' },
-          ],
+          improvements: [{ text: 'Improved', target_language: 'en-GB' }],
         },
         status: 200,
         headers: {},
       });
 
-      await client.improveText('Test', { targetLang: 'en-GB' });
+      await client.improveText('Test', { targetLang: 'en-gb' });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
         expect.objectContaining({
           method: 'POST',
           url: '/v2/write/rephrase',
-        }),
+        })
       );
     });
 
     it('should pass writingStyle option', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: {
-          improvements: [
-            { text: 'Formal text', target_language: 'en-US' },
-          ],
+          improvements: [{ text: 'Formal text', target_language: 'en-US' }],
         },
         status: 200,
         headers: {},
@@ -125,9 +125,7 @@ describe('WriteClient', () => {
     it('should pass tone option', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: {
-          improvements: [
-            { text: 'Friendly text', target_language: 'en-US' },
-          ],
+          improvements: [{ text: 'Friendly text', target_language: 'en-US' }],
         },
         status: 200,
         headers: {},
@@ -147,9 +145,9 @@ describe('WriteClient', () => {
         headers: {},
       });
 
-      await expect(
-        client.improveText('Test', {})
-      ).rejects.toThrow('No improvements returned');
+      await expect(client.improveText('Test', {})).rejects.toThrow(
+        'No improvements returned'
+      );
     });
 
     it('should throw NetworkError when improvements field is missing', async () => {
@@ -159,9 +157,9 @@ describe('WriteClient', () => {
         headers: {},
       });
 
-      await expect(
-        client.improveText('Test', {})
-      ).rejects.toThrow('No improvements returned');
+      await expect(client.improveText('Test', {})).rejects.toThrow(
+        'No improvements returned'
+      );
     });
 
     it('should handle 403 auth error', async () => {
@@ -173,57 +171,72 @@ describe('WriteClient', () => {
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-      await expect(
-        client.improveText('Test', {})
-      ).rejects.toThrow();
+      await expect(client.improveText('Test', {})).rejects.toThrow();
     });
 
     it('should handle 429 rate limit error', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 429, data: { message: 'Too many requests' }, headers: {} },
+        response: {
+          status: 429,
+          data: { message: 'Too many requests' },
+          headers: {},
+        },
         message: 'Rate limited',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-      await expect(
-        client.improveText('Test', {})
-      ).rejects.toThrow();
+      await expect(client.improveText('Test', {})).rejects.toThrow();
     });
 
     it('should handle 503 service unavailable', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 503, data: { message: 'Unavailable' }, headers: {} },
+        response: {
+          status: 503,
+          data: { message: 'Unavailable' },
+          headers: {},
+        },
         message: 'Service unavailable',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-      await expect(
-        client.improveText('Test', {})
-      ).rejects.toThrow();
+      await expect(client.improveText('Test', {})).rejects.toThrow();
     });
 
     it('should append docs hint on 400 when writingStyle was sent', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 400, data: { message: "Style 'business' is not supported for 'ja'" }, headers: {} },
+        response: {
+          status: 400,
+          data: { message: "Style 'business' is not supported for 'ja'" },
+          headers: {},
+        },
         message: 'Bad request',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
       await expect(
-        client.improveText('Test', { targetLang: 'ja', writingStyle: 'business' })
-      ).rejects.toThrow(/See https:\/\/github\.com\/DeepL\/deepl-cli\/blob\/main\/docs\/API\.md#write for supported target language \/ style \/ tone combinations/);
+        client.improveText('Test', {
+          targetLang: 'ja',
+          writingStyle: 'business',
+        })
+      ).rejects.toThrow(
+        /See https:\/\/github\.com\/DeepL\/deepl-cli\/blob\/main\/docs\/API\.md#write for supported target language \/ style \/ tone combinations/
+      );
     });
 
     it('should append docs hint on 400 when tone was sent', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 400, data: { message: "Tone 'friendly' is not supported for 'ko'" }, headers: {} },
+        response: {
+          status: 400,
+          data: { message: "Tone 'friendly' is not supported for 'ko'" },
+          headers: {},
+        },
         message: 'Bad request',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
@@ -231,13 +244,19 @@ describe('WriteClient', () => {
 
       await expect(
         client.improveText('Test', { targetLang: 'ko', tone: 'friendly' })
-      ).rejects.toThrow(/See https:\/\/github\.com\/DeepL\/deepl-cli\/blob\/main\/docs\/API\.md#write for supported target language \/ style \/ tone combinations/);
+      ).rejects.toThrow(
+        /See https:\/\/github\.com\/DeepL\/deepl-cli\/blob\/main\/docs\/API\.md#write for supported target language \/ style \/ tone combinations/
+      );
     });
 
     it('should NOT append docs hint on 400 when neither style nor tone was sent', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 400, data: { message: 'Generic bad request' }, headers: {} },
+        response: {
+          status: 400,
+          data: { message: 'Generic bad request' },
+          headers: {},
+        },
         message: 'Bad request',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
@@ -282,13 +301,13 @@ describe('WriteClient', () => {
         headers: {},
       });
 
-      await client.correctText('Test', { targetLang: 'en-GB' });
+      await client.correctText('Test', { targetLang: 'en-gb' });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
         expect.objectContaining({
           method: 'POST',
           url: '/v2/write/correct',
-        }),
+        })
       );
     });
 
@@ -301,10 +320,10 @@ describe('WriteClient', () => {
         headers: {},
       });
 
-      await client.correctText('Test', { targetLang: 'en-US' });
+      await client.correctText('Test', { targetLang: 'en-us' });
 
       const body = mockAxiosInstance.request.mock.calls[0][0].data as string;
-      expect(body).toContain('target_lang=en-US');
+      expect(body).toContain('target_lang=en-us');
       expect(body).not.toContain('writing_style');
       expect(body).not.toContain('tone');
     });
@@ -331,9 +350,9 @@ describe('WriteClient', () => {
         headers: {},
       });
 
-      await expect(
-        client.correctText('Test', {})
-      ).rejects.toThrow('No improvements returned');
+      await expect(client.correctText('Test', {})).rejects.toThrow(
+        'No improvements returned'
+      );
     });
 
     it('should handle 403 auth error', async () => {
@@ -345,15 +364,17 @@ describe('WriteClient', () => {
       mockAxiosInstance.request.mockRejectedValue(axiosError);
       jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-      await expect(
-        client.correctText('Test', {})
-      ).rejects.toThrow();
+      await expect(client.correctText('Test', {})).rejects.toThrow();
     });
 
     it('should NOT append the style/tone docs hint on 400', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 400, data: { message: 'Generic bad request' }, headers: {} },
+        response: {
+          status: 400,
+          data: { message: 'Generic bad request' },
+          headers: {},
+        },
         message: 'Bad request',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);

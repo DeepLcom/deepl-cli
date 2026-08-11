@@ -1,17 +1,19 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import fg from 'fast-glob';
-import type { ExtractedEntry, FormatParser, FormatRegistry } from '../formats/index.js';
+import {
+  FormatDepthExceededError,
+  FormatKeyCollisionError,
+  type ExtractedEntry,
+  type FormatParser,
+  type FormatRegistry,
+} from '../formats/index.js';
 import type { ResolvedSyncConfig } from './sync-config.js';
 import type { SyncBucketConfig } from './types.js';
-import { resolveSyncLimits, DEFAULT_SYNC_LIMITS } from './types.js';
-import { assertPathWithinRoot } from './sync-utils.js';
+import { resolveSyncLimits } from './types.js';
+import { assertPathWithinRoot, resolveTargetPath } from './sync-utils.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
-import {
-  PhpArraysFormatParser,
-  PhpArraysCapExceededError,
-} from '../formats/php-arrays.js';
 
 export interface WalkedBucketFile {
   bucket: string;
@@ -72,12 +74,41 @@ export function partitionEntries(all: ExtractedEntry[]): {
 export function extractTranslatable(
   parser: FormatParser,
   content: string,
-  locale?: string,
+  locale?: string
 ): ExtractedEntry[] {
-  const raw = parser.multiLocale && locale
-    ? parser.extract(content, locale)
-    : parser.extract(content);
+  const raw =
+    parser.multiLocale && locale
+      ? parser.extract(content, locale)
+      : parser.extract(content);
   return partitionEntries(raw).entries;
+}
+
+/**
+ * The translations `content` — a *target*-file read — already holds, keyed the
+ * way `extract` keys them.
+ *
+ * Never build this map from `extract(...).value`. A bilingual format carries
+ * both sides in one file and reports the SOURCE text as `value`, so that map
+ * hands the source string back as though it were the translation: `sync`
+ * carries English into `msgstr`, `sync push` uploads English as the locale's
+ * translation, and `sync validate` compares the source against itself. Parsers
+ * that need it override the read via `extractTranslations`; for the rest
+ * `value` already is the translation.
+ */
+export function extractExistingTranslations(
+  parser: FormatParser,
+  content: string,
+  locale?: string
+): Map<string, string> {
+  if (parser.extractTranslations) {
+    return parser.extractTranslations(
+      content,
+      parser.multiLocale ? locale : undefined
+    );
+  }
+  return new Map(
+    extractTranslatable(parser, content, locale).map((e) => [e.key, e.value])
+  );
 }
 
 // Cache of already-read+parsed bucket source files, keyed by absolute path.
@@ -90,10 +121,68 @@ export interface WalkBucketsOptions {
   fileCache?: BucketFileCache;
 }
 
+/**
+ * Refuse a bucket in which two source files resolve to the same target path.
+ *
+ * `target_path_pattern` need not contain `{basename}`, so `out/{locale}.json`
+ * makes every source file in the bucket claim one target. Each file's
+ * `reconstruct` is handed only its own keys and treats that list as the complete
+ * key set, so the files delete each other's translations; `unwrittenKeys`
+ * inspects only the string the current file produced, so the loser is still
+ * recorded `translated`. Every later run re-translates, re-bills and re-loses the
+ * same keys against a target that can never be complete.
+ *
+ * Checked against every configured locale, not just the ones a filtered run
+ * would touch: the collision is a property of the configuration. A file whose
+ * target path does not resolve for a locale is left to the run's own
+ * per-locale reporting rather than being turned into a config error here.
+ *
+ * Multi-locale (bilingual) parsers are exempt: they write back to the source
+ * file, so each file is its own target and a collision cannot arise.
+ */
+function assertDistinctTargetPaths(
+  bucket: string,
+  sourceFiles: readonly string[],
+  config: ResolvedSyncConfig,
+  targetPathPattern: string | undefined
+): void {
+  if (sourceFiles.length < 2) return;
+
+  for (const locale of config.target_locales) {
+    const owners = new Map<string, string>();
+    for (const sourceFile of sourceFiles) {
+      const relPath = path.relative(config.projectRoot, sourceFile);
+      let targetRelPath: string;
+      try {
+        targetRelPath = resolveTargetPath(
+          relPath,
+          config.source_locale,
+          locale,
+          targetPathPattern
+        );
+      } catch {
+        continue;
+      }
+      const previous = owners.get(targetRelPath);
+      if (previous !== undefined) {
+        throw new ValidationError(
+          `Bucket "${bucket}": source files "${previous}" and "${relPath}" both resolve to the target path ` +
+            `"${targetRelPath}" for locale "${locale}". Each would overwrite the other's translations, and ` +
+            `every later sync would re-translate and re-bill the keys it had just lost.`,
+          `Remove target_path_pattern so each source file's own path is used ("${previous}" -> its own ` +
+            `${locale} sibling), or split these sources into separate buckets. Note that {basename} is the ` +
+            `source file's name only, so it does not separate files that share a name in different directories.`
+        );
+      }
+      owners.set(targetRelPath, relPath);
+    }
+  }
+}
+
 export async function* walkBuckets(
   config: ResolvedSyncConfig,
   registry: FormatRegistry,
-  opts: WalkBucketsOptions = {},
+  opts: WalkBucketsOptions = {}
 ): AsyncIterable<WalkedBucketFile> {
   const limits = resolveSyncLimits(config);
 
@@ -106,16 +195,18 @@ export async function* walkBuckets(
       continue;
     }
 
-    // For laravel_php, use a config-aware parser instance when the user has
-    // overridden max_depth. Other formats (which don't consume max_depth)
-    // use the registered parser as-is.
+    // Any parser that walks its tree recursively gets a copy bounded to
+    // sync.limits.max_depth; the rest are used as registered. Applying it
+    // unconditionally, rather than only when the user overrode the default,
+    // keeps the configured limit meaningful for parsers whose own default is a
+    // looser stack-safety ceiling than sync's policy.
     const parser: FormatParser =
-      registeredParser.configKey === 'laravel_php' &&
-      limits.max_depth !== DEFAULT_SYNC_LIMITS.max_depth
-        ? new PhpArraysFormatParser({ maxDepth: limits.max_depth })
-        : registeredParser;
+      registeredParser.withMaxDepth?.(limits.max_depth) ?? registeredParser;
 
-    const ignorePatterns = [...(bucketConfig.exclude ?? []), ...(config.ignore ?? [])];
+    const ignorePatterns = [
+      ...(bucketConfig.exclude ?? []),
+      ...(config.ignore ?? []),
+    ];
     const sourceFiles = await fg(bucketConfig.include, {
       cwd: config.projectRoot,
       ignore: ignorePatterns,
@@ -124,18 +215,29 @@ export async function* walkBuckets(
     });
 
     if (sourceFiles.length === 0) {
-      Logger.warn(`Bucket "${bucket}": glob pattern matched no files (include: ${bucketConfig.include.join(', ')})`);
+      Logger.warn(
+        `Bucket "${bucket}": glob pattern matched no files (include: ${bucketConfig.include.join(', ')})`
+      );
     }
 
     if (sourceFiles.length > limits.max_source_files) {
       Logger.warn(
         `Skipping bucket "${bucket}": glob matched ${sourceFiles.length} files, exceeding sync.limits.max_source_files (${limits.max_source_files}). ` +
-        `Narrow the include pattern or raise the cap in .deepl-sync.yaml.`,
+          `Narrow the include pattern or raise the cap in .deepl-sync.yaml.`
       );
       continue;
     }
 
     const isMultiLocale = !!parser.multiLocale;
+
+    if (!isMultiLocale) {
+      assertDistinctTargetPaths(
+        bucket,
+        sourceFiles,
+        config,
+        bucketConfig.target_path_pattern
+      );
+    }
 
     for (const sourceFile of sourceFiles) {
       assertPathWithinRoot(sourceFile, config.projectRoot);
@@ -149,7 +251,7 @@ export async function* walkBuckets(
           if (stat.size > limits.max_file_bytes) {
             Logger.warn(
               `Skipping ${path.relative(config.projectRoot, sourceFile)}: ` +
-              `file size ${stat.size} bytes exceeds sync.limits.max_file_bytes (${limits.max_file_bytes}).`,
+                `file size ${stat.size} bytes exceeds sync.limits.max_file_bytes (${limits.max_file_bytes}).`
             );
             continue;
           }
@@ -170,12 +272,29 @@ export async function* walkBuckets(
             ? parser.extract(content, config.source_locale)
             : parser.extract(content);
       } catch (err) {
-        if (err instanceof PhpArraysCapExceededError) {
+        if (
+          err instanceof FormatDepthExceededError ||
+          err instanceof FormatKeyCollisionError
+        ) {
           Logger.warn(
-            `Skipping ${path.relative(config.projectRoot, sourceFile)}: ${err.message}`,
+            `Skipping ${path.relative(config.projectRoot, sourceFile)}: ${err.message}`
           );
           continue;
         }
+        // A RangeError here is a parser that recursed past the stack rather than
+        // past a cap it enforces itself. php-parser does this on deeply nested
+        // parentheses, from inside parseCode — before php-arrays' own max_depth
+        // guard, which walks the AST only once a parse has succeeded. One
+        // hostile file must not end the run, discarding the lockfile for work
+        // already translated, billed and written.
+        if (err instanceof RangeError) {
+          Logger.warn(
+            `Skipping ${path.relative(config.projectRoot, sourceFile)}: ` +
+              `nesting depth exhausted the stack while parsing (${err.message}).`
+          );
+          continue;
+        }
+
         throw err;
       }
 
@@ -185,7 +304,7 @@ export async function* walkBuckets(
       if (rawEntries.length > limits.max_entries_per_file) {
         Logger.warn(
           `Skipping ${path.relative(config.projectRoot, sourceFile)}: ` +
-          `${rawEntries.length} entries exceeds sync.limits.max_entries_per_file (${limits.max_entries_per_file}).`,
+            `${rawEntries.length} entries exceeds sync.limits.max_entries_per_file (${limits.max_entries_per_file}).`
         );
         continue;
       }

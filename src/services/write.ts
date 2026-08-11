@@ -7,7 +7,12 @@ import * as crypto from 'crypto';
 import { DeepLClient } from '../api/deepl-client.js';
 import { ConfigService } from '../storage/config.js';
 import type { CacheService } from '../storage/cache.js';
-import { WriteOptions, CorrectOptions, WriteImprovement, isWriteImprovementArray } from '../types/index.js';
+import {
+  WriteOptions,
+  CorrectOptions,
+  WriteImprovement,
+  isWriteImprovementArray,
+} from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError, ConfigError } from '../utils/errors.js';
 
@@ -22,7 +27,11 @@ export class WriteService {
   // cache backend is unavailable (see cli/cache-loader.ts).
   private cache?: CacheService;
 
-  constructor(client: DeepLClient, config: ConfigService, cache?: CacheService) {
+  constructor(
+    client: DeepLClient,
+    config: ConfigService,
+    cache?: CacheService
+  ) {
     if (!client) {
       throw new ConfigError('DeepL client is required');
     }
@@ -49,7 +58,9 @@ export class WriteService {
     }
 
     if (options.writingStyle && options.tone) {
-      throw new ValidationError('Cannot specify both --style and --tone in a single request');
+      throw new ValidationError(
+        'Cannot specify both --style and --tone in a single request'
+      );
     }
 
     return this.requestWithCache(
@@ -155,6 +166,11 @@ export class WriteService {
    * The prefix separates rephrase and correct results: the two endpoints
    * return different text for the same input, so their entries must never
    * satisfy each other's lookups.
+   *
+   * `endpoint` is not a request parameter but decides who answers the request,
+   * and one cache DB is shared by every endpoint a config dir has ever talked
+   * to. Without it, a run against a custom `--api-url` serves its answers back
+   * for api.deepl.com for the full TTL.
    */
   private generateCacheKey(
     text: string,
@@ -166,6 +182,7 @@ export class WriteService {
       targetLang: options.targetLang,
       writingStyle: (options as WriteOptions).writingStyle,
       tone: (options as WriteOptions).tone,
+      endpoint: this.client.resolvedBaseUrl,
     };
 
     const hash = crypto

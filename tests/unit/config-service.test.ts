@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { ConfigService } from '../../src/storage/config';
+import { resetWritableDirectoryWarnings } from '../../src/utils/private-mode';
 
 describe('ConfigService', () => {
   let configService: ConfigService;
@@ -58,7 +59,7 @@ describe('ConfigService', () => {
 
       // This would be a TypeScript error: Cannot assign to 'targetLangs' because it is a read-only property
       // But in JavaScript runtime, the object is still mutable
-       
+
       (config1 as any).defaults.targetLangs.push('es');
 
       const config2 = configService.get();
@@ -66,7 +67,7 @@ describe('ConfigService', () => {
       expect(config2.defaults.targetLangs).toEqual(['es']);
 
       // Clean up for other tests
-       
+
       (config2 as any).defaults.targetLangs.pop();
     });
   });
@@ -230,16 +231,27 @@ describe('ConfigService', () => {
       }).not.toThrow();
     });
 
+    it('should accept a well-formed code the bundled snapshot does not know', () => {
+      // The API decides what exists; the snapshot can lag it.
+      expect(() => {
+        configService.set('defaults.sourceLang', 'de-ch');
+      }).not.toThrow();
+    });
+
     it('should validate formality values', () => {
       expect(() => {
         configService.set('defaults.formality', 'invalid');
-      }).toThrow(/Invalid formality "invalid" for "defaults\.formality"\. Valid values:/);
+      }).toThrow(
+        /Invalid formality "invalid" for "defaults\.formality"\. Valid values:/
+      );
     });
 
     it('should validate output format', () => {
       expect(() => {
         configService.set('output.format', 'invalid');
-      }).toThrow(/Invalid output format "invalid" for "output\.format"\. Valid values:/);
+      }).toThrow(
+        /Invalid output format "invalid" for "output\.format"\. Valid values:/
+      );
     });
 
     it('should validate cache size is positive', () => {
@@ -250,9 +262,100 @@ describe('ConfigService', () => {
 
     it('should validate boolean values', () => {
       expect(() => {
-
         configService.set('cache.enabled', 'yes');
       }).toThrow(/Expected boolean for "cache\.enabled"\. Use true or false\./);
+    });
+  });
+
+  describe('tms.allowedServers', () => {
+    it('defaults to an empty list, so no destination is trusted implicitly', () => {
+      expect(configService.get().tms.allowedServers).toEqual([]);
+    });
+
+    it('accepts an array of hostnames', () => {
+      configService.set('tms.allowedServers', [
+        'tms.example.com',
+        'tms2.example.com',
+      ]);
+      expect(configService.getValue('tms.allowedServers')).toEqual([
+        'tms.example.com',
+        'tms2.example.com',
+      ]);
+    });
+
+    it('lowercases stored hostnames so matching is not case-sensitive on disk', () => {
+      configService.set('tms.allowedServers', ['TMS.Example.COM']);
+      expect(configService.getValue('tms.allowedServers')).toEqual([
+        'tms.example.com',
+      ]);
+    });
+
+    it('trims surrounding whitespace from each hostname', () => {
+      configService.set('tms.allowedServers', ['  tms.example.com  ']);
+      expect(configService.getValue('tms.allowedServers')).toEqual([
+        'tms.example.com',
+      ]);
+    });
+
+    it('rejects a bare string — a single host must still be a one-element array', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', 'tms.example.com');
+      }).toThrow(/tms\.allowedServers must be an array of hostnames/);
+    });
+
+    it('rejects a non-string entry', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms.example.com', 42]);
+      }).toThrow(/tms\.allowedServers entries must be strings/);
+    });
+
+    it('rejects an empty hostname', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms.example.com', '  ']);
+      }).toThrow(/tms\.allowedServers entries must not be empty/);
+    });
+
+    it('rejects a full URL, naming the hostname-only expectation', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['https://tms.example.com']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('rejects a host:port pair', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms.example.com:8443']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('rejects an entry with a path', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms.example.com/api']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('rejects an entry containing whitespace', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['tms example.com']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('rejects a wildcard, which is not supported', () => {
+      expect(() => {
+        configService.set('tms.allowedServers', ['*.example.com']);
+      }).toThrow(/bare hostname/);
+    });
+
+    it('accepts a bracketed IPv6 literal, matching URL.hostname', () => {
+      configService.set('tms.allowedServers', ['[::1]']);
+      expect(configService.getValue('tms.allowedServers')).toEqual(['[::1]']);
+    });
+
+    it('preserves a loaded allowlist across a reload rather than dropping the block', () => {
+      configService.set('tms.allowedServers', ['tms.example.com']);
+      const reloaded = new ConfigService(mockConfigPath);
+      expect(reloaded.getValue('tms.allowedServers')).toEqual([
+        'tms.example.com',
+      ]);
     });
   });
 
@@ -325,7 +428,10 @@ describe('ConfigService', () => {
     });
 
     it('should write config file with mode 0o600', () => {
-      const uniqueDir = path.join(os.tmpdir(), `deepl-perm-test-file-${Date.now()}`);
+      const uniqueDir = path.join(
+        os.tmpdir(),
+        `deepl-perm-test-file-${Date.now()}`
+      );
       const configPath = path.join(uniqueDir, 'config.json');
 
       const service = new ConfigService(configPath);
@@ -339,11 +445,89 @@ describe('ConfigService', () => {
       fs.rmSync(uniqueDir, { recursive: true, force: true });
     });
 
+    describe('permissions found on disk', () => {
+      let uniqueDir: string;
+      let configPath: string;
+      let consoleErrorSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        uniqueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-perm-load-'));
+        fs.chmodSync(uniqueDir, 0o700);
+        configPath = path.join(uniqueDir, 'config.json');
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+        resetWritableDirectoryWarnings();
+      });
+
+      afterEach(() => {
+        consoleErrorSpy.mockRestore();
+        fs.rmSync(uniqueDir, { recursive: true, force: true });
+      });
+
+      function warnings(): string {
+        return consoleErrorSpy.mock.calls
+          .map((call) => call.join(' '))
+          .join('\n');
+      }
+
+      it('should tighten a group-readable config file on load', () => {
+        fs.writeFileSync(configPath, JSON.stringify({ auth: { apiKey: 'k' } }));
+        fs.chmodSync(configPath, 0o644);
+
+        const service = new ConfigService(configPath);
+
+        expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
+        expect(service.getValue('auth.apiKey')).toBe('k');
+      });
+
+      it('should say what it found and that the key may have been exposed', () => {
+        fs.writeFileSync(configPath, JSON.stringify({ auth: { apiKey: 'k' } }));
+        fs.chmodSync(configPath, 0o644);
+
+        new ConfigService(configPath);
+
+        expect(warnings()).toContain(configPath);
+        expect(warnings()).toContain('0644');
+        expect(warnings()).toMatch(/rotat/i);
+      });
+
+      it('should say nothing about an already private config file', () => {
+        fs.writeFileSync(configPath, JSON.stringify({ auth: { apiKey: 'k' } }));
+        fs.chmodSync(configPath, 0o600);
+
+        new ConfigService(configPath);
+
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+      });
+
+      it('should warn about a world-writable config directory without changing it', () => {
+        fs.writeFileSync(configPath, JSON.stringify({}));
+        fs.chmodSync(configPath, 0o600);
+        fs.chmodSync(uniqueDir, 0o777);
+
+        new ConfigService(configPath);
+
+        expect(warnings()).toContain(uniqueDir);
+        expect(fs.statSync(uniqueDir).mode & 0o777).toBe(0o777);
+      });
+
+      it('should say nothing about a traversable config directory', () => {
+        fs.writeFileSync(configPath, JSON.stringify({}));
+        fs.chmodSync(configPath, 0o600);
+        fs.chmodSync(uniqueDir, 0o755);
+
+        new ConfigService(configPath);
+
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+      });
+    });
+
     describe('temp file safety', () => {
       // The API key is written in plaintext, so the intermediate file must not
       // land on a path anyone else could have prepared in advance.
       it('should not write through a symlink planted at the predictable temp path', () => {
-        const uniqueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-tmp-safety-'));
+        const uniqueDir = fs.mkdtempSync(
+          path.join(os.tmpdir(), 'deepl-tmp-safety-')
+        );
         const configPath = path.join(uniqueDir, 'config.json');
         const stolenPath = path.join(uniqueDir, 'stolen.txt');
         fs.symlinkSync(stolenPath, `${configPath}.tmp`);
@@ -353,13 +537,17 @@ describe('ConfigService', () => {
 
         expect(fs.existsSync(stolenPath)).toBe(false);
         expect(fs.lstatSync(configPath).isSymbolicLink()).toBe(false);
-        expect(fs.readFileSync(configPath, 'utf-8')).toContain('secret-key-value');
+        expect(fs.readFileSync(configPath, 'utf-8')).toContain(
+          'secret-key-value'
+        );
 
         fs.rmSync(uniqueDir, { recursive: true, force: true });
       });
 
       it('should not write to the predictable temp path even when it is free', () => {
-        const uniqueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-tmp-unique-'));
+        const uniqueDir = fs.mkdtempSync(
+          path.join(os.tmpdir(), 'deepl-tmp-unique-')
+        );
         const configPath = path.join(uniqueDir, 'config.json');
         const predictablePath = `${configPath}.tmp`;
         fs.writeFileSync(predictablePath, 'planted', 'utf-8');
@@ -375,7 +563,9 @@ describe('ConfigService', () => {
       });
 
       it('should leave no temp file behind after a successful write', () => {
-        const uniqueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-tmp-clean-'));
+        const uniqueDir = fs.mkdtempSync(
+          path.join(os.tmpdir(), 'deepl-tmp-clean-')
+        );
         const configPath = path.join(uniqueDir, 'config.json');
 
         const service = new ConfigService(configPath);
@@ -394,10 +584,17 @@ describe('ConfigService', () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
       // Write invalid JSON to a config file so loading fails during JSON.parse
-      const badConfigPath = path.join(os.tmpdir(), `deepl-bad-config-${Date.now()}`, 'config.json');
+      const badConfigPath = path.join(
+        os.tmpdir(),
+        `deepl-bad-config-${Date.now()}`,
+        'config.json'
+      );
       const badConfigDir = path.dirname(badConfigPath);
       fs.mkdirSync(badConfigDir, { recursive: true });
       fs.writeFileSync(badConfigPath, '{ invalid json !!!');
+      // The mode the CLI itself writes; a permissive fixture would add a
+      // permission warning ahead of the one under test.
+      fs.chmodSync(badConfigPath, 0o600);
 
       // Creating a ConfigService with a corrupt config file triggers load() which should log
       const service = new ConfigService(badConfigPath);
@@ -541,8 +738,12 @@ describe('ConfigService', () => {
     });
 
     it('delete() should reject constructor and prototype segments', () => {
-      expect(() => configService.delete('constructor.polluted')).toThrow('Invalid path');
-      expect(() => configService.delete('auth.prototype')).toThrow('Invalid path');
+      expect(() => configService.delete('constructor.polluted')).toThrow(
+        'Invalid path'
+      );
+      expect(() => configService.delete('auth.prototype')).toThrow(
+        'Invalid path'
+      );
     });
 
     it('delete() should not walk inherited properties', () => {

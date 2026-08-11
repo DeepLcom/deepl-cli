@@ -1,4 +1,8 @@
-import { FormatRegistry, SUPPORTED_FORMAT_KEYS, createDefaultRegistry } from '../../../src/formats/index';
+import {
+  FormatRegistry,
+  SUPPORTED_FORMAT_KEYS,
+  createDefaultRegistry,
+} from '../../../src/formats/index';
 import type { FormatParser } from '../../../src/formats/format';
 
 function createStubParser(overrides: Partial<FormatParser> = {}): FormatParser {
@@ -30,7 +34,10 @@ describe('FormatRegistry', () => {
   });
 
   it('should handle multiple extensions per parser', () => {
-    const parser = createStubParser({ name: 'YAML', extensions: ['.yaml', '.yml'] });
+    const parser = createStubParser({
+      name: 'YAML',
+      extensions: ['.yaml', '.yml'],
+    });
     registry.register(parser);
     expect(registry.getParser('.yaml')).toBe(parser);
     expect(registry.getParser('.yml')).toBe(parser);
@@ -44,8 +51,14 @@ describe('FormatRegistry', () => {
   });
 
   it('should overwrite existing parser for same extension', () => {
-    const parser1 = createStubParser({ name: 'Parser1', extensions: ['.json'] });
-    const parser2 = createStubParser({ name: 'Parser2', extensions: ['.json'] });
+    const parser1 = createStubParser({
+      name: 'Parser1',
+      extensions: ['.json'],
+    });
+    const parser2 = createStubParser({
+      name: 'Parser2',
+      extensions: ['.json'],
+    });
     registry.register(parser1);
     registry.register(parser2);
     expect(registry.getParser('.json')).toBe(parser2);
@@ -55,7 +68,9 @@ describe('FormatRegistry', () => {
     registry.register(createStubParser({ extensions: ['.json'] }));
     registry.register(createStubParser({ extensions: ['.yaml', '.yml'] }));
     const extensions = registry.getSupportedExtensions();
-    expect(extensions).toEqual(expect.arrayContaining(['.json', '.yaml', '.yml']));
+    expect(extensions).toEqual(
+      expect.arrayContaining(['.json', '.yaml', '.yml'])
+    );
     expect(extensions).toHaveLength(3);
   });
 
@@ -84,25 +99,47 @@ describe('createDefaultRegistry', () => {
     expect(registry.getParserByFormatKey('json')?.name).toBe('JSON i18n');
     expect(registry.getParserByFormatKey('yaml')?.name).toBe('YAML');
     expect(registry.getParserByFormatKey('po')?.name).toBe('PO (gettext)');
-    expect(registry.getParserByFormatKey('android_xml')?.name).toBe('Android XML');
-    expect(registry.getParserByFormatKey('ios_strings')?.name).toBe('iOS Strings');
+    expect(registry.getParserByFormatKey('android_xml')?.name).toBe(
+      'Android XML'
+    );
+    expect(registry.getParserByFormatKey('ios_strings')?.name).toBe(
+      'iOS Strings'
+    );
     expect(registry.getParserByFormatKey('arb')?.name).toBe('ARB (Flutter)');
     expect(registry.getParserByFormatKey('xliff')?.name).toBe('XLIFF');
     expect(registry.getParserByFormatKey('toml')?.name).toBe('TOML i18n');
-    expect(registry.getParserByFormatKey('properties')?.name).toBe('Java Properties');
-    expect(registry.getParserByFormatKey('xcstrings')?.name).toBe('Xcode String Catalog');
+    expect(registry.getParserByFormatKey('properties')?.name).toBe(
+      'Java Properties'
+    );
+    expect(registry.getParserByFormatKey('xcstrings')?.name).toBe(
+      'Xcode String Catalog'
+    );
   });
 });
 
 describe('SUPPORTED_FORMAT_KEYS', () => {
   it('matches the config keys registered in the default registry', async () => {
     const registry = await createDefaultRegistry();
-    expect([...SUPPORTED_FORMAT_KEYS].sort()).toEqual(registry.getFormatKeys().sort());
+    expect([...SUPPORTED_FORMAT_KEYS].sort()).toEqual(
+      registry.getFormatKeys().sort()
+    );
   });
 
   it('covers every parser extension in a single source of truth', () => {
     expect([...SUPPORTED_FORMAT_KEYS].sort()).toEqual(
-      ['android_xml', 'arb', 'ios_strings', 'json', 'laravel_php', 'po', 'properties', 'toml', 'xcstrings', 'xliff', 'yaml'].sort(),
+      [
+        'android_xml',
+        'arb',
+        'ios_strings',
+        'json',
+        'laravel_php',
+        'po',
+        'properties',
+        'toml',
+        'xcstrings',
+        'xliff',
+        'yaml',
+      ].sort()
     );
   });
 });

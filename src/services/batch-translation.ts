@@ -9,12 +9,23 @@ import pLimit from 'p-limit';
 import fg from 'fast-glob';
 import { FileTranslationService } from './file-translation.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
-import { TranslationService, MAX_TEXT_BYTES, TRANSLATE_BATCH_SIZE } from './translation.js';
-import { preserveCodeBlocks, preserveVariables, restorePlaceholders } from '../utils/text-preservation.js';
+import {
+  TranslationService,
+  MAX_TEXT_BYTES,
+  TRANSLATE_BATCH_SIZE,
+} from './translation.js';
+import {
+  preserveCodeBlocks,
+  preserveVariables,
+  restorePlaceholders,
+  unresolvedPlaceholders,
+  unresolvedPlaceholderMessage,
+} from '../utils/text-preservation.js';
 import { TranslationOptions } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../utils/errors.js';
+import { isUnrecoverableRequestError } from '../utils/unrecoverable-request-error.js';
 import { errorMessage } from '../utils/error-message.js';
 
 interface BatchOptions {
@@ -37,6 +48,13 @@ interface BatchResult {
   successful: Array<{ file: string; outputPath: string }>;
   failed: Array<{ file: string; error: string }>;
   skipped: Array<{ file: string; reason: string }>;
+  /**
+   * The rejection that stopped the run, when one described the request rather
+   * than a single file. Surfaced so the caller can report the rejection's own
+   * exit code instead of a generic failure: a refused `target_lang` is user
+   * input, not an unclassified error.
+   */
+  requestRejected?: unknown;
 }
 
 interface BatchStatistics {
@@ -67,12 +85,14 @@ export class BatchTranslationService {
 
   constructor(
     fileTranslationService: FileTranslationService,
-    options: { concurrency?: number; translationService?: TranslationService } = {}
+    options: {
+      concurrency?: number;
+      translationService?: TranslationService;
+    } = {}
   ) {
     this.fileTranslationService = fileTranslationService;
     this.translationService = options.translationService ?? null;
 
-    // Validate concurrency parameter
     const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
     if (concurrency < 1) {
       throw new ValidationError('Concurrency must be at least 1');
@@ -109,7 +129,6 @@ export class BatchTranslationService {
       return result;
     }
 
-    // Partition files into plain text (batchable) vs others (per-file)
     const plainTextFiles: string[] = [];
     const perFileFiles: string[] = [];
 
@@ -126,12 +145,14 @@ export class BatchTranslationService {
     const totalFiles = files.length;
     let completed = result.skipped.length;
 
-    // Report progress for skipped files
     for (const entry of result.skipped) {
-      batchOptions.onProgress?.({ completed, total: totalFiles, current: entry.file });
+      batchOptions.onProgress?.({
+        completed,
+        total: totalFiles,
+        current: entry.file,
+      });
     }
 
-    // Batch-translate plain text files
     if (plainTextFiles.length > 0) {
       const batchResult = await this.translatePlainTextFilesBatched(
         plainTextFiles,
@@ -139,23 +160,49 @@ export class BatchTranslationService {
         batchOptions,
         totalFiles,
         completed,
-        batchOptions.onProgress,
+        batchOptions.onProgress
       );
       result.successful.push(...batchResult.successful);
       result.failed.push(...batchResult.failed);
-      completed += batchResult.successful.length + batchResult.failed.length;
+      result.skipped.push(...batchResult.skipped);
+      result.requestRejected ??= batchResult.requestRejected;
+      completed +=
+        batchResult.successful.length +
+        batchResult.failed.length +
+        batchResult.skipped.length;
     }
 
-    // Per-file translation for structured/other files
     if (perFileFiles.length > 0) {
       const limit = pLimit(this.concurrency);
+      // Same reasoning as the batched path: an unsupported target_lang is a
+      // property of the request, so the files still queued would each spend a
+      // round trip to be told the same thing.
+      let requestRejected: unknown;
 
-      const tasks = perFileFiles.map(file =>
+      const tasks = perFileFiles.map((file) =>
         limit(async () => {
           if (batchOptions.abortSignal?.aborted) {
             result.skipped.push({ file, reason: 'Aborted' });
             completed++;
-            batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
+            batchOptions.onProgress?.({
+              completed,
+              total: totalFiles,
+              current: file,
+            });
+            return;
+          }
+
+          if (requestRejected !== undefined) {
+            result.skipped.push({
+              file,
+              reason: errorMessage(requestRejected),
+            });
+            completed++;
+            batchOptions.onProgress?.({
+              completed,
+              total: totalFiles,
+              current: file,
+            });
             return;
           }
 
@@ -175,19 +222,31 @@ export class BatchTranslationService {
 
             result.successful.push({ file, outputPath });
             completed++;
-            batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
+            batchOptions.onProgress?.({
+              completed,
+              total: totalFiles,
+              current: file,
+            });
           } catch (error) {
+            if (isUnrecoverableRequestError(error)) {
+              requestRejected = error;
+            }
             result.failed.push({
               file,
               error: errorMessage(error),
             });
             completed++;
-            batchOptions.onProgress?.({ completed, total: totalFiles, current: file });
+            batchOptions.onProgress?.({
+              completed,
+              total: totalFiles,
+              current: file,
+            });
           }
         })
       );
 
       await Promise.all(tasks);
+      result.requestRejected ??= requestRejected;
     }
 
     return result;
@@ -205,10 +264,16 @@ export class BatchTranslationService {
     batchOptions: Partial<BatchOptions>,
     totalFiles: number,
     startCompleted: number,
-    onProgress?: (progress: ProgressInfo) => void,
-  ): Promise<{ successful: Array<{ file: string; outputPath: string }>; failed: Array<{ file: string; error: string }> }> {
+    onProgress?: (progress: ProgressInfo) => void
+  ): Promise<{
+    successful: Array<{ file: string; outputPath: string }>;
+    failed: Array<{ file: string; error: string }>;
+    skipped: Array<{ file: string; reason: string }>;
+    requestRejected?: unknown;
+  }> {
     const successful: Array<{ file: string; outputPath: string }> = [];
     const failed: Array<{ file: string; error: string }> = [];
+    const skipped: Array<{ file: string; reason: string }> = [];
 
     interface FileEntry {
       file: string;
@@ -220,12 +285,30 @@ export class BatchTranslationService {
     let completed = startCompleted;
     let currentBatch: FileEntry[] = [];
     let currentBytes = 0;
+    // Set once the API rejects the request itself (an unsupported target_lang,
+    // say). Every remaining batch would draw the same rejection, so they fail
+    // without spending the round trips.
+    let requestRejected: unknown;
 
     const flushBatch = async (): Promise<void> => {
       const batch = currentBatch;
       currentBatch = [];
       currentBytes = 0;
       if (batch.length === 0) {
+        return;
+      }
+
+      if (requestRejected !== undefined) {
+        // Never sent, so reported as skipped rather than as individual failures
+        // carrying another batch's error.
+        for (const entry of batch) {
+          skipped.push({
+            file: entry.file,
+            reason: errorMessage(requestRejected),
+          });
+          completed++;
+          onProgress?.({ completed, total: totalFiles, current: entry.file });
+        }
         return;
       }
 
@@ -237,15 +320,20 @@ export class BatchTranslationService {
         return;
       }
 
-      const texts = batch.map(e => e.processedText);
+      const texts = batch.map((e) => e.processedText);
 
       try {
-        const results = await this.translationService!.translateBatch(texts, translationOptions);
+        const results = await this.translationService!.translateBatch(
+          texts,
+          translationOptions
+        );
 
         if (results.length !== batch.length) {
-          // Result count mismatch — mark entire batch as failed
           for (const entry of batch) {
-            failed.push({ file: entry.file, error: 'Batch result count mismatch' });
+            failed.push({
+              file: entry.file,
+              error: 'Batch result count mismatch',
+            });
             completed++;
             onProgress?.({ completed, total: totalFiles, current: entry.file });
           }
@@ -254,9 +342,29 @@ export class BatchTranslationService {
 
         for (let i = 0; i < batch.length; i++) {
           const entry = batch[i]!;
+          const result = results[i];
+          // A batch run fails the one file rather than the whole request, so an
+          // unusable translation is reported here rather than thrown.
+          const rejectFile = (error: string): void => {
+            failed.push({ file: entry.file, error });
+            completed++;
+            onProgress?.({ completed, total: totalFiles, current: entry.file });
+          };
+          if (!result) {
+            rejectFile('No translation returned for this file');
+            continue;
+          }
+          const unresolved = unresolvedPlaceholders(
+            result.text,
+            entry.preservationMap
+          );
+          if (unresolved.length > 0) {
+            rejectFile(unresolvedPlaceholderMessage(unresolved));
+            continue;
+          }
           const translatedText = restorePlaceholders(
-            results[i]!.text,
-            entry.preservationMap,
+            result.text,
+            entry.preservationMap
           );
 
           try {
@@ -275,6 +383,9 @@ export class BatchTranslationService {
           onProgress?.({ completed, total: totalFiles, current: entry.file });
         }
       } catch (error) {
+        if (isUnrecoverableRequestError(error)) {
+          requestRejected = error;
+        }
         Logger.error(`Batch translation failed: ${errorMessage(error)}`);
         for (const entry of batch) {
           failed.push({
@@ -298,7 +409,10 @@ export class BatchTranslationService {
 
         const byteSize = Buffer.byteLength(content, 'utf8');
         if (byteSize > MAX_TEXT_BYTES) {
-          failed.push({ file, error: `File too large: ${byteSize} bytes exceeds ${MAX_TEXT_BYTES} byte limit` });
+          failed.push({
+            file,
+            error: `File too large: ${byteSize} bytes exceeds ${MAX_TEXT_BYTES} byte limit`,
+          });
           continue;
         }
 
@@ -309,7 +423,7 @@ export class BatchTranslationService {
         const outputPath = this.generateOutputPath(
           file,
           translationOptions.targetLang,
-          batchOptions,
+          batchOptions
         );
 
         entry = { file, outputPath, processedText, preservationMap };
@@ -319,8 +433,11 @@ export class BatchTranslationService {
       }
 
       const entryBytes = formEncodedByteLength(entry.processedText);
-      if (currentBatch.length > 0 &&
-          (currentBatch.length >= TRANSLATE_BATCH_SIZE || currentBytes + entryBytes > MAX_TEXT_BYTES)) {
+      if (
+        currentBatch.length > 0 &&
+        (currentBatch.length >= TRANSLATE_BATCH_SIZE ||
+          currentBytes + entryBytes > MAX_TEXT_BYTES)
+      ) {
         await flushBatch();
       }
 
@@ -329,7 +446,7 @@ export class BatchTranslationService {
     }
     await flushBatch();
 
-    return { successful, failed };
+    return { successful, failed, skipped, requestRejected };
   }
 
   /**
@@ -340,7 +457,6 @@ export class BatchTranslationService {
     translationOptions: TranslationOptions,
     batchOptions: Partial<BatchOptions> = {}
   ): Promise<BatchResult> {
-    // Check if directory exists
     if (!fs.existsSync(inputDir)) {
       throw new ValidationError(`Directory not found: ${inputDir}`);
     }
@@ -350,14 +466,13 @@ export class BatchTranslationService {
       throw new ValidationError(`Not a directory: ${inputDir}`);
     }
 
-    // Build glob pattern
     const pattern = batchOptions.pattern ?? '*';
     const depth = batchOptions.recursive === false ? 1 : undefined;
-    const globPattern = batchOptions.recursive === false
-      ? path.join(inputDir, pattern)
-      : path.join(inputDir, '**', pattern);
+    const globPattern =
+      batchOptions.recursive === false
+        ? path.join(inputDir, pattern)
+        : path.join(inputDir, '**', pattern);
 
-    // Find all files
     const files = await fg(globPattern, {
       onlyFiles: true,
       absolute: true,
@@ -366,21 +481,15 @@ export class BatchTranslationService {
       followSymbolicLinks: false,
     });
 
-    // Filter to only supported files
-    const supportedFiles = files.filter(file =>
+    const supportedFiles = files.filter((file) =>
       this.fileTranslationService.isSupportedFile(file)
     );
 
-    // Translate files with preserved directory structure
-    return this.translateFiles(
-      supportedFiles,
-      translationOptions,
-      {
-        ...batchOptions,
-        outputDir: batchOptions.outputDir ?? inputDir,
-        baseDir: inputDir,
-      }
-    );
+    return this.translateFiles(supportedFiles, translationOptions, {
+      ...batchOptions,
+      outputDir: batchOptions.outputDir ?? inputDir,
+      baseDir: inputDir,
+    });
   }
 
   /**
@@ -388,7 +497,8 @@ export class BatchTranslationService {
    */
   getStatistics(result: BatchResult): BatchStatistics {
     return {
-      total: result.successful.length + result.failed.length + result.skipped.length,
+      total:
+        result.successful.length + result.failed.length + result.skipped.length,
       successful: result.successful.length,
       failed: result.failed.length,
       skipped: result.skipped.length,
@@ -407,7 +517,6 @@ export class BatchTranslationService {
     const ext = path.extname(inputPath);
     const basename = path.basename(inputPath, ext);
 
-    // Apply custom pattern if provided
     if (options.outputPattern) {
       const outputFilename = options.outputPattern
         .replace('{name}', basename)
@@ -416,7 +525,10 @@ export class BatchTranslationService {
 
       const outputPath = path.resolve(outputDir, outputFilename);
       const resolvedOutputDir = path.resolve(outputDir);
-      if (!outputPath.startsWith(resolvedOutputDir + path.sep) && outputPath !== resolvedOutputDir) {
+      if (
+        !outputPath.startsWith(resolvedOutputDir + path.sep) &&
+        outputPath !== resolvedOutputDir
+      ) {
         throw new ValidationError(
           `Output path "${outputFilename}" escapes output directory "${outputDir}"`
         );
@@ -433,7 +545,10 @@ export class BatchTranslationService {
       const relativeDir = path.dirname(relativePath);
       const outputPath = path.resolve(outputDir, relativeDir, outputFilename);
       const resolvedOutputDir = path.resolve(outputDir);
-      if (!outputPath.startsWith(resolvedOutputDir + path.sep) && outputPath !== resolvedOutputDir) {
+      if (
+        !outputPath.startsWith(resolvedOutputDir + path.sep) &&
+        outputPath !== resolvedOutputDir
+      ) {
         throw new ValidationError(
           `Output path "${path.join(relativeDir, outputFilename)}" escapes output directory "${outputDir}"`
         );

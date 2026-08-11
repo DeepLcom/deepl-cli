@@ -1,11 +1,16 @@
-import { attachDebouncedWatchLoop, type WatchEventSource } from '../../src/cli/commands/sync-command';
+import {
+  attachDebouncedWatchLoop,
+  type WatchEventSource,
+} from '../../src/cli/commands/sync-command';
 
 interface StubWatcher extends WatchEventSource {
   emit: (event: 'change' | 'add', file?: string) => void;
 }
 
 function createStubWatcher(): StubWatcher {
-  const listeners: Partial<Record<'change' | 'add', Array<(path?: string) => void>>> = {};
+  const listeners: Partial<
+    Record<'change' | 'add', Array<(path?: string) => void>>
+  > = {};
   return {
     on(event, listener) {
       (listeners[event] ??= []).push(listener);
@@ -76,7 +81,11 @@ describe('attachDebouncedWatchLoop', () => {
     const watcher = createStubWatcher();
     const onChange = jest.fn();
 
-    const handle = attachDebouncedWatchLoop({ watcher, onChange, debounceMs: 200 });
+    const handle = attachDebouncedWatchLoop({
+      watcher,
+      onChange,
+      debounceMs: 200,
+    });
 
     watcher.emit('change');
     jest.advanceTimersByTime(150);

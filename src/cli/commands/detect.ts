@@ -18,9 +18,13 @@ export class DetectCommand {
   }
 
   formatJson(result: DetectResult): string {
-    return JSON.stringify({
-      detected_language: result.detectedLanguage,
-      language_name: result.languageName,
-    }, null, 2);
+    return JSON.stringify(
+      {
+        detected_language: result.detectedLanguage,
+        language_name: result.languageName,
+      },
+      null,
+      2
+    );
   }
 }

@@ -11,7 +11,7 @@ export function registerCache(
     getConfigService: () => ConfigService;
     getCacheService: () => Promise<CacheService | undefined>;
     handleError: (error: unknown) => never;
-  },
+  }
 ): void {
   const { getConfigService, getCacheService, handleError } = deps;
 
@@ -20,7 +20,7 @@ export function registerCache(
     if (!cacheService) {
       throw new ConfigError(
         'Cache backend is unavailable, so cache commands cannot run.',
-        'Reinstall the CLI, or run it with the Node.js version it was installed with.',
+        'Reinstall the CLI, or run it with the Node.js version it was installed with.'
       );
     }
     return cacheService;
@@ -29,28 +29,40 @@ export function registerCache(
   program
     .command('cache')
     .description('Manage translation cache')
-    .addHelpText('after', `
+    .addHelpText(
+      'after',
+      `
 Examples:
   $ deepl cache stats
   $ deepl cache clear --yes
   $ deepl cache clear --dry-run
   $ deepl cache enable --max-size 500M
   $ deepl cache disable
-`)
+`
+    )
     .addCommand(
       new Command('stats')
         .description('Show cache statistics')
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json', 'table']).default('text'))
+        .addOption(
+          new Option('--format <format>', 'Output format')
+            .choices(['text', 'json', 'table'])
+            .default('text')
+        )
         .action(async (options: { format?: string }) => {
           try {
             const { CacheCommand } = await import('./cache.js');
-            const cacheCommand = new CacheCommand(await requireCacheService(), getConfigService());
+            const cacheCommand = new CacheCommand(
+              await requireCacheService(),
+              getConfigService()
+            );
             const stats = await cacheCommand.stats();
             if (options.format === 'json') {
               Logger.output(JSON.stringify(stats, null, 2));
             } else if (options.format === 'table') {
               if (!process.stdout.isTTY) {
-                Logger.warn('WARN  --format table is not supported in non-TTY output; falling back to plain text');
+                Logger.warn(
+                  'WARN  --format table is not supported in non-TTY output; falling back to plain text'
+                );
                 Logger.output(cacheCommand.formatStats(stats));
               } else {
                 Logger.output(cacheCommand.formatStatsTable(stats));
@@ -60,7 +72,6 @@ Examples:
             }
           } catch (error) {
             handleError(error);
-
           }
         })
     )
@@ -68,18 +79,28 @@ Examples:
       new Command('clear')
         .description('Clear all cached translations')
         .option('-y, --yes', 'Skip confirmation prompt')
-        .option('--dry-run', 'Show cache stats that would be cleared without performing the operation')
+        .option(
+          '--dry-run',
+          'Show cache stats that would be cleared without performing the operation'
+        )
         .action(async (options: { yes?: boolean; dryRun?: boolean }) => {
           try {
             if (options.dryRun) {
               const { CacheCommand } = await import('./cache.js');
-              const cacheCommand = new CacheCommand(await requireCacheService(), getConfigService());
+              const cacheCommand = new CacheCommand(
+                await requireCacheService(),
+                getConfigService()
+              );
               const stats = await cacheCommand.stats();
               const totalSizeMB = (stats.totalSize / (1024 * 1024)).toFixed(2);
               const lines = [
                 chalk.yellow('[dry-run] No cache entries will be cleared.'),
-                chalk.yellow(`[dry-run] Would clear ${stats.entries} cached entries (${totalSizeMB} MB)`),
-                chalk.yellow(`[dry-run] Cache status: ${stats.enabled ? 'enabled' : 'disabled'}`),
+                chalk.yellow(
+                  `[dry-run] Would clear ${stats.entries} cached entries (${totalSizeMB} MB)`
+                ),
+                chalk.yellow(
+                  `[dry-run] Cache status: ${stats.enabled ? 'enabled' : 'disabled'}`
+                ),
               ];
               Logger.output(lines.join('\n'));
               return;
@@ -87,7 +108,9 @@ Examples:
 
             if (!options.yes) {
               const { confirm } = await import('../../utils/confirm.js');
-              const confirmed = await confirm({ message: 'Clear all cached translations?' });
+              const confirmed = await confirm({
+                message: 'Clear all cached translations?',
+              });
               if (!confirmed) {
                 Logger.info('Aborted.');
                 return;
@@ -95,19 +118,24 @@ Examples:
             }
 
             const { CacheCommand } = await import('./cache.js');
-            const cacheCommand = new CacheCommand(await requireCacheService(), getConfigService());
+            const cacheCommand = new CacheCommand(
+              await requireCacheService(),
+              getConfigService()
+            );
             await cacheCommand.clear();
             Logger.success(chalk.green('\u2713 Cache cleared successfully'));
           } catch (error) {
             handleError(error);
-
           }
         })
     )
     .addCommand(
       new Command('enable')
         .description('Enable translation cache')
-        .option('--max-size <size>', 'Maximum cache size (e.g., 100M, 1G, 500MB)')
+        .option(
+          '--max-size <size>',
+          'Maximum cache size (e.g., 100M, 1G, 500MB)'
+        )
         .action(async (options: { maxSize?: string }) => {
           try {
             let maxSizeBytes: number | undefined;
@@ -118,7 +146,10 @@ Examples:
             }
 
             const { CacheCommand } = await import('./cache.js');
-            const cacheCommand = new CacheCommand(await requireCacheService(), getConfigService());
+            const cacheCommand = new CacheCommand(
+              await requireCacheService(),
+              getConfigService()
+            );
             await cacheCommand.enable(maxSizeBytes);
             Logger.success(chalk.green('\u2713 Cache enabled'));
 
@@ -128,7 +159,6 @@ Examples:
             }
           } catch (error) {
             handleError(error);
-
           }
         })
     )
@@ -138,12 +168,14 @@ Examples:
         .action(async () => {
           try {
             const { CacheCommand } = await import('./cache.js');
-            const cacheCommand = new CacheCommand(await requireCacheService(), getConfigService());
+            const cacheCommand = new CacheCommand(
+              await requireCacheService(),
+              getConfigService()
+            );
             await cacheCommand.disable();
             Logger.success(chalk.green('\u2713 Cache disabled'));
           } catch (error) {
             handleError(error);
-
           }
         })
     );

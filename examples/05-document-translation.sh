@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 5: Document Translation
+# Document Translation
 # Demonstrates translating complete documents while preserving formatting
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 5: Document Translation ==="
+echo "=== DeepL CLI: Document Translation ==="
 echo
 
 # Check if API key is configured

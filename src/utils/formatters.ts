@@ -48,6 +48,19 @@ export interface WriteJsonOutput {
   language: string;
 }
 
+/**
+ * `write --alternatives` / `correct --alternatives` under `--format json`.
+ *
+ * `ok` marks it as a result rather than the `ok: false` error envelope, the same
+ * discrimination the `--check` payload offers. `WriteJsonOutput` predates the
+ * envelope and keeps its shape.
+ */
+export interface WriteAlternativesJsonOutput {
+  ok: true;
+  original: string;
+  alternatives: string[];
+}
+
 export interface MultiTranslateJsonOutput {
   translations: Array<{
     targetLang: Language;
@@ -87,14 +100,22 @@ export function formatTranslationJson(
  * Format multiple translation results as JSON
  */
 export function formatMultiTranslationJson(
-  results: Array<{ targetLang: Language; text: string; detectedSourceLang?: Language; billedCharacters?: number; modelTypeUsed?: string }>
+  results: Array<{
+    targetLang: Language;
+    text: string;
+    detectedSourceLang?: Language;
+    billedCharacters?: number;
+    modelTypeUsed?: string;
+  }>
 ): string {
   const output: MultiTranslateJsonOutput = {
-    translations: results.map(r => ({
+    translations: results.map((r) => ({
       targetLang: r.targetLang,
       text: r.text,
       detectedSourceLang: r.detectedSourceLang,
-      ...(r.billedCharacters !== undefined && { billedCharacters: r.billedCharacters }),
+      ...(r.billedCharacters !== undefined && {
+        billedCharacters: r.billedCharacters,
+      }),
       ...(r.modelTypeUsed && { modelTypeUsed: r.modelTypeUsed }),
     })),
   };
@@ -123,6 +144,22 @@ export function formatWriteJson(
 }
 
 /**
+ * Format every alternative the Write API offered as JSON
+ */
+export function formatWriteAlternativesJson(
+  original: string,
+  alternatives: string[]
+): string {
+  const output: WriteAlternativesJsonOutput = {
+    ok: true,
+    original,
+    alternatives,
+  };
+
+  return JSON.stringify(output, null, 2);
+}
+
+/**
  * Format multiple translation results as table
  */
 export function formatMultiTranslationTable(
@@ -133,22 +170,20 @@ export function formatMultiTranslationTable(
     billedCharacters?: number;
   }>
 ): string {
-  // Check if any result has billedCharacters - if so, show the Characters column
-  const showCharacters = results.some(r => r.billedCharacters !== undefined);
+  const showCharacters = results.some((r) => r.billedCharacters !== undefined);
   const colorDisabled = !isColorEnabled();
 
   const table = new Table({
-    head: showCharacters ? ['Language', 'Translation', 'Characters'] : ['Language', 'Translation'],
+    head: showCharacters
+      ? ['Language', 'Translation', 'Characters']
+      : ['Language', 'Translation'],
     colWidths: showCharacters ? [10, 60, 12] : [10, 70],
     wordWrap: true,
     ...(colorDisabled && { style: { head: [], border: [] } }),
   });
 
   results.forEach((result) => {
-    const row = [
-      result.targetLang.toUpperCase(),
-      result.text,
-    ];
+    const row = [result.targetLang, result.text];
 
     if (showCharacters) {
       row.push(result.billedCharacters?.toLocaleString() ?? 'N/A');

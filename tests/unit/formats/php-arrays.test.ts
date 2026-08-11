@@ -6,6 +6,7 @@ import {
   SKIP_REASON_PIPE_PLURALIZATION,
 } from '../../../src/formats/php-arrays';
 import { createDefaultRegistry } from '../../../src/formats/index';
+import { FormatKeyCollisionError } from '../../../src/formats/format';
 import { ValidationError } from '../../../src/utils/errors';
 import { Logger } from '../../../src/utils/logger';
 
@@ -14,7 +15,9 @@ const parser = new PhpArraysFormatParser();
 describe('PhpArraysFormatParser', () => {
   it('is registered in the default registry under laravel_php', async () => {
     const registry = await createDefaultRegistry();
-    expect(registry.getParserByFormatKey('laravel_php')?.name).toBe('Laravel PHP arrays');
+    expect(registry.getParserByFormatKey('laravel_php')?.name).toBe(
+      'Laravel PHP arrays'
+    );
     expect(registry.getSupportedExtensions()).toContain('.php');
   });
 
@@ -58,7 +61,9 @@ return [
 `;
       const entries = parser.extract(content);
       const map = Object.fromEntries(entries.map((e) => [e.key, e.value]));
-      expect(map['auth.failed']).toBe('These credentials do not match our records.');
+      expect(map['auth.failed']).toBe(
+        'These credentials do not match our records.'
+      );
       expect(map['auth.password']).toBe('The password is incorrect.');
       expect(map['welcome']).toBe('Welcome');
       expect(entries).toHaveLength(3);
@@ -84,7 +89,7 @@ return [
       expect(entries[0]?.value).toBe('Welcome :name, you have :count messages');
     });
 
-    it('decodes single-quoted escape sequences (\\\\\' and \\\\\\\\)', () => {
+    it("decodes single-quoted escape sequences (\\\\' and \\\\\\\\)", () => {
       const content = `<?php return ['msg' => 'It\\'s a back\\\\slash'];`;
       const entries = parser.extract(content);
       expect(entries[0]?.value).toBe("It's a back\\slash");
@@ -208,19 +213,29 @@ EOT
     });
 
     it('emits a Logger.warn naming the dot-path key when tagging', () => {
-      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+      const warnSpy = jest
+        .spyOn(Logger, 'warn')
+        .mockImplementation(() => undefined);
       try {
-        parser.extract(`<?php return ['nav' => ['items' => '{0}none|{1}one|[2,*]many']];`);
+        parser.extract(
+          `<?php return ['nav' => ['items' => '{0}none|{1}one|[2,*]many']];`
+        );
         expect(warnSpy).toHaveBeenCalledTimes(1);
-        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('nav.items'));
-        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('pipe-pluralization'));
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('nav.items')
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('pipe-pluralization')
+        );
       } finally {
         warnSpy.mockRestore();
       }
     });
 
     it('does not warn for plain translatable strings', () => {
-      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+      const warnSpy = jest
+        .spyOn(Logger, 'warn')
+        .mockImplementation(() => undefined);
       try {
         parser.extract(`<?php return ['hello' => 'Hello, world'];`);
         expect(warnSpy).not.toHaveBeenCalled();
@@ -258,7 +273,9 @@ EOT
       let deeper = `'x'`;
       for (let i = 0; i < 32; i++) deeper = `['k${i}' => ${deeper}]`;
       const tooDeep = `<?php return ['root' => ${deeper}];`;
-      expect(() => defaultParser.extract(tooDeep)).toThrow(PhpArraysCapExceededError);
+      expect(() => defaultParser.extract(tooDeep)).toThrow(
+        PhpArraysCapExceededError
+      );
     });
 
     it('cap-exceeded error names the dot-path where the limit was hit', () => {
@@ -356,16 +373,104 @@ return [
       const out = parser.reconstruct(content, [
         { key: 'b', value: 'two', translation: 'zwei' },
       ]);
-      expect(out).toBe(`<?php return ['a' => 'one', 'b' => 'zwei', 'c' => 'three'];`);
+      expect(out).toBe(
+        `<?php return ['a' => 'one', 'b' => 'zwei', 'c' => 'three'];`
+      );
     });
 
-    it('silently skips keys that are not present in the source (no insertion)', () => {
+    it('writes a key the file has no literal for, keeping the array on one line', () => {
       const content = `<?php return ['a' => 'one'];`;
       const out = parser.reconstruct(content, [
         { key: 'a', value: 'one', translation: 'uno' },
         { key: 'not_in_source', value: 'new', translation: 'nuevo' },
       ]);
+      expect(out).toBe(
+        `<?php return ['a' => 'uno', 'not_in_source' => 'nuevo'];`
+      );
+    });
+
+    it('leaves a nested key out when its parent array is absent', () => {
+      const content = `<?php return ['a' => 'one'];`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'missing.deep', value: 'new', translation: 'nuevo' },
+      ]);
       expect(out).toBe(`<?php return ['a' => 'uno'];`);
+    });
+
+    it('writes a new element into the nested array that owns it', () => {
+      const content = `<?php\n\nreturn [\n    'grp' => [\n        'a' => 'one',\n    ],\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'grp.a', value: 'one', translation: 'uno' },
+        { key: 'grp.b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn [\n    'grp' => [\n        'a' => 'uno',\n        'b' => 'dos',\n    ],\n];\n`
+      );
+    });
+
+    it('adds the separating comma when the last element has none', () => {
+      const content = `<?php\n\nreturn [\n    'a' => 'one'\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn [\n    'a' => 'uno',\n    'b' => 'dos'\n];\n`
+      );
+    });
+
+    it('writes a new element in the quote style of the one it follows', () => {
+      const content = `<?php\n\nreturn [\n    "a" => "one",\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn [\n    "a" => "uno",\n    "b" => "dos",\n];\n`
+      );
+    });
+
+    it('writes into an empty array literal', () => {
+      const out = parser.reconstruct(`<?php\n\nreturn [\n];\n`, [
+        { key: 'a', value: 'one', translation: 'uno' },
+      ]);
+      expect(out).toBe(`<?php\n\nreturn [\n    'a' => 'uno'\n];\n`);
+      expect(parser.extract(out).map((e) => e.key)).toEqual(['a']);
+    });
+
+    it('writes into a long-form array() literal', () => {
+      const content = `<?php\n\nreturn array(\n    'a' => 'one',\n);\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn array(\n    'a' => 'uno',\n    'b' => 'dos',\n);\n`
+      );
+    });
+
+    it('writes a new element at the indentation of the one it follows', () => {
+      const content = `<?php\n\nreturn [\n\t'a' => 'one',\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: 'dos' },
+      ]);
+      expect(out).toBe(
+        `<?php\n\nreturn [\n\t'a' => 'uno',\n\t'b' => 'dos',\n];\n`
+      );
+    });
+
+    it('escapes a written value the way an overwritten one is escaped', () => {
+      const content = `<?php\n\nreturn [\n    'a' => 'one',\n];\n`;
+      const out = parser.reconstruct(content, [
+        { key: 'a', value: 'one', translation: 'uno' },
+        { key: 'b', value: 'two', translation: "it's \\ here" },
+      ]);
+      expect(out).toContain(`'b' => 'it\\'s \\\\ here'`);
+      expect(
+        new Map(parser.extract(out).map((e) => [e.key, e.value])).get('b')
+      ).toBe("it's \\ here");
     });
 
     it('preserves comments, PHPDoc, trailing commas, and irregular whitespace', () => {
@@ -404,7 +509,9 @@ return [
         { key: 'a', value: 'one', translation: 'uno' },
         { key: 'b.c', value: 'two', translation: 'dos' },
       ]);
-      expect(out).toBe(`<?php return array('a' => 'uno', 'b' => array('c' => 'dos'));`);
+      expect(out).toBe(
+        `<?php return array('a' => 'uno', 'b' => array('c' => 'dos'));`
+      );
     });
 
     it('handles multiple replacements on the same line via descending-offset rewrite', () => {
@@ -425,7 +532,9 @@ return [
     ],
 ];
 `;
-      const entries = parser.extract(content).map((e) => ({ ...e, translation: e.value }));
+      const entries = parser
+        .extract(content)
+        .map((e) => ({ ...e, translation: e.value }));
       expect(parser.reconstruct(content, entries)).toBe(content);
     });
 
@@ -442,14 +551,16 @@ return [
       const out = parser.reconstruct(content, [
         { key: 'bye', value: 'さようなら', translation: 'Auf Wiedersehen' },
       ]);
-      expect(out).toBe(`<?php return ['hi' => '日本語', 'bye' => 'Auf Wiedersehen'];`);
+      expect(out).toBe(
+        `<?php return ['hi' => '日本語', 'bye' => 'Auf Wiedersehen'];`
+      );
     });
 
     it('throws ValidationError when the file has no return array', () => {
       expect(() =>
         parser.reconstruct(`<?php echo 'hi';`, [
           { key: 'x', value: 'x', translation: 'y' },
-        ]),
+        ])
       ).toThrow(ValidationError);
     });
   });
@@ -457,7 +568,7 @@ return [
   describe('15-fixture corpus', () => {
     const FIXTURES_DIR = path.resolve(
       __dirname,
-      '../../fixtures/sync/formats/laravel-php',
+      '../../fixtures/sync/formats/laravel-php'
     );
     const load = (name: string): string =>
       fs.readFileSync(path.join(FIXTURES_DIR, name), 'utf-8');
@@ -526,16 +637,13 @@ return [
         expect(keys).toEqual(['errors.required', 'welcome']);
       });
 
-      it('11: literal-dot key coexists with a nested `user.name` path', () => {
-        const entries = parser.extract(load('11-dot-key-vs-nested.php'));
-        const map = Object.fromEntries(entries.map((e) => [e.key, e.value]));
-        // Both keys exist and collide at the dot-path level — this is a
-        // known Laravel ambiguity. The extract faithfully surfaces both;
-        // downstream diff/translate logic is responsible for choosing a
-        // resolution strategy (currently last-write-wins via Map semantics).
-        expect(map['user.name']).toBeDefined();
-        expect(entries.some((e) => e.key === 'user.name' && e.value === 'Literal dot key')).toBe(true);
-        expect(entries.some((e) => e.key === 'user.name' && e.value === 'Nested under user.name')).toBe(true);
+      it('11: a literal-dot key colliding with a nested path is refused', () => {
+        // Both strings resolve to the key `user.name`, and reconstruct maps a
+        // key to one source offset, so the two replacements splice over each
+        // other: the emitted file no longer parses. Refusing beats rewriting.
+        expect(() => parser.extract(load('11-dot-key-vs-nested.php'))).toThrow(
+          FormatKeyCollisionError
+        );
       });
 
       it('12: `"\\$100"` and `"\\${currency}"` decode to literal `$`', () => {
@@ -558,7 +666,9 @@ return [
       });
 
       it('15: PHPDoc, block comments, and irregular whitespace produce normal extract', () => {
-        const entries = parser.extract(load('15-irregular-whitespace-and-comments.php'));
+        const entries = parser.extract(
+          load('15-irregular-whitespace-and-comments.php')
+        );
         const map = Object.fromEntries(entries.map((e) => [e.key, e.value]));
         expect(map['hello']).toBe('Hello');
         expect(map['bye']).toBe('Goodbye');
@@ -582,7 +692,7 @@ return [
       // because TranslatedEntry[] is keyed on the dot-path, so one location's
       // translation overwrites the other's. Covered separately below.
       const BYTE_EQUAL_FIXTURES = ACCEPT_FIXTURES.filter(
-        (n) => n !== '11-dot-key-vs-nested.php',
+        (n) => n !== '11-dot-key-vs-nested.php'
       );
       for (const name of BYTE_EQUAL_FIXTURES) {
         it(`reconstructs ${name} byte-identically`, () => {
@@ -620,25 +730,27 @@ return [
         // Irregular inner whitespace preserved around the rewritten key
         expect(out).toContain(`'hello'   =>   'Hallo',    // trailing`);
         // Everything besides the rewritten value stays identical
-        expect(out.length).toBe(content.length + ('Hallo'.length - 'Hello'.length));
+        expect(out.length).toBe(
+          content.length + ('Hallo'.length - 'Hello'.length)
+        );
       });
     });
   });
 
   describe('supply-chain + runtime safety', () => {
     const phpParserDir = path.dirname(
-      require.resolve('php-parser/package.json'),
+      require.resolve('php-parser/package.json')
     );
     const distBundle = fs.readFileSync(
       path.join(phpParserDir, 'dist', 'php-parser.js'),
-      'utf-8',
+      'utf-8'
     );
     const distMinBundle = fs.readFileSync(
       path.join(phpParserDir, 'dist', 'php-parser.min.js'),
-      'utf-8',
+      'utf-8'
     );
     const packageJson = JSON.parse(
-      fs.readFileSync(path.join(phpParserDir, 'package.json'), 'utf-8'),
+      fs.readFileSync(path.join(phpParserDir, 'package.json'), 'utf-8')
     ) as {
       dependencies?: Record<string, string>;
       scripts?: Record<string, string>;
@@ -673,10 +785,7 @@ return [
         `from "${CHILD_PROCESS_TOKEN}"`,
         new RegExp(`from\\s+["']${CHILD_PROCESS_TOKEN}["']`),
       ],
-      [
-        `from "${VM_TOKEN}"`,
-        new RegExp(`from\\s+["']${VM_TOKEN}["']`),
-      ],
+      [`from "${VM_TOKEN}"`, new RegExp(`from\\s+["']${VM_TOKEN}["']`)],
       [EVAL_TOKEN, new RegExp(`\\b${EVAL_TOKEN}\\s*\\(`)],
       [
         `new ${NEW_FUNCTION_TOKEN}(`,
@@ -716,7 +825,7 @@ return [
     it(`exercising extract and reconstruct does not load ${CHILD_PROCESS_TOKEN} or ${VM_TOKEN} into require.cache`, () => {
       const fresh = new PhpArraysFormatParser();
       fresh.extract(
-        `<?php return ['a' => 'Hello', 'nested' => ['b' => 'World']];`,
+        `<?php return ['a' => 'Hello', 'nested' => ['b' => 'World']];`
       );
       fresh.reconstruct(`<?php return ['a' => 'Hello'];`, [
         { key: 'a', value: 'Hello', translation: 'Hola' },
@@ -724,9 +833,11 @@ return [
 
       const cacheKeys = Object.keys(require.cache);
       const cpPattern = new RegExp(
-        `(?:^|[\\/\\\\])${CHILD_PROCESS_TOKEN}(?:[\\/\\\\.]|$)`,
+        `(?:^|[\\/\\\\])${CHILD_PROCESS_TOKEN}(?:[\\/\\\\.]|$)`
       );
-      const vmPattern = new RegExp(`(?:^|[\\/\\\\])${VM_TOKEN}(?:[\\/\\\\.]|$)`);
+      const vmPattern = new RegExp(
+        `(?:^|[\\/\\\\])${VM_TOKEN}(?:[\\/\\\\.]|$)`
+      );
       expect(cacheKeys.find((k) => cpPattern.test(k))).toBeUndefined();
       expect(cacheKeys.find((k) => vmPattern.test(k))).toBeUndefined();
     });

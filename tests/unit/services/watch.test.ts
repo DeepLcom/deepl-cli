@@ -3,12 +3,14 @@
  */
 
 import * as fs from 'fs';
+import { canonicalPathKey } from '../../../src/utils/paths';
 import * as path from 'path';
 import * as os from 'os';
 import * as chokidar from 'chokidar';
 import pLimit from 'p-limit';
 import { WatchService } from '../../../src/services/watch';
 import { FileTranslationService } from '../../../src/services/file-translation';
+import { Logger } from '../../../src/utils/logger';
 import { createMockFileTranslationService } from '../../helpers/mock-factories';
 
 // Mock chokidar
@@ -29,9 +31,10 @@ const mockWatcher = {
 };
 
 const getWatcherHandler = (event: string): ((...args: unknown[]) => void) =>
-  mockWatcher.on.mock.calls.find(call => call[0] === event)?.[1];
+  mockWatcher.on.mock.calls.find((call) => call[0] === event)?.[1];
 
-const flushPromises = () => new Promise<void>(resolve => process.nextTick(resolve));
+const flushPromises = () =>
+  new Promise<void>((resolve) => process.nextTick(resolve));
 
 describe('WatchService', () => {
   let watchService: WatchService;
@@ -149,10 +152,13 @@ describe('WatchService', () => {
       await watchService.watch(testDir, options);
 
       expect(watchService.isWatching()).toBe(true);
-      expect(chokidar.watch).toHaveBeenCalledWith(testDir, expect.objectContaining({
-        persistent: true,
-        ignoreInitial: true,
-      }));
+      expect(chokidar.watch).toHaveBeenCalledWith(
+        testDir,
+        expect.objectContaining({
+          persistent: true,
+          ignoreInitial: true,
+        })
+      );
     });
 
     it('should watch a single file', async () => {
@@ -327,7 +333,9 @@ describe('WatchService', () => {
       jest.advanceTimersByTime(350);
       await flushPromises();
 
-      expect(mockFileTranslationService.translateFileToMultiple).toHaveBeenCalled();
+      expect(
+        mockFileTranslationService.translateFileToMultiple
+      ).toHaveBeenCalled();
     });
   });
 
@@ -414,7 +422,9 @@ describe('WatchService', () => {
       await watchService.watch(testDir, options);
       await watchService.handleFileChange(testFile);
 
-      expect(onChange).toHaveBeenCalledWith(expect.stringContaining('test.txt'));
+      expect(onChange).toHaveBeenCalledWith(
+        expect.stringContaining('test.txt')
+      );
     });
 
     it('should call onTranslate callback after translation', async () => {
@@ -674,8 +684,8 @@ describe('WatchService', () => {
 
       // Test the ignored function
       const ignored = watchCall[1].ignored;
-      expect(ignored('/path/to/file.txt')).toBe(true);  // Should ignore .txt
-      expect(ignored('/path/to/file.md')).toBe(false);   // Should not ignore .md
+      expect(ignored('/path/to/file.txt')).toBe(true); // Should ignore .txt
+      expect(ignored('/path/to/file.md')).toBe(false); // Should not ignore .md
     });
 
     it('should not filter when no pattern is specified', async () => {
@@ -724,9 +734,9 @@ describe('WatchService', () => {
       const ignored = watchCall[1].ignored;
 
       // Should only match readme.md
-      expect(ignored('/path/to/readme.md')).toBe(false);   // Should NOT ignore readme.md
-      expect(ignored('/path/to/README.md')).toBe(true);    // Should ignore README.md (case sensitive)
-      expect(ignored('/path/to/other.md')).toBe(true);     // Should ignore other.md
+      expect(ignored('/path/to/readme.md')).toBe(false); // Should NOT ignore readme.md
+      expect(ignored('/path/to/README.md')).toBe(true); // Should ignore README.md (case sensitive)
+      expect(ignored('/path/to/other.md')).toBe(true); // Should ignore other.md
     });
 
     it('should handle prefix wildcard pattern (Issue #6)', async () => {
@@ -742,10 +752,10 @@ describe('WatchService', () => {
       const ignored = watchCall[1].ignored;
 
       // Should match files starting with "test"
-      expect(ignored('/path/to/test.txt')).toBe(false);     // Should NOT ignore test.txt
+      expect(ignored('/path/to/test.txt')).toBe(false); // Should NOT ignore test.txt
       expect(ignored('/path/to/test-file.md')).toBe(false); // Should NOT ignore test-file.md
-      expect(ignored('/path/to/testing.js')).toBe(false);   // Should NOT ignore testing.js
-      expect(ignored('/path/to/mytest.txt')).toBe(true);    // Should ignore mytest.txt
+      expect(ignored('/path/to/testing.js')).toBe(false); // Should NOT ignore testing.js
+      expect(ignored('/path/to/mytest.txt')).toBe(true); // Should ignore mytest.txt
     });
 
     it('should handle complex glob patterns (Issue #6)', async () => {
@@ -761,9 +771,9 @@ describe('WatchService', () => {
       const ignored = watchCall[1].ignored;
 
       // Should match .md or .txt files
-      expect(ignored('/path/to/file.md')).toBe(false);  // Should NOT ignore .md
+      expect(ignored('/path/to/file.md')).toBe(false); // Should NOT ignore .md
       expect(ignored('/path/to/file.txt')).toBe(false); // Should NOT ignore .txt
-      expect(ignored('/path/to/file.js')).toBe(true);   // Should ignore .js
+      expect(ignored('/path/to/file.js')).toBe(true); // Should ignore .js
     });
 
     it('should handle case-insensitive patterns (Issue #6)', async () => {
@@ -779,8 +789,8 @@ describe('WatchService', () => {
       const ignored = watchCall[1].ignored;
 
       // Should match README.md exactly (case-sensitive by default)
-      expect(ignored('/path/to/README.md')).toBe(false);  // Should NOT ignore README.md
-      expect(ignored('/path/to/readme.md')).toBe(true);   // Should ignore readme.md
+      expect(ignored('/path/to/README.md')).toBe(false); // Should NOT ignore README.md
+      expect(ignored('/path/to/readme.md')).toBe(true); // Should ignore readme.md
     });
   });
 
@@ -895,7 +905,7 @@ describe('WatchService', () => {
 
       // Get the 'change' event handler
       const changeHandler = mockWatcher.on.mock.calls.find(
-        call => call[0] === 'change'
+        (call) => call[0] === 'change'
       )?.[1];
 
       expect(changeHandler).toBeDefined();
@@ -927,7 +937,7 @@ describe('WatchService', () => {
 
       // Get the 'add' event handler
       const addHandler = mockWatcher.on.mock.calls.find(
-        call => call[0] === 'add'
+        (call) => call[0] === 'add'
       )?.[1];
 
       expect(addHandler).toBeDefined();
@@ -949,11 +959,20 @@ describe('WatchService', () => {
       fs.writeFileSync(testFile, 'Hello');
 
       // Don't start watch, just call handleFileChange
-      expect(() => watchService.handleFileChange(testFile)).toThrow('Watch not started');
+      expect(() => watchService.handleFileChange(testFile)).toThrow(
+        'Watch not started'
+      );
     });
   });
 
   describe('stagedFiles filtering', () => {
+    // The staged set holds the same comparison keys the watcher computes for an
+    // incoming change, so it is built with the same function rather than a
+    // hand-rolled copy of it — a copy is exactly what let a change to the key
+    // format go unnoticed here.
+    const stagedEntry = (filePath: string): string =>
+      canonicalPathKey(filePath);
+
     it('should skip files not in stagedFiles set', async () => {
       const testFile = path.join(testDir, 'unstaged.txt');
       fs.writeFileSync(testFile, 'Hello');
@@ -980,7 +999,7 @@ describe('WatchService', () => {
       fs.writeFileSync(testFile, 'Hello');
 
       const stagedService = new WatchService(mockFileTranslationService, {
-        stagedFiles: new Set([path.resolve(testFile)]),
+        stagedFiles: new Set([stagedEntry(testFile)]),
       });
 
       const onChange = jest.fn();
@@ -1002,7 +1021,7 @@ describe('WatchService', () => {
 
       // File is staged but doesn't match pattern *.md
       const stagedService = new WatchService(mockFileTranslationService, {
-        stagedFiles: new Set([path.resolve(testFile)]),
+        stagedFiles: new Set([stagedEntry(testFile)]),
         pattern: '*.md',
       });
 
@@ -1022,6 +1041,81 @@ describe('WatchService', () => {
       expect(onChange).toHaveBeenCalledWith(testFile);
     });
 
+    it('should process a staged file whose path reaches it through a symlinked ancestor', () => {
+      // git names its files under the repository's real path; chokidar reports
+      // whatever spelling the session was started with.
+      const realDir = fs.realpathSync(testDir);
+      const workDir = path.join(realDir, 'work');
+      fs.mkdirSync(workDir);
+      const linkDir = path.join(realDir, 'link');
+      fs.symlinkSync(workDir, linkDir);
+      fs.writeFileSync(path.join(workDir, 'staged.txt'), 'Hello');
+
+      const stagedService = new WatchService(mockFileTranslationService, {
+        stagedFiles: new Set([stagedEntry(path.join(workDir, 'staged.txt'))]),
+      });
+
+      const onChange = jest.fn();
+      const watchedFile = path.join(linkDir, 'staged.txt');
+      stagedService.watch(linkDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      });
+      stagedService.handleFileChange(watchedFile);
+
+      expect(onChange).toHaveBeenCalledWith(watchedFile);
+    });
+
+    it('should still skip an unstaged file reached through a symlinked ancestor', () => {
+      const realDir = fs.realpathSync(testDir);
+      const workDir = path.join(realDir, 'work');
+      fs.mkdirSync(workDir);
+      const linkDir = path.join(realDir, 'link');
+      fs.symlinkSync(workDir, linkDir);
+      fs.writeFileSync(path.join(workDir, 'unstaged.txt'), 'Hello');
+
+      const stagedService = new WatchService(mockFileTranslationService, {
+        stagedFiles: new Set([stagedEntry(path.join(workDir, 'staged.txt'))]),
+      });
+
+      const onChange = jest.fn();
+      stagedService.watch(linkDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      });
+      stagedService.handleFileChange(path.join(linkDir, 'unstaged.txt'));
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('should process a staged file that is itself a symlink to a file outside the tree', () => {
+      // git stages the link, not its target, so the comparison must leave the
+      // final path component alone.
+      const realDir = fs.realpathSync(testDir);
+      const workDir = path.join(realDir, 'work');
+      fs.mkdirSync(workDir);
+      const outside = path.join(realDir, 'outside.txt');
+      fs.writeFileSync(outside, 'Hello');
+      const linkedFile = path.join(workDir, 'linked.txt');
+      fs.symlinkSync(outside, linkedFile);
+
+      const stagedService = new WatchService(mockFileTranslationService, {
+        stagedFiles: new Set([stagedEntry(linkedFile)]),
+      });
+
+      const onChange = jest.fn();
+      stagedService.watch(workDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      });
+      stagedService.handleFileChange(linkedFile);
+
+      expect(onChange).toHaveBeenCalledWith(linkedFile);
+    });
+
     it('should not filter when stagedFiles is undefined', async () => {
       const testFile = path.join(testDir, 'any.txt');
       fs.writeFileSync(testFile, 'Hello');
@@ -1037,6 +1131,44 @@ describe('WatchService', () => {
       watchService.handleFileChange(testFile);
 
       expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+  });
+
+  describe('atomic-write temp files', () => {
+    it('says nothing about the temp file it is writing through', () => {
+      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      const outputDir = path.join(testDir, 'output');
+      fs.mkdirSync(outputDir, { recursive: true });
+
+      const onChange = jest.fn();
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir,
+        onChange,
+      });
+      // The shape atomicWriteFile writes through: <target>.tmp.<pid>.<rand>
+      watchService.handleFileChange(
+        path.join(outputDir, 'doc.es.md.tmp.4242.a1b2c3')
+      );
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('still says why it skips a real output-looking file', () => {
+      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      const outputDir = path.join(testDir, 'output');
+      fs.mkdirSync(outputDir, { recursive: true });
+
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir,
+      });
+      watchService.handleFileChange(path.join(outputDir, 'doc.es.md'));
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      warnSpy.mockRestore();
     });
   });
 
@@ -1150,6 +1282,76 @@ describe('WatchService', () => {
       expect(onChange).toHaveBeenCalledWith(testFile);
     });
 
+    it('should translate a source file named like an output file when it is outside the output directory', async () => {
+      const testFile = path.join(testDir, 'pricing.es.md');
+      fs.writeFileSync(testFile, 'Precios');
+
+      const onChange = jest.fn();
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onChange,
+      });
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).toHaveBeenCalledWith(testFile);
+    });
+
+    it('should still ignore an output-named file inside the output directory', async () => {
+      const outputDir = path.join(testDir, 'output');
+      fs.mkdirSync(outputDir, { recursive: true });
+      const testFile = path.join(outputDir, 'pricing.es.md');
+      fs.writeFileSync(testFile, 'Precios');
+
+      const onChange = jest.fn();
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir,
+        onChange,
+      });
+      watchService.handleFileChange(testFile);
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('should warn once per file when it skips a file it did not write', async () => {
+      const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      const testFile = path.join(testDir, 'pricing.es.md');
+      fs.writeFileSync(testFile, 'Precios');
+
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: testDir,
+      });
+      watchService.handleFileChange(testFile);
+      watchService.handleFileChange(testFile);
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]!.join(' ')).toContain('pricing.es.md');
+    });
+
+    it('should not warn about an output file it wrote itself', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick'] });
+      const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      const testFile = path.join(testDir, 'doc.md');
+      fs.writeFileSync(testFile, 'Hello');
+
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      watchService.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: testDir,
+      });
+      watchService.handleFileChange(testFile);
+      jest.advanceTimersByTime(350);
+      await flushPromises();
+
+      watchService.handleFileChange(path.join(testDir, 'doc.es.md'));
+
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
+      expect(warn).not.toHaveBeenCalled();
+    });
+
     it('should ignore output files case-insensitively for language codes', async () => {
       const testFile = path.join(testDir, 'test.ES.txt');
       fs.writeFileSync(testFile, 'Hola');
@@ -1214,7 +1416,9 @@ describe('WatchService', () => {
 
       // Try to trigger file change after stop
       // Should not throw, but also should not schedule translation
-      expect(() => watchService.handleFileChange(testFile)).toThrow('Watch not started');
+      expect(() => watchService.handleFileChange(testFile)).toThrow(
+        'Watch not started'
+      );
     });
 
     it('should handle rapid start/stop cycles without orphaned timers', async () => {
@@ -1390,7 +1594,9 @@ describe('WatchService', () => {
       fs.writeFileSync(testFile, 'Hello');
 
       const translationError = new Error('Network timeout');
-      mockFileTranslationService.translateFile.mockRejectedValue(translationError);
+      mockFileTranslationService.translateFile.mockRejectedValue(
+        translationError
+      );
 
       const options = {
         targetLangs: ['es' as const],
@@ -1513,6 +1719,447 @@ describe('WatchService', () => {
 
       expect(limitFn).toHaveBeenCalledTimes(1);
       expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('per-path serialization', () => {
+    const DEBOUNCE_MS = 5;
+    const tick = (ms: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, ms));
+    const afterDebounce = () => tick(DEBOUNCE_MS * 4);
+
+    /**
+     * translateFile stub whose calls are resolved by the test, recording the
+     * highest number ever in flight for a single path.
+     */
+    const makeGatedService = () => {
+      const pending: Array<{ filePath: string; release: () => void }> = [];
+      const active = new Map<string, number>();
+      let maxActivePerPath = 0;
+      const impl = (filePath: string) => {
+        const next = (active.get(filePath) ?? 0) + 1;
+        active.set(filePath, next);
+        maxActivePerPath = Math.max(maxActivePerPath, next);
+        return new Promise<void>((resolve) => {
+          pending.push({
+            filePath,
+            release: () => {
+              active.set(filePath, (active.get(filePath) ?? 1) - 1);
+              resolve();
+            },
+          });
+        });
+      };
+      return { pending, impl, max: () => maxActivePerPath };
+    };
+
+    it('never runs two translations of the same file at once', async () => {
+      const gate = makeGatedService();
+      mockFileTranslationService.translateFile.mockImplementation(gate.impl);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      service.handleFileChange(testFile);
+      await afterDebounce();
+      expect(gate.pending).toHaveLength(1);
+
+      // A second edit lands while the first translation is still in flight.
+      service.handleFileChange(testFile);
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(1);
+      expect(gate.max()).toBe(1);
+
+      gate.pending[0]!.release();
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(2);
+      expect(gate.max()).toBe(1);
+      gate.pending[1]!.release();
+      await afterDebounce();
+      await service.stop();
+    });
+
+    it('coalesces an edit storm during one translation into a single re-run', async () => {
+      const gate = makeGatedService();
+      mockFileTranslationService.translateFile.mockImplementation(gate.impl);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      service.handleFileChange(testFile);
+      await afterDebounce();
+
+      for (let i = 0; i < 4; i++) {
+        service.handleFileChange(testFile);
+        await afterDebounce();
+      }
+
+      expect(gate.pending).toHaveLength(1);
+      gate.pending[0]!.release();
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(2);
+      gate.pending[1]!.release();
+      await afterDebounce();
+      expect(gate.pending).toHaveLength(2);
+      await service.stop();
+    });
+
+    it('still translates two different files concurrently', async () => {
+      const gate = makeGatedService();
+      mockFileTranslationService.translateFile.mockImplementation(gate.impl);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const fileA = path.join(testDir, 'a.txt');
+      const fileB = path.join(testDir, 'b.txt');
+      fs.writeFileSync(fileA, 'a');
+      fs.writeFileSync(fileB, 'b');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      service.handleFileChange(fileA);
+      service.handleFileChange(fileB);
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(2);
+      expect(gate.max()).toBe(1);
+      gate.pending[0]!.release();
+      gate.pending[1]!.release();
+      await afterDebounce();
+      await service.stop();
+    });
+
+    it('runs the coalesced re-run even when the first translation fails', async () => {
+      const onError = jest.fn();
+      const events: string[] = [];
+      let call = 0;
+      let releaseFirst: (() => void) | undefined;
+      mockFileTranslationService.translateFile.mockImplementation(() => {
+        call++;
+        events.push(`start${call}`);
+        if (call === 1) {
+          return new Promise<void>((_resolve, reject) => {
+            releaseFirst = () => {
+              events.push('fail1');
+              reject(new Error('boom'));
+            };
+          });
+        }
+        return Promise.resolve();
+      });
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onError,
+      });
+
+      service.handleFileChange(testFile);
+      await afterDebounce();
+      service.handleFileChange(testFile);
+      await afterDebounce();
+
+      releaseFirst!();
+      await afterDebounce();
+
+      expect(events).toEqual(['start1', 'fail1', 'start2']);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(2);
+      expect(service.getStats().errorsCount).toBe(1);
+      await service.stop();
+    });
+
+    it('drops a coalesced re-run when stop() is called first', async () => {
+      const gate = makeGatedService();
+      mockFileTranslationService.translateFile.mockImplementation(gate.impl);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+      });
+
+      service.handleFileChange(testFile);
+      await afterDebounce();
+      service.handleFileChange(testFile);
+      await afterDebounce();
+
+      await service.stop();
+      gate.pending[0]!.release();
+      await afterDebounce();
+
+      expect(gate.pending).toHaveLength(1);
+    });
+  });
+
+  describe('onTranslate completion', () => {
+    const DEBOUNCE_MS = 5;
+    const settle = () =>
+      new Promise<void>((resolve) => setTimeout(resolve, DEBOUNCE_MS * 4));
+
+    it('waits for an async onTranslate before the path is free again', async () => {
+      let releaseNotify: (() => void) | undefined;
+      const onTranslate = jest.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseNotify = resolve;
+          })
+      );
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onTranslate,
+      });
+
+      service.handleFileChange(testFile);
+      await settle();
+      expect(onTranslate).toHaveBeenCalledTimes(1);
+
+      service.handleFileChange(testFile);
+      await settle();
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(1);
+
+      releaseNotify!();
+      await settle();
+      expect(mockFileTranslationService.translateFile).toHaveBeenCalledTimes(2);
+      await service.stop();
+    });
+
+    it('reports a rejected onTranslate through onError', async () => {
+      const onError = jest.fn();
+      const onTranslate = jest.fn(() =>
+        Promise.reject(new Error('commit failed'))
+      );
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const],
+        outputDir: path.join(testDir, 'output'),
+        onTranslate,
+        onError,
+      });
+
+      service.handleFileChange(testFile);
+      await settle();
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0]![1]).toEqual(
+        expect.objectContaining({ message: 'commit failed' })
+      );
+      expect(service.getStats().errorsCount).toBe(1);
+      await service.stop();
+    });
+
+    it('waits for an async onTranslate on the multiple-target path', async () => {
+      let releaseNotify: (() => void) | undefined;
+      const onTranslate = jest.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseNotify = resolve;
+          })
+      );
+      mockFileTranslationService.translateFileToMultiple.mockResolvedValue([
+        { targetLang: 'es', text: 'Hola', outputPath: '/out/doc.es.txt' },
+        { targetLang: 'fr', text: 'Bonjour', outputPath: '/out/doc.fr.txt' },
+      ]);
+
+      const service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      const testFile = path.join(testDir, 'doc.txt');
+      fs.writeFileSync(testFile, 'v1');
+
+      service.watch(testDir, {
+        targetLangs: ['es' as const, 'fr' as const],
+        outputDir: path.join(testDir, 'output'),
+        onTranslate,
+      });
+
+      service.handleFileChange(testFile);
+      await settle();
+      service.handleFileChange(testFile);
+      await settle();
+
+      expect(
+        mockFileTranslationService.translateFileToMultiple
+      ).toHaveBeenCalledTimes(1);
+
+      releaseNotify!();
+      await settle();
+      expect(
+        mockFileTranslationService.translateFileToMultiple
+      ).toHaveBeenCalledTimes(2);
+      await service.stop();
+    });
+  });
+
+  describe('output layout', () => {
+    const DEBOUNCE_MS = 5;
+    const settle = () =>
+      new Promise<void>((resolve) => setTimeout(resolve, DEBOUNCE_MS * 4));
+
+    let outputDir: string;
+    let service: WatchService;
+
+    beforeEach(() => {
+      outputDir = path.join(testDir, 'out');
+      fs.mkdirSync(outputDir, { recursive: true });
+      service = new WatchService(mockFileTranslationService, {
+        debounceMs: DEBOUNCE_MS,
+      });
+      mockFileTranslationService.translateFile.mockResolvedValue(undefined);
+      mockFileTranslationService.translateFileToMultiple.mockResolvedValue([]);
+    });
+
+    afterEach(async () => {
+      await service.stop();
+    });
+
+    const outputPathsOf = (): string[] =>
+      mockFileTranslationService.translateFile.mock.calls.map(
+        (call) => call[1]
+      );
+
+    it('gives two sources sharing a basename two different output paths', async () => {
+      const a = path.join(testDir, 'a', 'doc.md');
+      const b = path.join(testDir, 'b', 'doc.md');
+      fs.mkdirSync(path.dirname(a), { recursive: true });
+      fs.mkdirSync(path.dirname(b), { recursive: true });
+      fs.writeFileSync(a, 'Hello');
+      fs.writeFileSync(b, 'Good morning');
+
+      service.watch(testDir, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(a);
+      service.handleFileChange(b);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([
+        path.join(outputDir, 'a', 'doc.es.md'),
+        path.join(outputDir, 'b', 'doc.es.md'),
+      ]);
+    });
+
+    it('gives the multiple-target path a per-source output directory', async () => {
+      const a = path.join(testDir, 'a', 'doc.md');
+      fs.mkdirSync(path.dirname(a), { recursive: true });
+      fs.writeFileSync(a, 'Hello');
+
+      service.watch(testDir, { targetLangs: ['es', 'fr'], outputDir });
+      service.handleFileChange(a);
+      await settle();
+
+      expect(
+        mockFileTranslationService.translateFileToMultiple
+      ).toHaveBeenCalledWith(
+        a,
+        ['es', 'fr'],
+        expect.objectContaining({ outputDir: path.join(outputDir, 'a') })
+      );
+    });
+
+    it('leaves a source at the top of the watched directory flat', async () => {
+      const doc = path.join(testDir, 'doc.md');
+      fs.writeFileSync(doc, 'Hello');
+
+      service.watch(testDir, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(doc);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([path.join(outputDir, 'doc.es.md')]);
+    });
+
+    it('mirrors each nested source directory even when the basenames differ', async () => {
+      const a = path.join(testDir, 'a', 'one.md');
+      const b = path.join(testDir, 'b', 'two.md');
+      fs.mkdirSync(path.dirname(a), { recursive: true });
+      fs.mkdirSync(path.dirname(b), { recursive: true });
+      fs.writeFileSync(a, 'Hello');
+      fs.writeFileSync(b, 'Good morning');
+
+      service.watch(testDir, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(a);
+      service.handleFileChange(b);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([
+        path.join(outputDir, 'a', 'one.es.md'),
+        path.join(outputDir, 'b', 'two.es.md'),
+      ]);
+    });
+
+    it('leaves the output flat when the watched path is a single file', async () => {
+      const doc = path.join(testDir, 'a', 'doc.md');
+      fs.mkdirSync(path.dirname(doc), { recursive: true });
+      fs.writeFileSync(doc, 'Hello');
+
+      service.watch(doc, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(doc);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([path.join(outputDir, 'doc.es.md')]);
+    });
+
+    it('leaves the output flat for a path outside the watched root', async () => {
+      const outside = path.join(testDir, 'outside');
+      const doc = path.join(outside, 'doc.md');
+      const watched = path.join(testDir, 'watched');
+      fs.mkdirSync(outside, { recursive: true });
+      fs.mkdirSync(watched, { recursive: true });
+      fs.writeFileSync(doc, 'Hello');
+
+      service.watch(watched, { targetLangs: ['es'], outputDir });
+      service.handleFileChange(doc);
+      await settle();
+
+      expect(outputPathsOf()).toEqual([path.join(outputDir, 'doc.es.md')]);
     });
   });
 });

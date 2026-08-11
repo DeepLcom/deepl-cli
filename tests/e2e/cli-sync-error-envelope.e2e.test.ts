@@ -1,7 +1,9 @@
 /**
  * E2E tests for the shared JSON error envelope across every `deepl sync`
  * subcommand. When --format json is set and a command fails, every
- * subcommand must emit the canonical envelope to stderr:
+ * subcommand must emit the canonical envelope to stdout — the envelope is
+ * the command's result in the failure case, and stdout is the one stream
+ * warnings and runtime diagnostics never share:
  *
  *   { ok: false, error: { code, message, suggestion? }, exitCode }
  *
@@ -38,10 +40,16 @@ describe('CLI sync --format json error envelope', () => {
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
     };
-    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(configDir, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
   }
 
-  function writeSyncConfig(projectDir: string, opts?: { enableTms?: boolean }): void {
+  function writeSyncConfig(
+    projectDir: string,
+    opts?: { enableTms?: boolean }
+  ): void {
     const yaml: string[] = [
       'version: 1',
       'source_locale: en',
@@ -60,7 +68,10 @@ describe('CLI sync --format json error envelope', () => {
       yaml.push('  auth: "api_key_env"');
       yaml.push('  api_key_env: "TMS_API_KEY"');
     }
-    fs.writeFileSync(path.join(projectDir, '.deepl-sync.yaml'), yaml.join('\n') + '\n');
+    fs.writeFileSync(
+      path.join(projectDir, '.deepl-sync.yaml'),
+      yaml.join('\n') + '\n'
+    );
   }
 
   function writeSourceFile(projectDir: string): void {
@@ -68,11 +79,13 @@ describe('CLI sync --format json error envelope', () => {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
       path.join(dir, 'en.json'),
-      JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n',
+      JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n'
     );
   }
 
-  function buildEnv(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+  function buildEnv(
+    extra: Record<string, string | undefined> = {}
+  ): NodeJS.ProcessEnv {
     return {
       ...process.env,
       DEEPL_CONFIG_DIR: testConfig.path,
@@ -87,14 +100,21 @@ describe('CLI sync --format json error envelope', () => {
     stderr: string;
   }
 
-  function runCli(args: string[], env: Record<string, string | undefined> = {}): Run {
-    const result: SpawnSyncReturns<string> = spawnSync('node', [CLI_PATH, ...args], {
-      encoding: 'utf-8',
-      cwd: testFiles.path,
-      env: buildEnv(env),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 15000,
-    });
+  function runCli(
+    args: string[],
+    env: Record<string, string | undefined> = {}
+  ): Run {
+    const result: SpawnSyncReturns<string> = spawnSync(
+      'node',
+      [CLI_PATH, ...args],
+      {
+        encoding: 'utf-8',
+        cwd: testFiles.path,
+        env: buildEnv(env),
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 15000,
+      }
+    );
     return {
       status: result.status ?? 1,
       stdout: result.stdout ?? '',
@@ -108,7 +128,8 @@ describe('CLI sync --format json error envelope', () => {
 
   beforeEach(() => {
     const localesDir = path.join(testFiles.path, 'locales');
-    if (fs.existsSync(localesDir)) fs.rmSync(localesDir, { recursive: true, force: true });
+    if (fs.existsSync(localesDir))
+      fs.rmSync(localesDir, { recursive: true, force: true });
     const lock = path.join(testFiles.path, '.deepl-sync.lock');
     if (fs.existsSync(lock)) fs.unlinkSync(lock);
     const syncCfg = path.join(testFiles.path, '.deepl-sync.yaml');
@@ -127,7 +148,7 @@ describe('CLI sync --format json error envelope', () => {
       it(`deepl sync ${sub} --format json → envelope ConfigError/7`, () => {
         const run = runCli(['sync', sub, '--format', 'json']);
         expect(run.status).toBe(7);
-        assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+        assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       });
     }
   });
@@ -139,7 +160,7 @@ describe('CLI sync --format json error envelope', () => {
 
       const run = runCli(['sync', 'push', '--format', 'json']);
       expect(run.status).toBe(7);
-      const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       expect(envelope.error.message).toMatch(/TMS integration not configured/);
       expect(envelope.error.suggestion).toMatch(/tms:/);
     });
@@ -150,16 +171,23 @@ describe('CLI sync --format json error envelope', () => {
 
       const run = runCli(['sync', 'pull', '--format', 'json']);
       expect(run.status).toBe(7);
-      assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      assertErrorEnvelope(run.stdout, 'ConfigError', 7);
     });
   });
 
   describe('init envelope on non-TTY without all four flags (ValidationError, exit 6)', () => {
     it('deepl sync init --format json → envelope ValidationError/6', () => {
       writeSourceFile(testFiles.path);
-      const run = runCli(['sync', 'init', '--format', 'json', '--source-locale', 'en']);
+      const run = runCli([
+        'sync',
+        'init',
+        '--format',
+        'json',
+        '--source-locale',
+        'en',
+      ]);
       expect(run.status).toBe(6);
-      const envelope = assertErrorEnvelope(run.stderr, 'ValidationError', 6);
+      const envelope = assertErrorEnvelope(run.stdout, 'ValidationError', 6);
       expect(envelope.error.message).toMatch(/All four flags/);
     });
   });
@@ -171,11 +199,16 @@ describe('CLI sync --format json error envelope', () => {
       const run = runCli([
         'sync',
         'init',
-        '--format', 'json',
-        '--source-locale', 'en',
-        '--target-locales', 'de,fr',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--format',
+        'json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de,fr',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ]);
 
       expect(run.status).toBe(0);
@@ -195,15 +228,20 @@ describe('CLI sync --format json error envelope', () => {
       const run = runCli([
         'sync',
         'init',
-        '--format', 'json',
-        '--source-locale', 'en',
-        '--target-locales', 'de',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--format',
+        'json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ]);
 
       expect(run.status).toBe(7);
-      const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       expect(envelope.error.message).toMatch(/already exists/);
     });
   });
@@ -232,11 +270,14 @@ describe('CLI sync --format json error envelope', () => {
         '  "stats": { "total_keys": 1, "total_translations": 1, "last_sync": "2026-04-20T12:00:00Z" }',
         '}',
       ].join('\n');
-      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.lock'), conflictedLock);
+      fs.writeFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        conflictedLock
+      );
 
       const run = runCli(['sync', 'resolve', '--format', 'json']);
       expect(run.status).toBe(11);
-      const envelope = assertErrorEnvelope(run.stderr, 'SyncConflict', 11);
+      const envelope = assertErrorEnvelope(run.stdout, 'SyncConflict', 11);
       expect(envelope.error.suggestion).toMatch(/conflict markers manually/);
     });
   });
@@ -248,9 +289,28 @@ describe('CLI sync --format json error envelope', () => {
     it('ConfigError envelope does not contain raw control chars in message', () => {
       const run = runCli(['sync', 'export', '--format', 'json']);
       expect(run.status).toBe(7);
-      const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+      const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
       // eslint-disable-next-line no-control-regex -- intentional: assert sanitation
       expect(envelope.error.message).not.toMatch(/[\u0000-\u001F]/);
+    });
+  });
+
+  describe('a warning on stderr cannot break a consumer parsing the envelope', () => {
+    it('emits the envelope as the whole of stdout while the CLI warns on stderr', () => {
+      // A world-readable config file makes the CLI itself write a warning to
+      // stderr before anything else runs -- the same stream pollution as a
+      // Node runtime ExperimentalWarning, produced without shimming node.
+      const configPath = path.join(testConfig.path, 'config.json');
+      fs.chmodSync(configPath, 0o644);
+
+      const run = runCli(['sync', 'validate', '--format', 'json']);
+
+      expect(run.status).toBe(7);
+      expect(run.stderr).toContain('Warning');
+      // The whole stream parses -- no trailing-line extraction required.
+      const envelope = JSON.parse(run.stdout) as { ok: boolean };
+      expect(envelope.ok).toBe(false);
+      assertErrorEnvelope(run.stdout, 'ConfigError', 7);
     });
   });
 });

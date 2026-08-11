@@ -1,6 +1,8 @@
 /**
  * Integration Tests for Structured File (JSON/YAML) Translation
- * Tests both CLI argument validation (via subprocess) and service-level integration (in-process)
+ * Drives FileTranslationService in-process against nock. CLI argument
+ * validation and the exit codes of the built binary live in
+ * tests/e2e/cli-structured-file.e2e.test.ts.
  */
 
 import * as fs from 'fs';
@@ -11,21 +13,28 @@ import { FileTranslationService } from '../../src/services/file-translation';
 import { DeepLClient } from '../../src/api/deepl-client';
 import { ConfigService } from '../../src/storage/config';
 import { CacheService } from '../../src/storage/cache';
-import { createTestConfigDir, createTestDir, makeRunCLI, DEEPL_FREE_API_URL } from '../helpers';
+import {
+  createTestConfigDir,
+  createTestDir,
+  DEEPL_FREE_API_URL,
+} from '../helpers';
 
-describe('Structured File Translation CLI Integration', () => {
+describe('Structured File Translation service integration', () => {
   const testConfig = createTestConfigDir('test-structured');
   const testFiles = createTestDir('structured-files');
   const testDir = testFiles.path;
-  const { runCLI } = makeRunCLI(testConfig.path, { apiKey: 'test-api-key-123' });
-
   beforeAll(() => {
     fs.writeFileSync(
       path.join(testConfig.path, 'config.json'),
       JSON.stringify({
         auth: { apiKey: 'test-api-key-123' },
         api: { baseUrl: 'https://api-free.deepl.com/v2', usePro: false },
-        defaults: { sourceLang: undefined, targetLangs: [], formality: 'default', preserveFormatting: true },
+        defaults: {
+          sourceLang: undefined,
+          targetLangs: [],
+          formality: 'default',
+          preserveFormatting: true,
+        },
         cache: { enabled: false, maxSize: 1073741824, ttl: 2592000 },
       })
     );
@@ -41,99 +50,6 @@ describe('Structured File Translation CLI Integration', () => {
     nock.cleanAll();
   });
 
-  describe('CLI argument validation', () => {
-    it('should accept JSON file with --to and --output flags', () => {
-      const testFile = path.join(testDir, 'validation.json');
-      fs.writeFileSync(testFile, JSON.stringify({ key: 'test' }, null, 2));
-
-      expect.assertions(1);
-      try {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.json`);
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        // Should fail on API auth, not argument validation or file type
-        expect(output).not.toMatch(/Unsupported file type/i);
-      }
-    });
-
-    it('should accept YAML file with --to and --output flags', () => {
-      expect.assertions(1);
-      const testFile = path.join(testDir, 'validation.yaml');
-      fs.writeFileSync(testFile, 'key: test\n');
-
-      expect.assertions(1);
-      try {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.yaml`);
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/Unsupported file type/i);
-      }
-    });
-
-    it('should accept .yml file with --to and --output flags', () => {
-      expect.assertions(1);
-      const testFile = path.join(testDir, 'validation.yml');
-      fs.writeFileSync(testFile, 'key: test\n');
-
-      expect.assertions(1);
-      try {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.yml`);
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/Unsupported file type/i);
-      }
-    });
-
-    it('should validate target language for structured files', () => {
-      const testFile = path.join(testDir, 'lang-val.json');
-      fs.writeFileSync(testFile, JSON.stringify({ key: 'test' }, null, 2));
-
-      expect(() => {
-        runCLI(`deepl translate "${testFile}" --to INVALID --output /tmp/out.json`);
-      }).toThrow();
-    });
-
-    it('should require --output flag for structured file translation', () => {
-      const testFile = path.join(testDir, 'no-output.json');
-      fs.writeFileSync(testFile, JSON.stringify({ key: 'test' }, null, 2));
-
-      expect(() => {
-        runCLI(`deepl translate "${testFile}" --to es`);
-      }).toThrow();
-    });
-
-    it('should handle empty JSON object without API call', () => {
-      const inputPath = path.join(testDir, 'empty.json');
-      const outputPath = path.join(testDir, 'empty-es.json');
-
-      fs.writeFileSync(inputPath, '{}');
-
-      const output = runCLI(`deepl translate "${inputPath}" --to es --output "${outputPath}"`);
-      expect(output).toContain('Translated');
-
-      const result = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
-      expect(result).toEqual({});
-    });
-
-    it('should reject invalid JSON files', () => {
-      const testFile = path.join(testDir, 'invalid.json');
-      fs.writeFileSync(testFile, '{ not valid json }');
-
-      expect(() => {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.json`);
-      }).toThrow();
-    });
-
-    it('should reject empty JSON files', () => {
-      const testFile = path.join(testDir, 'empty-file.json');
-      fs.writeFileSync(testFile, '');
-
-      expect(() => {
-        runCLI(`deepl translate "${testFile}" --to es --output /tmp/out.json`);
-      }).toThrow();
-    });
-  });
-
   describe('service-level integration (in-process with nock)', () => {
     const API_KEY = 'test-api-key-123:fx';
     const FREE_API_URL = DEEPL_FREE_API_URL;
@@ -147,25 +63,43 @@ describe('Structured File Translation CLI Integration', () => {
       const configPath = path.join(svcDir, 'config.json');
       const cachePath = path.join(svcDir, 'cache.db');
       const config = new ConfigService(configPath);
-      cacheService = new CacheService({ dbPath: cachePath, maxSize: 1024 * 100 });
+      cacheService = new CacheService({
+        dbPath: cachePath,
+        maxSize: 1024 * 100,
+      });
       client = new DeepLClient(API_KEY);
-      const translationService = new TranslationService(client, config, cacheService);
+      const translationService = new TranslationService(
+        client,
+        config,
+        cacheService
+      );
       fileTranslationService = new FileTranslationService(translationService);
     });
 
     afterEach(() => {
       client.destroy();
-      try { cacheService.close(); } catch { /* ignore */ }
+      try {
+        cacheService.close();
+      } catch {
+        /* ignore */
+      }
     });
 
     it('should translate flat JSON file via FileTranslationService', async () => {
       const inputPath = path.join(testDir, 'svc-en.json');
       const outputPath = path.join(testDir, 'svc-es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        greeting: 'Hello',
-        farewell: 'Goodbye',
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+            farewell: 'Goodbye',
+          },
+          null,
+          2
+        )
+      );
 
       nock(FREE_API_URL)
         .post('/v2/translate')
@@ -176,22 +110,146 @@ describe('Structured File Translation CLI Integration', () => {
           ],
         });
 
-      await fileTranslationService.translateFile(inputPath, outputPath, { targetLang: 'es' });
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       const result = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
       expect(result.greeting).toBe('Hola');
       expect(result.farewell).toBe('Adiós');
     });
 
+    it('should write an empty value back unchanged without sending it', async () => {
+      const inputPath = path.join(testDir, 'svc-empty-en.json');
+      const outputPath = path.join(testDir, 'svc-empty-de.json');
+
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            title: 'Hello world',
+            placeholder: '',
+            footer: 'Goodbye',
+          },
+          null,
+          2
+        )
+      );
+
+      let sentTexts: string[] = [];
+      nock(FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          sentTexts = body['text'] as string[];
+          return true;
+        })
+        .reply(200, {
+          translations: [
+            { text: 'Hallo Welt', detected_source_language: 'EN' },
+            { text: 'Auf Wiedersehen', detected_source_language: 'EN' },
+          ],
+        });
+
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'de',
+      });
+
+      expect(sentTexts).toEqual(['Hello world', 'Goodbye']);
+      expect(JSON.parse(fs.readFileSync(outputPath, 'utf-8'))).toEqual({
+        title: 'Hallo Welt',
+        placeholder: '',
+        footer: 'Auf Wiedersehen',
+      });
+    });
+
+    it('should surface a rate limit on the second request as exit code 3', async () => {
+      const inputPath = path.join(testDir, 'svc-partial-en.json');
+      const outputPath = path.join(testDir, 'svc-partial-de.json');
+
+      const data: Record<string, string> = {};
+      for (let i = 0; i < 60; i++) {
+        data[`k${i}`] = `String number ${i}`;
+      }
+      fs.writeFileSync(inputPath, JSON.stringify(data, null, 2));
+
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: Object.values(data)
+            .slice(0, 50)
+            .map((v) => ({ text: `DE ${v}`, detected_source_language: 'EN' })),
+        });
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .times(6)
+        .reply(429, { message: 'Too many requests' });
+
+      expect.assertions(3);
+      try {
+        await fileTranslationService.translateFile(inputPath, outputPath, {
+          targetLang: 'de',
+        });
+      } catch (error) {
+        expect((error as Error).message).not.toMatch(/Cannot read properties/);
+        expect((error as { exitCode?: number }).exitCode).toBe(3);
+      }
+      expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
+    it('should refuse to write a file when the endpoint reorders the batch', async () => {
+      const inputPath = path.join(testDir, 'svc-reorder-en.json');
+      const outputPath = path.join(testDir, 'svc-reorder-de.json');
+
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            confirm_delete: 'Delete account permanently',
+            cancel: 'Cancel',
+            save: 'Save changes',
+          },
+          null,
+          2
+        )
+      );
+
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, {
+          translations: [
+            { text: 'Cancel', detected_source_language: 'EN' },
+            { text: 'Save changes', detected_source_language: 'EN' },
+            {
+              text: 'Delete account permanently',
+              detected_source_language: 'EN',
+            },
+          ],
+        });
+
+      await expect(
+        fileTranslationService.translateFile(inputPath, outputPath, {
+          targetLang: 'de',
+        })
+      ).rejects.toThrow('returned the submitted texts in a different order');
+
+      expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
     it('should translate nested JSON preserving structure', async () => {
       const inputPath = path.join(testDir, 'svc-nested.json');
       const outputPath = path.join(testDir, 'svc-nested-es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        nav: { home: 'Home', about: 'About' },
-        footer: { copyright: 'All rights reserved' },
-        version: 2,
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            nav: { home: 'Home', about: 'About' },
+            footer: { copyright: 'All rights reserved' },
+            version: 2,
+          },
+          null,
+          2
+        )
+      );
 
       nock(FREE_API_URL)
         .post('/v2/translate')
@@ -199,11 +257,16 @@ describe('Structured File Translation CLI Integration', () => {
           translations: [
             { text: 'Inicio', detected_source_language: 'EN' },
             { text: 'Acerca de', detected_source_language: 'EN' },
-            { text: 'Todos los derechos reservados', detected_source_language: 'EN' },
+            {
+              text: 'Todos los derechos reservados',
+              detected_source_language: 'EN',
+            },
           ],
         });
 
-      await fileTranslationService.translateFile(inputPath, outputPath, { targetLang: 'es' });
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       const result = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
       expect(result.nav.home).toBe('Inicio');
@@ -216,17 +279,20 @@ describe('Structured File Translation CLI Integration', () => {
       const inputPath = path.join(testDir, 'svc-indent.json');
       const outputPath = path.join(testDir, 'svc-indent-es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({ key: 'Hello' }, null, 4) + '\n');
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify({ key: 'Hello' }, null, 4) + '\n'
+      );
 
       nock(FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
-          translations: [
-            { text: 'Hola', detected_source_language: 'EN' },
-          ],
+          translations: [{ text: 'Hola', detected_source_language: 'EN' }],
         });
 
-      await fileTranslationService.translateFile(inputPath, outputPath, { targetLang: 'es' });
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       const raw = fs.readFileSync(outputPath, 'utf-8');
       expect(raw).toContain('    "key"');
@@ -248,7 +314,9 @@ describe('Structured File Translation CLI Integration', () => {
           ],
         });
 
-      await fileTranslationService.translateFile(inputPath, outputPath, { targetLang: 'es' });
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       const raw = fs.readFileSync(outputPath, 'utf-8');
       expect(raw).toContain('greeting: Hola');
@@ -259,21 +327,20 @@ describe('Structured File Translation CLI Integration', () => {
       const inputPath = path.join(testDir, 'svc-comments.yaml');
       const outputPath = path.join(testDir, 'svc-comments-es.yaml');
 
-      fs.writeFileSync(inputPath, [
-        '# Main heading',
-        'greeting: Hello # inline',
-        '',
-      ].join('\n'));
+      fs.writeFileSync(
+        inputPath,
+        ['# Main heading', 'greeting: Hello # inline', ''].join('\n')
+      );
 
       nock(FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
-          translations: [
-            { text: 'Hola', detected_source_language: 'EN' },
-          ],
+          translations: [{ text: 'Hola', detected_source_language: 'EN' }],
         });
 
-      await fileTranslationService.translateFile(inputPath, outputPath, { targetLang: 'es' });
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       const raw = fs.readFileSync(outputPath, 'utf-8');
       expect(raw).toContain('# Main heading');
@@ -284,10 +351,17 @@ describe('Structured File Translation CLI Integration', () => {
       const inputPath = path.join(testDir, 'svc-api-check.json');
       const outputPath = path.join(testDir, 'svc-api-check-es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        title: 'Hello World',
-        count: 42,
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            title: 'Hello World',
+            count: 42,
+          },
+          null,
+          2
+        )
+      );
 
       const scope = nock(FREE_API_URL)
         .post('/v2/translate', (body: any) => {
@@ -303,7 +377,9 @@ describe('Structured File Translation CLI Integration', () => {
           ],
         });
 
-      await fileTranslationService.translateFile(inputPath, outputPath, { targetLang: 'es' });
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -319,9 +395,7 @@ describe('Structured File Translation CLI Integration', () => {
           return true;
         })
         .reply(200, {
-          translations: [
-            { text: 'Hallo', detected_source_language: 'EN' },
-          ],
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
         });
 
       await fileTranslationService.translateFile(inputPath, outputPath, {
@@ -342,7 +416,9 @@ describe('Structured File Translation CLI Integration', () => {
         .reply(403, { message: 'Forbidden' });
 
       await expect(
-        fileTranslationService.translateFile(inputPath, outputPath, { targetLang: 'es' })
+        fileTranslationService.translateFile(inputPath, outputPath, {
+          targetLang: 'es',
+        })
       ).rejects.toThrow();
     });
 
@@ -360,7 +436,9 @@ describe('Structured File Translation CLI Integration', () => {
           ],
         });
 
-      await fileTranslationService.translateFile(inputPath, outputPath, { targetLang: 'es' });
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       const raw = fs.readFileSync(outputPath, 'utf-8');
       expect(raw).toContain('title: Bienvenido');
@@ -369,7 +447,10 @@ describe('Structured File Translation CLI Integration', () => {
     it('should translate file to multiple languages', async () => {
       const inputPath = path.join(testDir, 'svc-multi.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({ greeting: 'Hello' }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify({ greeting: 'Hello' }, null, 2)
+      );
 
       nock(FREE_API_URL)
         .post('/v2/translate', (body: any) => body.target_lang === 'ES')
@@ -391,7 +472,9 @@ describe('Structured File Translation CLI Integration', () => {
       expect(results[0]?.targetLang).toBe('es');
       expect(results[1]?.targetLang).toBe('fr');
 
-      const esResult = JSON.parse(fs.readFileSync(results[0]!.outputPath!, 'utf-8'));
+      const esResult = JSON.parse(
+        fs.readFileSync(results[0]!.outputPath!, 'utf-8')
+      );
       expect(esResult.greeting).toBe('Hola');
     });
   });

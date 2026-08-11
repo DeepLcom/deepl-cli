@@ -7,41 +7,57 @@ import { Logger } from '../../../utils/logger.js';
 import { safeReadFileSync } from '../../../utils/safe-read-file.js';
 import type { HandlerContext, TranslateOptions } from './types.js';
 import {
-  validateLanguageCodes,
+  validateTranslationLanguages,
   isTextBasedFile,
   isStructuredFile,
   getFileSize,
+  resolveFileOutputPath,
   SAFE_TEXT_SIZE_LIMIT,
 } from './translate-utils.js';
-import { buildBaseTranslationOptions, applySharedTmAndGlossary } from './translation-options-factory.js';
+import {
+  buildBaseTranslationOptions,
+  applySharedTmAndGlossary,
+} from './translation-options-factory.js';
+import { applyGlossarySourceLang } from '../../../utils/glossary-params.js';
 import type { DocumentTranslationHandler } from './document-translation-handler.js';
 
 export class FileTranslationHandler {
-  constructor(public ctx: HandlerContext, public documentHandler: DocumentTranslationHandler) {}
+  constructor(
+    public ctx: HandlerContext,
+    public documentHandler: DocumentTranslationHandler
+  ) {}
 
-  async translateFile(filePath: string, options: TranslateOptions, cachedStats?: fs.Stats | null): Promise<string> {
-    if (!options.output) {
-      throw new ValidationError('Output file path is required for file translation. Use --output <path>');
+  async translateFile(
+    filePath: string,
+    options: TranslateOptions,
+    cachedStats?: fs.Stats | null
+  ): Promise<string> {
+    const requestedOutput = options.output;
+    if (!requestedOutput) {
+      throw new ValidationError(
+        'Output file path is required for file translation. Use --output <path>'
+      );
     }
 
-    const stdoutMode = options.output === '-';
+    const stdoutMode = requestedOutput === '-';
 
     if (options.to.includes(',') && stdoutMode) {
-      throw new ValidationError('Cannot use --output - with multiple target languages. Use a directory path instead.');
+      throw new ValidationError(
+        'Cannot use --output - with multiple target languages. Use a directory path instead.'
+      );
     }
 
     if (options.to.includes(',')) {
-      const targetLangs = options.to.split(',').map(lang => lang.trim());
-      validateLanguageCodes(targetLangs);
+      const targetLangs = options.to.split(',').map((lang) => lang.trim());
+      validateTranslationLanguages(targetLangs, options);
 
       const validTargetLangs = targetLangs as Language[];
 
-      if (options.glossary && !options.from) {
-        throw new ValidationError(
-          'Source language (--from) is required when using a glossary',
-          'Example: deepl translate --from en --to en,fr,es --glossary my-glossary file.txt'
-        );
-      }
+      applyGlossarySourceLang(
+        options,
+        this.ctx.config.getValue<string>('defaults.sourceLang'),
+        'Example: deepl translate --from en --to en,fr,es --glossary my-glossary file.txt'
+      );
 
       if (options.translationMemory) {
         if (!options.from) {
@@ -69,66 +85,105 @@ export class FileTranslationHandler {
         targets: validTargetLangs,
       });
 
-      const results = await this.ctx.fileTranslationService.translateFileToMultiple(
-        filePath,
-        validTargetLangs,
-        translationOptions
-      );
+      const results =
+        await this.ctx.fileTranslationService.translateFileToMultiple(
+          filePath,
+          validTargetLangs,
+          translationOptions,
+          { skipCache: !options.cache }
+        );
 
-      return `Translated ${filePath} to ${validTargetLangs.length} languages:\n` +
-        results.map(r => `  [${r.targetLang}] ${r.outputPath}`).join('\n');
+      return (
+        `Translated ${filePath} to ${validTargetLangs.length} languages:\n` +
+        results.map((r) => `  [${r.targetLang}] ${r.outputPath}`).join('\n')
+      );
     }
 
+    let useTextTranslation = false;
+    let oversizeWarning: string | null = null;
+
     if (isTextBasedFile(filePath)) {
-      let fileSize: number | null;
-      if (cachedStats) {
-        fileSize = cachedStats.size;
-      } else {
-        fileSize = getFileSize(filePath);
-      }
+      const fileSize = cachedStats ? cachedStats.size : getFileSize(filePath);
 
       if (fileSize === null) {
-        throw new ValidationError(`File not found or cannot be accessed: ${filePath}`);
+        throw new ValidationError(
+          `File not found or cannot be accessed: ${filePath}`
+        );
       }
 
       if (fileSize <= SAFE_TEXT_SIZE_LIMIT) {
-        return this.translateTextFile(filePath, options);
-      } else if (this.ctx.documentTranslationService.isDocumentSupported(filePath)) {
+        useTextTranslation = true;
+      } else if (
+        this.ctx.documentTranslationService.isDocumentSupported(filePath)
+      ) {
         const fileSizeKiB = (fileSize / 1024).toFixed(1);
-        const warning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSizeKiB} KiB), using document API instead`;
-        Logger.warn(warning);
-        const result = await this.documentHandler.translateDocument(filePath, options);
-        return `${warning}\n${result}`;
+        oversizeWarning = `⚠ File exceeds 100 KiB limit for cached translation (${fileSizeKiB} KiB), using document API instead`;
       }
     }
 
-    if (this.ctx.documentTranslationService.isDocumentSupported(filePath)) {
+    const useDocumentApi =
+      !useTextTranslation &&
+      this.ctx.documentTranslationService.isDocumentSupported(filePath);
+
+    // Resolved once, ahead of every branch below: each of them writes to
+    // options.output, so a directory destination has to be turned into a file
+    // name before the branch is picked.
+    const outputPath = resolveFileOutputPath(
+      filePath,
+      requestedOutput,
+      options.to,
+      useDocumentApi ? options.outputFormat : undefined
+    );
+    options = { ...options, output: outputPath };
+
+    if (useTextTranslation) {
+      return this.translateTextFile(filePath, options);
+    }
+
+    if (oversizeWarning) {
+      Logger.warn(oversizeWarning);
+      const result = await this.documentHandler.translateDocument(
+        filePath,
+        options
+      );
+      return `${oversizeWarning}\n${result}`;
+    }
+
+    if (useDocumentApi) {
       return this.documentHandler.translateDocument(filePath, options);
     }
 
-    validateLanguageCodes([options.to]);
+    // This path resolves no glossary, so the glossary arm is left out: rejecting
+    // over a flag the request never carries would refuse a run that works.
+    validateTranslationLanguages([options.to], {
+      from: options.from,
+      formality: options.formality,
+      modelType: options.modelType,
+    });
 
     const translationOptions = buildBaseTranslationOptions(options);
 
     await this.ctx.fileTranslationService.translateFile(
       filePath,
-      options.output,
+      outputPath,
       translationOptions,
       { preserveCode: options.preserveCode }
     );
 
-    return `Translated ${filePath} -> ${options.output}`;
+    return `Translated ${filePath} -> ${outputPath}`;
   }
 
-  async translateTextFile(filePath: string, options: TranslateOptions): Promise<string> {
-    validateLanguageCodes([options.to]);
+  async translateTextFile(
+    filePath: string,
+    options: TranslateOptions
+  ): Promise<string> {
+    validateTranslationLanguages([options.to], options);
 
-    if (options.glossary && !options.from) {
-      throw new ValidationError(
-        'Source language (--from) is required when using a glossary',
-        'Example: deepl translate --from en --to es --glossary my-glossary file.txt'
-      );
-    }
+    applyGlossarySourceLang(
+      options,
+      this.ctx.config.getValue<string>('defaults.sourceLang'),
+      'Example: deepl translate --from en --to es --glossary my-glossary file.txt'
+    );
 
     if (options.translationMemory) {
       if (!options.from) {
@@ -149,7 +204,9 @@ export class FileTranslationHandler {
 
     if (isStructuredFile(filePath)) {
       if (options.output === '-') {
-        throw new ValidationError('Cannot stream structured file (JSON/YAML) translation to stdout. Use --output <file> instead.');
+        throw new ValidationError(
+          'Cannot stream structured file (JSON/YAML) translation to stdout. Use --output <file> instead.'
+        );
       }
 
       const translationOptions = buildBaseTranslationOptions(options);
@@ -164,7 +221,7 @@ export class FileTranslationHandler {
         filePath,
         options.output!,
         translationOptions,
-        { preserveCode: options.preserveCode }
+        { preserveCode: options.preserveCode, skipCache: !options.cache }
       );
 
       return `Translated ${filePath} -> ${options.output}`;
@@ -185,7 +242,7 @@ export class FileTranslationHandler {
       translationOptions,
       {
         preserveCode: options.preserveCode,
-        skipCache: !options.cache
+        skipCache: !options.cache,
       }
     );
 

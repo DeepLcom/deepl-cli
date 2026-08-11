@@ -22,7 +22,11 @@ describe('android-xml parser', () => {
       expect(entries[0]!.value).toBe('C:\\Users\\test');
 
       const translated: TranslatedEntry[] = [
-        { key: 'path', value: 'C:\\Users\\test', translation: 'C:\\Users\\test' },
+        {
+          key: 'path',
+          value: 'C:\\Users\\test',
+          translation: 'C:\\Users\\test',
+        },
       ];
       const result = parser.reconstruct(xml, translated);
       expect(result).toContain('C:\\\\Users\\\\test');
@@ -173,8 +177,12 @@ describe('android-xml parser', () => {
       ];
 
       const result = parser.reconstruct(xml, translated);
-      expect(result).toContain('<item quantity="one"><![CDATA[1 < Element]]></item>');
-      expect(result).toContain('<item quantity="other"><![CDATA[%d < Elemente]]></item>');
+      expect(result).toContain(
+        '<item quantity="one"><![CDATA[1 < Element]]></item>'
+      );
+      expect(result).toContain(
+        '<item quantity="other"><![CDATA[%d < Elemente]]></item>'
+      );
     });
 
     it('should preserve CDATA wrappers for string-array items during extract and reconstruct', () => {
@@ -193,8 +201,16 @@ describe('android-xml parser', () => {
       ]);
 
       const translated: TranslatedEntry[] = [
-        { key: 'labels.0', value: 'Less < More', translation: 'Weniger < Mehr' },
-        { key: 'labels.1', value: 'Rock & Roll', translation: 'Rock & Roll DE' },
+        {
+          key: 'labels.0',
+          value: 'Less < More',
+          translation: 'Weniger < Mehr',
+        },
+        {
+          key: 'labels.1',
+          value: 'Rock & Roll',
+          translation: 'Rock & Roll DE',
+        },
       ];
 
       const result = parser.reconstruct(xml, translated);
@@ -220,6 +236,21 @@ describe('android-xml parser', () => {
       expect(result).toContain('name="thanks"');
       expect(result).not.toContain('name="farewell"');
       expect(result).not.toContain('Goodbye');
+    });
+
+    it('should keep a plurals element verbatim for an entry handed over without per-form translations', () => {
+      const xml = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="items">
+        <item quantity="one">Un elemento</item>
+        <item quantity="other">%d elementos</item>
+    </plurals>
+</resources>`;
+      const translated: TranslatedEntry[] = [
+        { key: 'items', value: '%d items', translation: 'Un elemento' },
+      ];
+      const result = parser.reconstruct(xml, translated);
+      expect(result).toBe(xml);
     });
 
     it('should remove plural elements not present in entries', () => {
@@ -304,6 +335,123 @@ describe('android-xml parser', () => {
     });
   });
 
+  describe('writing a resource the document has no element for', () => {
+    it('should write into a <resources> holding nothing', () => {
+      const xml = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<resources>',
+        '</resources>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xml, [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+      ]);
+
+      expect(result).toContain('    <string name="greeting">Hallo</string>');
+      expect(parser.extract(result).map((e) => e.key)).toEqual(['greeting']);
+    });
+
+    it('should write a <plurals> block with every quantity', () => {
+      const xml = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<resources>',
+        '    <string name="greeting">Hallo</string>',
+        '</resources>',
+        '',
+      ].join('\n');
+      const entries: TranslatedEntry[] = [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        {
+          key: 'items',
+          value: 'items',
+          translation: 'Elemente',
+          metadata: {
+            plurals: [
+              { quantity: 'one', value: 'Ein Element' },
+              { quantity: 'other', value: 'Elemente' },
+            ],
+          },
+        },
+      ];
+      const result = parser.reconstruct(xml, entries);
+
+      expect(result).toContain('    <plurals name="items">');
+      expect(result).toContain(
+        '        <item quantity="one">Ein Element</item>'
+      );
+      expect(result).toContain(
+        '        <item quantity="other">Elemente</item>'
+      );
+      expect(result).toContain('    </plurals>');
+
+      const reread = parser.extract(result);
+      expect(reread.map((e) => e.key).sort()).toEqual(['greeting', 'items']);
+      expect(
+        reread.find((e) => e.key === 'items')?.metadata?.['plurals']
+      ).toEqual([
+        { quantity: 'one', value: 'Ein Element' },
+        { quantity: 'other', value: 'Elemente' },
+      ]);
+    });
+
+    it('should anchor beside a <plurals> when the file holds no <string>', () => {
+      const xml = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<resources>',
+        '    <plurals name="items">',
+        '        <item quantity="other">Elemente</item>',
+        '    </plurals>',
+        '</resources>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xml, [
+        {
+          key: 'items',
+          value: 'items',
+          translation: 'Elemente',
+          metadata: { plurals: [{ quantity: 'other', value: 'Elemente' }] },
+        },
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+      ]);
+
+      expect(result).toContain('    </plurals>\n    <string name="greeting">');
+      expect(
+        parser
+          .extract(result)
+          .map((e) => e.key)
+          .sort()
+      ).toEqual(['greeting', 'items']);
+    });
+
+    it('should leave a <string-array> item key alone rather than invent a resource for it', () => {
+      const xml = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<resources>',
+        '    <string-array name="colours">',
+        '        <item>Rot</item>',
+        '    </string-array>',
+        '</resources>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xml, [
+        { key: 'colours.0', value: 'Red', translation: 'Rot' },
+        { key: 'colours.1', value: 'Blue', translation: 'Blau' },
+      ]);
+
+      expect(result).not.toContain('name="colours.1"');
+      expect(parser.extract(result).map((e) => e.key)).toEqual(['colours.0']);
+    });
+
+    it('should leave a resource out when the document has no <resources>', () => {
+      const notResources = '<?xml version="1.0"?>\n<other/>\n';
+      expect(
+        parser.reconstruct(notResources, [
+          { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        ])
+      ).toBe(notResources);
+    });
+  });
+
   describe('elements with no closing tag', () => {
     const unclosed = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -343,7 +491,9 @@ describe('android-xml parser', () => {
       const head = '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n';
       const opener =
         '    <string name="k">v\n    <plurals name="p">\n    <string-array name="a">\n';
-      return head + opener.repeat(Math.ceil((bytes - head.length) / opener.length));
+      return (
+        head + opener.repeat(Math.ceil((bytes - head.length) / opener.length))
+      );
     }
 
     const content = unclosedOpeners(4 * 1024 * 1024);
@@ -361,5 +511,204 @@ describe('android-xml parser', () => {
       const ms = Number(process.hrtime.bigint() - start) / 1e6;
       expect(ms).toBeLessThan(2000);
     });
+  });
+});
+
+describe('single-quoted name and quantity attributes', () => {
+  // `<string name='greeting'>` is well-formed XML, and the scanners already
+  // accept either quote for every OTHER attribute — but the name/quantity
+  // capture required a double quote, so such an element was never extracted,
+  // never translated and never reported: `sync status` read 100% while the
+  // string shipped in the source language.
+  const SINGLE_QUOTED = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<resources>',
+    "    <string name='greeting'>Hello</string>",
+    '    <string name="farewell">Goodbye</string>',
+    "    <plurals name='file_count'>",
+    "        <item quantity='one'>One file</item>",
+    '        <item quantity="other">%d files</item>',
+    '    </plurals>',
+    "    <string-array name='menu'>",
+    '        <item>First</item>',
+    '    </string-array>',
+    '</resources>',
+    '',
+  ].join('\n');
+
+  it('extracts a single-quoted string name', () => {
+    const keys = parser.extract(SINGLE_QUOTED).map((e) => e.key);
+    expect(keys).toContain('greeting');
+    expect(keys).toContain('farewell');
+  });
+
+  it('extracts a single-quoted plurals name and its single-quoted quantity', () => {
+    const plural = parser
+      .extract(SINGLE_QUOTED)
+      .find((e) => e.key === 'file_count');
+    expect(plural).toBeDefined();
+    const forms = plural!.metadata?.['plurals'] as Array<{
+      quantity: string;
+      value: string;
+    }>;
+    expect(forms.map((f) => f.quantity)).toEqual(['one', 'other']);
+  });
+
+  it('extracts a single-quoted string-array name', () => {
+    const keys = parser.extract(SINGLE_QUOTED).map((e) => e.key);
+    expect(keys).toContain('menu.0');
+  });
+
+  it('writes a translation back into a single-quoted element', () => {
+    const written = parser.reconstruct(SINGLE_QUOTED, [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+      { key: 'farewell', value: 'Goodbye', translation: 'Adios' },
+      {
+        key: 'file_count',
+        value: '%d files',
+        translation: '%d archivos',
+        metadata: {
+          plurals: [
+            { quantity: 'one', value: 'Un archivo' },
+            { quantity: 'other', value: '%d archivos' },
+          ],
+        },
+      },
+      { key: 'menu.0', value: 'First', translation: 'Primero' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain("<string name='greeting'>Hola</string>");
+    expect(written).toContain('<string name="farewell">Adios</string>');
+    expect(written).toContain("<item quantity='one'>Un archivo</item>");
+    expect(written).toContain('<item quantity="other">%d archivos</item>');
+    expect(written).toContain('<item>Primero</item>');
+  });
+
+  it('keeps a double quote inside a single-quoted name', () => {
+    const keys = parser
+      .extract(
+        [
+          '<resources>',
+          `    <string name='say"hi'>Hello</string>`,
+          '</resources>',
+        ].join('\n')
+      )
+      .map((e) => e.key);
+    expect(keys).toEqual(['say"hi']);
+  });
+
+  it('does not swallow a following attribute into the name', () => {
+    const entries = parser.extract(
+      [
+        '<resources>',
+        '    <string name="greeting" translatable="true">Hello</string>',
+        '</resources>',
+      ].join('\n')
+    );
+    expect(entries.map((e) => e.key)).toEqual(['greeting']);
+  });
+});
+
+describe('appending a resource whose KEY needs guarding', () => {
+  const EMPTY = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<resources>',
+    '</resources>',
+  ].join('\n');
+
+  it('refuses a key carrying a control byte XML cannot represent', () => {
+    expect(() =>
+      parser.reconstruct(EMPTY, [
+        { key: 'bad\x1bkey', value: 'Hello', translation: 'Hola' },
+      ] as TranslatedEntry[])
+    ).toThrow(/U\+001B|control/i);
+  });
+
+  it('escapes a key containing XML markup characters', () => {
+    const written = parser.reconstruct(EMPTY, [
+      { key: 'a&b"c"', value: 'Hello', translation: 'Hola' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('&amp;');
+    expect(written).toContain('&quot;');
+    expect(written).not.toContain('name="a&b');
+    expect(parser.extract(written).map((e) => e.key)).toEqual(['a&b"c"']);
+  });
+
+  it('refuses a control byte in a plurals key too', () => {
+    expect(() =>
+      parser.reconstruct(EMPTY, [
+        {
+          key: 'bad\x00name',
+          value: '%d files',
+          translation: '%d archivos',
+          metadata: {
+            plurals: [{ quantity: 'other', value: '%d archivos' }],
+          },
+        },
+      ] as TranslatedEntry[])
+    ).toThrow(/U\+0000|control/i);
+  });
+
+  it('still appends an ordinary key unescaped', () => {
+    const written = parser.reconstruct(EMPTY, [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+    ] as TranslatedEntry[]);
+    expect(written).toContain('<string name="greeting">Hola</string>');
+  });
+});
+
+describe('a <plurals> element whose name looks like an array index', () => {
+  // Reconstruct routed an entry by the SHAPE of its key: a dot made it a
+  // `<string-array>` item. A plurals entry whose metadata was stripped -- which is
+  // exactly what the carry-forward does -- and whose name is `x.0`, alongside a
+  // sibling `<string-array name="x">`, was therefore routed into the array branch
+  // and its element deleted.
+  const XML = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<resources>',
+    '    <string-array name="x">',
+    '        <item>First</item>',
+    '    </string-array>',
+    '    <plurals name="x.0">',
+    '        <item quantity="one">One file</item>',
+    '        <item quantity="other">%d files</item>',
+    '    </plurals>',
+    '</resources>',
+    '',
+  ].join('\n');
+
+  it('keeps the element when the carried entry has no plural metadata', () => {
+    const written = parser.reconstruct(XML, [
+      { key: 'x.0', value: '%d files', translation: '%d archivos' },
+      { key: 'x.0', value: 'First', translation: 'Primero' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('<plurals name="x.0">');
+    expect(written).toContain('<item quantity="one">One file</item>');
+    expect(written).toContain('<item quantity="other">%d files</item>');
+  });
+
+  it('still fills a string-array item whose name is not a plurals element', () => {
+    const written = parser.reconstruct(XML, [
+      { key: 'x.0', value: 'First', translation: 'Primero' },
+    ] as TranslatedEntry[]);
+    // `x.0` names the <plurals>, so the array item is left as it stands rather
+    // than being fed the plurals entry's translation.
+    expect(written).toContain('<plurals name="x.0">');
+  });
+
+  it('still routes an ordinary array item by index', () => {
+    const arrayOnly = [
+      '<resources>',
+      '    <string-array name="menu">',
+      '        <item>First</item>',
+      '    </string-array>',
+      '</resources>',
+    ].join('\n');
+    const written = parser.reconstruct(arrayOnly, [
+      { key: 'menu.0', value: 'First', translation: 'Primero' },
+    ] as TranslatedEntry[]);
+    expect(written).toContain('<item>Primero</item>');
   });
 });

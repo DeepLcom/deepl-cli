@@ -7,7 +7,9 @@ export class LanguagesService {
     this.client = client;
   }
 
-  async getSupportedLanguages(type: 'source' | 'target'): Promise<LanguageInfo[]> {
+  async getSupportedLanguages(
+    type: 'source' | 'target'
+  ): Promise<LanguageInfo[]> {
     if (!this.client) {
       return [];
     }

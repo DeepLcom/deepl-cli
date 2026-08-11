@@ -6,6 +6,7 @@ import {
   atomicWriteFileSync,
   __cleanupInFlightTmpFiles,
   __getInFlightTmpCount,
+  isAtomicWriteTempPath,
 } from '../../src/utils/atomic-write';
 
 describe('atomicWriteFile', () => {
@@ -28,16 +29,24 @@ describe('atomicWriteFile', () => {
   it('should not leave .tmp file after success', async () => {
     const filePath = path.join(tmpDir, 'output.txt');
     await atomicWriteFile(filePath, 'content', 'utf-8');
-    const leftover = fs.readdirSync(tmpDir).filter((f) => f.startsWith('output.txt.tmp.'));
+    const leftover = fs
+      .readdirSync(tmpDir)
+      .filter((f) => f.startsWith('output.txt.tmp.'));
     expect(leftover).toHaveLength(0);
   });
 
   it('should clean up .tmp file after rename failure', async () => {
     const filePath = path.join(tmpDir, 'output.txt');
-    const renameSpy = jest.spyOn(fs.promises, 'rename').mockRejectedValueOnce(new Error('rename failed'));
+    const renameSpy = jest
+      .spyOn(fs.promises, 'rename')
+      .mockRejectedValueOnce(new Error('rename failed'));
 
-    await expect(atomicWriteFile(filePath, 'content', 'utf-8')).rejects.toThrow('rename failed');
-    const leftover = fs.readdirSync(tmpDir).filter((f) => f.startsWith('output.txt.tmp.'));
+    await expect(atomicWriteFile(filePath, 'content', 'utf-8')).rejects.toThrow(
+      'rename failed'
+    );
+    const leftover = fs
+      .readdirSync(tmpDir)
+      .filter((f) => f.startsWith('output.txt.tmp.'));
     expect(leftover).toHaveLength(0);
 
     renameSpy.mockRestore();
@@ -82,7 +91,9 @@ describe('atomicWriteFile', () => {
     const writeSpy = jest.spyOn(fs.promises, 'writeFile');
     await atomicWriteFile(filePath, 'data', 'utf-8');
     const tmpPathArg = String(writeSpy.mock.calls[0]?.[0]);
-    expect(tmpPathArg).toMatch(new RegExp(`\\.tmp\\.${process.pid}\\.[a-z0-9]+$`));
+    expect(tmpPathArg).toMatch(
+      new RegExp(`\\.tmp\\.${process.pid}\\.[a-z0-9]+$`)
+    );
     writeSpy.mockRestore();
   });
 });
@@ -107,7 +118,9 @@ describe('atomicWriteFileSync', () => {
   it('should not leave .tmp file after success', () => {
     const filePath = path.join(tmpDir, 'output.txt');
     atomicWriteFileSync(filePath, 'content', 'utf-8');
-    const leftover = fs.readdirSync(tmpDir).filter((f) => f.startsWith('output.txt.tmp.'));
+    const leftover = fs
+      .readdirSync(tmpDir)
+      .filter((f) => f.startsWith('output.txt.tmp.'));
     expect(leftover).toHaveLength(0);
   });
 
@@ -161,17 +174,21 @@ describe('atomic-write crash cleanup', () => {
     const countBefore = __getInFlightTmpCount();
 
     let tmpPathObserved: string | null = null;
-    const writeSpy = jest.spyOn(fs.promises, 'writeFile').mockImplementationOnce(async (p) => {
-      tmpPathObserved = String(p);
-      // Write synchronously under our own hand so the file exists to be
-      // "discovered" by the cleanup helper, simulating a crash between
-      // write and rename.
-      fs.writeFileSync(tmpPathObserved, 'partial');
-      expect(__getInFlightTmpCount()).toBe(countBefore + 1);
-      throw new Error('simulated crash');
-    });
+    const writeSpy = jest
+      .spyOn(fs.promises, 'writeFile')
+      .mockImplementationOnce(async (p) => {
+        tmpPathObserved = String(p);
+        // Write synchronously under our own hand so the file exists to be
+        // "discovered" by the cleanup helper, simulating a crash between
+        // write and rename.
+        fs.writeFileSync(tmpPathObserved, 'partial');
+        expect(__getInFlightTmpCount()).toBe(countBefore + 1);
+        throw new Error('simulated crash');
+      });
 
-    await expect(atomicWriteFile(filePath, 'content', 'utf-8')).rejects.toThrow('simulated crash');
+    await expect(atomicWriteFile(filePath, 'content', 'utf-8')).rejects.toThrow(
+      'simulated crash'
+    );
     writeSpy.mockRestore();
 
     expect(tmpPathObserved).not.toBeNull();
@@ -187,23 +204,31 @@ describe('atomic-write crash cleanup', () => {
     // Fire through a real atomicWriteFile call whose underlying writeFile hangs:
     // we'll use the synchronous helper instead. But easier: call the cleanup
     // helper after poking at a private accessor to emulate tracked state.
-    const writeSpy = jest.spyOn(fs.promises, 'writeFile').mockImplementationOnce(async (p) => {
-      const actualTmp = String(p);
-      fs.writeFileSync(actualTmp, 'partial');
-      // At this point the tmp is tracked. Trigger the public cleanup.
-      __cleanupInFlightTmpFiles();
-      expect(fs.existsSync(actualTmp)).toBe(false);
-      throw new Error('abort after cleanup');
-    });
+    const writeSpy = jest
+      .spyOn(fs.promises, 'writeFile')
+      .mockImplementationOnce(async (p) => {
+        const actualTmp = String(p);
+        fs.writeFileSync(actualTmp, 'partial');
+        // At this point the tmp is tracked. Trigger the public cleanup.
+        __cleanupInFlightTmpFiles();
+        expect(fs.existsSync(actualTmp)).toBe(false);
+        throw new Error('abort after cleanup');
+      });
 
-    const run = atomicWriteFile(path.join(tmpDir, 'output.txt'), 'content', 'utf-8');
-    return expect(run).rejects.toThrow('abort after cleanup').then(() => {
-      writeSpy.mockRestore();
-      // Seed tmp file should also have been cleaned if tracked — but it wasn't
-      // tracked (we wrote it ourselves) so it remains. That's expected; the
-      // helper only cleans up registered paths.
-      expect(fs.existsSync(tmpPath)).toBe(true);
-    });
+    const run = atomicWriteFile(
+      path.join(tmpDir, 'output.txt'),
+      'content',
+      'utf-8'
+    );
+    return expect(run)
+      .rejects.toThrow('abort after cleanup')
+      .then(() => {
+        writeSpy.mockRestore();
+        // Seed tmp file should also have been cleaned if tracked — but it wasn't
+        // tracked (we wrote it ourselves) so it remains. That's expected; the
+        // helper only cleans up registered paths.
+        expect(fs.existsSync(tmpPath)).toBe(true);
+      });
   });
 
   it('registers SIGINT/SIGTERM listeners while a write is pending and detaches after', async () => {
@@ -213,15 +238,21 @@ describe('atomic-write crash cleanup', () => {
 
     let observedSigint = 0;
     let observedSigterm = 0;
-    const writeSpy = jest.spyOn(fs.promises, 'writeFile').mockImplementationOnce(async (p) => {
-      // Mid-write: signal listeners should be attached.
-      observedSigint = process.listenerCount('SIGINT') - sigintBase;
-      observedSigterm = process.listenerCount('SIGTERM') - sigtermBase;
-      fs.writeFileSync(String(p), 'partial');
-      throw new Error('abort mid-write');
-    });
+    const writeSpy = jest
+      .spyOn(fs.promises, 'writeFile')
+      .mockImplementationOnce(async (p) => {
+        // Mid-write: signal listeners should be attached.
+        observedSigint = process.listenerCount('SIGINT') - sigintBase;
+        observedSigterm = process.listenerCount('SIGTERM') - sigtermBase;
+        fs.writeFileSync(String(p), 'partial');
+        throw new Error('abort mid-write');
+      });
 
-    const run = atomicWriteFile(path.join(tmpDir, 'output.txt'), 'data', 'utf-8');
+    const run = atomicWriteFile(
+      path.join(tmpDir, 'output.txt'),
+      'data',
+      'utf-8'
+    );
     await expect(run).rejects.toThrow('abort mid-write');
     writeSpy.mockRestore();
 
@@ -231,5 +262,60 @@ describe('atomic-write crash cleanup', () => {
     // listeners detached back to baseline.
     expect(process.listenerCount('SIGINT')).toBe(sigintBase);
     expect(process.listenerCount('SIGTERM')).toBe(sigtermBase);
+  });
+});
+
+describe('isAtomicWriteTempPath', () => {
+  // The check was a name pattern rather than a membership test against the
+  // in-flight set, so a real document named `*.tmp.<digits>.<lc-alnum>` was
+  // silently dropped from watch -- before the warn-once branch, so nothing said
+  // it had been skipped.
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'atomic-tmp-name-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('does not claim a real file that merely looks like a temp sibling', () => {
+    const real = path.join(dir, 'report.tmp.12345.abc');
+    fs.writeFileSync(real, 'a genuine document');
+
+    expect(isAtomicWriteTempPath(real)).toBe(false);
+  });
+
+  it('claims a temp sibling while its write is in flight', async () => {
+    const target = path.join(dir, 'out.txt');
+    let seen: string | undefined;
+    const original = fs.promises.rename;
+    const spy = jest
+      .spyOn(fs.promises, 'rename')
+      .mockImplementation(async (from, to) => {
+        seen = String(from);
+        expect(isAtomicWriteTempPath(String(from))).toBe(true);
+        return original(from, to);
+      });
+    try {
+      await atomicWriteFile(target, 'content', 'utf-8');
+    } finally {
+      spy.mockRestore();
+    }
+    expect(seen).toBeDefined();
+    // Drained once the rename completed.
+    expect(isAtomicWriteTempPath(seen!)).toBe(true); // no longer on disk
+    expect(fs.existsSync(seen!)).toBe(false);
+  });
+
+  it('still claims a temp-shaped path that no longer exists', () => {
+    expect(isAtomicWriteTempPath(path.join(dir, 'gone.tmp.999.zz'))).toBe(true);
+  });
+
+  it('does not claim an ordinary file name', () => {
+    const plain = path.join(dir, 'notes.txt');
+    fs.writeFileSync(plain, 'x');
+    expect(isAtomicWriteTempPath(plain)).toBe(false);
   });
 });

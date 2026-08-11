@@ -3,12 +3,16 @@ import { computeSourceHash } from '../../../src/sync/sync-lock';
 import type { SyncLockEntry } from '../../../src/sync/types';
 import type { ExtractedEntry } from '../../../src/formats/format';
 
-function makeLockEntry(value: string, translations: Record<string, string> = {}): SyncLockEntry {
+function makeLockEntry(
+  value: string,
+  translations: Record<string, string> = {}
+): SyncLockEntry {
   const translationEntries: SyncLockEntry['translations'] = {};
   for (const [locale, hash] of Object.entries(translations)) {
     translationEntries[locale] = {
       hash,
-      translated_at: '2026-01-01T00:00:00.000Z', status: 'translated',
+      translated_at: '2026-01-01T00:00:00.000Z',
+      status: 'translated',
     };
   }
   return {
@@ -48,7 +52,9 @@ describe('computeDiff()', () => {
     const lock: Record<string, SyncLockEntry> = {
       greeting: makeLockEntry('Hello'),
     };
-    const current: ExtractedEntry[] = [{ key: 'greeting', value: 'Hello World' }];
+    const current: ExtractedEntry[] = [
+      { key: 'greeting', value: 'Hello World' },
+    ];
     const result = computeDiff(lock, current);
     expect(result).toHaveLength(1);
     expect(result[0]!.status).toBe('stale');
@@ -136,7 +142,7 @@ describe('computeDiff()', () => {
 
   it('should handle unicode keys and values', () => {
     const lock: Record<string, SyncLockEntry> = {
-      'こんにちは': makeLockEntry('日本語'),
+      こんにちは: makeLockEntry('日本語'),
     };
     const current: ExtractedEntry[] = [{ key: 'こんにちは', value: '日本語' }];
     const result = computeDiff(lock, current);
@@ -158,14 +164,20 @@ describe('computeDiff()', () => {
       stale_key: makeLockEntry('old value'),
     };
     const current: ExtractedEntry[] = [
-      { key: 'new_key', value: 'Hello', metadata: { description: 'A greeting' } },
+      {
+        key: 'new_key',
+        value: 'Hello',
+        metadata: { description: 'A greeting' },
+      },
       { key: 'stale_key', value: 'changed', metadata: { maxLength: 100 } },
       { key: 'no_meta', value: 'plain' },
     ];
     const result = computeDiff(lock, current);
-    const byKey = new Map(result.map(d => [d.key, d]));
+    const byKey = new Map(result.map((d) => [d.key, d]));
 
-    expect(byKey.get('new_key')!.metadata).toEqual({ description: 'A greeting' });
+    expect(byKey.get('new_key')!.metadata).toEqual({
+      description: 'A greeting',
+    });
     expect(byKey.get('stale_key')!.metadata).toEqual({ maxLength: 100 });
     expect(byKey.get('no_meta')!.metadata).toBeUndefined();
   });
@@ -176,8 +188,16 @@ describe('computeDiff()', () => {
         source_hash: computeSourceHash('Hello'),
         source_text: 'Hello',
         translations: {
-          de: { hash: computeSourceHash('Hello'), translated_at: '2026-01-01T00:00:00.000Z', status: 'translated' },
-          fr: { hash: computeSourceHash('Hello'), translated_at: '2026-01-01T00:00:00.000Z', status: 'failed' },
+          de: {
+            hash: computeSourceHash('Hello'),
+            translated_at: '2026-01-01T00:00:00.000Z',
+            status: 'translated',
+          },
+          fr: {
+            hash: computeSourceHash('Hello'),
+            translated_at: '2026-01-01T00:00:00.000Z',
+            status: 'failed',
+          },
         },
       },
     };
@@ -192,21 +212,33 @@ describe('computeDiff()', () => {
     const lock: Record<string, SyncLockEntry> = {
       item_count: {
         source_hash: computeSourceHash('%d items', {
-          plurals: [{ quantity: 'one', value: '1 item' }, { quantity: 'other', value: '%d items' }],
+          plurals: [
+            { quantity: 'one', value: '1 item' },
+            { quantity: 'other', value: '%d items' },
+          ],
         }),
         source_text: '%d items',
         translations: {
-          de: { hash: 'abc', translated_at: '2026-01-01T00:00:00.000Z', status: 'translated' },
+          de: {
+            hash: 'abc',
+            translated_at: '2026-01-01T00:00:00.000Z',
+            status: 'translated',
+          },
         },
       },
     };
-    const current: ExtractedEntry[] = [{
-      key: 'item_count',
-      value: '%d items',
-      metadata: {
-        plurals: [{ quantity: 'one', value: '1 thing' }, { quantity: 'other', value: '%d items' }],
+    const current: ExtractedEntry[] = [
+      {
+        key: 'item_count',
+        value: '%d items',
+        metadata: {
+          plurals: [
+            { quantity: 'one', value: '1 thing' },
+            { quantity: 'other', value: '%d items' },
+          ],
+        },
       },
-    }];
+    ];
     const result = computeDiff(lock, current);
     expect(result).toHaveLength(1);
     expect(result[0]!.status).toBe('stale');
@@ -214,24 +246,36 @@ describe('computeDiff()', () => {
 
   it('should mark entry as current when primary and plural metadata are unchanged', () => {
     const metadata = {
-      plurals: [{ quantity: 'one', value: '1 item' }, { quantity: 'other', value: '%d items' }],
+      plurals: [
+        { quantity: 'one', value: '1 item' },
+        { quantity: 'other', value: '%d items' },
+      ],
     };
     const lock: Record<string, SyncLockEntry> = {
       item_count: {
         source_hash: computeSourceHash('%d items', metadata),
         source_text: '%d items',
         translations: {
-          de: { hash: 'abc', translated_at: '2026-01-01T00:00:00.000Z', status: 'translated' },
+          de: {
+            hash: 'abc',
+            translated_at: '2026-01-01T00:00:00.000Z',
+            status: 'translated',
+          },
         },
       },
     };
-    const current: ExtractedEntry[] = [{
-      key: 'item_count',
-      value: '%d items',
-      metadata: {
-        plurals: [{ quantity: 'one', value: '1 item' }, { quantity: 'other', value: '%d items' }],
+    const current: ExtractedEntry[] = [
+      {
+        key: 'item_count',
+        value: '%d items',
+        metadata: {
+          plurals: [
+            { quantity: 'one', value: '1 item' },
+            { quantity: 'other', value: '%d items' },
+          ],
+        },
       },
-    }];
+    ];
     const result = computeDiff(lock, current);
     expect(result).toHaveLength(1);
     expect(result[0]!.status).toBe('current');

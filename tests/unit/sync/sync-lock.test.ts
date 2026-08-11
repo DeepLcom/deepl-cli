@@ -1,7 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { computeSourceHash, createEmptyLockFile, SyncLockManager } from '../../../src/sync/sync-lock';
+import {
+  computeSourceHash,
+  createEmptyLockFile,
+  serializeLockFile,
+  SyncLockManager,
+} from '../../../src/sync/sync-lock';
 import { Logger } from '../../../src/utils/logger';
 import { LOCK_FILE_VERSION, LOCK_FILE_COMMENT } from '../../../src/sync/types';
 import type { SyncLockFile, SyncLockEntry } from '../../../src/sync/types';
@@ -40,7 +45,10 @@ describe('computeSourceHash()', () => {
   it('should produce different hash when plural metadata is provided', () => {
     const hashWithout = computeSourceHash('text');
     const hashWith = computeSourceHash('text', {
-      plurals: [{ quantity: 'one', value: '1 item' }, { quantity: 'other', value: '%d items' }],
+      plurals: [
+        { quantity: 'one', value: '1 item' },
+        { quantity: 'other', value: '%d items' },
+      ],
     });
     expect(hashWith).toHaveLength(12);
     expect(hashWith).not.toBe(hashWithout);
@@ -70,8 +78,187 @@ describe('computeSourceHash()', () => {
 
   it('should include plural_forms in hash', () => {
     const hashWithout = computeSourceHash('item');
-    const hashWith = computeSourceHash('item', { plural_forms: { 'msgstr[0]': '', 'msgstr[1]': '' } });
+    const hashWith = computeSourceHash('item', {
+      plural_forms: { 'msgstr[0]': '', 'msgstr[1]': '' },
+    });
     expect(hashWith).not.toBe(hashWithout);
+  });
+});
+
+describe('serializeLockFile()', () => {
+  function lockWith(
+    translations: Record<string, unknown>,
+    extra: Record<string, Record<string, SyncLockEntry>> = {}
+  ): SyncLockFile {
+    const lockFile = createEmptyLockFile('en');
+    lockFile.entries['locales/en.json'] = {
+      greeting: {
+        source_hash: '185f8db32271',
+        source_text: 'Hello',
+        translations: translations as SyncLockEntry['translations'],
+      },
+    };
+    Object.assign(lockFile.entries, extra);
+    return lockFile;
+  }
+
+  const de = {
+    hash: 'h1',
+    translated_at: '2026-01-01T00:00:00.000Z',
+    status: 'translated',
+    review_status: 'machine_translated',
+  };
+  const fr = {
+    hash: 'h2',
+    translated_at: '2026-01-02T00:00:00.000Z',
+    status: 'translated',
+    review_status: 'human_reviewed',
+  };
+
+  function localeLines(serialized: string): string[] {
+    return serialized.split('\n').filter((line) => /^\s*"(de|fr)":/.test(line));
+  }
+
+  // A translation is only meaningful as a whole: its hash, timestamp and review
+  // status describe one act of translating. Splitting it across lines lets git
+  // merge the fields independently and fabricate a combination that existed on
+  // neither branch, so each one occupies a single line.
+  it('should put every translation on one line', () => {
+    const lines = localeLines(serializeLockFile(lockWith({ de, fr })));
+
+    expect(lines).toHaveLength(2);
+    for (const line of lines) {
+      expect(line.trimEnd().replace(/,$/, '')).toMatch(/\}$/);
+    }
+  });
+
+  it('should keep every field of a translation on that one line', () => {
+    const [line] = localeLines(serializeLockFile(lockWith({ de })));
+
+    expect(line).toContain('"hash": "h1"');
+    expect(line).toContain('"translated_at": "2026-01-01T00:00:00.000Z"');
+    expect(line).toContain('"status": "translated"');
+    expect(line).toContain('"review_status": "machine_translated"');
+  });
+
+  // `stats` sits two context lines below `generated_at`, and every write changes
+  // both, so git joins them into one conflict region. Expanded over five lines
+  // that region starts inside `stats` and ends outside it, which is not a member
+  // list any parser can read — `sync resolve` cannot merge it and falls back to
+  // picking a side by byte length. On one line the region stays a member list.
+  it('should put stats on one line', () => {
+    const lines = serializeLockFile(lockWith({ de }))
+      .split('\n')
+      .filter((line) => /^\s*"stats":/.test(line));
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.trimEnd().replace(/,$/, '')).toMatch(/\}$/);
+  });
+
+  it('should keep every field of stats on that one line', () => {
+    const lockFile = lockWith({ de });
+    lockFile.stats = {
+      total_keys: 7,
+      total_translations: 9,
+      last_sync: '2026-01-03T00:00:00.000Z',
+    };
+
+    const [line] = serializeLockFile(lockFile)
+      .split('\n')
+      .filter((l) => /^\s*"stats":/.test(l));
+
+    expect(line).toContain('"total_keys": 7');
+    expect(line).toContain('"total_translations": 9');
+    expect(line).toContain('"last_sync": "2026-01-03T00:00:00.000Z"');
+  });
+
+  it('should still expand the containers above a translation', () => {
+    const serialized = serializeLockFile(lockWith({ de }));
+
+    expect(serialized).toContain('\n  "entries": {\n');
+    expect(serialized).toContain('\n    "locales/en.json": {\n');
+    expect(serialized).toContain('\n      "greeting": {\n');
+    expect(serialized).toContain('\n        "translations": {\n');
+  });
+
+  it('should round-trip to an identical object', () => {
+    const lockFile = lockWith({ de, fr });
+
+    expect(JSON.parse(serializeLockFile(lockFile))).toEqual(
+      JSON.parse(JSON.stringify(lockFile))
+    );
+  });
+
+  it('should sort the keys inside a one-line translation', () => {
+    const [line] = localeLines(serializeLockFile(lockWith({ de })));
+
+    expect(line!.indexOf('"hash"')).toBeLessThan(
+      line!.indexOf('"review_status"')
+    );
+    expect(line!.indexOf('"review_status"')).toBeLessThan(
+      line!.indexOf('"status"')
+    );
+  });
+
+  it('should sort container keys and end with a newline', () => {
+    const serialized = serializeLockFile(
+      lockWith({ fr, de }, { 'z.json': {}, 'a.json': {} })
+    );
+
+    expect(serialized.indexOf('"a.json"')).toBeLessThan(
+      serialized.indexOf('"z.json"')
+    );
+    expect(serialized.indexOf('"de"')).toBeLessThan(serialized.indexOf('"fr"'));
+    expect(serialized.endsWith('\n')).toBe(true);
+  });
+
+  // An i18n key of this name is a real possibility and must not be mistaken for
+  // the translations container that sits one level deeper.
+  it('should not compact an entry under an i18n key named translations', () => {
+    const lockFile = createEmptyLockFile('en');
+    lockFile.entries['locales/en.json'] = {
+      translations: {
+        source_hash: 'abc',
+        source_text: 'Hello',
+        translations: { de: de as never },
+      },
+    };
+
+    const serialized = serializeLockFile(lockFile);
+
+    expect(serialized).toContain('\n      "translations": {\n');
+    expect(serialized).toContain('\n        "source_hash": "abc",\n');
+  });
+
+  // No field of the lock file is an array today, but `sync resolve` serializes
+  // whatever it parsed out of a conflicted file, which may have been written by
+  // a version that added one. Rewriting it as {"0": ...} would be silent damage.
+  describe('array members', () => {
+    it('should keep an array in a container an array', () => {
+      const lockFile = JSON.parse(
+        '{"version": 1, "notes": ["a", "b"], "empty": [], "entries": {}}'
+      ) as SyncLockFile;
+
+      const out = JSON.parse(serializeLockFile(lockFile)) as {
+        notes: string[];
+        empty: string[];
+      };
+
+      expect(out.notes).toEqual(['a', 'b']);
+      expect(out.empty).toEqual([]);
+    });
+
+    it('should keep an array inside a translation on the one line', () => {
+      const lockFile = JSON.parse(
+        '{"version": 1, "entries": {"locales/en.json": {"greeting": {"translations": {"de": {"hash": "h", "tags": ["x", "y"], "nested": [{"k": 1}]}}}}}}'
+      ) as SyncLockFile;
+
+      const serialized = serializeLockFile(lockFile);
+
+      expect(serialized).toContain(
+        '"de": {"hash": "h", "nested": [{"k": 1}], "tags": ["x", "y"]}'
+      );
+    });
   });
 });
 
@@ -127,7 +314,11 @@ describe('SyncLockManager', () => {
         generated_at: '2026-01-01T00:00:00.000Z',
         source_locale: 'en',
         entries: {},
-        stats: { total_keys: 0, total_translations: 0, last_sync: '2026-01-01T00:00:00.000Z' },
+        stats: {
+          total_keys: 0,
+          total_translations: 0,
+          last_sync: '2026-01-01T00:00:00.000Z',
+        },
       };
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile, null, 2));
       const result = await manager.read();
@@ -139,7 +330,9 @@ describe('SyncLockManager', () => {
       const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
       fs.writeFileSync(lockFilePath, '{not valid json!!!');
       const result = await manager.read();
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Lock file corrupted'));
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Lock file corrupted')
+      );
       expect(result.entries).toEqual({});
     });
 
@@ -149,7 +342,9 @@ describe('SyncLockManager', () => {
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile));
       const result = await manager.read();
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(`Unsupported lock file version 999 (expected ${LOCK_FILE_VERSION})`),
+        expect.stringContaining(
+          `Unsupported lock file version 999 (expected ${LOCK_FILE_VERSION})`
+        )
       );
       expect(result.entries).toEqual({});
     });
@@ -159,15 +354,20 @@ describe('SyncLockManager', () => {
       const lockFile = { entries: {} };
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile));
       const result = await manager.read();
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Lock file corrupted (missing version)'));
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Lock file corrupted (missing version)')
+      );
       expect(result.entries).toEqual({});
     });
 
     describe('backup before reset', () => {
-      const backupPattern = /^\.deepl-sync\.lock\.bak-(?:corrupt|v\d+)-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(?:-\d{3})?Z$/;
+      const backupPattern =
+        /^\.deepl-sync\.lock\.bak-(?:corrupt|v\d+)-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(?:-\d{3})?Z$/;
 
       const listBackups = (): string[] =>
-        fs.readdirSync(tmpDir).filter((name) => name.startsWith('.deepl-sync.lock.bak-'));
+        fs
+          .readdirSync(tmpDir)
+          .filter((name) => name.startsWith('.deepl-sync.lock.bak-'));
 
       it('should back up corrupt JSON lockfile before resetting', async () => {
         jest.spyOn(Logger, 'warn').mockImplementation(() => {});
@@ -181,7 +381,9 @@ describe('SyncLockManager', () => {
         const backupName = backups[0]!;
         expect(backupName).toMatch(backupPattern);
         expect(backupName).toContain('.bak-corrupt-');
-        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(original);
+        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(
+          original
+        );
       });
 
       it('should back up wrong-version lockfile before resetting and tag version in filename', async () => {
@@ -196,7 +398,9 @@ describe('SyncLockManager', () => {
         const backupName = backups[0]!;
         expect(backupName).toMatch(backupPattern);
         expect(backupName).toContain('.bak-v0-');
-        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(original);
+        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(
+          original
+        );
       });
 
       it('should back up missing-version lockfile as v-unknown and preserve contents', async () => {
@@ -210,12 +414,17 @@ describe('SyncLockManager', () => {
         expect(backups).toHaveLength(1);
         const backupName = backups[0]!;
         expect(backupName).toContain('.bak-v-unknown-');
-        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(original);
+        expect(fs.readFileSync(path.join(tmpDir, backupName), 'utf-8')).toBe(
+          original
+        );
       });
 
       it('should log the backup path at WARN level', async () => {
         const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
-        fs.writeFileSync(lockFilePath, JSON.stringify({ version: 99, entries: {} }));
+        fs.writeFileSync(
+          lockFilePath,
+          JSON.stringify({ version: 99, entries: {} })
+        );
 
         await manager.read();
 
@@ -232,7 +441,11 @@ describe('SyncLockManager', () => {
           generated_at: '2026-01-01T00:00:00.000Z',
           source_locale: 'en',
           entries: {},
-          stats: { total_keys: 0, total_translations: 0, last_sync: '2026-01-01T00:00:00.000Z' },
+          stats: {
+            total_keys: 0,
+            total_translations: 0,
+            last_sync: '2026-01-01T00:00:00.000Z',
+          },
         };
         fs.writeFileSync(lockFilePath, JSON.stringify(lockFile, null, 2));
 
@@ -252,8 +465,264 @@ describe('SyncLockManager', () => {
       const lockFile = { version: LOCK_FILE_VERSION };
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile));
       const result = await manager.read();
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Lock file missing entries'));
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Lock file missing entries')
+      );
       expect(result.entries).toEqual({});
+    });
+
+    describe('a lock file whose structure the repository controls', () => {
+      let warnSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        warnSpy.mockRestore();
+      });
+
+      function writeLock(lock: unknown): void {
+        fs.writeFileSync(lockFilePath, JSON.stringify(lock));
+      }
+
+      function goodEntry(): unknown {
+        return {
+          source_hash: '185f8db32271',
+          source_text: 'Hello',
+          translations: {
+            de: {
+              hash: '185f8db32271',
+              translated_at: '2026-01-01T00:00:00.000Z',
+              status: 'translated',
+            },
+          },
+        };
+      }
+
+      function backups(): string[] {
+        return fs
+          .readdirSync(tmpDir)
+          .filter((name) => name.includes('.deepl-sync.lock.bak-'));
+      }
+
+      it('should drop a per-file map that is not an object', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': 'pwn' },
+          stats: { total_keys: 0, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toBeUndefined();
+      });
+
+      it('should drop a per-file map that is an array', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': [] },
+          stats: { total_keys: 0, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toBeUndefined();
+      });
+
+      it('should drop an entry that is not an object', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: 'pwn' } },
+          stats: { total_keys: 1, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toEqual({});
+      });
+
+      it('should drop an entry with no translations container', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': { greeting: { source_hash: '185f8db32271' } },
+          },
+          stats: { total_keys: 1, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toEqual({});
+      });
+
+      it('should drop an entry whose translations is not an object', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': {
+              greeting: { source_hash: '185f8db32271', translations: 'pwn' },
+            },
+          },
+          stats: { total_keys: 1, total_translations: 1, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(result.entries['locales/en.json']).toEqual({});
+      });
+
+      it('should drop a null translation and keep the entry it sat in', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': {
+              greeting: {
+                source_hash: '185f8db32271',
+                source_text: 'Hello',
+                translations: {
+                  de: null,
+                  es: {
+                    hash: '185f8db32271',
+                    translated_at: '2026-01-01T00:00:00.000Z',
+                    status: 'translated',
+                  },
+                },
+              },
+            },
+          },
+          stats: { total_keys: 1, total_translations: 2, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        const entry = result.entries['locales/en.json']!['greeting']!;
+        expect(Object.keys(entry.translations)).toEqual(['es']);
+      });
+
+      it('should keep the well-formed entries beside the dropped ones', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': { greeting: goodEntry(), farewell: 'pwn' },
+          },
+          stats: { total_keys: 2, total_translations: 1, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(Object.keys(result.entries['locales/en.json']!)).toEqual([
+          'greeting',
+        ]);
+      });
+
+      it('should recompute stats rather than believe what the file claims', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: goodEntry() } },
+          stats: {
+            total_keys: 999,
+            total_translations: 999,
+            last_sync: '2020-01-01T00:00:00.000Z',
+          },
+        });
+
+        const result = await manager.read();
+
+        expect(result.stats.total_keys).toBe(1);
+        expect(result.stats.total_translations).toBe(1);
+      });
+
+      it.each([
+        ['missing', undefined],
+        ['a string', 'pwn'],
+        ['an array', []],
+        ['null', null],
+      ])('should synthesize stats when the field is %s', async (_, stats) => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: goodEntry() } },
+          stats,
+        });
+
+        const result = await manager.read();
+
+        expect(result.stats.total_keys).toBe(1);
+        expect(result.stats.total_translations).toBe(1);
+        expect(typeof result.stats.last_sync).toBe('string');
+      });
+
+      it('should warn and back up the file when it drops anything', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: 'pwn' } },
+          stats: { total_keys: 1, total_translations: 0, last_sync: 'x' },
+        });
+
+        await manager.read();
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('malformed')
+        );
+        expect(backups()).toHaveLength(1);
+      });
+
+      it('should neither warn nor back up a well-formed lock file', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: goodEntry() } },
+          stats: { total_keys: 1, total_translations: 1, last_sync: 'x' },
+        });
+
+        await manager.read();
+
+        expect(warnSpy).not.toHaveBeenCalled();
+        expect(backups()).toHaveLength(0);
+      });
+
+      it('should degrade to a full sync when entries is an array', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: [],
+          stats: { total_keys: 0, total_translations: 0, last_sync: 'x' },
+        });
+
+        const result = await manager.read();
+
+        expect(Array.isArray(result.entries)).toBe(false);
+        expect(result.entries).toEqual({});
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('entries')
+        );
+        expect(backups()).toHaveLength(1);
+      });
+
+      it('should survive a write after repairing what it read', async () => {
+        writeLock({
+          version: LOCK_FILE_VERSION,
+          source_locale: 'en',
+          entries: { 'locales/en.json': { greeting: goodEntry() } },
+        });
+
+        const result = await manager.read();
+        await manager.write(result);
+
+        const reread = await manager.read();
+        expect(reread.stats.total_keys).toBe(1);
+        expect(reread.entries['locales/en.json']!['greeting']).toBeDefined();
+      });
     });
 
     it('should read lock file with multiple entries', async () => {
@@ -268,7 +737,11 @@ describe('SyncLockManager', () => {
               source_hash: '185f8db32271',
               source_text: 'Hello',
               translations: {
-                es: { hash: 'abc', translated_at: '2026-01-01T00:00:00.000Z', status: 'translated' },
+                es: {
+                  hash: 'abc',
+                  translated_at: '2026-01-01T00:00:00.000Z',
+                  status: 'translated',
+                },
               },
             },
             farewell: {
@@ -278,7 +751,11 @@ describe('SyncLockManager', () => {
             },
           },
         },
-        stats: { total_keys: 2, total_translations: 1, last_sync: '2026-01-01T00:00:00.000Z' },
+        stats: {
+          total_keys: 2,
+          total_translations: 1,
+          last_sync: '2026-01-01T00:00:00.000Z',
+        },
       };
       fs.writeFileSync(lockFilePath, JSON.stringify(lockFile, null, 2));
       const result = await manager.read();
@@ -328,8 +805,16 @@ describe('SyncLockManager', () => {
           source_hash: 'aaa',
           source_text: 'Hello',
           translations: {
-            fr: { hash: 'h1', translated_at: '2026-01-01T00:00:00.000Z', status: 'translated' },
-            de: { hash: 'h2', translated_at: '2026-01-01T00:00:00.000Z', status: 'translated' },
+            fr: {
+              hash: 'h1',
+              translated_at: '2026-01-01T00:00:00.000Z',
+              status: 'translated',
+            },
+            de: {
+              hash: 'h2',
+              translated_at: '2026-01-01T00:00:00.000Z',
+              status: 'translated',
+            },
           },
         },
         alpha: {
@@ -402,7 +887,10 @@ describe('SyncLockManager', () => {
         translations: {},
       };
       await manager.updateEntry('file.json', 'greeting', entry);
-      await manager.updateEntry('file.json', 'farewell', { ...entry, source_hash: 'bbb' });
+      await manager.updateEntry('file.json', 'farewell', {
+        ...entry,
+        source_hash: 'bbb',
+      });
 
       await manager.removeEntry('file.json', 'greeting');
       const result = await manager.read();
@@ -424,7 +912,9 @@ describe('SyncLockManager', () => {
     });
 
     it('should handle removing non-existent entry gracefully', async () => {
-      await expect(manager.removeEntry('missing.json', 'no-key')).resolves.not.toThrow();
+      await expect(
+        manager.removeEntry('missing.json', 'no-key')
+      ).resolves.not.toThrow();
     });
   });
 
@@ -437,5 +927,87 @@ describe('SyncLockManager', () => {
       fs.writeFileSync(lockFilePath, '{}');
       expect(await manager.exists()).toBe(true);
     });
+  });
+});
+
+describe('SyncLockManager change detection', () => {
+  let tmpDir: string;
+  let lockPath: string;
+  let warn: jest.SpyInstance;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-lock-change-'));
+    lockPath = path.join(tmpDir, '.deepl-sync.lock');
+    warn = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const warnings = (): string[] =>
+    warn.mock.calls.map((call) => String(call[0]));
+
+  it('warns when the file changed on disk between the read and the write', async () => {
+    const manager = new SyncLockManager(lockPath);
+    fs.writeFileSync(lockPath, serializeLockFile(createEmptyLockFile('en')));
+
+    const lockFile = await manager.read();
+
+    // Something outside this run replaces the file: a merge, a hand edit, or
+    // another tool. The write below is about to overwrite it wholesale.
+    const other = createEmptyLockFile('en');
+    other.entries['locales/en.json'] = {
+      greeting: {
+        source_hash: 'other',
+        translations: {},
+      } as unknown as SyncLockEntry,
+    };
+    fs.writeFileSync(lockPath, serializeLockFile(other));
+
+    await manager.write(lockFile);
+
+    expect(
+      warnings().filter((message) => /changed on disk/.test(message))
+    ).toHaveLength(1);
+  });
+
+  it('does not warn on an ordinary read-then-write', async () => {
+    const manager = new SyncLockManager(lockPath);
+    fs.writeFileSync(lockPath, serializeLockFile(createEmptyLockFile('en')));
+
+    const lockFile = await manager.read();
+    await manager.write(lockFile);
+
+    expect(warnings().filter((m) => /changed on disk/.test(m))).toEqual([]);
+  });
+
+  it('does not warn when there was no lock file to begin with', async () => {
+    const manager = new SyncLockManager(lockPath);
+
+    const lockFile = await manager.read();
+    await manager.write(lockFile);
+
+    expect(warnings().filter((m) => /changed on disk/.test(m))).toEqual([]);
+  });
+
+  it('does not warn when writing without having read first', async () => {
+    fs.writeFileSync(lockPath, serializeLockFile(createEmptyLockFile('en')));
+    const manager = new SyncLockManager(lockPath);
+
+    await manager.write(createEmptyLockFile('en'));
+
+    expect(warnings().filter((m) => /changed on disk/.test(m))).toEqual([]);
+  });
+
+  it('does not warn on a second write in the same run', async () => {
+    const manager = new SyncLockManager(lockPath);
+    fs.writeFileSync(lockPath, serializeLockFile(createEmptyLockFile('en')));
+
+    const lockFile = await manager.read();
+    await manager.write(lockFile);
+    await manager.write(lockFile);
+
+    expect(warnings().filter((m) => /changed on disk/.test(m))).toEqual([]);
   });
 });

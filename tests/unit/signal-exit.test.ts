@@ -20,7 +20,9 @@ describe('signal exit ownership', () => {
 
   beforeEach(() => {
     resetSignalExitForTests();
-    exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    exitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation((() => undefined) as never);
   });
 
   afterEach(() => {

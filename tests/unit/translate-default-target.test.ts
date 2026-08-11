@@ -19,9 +19,15 @@ jest.mock('chalk', () => {
 
 jest.mock('ora', () => {
   const mockSpinner = {
-    start: jest.fn(function(this: any) { return this; }),
-    succeed: jest.fn(function(this: any) { return this; }),
-    fail: jest.fn(function(this: any) { return this; }),
+    start: jest.fn(function (this: any) {
+      return this;
+    }),
+    succeed: jest.fn(function (this: any) {
+      return this;
+    }),
+    fail: jest.fn(function (this: any) {
+      return this;
+    }),
     text: '',
   };
   return jest.fn(() => mockSpinner);
@@ -37,7 +43,8 @@ jest.mock('../../src/cli/commands/service-factory', () => ({
 
 import { createTranslateCommand } from '../../src/cli/commands/service-factory';
 
-const mockCreateTranslateCommand = createTranslateCommand as jest.MockedFunction<typeof createTranslateCommand>;
+const mockCreateTranslateCommand =
+  createTranslateCommand as jest.MockedFunction<typeof createTranslateCommand>;
 
 describe('translate command default target language', () => {
   let program: Command;
@@ -73,7 +80,9 @@ describe('translate command default target language', () => {
 
     mockDeps = {
       createDeepLClient: jest.fn(),
-      getApiKeyAndOptions: jest.fn().mockReturnValue({ apiKey: 'test-key', options: {} }),
+      getApiKeyAndOptions: jest
+        .fn()
+        .mockReturnValue({ apiKey: 'test-key', options: {} }),
       getConfigService: jest.fn().mockReturnValue(mockConfigService),
       getCacheService: jest.fn(),
       handleError: handleErrorSpy as unknown as (error: unknown) => never,
@@ -92,12 +101,19 @@ describe('translate command default target language', () => {
         translateFromStdin: jest.fn(),
       } as any);
 
-      await program.parseAsync(['node', 'test', 'translate', 'Hello', '--to', 'es']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'translate',
+        'Hello',
+        '--to',
+        'es',
+      ]);
 
       expect(mockDeps.getConfigService).not.toHaveBeenCalled();
       expect(mockTranslate).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ to: 'es' }),
+        expect.objectContaining({ to: 'es' })
       );
     });
   });
@@ -120,10 +136,12 @@ describe('translate command default target language', () => {
       await program.parseAsync(['node', 'test', 'translate', 'Hello']);
 
       expect(mockDeps.getConfigService).toHaveBeenCalled();
-      expect(mockConfigService.getValue).toHaveBeenCalledWith('defaults.targetLangs');
+      expect(mockConfigService.getValue).toHaveBeenCalledWith(
+        'defaults.targetLangs'
+      );
       expect(mockTranslate).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ to: 'fr' }),
+        expect.objectContaining({ to: 'fr' })
       );
     });
 
@@ -145,7 +163,7 @@ describe('translate command default target language', () => {
 
       expect(mockTranslate).toHaveBeenCalledWith(
         'Hello',
-        expect.objectContaining({ to: 'ja' }),
+        expect.objectContaining({ to: 'ja' })
       );
     });
 
@@ -158,7 +176,7 @@ describe('translate command default target language', () => {
       });
 
       await expect(
-        program.parseAsync(['node', 'test', 'translate', 'Hello']),
+        program.parseAsync(['node', 'test', 'translate', 'Hello'])
       ).rejects.toThrow();
 
       expect(handleErrorSpy).toHaveBeenCalled();
@@ -170,7 +188,7 @@ describe('translate command default target language', () => {
       mockConfigService.getValue.mockReturnValue(undefined);
 
       await expect(
-        program.parseAsync(['node', 'test', 'translate', 'Hello']),
+        program.parseAsync(['node', 'test', 'translate', 'Hello'])
       ).rejects.toThrow();
 
       expect(handleErrorSpy).toHaveBeenCalled();
@@ -195,7 +213,7 @@ describe('translate command default target language', () => {
       await program.parseAsync(['node', 'test', 'translate']);
 
       expect(mockTranslateFromStdin).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'de' }),
+        expect.objectContaining({ to: 'de' })
       );
     });
   });

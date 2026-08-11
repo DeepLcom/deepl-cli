@@ -63,10 +63,17 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        greeting: 'Hello',
-        farewell: 'Goodbye',
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            greeting: 'Hello',
+            farewell: 'Goodbye',
+          },
+          null,
+          2
+        )
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Hola', detectedSourceLang: 'en' },
@@ -84,15 +91,22 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        nav: {
-          home: 'Home',
-          about: 'About',
-        },
-        footer: {
-          copyright: 'All rights reserved',
-        },
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            nav: {
+              home: 'Home',
+              about: 'About',
+            },
+            footer: {
+              copyright: 'All rights reserved',
+            },
+          },
+          null,
+          2
+        )
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Inicio', detectedSourceLang: 'en' },
@@ -112,12 +126,19 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        label: 'Hello',
-        count: 42,
-        active: true,
-        data: null,
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            label: 'Hello',
+            count: 42,
+            active: true,
+            data: null,
+          },
+          null,
+          2
+        )
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Hola', detectedSourceLang: 'en' },
@@ -136,10 +157,17 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        items: ['Apple', 'Banana'],
-        mixed: ['Text', 42, true],
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            items: ['Apple', 'Banana'],
+            mixed: ['Text', 42, true],
+          },
+          null,
+          2
+        )
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Manzana', detectedSourceLang: 'en' },
@@ -241,9 +269,16 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        a: { b: { c: { d: 'Deep value' } } },
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            a: { b: { c: { d: 'Deep value' } } },
+          },
+          null,
+          2
+        )
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Valor profundo', detectedSourceLang: 'en' },
@@ -259,11 +294,18 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        zebra: 'Zebra',
-        apple: 'Apple',
-        mango: 'Mango',
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            zebra: 'Zebra',
+            apple: 'Apple',
+            mango: 'Mango',
+          },
+          null,
+          2
+        )
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Cebra', detectedSourceLang: 'en' },
@@ -285,7 +327,10 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({ key: 'Hello' }, null, 2) + '\n');
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify({ key: 'Hello' }, null, 2) + '\n'
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Hola', detectedSourceLang: 'en' },
@@ -321,14 +366,17 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.yaml');
       const outputPath = path.join(testDir, 'es.yaml');
 
-      fs.writeFileSync(inputPath, [
-        'nav:',
-        '  home: Home',
-        '  about: About',
-        'footer:',
-        '  copyright: All rights reserved',
-        '',
-      ].join('\n'));
+      fs.writeFileSync(
+        inputPath,
+        [
+          'nav:',
+          '  home: Home',
+          '  about: About',
+          'footer:',
+          '  copyright: All rights reserved',
+          '',
+        ].join('\n')
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Inicio', detectedSourceLang: 'en' },
@@ -348,13 +396,16 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.yaml');
       const outputPath = path.join(testDir, 'es.yaml');
 
-      fs.writeFileSync(inputPath, [
-        '# This is the main config',
-        'greeting: Hello # inline comment',
-        '# Section break',
-        'farewell: Goodbye',
-        '',
-      ].join('\n'));
+      fs.writeFileSync(
+        inputPath,
+        [
+          '# This is the main config',
+          'greeting: Hello # inline comment',
+          '# Section break',
+          'farewell: Goodbye',
+          '',
+        ].join('\n')
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Hola', detectedSourceLang: 'en' },
@@ -373,13 +424,12 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.yaml');
       const outputPath = path.join(testDir, 'es.yaml');
 
-      fs.writeFileSync(inputPath, [
-        'label: Hello',
-        'count: 42',
-        'active: true',
-        'data: null',
-        '',
-      ].join('\n'));
+      fs.writeFileSync(
+        inputPath,
+        ['label: Hello', 'count: 42', 'active: true', 'data: null', ''].join(
+          '\n'
+        )
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Hola', detectedSourceLang: 'en' },
@@ -414,12 +464,10 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.yaml');
       const outputPath = path.join(testDir, 'es.yaml');
 
-      fs.writeFileSync(inputPath, [
-        'items:',
-        '  - Apple',
-        '  - Banana',
-        '',
-      ].join('\n'));
+      fs.writeFileSync(
+        inputPath,
+        ['items:', '  - Apple', '  - Banana', ''].join('\n')
+      );
 
       mockTranslationService.translateBatch.mockResolvedValue([
         { text: 'Manzana', detectedSourceLang: 'en' },
@@ -457,17 +505,17 @@ describe('StructuredFileTranslationService', () => {
   });
 
   describe('batching', () => {
-    it('should batch strings under 128KB into a single call', async () => {
+    it('should batch strings well under 128KB into a single call', async () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
       const data: Record<string, string> = {};
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 10; i++) {
         data[`key${i}`] = `Value ${i}`;
       }
       fs.writeFileSync(inputPath, JSON.stringify(data, null, 2));
 
-      const batchResults = Object.values(data).map(v => ({
+      const batchResults = Object.values(data).map((v) => ({
         text: `Translated ${v}`,
         detectedSourceLang: 'en' as const,
       }));
@@ -479,8 +527,31 @@ describe('StructuredFileTranslationService', () => {
       expect(mockTranslationService.translateBatch).toHaveBeenCalledTimes(1);
       expect(mockTranslationService.translateBatch).toHaveBeenCalledWith(
         expect.arrayContaining(['Value 0']),
-        expect.objectContaining({ targetLang: 'es' })
+        expect.objectContaining({ targetLang: 'es' }),
+        { skipCache: undefined }
       );
+    });
+
+    it('should split at TRANSLATE_BATCH_SIZE even when far under 128KB', async () => {
+      const inputPath = path.join(testDir, 'en.json');
+      const outputPath = path.join(testDir, 'es.json');
+
+      const data: Record<string, string> = {};
+      for (let i = 0; i < 100; i++) {
+        data[`key${i}`] = `Value ${i}`;
+      }
+      fs.writeFileSync(inputPath, JSON.stringify(data, null, 2));
+
+      mockTranslationService.translateBatch.mockImplementation(
+        (texts: string[]) =>
+          Promise.resolve(texts.map((t) => ({ text: `Translated ${t}` })))
+      );
+
+      await service.translateFile(inputPath, outputPath, { targetLang: 'es' });
+
+      expect(
+        mockTranslationService.translateBatch.mock.calls.map((c) => c[0].length)
+      ).toEqual([50, 50]);
     });
 
     it('should split strings into multiple batches when over 128KB', async () => {
@@ -501,9 +572,7 @@ describe('StructuredFileTranslationService', () => {
           { text: 'T1', detectedSourceLang: 'en' },
           { text: 'T2', detectedSourceLang: 'en' },
         ])
-        .mockResolvedValueOnce([
-          { text: 'T3', detectedSourceLang: 'en' },
-        ]);
+        .mockResolvedValueOnce([{ text: 'T3', detectedSourceLang: 'en' }]);
 
       await service.translateFile(inputPath, outputPath, { targetLang: 'es' });
 
@@ -511,22 +580,116 @@ describe('StructuredFileTranslationService', () => {
     });
   });
 
+  describe('input size ceiling', () => {
+    /**
+     * Writes a JSON file of at least `bytes` without holding it in memory.
+     * A real file is needed because the guard reads `fs.stat`, not the content.
+     */
+    function writeJsonOfSize(filePath: string, bytes: number): void {
+      const handle = fs.openSync(filePath, 'w');
+      try {
+        fs.writeSync(handle, '{\n');
+        let written = 2;
+        let i = 0;
+        while (written < bytes) {
+          const line = `  "key_${i}": "value ${i}",\n`;
+          fs.writeSync(handle, line);
+          written += line.length;
+          i += 1;
+        }
+        fs.writeSync(handle, '  "last": "value"\n}\n');
+      } finally {
+        fs.closeSync(handle);
+      }
+    }
+
+    it('refuses a file over the ceiling before reading or translating it', async () => {
+      const inputPath = path.join(testDir, 'huge.json');
+      writeJsonOfSize(inputPath, 11 * 1024 * 1024);
+
+      await expect(
+        service.translateFile(inputPath, path.join(testDir, 'huge.de.json'), {
+          targetLang: 'de',
+        } as never)
+      ).rejects.toThrow(/exceeds the maximum/i);
+      expect(mockTranslationService.translateBatch).not.toHaveBeenCalled();
+      expect(fs.existsSync(path.join(testDir, 'huge.de.json'))).toBe(false);
+    });
+
+    it('refuses it on the multi-target path too', async () => {
+      const inputPath = path.join(testDir, 'huge-multi.json');
+      writeJsonOfSize(inputPath, 11 * 1024 * 1024);
+
+      await expect(
+        service.translateFileToMultiple(inputPath, ['de', 'fr'], {
+          outputDir: testDir,
+        })
+      ).rejects.toThrow(/exceeds the maximum/i);
+      expect(mockTranslationService.translateBatch).not.toHaveBeenCalled();
+    });
+
+    it('names the size, the limit and a way forward', async () => {
+      const inputPath = path.join(testDir, 'huge-msg.json');
+      writeJsonOfSize(inputPath, 11 * 1024 * 1024);
+
+      let error: unknown;
+      expect.assertions(4);
+      try {
+        await service.translateFile(inputPath, path.join(testDir, 'out.json'), {
+          targetLang: 'de',
+        } as never);
+      } catch (err) {
+        error = err;
+      }
+      expect((error as Error).name).toBe('ValidationError');
+      expect((error as Error).message).toMatch(/huge-msg\.json/);
+      expect((error as Error).message).toMatch(/10 MiB/);
+      expect((error as Error & { suggestion?: string }).suggestion).toMatch(
+        /deepl sync/
+      );
+    });
+
+    it('translates a file just under the ceiling', async () => {
+      const inputPath = path.join(testDir, 'large-ok.json');
+      writeJsonOfSize(inputPath, 9 * 1024 * 1024);
+      mockTranslationService.translateBatch.mockImplementation(
+        async (texts: string[]) =>
+          texts.map((t) => ({ text: `[de] ${t}`, billedCharacters: t.length }))
+      );
+
+      await service.translateFile(
+        inputPath,
+        path.join(testDir, 'large-ok.de.json'),
+        { targetLang: 'de' } as never
+      );
+
+      expect(fs.existsSync(path.join(testDir, 'large-ok.de.json'))).toBe(true);
+    }, 120000);
+  });
+
   describe('translateFileToMultiple()', () => {
     it('should translate to multiple target languages', async () => {
       const inputPath = path.join(testDir, 'en.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({ greeting: 'Hello' }, null, 2));
-
-      mockTranslationService.translateBatch.mockImplementation(async (_texts, opts) => {
-        if (opts.targetLang === 'es') return [{ text: 'Hola', detectedSourceLang: 'en' }];
-        if (opts.targetLang === 'fr') return [{ text: 'Bonjour', detectedSourceLang: 'en' }];
-        return [];
-      });
-
-      const results = await service.translateFileToMultiple(
+      fs.writeFileSync(
         inputPath,
-        ['es', 'fr'],
+        JSON.stringify({ greeting: 'Hello' }, null, 2)
       );
+
+      mockTranslationService.translateBatch.mockImplementation(
+        async (_texts, opts) => {
+          if (opts.targetLang === 'es')
+            return [{ text: 'Hola', detectedSourceLang: 'en' }];
+          if (opts.targetLang === 'fr')
+            return [{ text: 'Bonjour', detectedSourceLang: 'en' }];
+          return [];
+        }
+      );
+
+      const results = await service.translateFileToMultiple(inputPath, [
+        'es',
+        'fr',
+      ]);
 
       expect(results).toHaveLength(2);
       expect(results[0]?.targetLang).toBe('es');
@@ -536,13 +699,20 @@ describe('StructuredFileTranslationService', () => {
     it('should write output files with language suffix', async () => {
       const inputPath = path.join(testDir, 'en.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({ greeting: 'Hello' }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify({ greeting: 'Hello' }, null, 2)
+      );
 
-      mockTranslationService.translateBatch.mockImplementation(async (_texts, opts) => {
-        if (opts.targetLang === 'es') return [{ text: 'Hola', detectedSourceLang: 'en' }];
-        if (opts.targetLang === 'fr') return [{ text: 'Bonjour', detectedSourceLang: 'en' }];
-        return [];
-      });
+      mockTranslationService.translateBatch.mockImplementation(
+        async (_texts, opts) => {
+          if (opts.targetLang === 'es')
+            return [{ text: 'Hola', detectedSourceLang: 'en' }];
+          if (opts.targetLang === 'fr')
+            return [{ text: 'Bonjour', detectedSourceLang: 'en' }];
+          return [];
+        }
+      );
 
       const results = await service.translateFileToMultiple(
         inputPath,
@@ -553,26 +723,35 @@ describe('StructuredFileTranslationService', () => {
       expect(results[0]?.outputPath).toContain('en.es.json');
       expect(results[1]?.outputPath).toContain('en.fr.json');
 
-      const esContent = JSON.parse(fs.readFileSync(results[0]!.outputPath!, 'utf-8'));
+      const esContent = JSON.parse(
+        fs.readFileSync(results[0]!.outputPath!, 'utf-8')
+      );
       expect(esContent.greeting).toBe('Hola');
     });
 
     it('should run translations concurrently', async () => {
       const inputPath = path.join(testDir, 'en.json');
-      fs.writeFileSync(inputPath, JSON.stringify({ greeting: 'Hello' }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify({ greeting: 'Hello' }, null, 2)
+      );
 
       let inflight = 0;
       let maxInflight = 0;
 
-      mockTranslationService.translateBatch.mockImplementation(async (_texts, opts) => {
-        inflight++;
-        maxInflight = Math.max(maxInflight, inflight);
-        await new Promise(r => setTimeout(r, 10));
-        inflight--;
-        if (opts.targetLang === 'es') return [{ text: 'Hola', detectedSourceLang: 'en' }];
-        if (opts.targetLang === 'fr') return [{ text: 'Bonjour', detectedSourceLang: 'en' }];
-        return [];
-      });
+      mockTranslationService.translateBatch.mockImplementation(
+        async (_texts, opts) => {
+          inflight++;
+          maxInflight = Math.max(maxInflight, inflight);
+          await new Promise((r) => setTimeout(r, 10));
+          inflight--;
+          if (opts.targetLang === 'es')
+            return [{ text: 'Hola', detectedSourceLang: 'en' }];
+          if (opts.targetLang === 'fr')
+            return [{ text: 'Bonjour', detectedSourceLang: 'en' }];
+          return [];
+        }
+      );
 
       await service.translateFileToMultiple(inputPath, ['es', 'fr']);
 
@@ -628,7 +807,8 @@ describe('StructuredFileTranslationService', () => {
           targetLang: 'es',
           formality: 'more',
           glossaryId: 'g-123',
-        })
+        }),
+        { skipCache: undefined }
       );
     });
   });
@@ -638,11 +818,18 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        a: 'Hello',
-        b: 'World',
-        c: 'Goodbye',
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            a: 'Hello',
+            b: 'World',
+            c: 'Goodbye',
+          },
+          null,
+          2
+        )
+      );
 
       // Return only 2 results for 3 strings → triggers mismatch
       mockTranslationService.translateBatch.mockResolvedValue([
@@ -664,9 +851,16 @@ describe('StructuredFileTranslationService', () => {
       const inputPath = path.join(testDir, 'en.json');
       const outputPath = path.join(testDir, 'es.json');
 
-      fs.writeFileSync(inputPath, JSON.stringify({
-        a: 'Hello',
-      }, null, 2));
+      fs.writeFileSync(
+        inputPath,
+        JSON.stringify(
+          {
+            a: 'Hello',
+          },
+          null,
+          2
+        )
+      );
 
       // Return 2 results for 1 string → triggers mismatch
       mockTranslationService.translateBatch.mockResolvedValue([
@@ -698,9 +892,7 @@ describe('StructuredFileTranslationService', () => {
 
       // First batch succeeds
       mockTranslationService.translateBatch
-        .mockResolvedValueOnce([
-          { text: 'T1', detectedSourceLang: 'en' },
-        ])
+        .mockResolvedValueOnce([{ text: 'T1', detectedSourceLang: 'en' }])
         // Second batch returns mismatch (0 results for 1 string)
         .mockResolvedValueOnce([]);
 
@@ -720,6 +912,44 @@ describe('StructuredFileTranslationService', () => {
       await expect(
         service.translateFile(inputPath, outputPath, { targetLang: 'es' })
       ).rejects.toThrow('Aborting to prevent misaligned output');
+    });
+  });
+
+  describe('deeply nested input', () => {
+    it('should reject a file nested past the depth ceiling with a named error', async () => {
+      const inputPath = path.join(testDir, 'deep.json');
+      const outputPath = path.join(testDir, 'deep-es.json');
+
+      // 8,000 nested arrays, ~16KB — well under any size limit, but enough to
+      // exhaust the stack in a recursive walk.
+      fs.writeFileSync(
+        inputPath,
+        `{"a":${'['.repeat(8000)}"x"${']'.repeat(8000)}}`
+      );
+
+      await expect(
+        service.translateFile(inputPath, outputPath, { targetLang: 'es' })
+      ).rejects.toThrow(/nesting depth/i);
+
+      expect(mockTranslationService.translateBatch).not.toHaveBeenCalled();
+      expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
+    it('should still translate a file nested well within the ceiling', async () => {
+      const inputPath = path.join(testDir, 'ok-deep.json');
+      const outputPath = path.join(testDir, 'ok-deep-es.json');
+
+      let inner = '"Hello"';
+      for (let i = 0; i < 20; i++) inner = `{"k${i}":${inner}}`;
+      fs.writeFileSync(inputPath, inner);
+
+      mockTranslationService.translateBatch.mockResolvedValue([
+        { text: 'Hola', detectedSourceLang: 'en' },
+      ]);
+
+      await service.translateFile(inputPath, outputPath, { targetLang: 'es' });
+
+      expect(fs.readFileSync(outputPath, 'utf-8')).toContain('Hola');
     });
   });
 });

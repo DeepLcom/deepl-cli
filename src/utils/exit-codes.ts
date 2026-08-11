@@ -66,16 +66,10 @@ export function exitCodeForError(error: unknown): ExitCode {
   return ExitCode.GeneralError;
 }
 
-/**
- * Legacy alias kept for backwards compatibility with callers that import
- * the old name. Prefer `exitCodeForError`.
- */
-export function getExitCodeFromError(error: Error): ExitCode {
-  return exitCodeForError(error);
-}
-
 function classifyByMessage(rawMessage: string): ExitCode {
-  Logger.verbose(`Untyped error reached fallback classifier: "${rawMessage.substring(0, 120)}"`);
+  Logger.verbose(
+    `Untyped error reached fallback classifier: "${rawMessage.substring(0, 120)}"`
+  );
   const message = rawMessage.toLowerCase();
 
   if (
@@ -120,10 +114,7 @@ function classifyByMessage(rawMessage: string): ExitCode {
     return ExitCode.NetworkError;
   }
 
-  if (
-    message.includes('voice api') ||
-    message.includes('voice session')
-  ) {
+  if (message.includes('voice api') || message.includes('voice session')) {
     return ExitCode.VoiceError;
   }
 
@@ -169,7 +160,6 @@ function classifyByMessage(rawMessage: string): ExitCode {
 
 export function isRetryableError(exitCode: ExitCode): boolean {
   return (
-    exitCode === ExitCode.RateLimitError ||
-    exitCode === ExitCode.NetworkError
+    exitCode === ExitCode.RateLimitError || exitCode === ExitCode.NetworkError
   );
 }

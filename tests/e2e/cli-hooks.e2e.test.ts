@@ -15,6 +15,28 @@ describe('Hooks Command E2E', () => {
   const testConfig = createTestConfigDir('e2e-hooks');
   let tmpDir: string;
 
+  /**
+   * Machine-readable output only, taken from stdout alone.
+   *
+   * `run()` merges stderr into stdout so its callers can assert on warnings, but
+   * a JSON parse cannot survive anything else written to that stream: one
+   * `ExperimentalWarning` from the Node runtime is enough to turn the output into
+   * `(node:1234) ...{...}` and fail at the first token.
+   */
+  function runJson<T>(args: string): T {
+    const stdout = execSync(`node ${CLI_PATH} ${args}`, {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: {
+        ...process.env,
+        DEEPL_CONFIG_DIR: testConfig.path,
+        NO_COLOR: '1',
+      },
+    });
+    return JSON.parse(stdout) as T;
+  }
+
   function run(args: string): string {
     return execSync(`node ${CLI_PATH} ${args} 2>&1`, {
       encoding: 'utf-8',
@@ -96,5 +118,73 @@ describe('Hooks Command E2E', () => {
     const { status, output } = runExpectError('hooks install not-a-hook');
     expect(status).toBeGreaterThan(0);
     expect(output).toContain('Invalid hook type');
+  });
+
+  describe('a repository that ships its own hooks', () => {
+    const FORGED = `#!/bin/sh\n# DeepL CLI Hook v1 [sha256:${'0'.repeat(64)}]\necho "attacker payload"\n`;
+
+    beforeEach(() => {
+      fs.mkdirSync(path.join(tmpDir, '.githooks'));
+      fs.writeFileSync(path.join(tmpDir, '.githooks', 'pre-commit'), FORGED, {
+        mode: 0o755,
+      });
+      execSync('git config core.hooksPath .githooks', {
+        cwd: tmpDir,
+        stdio: 'ignore',
+      });
+    });
+
+    it('should not report tracked content with a forged marker as installed', () => {
+      const output = run('hooks list');
+
+      expect(output).toContain('does not match its recorded hash');
+      expect(output).toContain('cannot establish');
+      expect(
+        fs.readFileSync(path.join(tmpDir, '.githooks', 'pre-commit'), 'utf-8')
+      ).toBe(FORGED);
+    });
+
+    it('should report the state rather than a bare boolean in JSON', () => {
+      const parsed = runJson<Record<string, string>>(
+        'hooks list --format json'
+      );
+
+      expect(parsed['pre-commit']).toBe('modified');
+      expect(parsed['pre-push']).toBe('not-installed');
+    });
+  });
+
+  describe('a repository that sends hooks outside the working tree', () => {
+    let outside: string;
+
+    beforeEach(() => {
+      outside = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-hooks-out-'));
+      execSync(`git config core.hooksPath ${outside}`, {
+        cwd: tmpDir,
+        stdio: 'ignore',
+      });
+    });
+
+    afterEach(() => {
+      fs.rmSync(outside, { recursive: true, force: true });
+    });
+
+    it('should refuse to install and write nothing without confirmation', () => {
+      const result = runExpectError('hooks install pre-commit');
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('core.hooksPath');
+      expect(result.output).toContain(outside);
+      expect(result.output).toContain('git config --unset core.hooksPath');
+      expect(fs.existsSync(path.join(outside, 'pre-commit'))).toBe(false);
+    });
+
+    it('should install there when --yes is passed', () => {
+      const output = run('hooks install pre-commit --yes');
+
+      expect(output).toContain('core.hooksPath');
+      expect(output).toContain('Installed pre-commit hook');
+      expect(fs.existsSync(path.join(outside, 'pre-commit'))).toBe(true);
+    });
   });
 });

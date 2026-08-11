@@ -36,17 +36,29 @@ export interface TargetLocaleChoice {
 // everything else in the registry remains available but unchecked so the
 // wizard does not silently bill for 30+ locales on a bare [Enter].
 const DEFAULT_CHECKED: ReadonlySet<string> = new Set([
-  'de', 'es', 'fr', 'it', 'ja', 'ko', 'pt-br', 'zh',
+  'de',
+  'es',
+  'fr',
+  'it',
+  'ja',
+  'ko',
+  'pt-br',
+  'zh',
 ]);
 
-export function validateSyncInitFlags(flags: SyncInitFlagValidation): SyncInitValidationResult {
+export function validateSyncInitFlags(
+  flags: SyncInitFlagValidation
+): SyncInitValidationResult {
   const warnings: string[] = [];
 
-  const rawTargets = flags.targetLocales.split(',').map((l) => l.trim()).filter((l) => l.length > 0);
+  const rawTargets = flags.targetLocales
+    .split(',')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
   if (rawTargets.length === 0) {
     throw new ValidationError(
       '--target-locales is empty after parsing.',
-      'Provide at least one target locale, e.g. --target-locales de,fr,ja',
+      'Provide at least one target locale, e.g. --target-locales de,fr,ja'
     );
   }
 
@@ -57,7 +69,7 @@ export function validateSyncInitFlags(flags: SyncInitFlagValidation): SyncInitVa
     if (code.toLowerCase() === sourceLc) {
       throw new ValidationError(
         `--source-locale "${source}" also appears in --target-locales ("${code}").`,
-        `Remove "${code}" from --target-locales; it's the source locale.`,
+        `Remove "${code}" from --target-locales; it's the source locale.`
       );
     }
     const lc = code.toLowerCase();
@@ -65,13 +77,13 @@ export function validateSyncInitFlags(flags: SyncInitFlagValidation): SyncInitVa
       const first = seen.get(lc)!;
       throw new ValidationError(
         `Duplicate target locale in --target-locales: "${first}" and "${code}".`,
-        'Each target locale must appear at most once.',
+        'Each target locale must appear at most once.'
       );
     }
     if (!LOCALE_CODE_RE.test(code)) {
       throw new ValidationError(
         `Malformed locale code in --target-locales: "${code}".`,
-        'Use a BCP-47 style code, e.g. "de", "ja", "pt-BR", "zh-Hans".',
+        'Use a BCP-47 style code, e.g. "de", "ja", "pt-BR", "zh-Hans".'
       );
     }
     seen.set(lc, code);
@@ -81,7 +93,7 @@ export function validateSyncInitFlags(flags: SyncInitFlagValidation): SyncInitVa
   if (filePath.split(/[/\\]/).some((seg) => seg === '..')) {
     throw new ValidationError(
       `--path "${filePath}" contains a ".." traversal segment.`,
-      'Use a path relative to the project root without traversal segments.',
+      'Use a path relative to the project root without traversal segments.'
     );
   }
 
@@ -92,7 +104,7 @@ export function validateSyncInitFlags(flags: SyncInitFlagValidation): SyncInitVa
     if (!fs.existsSync(abs)) {
       warnings.push(
         `--path "${filePath}" does not exist yet; the config will still be written. ` +
-        `Make sure the source file is present before running "deepl sync".`,
+          `Make sure the source file is present before running "deepl sync".`
       );
     }
   }

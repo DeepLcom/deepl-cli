@@ -30,7 +30,9 @@ describe('CLI Entry Point', () => {
     program = new Command();
     program
       .name('deepl')
-      .description('DeepL CLI - Next-generation translation tool powered by DeepL API')
+      .description(
+        'DeepL CLI - Next-generation translation tool powered by DeepL API'
+      )
       .version('0.1.0');
 
     // Register commands (simulating the actual CLI structure)
@@ -58,13 +60,16 @@ describe('CLI Entry Point', () => {
 
   describe('output.color config', () => {
     let testConfigDir: string;
-     
+
     let chalk: { level: number };
 
     beforeEach(() => {
       chalk = jest.requireMock<{ default: { level: number } }>('chalk').default;
       chalk.level = 3;
-      testConfigDir = path.join(os.tmpdir(), `.deepl-cli-test-color-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      testConfigDir = path.join(
+        os.tmpdir(),
+        `.deepl-cli-test-color-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      );
       fs.mkdirSync(testConfigDir, { recursive: true });
     });
 
@@ -76,15 +81,25 @@ describe('CLI Entry Point', () => {
 
     it('should set chalk.level to 0 when output.color is false', () => {
       const configPath = path.join(testConfigDir, 'config.json');
-      fs.writeFileSync(configPath, JSON.stringify({
-        auth: {},
-        api: { baseUrl: 'https://api.deepl.com', usePro: true },
-        defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
-        cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
-        output: { format: 'text', verbose: false, color: false },
-        watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-
-      }, null, 2));
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify(
+          {
+            auth: {},
+            api: { baseUrl: 'https://api.deepl.com', usePro: true },
+            defaults: {
+              targetLangs: [],
+              formality: 'default',
+              preserveFormatting: true,
+            },
+            cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
+            output: { format: 'text', verbose: false, color: false },
+            watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
+          },
+          null,
+          2
+        )
+      );
 
       const configService = new ConfigService(configPath);
       const colorEnabled = configService.getValue<boolean>('output.color');
@@ -101,15 +116,25 @@ describe('CLI Entry Point', () => {
 
     it('should not change chalk.level when output.color is true', () => {
       const configPath = path.join(testConfigDir, 'config.json');
-      fs.writeFileSync(configPath, JSON.stringify({
-        auth: {},
-        api: { baseUrl: 'https://api.deepl.com', usePro: true },
-        defaults: { targetLangs: [], formality: 'default', preserveFormatting: true },
-        cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
-        output: { format: 'text', verbose: false, color: true },
-        watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-
-      }, null, 2));
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify(
+          {
+            auth: {},
+            api: { baseUrl: 'https://api.deepl.com', usePro: true },
+            defaults: {
+              targetLangs: [],
+              formality: 'default',
+              preserveFormatting: true,
+            },
+            cache: { enabled: true, maxSize: 1073741824, ttl: 2592000 },
+            output: { format: 'text', verbose: false, color: true },
+            watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
+          },
+          null,
+          2
+        )
+      );
 
       const configService = new ConfigService(configPath);
       const colorEnabled = configService.getValue<boolean>('output.color');

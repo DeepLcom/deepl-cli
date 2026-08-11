@@ -14,7 +14,8 @@
 import { parseIcu } from '../../src/utils/icu-preservation';
 
 describe('ICU with surrounding text', () => {
-  const LEADING = 'You have {count, plural, one {# item} other {# items}} in your cart.';
+  const LEADING =
+    'You have {count, plural, one {# item} other {# items}} in your cart.';
 
   it('should recognise a message with leading text as ICU', () => {
     expect(parseIcu(LEADING).isIcu).toBe(true);
@@ -66,7 +67,9 @@ describe('ICU with surrounding text', () => {
     const result = parseIcu(trailing);
 
     expect(result.isIcu).toBe(true);
-    expect(result.reassemble(result.segments.map((s) => s.text))).toBe(trailing);
+    expect(result.reassemble(result.segments.map((s) => s.text))).toBe(
+      trailing
+    );
   });
 
   it('should not treat an ordinary string as ICU', () => {

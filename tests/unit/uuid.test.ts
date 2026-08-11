@@ -1,4 +1,8 @@
-import { UUID_RE, validateUuid, validateTranslationMemoryId } from '../../src/utils/uuid';
+import {
+  UUID_RE,
+  validateUuid,
+  validateTranslationMemoryId,
+} from '../../src/utils/uuid';
 import { ValidationError } from '../../src/utils/errors';
 
 describe('UUID_RE', () => {
@@ -11,11 +15,15 @@ describe('UUID_RE', () => {
   });
 
   it('is anchored — rejects embedded UUID with leading text', () => {
-    expect(UUID_RE.test('prefix-11111111-2222-3333-4444-555555555555')).toBe(false);
+    expect(UUID_RE.test('prefix-11111111-2222-3333-4444-555555555555')).toBe(
+      false
+    );
   });
 
   it('is anchored — rejects embedded UUID with trailing text', () => {
-    expect(UUID_RE.test('11111111-2222-3333-4444-555555555555-suffix')).toBe(false);
+    expect(UUID_RE.test('11111111-2222-3333-4444-555555555555-suffix')).toBe(
+      false
+    );
   });
 
   it('rejects empty string', () => {
@@ -32,13 +40,17 @@ describe('UUID_RE', () => {
 
   it('rejects a uuid with path-traversal chars', () => {
     expect(UUID_RE.test('../11111111-2222-3333-4444-555555555555')).toBe(false);
-    expect(UUID_RE.test('11111111-2222-3333-4444-555555555555/../')).toBe(false);
+    expect(UUID_RE.test('11111111-2222-3333-4444-555555555555/../')).toBe(
+      false
+    );
   });
 });
 
 describe('validateUuid', () => {
   it('accepts a canonical UUID without throwing', () => {
-    expect(() => validateUuid('11111111-2222-3333-4444-555555555555')).not.toThrow();
+    expect(() =>
+      validateUuid('11111111-2222-3333-4444-555555555555')
+    ).not.toThrow();
   });
 
   it('throws ValidationError on malformed input', () => {
@@ -63,11 +75,15 @@ describe('validateUuid', () => {
 
 describe('validateTranslationMemoryId', () => {
   it('accepts a canonical UUID without throwing', () => {
-    expect(() => validateTranslationMemoryId('11111111-2222-3333-4444-555555555555')).not.toThrow();
+    expect(() =>
+      validateTranslationMemoryId('11111111-2222-3333-4444-555555555555')
+    ).not.toThrow();
   });
 
   it('throws ValidationError on non-UUID strings (loose glossary pattern rejected)', () => {
-    expect(() => validateTranslationMemoryId('my-tm-name')).toThrow('Invalid translation memory ID format');
+    expect(() => validateTranslationMemoryId('my-tm-name')).toThrow(
+      'Invalid translation memory ID format'
+    );
   });
 
   it('throws ValidationError on path-traversal input without echoing raw bytes', () => {

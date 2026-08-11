@@ -56,6 +56,11 @@ export default {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: {
+        // tsconfig.json disables source maps to keep them out of the published
+        // package. ts-jest merges the options below over that file rather than
+        // replacing it, and istanbul needs the maps to attribute coverage to
+        // TypeScript lines instead of to positions in the emitted JavaScript.
+        sourceMap: true,
         // Relaxed settings for tests
         strict: true,
         esModuleInterop: true,
@@ -93,18 +98,18 @@ export default {
   resetMocks: true,
   restoreMocks: true,
 
-  // KNOWN BENIGN WARNING: jest emits "A worker process has failed to exit
-  // gracefully" at the end of every full-suite run. Stack traces lead to six
-  // `nock(...).replyWithError(...)` test sites in deepl-client.test.ts and
-  // three integration files. The leak is in nock v14 + @mswjs/interceptors:
-  // each replyWithError call constructs a synthetic Node IncomingMessage
-  // that is never drained, leaving an HTTPINCOMINGMESSAGE handle pinned in
-  // the worker. The affected tests all PASS — only the orphaned handles
-  // trigger the warning. `forceExit: true` does not suppress it (the warning
-  // fires from the worker, not the main process, before forceExit applies),
-  // and `--runInBand` eliminates it but is 5× slower. Fixing upstream
-  // (nock/mswjs) is out of scope. Run `npm run test:debug` to audit for
-  // any NEW leak source beyond the six known replyWithError sites.
+  // KNOWN BENIGN WARNING: every full-suite run ends with "A worker process has
+  // failed to exit gracefully". nock's interceptor (@mswjs/interceptors) leaves
+  // undrained IncomingMessage objects behind, each pinned as an
+  // HTTPINCOMINGMESSAGE handle the worker cannot shed. All tests still pass.
+  //
+  // Nothing available here suppresses it: the teardown in tests/setup.ts and
+  // HttpClient.destroy() never own that socket, `forceExit` fires too late, and
+  // `--runInBand` avoids it at ~5x wall clock. Going past interceptors 0.41 is
+  // untested — 0.42 is ESM-only and fails the CJS transform.
+  //
+  // Audit real leaks with `npm run test:debug` by handle type, not count:
+  // anything but HTTPINCOMINGMESSAGE from @mswjs/interceptors is new.
 
   // Verbose output
   verbose: true,

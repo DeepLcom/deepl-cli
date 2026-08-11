@@ -25,7 +25,9 @@ describe('DocumentClient', () => {
     jest.spyOn(axios, 'isAxiosError').mockReturnValue(false);
 
     client = new DocumentClient('test-api-key');
-    jest.spyOn(HttpClient.prototype, 'sleep' as any).mockResolvedValue(undefined);
+    jest
+      .spyOn(HttpClient.prototype, 'sleep' as any)
+      .mockResolvedValue(undefined);
   });
 
   afterAll(() => {
@@ -45,7 +47,7 @@ describe('DocumentClient', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
           baseURL: 'https://api-free.deepl.com',
-        }),
+        })
       );
     });
 
@@ -54,7 +56,7 @@ describe('DocumentClient', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
           baseURL: 'https://api.deepl.com',
-        }),
+        })
       );
     });
   });
@@ -81,7 +83,7 @@ describe('DocumentClient', () => {
         expect.objectContaining({
           method: 'POST',
           url: '/v2/document',
-        }),
+        })
       );
     });
 
@@ -121,6 +123,90 @@ describe('DocumentClient', () => {
       expect(mockAxiosInstance.request).toHaveBeenCalled();
     });
 
+    describe('glossary params', () => {
+      const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+      const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+      beforeEach(() => {
+        mockAxiosInstance.request.mockResolvedValue({
+          data: { document_id: 'doc-1', document_key: 'key-1' },
+          status: 200,
+          headers: {},
+        });
+      });
+
+      const getMultipartBody = (): string => {
+        const call = mockAxiosInstance.request.mock.calls[0]?.[0];
+        return (
+          (call?.data?.getBuffer?.() as Buffer | undefined)?.toString('utf8') ??
+          ''
+        );
+      };
+
+      const upload = async (
+        options: Record<string, unknown>
+      ): Promise<void> => {
+        await client.uploadDocument(Buffer.from('content'), {
+          targetLang: 'de',
+          filename: 'doc.txt',
+          ...options,
+        } as any);
+      };
+
+      it('should send glossary_id for a single glossaryId', async () => {
+        await upload({ glossaryId: A });
+        const body = getMultipartBody();
+        expect(body).toContain('name="glossary_id"');
+        expect(body).toContain(A);
+        expect(body).not.toContain('name="glossary_ids"');
+      });
+
+      it('should send glossary_id when glossaryIds holds exactly one ID', async () => {
+        await upload({ glossaryIds: [A] });
+        const body = getMultipartBody();
+        expect(body).toContain('name="glossary_id"');
+        expect(body).not.toContain('name="glossary_ids"');
+      });
+
+      /**
+       * Multipart uploads keep only the first of several repeated fields, so the
+       * IDs must arrive comma-joined or every glossary after the first is
+       * silently dropped by the API.
+       */
+      it('should comma-join several glossary IDs into one glossary_ids field', async () => {
+        await upload({ glossaryIds: [A, B] });
+        const body = getMultipartBody();
+        expect(body).toContain('name="glossary_ids"');
+        expect(body).toContain(`${A},${B}`);
+        expect(body).not.toContain('name="glossary_id"\r\n');
+        expect(body.match(/name="glossary_ids"/g)).toHaveLength(1);
+      });
+
+      it('should join the IDs without padding whitespace', async () => {
+        await upload({ glossaryIds: [A, B] });
+        expect(getMultipartBody()).not.toContain(`${A}, ${B}`);
+      });
+
+      it('should keep the caller order rather than sorting it', async () => {
+        await upload({ glossaryIds: [B, A] });
+        expect(getMultipartBody()).toContain(`${B},${A}`);
+      });
+
+      it('should reject more than five glossaries before uploading', async () => {
+        await expect(
+          upload({ glossaryIds: [A, B, A, B, A, B] })
+        ).rejects.toThrow(/maximum of 5 glossaries/);
+        expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+      });
+
+      it('should reject glossaryId combined with glossaryIds', async () => {
+        await expect(
+          upload({ glossaryId: A, glossaryIds: [B] })
+        ).rejects.toThrow(/Cannot combine/);
+        expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+      });
+    });
+
     it('should handle API errors', async () => {
       const axiosError = {
         isAxiosError: true,
@@ -134,6 +220,80 @@ describe('DocumentClient', () => {
       await expect(
         client.uploadDocument(file, { targetLang: 'de', filename: 'test.txt' })
       ).rejects.toThrow();
+    });
+  });
+
+  describe('server-supplied document ID reaching the URL path', () => {
+    const REJECTED: ReadonlyArray<[string, unknown]> = [
+      ['a traversal segment', '../../v3/glossaries%3fpwned=1'],
+      ['a bare parent segment', '..'],
+      ['a leading slash', '/v3/glossaries'],
+      ['an encoded slash', 'doc%2F..%2Fglossaries'],
+      ['a query string', 'doc-1?pwned=1'],
+      ['a fragment', 'doc-1#frag'],
+      ['a dot segment', 'doc/./1'],
+      ['whitespace', 'doc 1'],
+      ['an empty string', ''],
+      ['a missing id', undefined],
+      ['a non-string id', 42],
+    ];
+
+    describe.each(REJECTED)('rejects %s', (_label, documentId) => {
+      it('on getDocumentStatus, without issuing the request', async () => {
+        await expect(
+          client.getDocumentStatus({
+            documentId: documentId as string,
+            documentKey: 'key-abc',
+          })
+        ).rejects.toThrow(/document/i);
+        expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+      });
+
+      it('on downloadDocument, without issuing the request', async () => {
+        await expect(
+          client.downloadDocument({
+            documentId: documentId as string,
+            documentKey: 'key-abc',
+          })
+        ).rejects.toThrow(/document/i);
+        expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+      });
+    });
+
+    it('names the endpoint as the cause rather than the user', async () => {
+      let error: unknown;
+      expect.assertions(3);
+      try {
+        await client.getDocumentStatus({
+          documentId: '../../v3/glossaries',
+          documentKey: 'key-abc',
+        });
+      } catch (err) {
+        error = err;
+      }
+      expect((error as Error).name).toBe('NetworkError');
+      expect((error as Error).message).toMatch(/Unexpected API response/);
+      expect((error as Error).message).toContain('../../v3/glossaries');
+    });
+
+    it.each([
+      ['DeepL uppercase hex', 'A1B2C3D4E5F60718293A4B5C6D7E8F90'],
+      ['a hyphenated id', 'abc123-document-id'],
+      ['an underscored id', 'doc_1'],
+      ['a long numeric id', '1234567890'],
+    ])('accepts %s', async (_label, documentId) => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { document_id: documentId, status: 'done' },
+        status: 200,
+        headers: {},
+      });
+
+      await expect(
+        client.getDocumentStatus({ documentId, documentKey: 'key-abc' })
+      ).resolves.toMatchObject({ status: 'done' });
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({ url: `/v2/document/${documentId}` })
+      );
     });
   });
 
@@ -207,7 +367,11 @@ describe('DocumentClient', () => {
     it('should handle API errors', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 429, data: { message: 'Too many requests' }, headers: {} },
+        response: {
+          status: 429,
+          data: { message: 'Too many requests' },
+          headers: {},
+        },
         message: 'Rate limited',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
@@ -238,14 +402,18 @@ describe('DocumentClient', () => {
         expect.objectContaining({
           method: 'POST',
           url: '/v2/document/doc-123/result',
-        }),
+        })
       );
     });
 
     it('should handle API errors during download', async () => {
       const axiosError = {
         isAxiosError: true,
-        response: { status: 503, data: { message: 'Service unavailable' }, headers: {} },
+        response: {
+          status: 503,
+          data: { message: 'Service unavailable' },
+          headers: {},
+        },
         message: 'Unavailable',
       };
       mockAxiosInstance.request.mockRejectedValue(axiosError);
@@ -300,25 +468,33 @@ describe('DocumentClient', () => {
         headers: {},
       });
 
-      await client.downloadDocument({ documentId: 'doc-1', documentKey: 'key-1' });
+      await client.downloadDocument({
+        documentId: 'doc-1',
+        documentKey: 'key-1',
+      });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({ timeout: 300000 }),
+        expect.objectContaining({ timeout: 300000 })
       );
     });
 
     it('should honour an explicitly configured timeout larger than the transfer default', async () => {
-      const slowClient = new DocumentClient('test-api-key', { timeout: 600000 });
+      const slowClient = new DocumentClient('test-api-key', {
+        timeout: 600000,
+      });
       mockAxiosInstance.request.mockResolvedValue({
         data: Buffer.from('content'),
         status: 200,
         headers: {},
       });
 
-      await slowClient.downloadDocument({ documentId: 'doc-1', documentKey: 'key-1' });
+      await slowClient.downloadDocument({
+        documentId: 'doc-1',
+        documentKey: 'key-1',
+      });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({ timeout: 600000 }),
+        expect.objectContaining({ timeout: 600000 })
       );
       slowClient.destroy();
     });
@@ -330,10 +506,13 @@ describe('DocumentClient', () => {
         headers: {},
       });
 
-      await client.getDocumentStatus({ documentId: 'doc-1', documentKey: 'key-1' });
+      await client.getDocumentStatus({
+        documentId: 'doc-1',
+        documentKey: 'key-1',
+      });
 
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({ timeout: 30000 }),
+        expect.objectContaining({ timeout: 30000 })
       );
     });
   });

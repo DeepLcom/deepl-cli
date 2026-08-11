@@ -14,7 +14,10 @@ import type { LocaleTranslatorContext } from '../../../src/sync/sync-locale-tran
 import type { ResolvedSyncConfig } from '../../../src/sync/sync-config';
 import type { SyncDiff } from '../../../src/sync/types';
 import type { KeyContext } from '../../../src/sync/sync-context';
-import type { FormatParser, TranslatedEntry } from '../../../src/formats/format';
+import type {
+  FormatParser,
+  TranslatedEntry,
+} from '../../../src/formats/format';
 import { createMockTranslationService } from '../../helpers/mock-factories';
 
 jest.mock('fs', () => ({
@@ -41,6 +44,7 @@ jest.mock('../../../src/utils/logger', () => ({
 }));
 
 jest.mock('../../../src/sync/sync-utils', () => ({
+  ...jest.requireActual('../../../src/sync/sync-utils'),
   resolveTargetPath: jest.fn(),
   assertPathWithinRoot: jest.fn(),
 }));
@@ -51,17 +55,30 @@ jest.mock('../../../src/sync/translation-validator', () => ({
 
 import * as fs from 'fs';
 import { atomicWriteFile } from '../../../src/utils/atomic-write';
-import { resolveTargetPath, assertPathWithinRoot } from '../../../src/sync/sync-utils';
+import {
+  resolveTargetPath,
+  assertPathWithinRoot,
+} from '../../../src/sync/sync-utils';
 import { validateBatch } from '../../../src/sync/translation-validator';
 
-const mockReadFile = fs.promises.readFile as jest.MockedFunction<typeof fs.promises.readFile>;
-const mockMkdir = fs.promises.mkdir as jest.MockedFunction<typeof fs.promises.mkdir>;
-const mockAtomicWriteFile = atomicWriteFile as jest.MockedFunction<typeof atomicWriteFile>;
-const mockResolveTargetPath = resolveTargetPath as jest.MockedFunction<typeof resolveTargetPath>;
+const mockReadFile = fs.promises.readFile as jest.MockedFunction<
+  typeof fs.promises.readFile
+>;
+const mockMkdir = fs.promises.mkdir as jest.MockedFunction<
+  typeof fs.promises.mkdir
+>;
+const mockAtomicWriteFile = atomicWriteFile as jest.MockedFunction<
+  typeof atomicWriteFile
+>;
+const mockResolveTargetPath = resolveTargetPath as jest.MockedFunction<
+  typeof resolveTargetPath
+>;
 const mockAssertPathWithinRoot = assertPathWithinRoot as jest.MockedFunction<
   typeof assertPathWithinRoot
 >;
-const mockValidateBatch = validateBatch as jest.MockedFunction<typeof validateBatch>;
+const mockValidateBatch = validateBatch as jest.MockedFunction<
+  typeof validateBatch
+>;
 
 /** Captures what reconstruct() was asked to write. */
 let reconstructedEntries: TranslatedEntry[] = [];
@@ -98,8 +115,12 @@ function makeConfig(): ResolvedSyncConfig {
  * lockfile says this locale has a translation, but the target file supplies
  * none — the file was deleted, or held an empty value.
  */
-function makeCtx(existingForLocale: Map<string, string>): LocaleTranslatorContext {
-  const diffs: SyncDiff[] = [{ key: 'greeting', value: 'Hello', status: 'current' }];
+function makeCtx(
+  existingForLocale: Map<string, string>
+): LocaleTranslatorContext {
+  const diffs: SyncDiff[] = [
+    { key: 'greeting', value: 'Hello', status: 'current' },
+  ];
   return {
     locale: 'de',
     relPath: 'locales/en.json',
@@ -112,7 +133,12 @@ function makeCtx(existingForLocale: Map<string, string>): LocaleTranslatorContex
         source_hash: 'abc',
         source_text: 'Hello',
         translations: {
-          de: { character_count: 5, hash: 'abc', status: 'translated', translated_at: '2026-01-01' },
+          de: {
+            character_count: 5,
+            hash: 'abc',
+            status: 'translated',
+            translated_at: '2026-01-01',
+          },
         },
       },
     } as unknown as LocaleTranslatorContext['fileLockEntries'],
@@ -128,7 +154,9 @@ function makeCtx(existingForLocale: Map<string, string>): LocaleTranslatorContex
 describe('source text as translation', () => {
   beforeEach(() => {
     reconstructedEntries = [];
-    mockReadFile.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+    mockReadFile.mockRejectedValue(
+      Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+    );
     mockMkdir.mockResolvedValue(undefined);
     mockAtomicWriteFile.mockResolvedValue(undefined);
     mockResolveTargetPath.mockReturnValue('locales/de.json');
@@ -140,8 +168,19 @@ describe('source text as translation', () => {
     const service = createMockTranslationService();
     service.translateBatch = jest
       .fn()
-      .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5, detectedSourceLanguage: 'en' }]);
-    const translator = new LocaleTranslator(service, new Set<string>(), makeConfig(), undefined, undefined, undefined, undefined);
+      .mockResolvedValue([
+        { text: 'Hallo', billedCharacters: 5, detectedSourceLanguage: 'en' },
+      ]);
+    const translator = new LocaleTranslator(
+      service,
+      new Set<string>(),
+      makeConfig(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    );
 
     await translator.translate(makeCtx(new Map()));
 
@@ -154,16 +193,27 @@ describe('source text as translation', () => {
     const service = createMockTranslationService();
     const translateBatch = jest
       .fn()
-      .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5, detectedSourceLanguage: 'en' }]);
+      .mockResolvedValue([
+        { text: 'Hallo', billedCharacters: 5, detectedSourceLanguage: 'en' },
+      ]);
     service.translateBatch = translateBatch;
-    const translator = new LocaleTranslator(service, new Set<string>(), makeConfig(), undefined, undefined, undefined, undefined);
+    const translator = new LocaleTranslator(
+      service,
+      new Set<string>(),
+      makeConfig(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    );
 
     await translator.translate(makeCtx(new Map()));
 
     // The source text may be sent in any batch, so look across all calls
     // rather than assuming which one carries it.
     const sentTexts = translateBatch.mock.calls.flatMap(
-      (call) => (call as unknown[])[0] as string[],
+      (call) => (call as unknown[])[0] as string[]
     );
     expect(sentTexts).toContain('Hello');
   });
@@ -171,15 +221,26 @@ describe('source text as translation', () => {
   it('should keep an existing translation when the target file has one', async () => {
     const service = createMockTranslationService();
     service.translateBatch = jest.fn().mockResolvedValue([]);
-    const translator = new LocaleTranslator(service, new Set<string>(), makeConfig(), undefined, undefined, undefined, undefined);
+    const translator = new LocaleTranslator(
+      service,
+      new Set<string>(),
+      makeConfig(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    );
 
     await translator.translate(makeCtx(new Map([['greeting', 'Guten Tag']])));
 
-    expect(reconstructedEntries.find((e) => e.key === 'greeting')?.translation).toBe('Guten Tag');
+    expect(
+      reconstructedEntries.find((e) => e.key === 'greeting')?.translation
+    ).toBe('Guten Tag');
     // translateBatch is still invoked, but with nothing to do — the point is
     // that the already-translated key is not re-sent.
     const sentTexts = (service.translateBatch as jest.Mock).mock.calls.flatMap(
-      (call) => (call as unknown[])[0] as string[],
+      (call) => (call as unknown[])[0] as string[]
     );
     expect(sentTexts).not.toContain('Hello');
   });

@@ -27,9 +27,17 @@ describe('FileTranslation Integration', () => {
     fs.mkdirSync(configDir, { recursive: true });
 
     client = new DeepLClient(TEST_API_KEY);
-    const configService = new ConfigService(path.join(configDir, 'config.json'));
-    const cacheService = new CacheService({ dbPath: path.join(configDir, 'cache.db') });
-    const translationService = new TranslationService(client, configService, cacheService);
+    const configService = new ConfigService(
+      path.join(configDir, 'config.json')
+    );
+    const cacheService = new CacheService({
+      dbPath: path.join(configDir, 'cache.db'),
+    });
+    const translationService = new TranslationService(
+      client,
+      configService,
+      cacheService
+    );
     service = new FileTranslationService(translationService);
   });
 
@@ -57,13 +65,50 @@ describe('FileTranslation Integration', () => {
           return true;
         })
         .reply(200, {
-          translations: [{ text: 'Hola mundo', detected_source_language: 'EN' }],
+          translations: [
+            { text: 'Hola mundo', detected_source_language: 'EN' },
+          ],
         });
 
       await service.translateFile(inputPath, outputPath, { targetLang: 'es' });
 
       const output = fs.readFileSync(outputPath, 'utf-8');
       expect(output).toBe('Hola mundo');
+    });
+
+    it('should write no file when the endpoint alters a placeholder token', async () => {
+      const inputPath = path.join(testDir, 'greeting.txt');
+      const outputPath = path.join(testDir, 'greeting.de.txt');
+      fs.writeFileSync(inputPath, 'Welcome back, {username}!');
+
+      let sent = '';
+      nock(DEEPL_FREE_API_URL)
+        .post('/v2/translate', (body: Record<string, unknown>) => {
+          sent = String(body['text']);
+          return true;
+        })
+        .reply(200, () => ({
+          translations: [
+            {
+              // Re-casing and re-spacing an unrecognised token is ordinary MT
+              // behaviour; the CLI must not restore around it silently.
+              text: `[de] ${sent.replace(/__VAR_(\d+)__/g, '__ Var_$1 __')}`,
+              detected_source_language: 'EN',
+            },
+          ],
+        }));
+
+      expect.assertions(4);
+      try {
+        await service.translateFile(inputPath, outputPath, {
+          targetLang: 'de',
+        });
+      } catch (error) {
+        expect((error as { exitCode?: number }).exitCode).toBe(5);
+        expect((error as Error).message).toContain('{username}');
+      }
+      expect(sent).toBe('Welcome back, __VAR_0__!');
+      expect(fs.existsSync(outputPath)).toBe(false);
     });
 
     it('should translate a .md file via API', async () => {
@@ -74,7 +119,12 @@ describe('FileTranslation Integration', () => {
       nock(DEEPL_FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
-          translations: [{ text: '# Hallo\n\nDas ist ein Test.', detected_source_language: 'EN' }],
+          translations: [
+            {
+              text: '# Hallo\n\nDas ist ein Test.',
+              detected_source_language: 'EN',
+            },
+          ],
         });
 
       await service.translateFile(inputPath, outputPath, { targetLang: 'de' });
@@ -164,9 +214,13 @@ describe('FileTranslation Integration', () => {
 
       nock(DEEPL_FREE_API_URL)
         .post('/v2/translate', (body) => body.target_lang === 'DE')
-        .reply(200, { translations: [{ text: 'Hallo', detected_source_language: 'EN' }] })
+        .reply(200, {
+          translations: [{ text: 'Hallo', detected_source_language: 'EN' }],
+        })
         .post('/v2/translate', (body) => body.target_lang === 'FR')
-        .reply(200, { translations: [{ text: 'Bonjour', detected_source_language: 'EN' }] });
+        .reply(200, {
+          translations: [{ text: 'Bonjour', detected_source_language: 'EN' }],
+        });
 
       const results = await service.translateFileToMultiple(
         inputPath,

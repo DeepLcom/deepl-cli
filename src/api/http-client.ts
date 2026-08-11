@@ -45,6 +45,18 @@ export interface DeepLClientOptions {
 
 export { sanitizeUrl };
 
+/**
+ * The base URL a client built from these options will actually send to.
+ *
+ * Exported so that anything which must reflect the endpoint — notably the
+ * translation and write cache keys, since two endpoints return different text
+ * for the same request — derives it from the same expression the transport
+ * uses, rather than a copy that can drift out of step with it.
+ */
+export function resolveClientBaseUrl(options: DeepLClientOptions): string {
+  return options.baseUrl ?? (options.usePro ? PRO_API_URL : FREE_API_URL);
+}
+
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_MAX_RETRIES = 3;
 const MAX_SOCKETS = 10;
@@ -86,10 +98,41 @@ const CLIENT_ABORT_CODES = new Set([
   'ERR_CANCELED',
 ]);
 
-/** Per-request overrides for the retry policy and timeouts. */
+/**
+ * Ceiling on a buffered response body. Every DeepL endpoint except the
+ * document result returns JSON small enough to fit many times over; the cap
+ * exists so a hostile or malfunctioning endpoint cannot stream bytes into this
+ * process until it dies.
+ */
+export const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
+
+/**
+ * Ceiling on a whole-file transfer. DeepL accepts documents up to 30MB and a
+ * translated result may exceed its source — notably when `output_format`
+ * converts between types — so the file paths need headroom the JSON paths do
+ * not. Applied as the request-body cap for every client and, per request, as
+ * the response cap for the document download.
+ */
+export const MAX_TRANSFER_BYTES = 128 * 1024 * 1024;
+
+/** Per-request overrides for the retry policy, timeouts and transfer caps. */
 export interface RequestPolicy {
   maxRetries?: number;
   timeout?: number;
+  maxContentLength?: number;
+}
+
+/**
+ * Whether axios refused a response for exceeding `maxContentLength`. The
+ * verdict is deterministic — the same endpoint returns the same oversized body
+ * — so a replay only re-downloads bytes that will be discarded again.
+ */
+function isResponseTooLarge(error: AxiosError): boolean {
+  return (
+    error.code === 'ERR_BAD_RESPONSE' &&
+    !error.response &&
+    /^maxContentLength size of \d+ exceeded$/.test(error.message ?? '')
+  );
 }
 
 /**
@@ -98,11 +141,12 @@ export interface RequestPolicy {
  * recommended variant for retry-storm dampening: it removes the fixed
  * lower bound of "equal jitter" entirely, so concurrent clients that
  * all 429 simultaneously see maximum decorrelation on the next attempt.
- * Exported for unit testing; the caller pulls the randomized value
- * and passes it straight to `sleep()`.
  */
 export function computeBackoffWithJitter(attempt: number): number {
-  const cap = Math.min(RETRY_INITIAL_DELAY_MS * 2 ** attempt, RETRY_MAX_DELAY_MS);
+  const cap = Math.min(
+    RETRY_INITIAL_DELAY_MS * 2 ** attempt,
+    RETRY_MAX_DELAY_MS
+  );
   return Math.floor(Math.random() * cap);
 }
 
@@ -120,11 +164,12 @@ export class HttpClient {
   protected requestTimeout: number;
   protected totalTimeout: number;
   protected _lastTraceId?: string;
+  /** Origin of `baseURL`, so a verbose request line says where it went. */
+  private readonly baseOrigin: string;
 
   /**
    * Standard NO_PROXY matching: `*` bypasses everything, a leading dot or `*.`
-   * matches subdomains, and an entry may carry a port. Without this a corporate
-   * HTTPS_PROXY was applied even to a localhost endpoint.
+   * matches subdomains, and an entry may carry a port.
    */
   private static isProxyBypassed(targetUrl: string): boolean {
     const noProxy = process.env['NO_PROXY'] ?? process.env['no_proxy'];
@@ -158,7 +203,9 @@ export class HttpClient {
       });
   }
 
-  private static parseProxyFromEnv(targetUrl?: string): ProxyConfig | undefined {
+  private static parseProxyFromEnv(
+    targetUrl?: string
+  ): ProxyConfig | undefined {
     if (targetUrl !== undefined && HttpClient.isProxyBypassed(targetUrl)) {
       return undefined;
     }
@@ -213,8 +260,19 @@ export class HttpClient {
       throw new AuthError('API key is required');
     }
 
-    const baseURL =
-      options.baseUrl ?? (options.usePro ? PRO_API_URL : FREE_API_URL);
+    // The key is attached to every request below, so this is the one place that
+    // sees whichever key won precedence — including a config-file key, which
+    // the redactor cannot discover from the environment.
+    Logger.registerSecret(apiKey);
+
+    const baseURL = resolveClientBaseUrl(options);
+    this.baseOrigin = (() => {
+      try {
+        return new URL(baseURL).origin;
+      } catch {
+        return baseURL;
+      }
+    })();
 
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
     this.requestTimeout = options.timeout ?? DEFAULT_TIMEOUT;
@@ -224,6 +282,12 @@ export class HttpClient {
     const axiosConfig: Record<string, unknown> = {
       baseURL,
       timeout: options.timeout ?? DEFAULT_TIMEOUT,
+      // Axios defaults both of these to -1, meaning unbounded, so a server that
+      // streams without end is buffered until the process dies. The response
+      // cap is deliberately the tighter of the two; the document download
+      // raises it per request.
+      maxContentLength: MAX_RESPONSE_BYTES,
+      maxBodyLength: MAX_TRANSFER_BYTES,
       headers: {
         Authorization: `DeepL-Auth-Key ${apiKey}`,
         'User-Agent': USER_AGENT,
@@ -247,18 +311,16 @@ export class HttpClient {
     const proxyConfig = options.proxy ?? HttpClient.parseProxyFromEnv(baseURL);
 
     if (proxyConfig) {
-      // SECURITY: a plain-http proxy sitting in front of an https: API
-      // endpoint is a MITM footgun. axios tunnels via CONNECT so TLS is
-      // nominally end-to-end, but a misconfigured or compromised proxy
-      // env var routes every DeepL call — including the Authorization
-      // header — through attacker infrastructure. Warn loud at startup;
-      // don't refuse the connection (users with legitimate corporate
-      // http-only proxies need the escape hatch).
+      // SECURITY: axios tunnels via CONNECT so TLS is nominally end-to-end,
+      // but a plain-http proxy in front of an https: endpoint is a MITM
+      // footgun — a compromised one that terminates TLS sees every DeepL call,
+      // Authorization header included. Warn rather than refuse: users with
+      // legitimate corporate http-only proxies need the escape hatch.
       if (proxyConfig.protocol === 'http' && baseURL.startsWith('https:')) {
         Logger.warn(
           `Warning: routing HTTPS traffic to ${baseURL} via HTTP proxy ${proxyConfig.host}:${proxyConfig.port}. ` +
-          `TLS is tunneled end-to-end via CONNECT, but a malicious proxy that terminates TLS would see the Authorization header. ` +
-          `Set HTTPS_PROXY to an https:// URL if possible, or unset it if the proxy isn't required.`,
+            `TLS is tunneled end-to-end via CONNECT, but a malicious proxy that terminates TLS would see the Authorization header. ` +
+            `Set HTTPS_PROXY to an https:// URL if possible, or unset it if the proxy isn't required.`
         );
       }
       axiosConfig['proxy'] = {
@@ -275,8 +337,7 @@ export class HttpClient {
   destroy(): void {
     const httpAgent = this.client.defaults?.httpAgent as http.Agent | undefined;
     const httpsAgent = this.client.defaults?.httpsAgent as
-      | https.Agent
-      | undefined;
+      https.Agent | undefined;
     httpAgent?.destroy();
     httpsAgent?.destroy();
   }
@@ -375,6 +436,20 @@ export class HttpClient {
     let traceId: string | undefined;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const attemptTimeout = Math.min(requestTimeout, remainingBudget);
+      // The axios `timeout` reaches the socket as an inactivity timeout, so a
+      // response body that trickles indefinitely resets it on every chunk and
+      // it never fires. This deadline is wall-clock and cannot be reset by the
+      // peer.
+      const controller = new AbortController();
+      let deadlineExpired = false;
+      const deadline =
+        attemptTimeout > 0
+          ? setTimeout(() => {
+              deadlineExpired = true;
+              controller.abort();
+            }, attemptTimeout)
+          : undefined;
       const requestStart = Date.now();
       try {
         const config = buildConfig();
@@ -383,45 +458,57 @@ export class HttpClient {
           method,
           url: path,
           ...config,
-          timeout: Math.min(requestTimeout, remainingBudget),
+          timeout: attemptTimeout,
+          signal: controller.signal,
+          ...(policy?.maxContentLength !== undefined && {
+            maxContentLength: policy.maxContentLength,
+          }),
         });
         const requestElapsed = Date.now() - requestStart;
         Logger.verbose(
-          `[verbose] HTTP ${method} ${path} completed in ${requestElapsed}ms (status ${response.status})`
+          `[verbose] HTTP ${method} ${this.baseOrigin}${path} completed in ${requestElapsed}ms (status ${response.status})`
         );
 
         const responseTraceId = response.headers?.['x-trace-id'] as
-          | string
-          | undefined;
+          string | undefined;
         if (responseTraceId) {
           this._lastTraceId = responseTraceId;
         }
 
         return response.data;
       } catch (error) {
+        // An abort the deadline caused surfaces as a CanceledError that still
+        // carries the 200 response, which classification would report as an
+        // "API error". Restate it as the socket timeout it stands in for so
+        // every downstream decision — replay eligibility, classification,
+        // message — matches what a non-trickling timeout produces.
+        const failure = deadlineExpired
+          ? new AxiosError(
+              `timeout of ${attemptTimeout}ms exceeded`,
+              AxiosError.ETIMEDOUT
+            )
+          : error;
         remainingBudget -= Date.now() - requestStart;
-        lastError = error as Error;
+        lastError = failure as Error;
 
-        if (this.isAxiosError(error)) {
-          const responseTraceId = error.response?.headers?.['x-trace-id'] as
-            | string
-            | undefined;
+        if (this.isAxiosError(failure)) {
+          const responseTraceId = failure.response?.headers?.['x-trace-id'] as
+            string | undefined;
           if (responseTraceId) {
             traceId = responseTraceId;
             this._lastTraceId = responseTraceId;
           }
 
-          const status = error.response?.status;
+          const status = failure.response?.status;
           if (status === 429 && attempt < maxRetries) {
             const retryAfterDelay = this.parseRetryAfter(
-              error.response?.headers?.['retry-after'] as string | undefined
+              failure.response?.headers?.['retry-after'] as string | undefined
             );
             // Respect Retry-After verbatim when present; otherwise use
             // backoff with full jitter. Jitter prevents concurrent sync
             // buckets that all 429 at the same moment from forming a
             // thundering herd on the next attempt.
-            const delay =
-              retryAfterDelay ?? computeBackoffWithJitter(attempt);
+            const delay = retryAfterDelay ?? computeBackoffWithJitter(attempt);
             Logger.verbose(
               `[verbose] HTTP ${method} ${path} retry ${attempt + 1}/${maxRetries} in ${delay}ms (status 429${retryAfterDelay !== null && retryAfterDelay !== undefined ? ', Retry-After' : ', jitter backoff'})`
             );
@@ -429,17 +516,19 @@ export class HttpClient {
             continue;
           }
           if (status && status >= 400 && status < 500) {
-            throw this.handleError(error, undefined, traceId);
+            throw this.handleError(failure, undefined, traceId);
           }
         }
 
         if (
           attempt < maxRetries &&
           remainingBudget > 0 &&
-          this.isReplayable(method, error)
+          this.isReplayable(method, failure)
         ) {
           const delay = computeBackoffWithJitter(attempt);
-          const status = this.isAxiosError(error) ? error.response?.status : undefined;
+          const status = this.isAxiosError(failure)
+            ? failure.response?.status
+            : undefined;
           Logger.verbose(
             `[verbose] HTTP ${method} ${path} retry ${attempt + 1}/${maxRetries} in ${delay}ms (${status ? `status ${status}` : 'network error'}, jitter backoff)`
           );
@@ -448,6 +537,8 @@ export class HttpClient {
         }
 
         break;
+      } finally {
+        clearTimeout(deadline);
       }
     }
 
@@ -463,6 +554,9 @@ export class HttpClient {
    */
   private isReplayable(method: string, error: unknown): boolean {
     if (!this.isAxiosError(error)) {
+      return false;
+    }
+    if (isResponseTooLarge(error)) {
       return false;
     }
     if (!error.response && error.code && UNSENT_REQUEST_CODES.has(error.code)) {
@@ -500,15 +594,14 @@ export class HttpClient {
     if (this.isAxiosError(error)) {
       const status = error.response?.status;
       const responseData = error.response?.data as
-        | { message?: string }
-        | undefined;
+        { message?: string } | undefined;
       // Sanitize the server-returned message before any interpolation into
       // user-facing error strings. Defense-in-depth against a malicious or
       // buggy server scribbling ANSI escape codes / control chars on the
       // user's terminal, matching the sanitization in tms-client.ts.
-      // Coalesce to '' before sanitizing — some axios error shapes have no
-      // `.message` field, and sanitizeForTerminal expects a string.
-      const message = sanitizeForTerminal(responseData?.message ?? error.message ?? '');
+      const message = sanitizeForTerminal(
+        responseData?.message ?? error.message ?? ''
+      );
 
       switch (status) {
         case 401:
@@ -546,6 +639,19 @@ export class HttpClient {
           if (!error.response) {
             return this.transportError(error);
           }
+          // A response whose status the server chose to signal success, on an
+          // error, means the exchange was accepted and then failed while its
+          // body was read — cut off mid-body, or a body the transport could
+          // not decode. The status is what decides it: the axios code varies
+          // with how the peer failed (ERR_BAD_RESPONSE for an aborted stream,
+          // a socket or zlib code otherwise). Deadline aborts are restated
+          // before classification (see `makeRequest`), so what arrives here is
+          // the peer's doing.
+          if (status !== undefined && status >= 200 && status < 300) {
+            return new NetworkError(
+              `Network error: the API answered HTTP ${status} but its response body did not arrive intact: ${message}${traceIdSuffix}`
+            );
+          }
           return new ValidationError(`API error: ${message}${traceIdSuffix}`);
       }
     }
@@ -561,6 +667,17 @@ export class HttpClient {
   }
 
   private transportError(error: AxiosError): NetworkError {
+    if (isResponseTooLarge(error)) {
+      const cap = error.config?.maxContentLength;
+      const limit =
+        typeof cap === 'number' && cap > 0
+          ? `${Math.round(cap / (1024 * 1024))}MiB`
+          : 'configured';
+      return new NetworkError(
+        `Network error: response body exceeded the ${limit} size limit`
+      );
+    }
+
     const detail = sanitizeForTerminal(error.message ?? '');
     const label =
       error.code && CLIENT_ABORT_CODES.has(error.code)

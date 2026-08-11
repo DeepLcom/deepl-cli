@@ -2,7 +2,11 @@ import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
-import { createAdminCommand, type CreateDeepLClient, type GetApiKeyAndOptions } from './service-factory.js';
+import {
+  createAdminCommand,
+  type CreateDeepLClient,
+  type GetApiKeyAndOptions,
+} from './service-factory.js';
 
 export function registerAdmin(
   program: Command,
@@ -10,14 +14,18 @@ export function registerAdmin(
     createDeepLClient: CreateDeepLClient;
     getApiKeyAndOptions?: GetApiKeyAndOptions;
     handleError: (error: unknown) => never;
-  },
+  }
 ): void {
   const { createDeepLClient, handleError } = deps;
 
   const adminCmd = program
     .command('admin')
-    .description('Admin API: manage API keys and view organization usage (requires admin key)')
-    .addHelpText('after', `
+    .description(
+      'Admin API: manage API keys and view organization usage (requires admin key)'
+    )
+    .addHelpText(
+      'after',
+      `
 Examples:
   $ deepl admin keys list
   $ deepl admin keys create --label "CI/CD key"
@@ -27,17 +35,20 @@ Examples:
   $ deepl admin usage --start 2024-01-01 --end 2024-01-31
   $ deepl admin usage --start 2024-01-01 --end 2024-01-31 --group-by key
   $ deepl admin keys list --format json
-`);
+`
+    );
 
-  const adminKeysCmd = adminCmd
-    .command('keys')
-    .description('Manage API keys');
+  const adminKeysCmd = adminCmd.command('keys').description('Manage API keys');
 
   adminKeysCmd
     .addCommand(
       new Command('list')
         .description('List all API keys')
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
+        .addOption(
+          new Option('--format <format>', 'Output format')
+            .choices(['text', 'json'])
+            .default('text')
+        )
         .action(async (options: { format?: string }) => {
           try {
             const admin = await createAdminCommand(createDeepLClient);
@@ -56,7 +67,11 @@ Examples:
       new Command('create')
         .description('Create a new API key')
         .option('--label <label>', 'Label for the new key')
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
+        .addOption(
+          new Option('--format <format>', 'Output format')
+            .choices(['text', 'json'])
+            .default('text')
+        )
         .action(async (options: { label?: string; format?: string }) => {
           try {
             const admin = await createAdminCommand(createDeepLClient);
@@ -81,7 +96,9 @@ Examples:
           try {
             if (!options.yes) {
               const { confirm } = await import('../../utils/confirm.js');
-              const confirmed = await confirm({ message: `Deactivate API key "${keyId}"? This action is permanent.` });
+              const confirmed = await confirm({
+                message: `Deactivate API key "${keyId}"? This action is permanent.`,
+              });
               if (!confirmed) {
                 Logger.info('Aborted.');
                 return;
@@ -105,7 +122,9 @@ Examples:
           try {
             const admin = await createAdminCommand(createDeepLClient);
             await admin.renameKey(keyId, label);
-            Logger.success(chalk.green(`\u2713 API key ${keyId} renamed to "${label}"`));
+            Logger.success(
+              chalk.green(`\u2713 API key ${keyId} renamed to "${label}"`)
+            );
           } catch (error) {
             handleError(error);
           }
@@ -116,47 +135,77 @@ Examples:
         .description('Set usage limits for an API key')
         .argument('<key-id>', 'Key ID')
         .argument('<characters>', 'Character limit (number or "unlimited")')
-        .option('--stt-limit <milliseconds>', 'Speech-to-text milliseconds limit (number or "unlimited")')
-        .action(async (keyId: string, characters: string, options: { sttLimit?: string }) => {
-          try {
-            const limit = characters === 'unlimited' ? null : parseInt(characters, 10);
-            if (limit !== null && isNaN(limit)) {
-              throw new ValidationError('Characters must be a number or "unlimited"');
-            }
-
-            let sttLimit: number | null | undefined;
-            if (options.sttLimit !== undefined) {
-              sttLimit = options.sttLimit === 'unlimited' ? null : parseInt(options.sttLimit, 10);
-              if (sttLimit !== null && isNaN(sttLimit)) {
-                throw new ValidationError('STT limit must be a number or "unlimited"');
+        .option(
+          '--stt-limit <milliseconds>',
+          'Speech-to-text milliseconds limit (number or "unlimited")'
+        )
+        .action(
+          async (
+            keyId: string,
+            characters: string,
+            options: { sttLimit?: string }
+          ) => {
+            try {
+              const limit =
+                characters === 'unlimited' ? null : parseInt(characters, 10);
+              if (limit !== null && isNaN(limit)) {
+                throw new ValidationError(
+                  'Characters must be a number or "unlimited"'
+                );
               }
-            }
 
-            const admin = await createAdminCommand(createDeepLClient, deps.getApiKeyAndOptions);
-            await admin.setKeyLimit(keyId, limit, sttLimit);
+              let sttLimit: number | null | undefined;
+              if (options.sttLimit !== undefined) {
+                sttLimit =
+                  options.sttLimit === 'unlimited'
+                    ? null
+                    : parseInt(options.sttLimit, 10);
+                if (sttLimit !== null && isNaN(sttLimit)) {
+                  throw new ValidationError(
+                    'STT limit must be a number or "unlimited"'
+                  );
+                }
+              }
 
-            const limitStr = limit === null ? 'unlimited' : limit.toLocaleString();
-            const parts = [`${limitStr} characters`];
-            if (sttLimit !== undefined) {
-              const sttStr = sttLimit === null ? 'unlimited' : sttLimit.toLocaleString();
-              parts.push(`${sttStr} STT ms`);
+              const admin = await createAdminCommand(
+                createDeepLClient,
+                deps.getApiKeyAndOptions
+              );
+              await admin.setKeyLimit(keyId, limit, sttLimit);
+
+              const limitStr =
+                limit === null ? 'unlimited' : limit.toLocaleString();
+              const parts = [`${limitStr} characters`];
+              if (sttLimit !== undefined) {
+                const sttStr =
+                  sttLimit === null ? 'unlimited' : sttLimit.toLocaleString();
+                parts.push(`${sttStr} STT ms`);
+              }
+              Logger.success(
+                chalk.green(
+                  `\u2713 Usage limit for ${keyId} set to ${parts.join(', ')}`
+                )
+              );
+            } catch (error) {
+              handleError(error);
             }
-            Logger.success(chalk.green(`\u2713 Usage limit for ${keyId} set to ${parts.join(', ')}`));
-          } catch (error) {
-            handleError(error);
           }
-        })
+        )
     );
 
-  adminCmd
-    .addCommand(
-      new Command('usage')
-        .description('View organization usage analytics')
-        .requiredOption('--start <date>', 'Start date (YYYY-MM-DD)')
-        .requiredOption('--end <date>', 'End date (YYYY-MM-DD)')
-        .option('--group-by <grouping>', 'Group results: key, key_and_day')
-        .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
-        .action(async (options: {
+  adminCmd.addCommand(
+    new Command('usage')
+      .description('View organization usage analytics')
+      .requiredOption('--start <date>', 'Start date (YYYY-MM-DD)')
+      .requiredOption('--end <date>', 'End date (YYYY-MM-DD)')
+      .option('--group-by <grouping>', 'Group results: key, key_and_day')
+      .addOption(
+        new Option('--format <format>', 'Output format')
+          .choices(['text', 'json'])
+          .default('text')
+      )
+      .action(
+        async (options: {
           start: string;
           end: string;
           groupBy?: string;
@@ -177,6 +226,7 @@ Examples:
           } catch (error) {
             handleError(error);
           }
-        })
-    );
+        }
+      )
+  );
 }

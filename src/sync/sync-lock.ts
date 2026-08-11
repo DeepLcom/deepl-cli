@@ -1,35 +1,65 @@
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import * as path from 'path';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { Logger } from '../utils/logger.js';
+import { getOwnMember, setOwnMember } from '../utils/own-members.js';
 import type { SyncLockFile, SyncLockEntry } from './types.js';
 import { LOCK_FILE_VERSION, LOCK_FILE_COMMENT } from './types.js';
+
+/** The per-file entry map, created on demand and setter-proof either way. */
+export function ensureFileEntries(
+  lockFile: SyncLockFile,
+  filePath: string
+): Record<string, SyncLockEntry> {
+  const existing = getOwnMember(lockFile.entries, filePath);
+  if (existing) return existing;
+  const created: Record<string, SyncLockEntry> = {};
+  setOwnMember(lockFile.entries, filePath, created);
+  return created;
+}
 
 function filesystemSafeTimestamp(): string {
   return new Date().toISOString().replace(/:/g, '-').replace(/\.\d+/, '');
 }
 
-function backupLockFile(lockFilePath: string, raw: string, tag: string): string | null {
+function backupLockFile(
+  lockFilePath: string,
+  raw: string,
+  tag: string
+): string | null {
   const backupPath = `${lockFilePath}.bak-${tag}-${filesystemSafeTimestamp()}`;
   try {
     fs.writeFileSync(backupPath, raw, 'utf-8');
     return backupPath;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    Logger.warn(`Failed to write lock file backup to ${backupPath}: ${message}`);
+    Logger.warn(
+      `Failed to write lock file backup to ${backupPath}: ${message}`
+    );
     return null;
   }
 }
 
-export function computeSourceHash(text: string, metadata?: Record<string, unknown>): string {
+export function computeSourceHash(
+  text: string,
+  metadata?: Record<string, unknown>
+): string {
   let input = text;
   if (metadata) {
-    const plurals = metadata['plurals'] ?? metadata['msgid_plural'] ?? metadata['plural_forms'];
+    const plurals =
+      metadata['plurals'] ??
+      metadata['msgid_plural'] ??
+      metadata['plural_forms'];
     if (plurals) {
       input += '\0' + JSON.stringify(plurals);
     }
   }
-  return crypto.createHash('sha256').update(input, 'utf-8').digest('hex').substring(0, 12);
+  return crypto
+    .createHash('sha256')
+    .update(input, 'utf-8')
+    .digest('hex')
+    .substring(0, 12);
 }
 
 export function createEmptyLockFile(sourceLocale: string): SyncLockFile {
@@ -44,39 +74,189 @@ export function createEmptyLockFile(sourceLocale: string): SyncLockFile {
   };
 }
 
+// Depth of `entries.<source file>.<i18n key>.translations.<locale>`, the level a
+// translation entry sits at. Matched on the path rather than on the key name so
+// an i18n key called `translations` is not mistaken for the container itself.
+const TRANSLATION_DEPTH = 5;
+
+function isTranslation(path: readonly string[]): boolean {
+  return (
+    path.length === TRANSLATION_DEPTH &&
+    path[0] === 'entries' &&
+    path[3] === 'translations'
+  );
+}
+
 /**
- * JSON.stringify replacer that emits plain objects with sorted keys, so the
- * lockfile is never materialized twice in memory: the replacer is invoked
- * lazily as stringify recurses, so only a single sorted-key shell lives at
- * each level of the tree.
- * Objects whose own-enumeration order is already sorted are returned as-is so
- * leaf shells (translations, stats) don't allocate.
+ * The top-level `stats` object, matched on the path so an i18n key or source
+ * file of that name is not compacted with it.
  */
-export function sortedKeysReplacer(_key: string, value: unknown): unknown {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    return value;
+function isStats(path: readonly string[]): boolean {
+  return path.length === 1 && path[0] === 'stats';
+}
+
+/**
+ * Own, enumerable, serializable members in key order. Enumerated as pairs rather
+ * than read back by key: an i18n key named `__proto__` is a real own property,
+ * and indexing a plain object for it would reach the prototype instead.
+ */
+function sortedMembers(value: object): [string, unknown][] {
+  return Object.entries(value)
+    .filter(
+      ([, member]) => member !== undefined && typeof member !== 'function'
+    )
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/** One line, no indentation, keys still sorted. */
+function serializeInline(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value) ?? 'null';
   }
-  const src = value as Record<string, unknown>;
-  const keys = Object.keys(src);
-  let alreadySorted = true;
-  for (let i = 1; i < keys.length; i++) {
-    if (keys[i - 1]! > keys[i]!) {
-      alreadySorted = false;
-      break;
+  if (Array.isArray(value)) {
+    return `[${value.map(serializeInline).join(', ')}]`;
+  }
+  const members = sortedMembers(value).map(
+    ([key, member]) => `${JSON.stringify(key)}: ${serializeInline(member)}`
+  );
+  return members.length === 0 ? '{}' : `{${members.join(', ')}}`;
+}
+
+// `path` is mutated in place rather than copied per member: a lockfile carries
+// one node per translation per key, and a fresh array at each would allocate
+// once for every one of them.
+function serializeNode(value: unknown, indent: string, path: string[]): string {
+  if (
+    isTranslation(path) ||
+    isStats(path) ||
+    value === null ||
+    typeof value !== 'object'
+  ) {
+    return serializeInline(value);
+  }
+  const childIndent = `${indent}  `;
+  const members: string[] = [];
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => {
+      path.push(String(index));
+      members.push(childIndent + serializeNode(item, childIndent, path));
+      path.pop();
+    });
+    return members.length === 0
+      ? '[]'
+      : `[\n${members.join(',\n')}\n${indent}]`;
+  }
+  for (const [key, member] of sortedMembers(value)) {
+    path.push(key);
+    members.push(
+      `${childIndent}${JSON.stringify(key)}: ${serializeNode(member, childIndent, path)}`
+    );
+    path.pop();
+  }
+  return members.length === 0 ? '{}' : `{\n${members.join(',\n')}\n${indent}}`;
+}
+
+/**
+ * The canonical on-disk form of a lock file, including its trailing newline.
+ *
+ * Every container is expanded one key per line, but each translation and the
+ * `stats` object are emitted on a single line. A translation is only meaningful
+ * whole — its hash, timestamp and review status all describe one act of
+ * translating — and one field per line makes those fields independently
+ * mergeable units, so `git merge` can combine one side's hash with the other's
+ * review status and produce a translation that existed on neither branch, with
+ * no conflict raised. One line per translation makes the smallest region git can
+ * produce a whole entry.
+ *
+ * `stats` is compacted for the neighbouring reason. Its counts and `last_sync`
+ * describe one sync run, and it sits two context lines below `generated_at`,
+ * which every write also changes — so git joins the two into one conflict
+ * region. Expanded, that region opens inside `stats` and closes outside it,
+ * which is not a member list `sync resolve` can parse, and the resolver falls
+ * back to picking a side by byte length. On one line the region stays a member
+ * list the resolver can merge.
+ */
+export function serializeLockFile(lockFile: SyncLockFile): string {
+  return `${serializeNode(lockFile, '', [])}\n`;
+}
+
+/** A member that can carry lock file structure: an object, not null, not an array. */
+function isContainer(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** The recorded sync timestamp when the file carries a usable one. */
+function lastSyncOf(stats: unknown): string {
+  if (isContainer(stats) && typeof stats['last_sync'] === 'string') {
+    return stats['last_sync'];
+  }
+  return new Date().toISOString();
+}
+
+interface ShapeRepair {
+  /** Members dropped for not having the shape the sync code dereferences. */
+  dropped: number;
+  entries: Record<string, Record<string, SyncLockEntry>>;
+  totalKeys: number;
+  totalTranslations: number;
+}
+
+/**
+ * Rebuild `entries` from the members that have the shape the rest of sync
+ * dereferences, and count what survives.
+ *
+ * A lock file is read from the repository, so every level of it is untrusted.
+ * Malformed members are dropped one at a time rather than the file being
+ * discarded whole: a key that loses its entry is translated again and billed
+ * again, so discarding an entire lock file over one bad member would hand
+ * whoever wrote it a full re-translation of the project.
+ *
+ * The result is a fresh object built with `setOwnMember`, so a file path or i18n
+ * key named `__proto__` is carried across as an own property rather than
+ * reaching a prototype setter.
+ */
+function repairEntryShape(entries: Record<string, unknown>): ShapeRepair {
+  const repaired: Record<string, Record<string, SyncLockEntry>> = {};
+  let dropped = 0;
+  let totalKeys = 0;
+  let totalTranslations = 0;
+
+  for (const [filePath, fileEntries] of Object.entries(entries)) {
+    if (!isContainer(fileEntries)) {
+      dropped++;
+      continue;
     }
+
+    const repairedFile: Record<string, SyncLockEntry> = {};
+    for (const [key, entry] of Object.entries(fileEntries)) {
+      if (!isContainer(entry) || !isContainer(entry['translations'])) {
+        dropped++;
+        continue;
+      }
+
+      const translations: Record<string, unknown> = {};
+      for (const [locale, translation] of Object.entries(
+        entry['translations']
+      )) {
+        if (!isContainer(translation)) {
+          dropped++;
+          continue;
+        }
+        setOwnMember(translations, locale, translation);
+        totalTranslations++;
+      }
+
+      setOwnMember(repairedFile, key, {
+        ...entry,
+        translations,
+      } as unknown as SyncLockEntry);
+      totalKeys++;
+    }
+
+    setOwnMember(repaired, filePath, repairedFile);
   }
-  if (alreadySorted) {
-    return value;
-  }
-  const sortedKeys = keys.slice().sort();
-  // Null-prototype: `out['__proto__'] = v` on a plain object invokes the
-  // prototype setter, so an i18n key of that name would vanish from the
-  // serialized lockfile on every write.
-  const out: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-  for (const k of sortedKeys) {
-    out[k] = src[k];
-  }
-  return out;
+
+  return { dropped, entries: repaired, totalKeys, totalTranslations };
 }
 
 // Per-manager memo of the entries-mutation counter value that `stats` were
@@ -85,7 +265,10 @@ export function sortedKeysReplacer(_key: string, value: unknown): unknown {
 const lockFileMutationVersion = new WeakMap<SyncLockFile, number>();
 
 function bumpMutationVersion(lockFile: SyncLockFile): void {
-  lockFileMutationVersion.set(lockFile, (lockFileMutationVersion.get(lockFile) ?? 0) + 1);
+  lockFileMutationVersion.set(
+    lockFile,
+    (lockFileMutationVersion.get(lockFile) ?? 0) + 1
+  );
 }
 
 function recomputeStats(lockFile: SyncLockFile): void {
@@ -104,10 +287,35 @@ function recomputeStats(lockFile: SyncLockFile): void {
 
 export class SyncLockManager {
   private readonly statsComputedFor = new WeakMap<SyncLockFile, number>();
+  /**
+   * Identity of the lock file as this instance last saw it, or `undefined`
+   * before the first read. `null` records "no file there".
+   */
+  private lastSeen: string | null | undefined;
 
   constructor(private readonly lockFilePath: string) {}
 
+  /**
+   * Identity of the file on disk right now. Size and mtime alone can repeat
+   * across a same-length rewrite within one mtime tick, so the inode is part of
+   * it — every writer here replaces the file by rename, which changes it.
+   */
+  private async fingerprint(): Promise<string | null> {
+    try {
+      const stats = await fs.promises.stat(this.lockFilePath);
+      return `${stats.mtimeMs}:${stats.size}:${stats.ino}`;
+    } catch {
+      return null;
+    }
+  }
+
   async read(): Promise<SyncLockFile> {
+    const lockFile = await this.readLockFile();
+    this.lastSeen = await this.fingerprint();
+    return lockFile;
+  }
+
+  private async readLockFile(): Promise<SyncLockFile> {
     try {
       await fs.promises.access(this.lockFilePath);
     } catch {
@@ -121,7 +329,9 @@ export class SyncLockManager {
       parsed = JSON.parse(raw);
     } catch {
       const backup = backupLockFile(this.lockFilePath, raw, 'corrupt');
-      const suffix = backup ? ` Previous lock file backed up to ${backup}.` : '';
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
       Logger.warn(`Lock file corrupted, performing full sync.${suffix}`);
       return createEmptyLockFile('');
     }
@@ -129,27 +339,84 @@ export class SyncLockManager {
     const obj = parsed as Record<string, unknown>;
     if (obj['version'] === undefined) {
       const backup = backupLockFile(this.lockFilePath, raw, 'v-unknown');
-      const suffix = backup ? ` Previous lock file backed up to ${backup}.` : '';
-      Logger.warn(`Lock file corrupted (missing version), performing full sync.${suffix}`);
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
+      Logger.warn(
+        `Lock file corrupted (missing version), performing full sync.${suffix}`
+      );
       return createEmptyLockFile('');
     }
     if (obj['version'] !== LOCK_FILE_VERSION) {
-      const versionTag = typeof obj['version'] === 'number' ? `v${obj['version']}` : 'v-unknown';
+      const versionTag =
+        typeof obj['version'] === 'number' ? `v${obj['version']}` : 'v-unknown';
       const backup = backupLockFile(this.lockFilePath, raw, versionTag);
-      const suffix = backup ? ` Previous lock file backed up to ${backup}.` : '';
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
       Logger.warn(
-        `Unsupported lock file version ${obj['version']} (expected ${LOCK_FILE_VERSION}), performing full sync.${suffix}`,
+        `Unsupported lock file version ${obj['version']} (expected ${LOCK_FILE_VERSION}), performing full sync.${suffix}`
       );
       return createEmptyLockFile('');
     }
     if (!obj['entries'] || typeof obj['entries'] !== 'object') {
-      const backup = backupLockFile(this.lockFilePath, raw, `v${LOCK_FILE_VERSION}-no-entries`);
-      const suffix = backup ? ` Previous lock file backed up to ${backup}.` : '';
+      const backup = backupLockFile(
+        this.lockFilePath,
+        raw,
+        `v${LOCK_FILE_VERSION}-no-entries`
+      );
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
       Logger.warn(`Lock file missing entries, performing full sync.${suffix}`);
       return createEmptyLockFile('');
     }
+    // An array cannot carry entries keyed by source path, so there is nothing
+    // to salvage from one. Left to the full-sync path rather than repaired,
+    // unlike a malformed member inside a real map.
+    if (Array.isArray(obj['entries'])) {
+      const backup = backupLockFile(
+        this.lockFilePath,
+        raw,
+        `v${LOCK_FILE_VERSION}-entries-not-a-map`
+      );
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
+      Logger.warn(
+        `Lock file entries is not a map of source paths, performing full sync.${suffix}`
+      );
+      return createEmptyLockFile('');
+    }
 
-    return parsed as SyncLockFile;
+    const repair = repairEntryShape(obj['entries'] as Record<string, unknown>);
+    if (repair.dropped > 0) {
+      const backup = backupLockFile(
+        this.lockFilePath,
+        raw,
+        `v${LOCK_FILE_VERSION}-malformed`
+      );
+      const suffix = backup
+        ? ` Previous lock file backed up to ${backup}.`
+        : '';
+      Logger.warn(
+        `Lock file contained ${repair.dropped} malformed ${repair.dropped === 1 ? 'entry' : 'entries'}, now dropped; the affected keys will be translated again.${suffix}`
+      );
+    }
+
+    const lockFile = parsed as SyncLockFile;
+    lockFile.entries = repair.entries;
+    // `stats` is derived from `entries` and recomputed on every write that
+    // follows a mutation, so the values on disk are never read for their own
+    // sake. Replacing them outright is cheaper than validating them and cannot
+    // leave the counts disagreeing with the entries they describe.
+    lockFile.stats = {
+      total_keys: repair.totalKeys,
+      total_translations: repair.totalTranslations,
+      last_sync: lastSyncOf(obj['stats']),
+    };
+
+    return lockFile;
   }
 
   async write(lockFile: SyncLockFile): Promise<void> {
@@ -163,21 +430,50 @@ export class SyncLockManager {
     }
     lockFile.generated_at = new Date().toISOString();
     lockFile._comment = LOCK_FILE_COMMENT;
-    const serialized = JSON.stringify(lockFile, sortedKeysReplacer, 2) + '\n';
-    await atomicWriteFile(this.lockFilePath, serialized, 'utf-8');
+    await this.warnIfChangedSinceRead();
+    await atomicWriteFile(
+      this.lockFilePath,
+      serializeLockFile(lockFile),
+      'utf-8'
+    );
+    this.lastSeen = await this.fingerprint();
   }
 
-  async updateEntry(filePath: string, key: string, entry: SyncLockEntry): Promise<void> {
+  /**
+   * A run reads the lock file when it starts and writes its whole in-memory
+   * copy when it finishes, so anything written in between is replaced. Every
+   * writing sync command holds the process lock, which is what stops two of
+   * them overlapping; this catches the rest — a hand edit, a `git merge`, or
+   * another tool — where the alternative is losing the other write in silence.
+   *
+   * A warning rather than a refusal: by the time this runs the target files
+   * are already written and their translations billed, so declining to record
+   * them would leave the next run to translate and bill them all over again.
+   */
+  private async warnIfChangedSinceRead(): Promise<void> {
+    if (this.lastSeen === undefined) return;
+    const current = await this.fingerprint();
+    if (current === this.lastSeen) return;
+    Logger.warn(
+      `${path.basename(this.lockFilePath)} changed on disk since this run read it; overwriting it with what this run recorded. ` +
+        'Check the file into git before re-running if another tool or a merge wrote it.'
+    );
+  }
+
+  async updateEntry(
+    filePath: string,
+    key: string,
+    entry: SyncLockEntry
+  ): Promise<void> {
     const lockFile = await this.read();
-    lockFile.entries[filePath] ??= {};
-    lockFile.entries[filePath][key] = entry;
+    setOwnMember(ensureFileEntries(lockFile, filePath), key, entry);
     bumpMutationVersion(lockFile);
     await this.write(lockFile);
   }
 
   async removeEntry(filePath: string, key: string): Promise<void> {
     const lockFile = await this.read();
-    const fileEntries = lockFile.entries[filePath];
+    const fileEntries = getOwnMember(lockFile.entries, filePath);
     if (fileEntries) {
       delete fileEntries[key];
       if (Object.keys(fileEntries).length === 0) {

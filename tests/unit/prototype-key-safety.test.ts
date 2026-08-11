@@ -18,10 +18,18 @@
 import { JsonFormatParser } from '../../src/formats/json';
 import { sanitizePullKeysResponse } from '../../src/sync/tms-client';
 import { GlossaryService } from '../../src/services/glossary';
-import { sortedKeysReplacer } from '../../src/sync/sync-lock';
+import { serializeLockFile } from '../../src/sync/sync-lock';
+import type { SyncLockFile } from '../../src/sync/types';
 import { Logger } from '../../src/utils/logger';
 
-const PROTO_KEYS = ['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty'];
+const PROTO_KEYS = [
+  '__proto__',
+  'constructor',
+  'prototype',
+  'toString',
+  'valueOf',
+  'hasOwnProperty',
+];
 
 describe('prototype-named key safety', () => {
   afterEach(() => {
@@ -33,7 +41,7 @@ describe('prototype-named key safety', () => {
 
   /** Reads a probe off a fresh object without tripping index-signature rules. */
   function probeOnFreshObject(name: string): unknown {
-    return (({}) as Record<string, unknown>)[name];
+    return ({} as Record<string, unknown>)[name];
   }
 
   describe('JsonFormatParser', () => {
@@ -49,7 +57,9 @@ describe('prototype-named key safety', () => {
       parser.reconstruct('{}', translated);
 
       expect(probeOnFreshObject('polluted')).toBeUndefined();
-      expect((([] as unknown) as Record<string, unknown>)['polluted']).toBeUndefined();
+      expect(
+        ([] as unknown as Record<string, unknown>)['polluted']
+      ).toBeUndefined();
     });
 
     it('should round-trip a literal toString key as ordinary data', () => {
@@ -69,58 +79,73 @@ describe('prototype-named key safety', () => {
       expect(parsed['greeting']).toBe('Hallo');
     });
 
-    it.each(PROTO_KEYS)('should round-trip a %s key present in the entry list', (key) => {
-      const parser = new JsonFormatParser();
-      // Note: a key absent from the entry list is pruned by removeDeletedKeys,
-      // which is intended behaviour — so the key under test must be supplied.
-      const target = `{"greeting":"Hallo",${JSON.stringify(key)}:"alt"}`;
+    it.each(PROTO_KEYS)(
+      'should round-trip a %s key present in the entry list',
+      (key) => {
+        const parser = new JsonFormatParser();
+        // Note: a key absent from the entry list is pruned by removeDeletedKeys,
+        // which is intended behaviour — so the key under test must be supplied.
+        const target = `{"greeting":"Hallo",${JSON.stringify(key)}:"alt"}`;
 
-      const out = parser.reconstruct(target, [
-        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
-        { key, value: 'Source', translation: 'vorhanden' },
-      ]);
+        const out = parser.reconstruct(target, [
+          { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+          { key, value: 'Source', translation: 'vorhanden' },
+        ]);
 
-      const parsed = JSON.parse(out) as Record<string, unknown>;
-      expect(Object.hasOwn(parsed, key)).toBe(true);
-      expect(parsed[key]).toBe('vorhanden');
-    });
+        const parsed = JSON.parse(out) as Record<string, unknown>;
+        expect(Object.hasOwn(parsed, key)).toBe(true);
+        expect(parsed[key]).toBe('vorhanden');
+      }
+    );
 
     // The cases above reconstruct a key the target already holds. Inserting a
     // key the target lacks is a different code path, and the one where plain
     // assignment silently drops the translation instead of polluting: on a
     // fresh {}, obj['__proto__'] = v retargets that object's prototype, so a
     // negative "was Object.prototype polluted" assertion still passes.
-    it.each(PROTO_KEYS)('should insert a %s key absent from the target as own data', (key) => {
-      const parser = new JsonFormatParser();
+    it.each(PROTO_KEYS)(
+      'should insert a %s key absent from the target as own data',
+      (key) => {
+        const parser = new JsonFormatParser();
 
-      const out = parser.reconstruct('{"greeting":"Hallo"}', [
-        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
-        { key, value: 'Source', translation: 'eingefuegt' },
-      ]);
+        const out = parser.reconstruct('{"greeting":"Hallo"}', [
+          { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+          { key, value: 'Source', translation: 'eingefuegt' },
+        ]);
 
-      const parsed = JSON.parse(out) as Record<string, unknown>;
-      expect(Object.hasOwn(parsed, key)).toBe(true);
-      expect(parsed[key]).toBe('eingefuegt');
-      expect(probeOnFreshObject('eingefuegt')).toBeUndefined();
-    });
+        const parsed = JSON.parse(out) as Record<string, unknown>;
+        expect(Object.hasOwn(parsed, key)).toBe(true);
+        expect(parsed[key]).toBe('eingefuegt');
+        expect(probeOnFreshObject('eingefuegt')).toBeUndefined();
+      }
+    );
 
     it('should insert a nested key under __proto__ as own data', () => {
       const parser = new JsonFormatParser();
 
       const out = parser.reconstruct('{"greeting":"Hallo"}', [
         { key: 'greeting', value: 'Hello', translation: 'Hallo' },
-        { key: '__proto__.nested', value: 'Source', translation: 'verschachtelt' },
+        {
+          key: '__proto__.nested',
+          value: 'Source',
+          translation: 'verschachtelt',
+        },
       ]);
 
       const parsed = JSON.parse(out) as Record<string, unknown>;
       expect(Object.hasOwn(parsed, '__proto__')).toBe(true);
-      expect((parsed['__proto__'] as Record<string, unknown>)['nested']).toBe('verschachtelt');
+      expect((parsed['__proto__'] as Record<string, unknown>)['nested']).toBe(
+        'verschachtelt'
+      );
     });
   });
 
   describe('sanitizePullKeysResponse', () => {
     it('should return an object with no inherited members', () => {
-      const raw = JSON.parse('{"greeting": "Hallo"}') as Record<string, unknown>;
+      const raw = JSON.parse('{"greeting": "Hallo"}') as Record<
+        string,
+        unknown
+      >;
 
       const result = sanitizePullKeysResponse(raw);
 
@@ -128,17 +153,25 @@ describe('prototype-named key safety', () => {
       expect(Object.getPrototypeOf(result)).toBeNull();
     });
 
-    it.each(PROTO_KEYS)('should report %s as absent when the TMS export is empty', (key) => {
-      const result = sanitizePullKeysResponse(JSON.parse('{}') as Record<string, unknown>);
+    it.each(PROTO_KEYS)(
+      'should report %s as absent when the TMS export is empty',
+      (key) => {
+        const result = sanitizePullKeysResponse(
+          JSON.parse('{}') as Record<string, unknown>
+        );
 
-      // The bug: result[key] returned an inherited function, so callers
-      // treated the key as freshly approved and discarded the real translation.
-      expect(result[key]).toBeUndefined();
-      expect(Object.hasOwn(result, key)).toBe(false);
-    });
+        // The bug: result[key] returned an inherited function, so callers
+        // treated the key as freshly approved and discarded the real translation.
+        expect(result[key]).toBeUndefined();
+        expect(Object.hasOwn(result, key)).toBe(false);
+      }
+    );
 
     it('should retain a genuine translation for a prototype-named key', () => {
-      const raw = JSON.parse('{"toString": "In Text umwandeln"}') as Record<string, unknown>;
+      const raw = JSON.parse('{"toString": "In Text umwandeln"}') as Record<
+        string,
+        unknown
+      >;
 
       const result = sanitizePullKeysResponse(raw);
 
@@ -148,51 +181,80 @@ describe('prototype-named key safety', () => {
   });
 
   describe('GlossaryService.tsvToEntries', () => {
-    it.each(PROTO_KEYS)('should keep a %s source term instead of dropping it', (key) => {
-      const tsv = `hello\tHallo\n${key}\tPrototyp\nworld\tWelt\n`;
+    it.each(PROTO_KEYS)(
+      'should keep a %s source term instead of dropping it',
+      (key) => {
+        const tsv = `hello\tHallo\n${key}\tPrototyp\nworld\tWelt\n`;
 
-      const entries = GlossaryService.tsvToEntries(tsv);
+        const entries = GlossaryService.tsvToEntries(tsv);
 
-      expect(Object.keys(entries).sort()).toEqual([key, 'hello', 'world'].sort());
-      expect(entries[key]).toBe('Prototyp');
-    });
+        expect(Object.keys(entries).sort()).toEqual(
+          [key, 'hello', 'world'].sort()
+        );
+        expect(entries[key]).toBe('Prototyp');
+      }
+    );
 
     it('should not report a prototype-named term as a duplicate', () => {
-      const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+      const warn = jest
+        .spyOn(Logger, 'warn')
+        .mockImplementation(() => undefined);
       try {
         GlossaryService.tsvToEntries('toString\tIn Text umwandeln\n');
 
-        expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Duplicate source'));
+        expect(warn).not.toHaveBeenCalledWith(
+          expect.stringContaining('Duplicate source')
+        );
       } finally {
         warn.mockRestore();
       }
     });
 
     it('should still report a genuine duplicate', () => {
-      const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+      const warn = jest
+        .spyOn(Logger, 'warn')
+        .mockImplementation(() => undefined);
       try {
         GlossaryService.tsvToEntries('hello\tHallo\nhello\tGuten Tag\n');
 
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining('Duplicate source'));
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining('Duplicate source')
+        );
       } finally {
         warn.mockRestore();
       }
     });
   });
 
-  describe('sortedKeysReplacer', () => {
-    it.each(PROTO_KEYS)('should preserve a %s lockfile key when sorting', (key) => {
-      // Built by JSON.parse so the prototype-named key is a real own property.
-      const src = JSON.parse(`{"zebra": 1, ${JSON.stringify(key)}: 2, "alpha": 3}`) as Record<
-        string,
-        unknown
-      >;
+  describe('serializeLockFile', () => {
+    it.each(PROTO_KEYS)(
+      'should preserve a %s source-file key when sorting',
+      (key) => {
+        // Built by JSON.parse so the prototype-named key is a real own property.
+        const lockFile = JSON.parse(
+          `{"version": 1, "entries": {"zebra.json": {}, ${JSON.stringify(key)}: {}, "alpha.json": {}}}`
+        ) as SyncLockFile;
 
-      const out = sortedKeysReplacer('entries', src) as Record<string, unknown>;
+        const out = JSON.parse(serializeLockFile(lockFile)) as {
+          entries: Record<string, unknown>;
+        };
 
-      expect(Object.hasOwn(out, key)).toBe(true);
-      expect(out[key]).toBe(2);
-      expect(JSON.parse(JSON.stringify(out)) as Record<string, unknown>).toHaveProperty(key, 2);
+        expect(Object.hasOwn(out.entries, key)).toBe(true);
+      }
+    );
+
+    it.each(PROTO_KEYS)('should preserve a %s i18n key', (key) => {
+      const lockFile = JSON.parse(
+        `{"version": 1, "entries": {"locales/en.json": {"zebra": {"source_hash": "z"}, ${JSON.stringify(key)}: {"source_hash": "p"}}}}`
+      ) as SyncLockFile;
+
+      const out = JSON.parse(serializeLockFile(lockFile)) as {
+        entries: Record<string, Record<string, { source_hash: string }>>;
+      };
+
+      const fileEntries = out.entries['locales/en.json']!;
+      expect(Object.hasOwn(fileEntries, key)).toBe(true);
+      expect(fileEntries[key]!.source_hash).toBe('p');
     });
   });
 });

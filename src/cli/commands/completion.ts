@@ -2,6 +2,17 @@ import type { Command } from 'commander';
 
 export type ShellType = 'bash' | 'zsh' | 'fish';
 
+/**
+ * Escapes text for a fish single-quoted string, where only `\\` and `\'` carry
+ * meaning. Backslashes go first: escaping the quotes first would leave the
+ * backslashes this adds to be doubled by the second pass, and a description
+ * ending in a backslash would otherwise escape the closing quote and run the
+ * rest of the generated line together with it.
+ */
+function escapeFishSingleQuoted(text: string): string {
+  return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 export class CompletionCommand {
   private readonly program: Command;
 
@@ -42,7 +53,9 @@ export class CompletionCommand {
   }
 
   private findCommand(name: string): Command | undefined {
-    return this.program.commands.find((c) => c.name() === name || c.aliases().includes(name));
+    return this.program.commands.find(
+      (c) => c.name() === name || c.aliases().includes(name)
+    );
   }
 
   private getCommandOptions(cmdName: string): string[] {
@@ -59,7 +72,7 @@ export class CompletionCommand {
         this.program.options
           .map((opt) => opt.long)
           .filter((o): o is string => !!o)
-          .concat('--help', '--version'),
+          .concat('--help', '--version')
       ),
     ];
   }
@@ -76,7 +89,9 @@ export class CompletionCommand {
       }
       const cmdOpts = this.getCommandOptions(parent);
       const words = [...subs, ...cmdOpts].join(' ');
-      subcommandCases.push(`        ${parent})\n            COMPREPLY=($(compgen -W "${words}" -- "\${cur}"))\n            return 0\n            ;;`);
+      subcommandCases.push(
+        `        ${parent})\n            COMPREPLY=($(compgen -W "${words}" -- "\${cur}"))\n            return 0\n            ;;`
+      );
     }
 
     const topLevelWords = [...topLevel, ...globalOpts].join(' ');
@@ -153,7 +168,9 @@ complete -F _deepl_completions deepl
     _describe -t ${safeName}-commands '${parent} subcommand' subcmds
 }`);
 
-      subcommandDispatch.push(`        ${parent})\n            _deepl_${safeName}\n            ;;`);
+      subcommandDispatch.push(
+        `        ${parent})\n            _deepl_${safeName}\n            ;;`
+      );
     }
 
     const topLevelDescriptions: string[] = [];
@@ -232,7 +249,9 @@ _deepl "$@"
     for (const cmdName of topLevel) {
       const cmd = this.findCommand(cmdName);
       const desc = cmd ? cmd.description() : '';
-      lines.push(`complete -c deepl -n '${noSubcmdCondition}' -a '${cmdName}' -d '${desc.replace(/'/g, "\\'")}'`);
+      lines.push(
+        `complete -c deepl -n '${noSubcmdCondition}' -a '${cmdName}' -d '${escapeFishSingleQuoted(desc)}'`
+      );
     }
 
     for (const opt of globalOpts) {
@@ -245,7 +264,7 @@ _deepl "$@"
       if (shortFlag) {
         line += ` -s '${shortFlag}'`;
       }
-      line += ` -d '${desc.replace(/'/g, "\\'")}'`;
+      line += ` -d '${escapeFishSingleQuoted(desc)}'`;
       lines.push(line);
     }
 
@@ -257,24 +276,29 @@ _deepl "$@"
       }
       const parentCmd = this.findCommand(parent);
       const seenCondition = `__fish_seen_subcommand_from ${parent}`;
-      const notSeenSub = subs.length > 0
-        ? `; and not __fish_seen_subcommand_from ${subs.join(' ')}`
-        : '';
+      const notSeenSub =
+        subs.length > 0
+          ? `; and not __fish_seen_subcommand_from ${subs.join(' ')}`
+          : '';
 
       lines.push(`# ${parent} subcommands`);
       if (parentCmd) {
         for (const sub of this.visibleCommands(parentCmd)) {
-          const desc = sub.description().replace(/'/g, "\\'");
-          lines.push(`complete -c deepl -n '${seenCondition}${notSeenSub}' -a '${sub.name()}' -d '${desc}'`);
+          const desc = escapeFishSingleQuoted(sub.description());
+          lines.push(
+            `complete -c deepl -n '${seenCondition}${notSeenSub}' -a '${sub.name()}' -d '${desc}'`
+          );
         }
       }
 
       const cmdOpts = this.getCommandOptions(parent);
       for (const opt of cmdOpts) {
         const optObj = parentCmd?.options.find((o) => o.long === opt);
-        const desc = optObj ? optObj.description.replace(/'/g, "\\'") : '';
+        const desc = optObj ? escapeFishSingleQuoted(optObj.description) : '';
         const longFlag = opt.replace(/^--/, '');
-        lines.push(`complete -c deepl -n '${seenCondition}' -l '${longFlag}' -d '${desc}'`);
+        lines.push(
+          `complete -c deepl -n '${seenCondition}' -l '${longFlag}' -d '${desc}'`
+        );
       }
       lines.push('');
     }

@@ -33,7 +33,7 @@ describe('deepl sync --watch (subprocess)', () => {
     fs.mkdirSync(localesDir, { recursive: true });
     fs.writeFileSync(
       path.join(localesDir, 'en.json'),
-      JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n',
+      JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
     );
     fs.writeFileSync(
       path.join(tmpDir, '.deepl-sync.yaml'),
@@ -47,7 +47,7 @@ describe('deepl sync --watch (subprocess)', () => {
         '    include:',
         '      - "locales/en.json"',
         '',
-      ].join('\n'),
+      ].join('\n')
     );
     combined = '';
   });
@@ -64,8 +64,10 @@ describe('deepl sync --watch (subprocess)', () => {
       });
     }
     child = null;
-    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });
-    if (fs.existsSync(configDir)) fs.rmSync(configDir, { recursive: true, force: true });
+    if (fs.existsSync(tmpDir))
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    if (fs.existsSync(configDir))
+      fs.rmSync(configDir, { recursive: true, force: true });
   });
 
   function waitForMarker(marker: RegExp, timeoutMs: number): Promise<boolean> {
@@ -93,10 +95,14 @@ describe('deepl sync --watch (subprocess)', () => {
           NO_COLOR: '1',
         },
         stdio: ['ignore', 'pipe', 'pipe'],
-      },
+      }
     );
-    child.stdout?.on('data', (chunk: Buffer) => { combined += chunk.toString(); });
-    child.stderr?.on('data', (chunk: Buffer) => { combined += chunk.toString(); });
+    child.stdout?.on('data', (chunk: Buffer) => {
+      combined += chunk.toString();
+    });
+    child.stderr?.on('data', (chunk: Buffer) => {
+      combined += chunk.toString();
+    });
 
     // Wait for chokidar to warm up and print the "Watching..." banner.
     const watching = await waitForMarker(/Watching .* pattern/i, 5000);
@@ -105,7 +111,7 @@ describe('deepl sync --watch (subprocess)', () => {
     // Modify the source file to trigger a change event.
     fs.writeFileSync(
       path.join(tmpDir, 'locales', 'en.json'),
-      JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n',
+      JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n'
     );
 
     // Wait up to 3s for the subprocess to register the change and start a sync cycle.
@@ -119,7 +125,9 @@ describe('deepl sync --watch (subprocess)', () => {
     child.kill('SIGTERM');
     const code = await Promise.race([
       exitPromise,
-      new Promise<number | null>((resolve) => setTimeout(() => resolve(-1), 3000)),
+      new Promise<number | null>((resolve) =>
+        setTimeout(() => resolve(-1), 3000)
+      ),
     ]);
 
     // SIGTERM should lead to a clean exit (code 0, or signal-based null on some platforms).

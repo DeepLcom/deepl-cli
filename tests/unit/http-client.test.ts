@@ -1,6 +1,7 @@
 import nock from 'nock';
 import { HttpClient } from '../../src/api/http-client';
 import { NetworkError } from '../../src/utils/errors';
+import { Logger } from '../../src/utils/logger';
 
 class TestHttpClient extends HttpClient {
   async get<T>(path: string, params?: Record<string, unknown>): Promise<T> {
@@ -21,7 +22,12 @@ describe('HttpClient', () => {
   beforeEach(() => {
     jest.useFakeTimers({ advanceTimers: true });
     client = new TestHttpClient(apiKey, { maxRetries: 3 });
-    sleepSpy = jest.spyOn(client as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep').mockResolvedValue();
+    sleepSpy = jest
+      .spyOn(
+        client as unknown as { sleep: (ms: number) => Promise<void> },
+        'sleep'
+      )
+      .mockResolvedValue();
     nock.cleanAll();
   });
 
@@ -48,7 +54,9 @@ describe('HttpClient', () => {
     });
 
     it('should return undefined for invalid Retry-After value', () => {
-      expect(client.callParseRetryAfter('not-a-number-or-date')).toBeUndefined();
+      expect(
+        client.callParseRetryAfter('not-a-number-or-date')
+      ).toBeUndefined();
     });
 
     it('should parse HTTP date format Retry-After', () => {
@@ -79,9 +87,7 @@ describe('HttpClient', () => {
       nock(baseUrl)
         .get('/v2/test')
         .reply(429, { message: 'Too many requests' }, { 'Retry-After': '5' });
-      nock(baseUrl)
-        .get('/v2/test')
-        .reply(200, { result: 'ok' });
+      nock(baseUrl).get('/v2/test').reply(200, { result: 'ok' });
 
       const result = await client.get<{ result: string }>('/v2/test');
 
@@ -94,9 +100,7 @@ describe('HttpClient', () => {
       nock(baseUrl)
         .get('/v2/test')
         .reply(429, { message: 'Too many requests' }, { 'Retry-After': '0' });
-      nock(baseUrl)
-        .get('/v2/test')
-        .reply(200, { result: 'ok' });
+      nock(baseUrl).get('/v2/test').reply(200, { result: 'ok' });
 
       const result = await client.get<{ result: string }>('/v2/test');
 
@@ -109,9 +113,7 @@ describe('HttpClient', () => {
       nock(baseUrl)
         .get('/v2/test')
         .reply(429, { message: 'Too many requests' });
-      nock(baseUrl)
-        .get('/v2/test')
-        .reply(200, { result: 'ok' });
+      nock(baseUrl).get('/v2/test').reply(200, { result: 'ok' });
 
       const result = await client.get<{ result: string }>('/v2/test');
 
@@ -127,9 +129,7 @@ describe('HttpClient', () => {
       nock(baseUrl)
         .get('/v2/test')
         .reply(429, { message: 'Too many requests' }, { 'Retry-After': '300' });
-      nock(baseUrl)
-        .get('/v2/test')
-        .reply(200, { result: 'ok' });
+      nock(baseUrl).get('/v2/test').reply(200, { result: 'ok' });
 
       const result = await client.get<{ result: string }>('/v2/test');
 
@@ -141,10 +141,12 @@ describe('HttpClient', () => {
     it('should fall back to jittered exponential backoff on invalid Retry-After', async () => {
       nock(baseUrl)
         .get('/v2/test')
-        .reply(429, { message: 'Too many requests' }, { 'Retry-After': 'garbage' });
-      nock(baseUrl)
-        .get('/v2/test')
-        .reply(200, { result: 'ok' });
+        .reply(
+          429,
+          { message: 'Too many requests' },
+          { 'Retry-After': 'garbage' }
+        );
+      nock(baseUrl).get('/v2/test').reply(200, { result: 'ok' });
 
       const result = await client.get<{ result: string }>('/v2/test');
 
@@ -159,10 +161,12 @@ describe('HttpClient', () => {
       const futureDate = new Date(Date.now() + 10000);
       nock(baseUrl)
         .get('/v2/test')
-        .reply(429, { message: 'Too many requests' }, { 'Retry-After': futureDate.toUTCString() });
-      nock(baseUrl)
-        .get('/v2/test')
-        .reply(200, { result: 'ok' });
+        .reply(
+          429,
+          { message: 'Too many requests' },
+          { 'Retry-After': futureDate.toUTCString() }
+        );
+      nock(baseUrl).get('/v2/test').reply(200, { result: 'ok' });
 
       const result = await client.get<{ result: string }>('/v2/test');
 
@@ -183,9 +187,7 @@ describe('HttpClient', () => {
       nock(baseUrl)
         .get('/v2/test')
         .reply(429, { message: 'Too many requests' });
-      nock(baseUrl)
-        .get('/v2/test')
-        .reply(200, { result: 'ok' });
+      nock(baseUrl).get('/v2/test').reply(200, { result: 'ok' });
 
       const result = await client.get<{ result: string }>('/v2/test');
 
@@ -215,11 +217,11 @@ describe('HttpClient', () => {
     });
 
     it('should still throw immediately on other 4xx errors', async () => {
-      nock(baseUrl)
-        .get('/v2/test')
-        .reply(403, { message: 'Forbidden' });
+      nock(baseUrl).get('/v2/test').reply(403, { message: 'Forbidden' });
 
-      await expect(client.get('/v2/test')).rejects.toThrow('Authentication failed');
+      await expect(client.get('/v2/test')).rejects.toThrow(
+        'Authentication failed'
+      );
       expect(sleepSpy).not.toHaveBeenCalled();
     });
   });
@@ -241,7 +243,9 @@ describe('HttpClient', () => {
         .times(4)
         .reply(500, { message: 'Internal Server Error' });
 
-      await expect(client.get('/v2/test')).rejects.toThrow(/Server error \(500\)/);
+      await expect(client.get('/v2/test')).rejects.toThrow(
+        /Server error \(500\)/
+      );
     });
   });
 
@@ -287,17 +291,28 @@ describe('HttpClient', () => {
         fail('Expected error');
       } catch (error) {
         expect(error).toBeInstanceOf(NetworkError);
-        expect((error as Error).message).toContain('Service temporarily unavailable');
+        expect((error as Error).message).toContain(
+          'Service temporarily unavailable'
+        );
       }
     });
   });
 
   describe('NO_PROXY', () => {
-    const PROXY_VARS = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'no_proxy'];
+    const PROXY_VARS = [
+      'HTTP_PROXY',
+      'http_proxy',
+      'HTTPS_PROXY',
+      'https_proxy',
+      'NO_PROXY',
+      'no_proxy',
+    ];
     let saved: Record<string, string | undefined>;
 
     beforeEach(() => {
-      saved = Object.fromEntries(PROXY_VARS.map((name) => [name, process.env[name]]));
+      saved = Object.fromEntries(
+        PROXY_VARS.map((name) => [name, process.env[name]])
+      );
       PROXY_VARS.forEach((name) => delete process.env[name]);
       process.env['HTTPS_PROXY'] = 'http://proxy.example.com:8080';
     });
@@ -314,14 +329,17 @@ describe('HttpClient', () => {
 
     function proxyFor(baseUrl: string): unknown {
       const instance = new TestHttpClient(apiKey, { baseUrl });
-      return (instance as unknown as { client: { defaults: { proxy?: unknown } } }).client.defaults
-        .proxy;
+      return (
+        instance as unknown as { client: { defaults: { proxy?: unknown } } }
+      ).client.defaults.proxy;
     }
 
     it('uses the proxy when NO_PROXY does not match', () => {
       process.env['NO_PROXY'] = 'example.org';
 
-      expect(proxyFor('https://api.deepl.com')).toMatchObject({ host: 'proxy.example.com' });
+      expect(proxyFor('https://api.deepl.com')).toMatchObject({
+        host: 'proxy.example.com',
+      });
     });
 
     it.each([
@@ -330,7 +348,11 @@ describe('HttpClient', () => {
       ['leading dot subdomain', '.deepl.com', 'https://api.deepl.com'],
       ['star-dot subdomain', '*.deepl.com', 'https://api.deepl.com'],
       ['host with matching port', 'localhost:8080', 'http://localhost:8080'],
-      ['entry among several', 'foo.test,api.deepl.com,bar.test', 'https://api.deepl.com'],
+      [
+        'entry among several',
+        'foo.test,api.deepl.com,bar.test',
+        'https://api.deepl.com',
+      ],
       ['case-insensitive', 'API.DeepL.com', 'https://api.deepl.com'],
     ])('bypasses the proxy for %s', (_label, noProxy, target) => {
       process.env['NO_PROXY'] = noProxy;
@@ -341,13 +363,37 @@ describe('HttpClient', () => {
     it('does not bypass when only the port differs', () => {
       process.env['NO_PROXY'] = 'localhost:9999';
 
-      expect(proxyFor('http://localhost:8080')).toMatchObject({ host: 'proxy.example.com' });
+      expect(proxyFor('http://localhost:8080')).toMatchObject({
+        host: 'proxy.example.com',
+      });
     });
 
     it('honours the lowercase no_proxy spelling', () => {
       process.env['no_proxy'] = 'api.deepl.com';
 
       expect(proxyFor('https://api.deepl.com')).toBeUndefined();
+    });
+  });
+
+  describe('credential registration', () => {
+    let errorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      Logger.clearSecrets();
+      errorSpy = jest.spyOn(console, 'error').mockImplementation();
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+      Logger.clearSecrets();
+    });
+
+    it('should register the key it attaches so diagnostics redact it', () => {
+      new TestHttpClient('CONFIG-FILE-KEY-WINS:fx');
+
+      Logger.error('API error: CONFIG-FILE-KEY-WINS:fx');
+
+      expect(errorSpy).toHaveBeenCalledWith('API error: [REDACTED]');
     });
   });
 });

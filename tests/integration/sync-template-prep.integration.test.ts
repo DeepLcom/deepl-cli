@@ -13,7 +13,10 @@ import { FormatRegistry } from '../../src/formats/index';
 import { JsonFormatParser } from '../../src/formats/json';
 import { loadSyncConfig } from '../../src/sync/sync-config';
 import { DEEPL_FREE_API_URL, TEST_API_KEY } from '../helpers/nock-setup';
-import { createMockConfigService, createMockCacheService } from '../helpers/mock-factories';
+import {
+  createMockConfigService,
+  createMockCacheService,
+} from '../helpers/mock-factories';
 
 function createServices(): { client: DeepLClient; syncService: SyncService } {
   const client = new DeepLClient(TEST_API_KEY, { maxRetries: 0 });
@@ -21,7 +24,11 @@ function createServices(): { client: DeepLClient; syncService: SyncService } {
     get: jest.fn(() => ({
       auth: {},
       api: { baseUrl: '', usePro: false },
-      defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+      defaults: {
+        targetLangs: [],
+        formality: 'default',
+        preserveFormatting: false,
+      },
       cache: { enabled: false },
       output: { format: 'text', color: true },
       proxy: {},
@@ -29,11 +36,19 @@ function createServices(): { client: DeepLClient; syncService: SyncService } {
     getValue: jest.fn(() => false),
   });
   const mockCache = createMockCacheService();
-  const translationService = new TranslationService(client, mockConfig, mockCache);
+  const translationService = new TranslationService(
+    client,
+    mockConfig,
+    mockCache
+  );
   const glossaryService = new GlossaryService(client);
   const registry = new FormatRegistry();
   registry.register(new JsonFormatParser());
-  const syncService = new SyncService(translationService, glossaryService, registry);
+  const syncService = new SyncService(
+    translationService,
+    glossaryService,
+    registry
+  );
   return { client, syncService };
 }
 
@@ -67,7 +82,7 @@ const SOURCE_JSON =
       'features.gamma.title': 'Gamma',
     },
     null,
-    2,
+    2
   ) + '\n';
 
 describe('sync-service template-pattern prep: source files read once per sync', () => {
@@ -92,7 +107,7 @@ describe('sync-service template-pattern prep: source files read once per sync', 
   });
 
   it('reads each bucket source file at most once when template patterns are configured', async () => {
-      expect.assertions(1);
+    expect.assertions(1);
     const configPath = path.join(tmpDir, '.deepl-sync.yaml');
     fs.writeFileSync(configPath, CONFIG_YAML, 'utf-8');
     const srcPath = path.join(tmpDir, 'src', 'Features.tsx');

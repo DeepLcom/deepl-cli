@@ -11,7 +11,11 @@ import { FileTranslationService } from '../../src/services/file-translation.js';
 import { DeepLClient, LanguageInfo } from '../../src/api/deepl-client.js';
 import { ConfigService } from '../../src/storage/config.js';
 import { CacheService } from '../../src/storage/cache.js';
-import { TEST_API_KEY, createMockConfigService, createMockCacheService } from '../helpers';
+import {
+  TEST_API_KEY,
+  createMockConfigService,
+  createMockCacheService,
+} from '../helpers';
 
 describe('Translation Workflow Integration', () => {
   const API_KEY = TEST_API_KEY;
@@ -32,13 +36,19 @@ describe('Translation Workflow Integration', () => {
       get: jest.fn(() => ({
         auth: {},
         api: { baseUrl: '', usePro: false },
-        defaults: { targetLangs: [], formality: 'default', preserveFormatting: false },
+        defaults: {
+          targetLangs: [],
+          formality: 'default',
+          preserveFormatting: false,
+        },
         cache: { enabled: true },
         output: { format: 'text', color: true },
         proxy: {},
       })),
       getValue: jest.fn((key: string) => {
-        if (key === 'cache.enabled') {return true;}
+        if (key === 'cache.enabled') {
+          return true;
+        }
         return undefined;
       }),
     });
@@ -76,7 +86,9 @@ describe('Translation Workflow Integration', () => {
         detectedSourceLang: 'en',
       });
 
-      const result = await translationService.translate('Hello', { targetLang: 'es' });
+      const result = await translationService.translate('Hello', {
+        targetLang: 'es',
+      });
 
       expect(result.text).toBe('Hola');
       expect(result.detectedSourceLang).toBe('en');
@@ -100,7 +112,11 @@ describe('Translation Workflow Integration', () => {
         getValue: jest.fn(() => true),
       });
 
-      translationService = new TranslationService(client, mockConfig, mockCache);
+      translationService = new TranslationService(
+        client,
+        mockConfig,
+        mockCache
+      );
 
       const translateSpy = jest.spyOn(client, 'translate').mockResolvedValue({
         text: 'Hola',
@@ -172,10 +188,9 @@ describe('Translation Workflow Integration', () => {
         text: 'Hello __VAR_0__',
       });
 
-      const result = await translationService.translate(
-        'Hello ${name}',
-        { targetLang: 'es' }
-      );
+      const result = await translationService.translate('Hello ${name}', {
+        targetLang: 'es',
+      });
 
       expect(result.text).toContain('${name}');
     });
@@ -185,10 +200,9 @@ describe('Translation Workflow Integration', () => {
         text: 'Hello __VAR_0__',
       });
 
-      const result = await translationService.translate(
-        'Hello {name}',
-        { targetLang: 'es' }
-      );
+      const result = await translationService.translate('Hello {name}', {
+        targetLang: 'es',
+      });
 
       expect(result.text).toContain('{name}');
     });
@@ -251,7 +265,9 @@ describe('Translation Workflow Integration', () => {
 
       const translateSpy = jest.spyOn(client, 'translate');
 
-      const result = await translationService.translate('Hello', { targetLang: 'es' });
+      const result = await translationService.translate('Hello', {
+        targetLang: 'es',
+      });
 
       expect(result.text).toBe('Hola (cached)');
       expect(translateSpy).not.toHaveBeenCalled(); // API not called
@@ -272,12 +288,18 @@ describe('Translation Workflow Integration', () => {
       mockConfig = {
         get: () => ({ defaults: {} }),
         getValue: (key: string) => {
-          if (key === 'cache.enabled') {return false;}
+          if (key === 'cache.enabled') {
+            return false;
+          }
           return undefined;
         },
       } as ConfigService;
 
-      translationService = new TranslationService(client, mockConfig, mockCache);
+      translationService = new TranslationService(
+        client,
+        mockConfig,
+        mockCache
+      );
 
       jest.spyOn(client, 'translate').mockResolvedValue({
         text: 'Hola',
@@ -307,15 +329,17 @@ describe('Translation Workflow Integration', () => {
 
   describe('TranslationService - Multi-Target Translation', () => {
     it('should translate to multiple languages in parallel', async () => {
-      jest.spyOn(client, 'translate')
+      jest
+        .spyOn(client, 'translate')
         .mockResolvedValueOnce({ text: 'Hola' })
         .mockResolvedValueOnce({ text: 'Bonjour' })
         .mockResolvedValueOnce({ text: 'Hallo' });
 
-      const results = await translationService.translateToMultiple(
-        'Hello',
-        ['es', 'fr', 'de']
-      );
+      const results = await translationService.translateToMultiple('Hello', [
+        'es',
+        'fr',
+        'de',
+      ]);
 
       expect(results).toHaveLength(3);
       expect(results[0]).toEqual({ targetLang: 'es', text: 'Hola' });
@@ -330,15 +354,15 @@ describe('Translation Workflow Integration', () => {
     });
 
     it('should pass skipCache option to underlying translate calls', async () => {
-      const translateSpy = jest.spyOn(translationService, 'translate').mockResolvedValue({
-        text: 'Hola',
-      });
+      const translateSpy = jest
+        .spyOn(translationService, 'translate')
+        .mockResolvedValue({
+          text: 'Hola',
+        });
 
-      await translationService.translateToMultiple(
-        'Hello',
-        ['es'],
-        { skipCache: true }
-      );
+      await translationService.translateToMultiple('Hello', ['es'], {
+        skipCache: true,
+      });
 
       expect(translateSpy).toHaveBeenCalledWith(
         'Hello',
@@ -350,10 +374,9 @@ describe('Translation Workflow Integration', () => {
 
   describe('TranslationService - Batch Translation', () => {
     it('should translate multiple texts in batch', async () => {
-      jest.spyOn(client, 'translateBatch').mockResolvedValue([
-        { text: 'Hola' },
-        { text: 'Adiós' },
-      ]);
+      jest
+        .spyOn(client, 'translateBatch')
+        .mockResolvedValue([{ text: 'Hola' }, { text: 'Adiós' }]);
 
       const results = await translationService.translateBatch(
         ['Hello', 'Goodbye'],
@@ -366,7 +389,9 @@ describe('Translation Workflow Integration', () => {
     });
 
     it('should return empty array for empty input', async () => {
-      const results = await translationService.translateBatch([], { targetLang: 'es' });
+      const results = await translationService.translateBatch([], {
+        targetLang: 'es',
+      });
       expect(results).toEqual([]);
     });
 
@@ -375,9 +400,9 @@ describe('Translation Workflow Integration', () => {
         .mockReturnValueOnce({ text: 'Hola (cached)' })
         .mockReturnValueOnce(null);
 
-      jest.spyOn(client, 'translateBatch').mockResolvedValue([
-        { text: 'Adiós' },
-      ]);
+      jest
+        .spyOn(client, 'translateBatch')
+        .mockResolvedValue([{ text: 'Adiós' }]);
 
       const results = await translationService.translateBatch(
         ['Hello', 'Goodbye'],
@@ -396,21 +421,21 @@ describe('Translation Workflow Integration', () => {
     });
 
     it('should cache newly translated results', async () => {
-      jest.spyOn(client, 'translateBatch').mockResolvedValue([
-        { text: 'Hola' },
-        { text: 'Adiós' },
-      ]);
+      jest
+        .spyOn(client, 'translateBatch')
+        .mockResolvedValue([{ text: 'Hola' }, { text: 'Adiós' }]);
 
-      await translationService.translateBatch(
-        ['Hello', 'Goodbye'],
-        { targetLang: 'es' }
-      );
+      await translationService.translateBatch(['Hello', 'Goodbye'], {
+        targetLang: 'es',
+      });
 
       expect(mockCache.set).toHaveBeenCalledTimes(2);
     });
 
     it('should handle batch API errors gracefully', async () => {
-      jest.spyOn(client, 'translateBatch').mockRejectedValue(new Error('API error'));
+      jest
+        .spyOn(client, 'translateBatch')
+        .mockRejectedValue(new Error('API error'));
 
       await expect(
         translationService.translateBatch(['Hello'], { targetLang: 'es' })
@@ -421,11 +446,18 @@ describe('Translation Workflow Integration', () => {
       // Create 60 unique texts to avoid cache key collisions
       const texts = Array.from({ length: 60 }, (_, i) => `Hello ${i}`);
 
-      jest.spyOn(client, 'translateBatch')
-        .mockResolvedValueOnce(Array.from({ length: 50 }, (_, i) => ({ text: `Hola ${i}` })))
-        .mockResolvedValueOnce(Array.from({ length: 10 }, (_, i) => ({ text: `Hola ${i + 50}` })));
+      jest
+        .spyOn(client, 'translateBatch')
+        .mockResolvedValueOnce(
+          Array.from({ length: 50 }, (_, i) => ({ text: `Hola ${i}` }))
+        )
+        .mockResolvedValueOnce(
+          Array.from({ length: 10 }, (_, i) => ({ text: `Hola ${i + 50}` }))
+        );
 
-      const results = await translationService.translateBatch(texts, { targetLang: 'es' });
+      const results = await translationService.translateBatch(texts, {
+        targetLang: 'es',
+      });
 
       expect(results).toHaveLength(60);
       expect(client.translateBatch).toHaveBeenCalledTimes(2);
@@ -453,9 +485,12 @@ describe('Translation Workflow Integration', () => {
         { language: 'de', name: 'German' },
       ];
 
-      jest.spyOn(client, 'getSupportedLanguages').mockResolvedValue(mockLanguages);
+      jest
+        .spyOn(client, 'getSupportedLanguages')
+        .mockResolvedValue(mockLanguages);
 
-      const languages = await translationService.getSupportedLanguages('source');
+      const languages =
+        await translationService.getSupportedLanguages('source');
 
       expect(languages).toEqual(mockLanguages);
     });
@@ -466,17 +501,24 @@ describe('Translation Workflow Integration', () => {
         { language: 'fr', name: 'French' },
       ];
 
-      jest.spyOn(client, 'getSupportedLanguages').mockResolvedValue(mockLanguages);
+      jest
+        .spyOn(client, 'getSupportedLanguages')
+        .mockResolvedValue(mockLanguages);
 
-      const languages = await translationService.getSupportedLanguages('target');
+      const languages =
+        await translationService.getSupportedLanguages('target');
 
       expect(languages).toEqual(mockLanguages);
     });
 
     it('should cache language results for 24 hours', async () => {
-      const mockLanguages: LanguageInfo[] = [{ language: 'en', name: 'English' }];
+      const mockLanguages: LanguageInfo[] = [
+        { language: 'en', name: 'English' },
+      ];
 
-      const getSpy = jest.spyOn(client, 'getSupportedLanguages').mockResolvedValue(mockLanguages);
+      const getSpy = jest
+        .spyOn(client, 'getSupportedLanguages')
+        .mockResolvedValue(mockLanguages);
 
       // First call
       await translationService.getSupportedLanguages('source');
@@ -499,11 +541,9 @@ describe('Translation Workflow Integration', () => {
         text: 'Hola mundo',
       });
 
-      await fileTranslationService.translateFile(
-        inputPath,
-        outputPath,
-        { targetLang: 'es' }
-      );
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       expect(fs.existsSync(outputPath)).toBe(true);
       const output = fs.readFileSync(outputPath, 'utf-8');
@@ -520,11 +560,9 @@ describe('Translation Workflow Integration', () => {
         text: '# Hola\n\nMundo',
       });
 
-      await fileTranslationService.translateFile(
-        inputPath,
-        outputPath,
-        { targetLang: 'es' }
-      );
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       expect(fs.existsSync(outputPath)).toBe(true);
     });
@@ -539,11 +577,9 @@ describe('Translation Workflow Integration', () => {
         text: 'Hola',
       });
 
-      await fileTranslationService.translateFile(
-        inputPath,
-        outputPath,
-        { targetLang: 'es' }
-      );
+      await fileTranslationService.translateFile(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       expect(fs.existsSync(outputPath)).toBe(true);
     });
@@ -563,11 +599,9 @@ describe('Translation Workflow Integration', () => {
       fs.writeFileSync(inputPath, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 
       await expect(
-        fileTranslationService.translateFile(
-          inputPath,
-          '/tmp/output.txt',
-          { targetLang: 'es' }
-        )
+        fileTranslationService.translateFile(inputPath, '/tmp/output.txt', {
+          targetLang: 'es',
+        })
       ).rejects.toThrow('Unsupported file type');
     });
 
@@ -576,11 +610,9 @@ describe('Translation Workflow Integration', () => {
       fs.writeFileSync(inputPath, '');
 
       await expect(
-        fileTranslationService.translateFile(
-          inputPath,
-          '/tmp/output.txt',
-          { targetLang: 'es' }
-        )
+        fileTranslationService.translateFile(inputPath, '/tmp/output.txt', {
+          targetLang: 'es',
+        })
       ).rejects.toThrow('Cannot translate empty file');
     });
 
@@ -590,9 +622,11 @@ describe('Translation Workflow Integration', () => {
 
       fs.writeFileSync(inputPath, 'Use `console.log()`');
 
-      const translateSpy = jest.spyOn(translationService, 'translate').mockResolvedValue({
-        text: 'Use `console.log()`',
-      });
+      const translateSpy = jest
+        .spyOn(translationService, 'translate')
+        .mockResolvedValue({
+          text: 'Use `console.log()`',
+        });
 
       await fileTranslationService.translateFile(
         inputPath,
@@ -678,10 +712,7 @@ describe('Translation Workflow Integration', () => {
       fs.writeFileSync(inputPath, Buffer.from([0x89, 0x50]));
 
       await expect(
-        fileTranslationService.translateFileToMultiple(
-          inputPath,
-          ['es']
-        )
+        fileTranslationService.translateFileToMultiple(inputPath, ['es'])
       ).rejects.toThrow('Unsupported file type');
     });
 
@@ -690,10 +721,7 @@ describe('Translation Workflow Integration', () => {
       fs.writeFileSync(inputPath, '');
 
       await expect(
-        fileTranslationService.translateFileToMultiple(
-          inputPath,
-          ['es']
-        )
+        fileTranslationService.translateFileToMultiple(inputPath, ['es'])
       ).rejects.toThrow('Cannot translate empty file');
     });
   });

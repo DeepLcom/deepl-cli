@@ -40,7 +40,10 @@ describe('CLI Success Paths E2E', () => {
 
       child.stderr.on('data', (data: Buffer) => {
         const msg = data.toString();
-        if (!msg.includes('ExperimentalWarning') && !msg.includes('--experimental')) {
+        if (
+          !msg.includes('ExperimentalWarning') &&
+          !msg.includes('--experimental')
+        ) {
           process.stderr.write(`[mock-server stderr] ${msg}`);
         }
       });
@@ -52,7 +55,10 @@ describe('CLI Success Paths E2E', () => {
         }
       });
 
-      setTimeout(() => reject(new Error('Mock server did not start within 15s')), 15000);
+      setTimeout(
+        () => reject(new Error('Mock server did not start within 15s')),
+        15000
+      );
     });
   }
 
@@ -68,23 +74,34 @@ describe('CLI Success Paths E2E', () => {
       cache: { enabled: false, maxSize: 1048576, ttl: 2592000 },
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
-
     };
-    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(configDir, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
   }
 
   let runCLI: (command: string) => string;
   let runCLIAll: (command: string) => string;
   let runCLIPipe: (stdin: string, command: string) => string;
+  let runCLIExpectError: (command: string) => {
+    status: number;
+    output: string;
+  };
 
   beforeAll(async () => {
     testConfigDir = testConfig.path;
     testDir = testFiles.path;
 
-    const helpers = makeNodeRunCLI(testConfigDir, { noColor: true, timeout: 15000 });
+    const helpers = makeNodeRunCLI(testConfigDir, {
+      noColor: true,
+      timeout: 15000,
+    });
     runCLI = (command: string) => helpers.runCLI(command);
     runCLIAll = (command: string) => helpers.runCLIAll(command);
-    runCLIPipe = (stdin: string, command: string) => helpers.runCLIPipe(stdin, command);
+    runCLIPipe = (stdin: string, command: string) =>
+      helpers.runCLIPipe(stdin, command);
+    runCLIExpectError = (command: string) => helpers.runCLIExpectError(command);
 
     mockPort = await startMockServer();
     baseUrl = `http://127.0.0.1:${mockPort}`;
@@ -117,8 +134,27 @@ describe('CLI Success Paths E2E', () => {
     });
 
     it('should translate text from stdin pipe', () => {
-      const output = runCLIPipe('Translate me', `translate --to es --api-url ${baseUrl}`);
+      const output = runCLIPipe(
+        'Translate me',
+        `translate --to es --api-url ${baseUrl}`
+      );
       expect(output.trim().split('\n')[0]).toBe('Traduceme');
+    });
+
+    it('should send a well-formed target the bundled snapshot does not list', () => {
+      // The mock echoes "[TARGET] text", so reaching it at all proves the code
+      // was not rejected locally. GET /v3/languages is the authority on which
+      // languages exist, and the snapshot can lag it.
+      const output = runCLI('translate "Unmapped" --to xx-yy');
+      expect(output.trim().split('\n')[0]).toBe('[XX-YY] Unmapped');
+    });
+
+    it('should still reject a target that is not shaped like a language tag', () => {
+      const result = runCLIExpectError('translate "Hello" --to notalanguage');
+      expect(result.status).toBeGreaterThan(0);
+      expect(result.output).toMatch(
+        /Invalid target language code: "notalanguage"/
+      );
     });
 
     it('should translate a file and write to output', () => {
@@ -133,6 +169,73 @@ describe('CLI Success Paths E2E', () => {
       expect(content).toContain('Hola');
     });
 
+    it('should write <stem>.<lang>.<ext> when --output is an existing directory', () => {
+      const inputFile = path.join(testDir, 'single-dir.md');
+      const outDir = path.join(testDir, 'single-dir-out');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+      fs.mkdirSync(outDir, { recursive: true });
+
+      const output = runCLI(
+        `translate "${inputFile}" --to es --output "${outDir}"`
+      );
+
+      const expected = path.join(outDir, 'single-dir.es.md');
+      expect(output).toContain(expected);
+      expect(fs.readFileSync(expected, 'utf-8')).toContain('Hola');
+    });
+
+    it('should treat a trailing slash on the output directory identically', () => {
+      const inputFile = path.join(testDir, 'slash-dir.md');
+      const outDir = path.join(testDir, 'slash-dir-out');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+      fs.mkdirSync(outDir, { recursive: true });
+
+      runCLI(
+        `translate "${inputFile}" --to es --output "${outDir}${path.sep}"`
+      );
+
+      expect(
+        fs.readFileSync(path.join(outDir, 'slash-dir.es.md'), 'utf-8')
+      ).toContain('Hola');
+    });
+
+    it('should write a structured file into an output directory under its own stem', () => {
+      const inputFile = path.join(testDir, 'messages.json');
+      const outDir = path.join(testDir, 'structured-dir-out');
+      fs.writeFileSync(inputFile, JSON.stringify({ greeting: 'Hello' }));
+      fs.mkdirSync(outDir, { recursive: true });
+
+      runCLI(`translate "${inputFile}" --to es --output "${outDir}"`);
+      runCLI(`translate "${inputFile}" --to fr --output "${outDir}"`);
+
+      expect(fs.existsSync(path.join(outDir, 'messages.es.json'))).toBe(true);
+      expect(fs.existsSync(path.join(outDir, 'messages.fr.json'))).toBe(true);
+    });
+
+    it('should create an output directory named with a trailing slash', () => {
+      const inputFile = path.join(testDir, 'missing-dir.md');
+      const outDir = path.join(testDir, 'missing-dir-out');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+
+      runCLI(
+        `translate "${inputFile}" --to es --output "${outDir}${path.sep}"`
+      );
+
+      expect(
+        fs.readFileSync(path.join(outDir, 'missing-dir.es.md'), 'utf-8')
+      ).toContain('Hola');
+    });
+
+    it('should still create a non-existent --output path as a file', () => {
+      const inputFile = path.join(testDir, 'new-path.md');
+      const outputFile = path.join(testDir, 'new-path-out', 'new.md');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+
+      runCLI(`translate "${inputFile}" --to es --output "${outputFile}"`);
+
+      expect(fs.readFileSync(outputFile, 'utf-8')).toContain('Hola');
+    });
+
     it('should exit with code 0 on successful translation', () => {
       const output = runCLI('translate "Hello" --to es');
       expect(output).toContain('Hola');
@@ -143,6 +246,50 @@ describe('CLI Success Paths E2E', () => {
       const parsed = JSON.parse(output.trim());
       expect(parsed).toHaveProperty('text');
       expect(parsed.text).toBe('Hola');
+    });
+  });
+
+  describe('local language validation across input modes', () => {
+    it('should reject formality for an extended target before sending a file', () => {
+      const inputFile = path.join(testDir, 'extended-file.txt');
+      fs.writeFileSync(inputFile, 'Hello', 'utf-8');
+      const outputFile = path.join(testDir, 'extended-file.af.txt');
+
+      const result = runCLIExpectError(
+        `translate "${inputFile}" --to af --formality more --output "${outputFile}"`
+      );
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('do not support formality');
+      expect(fs.existsSync(outputFile)).toBe(false);
+    });
+
+    it('should reject formality for an extended target before scanning a directory', () => {
+      const dirPath = path.join(testDir, 'extended-dir');
+      fs.mkdirSync(dirPath, { recursive: true });
+      fs.writeFileSync(path.join(dirPath, 'a.txt'), 'Hello', 'utf-8');
+
+      const result = runCLIExpectError(
+        `translate "${dirPath}" --to af --formality more --output "${testDir}/extended-dir-out"`
+      );
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('do not support formality');
+    });
+
+    it('should note an unknown code once per directory run, not once per call site', () => {
+      const dirPath = path.join(testDir, 'deferral-dir');
+      fs.mkdirSync(dirPath, { recursive: true });
+      fs.writeFileSync(path.join(dirPath, 'a.txt'), 'Hello', 'utf-8');
+
+      const output = runCLIAll(
+        `translate "${dirPath}" --to de,ex --output "${testDir}/deferral-dir-out"`
+      );
+
+      const notices =
+        output.match(/is not in the bundled language list/g) ?? [];
+      expect(notices).toHaveLength(1);
+      expect(output).toContain('"ex" is not in the bundled language list');
     });
   });
 
@@ -211,6 +358,52 @@ describe('CLI Success Paths E2E', () => {
     it('should exit with code 0', () => {
       const output = runCLIAll('languages');
       expect(output).toContain('Source Languages:');
+    });
+
+    it('should report supportsFormality on every target in --format json', () => {
+      // The documented JSON shape for targets. The features matrix rides along on
+      // the same objects and is stripped without --features, so the two must not
+      // be confused: this field stays.
+      const output = runCLI('languages --target --format json');
+      const parsed = JSON.parse(output.trim()) as Array<
+        Record<string, unknown>
+      >;
+
+      expect(parsed.length).toBeGreaterThan(0);
+      for (const entry of parsed) {
+        expect(entry).toHaveProperty('supportsFormality');
+        expect(typeof entry['supportsFormality']).toBe('boolean');
+        expect(entry).not.toHaveProperty('features');
+      }
+      expect(
+        parsed.find((e) => e['language'] === 'de')?.['supportsFormality']
+      ).toBe(true);
+      expect(
+        parsed.find((e) => e['language'] === 'en')?.['supportsFormality']
+      ).toBe(false);
+    });
+
+    it('should omit supportsFormality from source languages in --format json', () => {
+      const output = runCLI('languages --source --format json');
+      const parsed = JSON.parse(output.trim()) as Array<
+        Record<string, unknown>
+      >;
+
+      expect(parsed.length).toBeGreaterThan(0);
+      for (const entry of parsed) {
+        expect(entry).not.toHaveProperty('supportsFormality');
+      }
+    });
+
+    it('should include the features matrix only with --features', () => {
+      const output = runCLI('languages --target --features --format json');
+      const parsed = JSON.parse(output.trim()) as Array<
+        Record<string, unknown>
+      >;
+
+      expect(parsed.find((e) => e['language'] === 'de')).toHaveProperty(
+        'features'
+      );
     });
   });
 });

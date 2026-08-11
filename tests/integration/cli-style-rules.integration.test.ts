@@ -1,305 +1,15 @@
 /**
- * Integration Tests for Style Rules CLI Command
- * Tests CLI argument parsing, HTTP request structure with nock, and error handling
+ * Integration Tests for the Style Rules API client
+ * Drives StyleRulesCommand in-process against nock, asserting request structure,
+ * response field mapping and error handling. CLI argument parsing lives in
+ * tests/e2e/cli-style-rules.e2e.test.ts.
  */
 
 import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { StyleRulesService } from '../../src/services/style-rules.js';
 import { StyleRulesCommand } from '../../src/cli/commands/style-rules.js';
-import {
-  createTestConfigDir,
-  makeRunCLI,
-  DEEPL_FREE_API_URL,
-} from '../helpers';
-
-describe('Style Rules CLI Integration', () => {
-  const testConfig = createTestConfigDir('style-rules');
-  const { runCLI } = makeRunCLI(testConfig.path);
-
-  afterAll(() => {
-    testConfig.cleanup();
-  });
-
-  describe('deepl style-rules --help', () => {
-    it('should display help for style-rules command', () => {
-      const output = runCLI('deepl style-rules --help');
-
-      expect(output).toContain('Usage:');
-      expect(output).toContain('style-rules');
-      expect(output).toContain('Manage DeepL style rules');
-      expect(output).toContain('list');
-    });
-
-    it('should display help for style-rules list subcommand', () => {
-      const output = runCLI('deepl style-rules list --help');
-
-      expect(output).toContain('List all style rules');
-      expect(output).toContain('--detailed');
-      expect(output).toContain('--page');
-      expect(output).toContain('--page-size');
-      expect(output).toContain('--format');
-    });
-  });
-
-  describe('deepl style-rules without API key', () => {
-    beforeEach(() => {
-      try {
-        runCLI('deepl auth clear', { stdio: 'pipe' });
-      } catch {
-        // Ignore if already cleared
-      }
-    });
-
-    it('should require API key for style-rules list', () => {
-      expect.assertions(1);
-      try {
-        runCLI('deepl style-rules list', { stdio: 'pipe', excludeApiKey: true });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/API key|auth|not set/i);
-      }
-    });
-
-    it('should require API key for style-rules list --detailed', () => {
-      expect.assertions(1);
-      try {
-        runCLI('deepl style-rules list --detailed', { stdio: 'pipe', excludeApiKey: true });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/API key|auth|not set/i);
-      }
-    });
-
-    it('should require API key for style-rules list with pagination', () => {
-      expect.assertions(1);
-      try {
-        runCLI('deepl style-rules list --page 1 --page-size 10', {
-          stdio: 'pipe', excludeApiKey: true,
-        });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/API key|auth|not set/i);
-      }
-    });
-  });
-
-  describe('option flags validation', () => {
-    it('should accept --detailed flag without error', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules list --detailed', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option.*detailed/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should accept --page flag without error', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules list --page 2', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option.*page/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should accept --page-size flag without error', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules list --page-size 10', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option.*page-size/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should accept --format json flag without error', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules list --format json', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option.*format/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should accept all flags combined', () => {
-      expect.assertions(2);
-      try {
-        runCLI(
-          'deepl style-rules list --detailed --page 1 --page-size 5 --format json',
-          { stdio: 'pipe' }
-        );
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should accept create subcommand with required flags', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules create --name Foo --language en', { stdio: 'pipe', excludeApiKey: true });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should require --name and --language on create', () => {
-      expect.assertions(1);
-      try {
-        runCLI('deepl style-rules create', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/required.*(--name|--language)/i);
-      }
-    });
-
-    it('should accept show subcommand with positional id', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules show sr-1', { stdio: 'pipe', excludeApiKey: true });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should require id argument on show', () => {
-      expect.assertions(1);
-      try {
-        runCLI('deepl style-rules show', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/missing.*argument|id.*required/i);
-      }
-    });
-
-    it('should accept update subcommand with --name', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules update sr-1 --name "New"', { stdio: 'pipe', excludeApiKey: true });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should require --name or --rules on update (exit 6)', () => {
-      expect.assertions(1);
-      try {
-        runCLI('deepl style-rules update sr-1', { stdio: 'pipe' });
-      } catch (error: any) {
-        expect(error.status).toBe(6);
-      }
-    });
-
-    it('should accept delete --dry-run without running the deletion', () => {
-      const output = runCLI('deepl style-rules delete sr-1 --dry-run');
-      expect(output).toContain('[dry-run]');
-      expect(output).toContain('sr-1');
-    });
-
-    it('should accept instructions subcommand with positional style-id', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules instructions sr-1', { stdio: 'pipe', excludeApiKey: true });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should require style-id argument on instructions', () => {
-      expect.assertions(1);
-      try {
-        runCLI('deepl style-rules instructions', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/missing.*argument|style-id.*required/i);
-      }
-    });
-
-    it('should accept add-instruction with three positional args', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules add-instruction sr-1 tone "Be formal"', { stdio: 'pipe', excludeApiKey: true });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should require all three args on add-instruction', () => {
-      expect.assertions(1);
-      try {
-        runCLI('deepl style-rules add-instruction sr-1 tone', { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/missing.*argument|prompt.*required/i);
-      }
-    });
-
-    it('should accept update-instruction with three positional args', () => {
-      expect.assertions(2);
-      try {
-        runCLI('deepl style-rules update-instruction sr-1 tone "Be friendlier"', { stdio: 'pipe', excludeApiKey: true });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option/i);
-        expect(output).toMatch(/API key|auth/i);
-      }
-    });
-
-    it('should accept remove-instruction --dry-run without running', () => {
-      const output = runCLI('deepl style-rules remove-instruction sr-1 tone --dry-run');
-      expect(output).toContain('[dry-run]');
-      expect(output).toContain('tone');
-      expect(output).toContain('sr-1');
-    });
-
-    it('should accept --source-language on add-instruction', () => {
-      expect.assertions(1);
-      try {
-        runCLI('deepl style-rules add-instruction sr-1 tone "Be formal" --source-language en', { stdio: 'pipe', excludeApiKey: true });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option.*source-language/i);
-      }
-    });
-  });
-
-  describe('command structure', () => {
-    it('should be listed in main help', () => {
-      const output = runCLI('deepl --help');
-      expect(output).toContain('style-rules');
-    });
-
-    it('should describe as Pro API only', () => {
-      const output = runCLI('deepl style-rules --help');
-      expect(output).toContain('Pro API only');
-    });
-
-    it('should have list as a subcommand', () => {
-      const output = runCLI('deepl style-rules --help');
-      expect(output).toContain('list');
-      expect(output).toContain('List all style rules');
-    });
-  });
-});
+import { DEEPL_FREE_API_URL } from '../helpers';
 
 describe('Style Rules API Integration', () => {
   const API_KEY = 'test-api-key-123:fx';
@@ -835,7 +545,10 @@ describe('Style Rules API Integration', () => {
         })
         .reply(200, styleRuleWire);
 
-      const created = await styleRulesCommand.create({ name: 'Corporate', language: 'en' });
+      const created = await styleRulesCommand.create({
+        name: 'Corporate',
+        language: 'en',
+      });
       expect(created.styleId).toBe('sr-new');
       expect(createScope.isDone()).toBe(true);
 
@@ -857,7 +570,9 @@ describe('Style Rules API Integration', () => {
         })
         .reply(200, { ...styleRuleWire, name: 'Renamed', version: 2 });
 
-      const updated = await styleRulesCommand.update('sr-new', { name: 'Renamed' });
+      const updated = await styleRulesCommand.update('sr-new', {
+        name: 'Renamed',
+      });
       expect(updated.name).toBe('Renamed');
       expect(updated.version).toBe(2);
       expect(updateScope.isDone()).toBe(true);
@@ -897,7 +612,8 @@ describe('Style Rules API Integration', () => {
         .reply(200, { label: 'tone', prompt: 'Be formal' });
 
       const created = await styleRulesCommand.addInstruction('sr-new', {
-        label: 'tone', prompt: 'Be formal',
+        label: 'tone',
+        prompt: 'Be formal',
       });
       expect(created).toEqual({ label: 'tone', prompt: 'Be formal' });
       expect(createScope.isDone()).toBe(true);
@@ -912,7 +628,11 @@ describe('Style Rules API Integration', () => {
           configured_rules: {},
           custom_instructions: [
             { label: 'tone', prompt: 'Be formal' },
-            { label: 'register', prompt: 'First person', source_language: 'en' },
+            {
+              label: 'register',
+              prompt: 'First person',
+              source_language: 'en',
+            },
           ],
         });
 
@@ -932,19 +652,32 @@ describe('Style Rules API Integration', () => {
         .reply(200, {
           ...styleRuleWire,
           configured_rules: {},
-          custom_instructions: [{ id: instructionId, label: 'tone', prompt: 'old' }],
+          custom_instructions: [
+            { id: instructionId, label: 'tone', prompt: 'old' },
+          ],
         });
       const updateScope = nock(FREE_API_URL)
-        .put(`/v3/style_rules/sr-new/custom_instructions/${instructionId}`, (body) => {
-          expect(body.label).toBe('tone');
-          expect(body.prompt).toBe('Be friendlier');
-          return true;
-        })
-        .reply(200, { id: instructionId, label: 'tone', prompt: 'Be friendlier' });
+        .put(
+          `/v3/style_rules/sr-new/custom_instructions/${instructionId}`,
+          (body) => {
+            expect(body.label).toBe('tone');
+            expect(body.prompt).toBe('Be friendlier');
+            return true;
+          }
+        )
+        .reply(200, {
+          id: instructionId,
+          label: 'tone',
+          prompt: 'Be friendlier',
+        });
 
-      const updated = await styleRulesCommand.updateInstruction('sr-new', 'tone', {
-        prompt: 'Be friendlier',
-      });
+      const updated = await styleRulesCommand.updateInstruction(
+        'sr-new',
+        'tone',
+        {
+          prompt: 'Be friendlier',
+        }
+      );
       expect(updated.prompt).toBe('Be friendlier');
       expect(lookupForUpdate.isDone()).toBe(true);
       expect(updateScope.isDone()).toBe(true);
@@ -956,14 +689,17 @@ describe('Style Rules API Integration', () => {
         .reply(200, {
           ...styleRuleWire,
           configured_rules: {},
-          custom_instructions: [{ id: instructionId, label: 'tone', prompt: 'Be friendlier' }],
+          custom_instructions: [
+            { id: instructionId, label: 'tone', prompt: 'Be friendlier' },
+          ],
         });
       const deleteScope = nock(FREE_API_URL)
         .delete(`/v3/style_rules/sr-new/custom_instructions/${instructionId}`)
         .reply(204);
 
-      await expect(styleRulesCommand.removeInstruction('sr-new', 'tone'))
-        .resolves.toBeUndefined();
+      await expect(
+        styleRulesCommand.removeInstruction('sr-new', 'tone')
+      ).resolves.toBeUndefined();
       expect(lookupForDelete.isDone()).toBe(true);
       expect(deleteScope.isDone()).toBe(true);
     });

@@ -28,7 +28,9 @@ describe('detectIndent shared usage', () => {
     const entries: TranslatedEntry[] = [
       { key: 'greeting', value: 'Hello', translation: 'Hallo' },
     ];
-    expect(parser.reconstruct(original, entries)).toBe('{\n    "greeting": "Hallo"\n}\n');
+    expect(parser.reconstruct(original, entries)).toBe(
+      '{\n    "greeting": "Hallo"\n}\n'
+    );
   });
 
   it('preserves indentation round-trip in the ARB parser', () => {
@@ -37,7 +39,9 @@ describe('detectIndent shared usage', () => {
     const entries: TranslatedEntry[] = [
       { key: 'greeting', value: 'Hello', translation: 'Hallo' },
     ];
-    expect(parser.reconstruct(original, entries)).toBe('{\n\t"greeting": "Hallo"\n}\n');
+    expect(parser.reconstruct(original, entries)).toBe(
+      '{\n\t"greeting": "Hallo"\n}\n'
+    );
   });
 
   it('preserves indentation round-trip in the xcstrings parser', () => {
@@ -47,11 +51,15 @@ describe('detectIndent shared usage', () => {
         sourceLanguage: 'en',
         version: '1.0',
         strings: {
-          hi: { localizations: { en: { stringUnit: { state: 'translated', value: 'Hi' } } } },
+          hi: {
+            localizations: {
+              en: { stringUnit: { state: 'translated', value: 'Hi' } },
+            },
+          },
         },
       },
       null,
-      4,
+      4
     );
     const entries: TranslatedEntry[] = [
       { key: 'hi', value: 'Hi', translation: 'Hallo' },
@@ -64,7 +72,10 @@ describe('detectIndent shared usage', () => {
     const parser = new YamlFormatParser();
     const original = 'greeting: Hello\nfarewell: Goodbye\n';
     const entries = parser.extract(original);
-    const translated: TranslatedEntry[] = entries.map(e => ({ ...e, translation: e.value }));
+    const translated: TranslatedEntry[] = entries.map((e) => ({
+      ...e,
+      translation: e.value,
+    }));
     const result = parser.reconstruct(original, translated);
     expect(parser.extract(result)).toHaveLength(entries.length);
   });

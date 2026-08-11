@@ -1,4 +1,3 @@
- 
 import { Command } from 'commander';
 import { registerGlossary } from '../../src/cli/commands/register-glossary';
 import { createGlossaryCommand } from '../../src/cli/commands/service-factory';
@@ -34,7 +33,9 @@ import * as realFs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-const mockCreateGlossaryCommand = createGlossaryCommand as jest.MockedFunction<typeof createGlossaryCommand>;
+const mockCreateGlossaryCommand = createGlossaryCommand as jest.MockedFunction<
+  typeof createGlossaryCommand
+>;
 
 function makeProgram() {
   const program = new Command();
@@ -81,11 +82,30 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'create', 'my-terms', 'en', 'de', 'terms.tsv']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'create',
+        'my-terms',
+        'en',
+        'de',
+        'terms.tsv',
+      ]);
 
-      expect(mock.create).toHaveBeenCalledWith('my-terms', 'en', ['de'], 'terms.tsv');
-      expect(Logger.output).toHaveBeenCalledWith(expect.stringContaining('Glossary created successfully'));
-      expect(mock.formatGlossaryInfo).toHaveBeenCalledWith({ id: '1', name: 'test' });
+      expect(mock.create).toHaveBeenCalledWith(
+        'my-terms',
+        'en',
+        ['de'],
+        'terms.tsv'
+      );
+      expect(Logger.output).toHaveBeenCalledWith(
+        expect.stringContaining('Glossary created successfully')
+      );
+      expect(mock.formatGlossaryInfo).toHaveBeenCalledWith({
+        id: '1',
+        name: 'test',
+      });
       expect(Logger.output).toHaveBeenCalledWith('glossary-info');
     });
 
@@ -95,9 +115,23 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'create', 'my-terms', 'en', 'de,fr,es', 'terms.tsv']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'create',
+        'my-terms',
+        'en',
+        'de,fr,es',
+        'terms.tsv',
+      ]);
 
-      expect(mock.create).toHaveBeenCalledWith('my-terms', 'en', ['de', 'fr', 'es'], 'terms.tsv');
+      expect(mock.create).toHaveBeenCalledWith(
+        'my-terms',
+        'en',
+        ['de', 'fr', 'es'],
+        'terms.tsv'
+      );
     });
 
     it('should trim whitespace from comma-separated target languages', async () => {
@@ -106,9 +140,23 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'create', 'my-terms', 'en', 'de, fr, es', 'terms.tsv']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'create',
+        'my-terms',
+        'en',
+        'de, fr, es',
+        'terms.tsv',
+      ]);
 
-      expect(mock.create).toHaveBeenCalledWith('my-terms', 'en', ['de', 'fr', 'es'], 'terms.tsv');
+      expect(mock.create).toHaveBeenCalledWith(
+        'my-terms',
+        'en',
+        ['de', 'fr', 'es'],
+        'terms.tsv'
+      );
     });
 
     it('should handle single target language without comma', async () => {
@@ -117,9 +165,23 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'create', 'my-terms', 'en', 'de', 'terms.tsv']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'create',
+        'my-terms',
+        'en',
+        'de',
+        'terms.tsv',
+      ]);
 
-      expect(mock.create).toHaveBeenCalledWith('my-terms', 'en', ['de'], 'terms.tsv');
+      expect(mock.create).toHaveBeenCalledWith(
+        'my-terms',
+        'en',
+        ['de'],
+        'terms.tsv'
+      );
     });
 
     it('should call handleError on failure', async () => {
@@ -128,7 +190,16 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'create', 'name', 'en', 'de', 'file.tsv'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'create',
+          'name',
+          'en',
+          'de',
+          'file.tsv',
+        ])
       ).rejects.toThrow('create failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });
@@ -167,10 +238,19 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'show', 'my-terms']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'show',
+        'my-terms',
+      ]);
 
       expect(mock.show).toHaveBeenCalledWith('my-terms');
-      expect(mock.formatGlossaryInfo).toHaveBeenCalledWith({ id: '1', name: 'test' });
+      expect(mock.formatGlossaryInfo).toHaveBeenCalledWith({
+        id: '1',
+        name: 'test',
+      });
       expect(Logger.output).toHaveBeenCalledWith('glossary-info');
     });
 
@@ -193,7 +273,13 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'entries', 'my-terms']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'entries',
+        'my-terms',
+      ]);
 
       expect(mock.entries).toHaveBeenCalledWith('my-terms', undefined);
       expect(mock.formatEntries).toHaveBeenCalledWith([['hello', 'hallo']]);
@@ -206,7 +292,15 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'entries', 'my-terms', '--target-lang', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'entries',
+        'my-terms',
+        '--target-lang',
+        'de',
+      ]);
 
       expect(mock.entries).toHaveBeenCalledWith('my-terms', 'de');
     });
@@ -230,7 +324,14 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'delete', 'my-terms', '--yes']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'delete',
+        'my-terms',
+        '--yes',
+      ]);
 
       expect(mock.delete).toHaveBeenCalledWith('my-terms');
       expect(Logger.success).toHaveBeenCalled();
@@ -239,7 +340,14 @@ describe('registerGlossary', () => {
     it('should output dry-run message with --dry-run flag', async () => {
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'delete', 'my-terms', '--dry-run']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'delete',
+        'my-terms',
+        '--dry-run',
+      ]);
 
       expect(Logger.output).toHaveBeenCalled();
       const outputArg = (Logger.output as jest.Mock).mock.calls[0][0] as string;
@@ -253,7 +361,13 @@ describe('registerGlossary', () => {
       (confirm as jest.Mock).mockResolvedValue(false);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'delete', 'my-terms']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'delete',
+        'my-terms',
+      ]);
 
       expect(Logger.info).toHaveBeenCalledWith('Aborted.');
       expect(mockCreateGlossaryCommand).not.toHaveBeenCalled();
@@ -267,7 +381,13 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'delete', 'my-terms']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'delete',
+        'my-terms',
+      ]);
 
       expect(confirm).toHaveBeenCalled();
       expect(mock.delete).toHaveBeenCalledWith('my-terms');
@@ -280,7 +400,14 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'delete', 'my-terms', '--yes'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'delete',
+          'my-terms',
+          '--yes',
+        ])
       ).rejects.toThrow('delete failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });
@@ -296,7 +423,9 @@ describe('registerGlossary', () => {
       await program.parseAsync(['node', 'test', 'glossary', 'languages']);
 
       expect(mock.listLanguages).toHaveBeenCalled();
-      expect(mock.formatLanguagePairs).toHaveBeenCalledWith([{ source: 'en', target: 'de' }]);
+      expect(mock.formatLanguagePairs).toHaveBeenCalledWith([
+        { source: 'en', target: 'de' },
+      ]);
       expect(Logger.output).toHaveBeenCalledWith('language-pairs');
     });
 
@@ -319,9 +448,22 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'add-entry', 'my-terms', 'hello', 'hallo']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'add-entry',
+        'my-terms',
+        'hello',
+        'hallo',
+      ]);
 
-      expect(mock.addEntry).toHaveBeenCalledWith('my-terms', 'hello', 'hallo', undefined);
+      expect(mock.addEntry).toHaveBeenCalledWith(
+        'my-terms',
+        'hello',
+        'hallo',
+        undefined
+      );
       expect(Logger.success).toHaveBeenCalled();
     });
 
@@ -331,9 +473,24 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'add-entry', 'my-terms', 'hello', 'hallo', '--target-lang', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'add-entry',
+        'my-terms',
+        'hello',
+        'hallo',
+        '--target-lang',
+        'de',
+      ]);
 
-      expect(mock.addEntry).toHaveBeenCalledWith('my-terms', 'hello', 'hallo', 'de');
+      expect(mock.addEntry).toHaveBeenCalledWith(
+        'my-terms',
+        'hello',
+        'hallo',
+        'de'
+      );
     });
 
     it('should call handleError on failure', async () => {
@@ -342,7 +499,15 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'add-entry', 'my-terms', 'hello', 'hallo'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'add-entry',
+          'my-terms',
+          'hello',
+          'hallo',
+        ])
       ).rejects.toThrow('add-entry failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });
@@ -355,9 +520,22 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'update-entry', 'my-terms', 'hello', 'hi']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'update-entry',
+        'my-terms',
+        'hello',
+        'hi',
+      ]);
 
-      expect(mock.updateEntry).toHaveBeenCalledWith('my-terms', 'hello', 'hi', undefined);
+      expect(mock.updateEntry).toHaveBeenCalledWith(
+        'my-terms',
+        'hello',
+        'hi',
+        undefined
+      );
       expect(Logger.success).toHaveBeenCalled();
     });
 
@@ -367,9 +545,24 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'update-entry', 'my-terms', 'hello', 'hi', '--target-lang', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'update-entry',
+        'my-terms',
+        'hello',
+        'hi',
+        '--target-lang',
+        'de',
+      ]);
 
-      expect(mock.updateEntry).toHaveBeenCalledWith('my-terms', 'hello', 'hi', 'de');
+      expect(mock.updateEntry).toHaveBeenCalledWith(
+        'my-terms',
+        'hello',
+        'hi',
+        'de'
+      );
     });
 
     it('should call handleError on failure', async () => {
@@ -378,7 +571,15 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'update-entry', 'my-terms', 'hello', 'hi'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'update-entry',
+          'my-terms',
+          'hello',
+          'hi',
+        ])
       ).rejects.toThrow('update-entry failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });
@@ -391,9 +592,20 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'remove-entry', 'my-terms', 'hello']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'remove-entry',
+        'my-terms',
+        'hello',
+      ]);
 
-      expect(mock.removeEntry).toHaveBeenCalledWith('my-terms', 'hello', undefined);
+      expect(mock.removeEntry).toHaveBeenCalledWith(
+        'my-terms',
+        'hello',
+        undefined
+      );
       expect(Logger.success).toHaveBeenCalled();
     });
 
@@ -403,7 +615,16 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'remove-entry', 'my-terms', 'hello', '--target-lang', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'remove-entry',
+        'my-terms',
+        'hello',
+        '--target-lang',
+        'de',
+      ]);
 
       expect(mock.removeEntry).toHaveBeenCalledWith('my-terms', 'hello', 'de');
     });
@@ -414,7 +635,14 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'remove-entry', 'my-terms', 'hello'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'remove-entry',
+          'my-terms',
+          'hello',
+        ])
       ).rejects.toThrow('remove-entry failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });
@@ -427,7 +655,14 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'rename', 'old-name', 'new-name']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'rename',
+        'old-name',
+        'new-name',
+      ]);
 
       expect(mock.rename).toHaveBeenCalledWith('old-name', 'new-name');
       expect(Logger.success).toHaveBeenCalled();
@@ -439,7 +674,14 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'rename', 'old-name', 'new-name'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'rename',
+          'old-name',
+          'new-name',
+        ])
       ).rejects.toThrow('rename failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });
@@ -451,7 +693,9 @@ describe('registerGlossary', () => {
     let emptyFile: string;
 
     beforeEach(() => {
-      tmpDir = realFs.mkdtempSync(path.join(os.tmpdir(), 'deepl-glossary-test-'));
+      tmpDir = realFs.mkdtempSync(
+        path.join(os.tmpdir(), 'deepl-glossary-test-')
+      );
       tsvFile = path.join(tmpDir, 'entries.tsv');
       emptyFile = path.join(tmpDir, 'empty.tsv');
       realFs.writeFileSync(tsvFile, 'hello\thola\nworld\tmundo\n', 'utf-8');
@@ -467,7 +711,9 @@ describe('registerGlossary', () => {
 
       await expect(
         program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms'])
-      ).rejects.toThrow('At least one of --name or --file (with --target-lang) must be provided');
+      ).rejects.toThrow(
+        'At least one of --name or --file (with --target-lang) must be provided'
+      );
       expect(handleError).toHaveBeenCalled();
     });
 
@@ -475,7 +721,15 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--file', tsvFile])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'update',
+          'my-terms',
+          '--file',
+          tsvFile,
+        ])
       ).rejects.toThrow('--target-lang is required when using --file');
       expect(handleError).toHaveBeenCalled();
     });
@@ -485,7 +739,17 @@ describe('registerGlossary', () => {
       const missing = path.join(tmpDir, 'missing.tsv');
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--file', missing, '--target-lang', 'de'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'update',
+          'my-terms',
+          '--file',
+          missing,
+          '--target-lang',
+          'de',
+        ])
       ).rejects.toThrow(`File not found: ${missing}`);
       expect(handleError).toHaveBeenCalled();
     });
@@ -496,7 +760,17 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--file', emptyFile, '--target-lang', 'de'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'update',
+          'my-terms',
+          '--file',
+          emptyFile,
+          '--target-lang',
+          'de',
+        ])
       ).rejects.toThrow('No valid entries found in file');
       expect(handleError).toHaveBeenCalled();
     });
@@ -507,9 +781,19 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--name', 'new-name']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'update',
+        'my-terms',
+        '--name',
+        'new-name',
+      ]);
 
-      expect(mock.update).toHaveBeenCalledWith('my-terms', { name: 'new-name' });
+      expect(mock.update).toHaveBeenCalledWith('my-terms', {
+        name: 'new-name',
+      });
       expect(Logger.success).toHaveBeenCalled();
       const successMsg = (Logger.success as jest.Mock).mock.calls[0][0];
       expect(successMsg).toContain('renamed');
@@ -521,13 +805,28 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--file', tsvFile, '--target-lang', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'update',
+        'my-terms',
+        '--file',
+        tsvFile,
+        '--target-lang',
+        'de',
+      ]);
 
-      expect(mock.update).toHaveBeenCalledWith('my-terms', expect.objectContaining({
-        dictionaries: [expect.objectContaining({
-          targetLang: 'de',
-        })],
-      }));
+      expect(mock.update).toHaveBeenCalledWith(
+        'my-terms',
+        expect.objectContaining({
+          dictionaries: [
+            expect.objectContaining({
+              targetLang: 'de',
+            }),
+          ],
+        })
+      );
       expect(Logger.success).toHaveBeenCalled();
       const successMsg = (Logger.success as jest.Mock).mock.calls[0][0];
       expect(successMsg).toContain('dictionary updated');
@@ -539,14 +838,31 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--name', 'new-name', '--file', tsvFile, '--target-lang', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'update',
+        'my-terms',
+        '--name',
+        'new-name',
+        '--file',
+        tsvFile,
+        '--target-lang',
+        'de',
+      ]);
 
-      expect(mock.update).toHaveBeenCalledWith('my-terms', expect.objectContaining({
-        name: 'new-name',
-        dictionaries: [expect.objectContaining({
-          targetLang: 'de',
-        })],
-      }));
+      expect(mock.update).toHaveBeenCalledWith(
+        'my-terms',
+        expect.objectContaining({
+          name: 'new-name',
+          dictionaries: [
+            expect.objectContaining({
+              targetLang: 'de',
+            }),
+          ],
+        })
+      );
       expect(Logger.success).toHaveBeenCalled();
       const successMsg = (Logger.success as jest.Mock).mock.calls[0][0];
       expect(successMsg).toContain('renamed');
@@ -561,7 +877,15 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'update', 'my-terms', '--name', 'new'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'update',
+          'my-terms',
+          '--name',
+          'new',
+        ])
       ).rejects.toThrow('update failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });
@@ -574,9 +898,21 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'replace-dictionary', 'my-terms', 'de', 'new.tsv']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'replace-dictionary',
+        'my-terms',
+        'de',
+        'new.tsv',
+      ]);
 
-      expect(mock.replaceDictionary).toHaveBeenCalledWith('my-terms', 'de', 'new.tsv');
+      expect(mock.replaceDictionary).toHaveBeenCalledWith(
+        'my-terms',
+        'de',
+        'new.tsv'
+      );
       expect(Logger.success).toHaveBeenCalled();
     });
 
@@ -586,7 +922,15 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'replace-dictionary', 'my-terms', 'de', 'new.tsv'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'replace-dictionary',
+          'my-terms',
+          'de',
+          'new.tsv',
+        ])
       ).rejects.toThrow('replace failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });
@@ -599,7 +943,15 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'delete-dictionary', 'my-terms', 'de', '--yes']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'delete-dictionary',
+        'my-terms',
+        'de',
+        '--yes',
+      ]);
 
       expect(mock.deleteDictionary).toHaveBeenCalledWith('my-terms', 'de');
       expect(Logger.success).toHaveBeenCalled();
@@ -610,7 +962,14 @@ describe('registerGlossary', () => {
       (confirm as jest.Mock).mockResolvedValue(false);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'delete-dictionary', 'my-terms', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'delete-dictionary',
+        'my-terms',
+        'de',
+      ]);
 
       expect(Logger.info).toHaveBeenCalledWith('Aborted.');
       expect(mockCreateGlossaryCommand).not.toHaveBeenCalled();
@@ -624,7 +983,14 @@ describe('registerGlossary', () => {
       mockCreateGlossaryCommand.mockResolvedValue(mock as any);
       const { program } = makeProgram();
 
-      await program.parseAsync(['node', 'test', 'glossary', 'delete-dictionary', 'my-terms', 'de']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'glossary',
+        'delete-dictionary',
+        'my-terms',
+        'de',
+      ]);
 
       expect(confirm).toHaveBeenCalled();
       expect(mock.deleteDictionary).toHaveBeenCalledWith('my-terms', 'de');
@@ -637,7 +1003,15 @@ describe('registerGlossary', () => {
       const { program, handleError } = makeProgram();
 
       await expect(
-        program.parseAsync(['node', 'test', 'glossary', 'delete-dictionary', 'my-terms', 'de', '--yes'])
+        program.parseAsync([
+          'node',
+          'test',
+          'glossary',
+          'delete-dictionary',
+          'my-terms',
+          'de',
+          '--yes',
+        ])
       ).rejects.toThrow('delete-dict failed');
       expect(handleError).toHaveBeenCalledWith(error);
     });

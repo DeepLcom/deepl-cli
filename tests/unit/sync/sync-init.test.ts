@@ -26,7 +26,10 @@ describe('sync-init', () => {
   let testDir: string;
 
   beforeEach(() => {
-    testDir = path.join(os.tmpdir(), `deepl-sync-init-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    testDir = path.join(
+      os.tmpdir(),
+      `deepl-sync-init-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     fs.mkdirSync(testDir, { recursive: true });
     mockFg.mockReset();
     mockFg.mockResolvedValue([]);
@@ -44,7 +47,7 @@ describe('sync-init', () => {
       fs.mkdirSync(localesDir, { recursive: true });
       fs.writeFileSync(
         path.join(localesDir, 'en.json'),
-        JSON.stringify({ hello: 'Hello', world: 'World' }),
+        JSON.stringify({ hello: 'Hello', world: 'World' })
       );
 
       mockFg.mockImplementation(async (patterns, _options) => {
@@ -69,7 +72,11 @@ describe('sync-init', () => {
       fs.mkdirSync(localesDir, { recursive: true });
       fs.writeFileSync(
         path.join(localesDir, 'en.yaml'),
-        YAML.stringify({ greeting: 'Hello', farewell: 'Goodbye', thanks: 'Thank you' }),
+        YAML.stringify({
+          greeting: 'Hello',
+          farewell: 'Goodbye',
+          thanks: 'Thank you',
+        })
       );
 
       mockFg.mockImplementation(async (patterns, _options) => {
@@ -91,7 +98,10 @@ describe('sync-init', () => {
     it('should detect Android XML using the documented bucket key', async () => {
       const resDir = path.join(testDir, 'res', 'values');
       fs.mkdirSync(resDir, { recursive: true });
-      fs.writeFileSync(path.join(resDir, 'strings.xml'), '<resources><string name="app_name">App</string></resources>');
+      fs.writeFileSync(
+        path.join(resDir, 'strings.xml'),
+        '<resources><string name="app_name">App</string></resources>'
+      );
 
       mockFg.mockImplementation(async (patterns, _options) => {
         const patternArray = Array.isArray(patterns) ? patterns : [patterns];
@@ -106,13 +116,18 @@ describe('sync-init', () => {
       const androidProject = result.find((p) => p.format === 'android_xml');
       expect(androidProject).toBeDefined();
       expect(androidProject!.pattern).toBe('res/values/strings.xml');
-      expect(androidProject!.targetPathPattern).toBe('res/values-{locale}/strings.xml');
+      expect(androidProject!.targetPathPattern).toBe(
+        'res/values-{locale}/strings.xml'
+      );
     });
 
     it('should detect iOS strings using the documented bucket key', async () => {
       const iosDir = path.join(testDir, 'en.lproj');
       fs.mkdirSync(iosDir, { recursive: true });
-      fs.writeFileSync(path.join(iosDir, 'Localizable.strings'), '"greeting" = "Hello";');
+      fs.writeFileSync(
+        path.join(iosDir, 'Localizable.strings'),
+        '"greeting" = "Hello";'
+      );
 
       mockFg.mockImplementation(async (patterns, _options) => {
         const patternArray = Array.isArray(patterns) ? patterns : [patterns];
@@ -133,7 +148,10 @@ describe('sync-init', () => {
     it('should detect XLIFF projects', async () => {
       const localeDir = path.join(testDir, 'src', 'locale');
       fs.mkdirSync(localeDir, { recursive: true });
-      fs.writeFileSync(path.join(localeDir, 'messages.xlf'), '<xliff version="1.2"></xliff>');
+      fs.writeFileSync(
+        path.join(localeDir, 'messages.xlf'),
+        '<xliff version="1.2"></xliff>'
+      );
 
       mockFg.mockImplementation(async (patterns, _options) => {
         const patternArray = Array.isArray(patterns) ? patterns : [patterns];
@@ -148,7 +166,9 @@ describe('sync-init', () => {
       const xliffProject = result.find((p) => p.format === 'xliff');
       expect(xliffProject).toBeDefined();
       expect(xliffProject!.pattern).toBe('src/locale/messages.xlf');
-      expect(xliffProject!.targetPathPattern).toBe('src/locale/messages.{locale}.xlf');
+      expect(xliffProject!.targetPathPattern).toBe(
+        'src/locale/messages.{locale}.xlf'
+      );
     });
 
     it('should return empty array when no i18n files found', async () => {
@@ -165,12 +185,14 @@ describe('sync-init', () => {
         fs.mkdirSync(railsDir, { recursive: true });
         fs.writeFileSync(
           path.join(railsDir, 'en.yml'),
-          'en:\n  greeting: "Hello"\n  farewell: "Goodbye"\n',
+          'en:\n  greeting: "Hello"\n  farewell: "Goodbye"\n'
         );
 
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
-          return arr.includes('config/locales/en.yml') ? ['config/locales/en.yml'] : [];
+          return arr.includes('config/locales/en.yml')
+            ? ['config/locales/en.yml']
+            : [];
         });
 
         const result = await detectI18nFiles(testDir);
@@ -184,7 +206,10 @@ describe('sync-init', () => {
         // A `locales/en.yml` match must generate a `.yml` bucket pattern; a
         // `.yaml` pattern would not match the file at sync time.
         fs.mkdirSync(path.join(testDir, 'locales'), { recursive: true });
-        fs.writeFileSync(path.join(testDir, 'locales', 'en.yml'), 'greeting: Hello\n');
+        fs.writeFileSync(
+          path.join(testDir, 'locales', 'en.yml'),
+          'greeting: Hello\n'
+        );
 
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
@@ -205,8 +230,14 @@ describe('sync-init', () => {
           path.join(resDir, 'Localizable.xcstrings'),
           JSON.stringify({
             sourceLanguage: 'en',
-            strings: { hi: { localizations: { en: { stringUnit: { state: 'translated', value: 'Hi' } } } } },
-          }),
+            strings: {
+              hi: {
+                localizations: {
+                  en: { stringUnit: { state: 'translated', value: 'Hi' } },
+                },
+              },
+            },
+          })
         );
 
         mockFg.mockImplementation(async (patterns) => {
@@ -227,17 +258,19 @@ describe('sync-init', () => {
       it('detects root-level `Localizable.xcstrings`', async () => {
         fs.writeFileSync(
           path.join(testDir, 'Localizable.xcstrings'),
-          JSON.stringify({ sourceLanguage: 'en', strings: {} }),
+          JSON.stringify({ sourceLanguage: 'en', strings: {} })
         );
 
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
-          return arr.includes('Localizable.xcstrings') ? ['Localizable.xcstrings'] : [];
+          return arr.includes('Localizable.xcstrings')
+            ? ['Localizable.xcstrings']
+            : [];
         });
 
         const result = await detectI18nFiles(testDir);
         expect(result.find((p) => p.format === 'xcstrings')?.pattern).toBe(
-          'Localizable.xcstrings',
+          'Localizable.xcstrings'
         );
       });
     });
@@ -247,7 +280,7 @@ describe('sync-init', () => {
         fs.mkdirSync(path.join(testDir, 'locales'), { recursive: true });
         fs.writeFileSync(
           path.join(testDir, 'locales', 'en.toml'),
-          '[greeting]\nother = "Hello"\n',
+          '[greeting]\nother = "Hello"\n'
         );
 
         mockFg.mockImplementation(async (patterns) => {
@@ -268,7 +301,7 @@ describe('sync-init', () => {
         fs.mkdirSync(springDir, { recursive: true });
         fs.writeFileSync(
           path.join(springDir, 'messages_en.properties'),
-          'welcome=Welcome\ngreeting=Hello\n',
+          'welcome=Welcome\ngreeting=Hello\n'
         );
 
         mockFg.mockImplementation(async (patterns) => {
@@ -281,7 +314,9 @@ describe('sync-init', () => {
         const result = await detectI18nFiles(testDir);
         const props = result.find((p) => p.format === 'properties');
         expect(props).toBeDefined();
-        expect(props!.pattern).toBe('src/main/resources/messages_en.properties');
+        expect(props!.pattern).toBe(
+          'src/main/resources/messages_en.properties'
+        );
         expect(props!.keyCount).toBe(2);
       });
     });
@@ -293,7 +328,7 @@ describe('sync-init', () => {
         fs.mkdirSync(langEn, { recursive: true });
         fs.writeFileSync(
           path.join(langEn, 'messages.php'),
-          `<?php return ['greeting' => 'Hello'];`,
+          `<?php return ['greeting' => 'Hello'];`
         );
 
         mockFg.mockImplementation(async (patterns) => {
@@ -316,7 +351,7 @@ describe('sync-init', () => {
         fs.mkdirSync(langEn, { recursive: true });
         fs.writeFileSync(
           path.join(langEn, 'messages.php'),
-          `<?php return ['greeting' => 'Hello', 'farewell' => 'Goodbye'];`,
+          `<?php return ['greeting' => 'Hello', 'farewell' => 'Goodbye'];`
         );
 
         mockFg.mockImplementation(async (patterns) => {
@@ -339,7 +374,7 @@ describe('sync-init', () => {
         fs.mkdirSync(langEn, { recursive: true });
         fs.writeFileSync(
           path.join(langEn, 'messages.php'),
-          `<?php return ['greeting' => 'Hello'];`,
+          `<?php return ['greeting' => 'Hello'];`
         );
 
         // Even if fg WOULD match, the requires-gate should skip the glob entirely.
@@ -370,7 +405,7 @@ describe('sync-init', () => {
         fs.mkdirSync(langEn, { recursive: true });
         fs.writeFileSync(
           path.join(langEn, 'messages.php'),
-          `<?php return ['greeting' => 'Hello'];`,
+          `<?php return ['greeting' => 'Hello'];`
         );
 
         mockFg.mockImplementation(async (patterns) => {
@@ -388,14 +423,21 @@ describe('sync-init', () => {
       it('prefers dir-per-locale when both layouts coexist', async () => {
         const flatDir = path.join(testDir, 'locales');
         fs.mkdirSync(flatDir, { recursive: true });
-        fs.writeFileSync(path.join(flatDir, 'en.json'), JSON.stringify({ legacy: 'Legacy' }));
+        fs.writeFileSync(
+          path.join(flatDir, 'en.json'),
+          JSON.stringify({ legacy: 'Legacy' })
+        );
         const nestedDir = path.join(flatDir, 'en');
         fs.mkdirSync(nestedDir, { recursive: true });
-        fs.writeFileSync(path.join(nestedDir, 'common.json'), JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }));
+        fs.writeFileSync(
+          path.join(nestedDir, 'common.json'),
+          JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' })
+        );
 
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
-          if (arr.includes('locales/en/*.json')) return ['locales/en/common.json'];
+          if (arr.includes('locales/en/*.json'))
+            return ['locales/en/common.json'];
           if (arr.includes('locales/en.json')) return ['locales/en.json'];
           return [];
         });
@@ -411,7 +453,10 @@ describe('sync-init', () => {
       it('falls back to flat when only flat is present', async () => {
         const flatDir = path.join(testDir, 'locales');
         fs.mkdirSync(flatDir, { recursive: true });
-        fs.writeFileSync(path.join(flatDir, 'en.json'), JSON.stringify({ greeting: 'Hello' }));
+        fs.writeFileSync(
+          path.join(flatDir, 'en.json'),
+          JSON.stringify({ greeting: 'Hello' })
+        );
 
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
@@ -432,21 +477,25 @@ describe('sync-init', () => {
         fs.mkdirSync(translationsDir, { recursive: true });
         fs.writeFileSync(
           path.join(translationsDir, 'messages.en.xlf'),
-          '<?xml version="1.0"?><xliff version="1.2"><file source-language="en"><body></body></file></xliff>',
+          '<?xml version="1.0"?><xliff version="1.2"><file source-language="en"><body></body></file></xliff>'
         );
 
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
-          if (arr.includes('translations/messages.en.xlf')) return ['translations/messages.en.xlf'];
+          if (arr.includes('translations/messages.en.xlf'))
+            return ['translations/messages.en.xlf'];
           return [];
         });
 
         const result = await detectI18nFiles(testDir);
         const symfony = result.find(
-          (p) => p.format === 'xliff' && p.pattern === 'translations/messages.en.xlf',
+          (p) =>
+            p.format === 'xliff' && p.pattern === 'translations/messages.en.xlf'
         );
         expect(symfony).toBeDefined();
-        expect(symfony!.targetPathPattern).toBe('translations/messages.{locale}.xlf');
+        expect(symfony!.targetPathPattern).toBe(
+          'translations/messages.{locale}.xlf'
+        );
       });
     });
 
@@ -463,11 +512,13 @@ describe('sync-init', () => {
             '<string name="app_name">App</string>' +
             '<string name="hello">Hello</string>' +
             '<string name="bye">Bye</string>' +
-            '</resources>',
+            '</resources>'
         );
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
-          return arr.includes('res/values/strings.xml') ? ['res/values/strings.xml'] : [];
+          return arr.includes('res/values/strings.xml')
+            ? ['res/values/strings.xml']
+            : [];
         });
 
         const result = await detectI18nFiles(testDir);
@@ -480,7 +531,7 @@ describe('sync-init', () => {
         fs.mkdirSync(iosDir, { recursive: true });
         fs.writeFileSync(
           path.join(iosDir, 'Localizable.strings'),
-          '"greeting" = "Hello";\n"farewell" = "Bye";\n',
+          '"greeting" = "Hello";\n"farewell" = "Bye";\n'
         );
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
@@ -507,7 +558,7 @@ describe('sync-init', () => {
             hello: 'Hello',
             bye: 'Bye',
             thanks: 'Thanks',
-          }),
+          })
         );
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
@@ -526,7 +577,7 @@ describe('sync-init', () => {
         fs.mkdirSync(l10nDir, { recursive: true });
         fs.writeFileSync(
           path.join(l10nDir, 'app_en.arb'),
-          JSON.stringify({ hello: 'Hello' }),
+          JSON.stringify({ hello: 'Hello' })
         );
 
         // Even if fg WOULD match, the requires-gate should skip the glob.
@@ -546,7 +597,7 @@ describe('sync-init', () => {
           path.join(poDir, 'messages.po'),
           'msgid ""\nmsgstr ""\n\n' +
             'msgid "hello"\nmsgstr "Hello"\n\n' +
-            'msgid "bye"\nmsgstr "Bye"\n',
+            'msgid "bye"\nmsgstr "Bye"\n'
         );
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
@@ -576,11 +627,13 @@ describe('sync-init', () => {
             '      <trans-unit id="bye"><source>Bye</source></trans-unit>\n' +
             '    </body>\n' +
             '  </file>\n' +
-            '</xliff>',
+            '</xliff>'
         );
         mockFg.mockImplementation(async (patterns) => {
           const arr = Array.isArray(patterns) ? patterns : [patterns];
-          return arr.includes('src/locale/messages.xlf') ? ['src/locale/messages.xlf'] : [];
+          return arr.includes('src/locale/messages.xlf')
+            ? ['src/locale/messages.xlf']
+            : [];
         });
 
         const result = await detectI18nFiles(testDir);
@@ -603,7 +656,10 @@ describe('sync-init', () => {
         version: number;
         source_locale: string;
         target_locales: string[];
-        buckets: Record<string, { include: string[]; target_path_pattern?: string }>;
+        buckets: Record<
+          string,
+          { include: string[]; target_path_pattern?: string }
+        >;
       };
 
       expect(parsed.version).toBe(1);
@@ -625,12 +681,19 @@ describe('sync-init', () => {
       });
 
       const parsed = YAML.parse(content) as {
-        buckets: Record<string, { include: string[]; target_path_pattern?: string }>;
+        buckets: Record<
+          string,
+          { include: string[]; target_path_pattern?: string }
+        >;
       };
 
       expect(parsed.buckets['android_xml']).toBeDefined();
-      expect(parsed.buckets['android_xml']!.include).toContain('res/values/strings.xml');
-      expect(parsed.buckets['android_xml']!.target_path_pattern).toBe('res/values-{locale}/strings.xml');
+      expect(parsed.buckets['android_xml']!.include).toContain(
+        'res/values/strings.xml'
+      );
+      expect(parsed.buckets['android_xml']!.target_path_pattern).toBe(
+        'res/values-{locale}/strings.xml'
+      );
     });
 
     it('should write concrete include pattern for yaml format', () => {
@@ -664,12 +727,14 @@ describe('sync-init', () => {
 
   describe('resolveInitConfigPath', () => {
     it('should default to .deepl-sync.yaml in the cwd', () => {
-      expect(resolveInitConfigPath(testDir)).toBe(path.join(testDir, '.deepl-sync.yaml'));
+      expect(resolveInitConfigPath(testDir)).toBe(
+        path.join(testDir, '.deepl-sync.yaml')
+      );
     });
 
     it('should honor an explicit path with a custom basename', () => {
       expect(resolveInitConfigPath(testDir, 'nested/custom.yaml')).toBe(
-        path.join(testDir, 'nested', 'custom.yaml'),
+        path.join(testDir, 'nested', 'custom.yaml')
       );
     });
 
@@ -684,7 +749,7 @@ describe('sync-init', () => {
       const content = 'version: 1\nsource_locale: en\n';
       const configPath = await writeSyncConfig(
         path.join(testDir, '.deepl-sync.yaml'),
-        content,
+        content
       );
 
       expect(configPath).toBe(path.join(testDir, '.deepl-sync.yaml'));
@@ -700,14 +765,18 @@ describe('sync-init', () => {
         .mockRejectedValue(new Error('rename failed'));
       try {
         await expect(
-          writeSyncConfig(configPath, 'version: 1\nsource_locale: de\n'),
+          writeSyncConfig(configPath, 'version: 1\nsource_locale: de\n')
         ).rejects.toThrow('rename failed');
       } finally {
         renameSpy.mockRestore();
       }
 
-      expect(fs.readFileSync(configPath, 'utf-8')).toBe('version: 1\nsource_locale: en\n');
-      expect(fs.readdirSync(testDir).filter(name => name.includes('.tmp.'))).toEqual([]);
+      expect(fs.readFileSync(configPath, 'utf-8')).toBe(
+        'version: 1\nsource_locale: en\n'
+      );
+      expect(
+        fs.readdirSync(testDir).filter((name) => name.includes('.tmp.'))
+      ).toEqual([]);
     });
 
     it('should create missing parent directories', async () => {
@@ -738,7 +807,9 @@ describe('sync-init', () => {
       expect(parsed.version).toBe(1);
       expect(parsed.source_locale).toBe('en');
       expect(parsed.target_locales).toEqual(['de', 'fr', 'ja']);
-      expect((parsed.buckets as unknown as Record<string, unknown>)['json']).toBeDefined();
+      expect(
+        (parsed.buckets as unknown as Record<string, unknown>)['json']
+      ).toBeDefined();
     });
   });
 });

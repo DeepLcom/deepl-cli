@@ -2,18 +2,24 @@ import { SyncService, resolveTargetPath } from '../../../src/sync/sync-service';
 import type { ResolvedSyncConfig } from '../../../src/sync/sync-config';
 import type { SyncLockFile, SyncLockEntry } from '../../../src/sync/types';
 import { computeSourceHash } from '../../../src/sync/sync-lock';
-import { createMockTranslationService, createMockGlossaryService } from '../../helpers/mock-factories';
+import {
+  createMockTranslationService,
+  createMockGlossaryService,
+} from '../../helpers/mock-factories';
 import { FormatRegistry } from '../../../src/formats/index';
-import type { FormatParser, ExtractedEntry, TranslatedEntry } from '../../../src/formats/format';
+import type {
+  FormatParser,
+  ExtractedEntry,
+  TranslatedEntry,
+} from '../../../src/formats/format';
 import { JsonFormatParser } from '../../../src/formats/json';
 import { YamlFormatParser } from '../../../src/formats/yaml';
-import { ValidationError } from '../../../src/utils/errors';
+import { ValidationError, ConfigError } from '../../../src/utils/errors';
 
 jest.mock('fast-glob', () => {
-  const mockFn = Object.assign(
-    jest.fn().mockResolvedValue([]),
-    { escapePath: (s: string) => s.replace(/[\\^$.|?*+()[\]{}]/g, '\\$&') },
-  );
+  const mockFn = Object.assign(jest.fn().mockResolvedValue([]), {
+    escapePath: (s: string) => s.replace(/[\\^$.|?*+()[\]{}]/g, '\\$&'),
+  });
   return { __esModule: true, default: mockFn };
 });
 
@@ -21,10 +27,19 @@ jest.mock('fs', () => ({
   promises: {
     readFile: jest.fn().mockResolvedValue('{}'),
     mkdir: jest.fn().mockResolvedValue(undefined),
-    access: jest.fn().mockRejectedValue(new Error('ENOENT')),
+    access: jest.fn().mockRejectedValue(
+      Object.assign(new Error('ENOENT: no such file or directory'), {
+        code: 'ENOENT',
+      })
+    ),
     copyFile: jest.fn().mockResolvedValue(undefined),
     unlink: jest.fn().mockResolvedValue(undefined),
   },
+  copyFileSync: jest.fn(),
+  unlinkSync: jest.fn(),
+  // Real values: the backup copy passes COPYFILE_EXCL, so a mock without
+  // `constants` makes the call throw before it is ever made.
+  constants: jest.requireActual<typeof import('fs')>('fs').constants,
 }));
 
 jest.mock('../../../src/sync/sync-process-lock', () => ({
@@ -42,13 +57,18 @@ jest.mock('../../../src/utils/atomic-write', () => ({
 }));
 
 jest.mock('../../../src/sync/sync-context', () => ({
-  extractAllKeyContexts: jest.fn().mockResolvedValue({ keyContexts: new Map(), templatePatterns: [] }),
+  extractAllKeyContexts: jest
+    .fn()
+    .mockResolvedValue({ keyContexts: new Map(), templatePatterns: [] }),
   resolveTemplatePatterns: jest.fn().mockReturnValue(new Map()),
   synthesizeContext: jest.fn().mockReturnValue(''),
   sectionContextKey: jest.fn().mockImplementation((key: string) => {
     const segments = key.split('.');
     if (segments.length < 2) return '';
-    return segments.slice(0, -1).filter((s: string) => !/^\d+$/.test(s)).join('.');
+    return segments
+      .slice(0, -1)
+      .filter((s: string) => !/^\d+$/.test(s))
+      .join('.');
   }),
   sectionToContext: jest.fn().mockImplementation((section: string) => {
     if (!section) return '';
@@ -92,16 +112,32 @@ import { SyncLockManager } from '../../../src/sync/sync-lock';
 import { extractAllKeyContexts } from '../../../src/sync/sync-context';
 import { Logger } from '../../../src/utils/logger';
 
-const mockExtractAllKeyContexts = extractAllKeyContexts as jest.MockedFunction<typeof extractAllKeyContexts>;
+const mockExtractAllKeyContexts = extractAllKeyContexts as jest.MockedFunction<
+  typeof extractAllKeyContexts
+>;
 const mockFg = fg as jest.MockedFunction<typeof fg>;
-const mockReadFile = fs.promises.readFile as jest.MockedFunction<typeof fs.promises.readFile>;
-const mockMkdir = fs.promises.mkdir as jest.MockedFunction<typeof fs.promises.mkdir>;
-const mockAtomicWriteFile = atomicWriteFile as jest.MockedFunction<typeof atomicWriteFile>;
-const mockCopyFile = fs.promises.copyFile as jest.MockedFunction<typeof fs.promises.copyFile>;
-const mockUnlink = fs.promises.unlink as jest.MockedFunction<typeof fs.promises.unlink>;
-const MockSyncLockManager = SyncLockManager as jest.MockedClass<typeof SyncLockManager>;
+const mockReadFile = fs.promises.readFile as jest.MockedFunction<
+  typeof fs.promises.readFile
+>;
+const mockMkdir = fs.promises.mkdir as jest.MockedFunction<
+  typeof fs.promises.mkdir
+>;
+const mockAtomicWriteFile = atomicWriteFile as jest.MockedFunction<
+  typeof atomicWriteFile
+>;
+const mockCopyFile = fs.promises.copyFile as jest.MockedFunction<
+  typeof fs.promises.copyFile
+>;
+const mockUnlink = fs.promises.unlink as jest.MockedFunction<
+  typeof fs.promises.unlink
+>;
+const MockSyncLockManager = SyncLockManager as jest.MockedClass<
+  typeof SyncLockManager
+>;
 
-function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -127,7 +163,7 @@ function makeEmptyLockFile(sourceLocale = ''): SyncLockFile {
 
 function makeLockFileWithEntries(
   entries: Record<string, Record<string, SyncLockEntry>>,
-  sourceLocale = 'en',
+  sourceLocale = 'en'
 ): SyncLockFile {
   return {
     ...makeEmptyLockFile(sourceLocale),
@@ -142,7 +178,10 @@ function makeLockFileWithEntries(
  * `translations[locale].hash`. Pass an explicit hash only to model a locale
  * that has genuinely fallen behind the source.
  */
-function makeLockEntry(value: string, translations: Record<string, { hash?: string; status: string }> = {}): SyncLockEntry {
+function makeLockEntry(
+  value: string,
+  translations: Record<string, { hash?: string; status: string }> = {}
+): SyncLockEntry {
   const translationEntries: SyncLockEntry['translations'] = {};
   for (const [locale, info] of Object.entries(translations)) {
     translationEntries[locale] = {
@@ -165,9 +204,11 @@ function createRegistry(): FormatRegistry {
   return registry;
 }
 
-function createService(overrides: {
-  translateBatch?: jest.Mock;
-} = {}) {
+function createService(
+  overrides: {
+    translateBatch?: jest.Mock;
+  } = {}
+) {
   const mockTranslation = createMockTranslationService({
     translateBatch: overrides.translateBatch ?? jest.fn().mockResolvedValue([]),
   });
@@ -189,15 +230,22 @@ const mockMultiLocaleParser: FormatParser = {
     if (!locale) return [];
     const entries: ExtractedEntry[] = [];
     for (const [key, val] of Object.entries(data.strings ?? {})) {
-      const loc = (val as Record<string, unknown>)['localizations'] as Record<string, unknown> | undefined;
-      const unit = (loc?.[locale] as Record<string, unknown>)?.['stringUnit'] as Record<string, string> | undefined;
+      const loc = (val as Record<string, unknown>)['localizations'] as
+        Record<string, unknown> | undefined;
+      const unit = (loc?.[locale] as Record<string, unknown>)?.[
+        'stringUnit'
+      ] as Record<string, string> | undefined;
       if (unit?.['value']) {
         entries.push({ key, value: unit['value'] });
       }
     }
     return entries.sort((a, b) => a.key.localeCompare(b.key));
   },
-  reconstruct(content: string, entries: TranslatedEntry[], locale?: string): string {
+  reconstruct(
+    content: string,
+    entries: TranslatedEntry[],
+    locale?: string
+  ): string {
     const data = JSON.parse(content);
     data.strings ??= {};
     for (const entry of entries) {
@@ -216,7 +264,9 @@ function createMultiLocaleRegistry(): FormatRegistry {
   return registry;
 }
 
-function createMultiLocaleService(overrides: { translateBatch?: jest.Mock } = {}) {
+function createMultiLocaleService(
+  overrides: { translateBatch?: jest.Mock } = {}
+) {
   const mockTranslation = createMockTranslationService({
     translateBatch: overrides.translateBatch ?? jest.fn().mockResolvedValue([]),
   });
@@ -229,17 +279,32 @@ function createMultiLocaleService(overrides: { translateBatch?: jest.Mock } = {}
 function setupLockManager(lockFile: SyncLockFile) {
   const mockRead = jest.fn().mockResolvedValue(lockFile);
   const mockWrite = jest.fn().mockResolvedValue(undefined);
-  MockSyncLockManager.mockImplementation(() => ({
-    read: mockRead,
-    write: mockWrite,
-    updateEntry: jest.fn(),
-    removeEntry: jest.fn(),
-    exists: jest.fn(),
-  }) as unknown as SyncLockManager);
+  MockSyncLockManager.mockImplementation(
+    () =>
+      ({
+        read: mockRead,
+        write: mockWrite,
+        updateEntry: jest.fn(),
+        removeEntry: jest.fn(),
+        exists: jest.fn(),
+      }) as unknown as SyncLockManager
+  );
   return { mockRead, mockWrite };
 }
 
-const SOURCE_JSON = JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n';
+/**
+ * What `fs` rejects with for a missing file: the errno, not only a message. The
+ * sync write path tells "not there" from "there and unreadable" by the code, so a
+ * stub that carries no code models an unreadable file rather than an absent one.
+ */
+function enoent(): NodeJS.ErrnoException {
+  return Object.assign(new Error('ENOENT: no such file or directory'), {
+    code: 'ENOENT',
+  });
+}
+
+const SOURCE_JSON =
+  JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye' }, null, 2) + '\n';
 
 describe('SyncService', () => {
   describe('sync() — happy path', () => {
@@ -255,7 +320,7 @@ describe('SyncService', () => {
       mockReadFile.mockImplementation(async (p: unknown) => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig();
@@ -267,7 +332,7 @@ describe('SyncService', () => {
       expect(translateBatch).toHaveBeenCalledTimes(1);
       expect(translateBatch).toHaveBeenCalledWith(
         ['Goodbye', 'Hello'],
-        expect.objectContaining({ targetLang: 'de' }),
+        expect.objectContaining({ targetLang: 'de' })
       );
       expect(mockAtomicWriteFile).toHaveBeenCalledTimes(1);
       expect(mockWrite).toHaveBeenCalledTimes(1);
@@ -284,7 +349,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -347,7 +412,10 @@ describe('SyncService', () => {
 
       // 12 chars × 1 filtered locale = 12
       const config = makeConfig({ target_locales: ['de', 'fr'] });
-      const result = await service.sync(config, { dryRun: true, localeFilter: ['de'] });
+      const result = await service.sync(config, {
+        dryRun: true,
+        localeFilter: ['de'],
+      });
       expect(result.estimatedCharacters).toBe(12);
     });
   });
@@ -371,7 +439,7 @@ describe('SyncService', () => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
         if (filePath === '/test/locales/de.json') return '{"greeting":"Alt"}';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -379,8 +447,11 @@ describe('SyncService', () => {
       expect(mockCopyFile).toHaveBeenCalledWith(
         '/test/locales/de.json',
         '/test/locales/de.json.deepl.bak',
+        fs.constants.COPYFILE_EXCL
       );
-      expect(mockUnlink).toHaveBeenCalledWith('/test/locales/de.json.deepl.bak');
+      expect(mockUnlink).toHaveBeenCalledWith(
+        '/test/locales/de.json.deepl.bak'
+      );
     });
 
     it('should NOT create .bak in dry-run mode', async () => {
@@ -436,35 +507,44 @@ describe('SyncService', () => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
         if (filePath === '/test/locales/de.json') return '{"greeting":"Alt"}';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
       expect(result.success).toBe(true);
       // Backup was created, then unlinked (normal post-success path).
-      expect(mockUnlink).toHaveBeenCalledWith('/test/locales/de.json.deepl.bak');
+      expect(mockUnlink).toHaveBeenCalledWith(
+        '/test/locales/de.json.deepl.bak'
+      );
     });
   });
 
   describe('sync() — multi-locale format', () => {
-    const XCSTRINGS_SOURCE = JSON.stringify({
-      sourceLanguage: 'en',
-      version: '1.0',
-      strings: {
-        greeting: {
-          localizations: {
-            en: { stringUnit: { state: 'translated', value: 'Hello' } },
+    const XCSTRINGS_SOURCE =
+      JSON.stringify(
+        {
+          sourceLanguage: 'en',
+          version: '1.0',
+          strings: {
+            greeting: {
+              localizations: {
+                en: { stringUnit: { state: 'translated', value: 'Hello' } },
+              },
+            },
+            farewell: {
+              localizations: {
+                en: { stringUnit: { state: 'translated', value: 'Goodbye' } },
+              },
+            },
           },
         },
-        farewell: {
-          localizations: {
-            en: { stringUnit: { state: 'translated', value: 'Goodbye' } },
-          },
-        },
-      },
-    }, null, 2) + '\n';
+        null,
+        2
+      ) + '\n';
 
-    function makeMultiLocaleConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+    function makeMultiLocaleConfig(
+      overrides: Partial<ResolvedSyncConfig> = {}
+    ): ResolvedSyncConfig {
       return {
         version: 1,
         source_locale: 'en',
@@ -479,7 +559,8 @@ describe('SyncService', () => {
 
     it('should use source path as target for all locales', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn()
+      const translateBatch = jest
+        .fn()
         .mockResolvedValueOnce([
           { text: 'Auf Wiedersehen', billedCharacters: 15 },
           { text: 'Hallo', billedCharacters: 5 },
@@ -494,7 +575,7 @@ describe('SyncService', () => {
       mockReadFile.mockImplementation(async (p: unknown) => {
         const filePath = String(p);
         if (filePath === '/test/Localizable.xcstrings') return XCSTRINGS_SOURCE;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeMultiLocaleConfig());
@@ -506,7 +587,10 @@ describe('SyncService', () => {
         expect(fr.file).toBe('Localizable.xcstrings');
       }
       expect(result.fileResults).toHaveLength(2);
-      expect(result.fileResults.map(f => f.locale).sort()).toEqual(['de', 'fr']);
+      expect(result.fileResults.map((f) => f.locale).sort()).toEqual([
+        'de',
+        'fr',
+      ]);
     });
 
     it('should pass locale to parser.extract() for source entries', async () => {
@@ -535,14 +619,15 @@ describe('SyncService', () => {
 
       mockFg.mockResolvedValue(['/test/Localizable.xcstrings'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
-        if (String(p) === '/test/Localizable.xcstrings') return XCSTRINGS_SOURCE;
-        throw new Error('ENOENT');
+        if (String(p) === '/test/Localizable.xcstrings')
+          return XCSTRINGS_SOURCE;
+        throw enoent();
       });
 
       await service.sync(makeMultiLocaleConfig());
 
       // reconstruct should be called with locale for each target
-      const localeArgs = reconstructSpy.mock.calls.map(c => c[2]);
+      const localeArgs = reconstructSpy.mock.calls.map((c) => c[2]);
       expect(localeArgs).toContain('de');
       expect(localeArgs).toContain('fr');
       reconstructSpy.mockRestore();
@@ -551,19 +636,24 @@ describe('SyncService', () => {
     it('should force concurrency=1 for multi-locale formats', async () => {
       setupLockManager(makeEmptyLockFile());
       const callOrder: string[] = [];
-      const translateBatch = jest.fn().mockImplementation(async (_texts: string[], opts: { targetLang: string }) => {
-        callOrder.push(opts.targetLang);
-        return [
-          { text: 'T1', billedCharacters: 2 },
-          { text: 'T2', billedCharacters: 2 },
-        ];
-      });
+      const translateBatch = jest
+        .fn()
+        .mockImplementation(
+          async (_texts: string[], opts: { targetLang: string }) => {
+            callOrder.push(opts.targetLang);
+            return [
+              { text: 'T1', billedCharacters: 2 },
+              { text: 'T2', billedCharacters: 2 },
+            ];
+          }
+        );
       const { service } = createMultiLocaleService({ translateBatch });
 
       mockFg.mockResolvedValue(['/test/Localizable.xcstrings'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
-        if (String(p) === '/test/Localizable.xcstrings') return XCSTRINGS_SOURCE;
-        throw new Error('ENOENT');
+        if (String(p) === '/test/Localizable.xcstrings')
+          return XCSTRINGS_SOURCE;
+        throw enoent();
       });
 
       await service.sync(makeMultiLocaleConfig());
@@ -592,6 +682,7 @@ describe('SyncService', () => {
       expect(mockCopyFile).toHaveBeenCalledWith(
         '/test/Localizable.xcstrings',
         '/test/Localizable.xcstrings.deepl.bak',
+        fs.constants.COPYFILE_EXCL
       );
     });
 
@@ -603,7 +694,9 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/Localizable.xcstrings'] as never);
       mockReadFile.mockResolvedValue(XCSTRINGS_SOURCE);
 
-      const result = await service.sync(makeMultiLocaleConfig(), { dryRun: true });
+      const result = await service.sync(makeMultiLocaleConfig(), {
+        dryRun: true,
+      });
 
       expect(result.dryRun).toBe(true);
       expect(result.newKeys).toBe(2);
@@ -635,7 +728,9 @@ describe('SyncService', () => {
         'locales/en.json': {
           farewell: makeLockEntry('Goodbye', { de: { status: 'translated' } }),
           greeting: makeLockEntry('Hello', { de: { status: 'translated' } }),
-          removed_key: makeLockEntry('Old text', { de: { status: 'translated' } }),
+          removed_key: makeLockEntry('Old text', {
+            de: { status: 'translated' },
+          }),
         },
       });
       const { mockWrite } = setupLockManager(lockFile);
@@ -685,10 +780,12 @@ describe('SyncService', () => {
 
       mockFg.mockResolvedValue([] as never);
 
-      await expect(service.sync(makeConfig(), { force: true, frozen: true })).rejects.toThrow(ValidationError);
-      await expect(service.sync(makeConfig(), { force: true, frozen: true })).rejects.toThrow(
-        'Cannot use --force and --frozen together',
-      );
+      await expect(
+        service.sync(makeConfig(), { force: true, frozen: true })
+      ).rejects.toThrow(ValidationError);
+      await expect(
+        service.sync(makeConfig(), { force: true, frozen: true })
+      ).rejects.toThrow('Cannot use --force and --frozen together');
     });
   });
 
@@ -711,7 +808,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig(), { force: true });
@@ -720,7 +817,7 @@ describe('SyncService', () => {
       expect(result.currentKeys).toBe(0);
       expect(translateBatch).toHaveBeenCalledWith(
         ['Goodbye', 'Hello'],
-        expect.objectContaining({ targetLang: 'de' }),
+        expect.objectContaining({ targetLang: 'de' })
       );
     });
   });
@@ -731,7 +828,9 @@ describe('SyncService', () => {
         'locales/en.json': {
           farewell: makeLockEntry('Goodbye', { de: { status: 'translated' } }),
           greeting: makeLockEntry('Hello', { de: { status: 'translated' } }),
-          removed_key: makeLockEntry('Old text', { de: { status: 'translated' } }),
+          removed_key: makeLockEntry('Old text', {
+            de: { status: 'translated' },
+          }),
         },
       });
       setupLockManager(lockFile);
@@ -745,7 +844,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig(), { force: true });
@@ -754,7 +853,7 @@ describe('SyncService', () => {
       expect(result.newKeys).toBe(2);
       expect(translateBatch).toHaveBeenCalledWith(
         ['Goodbye', 'Hello'],
-        expect.objectContaining({ targetLang: 'de' }),
+        expect.objectContaining({ targetLang: 'de' })
       );
     });
   });
@@ -771,7 +870,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({ target_locales: ['de', 'fr', 'es'] });
@@ -780,9 +879,9 @@ describe('SyncService', () => {
       expect(translateBatch).toHaveBeenCalledTimes(1);
       expect(translateBatch).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ targetLang: 'de' }),
+        expect.objectContaining({ targetLang: 'de' })
       );
-      expect(result.fileResults.every(fr => fr.locale === 'de')).toBe(true);
+      expect(result.fileResults.every((fr) => fr.locale === 'de')).toBe(true);
     });
   });
 
@@ -817,7 +916,7 @@ describe('SyncService', () => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
         if (filePath === '/test/locales/de.json') return '';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -832,9 +931,9 @@ describe('SyncService', () => {
 
     it('should reconstruct YAML targets from source when the existing target file is empty', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Hallo', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
       mockFg.mockResolvedValue(['/test/locales/en.yaml'] as never);
@@ -842,7 +941,7 @@ describe('SyncService', () => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.yaml') return 'greeting: Hello\n';
         if (filePath === '/test/locales/de.yaml') return '';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -852,7 +951,9 @@ describe('SyncService', () => {
       await service.sync(config);
 
       expect(mockAtomicWriteFile).toHaveBeenCalledTimes(1);
-      expect(String(mockAtomicWriteFile.mock.calls[0]![1])).toBe('greeting: Hallo\n');
+      expect(String(mockAtomicWriteFile.mock.calls[0]![1])).toBe(
+        'greeting: Hallo\n'
+      );
     });
   });
 
@@ -866,25 +967,30 @@ describe('SyncService', () => {
       });
 
       await expect(service.sync(config)).rejects.toThrow(ValidationError);
-      await expect(service.sync(config)).rejects.toThrow('No parser for format "xml"');
+      await expect(service.sync(config)).rejects.toThrow(
+        'No parser for format "xml"'
+      );
     });
   });
 
   describe('sync() — multiple files', () => {
     it('should process each file separately', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Translated', billedCharacters: 10 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Translated', billedCharacters: 10 }]);
       const { service } = createService({ translateBatch });
 
-      mockFg.mockResolvedValue(['/test/locales/en/a.json', '/test/locales/en/b.json'] as never);
+      mockFg.mockResolvedValue([
+        '/test/locales/en/a.json',
+        '/test/locales/en/b.json',
+      ] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         const filePath = String(p);
         if (filePath.endsWith('a.json') || filePath.endsWith('b.json')) {
           return JSON.stringify({ key: 'value' }, null, 2) + '\n';
         }
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -910,7 +1016,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -950,7 +1056,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -980,14 +1086,14 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
 
       expect(mockMkdir).toHaveBeenCalledWith(
         expect.stringContaining('locales'),
-        { recursive: true },
+        { recursive: true }
       );
     });
   });
@@ -1018,7 +1124,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -1035,20 +1141,22 @@ describe('SyncService', () => {
       const lockFile = makeLockFileWithEntries({
         'locales/en.json': {
           farewell: makeLockEntry('Goodbye', { de: { status: 'translated' } }),
-          greeting: makeLockEntry('Old Hello', { de: { status: 'translated' } }),
+          greeting: makeLockEntry('Old Hello', {
+            de: { status: 'translated' },
+          }),
         },
       });
       setupLockManager(lockFile);
 
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Hallo', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -1059,7 +1167,9 @@ describe('SyncService', () => {
       // because this fixture has no de.json on disk: a lockfile entry with no
       // target content means the file was deleted, so the key must be
       // translated again rather than recorded as already done.
-      const sentTexts = translateBatch.mock.calls.flatMap((call) => call[0] as string[]);
+      const sentTexts = translateBatch.mock.calls.flatMap(
+        (call) => call[0] as string[]
+      );
       expect(sentTexts).toContain('Hello');
       expect(sentTexts).toContain('Goodbye');
     });
@@ -1101,7 +1211,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({ target_locales: ['de', 'fr'] });
@@ -1110,7 +1220,7 @@ describe('SyncService', () => {
       expect(translateBatch).toHaveBeenCalledTimes(2);
       expect(result.fileResults).toHaveLength(2);
 
-      const locales = result.fileResults.map(fr => fr.locale);
+      const locales = result.fileResults.map((fr) => fr.locale);
       expect(locales).toContain('de');
       expect(locales).toContain('fr');
     });
@@ -1128,7 +1238,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({ target_locales: ['de', 'fr', 'es'] });
@@ -1156,7 +1266,12 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue([] as never);
 
       const config = makeConfig({
-        buckets: { json: { include: ['locales/**/*.json'], exclude: ['locales/generated/**'] } },
+        buckets: {
+          json: {
+            include: ['locales/**/*.json'],
+            exclude: ['locales/generated/**'],
+          },
+        },
       });
       await service.sync(config);
 
@@ -1164,7 +1279,7 @@ describe('SyncService', () => {
         ['locales/**/*.json'],
         expect.objectContaining({
           ignore: ['locales/generated/**'],
-        }),
+        })
       );
     });
   });
@@ -1179,20 +1294,30 @@ describe('SyncService', () => {
       });
       setupLockManager(lockFile);
 
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Hallo NEU', billedCharacters: 9 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Hallo NEU', billedCharacters: 9 }]);
       const { service } = createService({ translateBatch });
 
-      const sourceJson = JSON.stringify({ greeting: 'Hello CHANGED', farewell: 'Goodbye' }, null, 2) + '\n';
-      const targetDeJson = JSON.stringify({ greeting: 'Hallo', farewell: 'Auf Wiedersehen' }, null, 2) + '\n';
+      const sourceJson =
+        JSON.stringify(
+          { greeting: 'Hello CHANGED', farewell: 'Goodbye' },
+          null,
+          2
+        ) + '\n';
+      const targetDeJson =
+        JSON.stringify(
+          { greeting: 'Hallo', farewell: 'Auf Wiedersehen' },
+          null,
+          2
+        ) + '\n';
 
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return sourceJson;
         if (filePath === '/test/locales/de.json') return targetDeJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1200,7 +1325,10 @@ describe('SyncService', () => {
       const writeCall = mockAtomicWriteFile.mock.calls[0];
       expect(writeCall).toBeDefined();
       // writeCall args: [filePath, content, encoding]
-      const writtenJson = JSON.parse(String(writeCall![1])) as Record<string, string>;
+      const writtenJson = JSON.parse(String(writeCall![1])) as Record<
+        string,
+        string
+      >;
       // The target file should use 'Auf Wiedersehen' (from existing target), not 'Goodbye' (source text)
       expect(writtenJson['farewell']).toBe('Auf Wiedersehen');
       expect(writtenJson['greeting']).toBe('Hallo NEU');
@@ -1213,7 +1341,9 @@ describe('SyncService', () => {
         'locales/en.json': {
           farewell: makeLockEntry('Goodbye', { de: { status: 'translated' } }),
           greeting: makeLockEntry('Hello', { de: { status: 'translated' } }),
-          removed_key: makeLockEntry('Old text', { de: { status: 'translated' } }),
+          removed_key: makeLockEntry('Old text', {
+            de: { status: 'translated' },
+          }),
         },
       });
       const { mockWrite } = setupLockManager(lockFile);
@@ -1225,7 +1355,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -1254,7 +1384,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return '{}';
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1282,17 +1412,19 @@ describe('SyncService', () => {
       // fast-glob returns `locales/en.json` for the bucket pattern (matching
       // the new path only) and returns both `en.json` occurrences for the
       // broader base-name scan used by the GC guard.
-      mockFg.mockImplementation((async (patterns: string | string[]): Promise<string[]> => {
-        const arr = Array.isArray(patterns) ? patterns : [patterns];
-        const first = arr[0] ?? '';
-        if (first.startsWith('**/')) {
-          return ['locales/en.json', 'locales/old-path/en.json'];
+      mockFg.mockImplementation(
+        async (patterns: string | string[]): Promise<string[]> => {
+          const arr = Array.isArray(patterns) ? patterns : [patterns];
+          const first = arr[0] ?? '';
+          if (first.startsWith('**/')) {
+            return ['locales/en.json', 'locales/old-path/en.json'];
+          }
+          return ['/test/locales/en.json'];
         }
-        return ['/test/locales/en.json'];
-      }));
+      );
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1300,11 +1432,17 @@ describe('SyncService', () => {
       const writtenLockFile = mockWrite.mock.calls[0]![0] as SyncLockFile;
       // Entry for the old path survives because its base name is findable.
       expect(writtenLockFile.entries['locales/old-path/en.json']).toBeDefined();
-      expect(writtenLockFile.entries['locales/old-path/en.json']!['greeting']).toBeDefined();
+      expect(
+        writtenLockFile.entries['locales/old-path/en.json']!['greeting']
+      ).toBeDefined();
       // The warning names the lock path and hints at a glob change.
       const messages = warnSpy.mock.calls.map((c) => c.join(' '));
-      expect(messages.some((m: string) => m.includes('locales/old-path/en.json'))).toBe(true);
-      expect(messages.some((m: string) => m.toLowerCase().includes('glob change'))).toBe(true);
+      expect(
+        messages.some((m: string) => m.includes('locales/old-path/en.json'))
+      ).toBe(true);
+      expect(
+        messages.some((m: string) => m.toLowerCase().includes('glob change'))
+      ).toBe(true);
     });
 
     it('still deletes entries whose base name is absent from projectRoot', async () => {
@@ -1320,24 +1458,28 @@ describe('SyncService', () => {
       const translateBatch = jest.fn().mockResolvedValue([]);
       const { service } = createService({ translateBatch });
 
-      mockFg.mockImplementation((async (patterns: string | string[]): Promise<string[]> => {
-        const arr = Array.isArray(patterns) ? patterns : [patterns];
-        const first = arr[0] ?? '';
-        if (first.startsWith('**/')) {
-          // Base-name scan for `truly-deleted.json` returns nothing.
-          return [];
+      mockFg.mockImplementation(
+        async (patterns: string | string[]): Promise<string[]> => {
+          const arr = Array.isArray(patterns) ? patterns : [patterns];
+          const first = arr[0] ?? '';
+          if (first.startsWith('**/')) {
+            // Base-name scan for `truly-deleted.json` returns nothing.
+            return [];
+          }
+          return ['/test/locales/en.json'];
         }
-        return ['/test/locales/en.json'];
-      }));
+      );
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
 
       const writtenLockFile = mockWrite.mock.calls[0]![0] as SyncLockFile;
-      expect(writtenLockFile.entries['locales/truly-deleted.json']).toBeUndefined();
+      expect(
+        writtenLockFile.entries['locales/truly-deleted.json']
+      ).toBeUndefined();
       expect(writtenLockFile.entries['locales/en.json']).toBeDefined();
     });
   });
@@ -1345,16 +1487,18 @@ describe('SyncService', () => {
   describe('sync() — per-locale translation success tracking', () => {
     it('should set lock status to failed for keys where translation returned undefined', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        undefined,
-        { text: 'Auf Wiedersehen', billedCharacters: 15 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([
+          undefined,
+          { text: 'Auf Wiedersehen', billedCharacters: 15 },
+        ]);
       const { service } = createService({ translateBatch });
 
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const { mockWrite } = setupLockManager(makeEmptyLockFile());
@@ -1365,8 +1509,10 @@ describe('SyncService', () => {
       const fileEntries = writtenLockFile.entries['locales/en.json'];
       expect(fileEntries).toBeDefined();
 
-      const farewellStatus = fileEntries!['farewell']?.translations['de']?.status;
-      const greetingStatus = fileEntries!['greeting']?.translations['de']?.status;
+      const farewellStatus =
+        fileEntries!['farewell']?.translations['de']?.status;
+      const greetingStatus =
+        fileEntries!['greeting']?.translations['de']?.status;
       // One should be 'translated', one should be 'failed'
       const statuses = [farewellStatus, greetingStatus].sort();
       expect(statuses).toEqual(['failed', 'translated']);
@@ -1376,27 +1522,32 @@ describe('SyncService', () => {
   describe('sync() — partial batch failure', () => {
     it('should complete sync when some batch results are undefined', async () => {
       setupLockManager(makeEmptyLockFile());
-      const sourceJson = JSON.stringify(
-        { alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma' },
-        null,
-        2,
-      ) + '\n';
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Alpha-DE', billedCharacters: 5 },
-        undefined,
-        { text: 'Gamma-DE', billedCharacters: 10 },
-      ]);
+      const sourceJson =
+        JSON.stringify(
+          { alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma' },
+          null,
+          2
+        ) + '\n';
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([
+          { text: 'Alpha-DE', billedCharacters: 5 },
+          undefined,
+          { text: 'Gamma-DE', billedCharacters: 10 },
+        ]);
       const { service } = createService({ translateBatch });
 
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
 
-      expect(result.success).toBe(true);
+      // The run finishes and reports both outcomes, but a failed key makes the
+      // result mixed, which is exit 12 rather than 0.
+      expect(result.success).toBe(false);
       expect(result.newKeys).toBe(3);
       expect(result.fileResults).toHaveLength(1);
       const fileResult = result.fileResults[0]!;
@@ -1406,22 +1557,25 @@ describe('SyncService', () => {
 
     it('should write successful translations to target file despite partial failure', async () => {
       setupLockManager(makeEmptyLockFile());
-      const sourceJson = JSON.stringify(
-        { alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma' },
-        null,
-        2,
-      ) + '\n';
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Alpha-DE', billedCharacters: 5 },
-        undefined,
-        { text: 'Gamma-DE', billedCharacters: 10 },
-      ]);
+      const sourceJson =
+        JSON.stringify(
+          { alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma' },
+          null,
+          2
+        ) + '\n';
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([
+          { text: 'Alpha-DE', billedCharacters: 5 },
+          undefined,
+          { text: 'Gamma-DE', billedCharacters: 10 },
+        ]);
       const { service } = createService({ translateBatch });
 
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1435,22 +1589,25 @@ describe('SyncService', () => {
 
     it('should record failed status in lock file for undefined batch results', async () => {
       const { mockWrite } = setupLockManager(makeEmptyLockFile());
-      const sourceJson = JSON.stringify(
-        { alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma' },
-        null,
-        2,
-      ) + '\n';
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Alpha-DE', billedCharacters: 5 },
-        undefined,
-        { text: 'Gamma-DE', billedCharacters: 10 },
-      ]);
+      const sourceJson =
+        JSON.stringify(
+          { alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma' },
+          null,
+          2
+        ) + '\n';
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([
+          { text: 'Alpha-DE', billedCharacters: 5 },
+          undefined,
+          { text: 'Gamma-DE', billedCharacters: 10 },
+        ]);
       const { service } = createService({ translateBatch });
 
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1459,29 +1616,43 @@ describe('SyncService', () => {
       const fileEntries = writtenLockFile.entries['locales/en.json'];
       expect(fileEntries).toBeDefined();
 
-      expect(fileEntries!['alpha']?.translations['de']?.status).toBe('translated');
+      expect(fileEntries!['alpha']?.translations['de']?.status).toBe(
+        'translated'
+      );
       expect(fileEntries!['beta']?.translations['de']?.status).toBe('failed');
-      expect(fileEntries!['gamma']?.translations['de']?.status).toBe('translated');
+      expect(fileEntries!['gamma']?.translations['de']?.status).toBe(
+        'translated'
+      );
     });
   });
 
   describe('sync() — context omitted for multi-key batches', () => {
     it('should set context for single-key batch', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Hallo', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
-      const singleKeyJson = JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n';
+      const singleKeyJson =
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n';
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return singleKeyJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       mockExtractAllKeyContexts.mockResolvedValue({
-        keyContexts: new Map([['greeting', { key: 'greeting', context: 'Used in navbar header', occurrences: 1 }]]),
+        keyContexts: new Map([
+          [
+            'greeting',
+            {
+              key: 'greeting',
+              context: 'Used in navbar header',
+              occurrences: 1,
+            },
+          ],
+        ]),
         templatePatterns: [],
       });
 
@@ -1490,27 +1661,33 @@ describe('SyncService', () => {
 
       expect(translateBatch).toHaveBeenCalledWith(
         ['Hello'],
-        expect.objectContaining({ context: 'Used in navbar header' }),
+        expect.objectContaining({ context: 'Used in navbar header' })
       );
     });
 
     it('should send per-key requests with context for multi-key batch', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'translated', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'translated', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       mockExtractAllKeyContexts.mockResolvedValue({
         keyContexts: new Map([
-          ['greeting', { key: 'greeting', context: 'Header context', occurrences: 1 }],
-          ['farewell', { key: 'farewell', context: 'Footer context', occurrences: 1 }],
+          [
+            'greeting',
+            { key: 'greeting', context: 'Header context', occurrences: 1 },
+          ],
+          [
+            'farewell',
+            { key: 'farewell', context: 'Footer context', occurrences: 1 },
+          ],
         ]),
         templatePatterns: [],
       });
@@ -1522,11 +1699,11 @@ describe('SyncService', () => {
       expect(translateBatch).toHaveBeenCalledTimes(2);
       expect(translateBatch).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ context: 'Footer context' }),
+        expect.objectContaining({ context: 'Footer context' })
       );
       expect(translateBatch).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ context: 'Header context' }),
+        expect.objectContaining({ context: 'Header context' })
       );
     });
 
@@ -1541,13 +1718,19 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       mockExtractAllKeyContexts.mockResolvedValue({
         keyContexts: new Map([
-          ['greeting', { key: 'greeting', context: 'Header context', occurrences: 1 }],
-          ['farewell', { key: 'farewell', context: 'Footer context', occurrences: 1 }],
+          [
+            'greeting',
+            { key: 'greeting', context: 'Header context', occurrences: 1 },
+          ],
+          [
+            'farewell',
+            { key: 'farewell', context: 'Footer context', occurrences: 1 },
+          ],
         ]),
         templatePatterns: [],
       });
@@ -1559,28 +1742,36 @@ describe('SyncService', () => {
       expect(translateBatch).toHaveBeenCalledTimes(1);
       expect(translateBatch).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ context: undefined }),
+        expect.objectContaining({ context: undefined })
       );
     });
 
     it('should batch keys without context and send per-key for keys with context', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'translated', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'translated', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
-      const threeKeyJson = JSON.stringify({ greeting: 'Hello', farewell: 'Goodbye', other: 'Other' }, null, 2) + '\n';
+      const threeKeyJson =
+        JSON.stringify(
+          { greeting: 'Hello', farewell: 'Goodbye', other: 'Other' },
+          null,
+          2
+        ) + '\n';
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return threeKeyJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       // Only 'greeting' has context; 'farewell' and 'other' do not
       mockExtractAllKeyContexts.mockResolvedValue({
         keyContexts: new Map([
-          ['greeting', { key: 'greeting', context: 'Navbar header', occurrences: 1 }],
+          [
+            'greeting',
+            { key: 'greeting', context: 'Navbar header', occurrences: 1 },
+          ],
         ]),
         templatePatterns: [],
       });
@@ -1592,11 +1783,11 @@ describe('SyncService', () => {
       expect(translateBatch).toHaveBeenCalledTimes(2);
       expect(translateBatch).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ context: 'Navbar header' }),
+        expect.objectContaining({ context: 'Navbar header' })
       );
       expect(translateBatch).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ context: undefined }),
+        expect.objectContaining({ context: undefined })
       );
     });
   });
@@ -1613,28 +1804,57 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
-      const events: Array<{ type: string; key?: string; translated: number }> = [];
+      const events: Array<{ type: string; key?: string; translated: number }> =
+        [];
       await service.sync(makeConfig(), {
-        onProgress: (event) => events.push({
-          type: event.type,
-          key: event.type === 'key-translated' ? event.key : undefined,
-          translated: event.translated,
-        }),
+        onProgress: (event) =>
+          events.push({
+            type: event.type,
+            key: event.type === 'key-translated' ? event.key : undefined,
+            translated: event.translated,
+          }),
       });
 
-      const keyEvents = events.filter(e => e.type === 'key-translated');
-      const localeEvents = events.filter(e => e.type === 'locale-complete');
+      const keyEvents = events.filter((e) => e.type === 'key-translated');
+      const localeEvents = events.filter((e) => e.type === 'locale-complete');
       expect(keyEvents.length).toBe(2);
       expect(keyEvents[0]!.translated).toBe(1);
       expect(keyEvents[1]!.translated).toBe(2);
       expect(localeEvents.length).toBe(1);
       expect(localeEvents[0]!.translated).toBe(2);
-      const lastKeyIdx = events.findIndex(e => e === keyEvents[keyEvents.length - 1]);
-      const localeIdx = events.findIndex(e => e === localeEvents[0]);
+      const lastKeyIdx = events.findIndex(
+        (e) => e === keyEvents[keyEvents.length - 1]
+      );
+      const localeIdx = events.findIndex((e) => e === localeEvents[0]);
       expect(lastKeyIdx).toBeLessThan(localeIdx);
+    });
+
+    it('should not count a key whose translation came back null', async () => {
+      setupLockManager(makeEmptyLockFile());
+      // translateBatch returns a sparse array: the second key failed.
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Auf Wiedersehen', billedCharacters: 15 }]);
+      const { service } = createService({ translateBatch });
+
+      mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
+      mockReadFile.mockImplementation(async (p: unknown) => {
+        if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
+        throw enoent();
+      });
+
+      const events: Array<{ type: string; translated: number }> = [];
+      await service.sync(makeConfig(), {
+        onProgress: (event) =>
+          events.push({ type: event.type, translated: event.translated }),
+      });
+
+      const keyEvents = events.filter((e) => e.type === 'key-translated');
+      expect(keyEvents).toHaveLength(1);
+      expect(keyEvents[0]!.translated).toBe(1);
     });
 
     it('should not fire onProgress in dry-run mode', async () => {
@@ -1644,7 +1864,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const progressEvents: unknown[] = [];
@@ -1660,20 +1880,26 @@ describe('SyncService', () => {
   describe('sync() — context_sent in lock entries', () => {
     it('should set context_sent: true for keys translated with context', async () => {
       const { mockWrite } = setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Hallo', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
-      const singleKeyJson = JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n';
+      const singleKeyJson =
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n';
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return singleKeyJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       mockExtractAllKeyContexts.mockResolvedValue({
-        keyContexts: new Map([['greeting', { key: 'greeting', context: 'Navbar header', occurrences: 1 }]]),
+        keyContexts: new Map([
+          [
+            'greeting',
+            { key: 'greeting', context: 'Navbar header', occurrences: 1 },
+          ],
+        ]),
         templatePatterns: [],
       });
 
@@ -1698,7 +1924,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -1714,7 +1940,7 @@ describe('SyncService', () => {
         expect.objectContaining({
           customInstructions: ['Keep formal tone'],
           styleId: 'style-123',
-        }),
+        })
       );
     });
 
@@ -1729,7 +1955,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -1751,8 +1977,125 @@ describe('SyncService', () => {
         expect.objectContaining({
           customInstructions: ['Use du instead of Sie'],
           styleId: 'style-de',
-        }),
+        })
       );
+    });
+  });
+
+  describe('sync() — per-locale model_type override', () => {
+    const TM_UUID_DE = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+
+    const modelTypeOf = (calls: unknown[][], locale: string): unknown =>
+      (
+        calls.find(
+          (c) => (c[1] as Record<string, unknown>)['targetLang'] === locale
+        )![1] as Record<string, unknown>
+      )['modelType'];
+
+    it('should prefer the per-locale model_type and leave other locales on the top-level value', async () => {
+      setupLockManager(makeEmptyLockFile());
+      const translateBatch = jest.fn().mockResolvedValue([
+        { text: 'x', billedCharacters: 1 },
+        { text: 'y', billedCharacters: 1 },
+      ]);
+      const { service } = createService({ translateBatch });
+
+      mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
+      mockReadFile.mockImplementation(async (p: unknown) => {
+        if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
+        throw enoent();
+      });
+
+      await service.sync(
+        makeConfig({
+          target_locales: ['de', 'fr'],
+          translation: {
+            model_type: 'latency_optimized',
+            locale_overrides: { de: { model_type: 'quality_optimized' } },
+          },
+        })
+      );
+
+      expect(modelTypeOf(translateBatch.mock.calls, 'de')).toBe(
+        'quality_optimized'
+      );
+      expect(modelTypeOf(translateBatch.mock.calls, 'fr')).toBe(
+        'latency_optimized'
+      );
+    });
+
+    it('should send the per-locale model_type when no top-level model_type is set', async () => {
+      setupLockManager(makeEmptyLockFile());
+      const translateBatch = jest.fn().mockResolvedValue([
+        { text: 'x', billedCharacters: 1 },
+        { text: 'y', billedCharacters: 1 },
+      ]);
+      const { service } = createService({ translateBatch });
+
+      mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
+      mockReadFile.mockImplementation(async (p: unknown) => {
+        if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
+        throw enoent();
+      });
+
+      await service.sync(
+        makeConfig({
+          target_locales: ['de', 'fr'],
+          translation: {
+            locale_overrides: { de: { model_type: 'quality_optimized' } },
+          },
+        })
+      );
+
+      expect(modelTypeOf(translateBatch.mock.calls, 'de')).toBe(
+        'quality_optimized'
+      );
+      expect(modelTypeOf(translateBatch.mock.calls, 'fr')).toBeUndefined();
+    });
+
+    // The billing hazard the validator was guarding against: a per-locale TM is
+    // only honoured by the API under quality_optimized, so the model_type that
+    // sits beside it has to reach the same request.
+    it('should apply a per-locale translation_memory together with its model_type', async () => {
+      setupLockManager(makeEmptyLockFile());
+      const translateBatch = jest.fn().mockResolvedValue([
+        { text: 'x', billedCharacters: 1 },
+        { text: 'y', billedCharacters: 1 },
+      ]);
+      const { service, mockTranslation } = createService({ translateBatch });
+      mockTranslation.listTranslationMemories.mockResolvedValue([
+        {
+          translation_memory_id: TM_UUID_DE,
+          name: 'de-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
+      ]);
+
+      mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+
+      await service.sync(
+        makeConfig({
+          target_locales: ['de'],
+          translation: {
+            locale_overrides: {
+              de: {
+                translation_memory: 'de-tm',
+                model_type: 'quality_optimized',
+              },
+            },
+          },
+        })
+      );
+
+      const deCall = translateBatch.mock.calls.find(
+        (c) => (c[1] as Record<string, unknown>)['targetLang'] === 'de'
+      );
+      expect(deCall![1]).toMatchObject({
+        translationMemoryId: TM_UUID_DE,
+        modelType: 'quality_optimized',
+      });
     });
   });
 
@@ -1764,12 +2107,14 @@ describe('SyncService', () => {
         { text: 'Auf Wiedersehen', billedCharacters: 15 },
       ]);
       const { service, mockGlossary } = createService({ translateBatch });
-      mockGlossary.resolveGlossaryId.mockResolvedValue('resolved-glossary-id-123');
+      mockGlossary.resolveGlossaryId.mockResolvedValue(
+        'resolved-glossary-id-123'
+      );
 
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -1783,10 +2128,18 @@ describe('SyncService', () => {
       });
       await service.sync(config);
 
-      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      // With the override's own locale as the pair, so a glossary that does not
+      // cover it fails at startup rather than reaching the API.
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith(
+        'my-glossary',
+        {
+          from: 'en',
+          targets: ['de'],
+        }
+      );
       expect(translateBatch).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ glossaryId: 'resolved-glossary-id-123' }),
+        expect.objectContaining({ glossaryId: 'resolved-glossary-id-123' })
       );
     });
   });
@@ -1801,7 +2154,7 @@ describe('SyncService', () => {
       mockReadFile.mockImplementation(async (p: unknown) => {
         const filePath = String(p);
         if (filePath === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({ target_locales: ['de', 'fr'] });
@@ -1810,7 +2163,7 @@ describe('SyncService', () => {
       expect(result.totalCharactersBilled).toBe(0);
       expect(translateBatch).not.toHaveBeenCalled();
       expect(Logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('No matching locales for filter [zz]'),
+        expect.stringContaining('No matching locales for filter [zz]')
       );
     });
   });
@@ -1819,7 +2172,8 @@ describe('SyncService', () => {
     it('should translate non-primary plural forms in metadata', async () => {
       setupLockManager(makeEmptyLockFile());
 
-      const sourceJson = JSON.stringify({ item_count: '%d items' }, null, 2) + '\n';
+      const sourceJson =
+        JSON.stringify({ item_count: '%d items' }, null, 2) + '\n';
       const translateBatch = jest.fn().mockResolvedValue([
         { text: '%d Artikel', billedCharacters: 10 },
         { text: '1 Artikel', billedCharacters: 9 },
@@ -1850,7 +2204,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1861,12 +2215,22 @@ describe('SyncService', () => {
       expect(calledTexts[1]).toBe('1 item');
 
       const reconstructCall = mockParser.reconstruct.mock.calls[0];
-      const entries = reconstructCall[1] as Array<{ key: string; metadata?: Record<string, unknown> }>;
-      const itemEntry = entries.find(e => e.key === 'item_count');
+      const entries = reconstructCall[1] as Array<{
+        key: string;
+        metadata?: Record<string, unknown>;
+      }>;
+      const itemEntry = entries.find((e) => e.key === 'item_count');
       expect(itemEntry).toBeDefined();
-      const plurals = itemEntry!.metadata!['plurals'] as Array<{ quantity: string; value: string }>;
-      expect(plurals.find(p => p.quantity === 'one')!.value).toBe('1 Artikel');
-      expect(plurals.find(p => p.quantity === 'other')!.value).toBe('%d Artikel');
+      const plurals = itemEntry!.metadata!['plurals'] as Array<{
+        quantity: string;
+        value: string;
+      }>;
+      expect(plurals.find((p) => p.quantity === 'one')!.value).toBe(
+        '1 Artikel'
+      );
+      expect(plurals.find((p) => p.quantity === 'other')!.value).toBe(
+        '%d Artikel'
+      );
     });
   });
 
@@ -1903,7 +2267,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       await service.sync(makeConfig());
@@ -1915,10 +2279,16 @@ describe('SyncService', () => {
       expect(calledTexts[1]).toBe('items');
 
       const reconstructCall = mockParser.reconstruct.mock.calls[0];
-      const entries = reconstructCall[1] as Array<{ key: string; metadata?: Record<string, unknown> }>;
-      const itemEntry = entries.find(e => e.key === 'item');
+      const entries = reconstructCall[1] as Array<{
+        key: string;
+        metadata?: Record<string, unknown>;
+      }>;
+      const itemEntry = entries.find((e) => e.key === 'item');
       expect(itemEntry).toBeDefined();
-      const forms = itemEntry!.metadata!['plural_forms'] as Record<string, string>;
+      const forms = itemEntry!.metadata!['plural_forms'] as Record<
+        string,
+        string
+      >;
       expect(forms['msgstr[0]']).toBe('Artikel');
       expect(forms['msgstr[1]']).toBe('Artikel (pl)');
     });
@@ -1936,7 +2306,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -1964,7 +2334,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -1984,16 +2354,17 @@ describe('SyncService', () => {
   describe('sync() — config.validation.fail_on_error', () => {
     it('should throw ValidationError when fail_on_error is true and validation errors exist', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Hallo', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
-      const sourceJson = JSON.stringify({ greeting: 'Hello {name}' }, null, 2) + '\n';
+      const sourceJson =
+        JSON.stringify({ greeting: 'Hello {name}' }, null, 2) + '\n';
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2004,22 +2375,23 @@ describe('SyncService', () => {
       });
 
       await expect(service.sync(config)).rejects.toThrow(
-        'Sync completed but validation failed',
+        'Sync completed but validation failed'
       );
     });
 
     it('should not throw when fail_on_error is false even with validation errors', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Hallo', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
-      const sourceJson = JSON.stringify({ greeting: 'Hello {name}' }, null, 2) + '\n';
+      const sourceJson =
+        JSON.stringify({ greeting: 'Hello {name}' }, null, 2) + '\n';
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2031,23 +2403,26 @@ describe('SyncService', () => {
 
       const result = await service.sync(config);
       expect(result.validationErrors).toBeGreaterThan(0);
-      expect(result.success).toBe(true);
+      // Not a hard error, but not a success either: the key was withheld from
+      // the target file, so the run is a partial failure and retries next time.
+      expect(result.success).toBe(false);
     });
   });
 
   describe('sync() — config.validation.check_placeholders: false', () => {
     it('should skip validation when check_placeholders is false', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Hallo', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
-      const sourceJson = JSON.stringify({ greeting: 'Hello {name}' }, null, 2) + '\n';
+      const sourceJson =
+        JSON.stringify({ greeting: 'Hello {name}' }, null, 2) + '\n';
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2067,16 +2442,17 @@ describe('SyncService', () => {
   describe('sync() — config.validation.validate_after_sync: false', () => {
     it('should skip validation entirely when validate_after_sync is false', async () => {
       setupLockManager(makeEmptyLockFile());
-      const translateBatch = jest.fn().mockResolvedValue([
-        { text: 'Hallo', billedCharacters: 5 },
-      ]);
+      const translateBatch = jest
+        .fn()
+        .mockResolvedValue([{ text: 'Hallo', billedCharacters: 5 }]);
       const { service } = createService({ translateBatch });
 
-      const sourceJson = JSON.stringify({ greeting: 'Hello {name}' }, null, 2) + '\n';
+      const sourceJson =
+        JSON.stringify({ greeting: 'Hello {name}' }, null, 2) + '\n';
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig({
@@ -2098,7 +2474,8 @@ describe('SyncService', () => {
     it('should include characters billed for plural translations', async () => {
       setupLockManager(makeEmptyLockFile());
 
-      const sourceJson = JSON.stringify({ item_count: '%d items' }, null, 2) + '\n';
+      const sourceJson =
+        JSON.stringify({ item_count: '%d items' }, null, 2) + '\n';
       const translateBatch = jest.fn().mockResolvedValue([
         { text: '%d Artikel', billedCharacters: 10 },
         { text: '1 Artikel', billedCharacters: 9 },
@@ -2129,7 +2506,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const result = await service.sync(makeConfig());
@@ -2143,7 +2520,9 @@ describe('SyncService', () => {
       setupLockManager(makeEmptyLockFile());
 
       mockFg.mockResolvedValue(['/test/locales/en.json']);
-      mockReadFile.mockResolvedValue('{"greeting":"Hello World test string that is long"}');
+      mockReadFile.mockResolvedValue(
+        '{"greeting":"Hello World test string that is long"}'
+      );
 
       const config = makeConfig({
         sync: { concurrency: 1, batch_size: 50, max_characters: 10 },
@@ -2193,15 +2572,23 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json']);
       mockReadFile.mockResolvedValue('{"greeting":"Hello Changed"}');
 
-      setupLockManager(makeLockFileWithEntries({
-        'locales/en.json': {
-          greeting: {
-            source_hash: computeSourceHash('Hello Original'),
-            source_text: 'Hello Original',
-            translations: { de: { hash: 'x', translated_at: '', status: 'translated' as const } },
+      setupLockManager(
+        makeLockFileWithEntries({
+          'locales/en.json': {
+            greeting: {
+              source_hash: computeSourceHash('Hello Original'),
+              source_text: 'Hello Original',
+              translations: {
+                de: {
+                  hash: 'x',
+                  translated_at: '',
+                  status: 'translated' as const,
+                },
+              },
+            },
           },
-        },
-      }));
+        })
+      );
 
       const config = makeConfig({
         validation: { fail_on_missing: false },
@@ -2217,15 +2604,23 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json']);
       mockReadFile.mockResolvedValue('{"greeting":"Hello Changed"}');
 
-      setupLockManager(makeLockFileWithEntries({
-        'locales/en.json': {
-          greeting: {
-            source_hash: computeSourceHash('Hello Original'),
-            source_text: 'Hello Original',
-            translations: { de: { hash: 'x', translated_at: '', status: 'translated' as const } },
+      setupLockManager(
+        makeLockFileWithEntries({
+          'locales/en.json': {
+            greeting: {
+              source_hash: computeSourceHash('Hello Original'),
+              source_text: 'Hello Original',
+              translations: {
+                de: {
+                  hash: 'x',
+                  translated_at: '',
+                  status: 'translated' as const,
+                },
+              },
+            },
           },
-        },
-      }));
+        })
+      );
 
       const config = makeConfig({
         validation: { fail_on_stale: false },
@@ -2245,7 +2640,9 @@ describe('SyncService', () => {
 
       await service.sync(makeConfig(), { dryRun: true, force: true });
 
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('--dry-run with --force'));
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('--dry-run with --force')
+      );
     });
   });
 
@@ -2261,14 +2658,21 @@ describe('SyncService', () => {
       ]);
       const { service, mockTranslation } = createService({ translateBatch });
       mockTranslation.listTranslationMemories.mockResolvedValue([
-        { translation_memory_id: TM_UUID_A, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        {
+          translation_memory_id: TM_UUID_A,
+          name: 'my-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
       ]);
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
-      await service.sync(makeConfig({
-        translation: { translation_memory: 'my-tm' },
-      }));
+      await service.sync(
+        makeConfig({
+          translation: { translation_memory: 'my-tm' },
+        })
+      );
 
       expect(translateBatch).toHaveBeenCalled();
       const opts = translateBatch.mock.calls[0]![1] as Record<string, unknown>;
@@ -2283,22 +2687,37 @@ describe('SyncService', () => {
       ]);
       const { service, mockTranslation } = createService({ translateBatch });
       mockTranslation.listTranslationMemories.mockResolvedValue([
-        { translation_memory_id: TM_UUID_A, name: 'de-tm', source_language: 'en', target_languages: ['de'] },
+        {
+          translation_memory_id: TM_UUID_A,
+          name: 'de-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
       ]);
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
-      await service.sync(makeConfig({
-        target_locales: ['de', 'fr'],
-        translation: {
-          locale_overrides: { de: { translation_memory: 'de-tm' } },
-        },
-      }));
+      await service.sync(
+        makeConfig({
+          target_locales: ['de', 'fr'],
+          translation: {
+            locale_overrides: { de: { translation_memory: 'de-tm' } },
+          },
+        })
+      );
 
-      const deCall = translateBatch.mock.calls.find(c => (c[1] as Record<string, unknown>)['targetLang'] === 'de');
-      const frCall = translateBatch.mock.calls.find(c => (c[1] as Record<string, unknown>)['targetLang'] === 'fr');
-      expect((deCall![1] as Record<string, unknown>)['translationMemoryId']).toBe(TM_UUID_A);
-      expect((frCall![1] as Record<string, unknown>)['translationMemoryId']).toBeUndefined();
+      const deCall = translateBatch.mock.calls.find(
+        (c) => (c[1] as Record<string, unknown>)['targetLang'] === 'de'
+      );
+      const frCall = translateBatch.mock.calls.find(
+        (c) => (c[1] as Record<string, unknown>)['targetLang'] === 'fr'
+      );
+      expect(
+        (deCall![1] as Record<string, unknown>)['translationMemoryId']
+      ).toBe(TM_UUID_A);
+      expect(
+        (frCall![1] as Record<string, unknown>)['translationMemoryId']
+      ).toBeUndefined();
     });
 
     it('should prefer per-locale override TM id over top-level for override locale', async () => {
@@ -2309,22 +2728,38 @@ describe('SyncService', () => {
       ]);
       const { service, mockTranslation } = createService({ translateBatch });
       mockTranslation.listTranslationMemories.mockResolvedValue([
-        { translation_memory_id: TM_UUID_A, name: 'top-tm', source_language: 'en', target_languages: ['de'] },
-        { translation_memory_id: TM_UUID_B, name: 'de-tm', source_language: 'en', target_languages: ['de'] },
+        {
+          translation_memory_id: TM_UUID_A,
+          name: 'top-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
+        {
+          translation_memory_id: TM_UUID_B,
+          name: 'de-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
       ]);
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
-      await service.sync(makeConfig({
-        target_locales: ['de'],
-        translation: {
-          translation_memory: 'top-tm',
-          locale_overrides: { de: { translation_memory: 'de-tm' } },
-        },
-      }));
+      await service.sync(
+        makeConfig({
+          target_locales: ['de'],
+          translation: {
+            translation_memory: 'top-tm',
+            locale_overrides: { de: { translation_memory: 'de-tm' } },
+          },
+        })
+      );
 
-      const deCall = translateBatch.mock.calls.find(c => (c[1] as Record<string, unknown>)['targetLang'] === 'de');
-      expect((deCall![1] as Record<string, unknown>)['translationMemoryId']).toBe(TM_UUID_B);
+      const deCall = translateBatch.mock.calls.find(
+        (c) => (c[1] as Record<string, unknown>)['targetLang'] === 'de'
+      );
+      expect(
+        (deCall![1] as Record<string, unknown>)['translationMemoryId']
+      ).toBe(TM_UUID_B);
     });
 
     it('should prefer per-locale threshold over top-level threshold', async () => {
@@ -2335,56 +2770,84 @@ describe('SyncService', () => {
       ]);
       const { service, mockTranslation } = createService({ translateBatch });
       mockTranslation.listTranslationMemories.mockResolvedValue([
-        { translation_memory_id: TM_UUID_A, name: 'my-tm', source_language: 'en', target_languages: ['de'] },
+        {
+          translation_memory_id: TM_UUID_A,
+          name: 'my-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
       ]);
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
-      await service.sync(makeConfig({
-        target_locales: ['de'],
-        translation: {
-          translation_memory: 'my-tm',
-          translation_memory_threshold: 60,
-          locale_overrides: { de: { translation_memory_threshold: 90 } },
-        },
-      }));
+      await service.sync(
+        makeConfig({
+          target_locales: ['de'],
+          translation: {
+            translation_memory: 'my-tm',
+            translation_memory_threshold: 60,
+            locale_overrides: { de: { translation_memory_threshold: 90 } },
+          },
+        })
+      );
 
-      const deCall = translateBatch.mock.calls.find(c => (c[1] as Record<string, unknown>)['targetLang'] === 'de');
-      expect((deCall![1] as Record<string, unknown>)['translationMemoryThreshold']).toBe(90);
+      const deCall = translateBatch.mock.calls.find(
+        (c) => (c[1] as Record<string, unknown>)['targetLang'] === 'de'
+      );
+      expect(
+        (deCall![1] as Record<string, unknown>)['translationMemoryThreshold']
+      ).toBe(90);
     });
 
-    it('should not resolve TM during dryRun', async () => {
+    it('should resolve the top-level TM during dryRun so the preview validates it', async () => {
       setupLockManager(makeEmptyLockFile());
       const { service, mockTranslation } = createService();
+      mockTranslation.listTranslationMemories.mockResolvedValue([
+        {
+          translation_memory_id: TM_UUID_A,
+          name: 'my-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
+      ]);
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
-      await service.sync(makeConfig({
-        translation: {
-          translation_memory: 'my-tm',
-          locale_overrides: { de: { translation_memory: 'de-tm' } },
-        },
-      }), { dryRun: true });
+      await service.sync(
+        makeConfig({
+          translation: { translation_memory: 'my-tm' },
+        }),
+        { dryRun: true }
+      );
 
-      expect(mockTranslation.listTranslationMemories).not.toHaveBeenCalled();
+      expect(mockTranslation.listTranslationMemories).toHaveBeenCalled();
     });
 
     it('should throw ConfigError when top-level TM does not support all target locales', async () => {
       setupLockManager(makeEmptyLockFile());
       const { service, mockTranslation } = createService();
       mockTranslation.listTranslationMemories.mockResolvedValue([
-        { translation_memory_id: TM_UUID_A, name: 'shared-tm', source_language: 'en', target_languages: ['de'] },
+        {
+          translation_memory_id: TM_UUID_A,
+          name: 'shared-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
       ]);
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
-      await expect(service.sync(makeConfig({
-        target_locales: ['de', 'fr'],
-        translation: {
-          translation_memory: 'shared-tm',
-          locale_overrides: { de: { translation_memory: 'shared-tm' } },
-        },
-      }))).rejects.toThrow(/does not support the requested language pair/);
+      await expect(
+        service.sync(
+          makeConfig({
+            target_locales: ['de', 'fr'],
+            translation: {
+              translation_memory: 'shared-tm',
+              locale_overrides: { de: { translation_memory: 'shared-tm' } },
+            },
+          })
+        )
+      ).rejects.toThrow(/does not support the requested language pair/);
     });
 
     it('should reuse tmCache across top-level and per-locale override with same name', async () => {
@@ -2395,18 +2858,25 @@ describe('SyncService', () => {
       ]);
       const { service, mockTranslation } = createService({ translateBatch });
       mockTranslation.listTranslationMemories.mockResolvedValue([
-        { translation_memory_id: TM_UUID_A, name: 'shared-tm', source_language: 'en', target_languages: ['de'] },
+        {
+          translation_memory_id: TM_UUID_A,
+          name: 'shared-tm',
+          source_language: 'en',
+          target_languages: ['de'],
+        },
       ]);
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
-      await service.sync(makeConfig({
-        target_locales: ['de'],
-        translation: {
-          translation_memory: 'shared-tm',
-          locale_overrides: { de: { translation_memory: 'shared-tm' } },
-        },
-      }));
+      await service.sync(
+        makeConfig({
+          target_locales: ['de'],
+          translation: {
+            translation_memory: 'shared-tm',
+            locale_overrides: { de: { translation_memory: 'shared-tm' } },
+          },
+        })
+      );
 
       expect(mockTranslation.listTranslationMemories).toHaveBeenCalledTimes(1);
     });
@@ -2420,22 +2890,172 @@ describe('SyncService', () => {
       mockReadFile.mockResolvedValue(SOURCE_JSON);
       mockGlossary.resolveGlossaryId.mockResolvedValue('glos-123');
 
-      await service.sync(makeConfig({
-        translation: { glossary: 'my-glossary' },
-      }));
+      await service.sync(
+        makeConfig({
+          translation: { glossary: 'my-glossary' },
+        })
+      );
 
-      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('my-glossary');
+      // With the configured pair, so a glossary that does not cover it fails here
+      // rather than once per file.
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith(
+        'my-glossary',
+        {
+          from: 'en',
+          targets: ['de'],
+        }
+      );
     });
 
-    it('should not resolve glossary during dryRun', async () => {
+    it('should resolve glossary during dryRun so the preview validates the config', async () => {
+      // A dry run reports what a real run would do, and already needs an API key
+      // to get this far, so a glossary the config names but the account cannot
+      // use is something the preview has to surface.
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockResolvedValue('glos-123');
+
+      await service.sync(
+        makeConfig({
+          translation: { glossary: 'my-glossary' },
+        }),
+        { dryRun: true }
+      );
+
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith(
+        'my-glossary',
+        {
+          from: 'en',
+          targets: ['de'],
+        }
+      );
+    });
+
+    it('should surface a top-level glossary that does not cover the pair during dryRun', async () => {
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockRejectedValue(
+        new ConfigError(
+          'Glossary "my-glossary" does not support the requested language pair'
+        )
+      );
+
+      await expect(
+        service.sync(makeConfig({ translation: { glossary: 'my-glossary' } }), {
+          dryRun: true,
+        })
+      ).rejects.toThrow(/does not support the requested language pair/);
+    });
+
+    it('should check a per-locale override glossary against its own locale at startup', async () => {
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockResolvedValue('glos-fr');
+
+      await service.sync(
+        makeConfig({
+          target_locales: ['de', 'fr'],
+          translation: {
+            locale_overrides: { fr: { glossary: 'fr-terms' } },
+          },
+        })
+      );
+
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('fr-terms', {
+        from: 'en',
+        targets: ['fr'],
+      });
+    });
+
+    it('should fail once at startup when an override glossary does not cover its locale', async () => {
+      // Resolution also runs per file, where the same rejection was reported
+      // once per file rather than once for the run.
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockRejectedValue(
+        new ConfigError(
+          'Glossary "fr-terms" does not support the requested language pair'
+        )
+      );
+
+      await expect(
+        service.sync(
+          makeConfig({
+            target_locales: ['de', 'fr'],
+            translation: {
+              locale_overrides: { fr: { glossary: 'fr-terms' } },
+            },
+          })
+        )
+      ).rejects.toThrow(/does not support the requested language pair/);
+
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledTimes(1);
+    });
+
+    it('should check override glossaries during dryRun too', async () => {
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+      mockGlossary.resolveGlossaryId.mockResolvedValue('glos-fr');
+
+      await service.sync(
+        makeConfig({
+          target_locales: ['de', 'fr'],
+          translation: {
+            locale_overrides: { fr: { glossary: 'fr-terms' } },
+          },
+        }),
+        { dryRun: true }
+      );
+
+      expect(mockGlossary.resolveGlossaryId).toHaveBeenCalledWith('fr-terms', {
+        from: 'en',
+        targets: ['fr'],
+      });
+    });
+
+    it('should not resolve an "auto" override glossary, which is managed rather than named', async () => {
       const { service, mockGlossary } = createService();
       setupLockManager(makeEmptyLockFile());
       mockFg.mockResolvedValue(['/test/locales/en.json']);
       mockReadFile.mockResolvedValue(SOURCE_JSON);
 
-      await service.sync(makeConfig({
-        translation: { glossary: 'my-glossary' },
-      }), { dryRun: true });
+      await service.sync(
+        makeConfig({
+          target_locales: ['de'],
+          translation: {
+            locale_overrides: { de: { glossary: 'auto' } },
+          },
+        })
+      );
+
+      expect(mockGlossary.resolveGlossaryId).not.toHaveBeenCalled();
+    });
+
+    it('should skip an override for a locale the filter excludes', async () => {
+      const { service, mockGlossary } = createService();
+      setupLockManager(makeEmptyLockFile());
+      mockFg.mockResolvedValue(['/test/locales/en.json']);
+      mockReadFile.mockResolvedValue(SOURCE_JSON);
+
+      await service.sync(
+        makeConfig({
+          target_locales: ['de', 'fr'],
+          translation: {
+            locale_overrides: { fr: { glossary: 'fr-terms' } },
+          },
+        }),
+        { localeFilter: ['de'] }
+      );
 
       expect(mockGlossary.resolveGlossaryId).not.toHaveBeenCalled();
     });
@@ -2449,7 +3069,10 @@ describe('SyncService', () => {
         { text: 'Hallo', billedCharacters: 5 },
       ]);
 
-      mockExtractAllKeyContexts.mockResolvedValue({ keyContexts: new Map(), templatePatterns: [] });
+      mockExtractAllKeyContexts.mockResolvedValue({
+        keyContexts: new Map(),
+        templatePatterns: [],
+      });
       mockFg.mockResolvedValue(['/test/locales/en.json']);
       mockReadFile.mockResolvedValue('{"greeting":"Hello"}');
 
@@ -2477,11 +3100,12 @@ describe('SyncService', () => {
       ]);
       const { service } = createService({ translateBatch });
 
-      const sourceJson = JSON.stringify({ empty_key: '', greeting: 'Hello' }, null, 2) + '\n';
+      const sourceJson =
+        JSON.stringify({ empty_key: '', greeting: 'Hello' }, null, 2) + '\n';
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return sourceJson;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig();
@@ -2491,10 +3115,12 @@ describe('SyncService', () => {
       expect(result.newKeys).toBe(2);
       expect(translateBatch).toHaveBeenCalledWith(
         expect.arrayContaining(['']),
-        expect.anything(),
+        expect.anything()
       );
       expect(mockAtomicWriteFile).toHaveBeenCalledTimes(1);
-      const writtenContent = JSON.parse(String(mockAtomicWriteFile.mock.calls[0]![1]));
+      const writtenContent = JSON.parse(
+        String(mockAtomicWriteFile.mock.calls[0]![1])
+      );
       expect(writtenContent).toHaveProperty('empty_key');
     });
   });
@@ -2508,7 +3134,7 @@ describe('SyncService', () => {
       mockFg.mockResolvedValue(['/test/locales/en.json'] as never);
       mockReadFile.mockImplementation(async (p: unknown) => {
         if (String(p) === '/test/locales/en.json') return SOURCE_JSON;
-        throw new Error('ENOENT');
+        throw enoent();
       });
 
       const config = makeConfig();
@@ -2516,39 +3142,54 @@ describe('SyncService', () => {
 
       expect(result.success).toBe(false);
       expect(result.fileResults.length).toBeGreaterThan(0);
-      expect(result.fileResults.every(fr => fr.translated === 0)).toBe(true);
+      expect(result.fileResults.every((fr) => fr.translated === 0)).toBe(true);
     });
   });
 });
 
 describe('resolveTargetPath()', () => {
   it('should replace locale in filename', () => {
-    expect(resolveTargetPath('locales/en.json', 'en', 'de')).toBe('locales/de.json');
+    expect(resolveTargetPath('locales/en.json', 'en', 'de')).toBe(
+      'locales/de.json'
+    );
   });
 
   it('should replace locale in directory path', () => {
-    expect(resolveTargetPath('locales/en/common.json', 'en', 'de')).toBe('locales/de/common.json');
+    expect(resolveTargetPath('locales/en/common.json', 'en', 'de')).toBe(
+      'locales/de/common.json'
+    );
   });
 
   it('should not partially match within longer words', () => {
-    expect(resolveTargetPath('locales/en.json', 'en', 'de')).toBe('locales/de.json');
-    expect(resolveTargetPath('content/en.json', 'en', 'de')).toBe('content/de.json');
+    expect(resolveTargetPath('locales/en.json', 'en', 'de')).toBe(
+      'locales/de.json'
+    );
+    expect(resolveTargetPath('content/en.json', 'en', 'de')).toBe(
+      'content/de.json'
+    );
   });
 
   it('should handle path with dots in directory name', () => {
-    expect(resolveTargetPath('my.app/locales/en/messages.json', 'en', 'fr'))
-      .toBe('my.app/locales/fr/messages.json');
+    expect(
+      resolveTargetPath('my.app/locales/en/messages.json', 'en', 'fr')
+    ).toBe('my.app/locales/fr/messages.json');
   });
 
   it('should replace at start of path', () => {
-    expect(resolveTargetPath('en/messages.json', 'en', 'de')).toBe('de/messages.json');
+    expect(resolveTargetPath('en/messages.json', 'en', 'de')).toBe(
+      'de/messages.json'
+    );
   });
 
   it('should handle regional locale codes', () => {
-    expect(resolveTargetPath('locales/en-US.json', 'en-US', 'de-DE')).toBe('locales/de-DE.json');
+    expect(resolveTargetPath('locales/en-US.json', 'en-US', 'de-DE')).toBe(
+      'locales/de-DE.json'
+    );
   });
 
   it('should handle multiple occurrences', () => {
-    expect(resolveTargetPath('en/data/en.json', 'en', 'de')).toBe('de/data/de.json');
+    expect(resolveTargetPath('en/data/en.json', 'en', 'de')).toBe(
+      'de/data/de.json'
+    );
   });
 });

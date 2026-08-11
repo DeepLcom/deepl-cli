@@ -1,5 +1,9 @@
 import { DeepLClient } from '../api/deepl-client.js';
-import { AdminApiKey, AdminUsageOptions, AdminUsageReport } from '../types/index.js';
+import {
+  AdminApiKey,
+  AdminUsageOptions,
+  AdminUsageReport,
+} from '../types/index.js';
 import type { GetApiKeyAndOptions } from '../cli/commands/service-factory.js';
 
 export class AdminService {
@@ -30,7 +34,7 @@ export class AdminService {
   async setApiKeyLimit(
     keyId: string,
     characters: number | null,
-    sttLimit?: number | null,
+    sttLimit?: number | null
   ): Promise<void> {
     if (sttLimit !== undefined && this.getApiKeyAndOptions) {
       const { apiKey, options } = this.getApiKeyAndOptions();

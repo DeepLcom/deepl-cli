@@ -5,6 +5,7 @@ import type { ModelType } from '../types/api.js';
 
 export interface SyncLocaleOverrides {
   formality?: Formality;
+  model_type?: ModelType;
   glossary?: string;
   translation_memory?: string;
   translation_memory_threshold?: number;
@@ -101,9 +102,6 @@ export interface SyncTmsConfig {
   project_id: string;
   api_key?: string;
   token?: string;
-  auto_push?: boolean;
-  auto_pull?: boolean;
-  require_review?: string[];
   timeout_ms?: number;
   push_concurrency?: number;
 }
@@ -197,7 +195,9 @@ export const HARD_MAX_SYNC_LIMITS: Required<SyncLimits> = {
   max_source_files: 1_000_000,
 };
 
-export function resolveSyncLimits(config: { sync?: SyncBehavior }): Required<SyncLimits> {
+export function resolveSyncLimits(config: {
+  sync?: SyncBehavior;
+}): Required<SyncLimits> {
   const user = config.sync?.limits;
   return {
     max_entries_per_file:

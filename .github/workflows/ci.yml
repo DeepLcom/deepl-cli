@@ -16,7 +16,10 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [24]
+        # 24.15.0 is the `engines.node` floor — the release where node:sqlite
+        # stopped emitting an ExperimentalWarning. Bare `24` resolves to the
+        # latest 24.x, so without the pin the declared floor is never exercised.
+        node-version: ['24.15.0', '24']
 
     steps:
       - uses: actions/checkout@v7
@@ -27,8 +30,61 @@ jobs:
           cache: npm
 
       - run: npm ci
+      # Ahead of lint: reformatting can move an eslint-disable directive off the
+      # line it suppresses, so drift should be reported as formatting rather
+      # than as the lint failures it goes on to cause.
+      - run: npm run format:check
       - run: npm run lint
       - run: npm run type-check
       - run: npm run check-deps
       - run: npm run build
-      - run: npm test
+      - run: npm run test:coverage
+
+  # The suites run from the working tree, so nothing above proves the published
+  # artifact works. `bin` and the package entry have separate module graphs — a
+  # broken entry point ships while the CLI still passes every test.
+  package:
+    name: Packaged artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Pack
+        id: pack
+        run: echo "tarball=$(npm pack --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Install globally and run the CLI
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          npm install -g "./$TARBALL"
+          deepl --version
+
+      # From a throwaway consumer package, because Node does not resolve
+      # bare specifiers out of the global prefix.
+      - name: Import the package entry as a dependency
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          tarball_path="$PWD/$TARBALL"
+          consumer="$(mktemp -d)"
+          cd "$consumer"
+          npm init -y >/dev/null
+          npm install "$tarball_path"
+          node --input-type=module -e "
+            const m = await import('@deepl/cli');
+            const keys = Object.keys(m);
+            if (keys.length === 0) {
+              throw new Error('package entry resolved but exported nothing');
+            }
+            console.log('package entry exports:', keys.join(', '));
+          "

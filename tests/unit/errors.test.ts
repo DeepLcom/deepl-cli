@@ -1,7 +1,10 @@
 /**
- * Typed DeepLCLIError subclasses — symmetry checks across the error
- * taxonomy. The classifier tests live in tests/unit/exit-codes.test.ts;
- * this file asserts the class contracts that exit-code dispatch leans on.
+ * The sync-specific DeepLCLIError subclasses (SyncConflictError,
+ * SyncDriftError, SyncPartialFailureError) — symmetry checks across that
+ * corner of the error taxonomy: exit code, instanceof, the `name` the JSON
+ * error envelope publishes, and the default vs custom suggestion. The
+ * classifier itself is tested in tests/unit/exit-codes.test.ts; this file
+ * asserts the class contracts that exit-code dispatch leans on.
  */
 
 import {
@@ -74,7 +77,10 @@ describe('SyncPartialFailureError', () => {
   });
 
   it('exposes the custom suggestion when provided', () => {
-    const err = new SyncPartialFailureError('some locales failed', 'do the thing');
+    const err = new SyncPartialFailureError(
+      'some locales failed',
+      'do the thing'
+    );
     expect(err.suggestion).toBe('do the thing');
   });
 

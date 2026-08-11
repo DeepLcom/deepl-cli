@@ -203,10 +203,10 @@ describe('Git Hooks Service Integration', () => {
     it('should list all hooks as not installed initially', () => {
       const status = hooksService.list();
 
-      expect(status['pre-commit']).toBe(false);
-      expect(status['pre-push']).toBe(false);
-      expect(status['commit-msg']).toBe(false);
-      expect(status['post-commit']).toBe(false);
+      expect(status['pre-commit']).toBe('not-installed');
+      expect(status['pre-push']).toBe('not-installed');
+      expect(status['commit-msg']).toBe('not-installed');
+      expect(status['post-commit']).toBe('not-installed');
     });
 
     it('should show installed hooks', () => {
@@ -215,10 +215,10 @@ describe('Git Hooks Service Integration', () => {
 
       const status = hooksService.list();
 
-      expect(status['pre-commit']).toBe(true);
-      expect(status['pre-push']).toBe(true);
-      expect(status['commit-msg']).toBe(false);
-      expect(status['post-commit']).toBe(false);
+      expect(status['pre-commit']).toBe('installed');
+      expect(status['pre-push']).toBe('installed');
+      expect(status['commit-msg']).toBe('not-installed');
+      expect(status['post-commit']).toBe('not-installed');
     });
 
     it('should not show non-DeepL hooks as installed', () => {
@@ -227,7 +227,20 @@ describe('Git Hooks Service Integration', () => {
       fs.writeFileSync(hookPath, '#!/bin/sh\necho "Custom"', 'utf-8');
 
       const status = hooksService.list();
-      expect(status['pre-commit']).toBe(false);
+      expect(status['pre-commit']).toBe('not-installed');
+    });
+
+    it('should not vouch for a hook whose marker was forged', () => {
+      const hookPath = hooksService.getHookPath('pre-commit');
+      fs.mkdirSync(path.dirname(hookPath), { recursive: true });
+      fs.writeFileSync(
+        hookPath,
+        `#!/bin/sh\n# DeepL CLI Hook v1 [sha256:${'0'.repeat(64)}]\necho "attacker payload"\n`,
+        'utf-8'
+      );
+
+      const status = hooksService.list();
+      expect(status['pre-commit']).toBe('modified');
     });
   });
 
@@ -239,7 +252,12 @@ describe('Git Hooks Service Integration', () => {
     });
 
     it('should return correct path for all hook types', () => {
-      const hookTypes: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
+      const hookTypes: HookType[] = [
+        'pre-commit',
+        'pre-push',
+        'commit-msg',
+        'post-commit',
+      ];
 
       for (const hookType of hookTypes) {
         const hookPath = hooksService.getHookPath(hookType);

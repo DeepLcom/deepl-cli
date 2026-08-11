@@ -7,6 +7,14 @@
  * better-sqlite3 12.11.1 (SQLite 3.53.2) mirroring CacheService's real
  * on-disk layout: WAL journal mode, user_version = 1, cache table with
  * timestamp index, three rows stamped 2026-07-01T00:00:00Z.
+ *
+ * Opening it runs the schema upgrade to the current version, which retires the
+ * namespaces whose keys changed. Of the three fixture rows, the two
+ * `translate:v1:*` rows survive (that prefix predates the `translation:`
+ * namespace and is not one the upgrade touches) and the `write:v1:*` row is
+ * dropped, because adding the resolved endpoint to the hashed data made every
+ * pre-existing write key unreachable. Reading the survivors is what proves
+ * node:sqlite opens a better-sqlite3 file.
  */
 
 import * as fs from 'fs';
@@ -14,7 +22,12 @@ import * as path from 'path';
 import * as os from 'os';
 import { CacheService } from '../../src/storage/cache';
 
-const FIXTURE = path.join(__dirname, '..', 'fixtures', 'cache-better-sqlite3.db');
+const FIXTURE = path.join(
+  __dirname,
+  '..',
+  'fixtures',
+  'cache-better-sqlite3.db'
+);
 
 describe('CacheService better-sqlite3 back-compat', () => {
   let testCacheDir: string;
@@ -22,7 +35,9 @@ describe('CacheService better-sqlite3 back-compat', () => {
   let cache: CacheService | undefined;
 
   beforeEach(() => {
-    testCacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-cli-backcompat-'));
+    testCacheDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'deepl-cli-backcompat-')
+    );
     testCachePath = path.join(testCacheDir, 'cache.db');
     fs.copyFileSync(FIXTURE, testCachePath);
   });
@@ -42,11 +57,13 @@ describe('CacheService better-sqlite3 back-compat', () => {
   it('opens the database without treating it as corrupt', () => {
     openFixture();
 
-    const corruptBackups = fs.readdirSync(testCacheDir).filter((f) => f.includes('.corrupt-'));
+    const corruptBackups = fs
+      .readdirSync(testCacheDir)
+      .filter((f) => f.includes('.corrupt-'));
     expect(corruptBackups).toEqual([]);
   });
 
-  it('reads all entries written by better-sqlite3', () => {
+  it('reads the entries written by better-sqlite3 that the upgrade keeps', () => {
     const service = openFixture();
 
     expect(service.get('translate:v1:hello')).toEqual({
@@ -57,14 +74,19 @@ describe('CacheService better-sqlite3 back-compat', () => {
       text: 'Welt',
       detectedSourceLang: 'en',
     });
-    expect(service.get('write:v1:improve')).toEqual({ text: 'An improved sentence.' });
+  });
+
+  it('retires the write row the schema upgrade makes unreachable', () => {
+    const service = openFixture();
+
+    expect(service.get('write:v1:improve')).toBeNull();
   });
 
   it('reports accurate stats for the pre-existing entries', () => {
     const service = openFixture();
 
     const stats = service.stats();
-    expect(stats.entries).toBe(3);
+    expect(stats.entries).toBe(2);
     expect(stats.totalSize).toBeGreaterThan(0);
   });
 
@@ -78,7 +100,7 @@ describe('CacheService better-sqlite3 back-compat', () => {
       text: 'Hallo',
       detectedSourceLang: 'en',
     });
-    expect(service.stats().entries).toBe(4);
+    expect(service.stats().entries).toBe(3);
   });
 
   it('survives a close and reopen cycle', () => {
@@ -89,6 +111,6 @@ describe('CacheService better-sqlite3 back-compat', () => {
 
     const reopened = openFixture();
     expect(reopened.get('translate:v1:new')).toEqual({ text: 'Neu' });
-    expect(reopened.stats().entries).toBe(4);
+    expect(reopened.stats().entries).toBe(3);
   });
 });

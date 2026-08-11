@@ -57,7 +57,7 @@ describe('CacheService corruption allowlist', () => {
     const raw = new DatabaseSync(dbPath);
     raw.exec('PRAGMA journal_mode = DELETE');
     raw.exec(
-      'CREATE TABLE cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, timestamp INTEGER NOT NULL, size INTEGER NOT NULL)',
+      'CREATE TABLE cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, timestamp INTEGER NOT NULL, size INTEGER NOT NULL)'
     );
     raw.exec(`INSERT INTO cache VALUES ('k', '"v"', ${Date.now()}, 3)`);
     raw.exec('BEGIN EXCLUSIVE');
@@ -75,7 +75,10 @@ describe('CacheService corruption allowlist', () => {
   });
 
   it('still renames a genuinely corrupt file aside and recreates', () => {
-    fs.writeFileSync(dbPath, 'this is not a sqlite database, padded well past the 16-byte header');
+    fs.writeFileSync(
+      dbPath,
+      'this is not a sqlite database, padded well past the 16-byte header'
+    );
 
     const svc = new CacheService({ dbPath, ttl: 0 });
     svc.set('key', 'value');
@@ -90,7 +93,9 @@ describe('CacheService corruption allowlist', () => {
     // SQLITE_CORRUPT and, unlike a garbage header, leaves sidecars on disk
     // for the recovery path to preserve.
     const raw = new DatabaseSync(dbPath);
-    raw.exec('CREATE TABLE cache (key TEXT PRIMARY KEY, value TEXT, timestamp INTEGER, size INTEGER)');
+    raw.exec(
+      'CREATE TABLE cache (key TEXT PRIMARY KEY, value TEXT, timestamp INTEGER, size INTEGER)'
+    );
     raw.close();
     const buf = fs.readFileSync(dbPath);
     buf.fill(0xde, 100, 600);
@@ -112,13 +117,18 @@ describe('CacheService corruption allowlist', () => {
     for (const ts of [100, 200, 300]) {
       fs.writeFileSync(`${dbPath}.corrupt-${ts}`, 'old backup');
     }
-    fs.writeFileSync(dbPath, 'this is not a sqlite database, padded well past the 16-byte header');
+    fs.writeFileSync(
+      dbPath,
+      'this is not a sqlite database, padded well past the 16-byte header'
+    );
 
     const svc = new CacheService({ dbPath, ttl: 0 });
     svc.close();
 
     const backups = corruptBackups();
-    const timestamps = [...new Set(backups.map((f) => /\.corrupt-(\d+)/.exec(f)![1]))];
+    const timestamps = [
+      ...new Set(backups.map((f) => /\.corrupt-(\d+)/.exec(f)![1])),
+    ];
     expect(timestamps).toHaveLength(3);
     expect(timestamps).not.toContain('100');
   });

@@ -15,7 +15,7 @@ A clear, concise description of the bug.
 - **DeepL CLI version**: (run `deepl --version`)
 - **Node.js version**: (run `node --version`)
 - **Operating system**: (e.g., macOS 14.5, Ubuntu 22.04, Windows 11)
-- **Install method**: (source, npm link, other)
+- **Install method**: (npm global, npx, Homebrew, source checkout, npm link, other)
 
 ## Reproduction Steps
 

@@ -83,13 +83,13 @@ describe('text preservation properties', () => {
   });
 
   describe('directed: literal placeholder tokens in input', () => {
-    it('documents the collision: a literal __VAR_0__ in the source is rewritten on restore', () => {
+    it('round-trips a literal __VAR_0__ in the source', () => {
+      // A token shape appearing in the source is ordinary text. Handing the same
+      // token to a real variable put two occurrences in the request, and
+      // restorePlaceholders replaces all of them — so the literal copy became
+      // `{name}`. Tokens are now chosen to avoid whatever the source carries.
       const text = 'literal __VAR_0__ and {name}';
-      const result = roundTrip(text);
-      // Intended behavior would be result === text. Recording the actual
-      // (corrupting) behavior so the failure mode is pinned with a repro.
-      expect(result).toBe('literal {name} and {name}');
-      expect(result).not.toBe(text);
+      expect(roundTrip(text)).toBe(text);
     });
   });
 });

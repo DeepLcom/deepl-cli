@@ -165,8 +165,7 @@ export class VoiceClient extends HttpClient {
     if (this.isAxiosError(error)) {
       const status = error.response?.status;
       const responseData = error.response?.data as
-        | { message?: string }
-        | undefined;
+        { message?: string } | undefined;
 
       if (status === 403) {
         return new VoiceError(

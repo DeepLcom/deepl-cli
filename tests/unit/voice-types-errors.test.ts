@@ -3,7 +3,7 @@
  */
 
 import { VoiceError } from '../../src/utils/errors.js';
-import { ExitCode, getExitCodeFromError } from '../../src/utils/exit-codes.js';
+import { ExitCode, exitCodeForError } from '../../src/utils/exit-codes.js';
 import { formatVoiceJson } from '../../src/utils/formatters.js';
 import type { VoiceSessionResult } from '../../src/types/voice.js';
 
@@ -47,17 +47,17 @@ describe('ExitCode.VoiceError', () => {
 
   it('should return VoiceError exit code for VoiceError instances', () => {
     const error = new VoiceError('test');
-    expect(getExitCodeFromError(error)).toBe(ExitCode.VoiceError);
+    expect(exitCodeForError(error)).toBe(ExitCode.VoiceError);
   });
 
   it('should classify "voice api" messages as VoiceError', () => {
     const error = new Error('Voice API not available');
-    expect(getExitCodeFromError(error)).toBe(ExitCode.VoiceError);
+    expect(exitCodeForError(error)).toBe(ExitCode.VoiceError);
   });
 
   it('should classify "voice session" messages as VoiceError', () => {
     const error = new Error('Voice session creation failed');
-    expect(getExitCodeFromError(error)).toBe(ExitCode.VoiceError);
+    expect(exitCodeForError(error)).toBe(ExitCode.VoiceError);
   });
 });
 
@@ -67,17 +67,13 @@ describe('formatVoiceJson()', () => {
     source: {
       lang: 'en',
       text: 'Hello world',
-      segments: [
-        { text: 'Hello world', start_time: 0, end_time: 1.5 },
-      ],
+      segments: [{ text: 'Hello world', start_time: 0, end_time: 1.5 }],
     },
     targets: [
       {
         lang: 'de',
         text: 'Hallo Welt',
-        segments: [
-          { text: 'Hallo Welt', start_time: 0, end_time: 1.5 },
-        ],
+        segments: [{ text: 'Hallo Welt', start_time: 0, end_time: 1.5 }],
       },
     ],
   };

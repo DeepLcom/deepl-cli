@@ -10,6 +10,7 @@ import { resolvePaths } from '../utils/paths.js';
 import { ConfigError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 import { errorMessage } from '../utils/error-message.js';
+import { warnOnWritableDirectory } from '../utils/private-mode.js';
 
 export interface CacheServiceOptions {
   dbPath?: string;
@@ -51,7 +52,10 @@ const SQLITE_NOTADB = 26;
 // in a jest test context).
 function isCorruptionError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
-  const { errcode, message } = error as { errcode?: unknown; message?: unknown };
+  const { errcode, message } = error as {
+    errcode?: unknown;
+    message?: unknown;
+  };
   if (typeof errcode === 'number') {
     const primary = errcode & 0xff;
     return primary === SQLITE_CORRUPT || primary === SQLITE_NOTADB;
@@ -66,11 +70,14 @@ function isCorruptionError(error: unknown): boolean {
  * Current on-disk schema version for the SQLite cache. Stamped into
  * `PRAGMA user_version` on fresh DBs and checked on every open. Bumping
  * this number means "future callers will read a DB laid out differently."
- * Pre-versioned databases (created before this field existed) report
- * `user_version = 0` and are upgrade-stamped in place without data
- * migration — the schema is backward-compatible.
+ *
+ * The bumps so far changed how the translation, write and correct cache keys are
+ * computed — version 3 adds the resolved API endpoint to all three. Opening an
+ * older DB drops the rows whose keys can no longer be reached and leaves every
+ * other namespace in place. The table layout is identical in all versions, so
+ * nothing is migrated.
  */
-const CACHE_SCHEMA_VERSION = 1;
+const CACHE_SCHEMA_VERSION = 3;
 
 export class CacheService {
   private static instance: CacheService | null = null;
@@ -118,7 +125,7 @@ export class CacheService {
       const suffix = `.corrupt-${Date.now()}`;
       Logger.warn(
         `Cache database corrupted, backing up and recreating: ${(error as Error).message}. ` +
-        `Previous contents preserved at ${path.basename(dbPath)}${suffix} (and ${path.basename(dbPath)}${suffix}-wal / -shm if present).`,
+          `Previous contents preserved at ${path.basename(dbPath)}${suffix} (and ${path.basename(dbPath)}${suffix}-wal / -shm if present).`
       );
       try {
         // Sidecars must be preserved BEFORE closing the failed handle —
@@ -156,12 +163,15 @@ export class CacheService {
     try {
       const dir = path.dirname(dbPath);
       const prefix = `${path.basename(dbPath)}.corrupt-`;
-      const stamps = [...new Set(
-        fs.readdirSync(dir)
-          .filter((f) => f.startsWith(prefix))
-          .map((f) => /\.corrupt-(\d+)/.exec(f)?.[1])
-          .filter((s): s is string => s !== undefined),
-      )].sort((a, b) => Number(b) - Number(a));
+      const stamps = [
+        ...new Set(
+          fs
+            .readdirSync(dir)
+            .filter((f) => f.startsWith(prefix))
+            .map((f) => /\.corrupt-(\d+)/.exec(f)?.[1])
+            .filter((s): s is string => s !== undefined)
+        ),
+      ].sort((a, b) => Number(b) - Number(a));
       for (const stamp of stamps.slice(CORRUPT_BACKUPS_TO_KEEP)) {
         for (const suffix of ['', '-wal', '-shm']) {
           fs.rmSync(`${dbPath}.corrupt-${stamp}${suffix}`, { force: true });
@@ -174,9 +184,11 @@ export class CacheService {
 
   private openDatabase(dbPath: string): void {
     const dir = path.dirname(dbPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-    }
+    // Unconditional: a recursive mkdir does not fail on a directory that already
+    // exists, and an existence check first would leave a window for one to
+    // appear between the check and the create.
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    warnOnWritableDirectory(dir);
     this.db = new DatabaseSync(dbPath);
     this.db.exec(`PRAGMA busy_timeout = ${this.busyTimeoutMs}`);
     fs.chmodSync(dbPath, 0o600);
@@ -184,8 +196,10 @@ export class CacheService {
   }
 
   static getInstance(options?: CacheServiceOptions): CacheService {
-    const needsNewInstance = !CacheService.instance || CacheService.instance.isClosed;
-    const needsHandlerRegistration = needsNewInstance && !CacheService.handlersRegistered;
+    const needsNewInstance =
+      !CacheService.instance || CacheService.instance.isClosed;
+    const needsHandlerRegistration =
+      needsNewInstance && !CacheService.handlersRegistered;
 
     if (needsHandlerRegistration) {
       CacheService.handlersRegistered = true;
@@ -228,7 +242,7 @@ export class CacheService {
       .get() as { user_version: number };
     if (userVersion > CACHE_SCHEMA_VERSION) {
       throw new ConfigError(
-        `Cache DB schema version ${userVersion} is newer than this CLI supports (${CACHE_SCHEMA_VERSION}). Upgrade the CLI, or delete the cache DB to start fresh.`,
+        `Cache DB schema version ${userVersion} is newer than this CLI supports (${CACHE_SCHEMA_VERSION}). Upgrade the CLI, or delete the cache DB to start fresh.`
       );
     }
 
@@ -243,6 +257,15 @@ export class CacheService {
     `);
 
     if (userVersion < CACHE_SCHEMA_VERSION) {
+      // Every key in these three namespaces changed when the endpoint joined the
+      // hashed data, so every row is unreachable and would otherwise occupy the
+      // size budget and `cache stats` until its TTL expires. Dropping them is
+      // also the point: a row poisoned by a run against a custom endpoint must
+      // not survive the upgrade that stops it happening again. Other namespaces
+      // (glossary listings, language lists) are unaffected and stay.
+      this.db.exec(
+        "DELETE FROM cache WHERE key LIKE 'translation:%' OR key LIKE 'write:%' OR key LIKE 'correct:%'"
+      );
       this.db.exec(`PRAGMA user_version = ${CACHE_SCHEMA_VERSION}`);
     }
   }
@@ -260,9 +283,6 @@ export class CacheService {
     return row.total;
   }
 
-  /**
-   * Get value from cache
-   */
   get(key: string): unknown;
   get<T>(key: string, guard: (data: unknown) => data is T): T | null;
   get<T>(key: string, guard?: (data: unknown) => data is T): T | null {
@@ -270,19 +290,18 @@ export class CacheService {
       return null;
     }
 
-    // Clean up expired entries first
     this.cleanupExpired();
 
-    const stmt = this.db.prepare('SELECT value, timestamp FROM cache WHERE key = ?');
+    const stmt = this.db.prepare(
+      'SELECT value, timestamp FROM cache WHERE key = ?'
+    );
     const row = stmt.get(key) as CacheRow | undefined;
 
     if (!row) {
       return null;
     }
 
-    // Check if entry is expired
     if (this.ttl > 0 && Date.now() - row.timestamp > this.ttl) {
-      // Delete expired entry
       this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
       return null;
     }
@@ -292,7 +311,9 @@ export class CacheService {
 
       if (guard && !guard(parsed)) {
         const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;
-        Logger.warn(`Cache type mismatch for key "${truncatedKey}". Removing entry.`);
+        Logger.warn(
+          `Cache type mismatch for key "${truncatedKey}". Removing entry.`
+        );
         this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
         return null;
       }
@@ -300,7 +321,9 @@ export class CacheService {
       return parsed as T;
     } catch (error) {
       const truncatedKey = key.length > 8 ? key.substring(0, 8) + '...' : key;
-      Logger.warn(`Cache corruption detected for key "${truncatedKey}": ${errorMessage(error)}. Removing entry.`);
+      Logger.warn(
+        `Cache corruption detected for key "${truncatedKey}": ${errorMessage(error)}. Removing entry.`
+      );
       this.db.prepare('DELETE FROM cache WHERE key = ?').run(key);
       return null;
     }
@@ -323,16 +346,16 @@ export class CacheService {
     // evicting everything else first — skip it rather than wipe the cache.
     if (size > this.maxSize) {
       Logger.verbose(
-        `Skipping cache write: entry of ${size} bytes exceeds the ${this.maxSize}-byte cache size limit.`,
+        `Skipping cache write: entry of ${size} bytes exceeds the ${this.maxSize}-byte cache size limit.`
       );
       return;
     }
 
-    // Clean up expired entries
     this.cleanupExpired();
 
-    // Check if key already exists and get its size
-    const existingStmt = this.db.prepare('SELECT size FROM cache WHERE key = ?');
+    const existingStmt = this.db.prepare(
+      'SELECT size FROM cache WHERE key = ?'
+    );
     const existing = existingStmt.get(key) as { size: number } | undefined;
     const existingSize = existing?.size ?? 0;
 
@@ -350,9 +373,6 @@ export class CacheService {
     this.db.exec('DELETE FROM cache');
   }
 
-  /**
-   * Get cache statistics
-   */
   stats(): CacheStats {
     const stmt = this.db.prepare(`
       SELECT COUNT(*) as count, COALESCE(SUM(size), 0) as total
@@ -368,23 +388,14 @@ export class CacheService {
     };
   }
 
-  /**
-   * Enable cache
-   */
   enable(): void {
     this.enabled = true;
   }
 
-  /**
-   * Disable cache
-   */
   disable(): void {
     this.enabled = false;
   }
 
-  /**
-   * Set maximum cache size
-   */
   setMaxSize(maxSize: number): void {
     if (maxSize < 0) {
       throw new ConfigError('Max size must be positive');
@@ -392,9 +403,6 @@ export class CacheService {
     this.maxSize = maxSize;
   }
 
-  /**
-   * Close database connection
-   */
   close(): void {
     if (!this.isClosed) {
       this.db.close();
@@ -424,7 +432,9 @@ export class CacheService {
     }
     this.lastCleanupTime = now;
 
-    this.db.prepare('DELETE FROM cache WHERE timestamp < ?').run(now - this.ttl);
+    this.db
+      .prepare('DELETE FROM cache WHERE timestamp < ?')
+      .run(now - this.ttl);
   }
 
   private evictIfNeeded(newEntrySize: number): void {
@@ -434,7 +444,9 @@ export class CacheService {
     // estimate from the average row size under-evicts whenever sizes are
     // skewed, leaving the cache over its cap.
     while (excess > 0) {
-      const deleted = this.db.prepare(`
+      const deleted = this.db
+        .prepare(
+          `
         DELETE FROM cache
         WHERE key IN (
           SELECT key FROM cache
@@ -442,7 +454,9 @@ export class CacheService {
           LIMIT ${EVICTION_BATCH}
         )
         RETURNING size
-      `).all() as { size: number }[];
+      `
+        )
+        .all() as { size: number }[];
 
       if (deleted.length === 0) {
         return;

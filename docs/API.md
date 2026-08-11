@@ -1,7 +1,7 @@
 # DeepL CLI - API Reference
 
 **Version**: 2.0.0
-**Last Updated**: July 29, 2026
+**Last Updated**: August 9, 2026
 
 Complete reference for all DeepL CLI commands, options, and configuration.
 
@@ -37,6 +37,7 @@ Complete reference for all DeepL CLI commands, options, and configuration.
   - Administration
     - [admin](#admin)
 - [Configuration](#configuration)
+- [Terminal Output Safety](#terminal-output-safety)
 - [Environment Variables](#environment-variables)
 - [Exit Codes](#exit-codes)
 
@@ -58,6 +59,8 @@ Options that work with all commands:
 ```
 
 Automatic retries apply to idempotent requests, and to rate-limited (429) responses for every method; a request that submits work is otherwise never replayed. Retries share a wall-clock budget of twice `--timeout`, so raising `--max-retries` alone does not extend how long the CLI waits on an unresponsive endpoint.
+
+`--timeout` is an enforced wall-clock deadline per attempt, not merely a socket inactivity timeout: an endpoint that keeps a response body trickling is aborted at the deadline just like one that never answers at all. Responses are additionally capped at 32 MiB, raised to 128 MiB for the document download, which must accommodate a whole translated file. Exceeding either bound is a `NetworkError` (exit code 5); a size-cap rejection is deterministic and is never retried.
 
 **Examples:**
 
@@ -186,7 +189,7 @@ Commands are organized into six groups, matching the `deepl --help` output:
 
 | Group              | Commands                                         | Description                                                               |
 | ------------------ | ------------------------------------------------ | ------------------------------------------------------------------------- |
-| **Core Commands**  | `translate`, `write`, `voice`                    | Translation, writing enhancement, and speech translation                  |
+| **Core Commands**  | `translate`, `write`, `correct`, `voice`         | Translation, writing enhancement, spelling and grammar correction, and speech translation |
 | **Resources**      | `glossary`, `tm`                                 | Manage translation glossaries and translation memory                      |
 | **Workflow**       | `watch`, `sync`, `hooks`                         | File watching, project sync, and git hook automation                      |
 | **Configuration**  | `init`, `auth`, `config`, `cache`, `style-rules` | Setup wizard, authentication, settings, caching, and style rules          |
@@ -232,7 +235,7 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 
 **Output Options:**
 
-- `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text). Use `-` for stdout (text-based files only)
+- `--output, -o PATH` - Output file or directory (required for file/directory translation, optional for text). A directory receives `<name>.<lang>.<ext>` — `deepl translate README.md --to es --output docs/` writes `docs/README.es.md`, and a trailing slash creates the directory if it does not exist. Use `-` for stdout (text-based files only)
 - `--output-format FORMAT` - Convert PDF to DOCX during translation. Valid choices: `docx` (only supported conversion)
 - `--enable-minification` - Enable document minification for PPTX/DOCX files (reduces file size)
 - `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`)
@@ -250,20 +253,21 @@ Translate text directly, from stdin, from files, or entire directories. Supports
 - `--splitting-tags TAGS` - Comma-separated XML tags that split sentences (requires `--tag-handling xml`)
 - `--non-splitting-tags TAGS` - Comma-separated XML tags that should not be used to split sentences (requires `--tag-handling xml`)
 - `--ignore-tags TAGS` - Comma-separated XML tags with content to ignore (requires `--tag-handling xml`)
-- `--tag-handling-version VERSION` - Tag handling version: `v1`, `v2`. v2 improves XML/HTML structure handling (requires `--tag-handling`)
-- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
+- `--tag-handling-version VERSION` - Tag handling version: `v1`, `v2`. v2 improves XML/HTML structure handling (requires `--tag-handling`). **Defaults to `v2`**, sent explicitly on every `--tag-handling` request rather than left to the API's own default, which is documented as moving from v1 to v2 at some point — pinning keeps output from shifting on DeepL's timetable. Pass `--tag-handling-version v1` for the older behaviour, which DeepL documents as heading for deprecation
+- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. Repeatable, up to 5 per request; entries are merged, so terms unique to each glossary all apply. When several glossaries define the same source term, which mapping wins is the API's choice and does not follow flag order, so position is not a way to override a term. Passing a 6th exits 6 (ValidationError). A source language is required, because the API rejects a glossary without one: supply `--from`, or set `defaults.sourceLang` and it is used automatically. With neither, the command exits 6 before any request.
 - `--translation-memory NAME-OR-UUID` - Use translation memory by name or UUID (forces `quality_optimized` model). Requires `--from` because TMs are pinned to a specific source→target language pair. Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--tm-threshold N` - Minimum match score 0–100 (default 75, requires `--translation-memory`). Invalid use exits 6 (ValidationError); unresolvable/misconfigured TM exits 7 (ConfigError).
 - `--custom-instruction INSTRUCTION` - Custom instruction for translation (repeatable, max 10, max 300 chars each). Forces `quality_optimized` model. Cannot be used with `latency_optimized`.
 - `--style-id UUID` - Style rule ID for translation (Pro API only). Forces `quality_optimized` model. Cannot be used with `latency_optimized`. Use `deepl style-rules list` to see available IDs.
-- `--enable-beta-languages` - Include beta languages that are not yet stable (forward-compatibility with new DeepL languages)
 - `--no-cache` - Bypass cache for this translation (useful for testing/forcing fresh translation)
 - `--dry-run` - Show what would be translated without performing the operation
 
 **API Options:**
 
-- `--api-url URL` - Custom API endpoint URL (for testing or private instances)
+- `--api-url URL` - Custom API endpoint URL (for testing or private instances). Any host other than `api.deepl.com` and `api-free.deepl.com` prints a warning to **stderr** naming the origin the key is about to be sent to — see "Non-standard endpoint notice" below
 - `--show-billed-characters` - Request and display actual billed character count for cost transparency
+
+**Non-standard endpoint notice.** The API key is attached to every request, so whatever host the CLI is pointed at receives it along with the text being translated. Whenever the resolved endpoint is not one of the two standard DeepL hosts, the CLI prints an unconditional warning to stderr naming the **origin** (scheme, host, port — never a path or query, which the redirect may control) and stating where the redirect came from: `set by --api-url`, or `set by api.baseUrl in <config file>` with the actual file path, since several config locations are searched and `-c` can override them. Regional endpoints such as `api-jp.deepl.com` are included, as is loopback — a co-tenant process listening on `127.0.0.1` receives the key just as a remote host does, the same reasoning the TMS destination-trust gate applies. The notice is **not** gated behind `--verbose`, because it is the user's only signal that a substituted config file has redirected their key; it is suppressed by `--quiet` like every other warning, and it goes to stderr so `deepl translate ... > out.txt` still captures only translation output. It is printed once per run, not once per API client. Under `--verbose`, each request line also names the resolved origin (`[verbose] HTTP POST https://api.deepl.com/v2/translate completed in 12ms (status 200)`).
 
 **Batch Options (for directories):**
 
@@ -351,6 +355,10 @@ The following structured formats are parsed to extract only string values, trans
 - `.json` - JSON files (i18n locale files, config files)
 - `.yaml`, `.yml` - YAML files (Rails i18n, config files)
 
+An empty string value is copied to the output unchanged and is never sent to the API, so a placeholder key you have not written copy for yet costs nothing and stays in the file. Requests are capped at 50 strings each; if one of them fails, no output file is written and the command exits with that failure's own code (for example 3 for a rate limit), because a partly translated file is indistinguishable from a complete one.
+
+**Size ceiling: 10 MiB.** A structured file above that is refused with a `ValidationError` (exit 6) naming its size, before it is read, and a directory run fails just that file. The limit is lower than the 30 MB document ceiling because these two routes cost very different amounts of memory: a document is streamed to the API once, while a structured file is parsed into an object graph — roughly 7-13x its size resident — and the multi-target path (`--to de,fr,es`) builds a fresh copy per language, up to 5 at a time. 10 MiB matches the ceiling `sync.limits.max_file_bytes` can never be configured above, so nothing [`deepl sync`](SYNC.md) accepts is refused here. For anything larger, split the file or use `deepl sync`, which walks a locale directory file by file and translates only the keys that changed.
+
 ```bash
 # Translate JSON locale file
 deepl translate en.json --to es --output es.json
@@ -411,6 +419,14 @@ deepl translate document.pdf --to es --output document.es.docx --output-format d
 # Enable document minification for smaller file size (PPTX/DOCX only)
 deepl translate presentation.pptx --to de --output presentation.de.pptx --enable-minification
 deepl translate report.docx --to fr --output report.fr.docx --enable-minification
+
+# Apply a glossary (--from is required for document glossaries)
+deepl translate report.docx --from en --to de --output report.de.docx --glossary tech-terms
+
+# Repeat --glossary for up to 5; entries merge, and a term defined in
+# several is resolved by the API, not by flag order
+deepl translate report.docx --from en --to de --output report.de.docx \
+  --glossary base-terms --glossary project-overrides
 ```
 
 **Supported Document Formats:**
@@ -441,6 +457,7 @@ deepl translate report.docx --to fr --output report.fr.docx --enable-minificatio
 - Large documents may take several seconds to translate
 - Maximum file sizes: 30MB (document API, all formats), 100 KiB (cached text API)
 - **Document minification** (`--enable-minification`): Reduces file size for PPTX and DOCX files only. Useful for large presentations and documents.
+- **Glossaries**: `--glossary` applies to documents and is repeatable up to 5, resolved exactly as for text translation — entries are merged, and when several glossaries define the same source term which mapping wins is the API's choice and does not follow flag order. A source language is required — the API rejects a document glossary without one ("source_lang has to be specified in order to use a glossary") — so pass `--from`, or set `defaults.sourceLang` and it is used automatically. Glossary matching is context-dependent exactly as it is for text: a term may be applied in one sentence and left alone in another, and a bare newline-separated word list often gets few terms applied. `--translation-memory` remains unsupported for documents.
 
 **Directory translation:**
 
@@ -537,11 +554,27 @@ deepl translate complex.xml --to de --tag-handling xml \
 
 ```bash
 # Use glossary for consistent terminology
-deepl translate "API documentation" --to es --glossary tech-terms
+deepl translate "API documentation" --from en --to es --glossary tech-terms
 
 # Use glossary by ID
-deepl translate README.md --to fr --glossary abc-123-def-456 --output README.fr.md
+deepl translate README.md --from en --to fr --glossary abc-123-def-456 --output README.fr.md
 ```
+
+**Multiple glossaries on one request:**
+
+Repeat `--glossary` to apply up to 5 glossaries to a single request. Their entries are merged, so terms unique to each glossary all apply. When more than one glossary defines the same source term, **which mapping wins is the API's choice and does not follow flag order** — position is not a way to override a term, so avoid relying on one glossary to shadow another. The order is still sent as given and never sorted, because it is part of the cache key: reordering the flags is a different request with its own cache entry. Names and UUIDs can be mixed; each value is resolved independently. A 6th `--glossary` exits 6 (ValidationError). A name that cannot be resolved — unknown, ambiguous, or covering a different language pair than the one requested — exits 7 (ConfigError) without sending a translation request.
+
+```bash
+# Shared base terminology combined with project-specific terms; terms unique
+# to each apply, and a term defined in both is resolved by the API
+deepl translate "Hello world" --from en --to de --glossary base-terms --glossary project-overrides
+
+# Names and UUIDs can be mixed
+deepl translate README.md --from en --to fr --output README.fr.md \
+  --glossary abc-123-def-456 --glossary house-style
+```
+
+A single `--glossary` is still sent as the API's `glossary_id`, so existing commands and their cached results are unaffected.
 
 **Translation memory usage:**
 
@@ -562,7 +595,17 @@ deepl translate "Welcome to our product." --from en --to de \
 
 **Multi-target file translation with glossary / TM:**
 
-Both `--glossary` and `--translation-memory` apply to multi-target file translation (e.g. `--to en,fr,es`) and in that mode `--from` is required. Glossary name resolution works transparently across all target languages. Translation memory name resolution, however, requires a single TM that covers every requested target language pair — because each TM in DeepL is scoped to one source→target pair, using a TM name with differing multi-targets surfaces a `ConfigError` (exit 7). For multi-target TM use, pass the TM UUID directly.
+Both `--glossary` and `--translation-memory` apply to multi-target file translation (e.g. `--to en,fr,es`) and in that mode `--from` is required. Resolving either **by name** checks that the resource covers every requested language pair before any translation request goes out, and exits 7 (`ConfigError`) naming what it does cover if not:
+
+```bash
+deepl translate "hello" --from en --to de --glossary "EN-ES Test Glossary"
+# Error: Glossary "EN-ES Test Glossary" does not support the requested language pair
+# Suggestion: Glossary covers en→es; requested en→de.
+```
+
+A multilingual glossary satisfies this when it holds a dictionary for each requested pair; matching is per dictionary, so a glossary holding en→es and de→fr does not count as covering en→fr. Each translation memory in DeepL is scoped to one source→target pair, so a TM name with differing multi-targets cannot satisfy it at all — pass the TM UUID for multi-target TM use.
+
+Passing a **UUID** skips the check and lets the API decide, which is the escape hatch if the check is ever wrong: the API answers with `No dictionary found for language pair EN-DE in glossary <id>`.
 
 ```bash
 # Glossary across multiple targets (name resolution works for all targets)
@@ -630,9 +673,9 @@ deepl translate "Hello, world!" --to es,fr,de --format table
 # ┌──────────┬──────────────────────────────────────────────────────────────────────┐
 # │ Language │ Translation                                                          │
 # ├──────────┼──────────────────────────────────────────────────────────────────────┤
-# │ ES       │ ¡Hola mundo!                                                         │
-# │ FR       │ Bonjour le monde!                                                    │
-# │ DE       │ Hallo Welt!                                                          │
+# │ es       │ ¡Hola mundo!                                                         │
+# │ fr       │ Bonjour le monde!                                                    │
+# │ de       │ Hallo Welt!                                                          │
 # └──────────┴──────────────────────────────────────────────────────────────────────┘
 
 # Add --show-billed-characters to display the Characters column
@@ -640,9 +683,9 @@ deepl translate "Cost tracking" --to es,fr,de --format table --show-billed-chara
 # ┌──────────┬────────────────────────────────────────────────────────────────┬────────────┐
 # │ Language │ Translation                                                    │ Characters │
 # ├──────────┼────────────────────────────────────────────────────────────────┼────────────┤
-# │ ES       │ Seguimiento de costes                                          │ 16         │
-# │ FR       │ Suivi des coûts                                                │ 16         │
-# │ DE       │ Kostenverfolgung                                               │ 16         │
+# │ es       │ Seguimiento de costes                                          │ 16         │
+# │ fr       │ Suivi des coûts                                                │ 16         │
+# │ de       │ Kostenverfolgung                                               │ 16         │
 # └──────────┴────────────────────────────────────────────────────────────────┴────────────┘
 
 # Long translations automatically wrap in the Translation column
@@ -661,7 +704,7 @@ deepl translate "This is a very long sentence that demonstrates word wrapping." 
 - Table format is only available when translating to multiple target languages. For single language translations, use default plain text or JSON format.
 - The Characters column is only shown when using `--show-billed-characters` flag.
 - Without `--show-billed-characters`, the Translation column is wider (70 characters vs 60) for better readability.
-- When the API returns metadata (billed characters, model type used), it is appended below the translated text in plain text output and included as fields in JSON output.
+- Model type, when the API reports it, is carried in JSON output as `modelTypeUsed`. Billed characters are **not**: a single-target `--format json` run emits `{text, targetLang, detectedSourceLang?, modelTypeUsed?, cached?}` and no character count, whatever `--show-billed-characters` is set to. Multi-target JSON (`--to es,fr,de --format json`) does carry `billedCharacters` per translation. In plain text output both are appended below the translated text.
 
 ---
 
@@ -686,7 +729,7 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 **Language:**
 
-- `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `zh`, `zh-Hans`. Optional — omit to auto-detect the language and rephrase in the original language.
+- `--lang, -l LANG` - Target language: `de`, `en`, `en-gb`, `en-us`, `es`, `fr`, `it`, `ja`, `ko`, `pt`, `pt-br`, `pt-pt`, `zh`, `zh-hans`. Optional — omit to auto-detect the language and rephrase in the original language.
 - `--to LANG` - Long-only alias of `--lang`. Accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`; the short form `-t` is intentionally **not** bound here (it would collide with `deepl translate -t, --to`). Specifying both `--to` and `--lang` with different values exits with a `ValidationError`.
 
 **Style Options (mutually exclusive with tone):**
@@ -713,18 +756,26 @@ Enhance text quality with AI-powered grammar checking, style improvement, and to
 
 | Target language | `--style` | `--tone` |
 |-----------------|:---------:|:--------:|
-| `en`, `en-GB`, `en-US`, `de` | ✓ | ✓ |
-| `es`, `fr`, `it`, `pt`, `pt-BR`, `pt-PT` | ✓ | ✓ |
-| `ja`, `ko`, `zh`, `zh-Hans` | — | — |
+| `en`, `en-gb`, `en-us`, `de` | ✓ | ✓ |
+| `es`, `fr`, `it`, `pt`, `pt-br`, `pt-pt` | ✓ | ✓ |
+| `ja`, `ko`, `zh`, `zh-hans` | — | — |
 
 When `--style` or `--tone` is set for a target language that does not support it, the server returns a 4xx; the CLI converts that response into a `ValidationError` (exit code 6) that names the unsupported combination and points back to this table.
 
+This table is maintained by hand and reflects what the API **accepts**, which is not always what its metadata reports: `GET /v3/languages?resource=write` omits `writing_style` for `en`, yet `--style` with `--lang en` succeeds and returns what `--lang en-us` returns. Do not narrow this table to the metadata without re-checking behaviour.
+
+**Where the target-language list comes from:**
+
+The 14 languages are generated from `GET /v3/languages?resource=write` into `src/data/language-entries.ts` by `npm run generate:languages`, alongside the translation list, and `npm run check:languages` reports drift in either. The `WriteLanguage` type is derived from that same list, so a language added upstream widens it on regenerate rather than needing a second hand edit.
+
+`write` and `correct` check `--lang` against this list locally and name every valid option, because the set is small enough to enumerate in an error. The list is a snapshot, though, so a code that is *shaped* like a language tag but absent from it is sent to the API with the list as a warning rather than rejected — otherwise a language DeepL adds is unreachable until the snapshot is regenerated. Input that is not shaped like a language tag still exits 6 locally.
+
 **Output Options:**
 
-- `--alternatives, -a` - Show all improvement alternatives
+- `--alternatives, -a` - Show all improvement alternatives. With `--format json`, emits them as an array
 - `--interactive, -i` - Interactive mode: choose from multiple alternatives
-- `--diff, -d` - Show diff between original and improved text
-- `--check` - Check if text needs improvement without modifying (exits with 0 if no changes, 8 if improvements suggested)
+- `--diff, -d` - Show diff between original and improved text. With `--format json`, emits the diff payload with an uncoloured patch
+- `--check` - Check if text needs improvement without modifying (exits with 0 if no changes, 8 if improvements suggested). With `--format json`, emits the check result payload on stdout
 - `--fix` - Auto-fix files in place
 - `--output, -o FILE` - Write output to file
 - `--in-place` - Edit file in place
@@ -739,18 +790,18 @@ When `--style` or `--tone` is set for a target language that does not support it
 
 - `de` - German
 - `en` - English (generic, defaults to American English)
-- `en-GB` - British English
-- `en-US` - American English
+- `en-gb` - British English
+- `en-us` - American English
 - `es` - Spanish
 - `fr` - French
 - `it` - Italian
 - `ja` - Japanese
 - `ko` - Korean
 - `pt` - Portuguese (generic, defaults to Brazilian Portuguese)
-- `pt-BR` - Brazilian Portuguese
-- `pt-PT` - European Portuguese
+- `pt-br` - Brazilian Portuguese
+- `pt-pt` - European Portuguese
 - `zh` - Chinese (generic, defaults to Simplified Chinese)
-- `zh-Hans` - Simplified Chinese
+- `zh-hans` - Simplified Chinese
 
 #### Examples
 
@@ -764,7 +815,7 @@ deepl write "Me and him went to store."
 **With explicit language:**
 
 ```bash
-deepl write "Me and him went to store." --lang en-US
+deepl write "Me and him went to store." --lang en-us
 # → "He and I went to the store."
 ```
 
@@ -772,11 +823,11 @@ deepl write "Me and him went to store." --lang en-US
 
 ```bash
 # Business style
-deepl write "We want to tell you about our product." --lang en-US --style business
+deepl write "We want to tell you about our product." --lang en-us --style business
 # → "We are pleased to inform you about our product."
 
 # Casual style
-deepl write "The analysis demonstrates significant findings." --lang en-US --style casual
+deepl write "The analysis demonstrates significant findings." --lang en-us --style casual
 # → "The analysis shows some pretty big findings."
 ```
 
@@ -784,67 +835,117 @@ deepl write "The analysis demonstrates significant findings." --lang en-US --sty
 
 ```bash
 # Confident tone
-deepl write "I think this might work." --lang en-US --tone confident
+deepl write "I think this might work." --lang en-us --tone confident
 # → "This will work."
 
 # Diplomatic tone
-deepl write "Your approach is wrong." --lang en-US --tone diplomatic
+deepl write "Your approach is wrong." --lang en-us --tone diplomatic
 # → "Perhaps we could consider an alternative approach."
 ```
 
 **Show alternatives:**
 
 ```bash
-deepl write "This is good." --lang en-US --alternatives
+deepl write "This is good." --lang en-us --alternatives
 ```
 
 **File operations:**
 
 ```bash
 # Improve file and save to new location
-deepl write document.txt --lang en-US --output improved.txt
+deepl write document.txt --lang en-us --output improved.txt
 
 # Edit file in place
-deepl write document.txt --lang en-US --in-place
+deepl write document.txt --lang en-us --in-place
 
 # Auto-fix with backup
-deepl write document.txt --lang en-US --fix --backup
+deepl write document.txt --lang en-us --fix --backup
 ```
 
 **Interactive mode:**
 
 ```bash
 # Choose from multiple alternatives interactively
-deepl write "Text to improve." --lang en-US --interactive
+deepl write "Text to improve." --lang en-us --interactive
 ```
 
 **Check mode:**
 
 ```bash
 # Check if file needs improvement (exit code 8 if changes needed)
-deepl write document.md --lang en-US --check
+deepl write document.md --lang en-us --check
 ```
+
+`--check` reports a result rather than an error, so `--format json` gives it a
+success shape rather than the error envelope:
+
+```bash
+deepl write document.md --check --format json
+# {"ok":true,"mode":"write","needsChanges":true,"changes":3,"file":"/abs/path/document.md"}
+
+deepl write "This is fine." --check --format json
+# {"ok":true,"mode":"write","needsChanges":false,"changes":0}
+```
+
+| Field         | Meaning                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| `ok`          | Always `true` — the check ran. A failure emits the error envelope.    |
+| `mode`        | `write` or `correct`, so one parser serves both commands.             |
+| `needsChanges`| The verdict, repeated by the exit code (`0` clean, `8` needs changes).|
+| `changes`     | Number of word-level changes the API would make.                     |
+| `file`        | Absolute path of the checked file; absent when the input was text.    |
+
+The payload goes to **stdout** and replaces the human report — the `File: …` line
+and the `⚠ Text needs improvement` / `✓ Text looks good` verdict stay on stderr in
+text mode only. The exit code is unchanged either way, so a CI job may branch on
+the code, the payload, or both.
 
 **Diff view:**
 
 ```bash
 # Show differences between original and improved
-deepl write file.txt --lang en-US --diff
+deepl write file.txt --lang en-us --diff
 ```
 
 **JSON output:**
 
 ```bash
 # Get machine-readable JSON output
-deepl write "This are good." --lang en-US --format json
-# {"original":"This are good.","improved":"This is good.","changes":1,"language":"en-US"}
+deepl write "This are good." --lang en-us --format json
+# {"original":"This are good.","improved":"This is good.","changes":1,"language":"en-us"}
 ```
+
+Each output mode has its own JSON shape, because each answers a different
+question. `--check` and the two below carry `ok: true`, marking them as results
+rather than the `ok: false` error envelope; the plain improvement payload above
+predates the envelope and keeps its shape, so it has no `ok` field.
+
+```bash
+# --diff: the same three things the text report shows, with an uncoloured patch
+deepl write "This are good." --diff --format json
+# {"ok":true,"original":"This are good.","improved":"This is good.",
+#  "diff":"Index: text\n===...\n-This are good.\n+This is good.\n"}
+
+# --alternatives: every improvement the API offered, as an array
+deepl write "This are good." --alternatives --format json
+# {"ok":true,"original":"This are good.","alternatives":["This is good.","These are good."]}
+```
+
+`--diff`'s `diff` field is the unified patch with no colour escapes, whatever the
+terminal — the text report colours the same patch for a human, and that colouring
+never reaches the payload. `--diff` ignores `--output`/`--in-place`, so its payload
+only ever goes to stdout.
+
+`--output <file>` and `--in-place` receive whatever the improvement renders to, so
+under `--format json` they write the payload rather than the improved text — that
+is true of the plain payload and of `--alternatives` alike. To put improved *text*
+in a file, leave `--format` at its default.
 
 **Bypass cache:**
 
 ```bash
 # Force a fresh API call, skipping cached results
-deepl write "Improve this text." --lang en-US --no-cache
+deepl write "Improve this text." --lang en-us --no-cache
 ```
 
 ---
@@ -872,20 +973,20 @@ Fixes spelling and grammar only, avoiding the broader rewording that `deepl writ
 
 **Language:**
 
-- `--lang, -l LANG` - Target language: `de`, `en`, `en-GB`, `en-US`, `es`, `fr`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `zh`, `zh-Hans`. Optional — omit to auto-detect the language and correct in the original language.
+- `--lang, -l LANG` - Target language: `de`, `en`, `en-gb`, `en-us`, `es`, `fr`, `it`, `ja`, `ko`, `pt`, `pt-br`, `pt-pt`, `zh`, `zh-hans`. Optional — omit to auto-detect the language and correct in the original language.
 - `--to LANG` - Long-only alias of `--lang`, as on `write`.
 
 **Output Modes:**
 
-- `--alternatives, -a` - Show all alternative corrections
+- `--alternatives, -a` - Show all alternative corrections. With `--format json`, emits them as an array
 - `--output, -o FILE` - Write corrected text to file
 - `--in-place` - Edit file in place (use with file input)
 - `--interactive, -i` - Review the correction before accepting
-- `--diff, -d` - Show diff between original and corrected text
+- `--diff, -d` - Show diff between original and corrected text. With `--format json`, emits the diff payload with an uncoloured patch
 
 **Fix Operations:**
 
-- `--check` - Check if text needs correction (exit 0 if clean, exit 8 if corrections needed)
+- `--check` - Check if text needs correction (exit 0 if clean, exit 8 if corrections needed). With `--format json`, emits the check result payload on stdout
 - `--fix` - Automatically fix file in place
 - `--backup, -b` - Create backup file before fixing (use with `--fix`)
 
@@ -910,6 +1011,15 @@ deepl c "Their going too the store."
 
 ```bash
 deepl correct README.md --check
+```
+
+With `--format json` the check emits the same result payload `write --check`
+does, with `mode` set to `correct` (the field table is under `write`'s **Check
+mode** above):
+
+```bash
+deepl correct README.md --check --format json
+# {"ok":true,"mode":"correct","needsChanges":true,"changes":2,"file":"/abs/path/README.md"}
 ```
 
 **Fix a file in place with a backup:**
@@ -937,6 +1047,10 @@ deepl correct "Their going too the store." --format json
 # {"original":"Their going too the store.","improved":"They're going to the store.","changes":1,"language":"auto-detected"}
 ```
 
+`--check`, `--diff` and `--alternatives` each carry their own payload, identical to
+`write`'s (see **JSON output** under `write` above); only `--check`'s differs, in
+that its `mode` reads `correct`.
+
 ---
 
 ### voice
@@ -962,7 +1076,7 @@ deepl voice [options] <file>
 | `--to <languages>`              | `-t`  | Target language(s), comma-separated, max 5 (required)                                          | -         |
 | `--from <language>`             | `-f`  | Source language (auto-detect if not specified)                                                 | auto      |
 | `--formality <level>`           |       | Formality level: `default`, `formal`, `more`, `informal`, `less`, `prefer_more`, `prefer_less` | `default` |
-| `--glossary <name-or-id>`       |       | Use glossary by name or ID                                                                     | -         |
+| `--glossary <name-or-id>`       |       | Use glossary by name or ID (single glossary; not repeatable)                                    | -         |
 | `--content-type <type>`         |       | Audio content type (auto-detected from file extension)                                         | auto      |
 | `--chunk-size <bytes>`          |       | Audio chunk size in bytes                                                                      | `6400`    |
 | `--chunk-interval <ms>`         |       | Interval between audio chunks in milliseconds                                                  | `200`     |
@@ -973,6 +1087,16 @@ deepl voice [options] <file>
 | `--format <format>`             |       | Output format: `text`, `json`                                                                  | `text`    |
 
 > **Note:** All formality values (`default`, `formal`, `informal`, `more`, `less`, `prefer_more`, `prefer_less`) are accepted. The voice API natively uses `formal`/`informal` (in addition to `more`/`less`), while the translate API uses `prefer_more`/`prefer_less`.
+
+> **Note:** If the server ends the stream after transcribing the audio but without sending a translation for one of `--to`'s languages, the command fails with exit code 9 and names the languages, rather than printing an empty translation line and exiting 0. Audio containing no speech transcribes to nothing and is translated to nothing, which is not an error and still exits 0.
+
+> **Note:** the Voice API supports a smaller language set than `translate`, and the CLI checks `--to`/`--from` against it locally — an unlisted code exits 6 before any request, naming every valid option.
+>
+> **Targets (39):** `ar`, `bg`, `cs`, `da`, `de`, `el`, `en`, `en-gb`, `en-us`, `es`, `et`, `fi`, `fr`, `he`, `hu`, `id`, `it`, `ja`, `ko`, `lt`, `lv`, `nb`, `nl`, `pl`, `pt`, `pt-br`, `pt-pt`, `ro`, `ru`, `sk`, `sl`, `sv`, `th`, `tr`, `uk`, `vi`, `zh`, `zh-hans`, `zh-hant`
+>
+> **Sources (30):** `ar`, `bg`, `cs`, `da`, `de`, `el`, `en`, `es`, `et`, `fi`, `fr`, `hu`, `id`, `it`, `ja`, `ko`, `lt`, `lv`, `nb`, `nl`, `pl`, `pt`, `ro`, `ru`, `sk`, `sl`, `sv`, `tr`, `uk`, `zh`
+>
+> Codes are matched case-insensitively, so the lowercase spelling `deepl languages` prints is accepted; the CLI canonicalizes to the casing the Voice API expects before sending.
 
 #### Supported Audio Formats
 
@@ -1057,9 +1181,12 @@ Monitor files or directories for changes and automatically translate them. Suppo
 **Behavior:**
 
 - Runs continuously until interrupted (Ctrl+C)
-- Shows translation statistics on exit
+- Shows translation statistics on exit, and exits **12** rather than 0 when the session recorded any failed translation or failed auto-commit
 - Detects file changes using filesystem watch
 - Debounces rapid changes to avoid duplicate translations
+- Translates one version of a file at a time. An edit arriving while a file's translation is still running queues exactly one re-translation, which starts after the running one has written. Two translations of the same file never overlap, so a slower translation of older content cannot overwrite a newer one, and an edit storm costs two translations rather than one per event
+- Skips files inside the output directory whose name carries a target-language segment (`doc.es.md` with `--to es`), so the CLI's own output does not re-trigger the watcher. The check is limited to the output directory, so a *source* file named that way — `pricing.es.md` translated to `es` — is translated normally as long as it lives outside it. When such a file is skipped and the CLI did not write it, the reason is printed once per file
+- Mirrors each source file's directory under the output directory, relative to the watched path: watching `docs/` writes `docs/a/index.md` to `<output>/a/index.es.md` and `docs/b/index.md` to `<output>/b/index.es.md`. This is the same layout `deepl translate <dir> --output <dir>` produces, and it is what keeps two same-named files in different directories from writing one output path. A file at the top of the watched directory, and a watched path that is a single file, write straight into the output directory as before
 
 #### Options
 
@@ -1068,8 +1195,8 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - `--to, -t LANGS` - Target language(s), comma-separated (uses configured `defaults.targetLangs` if omitted)
 - `--output, -o DIR` - Output directory (default: `<path>/translations` for directories, same dir for files)
 - `--pattern GLOB` - File pattern filter (e.g., `*.md`, `**/*.json`)
-- `--debounce MS` - Debounce delay in milliseconds (default: 500)
-- `--concurrency NUM` - Maximum parallel translations (default: 5)
+- `--debounce MS` - Debounce delay in milliseconds. The flag wins, then the configured `watch.debounceMs`, then the default of 500
+- `--concurrency NUM` - Maximum parallel translations across *different* files (default: 5). A single file is always translated one version at a time, whatever this is set to
 
 **Translation Options:**
 
@@ -1077,12 +1204,12 @@ Monitor files or directories for changes and automatically translate them. Suppo
 - `--formality LEVEL` - Formality level: `default`, `more`, `less`, `prefer_more`, `prefer_less`, `formal`, `informal`
 - `--preserve-code` - Preserve code blocks
 - `--preserve-formatting` - Preserve line breaks and whitespace formatting
-- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology
+- `--glossary NAME-OR-ID` - Use glossary by name or ID for consistent terminology. A source language is required, because the API refuses a glossary without one ("Use of a glossary requires the source_lang parameter to be specified"): pass `--from`, or set `defaults.sourceLang` and it is used automatically. With neither, the command exits 6 before the watcher starts rather than failing on every file change. Unlike `translate`, `watch` takes a single glossary.
 
 **Git Integration:**
 
-- `--auto-commit` - Auto-commit translations to git after each change
-- `--git-staged` - Only watch git-staged files (snapshot taken once at startup)
+- `--auto-commit` - Auto-commit translations to git after each change. One commit per translated source file, queued one at a time: git holds `.git/index.lock` for the duration of an `add` or a `commit`, so parallel translations cannot commit in parallel. A failed commit is reported and counted, and the session exits 12 rather than 0 (see below). The commit goes to the repository holding the **output directory**, whatever directory the CLI was started in — git can only commit files inside its own working tree, so that is the only repository the translations can reach. When the output directory is in no repository at all, the command exits 6 before the watcher starts rather than warning once per translated file
+- `--git-staged` - Only watch git-staged files (snapshot taken once at startup). The index read is the one belonging to the **watched path**'s repository, so the CLI need not be started from its root
 - `--dry-run` - Show what would be watched without starting the watcher
 
 #### Examples
@@ -1134,7 +1261,7 @@ git add docs/guide.md docs/faq.md
 deepl watch docs/ --to de,ja --git-staged --auto-commit
 ```
 
-> **Note:** `--git-staged` takes a one-time snapshot of staged files at startup. Files staged after the watcher starts are not included. Requires a git repository — exits with an error otherwise.
+> **Note:** `--git-staged` takes a one-time snapshot of staged files at startup. Files staged after the watcher starts are not included. The watched path must be inside a git repository — the command exits with an error otherwise — and it is that repository's index that is read, not the one belonging to the directory the CLI was started in.
 
 ---
 
@@ -1185,8 +1312,10 @@ Scan, translate, and sync i18n resource files. The sync engine reads `.deepl-syn
   - `--watch --force` is rejected at startup with a `ValidationError` (exit 6) to prevent unbounded billing from a forced re-translation on every file save.
   - In an interactive terminal, `--force` prompts for confirmation before bypassing the cost cap. Pass `--yes` (`-y`) to skip the prompt in scripts.
   - In CI environments (`CI=true`), `--force` requires an explicit `--yes`; otherwise the process exits 6 with an actionable hint naming the missing flag.
+  - Anywhere else the prompt cannot be shown — a git hook, cron job, `make` target, container entrypoint, `deepl sync --force < /dev/null`, or `--no-input` — `--force` is **refused** with exit 6 rather than assumed to be confirmed. `--yes` is the only way to run it unattended. `--force` overwrites every target file, including translations edited by hand, and no `.deepl.bak` survives a successful run, so there is nothing to recover from afterwards.
 
-- `--yes, -y` - Skip the `--force` confirmation prompt (required when `CI=true`)
+- `--yes, -y` - Skip the `--force` confirmation prompt (required when `CI=true`, and whenever there is no terminal to prompt on)
+- `--break-lock` - Take the sync lock even when `.deepl-sync.lock.pidfile` names a process that looks alive, reporting the holder it removed. Also accepted by `sync pull` and `sync resolve`, which take the same lock. Use it only when that run is definitely not running: two concurrent syncs write the same target files and the same lockfile. Not carried into `--watch` cycles — it applies to the run you asked for, then the lock arbitrates normally again. See [Concurrent sync](SYNC.md#concurrent-sync)
 
 **Filtering:**
 
@@ -1242,6 +1371,7 @@ Interactive setup wizard that creates `.deepl-sync.yaml` by scanning the project
 - `--target-locales CODES` - Target locales (comma-separated)
 - `--file-format TYPE` - File format: `json`, `yaml`, `toml`, `po`, `android_xml`, `ios_strings`, `xcstrings`, `arb`, `xliff`, `properties`, `laravel_php`
 - `--path GLOB` - Source file path or glob pattern
+- `--format FORMAT` - Output format: `text` (default), `json`. Under `json`, success emits the envelope described below and failure emits the shared error envelope, both on stdout
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
 
 `--source-lang` and `--target-langs` were accepted as deprecated aliases during `1.x` and were removed in `2.0.0`; use `--source-locale` / `--target-locales`. `deepl translate --target-lang` is unchanged — it operates on strings and stays aligned with the DeepL API's wire name.
@@ -1274,16 +1404,27 @@ Show translation coverage for all target locales.
   "totalKeys": 142,
   "skippedKeys": 1,
   "locales": [
-    { "locale": "de", "complete": 140, "missing": 2, "outdated": 0, "coverage": 98 }
-  ]
+    {
+      "locale": "de",
+      "complete": 140,
+      "missing": 2,
+      "outdated": 0,
+      "unwritten": 0,
+      "needsReview": 0,
+      "coverage": 98
+    }
+  ],
+  "unwrittenByLocale": []
 }
 ```
 
+`unwritten`, `needsReview` and `unwrittenByLocale` are always present, even when zero or empty — see the two paragraphs at the end of this subcommand for what each counts.
+
 `skippedKeys` counts entries the parser tagged as untranslatable and excluded from the translation batch — currently only Laravel pipe-pluralization values (`|{n}`, `|[n,m]`, `|[n,*]`). Included in `totalKeys`.
 
-**stdout/stderr split (stable contract):** The success JSON payload is written to **stdout**, so `deepl sync status --format json > status.json` produces a parseable file. Diagnostic/progress logs stay on **stderr**. The same stdout/stderr split applies to `deepl sync --format json`, `deepl sync validate --format json`, and `deepl sync audit --format json`.
+**stdout/stderr split (stable contract):** The JSON payload — the success result, or the error envelope below when the command fails — is written to **stdout**, so `deepl sync status --format json > status.json` produces a parseable file in both cases. Diagnostic/progress logs and warnings stay on **stderr**, which means stdout parses even when the CLI or the Node runtime had something to say. The same stdout/stderr split applies to `deepl sync --format json`, `deepl sync validate --format json`, and `deepl sync audit --format json`.
 
-**Error envelope (shared across every `sync` subcommand):** On failure, `--format json` emits the following JSON envelope to **stderr** and exits with the typed exit code:
+**Error envelope (shared across every command with a JSON mode):** On failure, `--format json` emits the following JSON envelope to **stdout** — the envelope is the command's result in the failure case; the non-zero exit code is the failure signal — and exits with the typed exit code:
 
 ```json
 {
@@ -1297,7 +1438,14 @@ Show translation coverage for all target locales.
 }
 ```
 
-The `error.code` field matches the error class name (`ConfigError`, `ValidationError`, `SyncConflict`, `AuthError`, etc.). `error.suggestion` is present when the underlying `DeepLCLIError` carries one. `exitCode` matches the process exit code, so a caller can branch on either field. The envelope shape is identical for `deepl sync`, `sync push`, `sync pull`, `sync resolve`, `sync export`, `sync validate`, `sync audit`, `sync init`, and `sync status`.
+The `error.code` field matches the error class name (`ConfigError`, `ValidationError`, `SyncConflict`, `AuthError`, etc.). `error.suggestion` is present when the underlying `DeepLCLIError` carries one. `exitCode` matches the process exit code, so a caller can branch on either field.
+
+**Which commands emit it:** every command whose effective `--format` is `json` — the nine `sync` subcommands plus `translate`, `write`, `correct`, `voice`, `usage`, `languages`, `detect`, and those subcommands of `glossary`, `tm`, `cache`, `config`, `hooks`, `admin` and `style-rules` that declare the flag. The shape and the stream are identical everywhere, so a script wrapping several `deepl` commands needs one failure path. Notes on the edges:
+
+- A command with no `--format` flag, and any run in `text` or `table` mode, is unchanged: `Error:` / `Suggestion:` prose on stderr.
+- `config get`/`config list` default to `json`, so their failures carry the envelope with no flag passed.
+- A result that is not an error keeps its own shape: `write --check` / `correct --check` exit `8` to report that text needs changes, and emit their own `ok: true` result payload rather than an envelope; `--diff` and `--alternatives` carry `ok: true` payloads of their own too. Discriminate on `ok`: `false` is a failure, `true` is a result whose detail is in the payload. The one exception is `write`/`correct`'s plain improvement payload (`{original, improved, changes, language}`), which predates the envelope and carries no `ok` field.
+- A malformed invocation commander rejects before the command runs (`unknown option`, a missing argument) still prints commander's own message on stderr and exits `6`. The envelope covers command failures, not parse failures.
 
 **`sync init --format json` success envelope:** For scripted project bootstrap, `deepl sync init --format json` emits a success envelope on **stdout** instead of the plain text confirmation:
 
@@ -1313,7 +1461,9 @@ The `error.code` field matches the error class name (`ConfigError`, `ValidationE
 }
 ```
 
-**Casing convention:** CLI JSON output uses `camelCase`; the on-disk `.deepl-sync.lock` and `.deepl-sync.yaml` use `snake_case`. The two are deliberately kept separate — JSON output is a consumer contract; the files are authored configuration.
+`keys` is present only when the wizard counted the source strings while scanning; a fully non-interactive `sync init` omits it. Treat it as optional.
+
+**Casing convention:** every `sync` JSON payload uses `camelCase`, while the on-disk `.deepl-sync.lock` and `.deepl-sync.yaml` use `snake_case`. The two are deliberately kept separate — JSON output is a consumer contract; the files are authored configuration. Outside `sync`, commands that pass a DeepL API response straight through keep the API's own `snake_case` (`glossary`, `tm`), as does `detect` (`detected_language`, `language_name`). The two are deliberately kept separate — JSON output is a consumer contract; the files are authored configuration.
 
 **Examples:**
 
@@ -1334,6 +1484,10 @@ Source: en (142 keys)
   es  [###################.]  97%  (4 missing, 0 outdated)
   ja  [##################..]  91%  (12 missing, 0 outdated)
 ```
+
+A locale also reports **`needsReview`** keys — a translation is present but its format marks it as not ready to ship, which means a gettext `#, fuzzy` msgstr or an XLIFF review `state` such as `needs-review-translation` (1.2) or `initial` (2.0). `msgfmt` leaves a fuzzy entry out of the compiled catalog, so the application shows the source string; counting such a key complete would report a project as done while it ships untranslated text. An XLIFF unit with no `state` attribute, or one carrying a value outside the recognised sets, counts as complete — see docs/SYNC.md for the two tables. Such a key is never re-translated and the file is never rewritten for it — the value is a reviewer's draft — so the count is a report, not a repair, and nothing is billed. The suffix `, N needs review` and its explanatory line appear only when the count is non-zero, and `--format json` always carries `needsReview` on each locale. `deepl sync push` skips such a key under a `needs_review` skip reason rather than uploading it as an approved translation. `sync --frozen` deliberately does **not** treat it as drift: such a marker is a normal, transient state in a review workflow that only a human clears, and nothing the CLI did caused it.
+
+A locale also reports **`unwritten`** keys — recorded as translated in `.deepl-sync.lock` but not in that locale's target file — when there are any, followed by a line naming the file and the keys. The suffix is omitted when the count is zero, so the line above is unchanged for a healthy project. `--format json` always carries `unwritten` on each locale plus a top-level `unwrittenByLocale` array of `{locale, file, keys}`, each entry gaining an `unusable` field when the target file could not be read or parsed at all. See [docs/SYNC.md](./SYNC.md#a-string-added-after-the-first-sync) for what is and is not counted.
 
 ##### `validate`
 
@@ -1357,17 +1511,47 @@ deepl sync validate --locale de
 **Sample output:**
 
 ```
-Validation Results:
+$ deepl sync validate
+Checked 4 translations
 
-  de:
-    ✓ 138/140 strings valid
-    ✗ 2 issues found:
-      - messages.welcome: placeholder {name} missing in translation
-      - errors.count: format specifier %d replaced with %s
+  ERROR  de/greeting: Missing placeholders in translation: {name}
+  WARN  de/bye: Translation is identical to source text
 
-  fr:
-    ✓ 142/142 strings valid
+1 error(s), 1 warning(s)
 ```
+
+One line per issue, `ERROR` or `WARN` followed by `<locale>/<key>` and the check's message. A run with no issues prints the header and `All translations passed validation.`
+
+**JSON output contract (stable within a major version):**
+
+```json
+{
+  "totalChecked": 3,
+  "passed": 2,
+  "warnings": 0,
+  "errors": 1,
+  "issues": [
+    {
+      "locale": "de",
+      "file": "locales/de.json",
+      "key": "errors.count",
+      "source": "Hi %s",
+      "translation": "Hi",
+      "severity": "error",
+      "issues": [
+        {
+          "check": "placeholders",
+          "severity": "error",
+          "message": "Missing placeholders in translation: %s",
+          "details": { "expected": ["%s"], "actual": [] }
+        }
+      ]
+    }
+  ]
+}
+```
+
+`totalChecked` counts source/target pairs that were validated; a key absent from the target file is not a pair and is not counted. `passed` is `totalChecked` minus the number of pairs carrying any issue, so a pair with only warnings is not "passed". `errors` is what drives the exit code — see [8 — CheckFailed](#8--checkfailed) for which `check` values are error severity and which are warn-only. A file-level `unusable_target` issue counts toward `errors` but not toward `totalChecked`, and its `key`/`file` are both the target path rather than a translation key.
 
 ##### `audit`
 
@@ -1392,9 +1576,12 @@ Analyze translation consistency and detect terminology inconsistencies across ta
       "translations": ["Armaturenbrett", "Dashboard"],
       "files": ["locales/en/common.json", "locales/en/admin.json"]
     }
-  ]
+  ],
+  "missingTargets": []
 }
 ```
+
+`missingTargets` lists target files that could not be read or parsed and were therefore excluded from the comparison. A non-empty array means the audit's verdict covers fewer locales than the project has; the text output prints the same list under `N target(s) could not be read and were excluded from the comparison:`.
 
 The `translations` array contains the actual translated strings read from target files. If a target file is missing, the content hash falls back in its place.
 
@@ -1407,7 +1594,7 @@ Export source strings to XLIFF 1.2 for CAT tool handoff.
 - `--locale LANGS` - Filter by locale (comma-separated)
 - `--output PATH` - Write to file instead of stdout. Path must stay within the project root; intermediate directories are created automatically
 - `--overwrite` - Required to overwrite an existing `--output` file. Without it, an existing file causes a non-zero exit and no write occurs
-- `--format FORMAT` - Output format: `text` (default), `json`. Success output is always XLIFF 1.2 regardless of format; `json` affects the **error** envelope on stderr (matching other sync subcommands) so script consumers can parse failure shape uniformly
+- `--format FORMAT` - Output format: `text` (default), `json`. Success output is always XLIFF 1.2 regardless of format; `json` affects the **error** envelope on stdout (matching other sync subcommands) so script consumers can parse failure shape uniformly
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
 
 **Examples:**
@@ -1435,6 +1622,7 @@ Resolve git merge conflicts in `.deepl-sync.lock`.
 - `--format FORMAT` - Output format: `text` (default), `json`
 - `--dry-run` - Preview conflict decisions without writing the lockfile
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
+- `--break-lock` - Take the sync lock even when `.deepl-sync.lock.pidfile` names a process that looks alive
 
 **JSON success envelope (stable within a major version):** `{ "ok": true, "resolved": <n>, "decisions": [...] }`
 
@@ -1450,7 +1638,19 @@ Push local translations to a TMS for human review.
 
 **Requires TMS integration.** Add a `tms:` block to `.deepl-sync.yaml` (at minimum `enabled: true`, `server`, `project_id`) and supply credentials via the `TMS_API_KEY` or `TMS_TOKEN` environment variable. Running `push` without a configured `tms:` block exits 7 (ConfigError). See [docs/SYNC.md#tms-rest-contract](./SYNC.md#tms-rest-contract) for the full field reference and REST contract.
 
-**JSON success envelope (stable within a major version):** `{ "ok": true, "pushed": <n>, "skipped": [...] }`
+**TMS destination trust.** `tms.server` is chosen by `.deepl-sync.yaml`, which lives in the checkout, while `TMS_API_KEY` / `TMS_TOKEN` come from your environment. Before an **environment-supplied** credential is attached to a request, the destination hostname must be one you have approved:
+
+- Approved if the hostname appears in the user-level `tms.allowedServers` list (`deepl config set tms.allowedServers tms.example.com`, comma-separate several).
+- Otherwise, in an interactive terminal, the CLI names the host and what would be sent and asks once. Answering yes records the hostname in **user** config (`~/.config/deepl-cli/config.json`), never in the repository.
+- Otherwise — under `--no-input`, or on a non-TTY such as CI — the run fails closed with exit 7 (ConfigError) naming the host and the exact `deepl config set tms.allowedServers ...` command. No credential and no translated string is sent.
+
+The gate applies only to environment-supplied credentials. A credential inlined as `tms.api_key` / `tms.token` in `.deepl-sync.yaml` is not gated: it belongs to the same file that chose the destination, so nothing of yours leaks. Loopback hosts (`localhost`, `127.0.0.1`) are **not** exempt — a co-tenant process listening locally is still an exfiltration sink.
+
+Both commands print the resolved destination origin on success, in text and JSON output, so a redirected destination is visible in logs even when the host was already approved.
+
+**JSON success envelope (stable within a major version):** `{ "ok": true, "pushed": <n>, "skipped": [...], "server": "<origin>" }`
+
+Each `skipped` entry carries a `reason`. `push` emits `untranslated` (the target file lists the key but holds no translation for it — pushing it would upload source text as the locale's approved translation), `needs_review` (the translation is marked as needing review, a gettext `#, fuzzy` msgstr or an XLIFF review `state`, so it is a reviewer's draft rather than an approved translation), `pipe_pluralization` (Laravel pipe-pluralization, never sent to a TMS), and `target_missing` (the target file does not exist yet, common on a first push). `push` never emits `pull`'s reasons and `pull` never emits these.
 
 ##### `pull`
 
@@ -1461,10 +1661,26 @@ Pull approved translations from a TMS back into local files.
 - `--locale LANGS` - Pull specific locales only
 - `--format FORMAT` - Output format: `text` (default), `json`
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
+- `--dry-run` - Preview what the pull would change without writing any file
+- `--break-lock` - Take the sync lock even when `.deepl-sync.lock.pidfile` names a process that looks alive
 
 **Requires TMS integration.** Add a `tms:` block to `.deepl-sync.yaml` (at minimum `enabled: true`, `server`, `project_id`) and supply credentials via the `TMS_API_KEY` or `TMS_TOKEN` environment variable. Running `pull` without a configured `tms:` block exits 7 (ConfigError). See [docs/SYNC.md#tms-rest-contract](./SYNC.md#tms-rest-contract) for the full field reference and REST contract.
 
-**JSON success envelope (stable within a major version):** `{ "ok": true, "pulled": <n>, "skipped": [...] }`
+**TMS destination trust.** `tms.server` is chosen by `.deepl-sync.yaml`, which lives in the checkout, while `TMS_API_KEY` / `TMS_TOKEN` come from your environment. Before an **environment-supplied** credential is attached to a request, the destination hostname must be one you have approved:
+
+- Approved if the hostname appears in the user-level `tms.allowedServers` list (`deepl config set tms.allowedServers tms.example.com`, comma-separate several).
+- Otherwise, in an interactive terminal, the CLI names the host and what would be sent and asks once. Answering yes records the hostname in **user** config (`~/.config/deepl-cli/config.json`), never in the repository.
+- Otherwise — under `--no-input`, or on a non-TTY such as CI — the run fails closed with exit 7 (ConfigError) naming the host and the exact `deepl config set tms.allowedServers ...` command. No credential and no translated string is sent.
+
+The gate applies only to environment-supplied credentials. A credential inlined as `tms.api_key` / `tms.token` in `.deepl-sync.yaml` is not gated: it belongs to the same file that chose the destination, so nothing of yours leaks. Loopback hosts (`localhost`, `127.0.0.1`) are **not** exempt — a co-tenant process listening locally is still an exfiltration sink.
+
+Both commands print the resolved destination origin on success, in text and JSON output, so a redirected destination is visible in logs even when the host was already approved.
+
+**JSON success envelope (stable within a major version):** `{ "ok": true, "pulled": <n>, "replaced": <n>, "skipped": [...], "server": "<origin>", "dryRun": <bool> }`
+
+`replaced` counts keys whose existing local translation the pull overwrote with the TMS version — check it before trusting a pull that ran over hand-edited files. `dryRun` is `true` when `--dry-run` was passed, in which case nothing was written and `pulled`/`replaced` are what a real run would do.
+
+Each `skipped` entry carries a `reason`. `pull` emits `unusable_target` (the target file could not be read), `key_collision` (the target file's keys collide), `shared_target` (a target file another sync configuration's `.deepl-sync.lock` accounts for keys in, left untouched rather than rebuilt from this configuration's keys alone), `plural_entry` (one exported string cannot fill a gettext `msgstr[N]` or Android `<plurals>` entry's forms, so the entry is carried forward as it stands), and `no_matches` (no matching keys). See [docs/SYNC.md#two-configurations-writing-one-file](./SYNC.md#two-configurations-writing-one-file).
 
 #### Examples
 
@@ -1528,7 +1744,9 @@ No other fields appear in the output. Fields not listed above are internal and m
 
 #### Notes
 
-- The `--frozen` flag makes no API calls. It compares the lockfile against source files and exits with code 10 if any translations are missing or outdated. This is the recommended mode for CI/CD pipelines.
+- The `--frozen` flag makes no API calls. It compares the lockfile against source files, and each target file against what the lockfile claims about it, and exits with code 10 if any translations are missing, outdated, or recorded as translated while absent from the target file. This is the recommended mode for CI/CD pipelines.
+- The `--dry-run` flag makes no API calls and writes nothing — no target file, no lockfile, no backup. It still requires an API key, though: the client is constructed before the run decides it has nothing to send, so `deepl sync --dry-run` without a key exits 2. It reads each target file the lockfile claims translations for, so its estimate covers the same work the real run does: keys the lockfile calls translated that the target file no longer holds are **included** (the run re-translates and re-bills them, and `unwrittenKeys` reports the count), and a locale whose target file is on disk and unreadable is **excluded** and named in a warning, because the run refuses that locale, bills nothing for it and exits 12. Reading the target files is what makes the estimate faithful and is the flag's main cost: measured on a 20,000-key, 6-locale project (2.83 MiB source, 17.3 MiB of target files, 24 MiB lockfile), `--dry-run` went from 0.44 s to 0.75 s, alongside 0.77 s for `sync status` and 0.79 s for `sync --frozen`. The read is skipped entirely for a locale the lockfile claims nothing for, so a project mid-first-sync pays nothing.
+- The `sync.max_characters` cost cap quotes from the same estimate as `--dry-run`, so a run the preview prices above the cap is a run the cap refuses. That costs one pass over the target files before the cap decides: on the fixture above, a translating run took 1.54 s with no cap configured and 1.91 s with one. The cap is unaffected for projects that do not set it.
 - The lockfile (`.deepl-sync.lock`) should be committed to version control. It enables incremental sync by tracking content hashes.
 - The `push` and `pull` subcommands require a TMS that implements the REST contract documented in [docs/SYNC.md](./SYNC.md#tms-rest-contract). All other commands work with the standard DeepL Translation API.
 - By default, keys with extracted context are grouped by i18n section and translated in section batches. Use `--no-batch` to force individual per-key context translation. Use `--batch` to force all keys into plain batch calls (no context).
@@ -1560,6 +1778,12 @@ Install a git hook.
 
 - `hook-type` - Hook type: `pre-commit`, `pre-push`, `commit-msg`, `post-commit`
 
+**Options:**
+
+- `-y, --yes` - Skip the confirmation prompt when this repository sends hooks outside the working tree
+
+**Hooks directory outside the repository:** the hook is written wherever git reads hooks from, which a repository-local `core.hooksPath` can point anywhere — including an absolute path outside the checkout. Because that setting travels with the repository rather than coming from you, an install that would land outside the working tree names the configured value and the resolved directory and asks first. Declining, or running without a terminal, exits `6` and writes nothing; `--yes` installs there and prints the same notice to stderr. A `core.hooksPath` that stays inside the working tree (`.husky/_`, for example) is not affected, and neither are linked worktrees or submodules, where git legitimately reads hooks from the repository that owns them.
+
 **Examples:**
 
 ```bash
@@ -1567,6 +1791,9 @@ deepl hooks install pre-commit
 deepl hooks install pre-push
 deepl hooks install commit-msg
 deepl hooks install post-commit
+
+# Accept a hooks directory outside the working tree without prompting
+deepl hooks install pre-commit --yes
 ```
 
 ##### `uninstall <hook-type>`
@@ -1584,7 +1811,22 @@ deepl hooks uninstall post-commit
 
 ##### `list`
 
-List all hooks and their installation status.
+List all hooks and what the file at each hook path is.
+
+Each hook installed by this CLI carries a marker line recording the SHA-256 of
+its body, and `list` checks it. Four states are reported:
+
+| State           | Meaning                                                              |
+| --------------- | -------------------------------------------------------------------- |
+| `installed`     | A versioned marker is present and the body hashes to the value it records |
+| `modified`      | A marker is present and the body does not hash to it — an edit made after installation, or a forged marker |
+| `unverified`    | A legacy (pre-1.0) marker with no recorded hash to check against      |
+| `not-installed` | No hook file, or a file carrying no DeepL marker                      |
+
+The hash is unkeyed, so `installed` establishes that a hook has not changed
+since its marker was written — not that this CLI wrote it. Anyone who can write
+the hook can write a marker that agrees with their own content. Treat the marker
+as detection of changes to a hook, not as proof of its origin.
 
 **Options:**
 
@@ -1597,8 +1839,12 @@ deepl hooks list
 
 # JSON output for CI/CD scripting
 deepl hooks list --format json
-# { "pre-commit": true, "pre-push": false, "commit-msg": false, "post-commit": false }
+# { "pre-commit": "installed", "pre-push": "modified", "commit-msg": "unverified", "post-commit": "not-installed" }
 ```
+
+The JSON values are these state strings, not booleans. Gate on
+`state === "installed"`; a truthiness test passes for every state, including
+`"not-installed"`.
 
 ##### `path <hook-type>`
 
@@ -1658,8 +1904,8 @@ cache	caché
 # Create single-target glossary from TSV file
 deepl glossary create tech-terms en es glossary.tsv
 # ✓ Glossary created: tech-terms (ID: abc123...)
-# Source language: EN
-# Target languages: ES
+# Source language: en
+# Target languages: es
 # Type: Single target
 # Total entries: 3
 
@@ -1719,8 +1965,8 @@ Show glossary details including name, ID, languages, creation date, and entry co
 deepl glossary show tech-terms
 # Name: tech-terms
 # ID: abc123...
-# Source language: EN
-# Target languages: DE
+# Source language: en
+# Target languages: de
 # Type: Single target
 # Total entries: 3
 # Created: 2024-10-07T12:34:56.000Z
@@ -1729,15 +1975,15 @@ deepl glossary show tech-terms
 deepl glossary show multilingual-terms
 # Name: multilingual-terms
 # ID: def456...
-# Source language: EN
-# Target languages: ES, FR, DE
+# Source language: en
+# Target languages: es, fr, de
 # Type: Multilingual
 # Total entries: 15
 #
 # Language pairs:
-#   EN → ES: 5 entries
-#   EN → FR: 5 entries
-#   EN → DE: 5 entries
+#   en → es: 5 entries
+#   en → fr: 5 entries
+#   en → de: 5 entries
 # Created: 2024-10-08T10:00:00.000Z
 ```
 
@@ -2077,7 +2323,7 @@ List all translation memories on the account.
 
 **Output Format (text):**
 
-- Per-TM: `name (source → target[, target...])` — e.g. `brand-terms (EN → DE, FR, JA)`. Control chars and zero-width codepoints are stripped from the rendered name to prevent a malicious API-returned name from corrupting the terminal via ANSI escape sequences.
+- Per-TM: `name (source → target[, target...])` — e.g. `brand-terms (en → de, fr, ja)`. Control chars and zero-width codepoints are stripped from the rendered name to prevent a malicious API-returned name from corrupting the terminal via ANSI escape sequences.
 - Empty list: `No translation memories found`
 
 **Output Format (JSON):**
@@ -2088,8 +2334,8 @@ Raw `TranslationMemory[]` as returned by `GET /v3/translation_memories` — fiel
 
 ```bash
 deepl tm list
-# brand-terms (EN → DE, FR, JA)
-# legal-phrases (EN → FR)
+# brand-terms (en → de, fr, ja)
+# legal-phrases (en → fr)
 
 deepl tm list --format json | jq '.[] | select(.name == "brand-terms") | .translation_memory_id'
 # "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
@@ -2250,7 +2496,7 @@ Show API usage statistics.
 #### Synopsis
 
 ```bash
-deepl usage
+deepl usage [OPTIONS]
 ```
 
 #### Description
@@ -2282,14 +2528,10 @@ deepl usage
 # API Key Usage:
 #   Used: 1,880,000 / unlimited
 #
-# Speech-to-Text Usage:
-#   Used: 12m 34s / 1h 0m 0s (20.9%)
-#   Remaining: 47m 26s
-#
 # Product Breakdown:
 #   translate: 900,000 characters (API key: 880,000)
 #   write: 1,250,000 characters (API key: 1,000,000)
-#   speech_to_text: 12m 34s (API key: 12m 34s)
+#   speech_to_text: 12m 34s (API key)
 ```
 
 **Output Fields:**
@@ -2303,8 +2545,7 @@ deepl usage
 
 - **Billing Period**: Start and end dates of the current billing cycle
 - **API Key Usage**: Characters used by this specific API key (vs. the whole account)
-- **Speech-to-Text Usage**: Duration used and remaining for speech-to-text quota (displayed as hours/minutes/seconds)
-- **Product Breakdown**: Per-product character counts (translate, write) and durations (speech_to_text) with API key-level breakdown
+- **Product Breakdown**: Per-product character counts (translate, write) and durations (speech_to_text) with the API-key-level figure alongside. A duration-billed product shows `(API key)` when the response carries no account-wide total, rather than repeating the key's own figure as if it were one.
 
 **Notes:**
 
@@ -2327,7 +2568,7 @@ deepl languages [OPTIONS]
 
 #### Description
 
-Display all 121 supported languages grouped by category. Core and regional languages are shown first, followed by extended languages. When an API key is configured, language names are fetched from the DeepL API; otherwise, the local language registry is used.
+Display all 125 supported languages grouped by category. Core and regional languages are shown first, followed by extended languages. When an API key is configured, language names are fetched from the DeepL API; otherwise, the local language registry is used.
 
 You can filter to show only source languages, only target languages, or both (default).
 
@@ -2335,6 +2576,7 @@ You can filter to show only source languages, only target languages, or both (de
 
 - `--source, -s` - Show only source languages
 - `--target` - Show only target languages
+- `--features` - Show which features each language supports (requires an API key; the local registry carries no feature data)
 - `--format FORMAT` - Output format: `text`, `json`, `table` (default: `text`). In non-TTY output, `table` falls back to `text` with a `WARN` line on stderr.
 
 #### Examples
@@ -2372,6 +2614,23 @@ deepl languages --source
 # Show only target languages
 deepl languages --target
 
+# Show which features each language supports
+deepl languages --target --features
+# Target Languages:
+#   de        German — formality, glossary, style rules, translation memory, auto detection
+#   pt        Portuguese — formality, glossary, auto detection
+#   en-gb     English (British) — glossary, style rules, translation memory
+#   ...
+#   Extended Languages (quality_optimized only, no formality/glossary):
+#   hi        Hindi — auto detection
+#   th        Thai — style rules, translation memory, auto detection
+#   ...
+#
+#   All listed languages also support: tag handling.
+
+# The same matrix as columns
+deepl languages --target --features --format table
+
 # Works without API key (shows local registry data)
 deepl languages
 # Note: No API key configured. Showing local language registry only.
@@ -2384,11 +2643,29 @@ deepl languages
 - Target languages that support the `--formality` parameter are marked with `[F]` (requires API key)
 - Language codes are left-aligned and padded for readability
 
+**Feature matrix (`--features`):**
+
+- Feature support comes from `GET /v3/languages`; a feature is supported when the API reports it for that language
+- Which features are shown is derived from the response, not a fixed list. A feature only appears when its support differs across the languages listed; one supported by all of them is reported once as `All listed languages also support: ...` instead of being repeated on every row
+- Because of that, the columns differ between listings: `auto detection` appears under `--target` (target-only variants lack it) but is uniform under `--source`
+- A feature that is not yet generally available shows its status instead of `yes`, e.g. `glossary (beta)`
+- `--features` replaces the `[F]` shorthand, since formality is one of the reported features
+- `--format json` includes a raw `features` object with each feature's status, but only when `--features` is passed
+
+**Where the language list comes from:**
+
+- `GET /v3/languages` is the authority on which languages exist. The CLI bundles a snapshot of it so that listing and validating languages works offline and without an API key
+- The snapshot is generated, not hand-maintained (`npm run generate:languages`; `npm run check:languages` reports drift). Tiers are derived from the response — glossary support separates extended from the rest, source usability separates core from regional — so they are not a separate judgement that can disagree with the API
+- Because the snapshot can lag the API, a **well-formed language code it does not list is accepted and sent to the API**, which accepts or rejects it authoritatively. Input that is not shaped like a language tag is still rejected locally, with a pointer to `deepl languages`. This applies to `translate`, `sync` and to language values in the config file
+- The listing itself is the union of the API response and the snapshot, so a language DeepL offers is never hidden even if the snapshot predates it
+
 **Notes:**
 
-- Source and target language lists differ: 7 regional variants (en-gb, en-us, es-419, pt-br, pt-pt, zh-hans, zh-hant) are target-only
+- Source and target language lists differ: 11 regional variants (de-ch, de-de, en-gb, en-us, es-419, fr-ca, fr-fr, pt-br, pt-pt, zh-hans, zh-hant) are target-only
 - Extended languages (82 codes) only support `quality_optimized` model type and do not support formality or glossary features
-- Without an API key, the command shows all languages from the local registry with a warning
+- The API reports the same display name for a bare code and its explicit-region variant — both `de` and `de-de` are "German", both `fr` and `fr-fr` are "French". The CLI mirrors the API rather than inventing distinct names; the code column distinguishes them
+- The extended tier is a coarser signal than the feature matrix: some extended languages do support style rules and translation memory even though they support neither formality nor glossary
+- Without an API key, the command shows all languages from the local registry with a warning; `--features` additionally warns that it needs a key
 
 ---
 
@@ -2440,7 +2717,7 @@ echo "$LANG"  # es
 - Requires an API key (the detection uses a translate API call)
 - Each detection call consumes character quota (the text is translated to produce the detection)
 - Very short text (single characters or words) may produce unreliable detection results
-- Supports all 121 languages recognized by the DeepL API (core, regional, and extended)
+- Supports all 125 languages recognized by the DeepL API (core, regional, and extended)
 
 ---
 
@@ -3036,6 +3313,9 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
     "debounceMs": 500,
     "autoCommit": false,
     "pattern": "*.md"
+  },
+  "tms": {
+    "allowedServers": []
   }
 }
 ```
@@ -3043,7 +3323,25 @@ Existing `~/.deepl-cli/` installations continue to work with no changes needed.
 **Configuration Notes:**
 
 - **`baseUrl`** — when set to a custom/regional endpoint (e.g. `https://api-jp.deepl.com`), it overrides all auto-detection. Standard DeepL URLs (`api.deepl.com`, `api-free.deepl.com`) are treated as tier defaults and do **not** override key-based auto-detection. By default, the endpoint is auto-detected from the API key: keys ending with `:fx` use the Free API (`api-free.deepl.com`), all others use the Pro API (`api.deepl.com`). The `usePro` flag serves as a backward-compatible fallback for non-`:fx` keys.
+- **`tms.allowedServers`** — hostnames approved as TMS destinations for an environment-supplied `TMS_API_KEY` / `TMS_TOKEN`. Empty by default, so no destination is trusted implicitly. Entries must be bare hostnames (no scheme, port, path, or wildcard) because they are matched against a parsed URL hostname, exactly and case-insensitively — a listed `example.com` does not approve `tms.example.com`. Set it with `deepl config set tms.allowedServers a.example.com,b.example.com`; a single host is still stored as a one-element array. See [`sync push`](#push) for how the gate behaves.
 - Most users configure settings via `deepl config set` command rather than editing the file directly.
+
+---
+
+## Terminal Output Safety
+
+Translations, i18n keys, glossary entries and API error messages can all contain bytes the CLI did not author. Terminal control sequences hidden in that text can set the window title, write the clipboard (OSC 52), erase the screen, or forge a plausible-looking result line. The CLI neutralizes them, replacing each with `?`:
+
+| Stream                                                              | When                    | Behavior                                                                                                   |
+| ------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **stderr** (progress, warnings, errors)                             | Always                  | Control sequences replaced. Non-TTY stderr is still rendered by CI log viewers that interpret ANSI.          |
+| **stdout**, when it is a terminal                                   | Always                  | Control sequences replaced.                                                                                 |
+| **stdout**, when redirected to a file, a pipe or command substitution | Never                   | Byte-for-byte identical to what the API returned, so `deepl translate ... > out.txt` is lossless.           |
+| **Report lines** that interpolate untrusted values (for example the key in `deepl sync validate`) | Always | Control sequences replaced whether or not stdout is a terminal, since these are diagnostics, not data.       |
+
+Colour (SGR) sequences are preserved so `deepl` output stays readable; use [`NO_COLOR`](#no_color) to turn colour off. Tabs, newlines, carriage returns and Unicode formatting characters that are legitimate translation content — zero-width joiners, and the bidi marks used in Arabic, Hebrew and Persian text — are never altered on stdout.
+
+`deepl sync export` writes XLIFF rather than terminal output. There, tab, newline and carriage return are emitted as the character references `&#9;`, `&#10;` and `&#13;` so a key survives XML attribute-value normalization unchanged, and the remaining C0 control characters — which XML 1.0 cannot represent at all — are replaced with `?`.
 
 ---
 
@@ -3122,6 +3420,14 @@ Route outbound DeepL API requests through an HTTPS proxy. Takes precedence over 
 export HTTPS_PROXY="http://proxy.example.com:3128"
 ```
 
+### `NO_PROXY`
+
+Comma-separated list of hosts that bypass `HTTP_PROXY` / `HTTPS_PROXY`. Standard semantics apply: `*` bypasses everything, a leading dot or `*.` matches subdomains, and an entry may carry a `host:port` that must agree with the target port. Also recognized as lowercase `no_proxy`.
+
+```bash
+export NO_PROXY="localhost,127.0.0.1,.internal.example.com"
+```
+
 ### `TMS_API_KEY`
 
 API key used by `deepl sync push` and `deepl sync pull` to authenticate against the external translation management system configured under `tms.server` in `.deepl-sync.yaml`. See [docs/SYNC.md](SYNC.md) for setup details.
@@ -3161,14 +3467,14 @@ Retryable codes are `3` (rate limit) and `5` (network); everything else should b
 | 2    | AuthError      | Authentication failed or API key missing                       | No        |
 | 3    | RateLimitError | Rate limit exceeded (HTTP 429)                                 | Yes       |
 | 4    | QuotaError     | Monthly character quota exhausted (HTTP 456)                   | No        |
-| 5    | NetworkError   | Connection timeout, refused, reset, or 503 Service Unavailable | Yes       |
+| 5    | NetworkError   | Connection timeout, refused, reset, truncated response body, or 503 Service Unavailable | Yes       |
 | 6    | InvalidInput   | Missing or malformed arguments, unsupported format             | No        |
 | 7    | ConfigError    | Configuration file or value invalid                            | No        |
 | 8    | CheckFailed    | A check-style command found actionable issues                  | No        |
 | 9    | VoiceError     | Voice API unavailable or session failed                        | No        |
 | 10   | SyncDrift      | `sync --frozen` detected translations out of date              | No        |
 | 11   | SyncConflict   | `sync resolve` could not auto-resolve lockfile conflicts       | No        |
-| 12   | PartialFailure | `deepl sync` completed with at least one failed locale         | Yes (per-locale retry) |
+| 12   | PartialFailure | `deepl sync` completed with at least one failed key, or a `deepl watch` session ended with a failed translation or auto-commit | Yes (per-locale retry) |
 
 ### Code details
 
@@ -3208,6 +3514,14 @@ Remediation: run `deepl usage` to see remaining characters, or upgrade the plan 
 
 Connection-layer failure or transient server outage. Covers TCP errors (`ECONNREFUSED`, `ENOTFOUND`, `ECONNRESET`, `ETIMEDOUT`, socket hang up), timeouts, proxy misconfigurations, and HTTP 503 responses. Also emitted for malformed or empty API responses thrown from `src/api/translation-client.ts` and `src/api/write-client.ts`, and from document/structured-file translation when the polling response is unparseable.
 
+A response that came back without the placeholder tokens the CLI substituted for your variables counts as malformed here too: `translate` names the variables it lost (`{username}`, `%s`) and writes nothing rather than leaving its own internal tokens in your text. A directory run fails only the affected files and reports each one in the summary, so its exit code follows the usual batch mapping (`1` when nothing translated, `12` when some did).
+
+A response the endpoint cuts off mid-body is exit 5 as well, even though the status line said 200. The HTTP status is what decides it: a rejection carrying a 2xx response means the exchange was accepted and then failed while the body was read — truncated, or undecodable — so the message names the status and what went wrong (`Network error: the API answered HTTP 200 but its response body did not arrive intact: stream has been aborted`) rather than reporting an API error your input could fix. **The replay policy is unchanged by this.** A 200 says the server accepted, and may have billed, the request, so a truncated response to a `POST` (`translate`, `write`, a `sync` batch) is still sent exactly once; an idempotent `GET` is still replayed up to `--max-retries` times.
+
+A document upload response whose `document_id` is not a document identifier is rejected here as well. That value is interpolated into the path of every follow-up request (`POST /v2/document/{id}`, `POST /v2/document/{id}/result`), so an ID containing `..` or `/` would send this client's own requests to a different route on the endpoint. Anything outside `[A-Za-z0-9_-]+` is refused before the next request is sent, the ID is quoted back in the message, and no output file is written.
+
+A TMS that cannot be reached is exit 5 too, however it fails to answer. `deepl sync push` / `pull` used to report a refused connection or an unresolvable hostname as `Error: fetch failed` at exit 1 — the unclassified code — because `fetch` rejects with a bare `TypeError` and puts the errno on `cause`. Both now name the request and the code (`TMS request failed: PUT https://tms.example.com/api/projects/p/keys/greeting: ECONNREFUSED`), matching the client-side timeout, which was already exit 5. **The replay policy is unchanged by this**: retry eligibility is decided before the error is classified, so a refusal is still retried up to `tms.retry.max_attempts` and an unresolvable name still fails on the first attempt.
+
 Remediation: check connectivity and `HTTPS_PROXY` / `HTTP_PROXY` env vars, then retry.
 
 #### 6 — InvalidInput
@@ -3216,9 +3530,9 @@ User-supplied input was rejected by client-side validation before any API call. 
 
 - `translate`: empty text, missing `--to`, unsupported file format, invalid `--tm-threshold` range, `--tm-threshold` without `--translation-memory`, `--translation-memory` without `--from`, mutually exclusive flags
 - `write`: empty text, `--style` and `--tone` used together, `--fix` without a file path, unsupported language for the Write API
-- `voice`: missing target languages, unsupported plan (pre-flight check), invalid session parameters
+- `voice`: unsupported target or source language code, unsupported `--content-type`, more than 5 target languages. A plan that does not include the Voice API is exit 9, not 6 — see [9 — VoiceError](#9--voiceerror)
 - `glossary`: missing name/entries, entry not found on delete
-- `sync`: `--frozen` combined with `--force`, missing `.deepl-sync.yaml` (before `ConfigError` hands off)
+- `sync`: `--frozen` combined with `--force`, `--watch` combined with `--force`, `--force` without `--yes` anywhere the confirmation prompt cannot be shown (piped stdin, cron, a git hook, `--no-input`, `CI=true`), missing `.deepl-sync.yaml` (before `ConfigError` hands off)
 - `hooks`, `watch`, `detect`, `admin`, `init`, `completion`, `cache`: argument parsing, unknown subcommand, bad path, bad size
 
 Remediation: re-read the command's `--help` and the relevant section of this API reference.
@@ -3232,16 +3546,17 @@ The configuration file or a configuration value is invalid. Emitted by:
 - Any command that loads the config file when the file fails to parse, is missing a required field, or specifies an unsupported version
 - `sync` when `.deepl-sync.yaml` is missing required fields, has invalid locales, or declares an unsupported version
 - `sync push` / `sync pull` when the remote TMS returns 401/403 (surfaced as `ConfigError` with a hint to check `TMS_API_KEY` / `TMS_TOKEN` and the relevant YAML fields)
+- `sync push` / `sync pull` when `.deepl-sync.yaml` names a `tms.server` hostname that is not in `tms.allowedServers` and the approval prompt is unavailable (`--no-input`, non-TTY) or declined
 - `glossary` when a named glossary cannot be resolved
 
 Remediation: run `deepl config get` to inspect the current config, or edit the file directly and re-run.
 
 #### 8 — CheckFailed
 
-A check-style command ran successfully but found actionable issues. Exit is *soft* — `process.exitCode` is set so cleanup still runs. Emitted by:
+A check-style command ran successfully but found actionable issues. Emitted by:
 
-- `deepl write --check <text|file>` when the Write API would suggest changes (`needsImprovement === true`)
-- `deepl sync validate` when validation surfaces one or more `error`-severity issues (missing placeholders, format-string mismatches, unbalanced HTML tags)
+- `deepl write --check <text|file>` and `deepl correct --check <text|file>` when the Write API would suggest changes (`needsImprovement === true`). Under `--format json` the same run also emits the `ok: true` check result payload on stdout, so the count and the file are readable without parsing prose. Exit is *soft* here — `process.exitCode` is set so cleanup still runs
+- `deepl sync validate` when validation surfaces one or more `error`-severity issues: a placeholder present in the source and **missing** from the translation, a mismatched ICU bracket nesting depth (`icu-brackets`), or a translated ICU argument name, format type or selector keyword (`icu-structure`) — plus a target file on disk that could not be read, reported under an `unusable_target` check while every other locale is still validated. Issues the validator raises at `warn` severity never affect the exit code: missing HTML tags (`html-tags`), *extra* placeholders the source does not have, a translation identical to its source (`untranslated`), and an outlying length ratio (`length-ratio`); a run with warnings and no errors exits 0. Exit is *hard* here — `process.exit(8)` is called as soon as the report is written, so do not rely on later cleanup running
 
 This code is specifically designed for CI use: a `check` step can block a merge without requiring try/catch wrappers in the calling script. It does **not** indicate a CLI failure.
 
@@ -3252,6 +3567,7 @@ Voice API call failed for a reason other than authentication, rate limiting, or 
 - `deepl voice` when the plan does not include the Voice API (pre-flight check in the voice client)
 - Voice streaming URL validation failures (`src/api/voice-client.ts`: non-`wss://` scheme, unparseable URL, disallowed host)
 - Voice session lifecycle errors (failed to open, unexpected close)
+- `deepl voice` when the stream ends with the source transcribed but no translation for a requested target language
 
 Remediation: confirm Pro/Enterprise plan, verify the session configuration, and retry.
 
@@ -3273,7 +3589,15 @@ Remediation: open `.deepl-sync.lock`, resolve the remaining `<<<<<<<` / `=======
 
 #### 12 — PartialFailure
 
-`deepl sync` completed, but at least one locale failed while at least one other locale succeeded. The successful locales' target files and lockfile entries are written; the failed locales' files are not touched. Emitted only by `deepl sync` (the root command).
+`deepl sync` completed, but at least one key failed to translate. This covers both a locale that failed entirely and a locale that translated some of its keys and failed the rest — a failed key is absent from the written target file, so any failure count above zero means the run did not produce a complete result. The successful translations' target files and lockfile entries are written; a locale that failed entirely has its file left untouched. Emitted only by `deepl sync` (the root command).
+
+A key whose translation failed placeholder/ICU validation counts as failed here too: it is withheld from the target file rather than written corrupt. See [`validation`](SYNC.md#validation) in the sync configuration reference. With `validation.fail_on_error: true` the same run raises `ValidationError` (exit 6) instead.
+
+A key that translated successfully but that the target file's format could not be given a slot for also counts as failed. Every key is read back out of the content just written before the lockfile is updated, so the run reports it rather than recording a translation the file does not contain. See [A string added after the first sync](SYNC.md#a-string-added-after-the-first-sync).
+
+A locale whose **target file is on disk but could not be read or parsed** fails here as well, and fails before any translation is requested, so nothing is billed for it and the file is not written. That file is the only copy of its locale's translations, since the lockfile records source hashes rather than translated text. See [A target file that cannot be read](SYNC.md#a-target-file-that-cannot-be-read).
+
+`deepl watch` uses the same code when the session ends: on Ctrl+C (SIGINT/SIGTERM) it exits 12 rather than 0 if it recorded any failed translation or any failed `--auto-commit`, so a script driving a watch session can tell a clean run from one that lost work. The counts are printed beside the translation total before the process exits.
 
 Authentication failures (401/403) abort the entire run and surface as exit code 2 (`AuthError`) instead of 12. Network / rate-limit / quota failures bubble up as 5 / 3 / 4 respectively. Code 12 specifically means "the run proceeded far enough to attempt per-locale work, and the result was mixed."
 
@@ -3342,10 +3666,13 @@ deepl write --check README.md
 
 ## See Also
 
+- [Migrating from 1.x to 2.0.0](MIGRATION.md) — removed flags, exit codes that moved, output that moved to stdout
+- [Sync configuration reference](SYNC.md)
+- [Troubleshooting](TROUBLESHOOTING.md)
 - [Examples](../examples/)
 - [DeepL API Documentation](https://www.deepl.com/docs-api)
 
 ---
 
-**Last Updated**: July 29, 2026
+**Last Updated**: August 9, 2026
 **DeepL CLI Version**: 2.0.0

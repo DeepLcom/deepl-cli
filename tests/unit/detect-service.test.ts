@@ -73,7 +73,9 @@ describe('DetectService', () => {
     });
     const service = new DetectService(mockClient);
 
-    await expect(service.detect('x')).rejects.toThrow('Could not detect source language');
+    await expect(service.detect('x')).rejects.toThrow(
+      'Could not detect source language'
+    );
   });
 
   it('should propagate API errors', async () => {

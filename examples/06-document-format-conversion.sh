@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 6: Document Format Conversion
+# Document Format Conversion
 # Demonstrates the --output-format flag for document translation
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 6: Document Format Conversion ==="
+echo "=== DeepL CLI: Document Format Conversion ==="
 echo
 
 # Check if API key is configured

@@ -18,8 +18,9 @@ describe('sync-init-validate', () => {
 
     it('rejects source locale appearing in target-locales (case-insensitive)', () => {
       expect.assertions(4);
-      expect(() => validateSyncInitFlags({ ...base, targetLocales: 'de,EN,fr' }))
-        .toThrow(ValidationError);
+      expect(() =>
+        validateSyncInitFlags({ ...base, targetLocales: 'de,EN,fr' })
+      ).toThrow(ValidationError);
       try {
         validateSyncInitFlags({ ...base, targetLocales: 'de,EN,fr' });
       } catch (e) {
@@ -32,8 +33,9 @@ describe('sync-init-validate', () => {
 
     it('rejects duplicate target-locales (case-insensitive)', () => {
       expect.assertions(3);
-      expect(() => validateSyncInitFlags({ ...base, targetLocales: 'de,fr,DE' }))
-        .toThrow(ValidationError);
+      expect(() =>
+        validateSyncInitFlags({ ...base, targetLocales: 'de,fr,DE' })
+      ).toThrow(ValidationError);
       try {
         validateSyncInitFlags({ ...base, targetLocales: 'de,fr,DE' });
       } catch (e) {
@@ -44,33 +46,45 @@ describe('sync-init-validate', () => {
     });
 
     it('rejects empty target-locales after splitting', () => {
-      expect(() => validateSyncInitFlags({ ...base, targetLocales: ' , , ' }))
-        .toThrow(ValidationError);
-      expect(() => validateSyncInitFlags({ ...base, targetLocales: '' }))
-        .toThrow(ValidationError);
+      expect(() =>
+        validateSyncInitFlags({ ...base, targetLocales: ' , , ' })
+      ).toThrow(ValidationError);
+      expect(() =>
+        validateSyncInitFlags({ ...base, targetLocales: '' })
+      ).toThrow(ValidationError);
     });
 
     it('rejects malformed locale codes', () => {
-      expect(() => validateSyncInitFlags({ ...base, targetLocales: 'de,xx_YY' }))
-        .toThrow(ValidationError);
-      expect(() => validateSyncInitFlags({ ...base, targetLocales: 'de,123' }))
-        .toThrow(ValidationError);
-      expect(() => validateSyncInitFlags({ ...base, targetLocales: 'de,' + 'x'.repeat(30) }))
-        .toThrow(ValidationError);
+      expect(() =>
+        validateSyncInitFlags({ ...base, targetLocales: 'de,xx_YY' })
+      ).toThrow(ValidationError);
+      expect(() =>
+        validateSyncInitFlags({ ...base, targetLocales: 'de,123' })
+      ).toThrow(ValidationError);
+      expect(() =>
+        validateSyncInitFlags({
+          ...base,
+          targetLocales: 'de,' + 'x'.repeat(30),
+        })
+      ).toThrow(ValidationError);
     });
 
     it('accepts BCP-47 style codes including script subtags', () => {
-      expect(() => validateSyncInitFlags({ ...base, targetLocales: 'zh-Hans,pt-BR' }))
-        .not.toThrow();
-      expect(() => validateSyncInitFlags({ ...base, targetLocales: 'en-US-POSIX' }))
-        .not.toThrow();
+      expect(() =>
+        validateSyncInitFlags({ ...base, targetLocales: 'zh-Hans,pt-BR' })
+      ).not.toThrow();
+      expect(() =>
+        validateSyncInitFlags({ ...base, targetLocales: 'en-US-POSIX' })
+      ).not.toThrow();
     });
 
     it('rejects path traversal in --path', () => {
-      expect(() => validateSyncInitFlags({ ...base, filePath: '../etc/passwd' }))
-        .toThrow(ValidationError);
-      expect(() => validateSyncInitFlags({ ...base, filePath: 'locales/../../../etc' }))
-        .toThrow(ValidationError);
+      expect(() =>
+        validateSyncInitFlags({ ...base, filePath: '../etc/passwd' })
+      ).toThrow(ValidationError);
+      expect(() =>
+        validateSyncInitFlags({ ...base, filePath: 'locales/../../../etc' })
+      ).toThrow(ValidationError);
     });
 
     it('allows missing source-path file but returns a warning', () => {
@@ -81,7 +95,9 @@ describe('sync-init-validate', () => {
         cwd: '/tmp/nonexistent-' + Date.now(),
       });
       expect(result.warnings.length).toBeGreaterThan(0);
-      expect(result.warnings.some(w => w.toLowerCase().includes('not'))).toBe(true);
+      expect(result.warnings.some((w) => w.toLowerCase().includes('not'))).toBe(
+        true
+      );
     });
 
     it('does not warn when --path exists', () => {
@@ -122,7 +138,7 @@ describe('sync-init-validate', () => {
 
     it('includes common locales that were missing from the old 5-language set', () => {
       const choices = buildTargetLocaleChoices();
-      const values = choices.map(c => c.value);
+      const values = choices.map((c) => c.value);
       expect(values).toContain('it');
       expect(values).toContain('ko');
       expect(values).toContain('nl');
@@ -133,7 +149,7 @@ describe('sync-init-validate', () => {
 
     it('pre-checks top common locales (de, es, fr, it, ja, ko, pt-br, zh)', () => {
       const choices = buildTargetLocaleChoices();
-      const checked = choices.filter(c => c.checked).map(c => c.value);
+      const checked = choices.filter((c) => c.checked).map((c) => c.value);
       for (const code of ['de', 'es', 'fr', 'it', 'ja', 'ko', 'pt-br', 'zh']) {
         expect(checked).toContain(code);
       }
@@ -141,7 +157,7 @@ describe('sync-init-validate', () => {
 
     it('uses display names that include the language and code', () => {
       const choices = buildTargetLocaleChoices();
-      const de = choices.find(c => c.value === 'de');
+      const de = choices.find((c) => c.value === 'de');
       expect(de).toBeDefined();
       expect(de!.name).toContain('German');
       expect(de!.name).toContain('de');

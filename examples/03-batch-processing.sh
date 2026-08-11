@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 3: Batch Processing
+# Batch Processing
 # Demonstrates processing multiple files efficiently
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 3: Batch Processing ==="
+echo "=== DeepL CLI: Batch Processing ==="
 echo
 
 # Check if API key is configured
@@ -172,7 +172,7 @@ for file in "$SAMPLE_DIR"/*.md; do
   echo "   [$CURRENT/$TOTAL - $PERCENT%] Processing $filename..."
 
   # Translate (use cache for speed)
-  deepl translate "$file" --to ja --output "$OUTPUT_DIR/ja/" 2>/dev/null || echo "     (cached or completed)"
+  deepl translate "$file" --to ja --output "$OUTPUT_DIR/ja/"
 done
 
 echo "   ✓ Batch processing complete"
@@ -210,7 +210,7 @@ deepl cache clear --yes >/dev/null 2>&1
 
 START=$(date +%s)
 for file in "$SAMPLE_DIR"/*.md; do
-  deepl translate "$file" --to zh --output "$OUTPUT_DIR/zh/" >/dev/null 2>&1 || true
+  deepl translate "$file" --to zh --output "$OUTPUT_DIR/zh/" >/dev/null
 done
 END=$(date +%s)
 DURATION=$((END - START))
@@ -222,7 +222,7 @@ echo "   Second run (cache hit):"
 
 START=$(date +%s)
 for file in "$SAMPLE_DIR"/*.md; do
-  deepl translate "$file" --to zh --output "$OUTPUT_DIR/zh/" >/dev/null 2>&1 || true
+  deepl translate "$file" --to zh --output "$OUTPUT_DIR/zh/" >/dev/null
 done
 END=$(date +%s)
 CACHED_DURATION=$((END - START))

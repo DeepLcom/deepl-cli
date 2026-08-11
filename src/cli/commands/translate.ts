@@ -29,7 +29,9 @@ export class TranslateCommand {
     glossaryService: GlossaryService,
     config: ConfigService
   ) {
-    const fileTranslationService = new FileTranslationService(translationService);
+    const fileTranslationService = new FileTranslationService(
+      translationService
+    );
     const batchTranslationService = new BatchTranslationService(
       fileTranslationService,
       { concurrency: 5, translationService }
@@ -51,7 +53,10 @@ export class TranslateCommand {
     this.stdinHandler = new StdinTranslationHandler(this.textHandler);
   }
 
-  async translate(textOrPath: string, options: TranslateOptions): Promise<string> {
+  async translate(
+    textOrPath: string,
+    options: TranslateOptions
+  ): Promise<string> {
     if (options.to) {
       options.to = options.to.toLowerCase();
     }
@@ -63,7 +68,9 @@ export class TranslateCommand {
     try {
       const lstat = fs.lstatSync(textOrPath);
       if (lstat.isSymbolicLink()) {
-        throw new ValidationError(`Symlinks are not supported for security reasons: ${textOrPath}`);
+        throw new ValidationError(
+          `Symlinks are not supported for security reasons: ${textOrPath}`
+        );
       }
 
       stats = fs.statSync(textOrPath);
@@ -71,7 +78,10 @@ export class TranslateCommand {
         return this.directoryHandler.translateDirectory(textOrPath, options);
       }
     } catch (error) {
-      if (error instanceof Error && error.message.includes('Symlinks are not supported')) {
+      if (
+        error instanceof Error &&
+        error.message.includes('Symlinks are not supported')
+      ) {
         throw error;
       }
     }
@@ -83,7 +93,10 @@ export class TranslateCommand {
     return this.textHandler.translateText(textOrPath, options);
   }
 
-  async translateText(text: string, options: TranslateOptions): Promise<string> {
+  async translateText(
+    text: string,
+    options: TranslateOptions
+  ): Promise<string> {
     return this.textHandler.translateText(text, options);
   }
 

@@ -8,11 +8,29 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { execFileSync } from 'child_process';
 import { ValidationError } from '../utils/errors.js';
+import { isWithinDirectory } from '../utils/paths.js';
+import { sanitizeForTerminal } from '../utils/control-chars.js';
 
 export type HookType = 'pre-commit' | 'pre-push' | 'commit-msg' | 'post-commit';
 
+/**
+ * What the hook file at the expected path is, as far as its recorded marker can
+ * establish.
+ *
+ * `installed` means a versioned marker is present and the body hashes to the
+ * value the marker records. `modified` means the marker is present and the body
+ * does not hash to it — a hand-edit after installation, or a forged marker.
+ * `unverified` means a legacy marker with no hash to check against.
+ *
+ * The hash is unkeyed, so `installed` establishes that the file has not changed
+ * since its marker was written, not that this CLI wrote it: anyone can write a
+ * marker and compute a matching hash.
+ */
+export type HookState =
+  'not-installed' | 'installed' | 'unverified' | 'modified';
+
 export interface HookStatus {
-  [key: string]: boolean;
+  [key: string]: HookState;
 }
 
 export interface InstallResult {
@@ -34,16 +52,59 @@ export interface HookIntegrity {
 const MARKER_VERSION = 1;
 const LEGACY_MARKER = '# DeepL CLI Hook';
 const MARKER_PATTERN = /^# DeepL CLI Hook v(\d+) \[sha256:([a-f0-9]{64})\]$/m;
+/**
+ * The pre-1.0 marker, anchored the way the versioned one is. It was only ever
+ * emitted as a line of its own, so requiring a whole line costs nothing and
+ * keeps a file that merely quotes the string from passing as an installed hook.
+ */
+const LEGACY_MARKER_PATTERN = /^# DeepL CLI Hook$/m;
+
+interface HooksDirResolution {
+  dir: string;
+  /** The `core.hooksPath` that sent `dir` outside the working tree, or null. */
+  externalRedirect: string | null;
+}
+
+/**
+ * One wording for the refusal and for the prompt that offers to go ahead, so
+ * the two cannot drift. The configured value comes from the checkout, so it is
+ * terminal-sanitized before it is interpolated.
+ */
+export function externalHooksPathMessage(
+  configured: string,
+  hooksDir: string
+): string {
+  return (
+    `This repository's core.hooksPath ("${sanitizeForTerminal(configured)}") puts git hooks outside the working tree, ` +
+    `at ${sanitizeForTerminal(hooksDir)}. Installing writes an executable there, and git runs it on every matching operation in this repository.`
+  );
+}
 
 export class GitHooksService {
   private hooksDir: string;
+  private externalRedirect: string | null;
 
   constructor(gitDir: string) {
     if (!fs.existsSync(gitDir)) {
       throw new ValidationError('Git directory not found: ' + gitDir);
     }
 
-    this.hooksDir = GitHooksService.resolveHooksDir(gitDir);
+    const resolution = GitHooksService.resolveHooksDir(gitDir);
+    this.hooksDir = resolution.dir;
+    this.externalRedirect = resolution.externalRedirect;
+  }
+
+  /**
+   * The repository-local `core.hooksPath` when it sends the hooks directory
+   * outside the working tree, or null. Non-null means installing writes an
+   * executable to a location the checkout chose rather than the user did.
+   */
+  get externalHooksPath(): string | null {
+    return this.externalRedirect;
+  }
+
+  get hooksDirectory(): string {
+    return this.hooksDir;
   }
 
   /**
@@ -53,17 +114,25 @@ export class GitHooksService {
    * and resolves the `gitdir:` pointer used by linked worktrees and submodules,
    * where `<root>/.git` is a file rather than a directory.
    */
-  private static resolveHooksDir(gitDir: string): string {
+  private static resolveHooksDir(gitDir: string): HooksDirResolution {
     const workDir = path.dirname(gitDir);
 
     try {
-      const resolved = execFileSync('git', ['rev-parse', '--git-path', 'hooks'], {
-        cwd: workDir,
-        encoding: 'utf-8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim();
+      const resolved = execFileSync(
+        'git',
+        ['rev-parse', '--git-path', 'hooks'],
+        {
+          cwd: workDir,
+          encoding: 'utf-8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }
+      ).trim();
       if (resolved) {
-        return path.resolve(workDir, resolved);
+        const dir = path.resolve(workDir, resolved);
+        return {
+          dir,
+          externalRedirect: GitHooksService.externalRedirectFor(workDir, dir),
+        };
       }
     } catch {
       // git unavailable, or workDir is not a working tree — fall back below.
@@ -72,28 +141,67 @@ export class GitHooksService {
     if (!fs.statSync(gitDir).isDirectory()) {
       throw new ValidationError(
         `Cannot resolve the hooks directory for "${gitDir}": it is a gitdir pointer file and git is not available to resolve it.`,
-        'Install git, or run this command from the repository that owns the worktree.',
+        'Install git, or run this command from the repository that owns the worktree.'
       );
     }
 
-    return path.join(gitDir, 'hooks');
+    return { dir: path.join(gitDir, 'hooks'), externalRedirect: null };
+  }
+
+  /**
+   * The configured `core.hooksPath` when the directory it resolves to lies
+   * outside the working tree.
+   *
+   * Only the repository-local setting is consulted, for two reasons. It is the
+   * one an untrusted checkout can carry, which is the case worth confirming —
+   * a global setting is the user's own machine-wide choice. And a repository
+   * that sets nothing is never reported, which is what keeps linked worktrees
+   * and submodules quiet: there `--git-path hooks` legitimately answers with
+   * the hooks directory of the repository that owns them, which is outside
+   * this working tree by design.
+   */
+  private static externalRedirectFor(
+    workDir: string,
+    hooksDir: string
+  ): string | null {
+    let configured: string;
+    try {
+      configured = execFileSync(
+        'git',
+        ['config', '--local', '--get', 'core.hooksPath'],
+        { cwd: workDir, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }
+      ).trim();
+    } catch {
+      // Exit status 1 means the key is not set.
+      return null;
+    }
+
+    if (!configured) return null;
+    return isWithinDirectory(workDir, hooksDir) ? null : configured;
   }
 
   /**
    * Install a git hook
    */
-  install(hookType: HookType): InstallResult {
+  install(
+    hookType: HookType,
+    options: { allowExternal?: boolean } = {}
+  ): InstallResult {
     this.validateHookType(hookType);
+    if (this.externalRedirect !== null && options.allowExternal !== true) {
+      throw new ValidationError(
+        externalHooksPathMessage(this.externalRedirect, this.hooksDir),
+        'Pass --yes to install there anyway, or drop the redirect with: git config --unset core.hooksPath'
+      );
+    }
 
     const hookPath = this.getHookPath(hookType);
     const hookContent = this.generateHookContent(hookType);
 
-    // Create hooks directory if it doesn't exist
     if (!fs.existsSync(this.hooksDir)) {
       fs.mkdirSync(this.hooksDir, { recursive: true });
     }
 
-    // Backup existing hook if it exists and is not a DeepL hook
     let backupPath: string | null = null;
     if (fs.existsSync(hookPath)) {
       const existingContent = fs.readFileSync(hookPath, 'utf-8');
@@ -103,10 +211,8 @@ export class GitHooksService {
       }
     }
 
-    // Write the hook file
     fs.writeFileSync(hookPath, hookContent, 'utf-8');
 
-    // Make it executable
     fs.chmodSync(hookPath, 0o755);
 
     return { hookPath, backupPath };
@@ -129,7 +235,7 @@ export class GitHooksService {
     }
     throw new ValidationError(
       `Refusing to install: ${MAX_BACKUP_SLOTS} backups of "${path.basename(hookPath)}" already exist.`,
-      `Remove the unneeded ${path.basename(primary)}* files and retry.`,
+      `Remove the unneeded ${path.basename(primary)}* files and retry.`
     );
   }
 
@@ -145,15 +251,15 @@ export class GitHooksService {
       return;
     }
 
-    // Verify it's a DeepL hook before removing
     const content = fs.readFileSync(hookPath, 'utf-8');
     if (!this.isDeepLHook(content)) {
-      throw new ValidationError('Hook is not a DeepL CLI hook. Remove it manually if needed.');
+      throw new ValidationError(
+        'Hook is not a DeepL CLI hook. Remove it manually if needed.'
+      );
     }
 
     fs.unlinkSync(hookPath);
 
-    // Restore backup if it exists
     const backupPath = hookPath + '.backup';
     if (fs.existsSync(backupPath)) {
       fs.copyFileSync(backupPath, hookPath);
@@ -162,7 +268,25 @@ export class GitHooksService {
   }
 
   /**
-   * Check if a hook is installed
+   * Classify the hook file at the expected path.
+   */
+  hookState(hookType: HookType): HookState {
+    const integrity = this.verifyIntegrity(hookType);
+
+    if (!integrity.installed) {
+      return 'not-installed';
+    }
+    if (integrity.hashMatch === null) {
+      return 'unverified';
+    }
+    return integrity.hashMatch ? 'installed' : 'modified';
+  }
+
+  /**
+   * Whether a DeepL marker is present in the hook at the expected path.
+   *
+   * Presence is not integrity: a hook whose body no longer matches its recorded
+   * hash still answers true here. Use `hookState` to tell those apart.
    */
   isInstalled(hookType: HookType): boolean {
     this.validateHookType(hookType);
@@ -178,14 +302,19 @@ export class GitHooksService {
   }
 
   /**
-   * List all hooks and their installation status
+   * List all hooks and what the file at each expected path is
    */
   list(): HookStatus {
-    const hooks: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
+    const hooks: HookType[] = [
+      'pre-commit',
+      'pre-push',
+      'commit-msg',
+      'post-commit',
+    ];
     const status: HookStatus = {};
 
     for (const hook of hooks) {
-      status[hook] = this.isInstalled(hook);
+      status[hook] = this.hookState(hook);
     }
 
     return status;
@@ -207,7 +336,6 @@ export class GitHooksService {
     // which never equals path.parse().root and loops forever.
     let currentPath = path.resolve(startPath ?? process.cwd());
 
-    // Traverse up the directory tree
     while (currentPath !== path.parse(currentPath).root) {
       const gitPath = path.join(currentPath, '.git');
       if (fs.existsSync(gitPath)) {
@@ -228,22 +356,46 @@ export class GitHooksService {
     const hookPath = this.getHookPath(hookType);
 
     if (!fs.existsSync(hookPath)) {
-      return { installed: false, markerVersion: null, hashMatch: null, expectedHash: null, actualHash: null };
+      return {
+        installed: false,
+        markerVersion: null,
+        hashMatch: null,
+        expectedHash: null,
+        actualHash: null,
+      };
     }
 
     const content = fs.readFileSync(hookPath, 'utf-8');
 
     if (!this.isDeepLHook(content)) {
-      return { installed: false, markerVersion: null, hashMatch: null, expectedHash: null, actualHash: null };
+      return {
+        installed: false,
+        markerVersion: null,
+        hashMatch: null,
+        expectedHash: null,
+        actualHash: null,
+      };
     }
 
     const markerMatch = content.match(MARKER_PATTERN);
 
     if (!markerMatch) {
-      if (content.includes(LEGACY_MARKER)) {
-        return { installed: true, markerVersion: 'legacy', hashMatch: null, expectedHash: null, actualHash: null };
+      if (LEGACY_MARKER_PATTERN.test(content)) {
+        return {
+          installed: true,
+          markerVersion: 'legacy',
+          hashMatch: null,
+          expectedHash: null,
+          actualHash: null,
+        };
       }
-      return { installed: false, markerVersion: null, hashMatch: null, expectedHash: null, actualHash: null };
+      return {
+        installed: false,
+        markerVersion: null,
+        hashMatch: null,
+        expectedHash: null,
+        actualHash: null,
+      };
     }
 
     const expectedHash = markerMatch[2]!;
@@ -272,7 +424,7 @@ export class GitHooksService {
   static extractHookBody(content: string): string {
     const lines = content.split('\n');
     const markerIndex = lines.findIndex(
-      line => MARKER_PATTERN.test(line) || line === LEGACY_MARKER
+      (line) => MARKER_PATTERN.test(line) || line === LEGACY_MARKER
     );
     if (markerIndex === -1) {
       return content;
@@ -299,7 +451,9 @@ export class GitHooksService {
 `;
 
     if (hookType === 'pre-commit') {
-      return commonPreamble + `# Pre-commit hook for DeepL CLI
+      return (
+        commonPreamble +
+        `# Pre-commit hook for DeepL CLI
 # Validates translations before committing
 
 # Check if deepl CLI is available
@@ -323,9 +477,12 @@ fi
 
 echo "✓ Translation validation passed"
 exit 0
-`;
+`
+      );
     } else if (hookType === 'pre-push') {
-      return commonPreamble + `# Pre-push hook for DeepL CLI
+      return (
+        commonPreamble +
+        `# Pre-push hook for DeepL CLI
 # Validates all translations before pushing
 
 echo "🔍 Validating all translations before push..."
@@ -345,9 +502,12 @@ fi
 
 echo "✓ Translation validation passed"
 exit 0
-`;
+`
+      );
     } else if (hookType === 'commit-msg') {
-      return commonPreamble + `# Commit message hook for DeepL CLI
+      return (
+        commonPreamble +
+        `# Commit message hook for DeepL CLI
 # Validates commit messages follow Conventional Commits format
 
 COMMIT_MSG_FILE=$1
@@ -369,9 +529,12 @@ npx --no -- commitlint --edit "$COMMIT_MSG_FILE"
 
 # Exit with commitlint's exit code
 exit $?
-`;
+`
+      );
     } else if (hookType === 'post-commit') {
-      return commonPreamble + `# Post-commit hook for DeepL CLI
+      return (
+        commonPreamble +
+        `# Post-commit hook for DeepL CLI
 # Provides feedback and automation after successful commits
 
 # Get the commit message and hash
@@ -414,27 +577,42 @@ if [ "$COMMIT_TYPE" = "feat" ] || [ "$COMMIT_TYPE" = "fix" ]; then
 fi
 
 exit 0
-`;
+`
+      );
     }
 
-    const validTypes: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
-    throw new ValidationError(`Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`);
+    const validTypes: HookType[] = [
+      'pre-commit',
+      'pre-push',
+      'commit-msg',
+      'post-commit',
+    ];
+    throw new ValidationError(
+      `Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`
+    );
   }
 
   /**
    * Check if content is a DeepL CLI hook (supports both legacy and versioned markers)
    */
   private isDeepLHook(content: string): boolean {
-    return MARKER_PATTERN.test(content) || content.includes(LEGACY_MARKER);
+    return MARKER_PATTERN.test(content) || LEGACY_MARKER_PATTERN.test(content);
   }
 
   /**
    * Validate hook type
    */
   private validateHookType(hookType: string): asserts hookType is HookType {
-    const validTypes: HookType[] = ['pre-commit', 'pre-push', 'commit-msg', 'post-commit'];
+    const validTypes: HookType[] = [
+      'pre-commit',
+      'pre-push',
+      'commit-msg',
+      'post-commit',
+    ];
     if (!validTypes.includes(hookType as HookType)) {
-      throw new ValidationError(`Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`);
+      throw new ValidationError(
+        `Invalid hook type: ${hookType}. Must be one of: ${validTypes.join(', ')}`
+      );
     }
   }
 }

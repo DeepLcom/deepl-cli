@@ -1,12 +1,17 @@
 /**
  * Retry-policy and transport-error classification tests for HttpClient.
  *
- * Every assertion here counts SERVER-SIDE requests: a replay of a
- * non-idempotent request is only observable from the server's side, so
+ * The retry assertions count SERVER-SIDE requests: a replay of a
+ * non-idempotent request is only observable on the server's side, so
  * `.rejects.toThrow()` alone cannot catch it.
  */
 
 import nock from 'nock';
+import {
+  AxiosError,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 import { HttpClient } from '../../src/api/http-client';
 import {
   AuthError,
@@ -53,7 +58,10 @@ describe('HttpClient retry policy', () => {
       ...options,
     });
     sleepSpy = jest
-      .spyOn(client as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep')
+      .spyOn(
+        client as unknown as { sleep: (ms: number) => Promise<void> },
+        'sleep'
+      )
       .mockResolvedValue();
     clients.push(client);
     return client;
@@ -99,9 +107,9 @@ describe('HttpClient retry policy', () => {
         .reply(200, { translations: [{ text: 'Hola' }] });
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(1);
     });
@@ -142,9 +150,9 @@ describe('HttpClient retry policy', () => {
         .reply(200, {});
       const requests = countRequests(scope);
 
-      await expect(makeClient().put('/v3/glossaries/g-1', { name: 'x' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().put('/v3/glossaries/g-1', { name: 'x' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(4);
     });
@@ -152,7 +160,10 @@ describe('HttpClient retry policy', () => {
 
   describe('server errors', () => {
     it('retries a 500 on an idempotent GET', async () => {
-      const scope = nock(BASE_URL).get('/v2/usage').times(4).reply(500, { message: 'boom' });
+      const scope = nock(BASE_URL)
+        .get('/v2/usage')
+        .times(4)
+        .reply(500, { message: 'boom' });
       const requests = countRequests(scope);
 
       await expect(makeClient().get('/v2/usage')).rejects.toThrow(NetworkError);
@@ -167,9 +178,9 @@ describe('HttpClient retry policy', () => {
         .reply(500, { message: 'boom' });
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        /Server error \(500\)/
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(/Server error \(500\)/);
 
       expect(requests()).toBe(1);
     });
@@ -181,9 +192,9 @@ describe('HttpClient retry policy', () => {
         .reply(503, { message: 'Service Unavailable' });
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        /Service temporarily unavailable/
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(/Service temporarily unavailable/);
 
       expect(requests()).toBe(1);
     });
@@ -221,9 +232,9 @@ describe('HttpClient retry policy', () => {
         .reply(429, { message: 'Too many requests' });
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        RateLimitError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(RateLimitError);
 
       expect(requests()).toBe(4);
     });
@@ -231,7 +242,10 @@ describe('HttpClient retry policy', () => {
 
   describe('401 handling', () => {
     it('maps 401 to AuthError without retrying', async () => {
-      const scope = nock(BASE_URL).get('/v2/usage').times(4).reply(401, { message: 'Unauthorized' });
+      const scope = nock(BASE_URL)
+        .get('/v2/usage')
+        .times(4)
+        .reply(401, { message: 'Unauthorized' });
       const requests = countRequests(scope);
 
       const error = await makeClient()
@@ -253,7 +267,11 @@ describe('HttpClient retry policy', () => {
         .reply(200, {});
       const requests = countRequests(scope);
 
-      const client = makeClient({ timeout: 200, maxRetries: 5, totalTimeout: 500 });
+      const client = makeClient({
+        timeout: 200,
+        maxRetries: 5,
+        totalTimeout: 500,
+      });
       const start = Date.now();
       await expect(client.get('/v2/usage')).rejects.toThrow(NetworkError);
       const elapsed = Date.now() - start;
@@ -272,7 +290,11 @@ describe('HttpClient retry policy', () => {
         .reply(200, {});
       const requests = countRequests(scope);
 
-      const client = makeClient({ timeout: 200, maxRetries: 5, totalTimeout: undefined });
+      const client = makeClient({
+        timeout: 200,
+        maxRetries: 5,
+        totalTimeout: undefined,
+      });
       await expect(client.get('/v2/usage')).rejects.toThrow(NetworkError);
 
       // Default budget is twice the timeout, so far short of six attempts.
@@ -286,12 +308,14 @@ describe('HttpClient retry policy', () => {
       const scope = nock(BASE_URL)
         .post('/v2/translate')
         .times(4)
-        .replyWithError(transportError('ECONNREFUSED', 'connect ECONNREFUSED 127.0.0.1:443'));
+        .replyWithError(
+          transportError('ECONNREFUSED', 'connect ECONNREFUSED 127.0.0.1:443')
+        );
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(4);
     });
@@ -300,12 +324,17 @@ describe('HttpClient retry policy', () => {
       const scope = nock(BASE_URL)
         .post('/v2/translate')
         .times(4)
-        .replyWithError(transportError('ENOTFOUND', 'getaddrinfo ENOTFOUND api-free.deepl.com'));
+        .replyWithError(
+          transportError(
+            'ENOTFOUND',
+            'getaddrinfo ENOTFOUND api-free.deepl.com'
+          )
+        );
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(4);
     });
@@ -317,11 +346,102 @@ describe('HttpClient retry policy', () => {
         .replyWithError(transportError('ECONNRESET', 'socket hang up'));
       const requests = countRequests(scope);
 
-      await expect(makeClient().post('/v2/translate', { text: 'Hello' })).rejects.toThrow(
-        NetworkError
-      );
+      await expect(
+        makeClient().post('/v2/translate', { text: 'Hello' })
+      ).rejects.toThrow(NetworkError);
 
       expect(requests()).toBe(1);
+    });
+  });
+
+  // A response object is attached to the error, but its status is 200: the
+  // exchange was accepted and then failed while the body was being read.
+  // Measured shapes, both from a real loopback server — a declared
+  // Content-Length cut short and a chunked body with no terminating chunk —
+  // arrive as ERR_BAD_RESPONSE / 'stream has been aborted' / status 200.
+  describe('a response that fails while its body is read', () => {
+    function abortedStream(): AxiosError {
+      const config = { url: '/v2/translate' } as InternalAxiosRequestConfig;
+      const response = {
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+        data: undefined,
+      } as AxiosResponse;
+      return new AxiosError(
+        'stream has been aborted',
+        AxiosError.ERR_BAD_RESPONSE,
+        config,
+        {},
+        response
+      );
+    }
+
+    it('classifies a mid-body abort as a network error, not a validation error', () => {
+      const classified = makeClient().classify(abortedStream());
+
+      expect(classified).toBeInstanceOf(NetworkError);
+      expect(classified).not.toBeInstanceOf(ValidationError);
+      expect(exitCodeForError(classified)).toBe(ExitCode.NetworkError);
+    });
+
+    it('says the body was cut short rather than reporting an API error', () => {
+      const classified = makeClient().classify(abortedStream());
+
+      expect(classified.message).not.toMatch(/^API error/);
+      expect(classified.message).toMatch(/body/i);
+      expect(classified.message).toContain('stream has been aborted');
+    });
+
+    // Over-rejection guards: a status the server chose still speaks for
+    // itself, and the transport verdict must not swallow it.
+    it('still reports a 400 with a server message as a validation error', () => {
+      const config = { url: '/v2/translate' } as InternalAxiosRequestConfig;
+      const response = {
+        status: 400,
+        statusText: 'Bad Request',
+        headers: {},
+        config,
+        data: { message: 'Value for target_lang not supported' },
+      } as AxiosResponse;
+      const error = new AxiosError(
+        'Request failed with status code 400',
+        AxiosError.ERR_BAD_REQUEST,
+        config,
+        {},
+        response
+      );
+
+      const classified = makeClient().classify(error);
+
+      expect(classified).toBeInstanceOf(ValidationError);
+      expect(classified.message).toContain(
+        'API error: Value for target_lang not supported'
+      );
+    });
+
+    it('still reports a 500 as a network error naming the status', () => {
+      const config = { url: '/v2/translate' } as InternalAxiosRequestConfig;
+      const response = {
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: {},
+        config,
+        data: { message: 'boom' },
+      } as AxiosResponse;
+      const error = new AxiosError(
+        'Request failed with status code 500',
+        AxiosError.ERR_BAD_RESPONSE,
+        config,
+        {},
+        response
+      );
+
+      const classified = makeClient().classify(error);
+
+      expect(classified).toBeInstanceOf(NetworkError);
+      expect(classified.message).toContain('Server error (500)');
     });
   });
 
@@ -333,11 +453,15 @@ describe('HttpClient retry policy', () => {
         .post('/v2/translate', { text: 'Hello' })
         .catch((e: unknown) => e);
 
-      expect((error as Error).message).not.toMatch(/Network error: Network error/);
+      expect((error as Error).message).not.toMatch(
+        /Network error: Network error/
+      );
     });
 
     it('leaves an already-classified error untouched', () => {
-      const classified = new ValidationError('API error: Tone is not supported');
+      const classified = new ValidationError(
+        'API error: Tone is not supported'
+      );
 
       expect(makeClient().classify(classified)).toBe(classified);
     });

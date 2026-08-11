@@ -19,7 +19,9 @@ interface StubWatcher extends WatchEventSource {
 }
 
 function createStubWatcher(): StubWatcher {
-  const listeners: Partial<Record<'change' | 'add', Array<(p?: string) => void>>> = {};
+  const listeners: Partial<
+    Record<'change' | 'add', Array<(p?: string) => void>>
+  > = {};
   return {
     on(event, listener) {
       (listeners[event] ??= []).push(listener);
@@ -32,7 +34,11 @@ function createStubWatcher(): StubWatcher {
   };
 }
 
-function deferred<T = void>(): { promise: Promise<T>; resolve: (v: T) => void; reject: (e: unknown) => void } {
+function deferred<T = void>(): {
+  promise: Promise<T>;
+  resolve: (v: T) => void;
+  reject: (e: unknown) => void;
+} {
   let resolve!: (v: T) => void;
   let reject!: (e: unknown) => void;
   const promise = new Promise<T>((res, rej) => {
@@ -52,7 +58,9 @@ describe('watch mode reliability', () => {
   afterEach(() => {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   });
 
   describe('event coalescing (bpah)', () => {
@@ -188,7 +196,7 @@ describe('watch mode reliability', () => {
         observedSignal = signal;
         signalVisible.resolve();
         // long-running sync
-        await new Promise(resolve => setTimeout(resolve, 20));
+        await new Promise((resolve) => setTimeout(resolve, 20));
       });
 
       const watcher = createStubWatcher();
@@ -226,7 +234,7 @@ describe('watch mode reliability', () => {
         fs.writeFileSync(
           path.join(sourceDir, 'en.json'),
           JSON.stringify({ hello: 'Hello' }),
-          'utf-8',
+          'utf-8'
         );
 
         const cancellationSignal = { cancelled: false };
@@ -234,12 +242,23 @@ describe('watch mode reliability', () => {
 
         const matcher = (lang: string) =>
           nock(DEEPL_FREE_API_URL)
-            .post('/v2/translate', (body: Record<string, unknown>) => body['target_lang'] === lang)
+            .post(
+              '/v2/translate',
+              (body: Record<string, unknown>) => body['target_lang'] === lang
+            )
             .reply(200, () => {
               callCounts[lang] = (callCounts[lang] ?? 0) + 1;
               // once the first locale completes, signal cancellation
               cancellationSignal.cancelled = true;
-              return { translations: [{ text: `${lang}-hello`, detected_source_language: 'EN', billed_characters: 5 }] };
+              return {
+                translations: [
+                  {
+                    text: `${lang}-hello`,
+                    detected_source_language: 'EN',
+                    billed_characters: 5,
+                  },
+                ],
+              };
             });
 
         matcher('DE');
@@ -263,7 +282,9 @@ describe('watch mode reliability', () => {
   describe('stale .bak sweep on startup (79zz)', () => {
     let errSpy: jest.SpyInstance;
     beforeEach(() => {
-      errSpy = jest.spyOn(console, 'error').mockImplementation(() => { /* silence Logger.warn */ });
+      errSpy = jest.spyOn(console, 'error').mockImplementation(() => {
+        /* silence Logger.warn */
+      });
     });
     afterEach(() => {
       errSpy.mockRestore();
@@ -273,6 +294,9 @@ describe('watch mode reliability', () => {
       const staleBak = path.join(tmpDir, 'locales', 'de.json.deepl.bak');
       fs.mkdirSync(path.dirname(staleBak), { recursive: true });
       fs.writeFileSync(staleBak, 'stale', 'utf-8');
+      // The target holds the same bytes, so the backup is redundant — a
+      // backup whose target has diverged is kept whatever its age.
+      fs.writeFileSync(path.join(tmpDir, 'locales', 'de.json'), 'stale');
       // backdate the mtime by 10 minutes
       const tenMinAgo = new Date(Date.now() - 10 * 60_000);
       fs.utimesSync(staleBak, tenMinAgo, tenMinAgo);

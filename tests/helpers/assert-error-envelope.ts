@@ -1,5 +1,5 @@
 /**
- * Test helper: validates the JSON error envelope emitted on stderr by
+ * Test helper: validates the JSON error envelope emitted on stdout by
  * `deepl sync <subcommand> --format json` when a command fails.
  *
  * The envelope shape is shared by every subcommand (push/pull/resolve/export/
@@ -50,29 +50,30 @@ export interface SyncInitJsonSuccessEnvelope {
   };
 }
 
-export const INIT_SUCCESS_ENVELOPE_SCHEMA: JSONSchemaType<SyncInitJsonSuccessEnvelope> = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['ok', 'created'],
-  properties: {
-    ok: { type: 'boolean', const: true },
-    created: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['configPath', 'sourceLocale', 'targetLocales'],
-      properties: {
-        configPath: { type: 'string', minLength: 1 },
-        sourceLocale: { type: 'string', minLength: 1 },
-        targetLocales: {
-          type: 'array',
-          items: { type: 'string', minLength: 1 },
-          minItems: 1,
+export const INIT_SUCCESS_ENVELOPE_SCHEMA: JSONSchemaType<SyncInitJsonSuccessEnvelope> =
+  {
+    type: 'object',
+    additionalProperties: false,
+    required: ['ok', 'created'],
+    properties: {
+      ok: { type: 'boolean', const: true },
+      created: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['configPath', 'sourceLocale', 'targetLocales'],
+        properties: {
+          configPath: { type: 'string', minLength: 1 },
+          sourceLocale: { type: 'string', minLength: 1 },
+          targetLocales: {
+            type: 'array',
+            items: { type: 'string', minLength: 1 },
+            minItems: 1,
+          },
+          keys: { type: 'integer', minimum: 0, nullable: true },
         },
-        keys: { type: 'integer', minimum: 0, nullable: true },
       },
     },
-  },
-};
+  };
 
 // AJV v8 default export is a class under the CJS type shim; treat both shapes
 // so jest-via-ts-jest and runtime both resolve. In practice ts-jest sees the
@@ -85,20 +86,20 @@ const validateError = ajv.compile(ERROR_ENVELOPE_SCHEMA);
 const validateInitSuccess = ajv.compile(INIT_SUCCESS_ENVELOPE_SCHEMA);
 
 /**
- * Extract the last JSON object from `stderr` and assert it matches the
- * error envelope schema. Parent-process progress lines (e.g. "Detecting
- * i18n files...") can land on stderr before the envelope, so we match the
- * final `{...}` block rather than parsing all of stderr.
+ * Extract the last JSON object from the machine-readable stream (stdout, or a
+ * merged capture) and assert it matches the error envelope schema. Callers
+ * that merge streams can carry warning lines before the envelope, so we match
+ * the final `{...}` block rather than parsing the whole capture.
  */
 export function assertErrorEnvelope(
-  stderr: string,
+  output: string,
   expectedCode: string,
-  expectedExitCode: number,
+  expectedExitCode: number
 ): SyncJsonErrorEnvelope {
-  const match = stderr.trim().match(/\{[\s\S]*\}\s*$/);
+  const match = output.trim().match(/\{[\s\S]*\}\s*$/);
   if (!match) {
     throw new Error(
-      `No trailing JSON object found in stderr. stderr was:\n${stderr}`,
+      `No trailing JSON object found in the capture. It was:\n${output}`
     );
   }
 
@@ -107,25 +108,25 @@ export function assertErrorEnvelope(
     parsed = JSON.parse(match[0]);
   } catch (err) {
     throw new Error(
-      `stderr trailing JSON is not parseable: ${(err as Error).message}\nPayload: ${match[0]}`,
-      { cause: err },
+      `Trailing JSON is not parseable: ${(err as Error).message}\nPayload: ${match[0]}`,
+      { cause: err }
     );
   }
 
   if (!validateError(parsed)) {
     throw new Error(
-      `Envelope failed AJV validation:\n${ajv.errorsText(validateError.errors)}\nPayload: ${JSON.stringify(parsed)}`,
+      `Envelope failed AJV validation:\n${ajv.errorsText(validateError.errors)}\nPayload: ${JSON.stringify(parsed)}`
     );
   }
 
   if (parsed.error.code !== expectedCode) {
     throw new Error(
-      `Envelope error.code = "${parsed.error.code}", expected "${expectedCode}". Payload: ${JSON.stringify(parsed)}`,
+      `Envelope error.code = "${parsed.error.code}", expected "${expectedCode}". Payload: ${JSON.stringify(parsed)}`
     );
   }
   if (parsed.exitCode !== expectedExitCode) {
     throw new Error(
-      `Envelope exitCode = ${parsed.exitCode}, expected ${expectedExitCode}. Payload: ${JSON.stringify(parsed)}`,
+      `Envelope exitCode = ${parsed.exitCode}, expected ${expectedExitCode}. Payload: ${JSON.stringify(parsed)}`
     );
   }
   return parsed;
@@ -136,11 +137,13 @@ export function assertErrorEnvelope(
  * the error envelope because `init` is the only subcommand with a dedicated
  * machine-readable success payload today.
  */
-export function assertInitSuccessEnvelope(stdout: string): SyncInitJsonSuccessEnvelope {
+export function assertInitSuccessEnvelope(
+  stdout: string
+): SyncInitJsonSuccessEnvelope {
   const match = stdout.trim().match(/\{[\s\S]*\}\s*$/);
   if (!match) {
     throw new Error(
-      `No trailing JSON object found in stdout. stdout was:\n${stdout}`,
+      `No trailing JSON object found in stdout. stdout was:\n${stdout}`
     );
   }
 
@@ -150,13 +153,13 @@ export function assertInitSuccessEnvelope(stdout: string): SyncInitJsonSuccessEn
   } catch (err) {
     throw new Error(
       `stdout trailing JSON is not parseable: ${(err as Error).message}\nPayload: ${match[0]}`,
-      { cause: err },
+      { cause: err }
     );
   }
 
   if (!validateInitSuccess(parsed)) {
     throw new Error(
-      `Init success envelope failed AJV validation:\n${ajv.errorsText(validateInitSuccess.errors)}\nPayload: ${JSON.stringify(parsed)}`,
+      `Init success envelope failed AJV validation:\n${ajv.errorsText(validateInitSuccess.errors)}\nPayload: ${JSON.stringify(parsed)}`
     );
   }
   return parsed;

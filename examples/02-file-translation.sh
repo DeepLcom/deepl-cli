@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 2: File Translation & Caching
+# File Translation & Caching
 # Demonstrates translating files with format preservation and smart caching
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 2: File Translation ==="
+echo "=== DeepL CLI: File Translation ==="
 echo
 
 # Check if API key is configured

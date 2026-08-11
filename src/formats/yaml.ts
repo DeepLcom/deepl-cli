@@ -1,5 +1,53 @@
 import * as YAML from 'yaml';
-import type { FormatParser, ExtractedEntry, TranslatedEntry } from './format.js';
+import {
+  FormatDepthExceededError,
+  FormatKeyCollisionError,
+  describeKeyPath,
+  type FormatParser,
+  type ExtractedEntry,
+  type TranslatedEntry,
+} from './format.js';
+
+/**
+ * The `yaml` library builds its document tree recursively and reports a blown
+ * stack as an ordinary parse diagnostic rather than letting the RangeError
+ * escape. A deeply nested document therefore fails inside the library, before
+ * any walker of ours runs, which is why bounding our own recursion cannot
+ * prevent it. Recognising it here lets the one file be skipped like any other
+ * depth rejection instead of ending the run.
+ */
+function assertNotStackExhaustion(messages: string): void {
+  if (/maximum call stack size exceeded/i.test(messages)) {
+    // Only the first line: the library follows it with a source excerpt and a
+    // caret, which points at nesting and says nothing a reader can act on.
+    const location = messages.split('\n')[0] ?? messages;
+    throw new FormatDepthExceededError(
+      `YAML: nesting depth exhausted the stack while parsing (${location.trim()})`
+    );
+  }
+}
+
+const PATH_SEPARATOR = '\0';
+
+/**
+ * Path segments are joined with U+0000 to form a key, so a mapping key holding
+ * one resolves to the same key as an unrelated nested path. Where no such path
+ * exists, `doc.setIn` splits the key back apart and reconstruct writes a nested
+ * mapping the source never had. The byte prints as nothing, so the source diff
+ * shows an ordinary key.
+ */
+function assertNoPathSeparator(key: string): void {
+  if (key.includes(PATH_SEPARATOR)) {
+    // Escaped, not echoed: the byte prints as nothing, so quoting it verbatim
+    // would show the reader the key they already believe they have.
+    const shown = describeKeyPath(key).split(PATH_SEPARATOR).join('\\u0000');
+    throw new FormatKeyCollisionError(
+      `YAML: key "${shown}" contains a U+0000 byte, which separates path ` +
+        `segments, so the key is indistinguishable from a nested path. ` +
+        `Remove the byte.`
+    );
+  }
+}
 
 type StringSlot =
   | { path: string[]; value: string; parent: YAML.YAMLMap; pair: YAML.Pair }
@@ -18,7 +66,8 @@ export class YamlFormatParser implements FormatParser {
     const doc = YAML.parseDocument(content);
 
     if (doc.errors.length > 0) {
-      const messages = doc.errors.map(e => e.message).join('; ');
+      const messages = doc.errors.map((e) => e.message).join('; ');
+      assertNotStackExhaustion(messages);
       throw new Error(`YAML parse error: ${messages}`);
     }
 
@@ -30,7 +79,7 @@ export class YamlFormatParser implements FormatParser {
       return [{ key: '', value: doc.contents.value }];
     }
 
-    return this.collectStringSlots(doc).map(slot => ({
+    return this.collectStringSlots(doc).map((slot) => ({
       key: slot.path.join('\0'),
       value: slot.value,
     }));
@@ -86,7 +135,7 @@ export class YamlFormatParser implements FormatParser {
     }
 
     for (const [map, pairs] of mapRemovals) {
-      map.items = map.items.filter(pair => !pairs.has(pair));
+      map.items = map.items.filter((pair) => !pairs.has(pair));
     }
     for (const [seq, indices] of seqRemovals) {
       seq.items = seq.items.filter((_, i) => !indices.has(i));
@@ -141,18 +190,31 @@ export class YamlFormatParser implements FormatParser {
     const visit = (node: unknown, path: string[]): void => {
       if (YAML.isMap(node)) {
         for (const pair of node.items) {
-          const key = String(YAML.isScalar(pair.key) ? pair.key.value : pair.key);
+          const key = String(
+            YAML.isScalar(pair.key) ? pair.key.value : pair.key
+          );
+          assertNoPathSeparator(key);
           const childPath = [...path, key];
           const value = pair.value;
           recordAnchor(value);
           if (YAML.isScalar(value) && typeof value.value === 'string') {
-            slots.push({ path: childPath, value: value.value, parent: node, pair });
+            slots.push({
+              path: childPath,
+              value: value.value,
+              parent: node,
+              pair,
+            });
           } else if (YAML.isMap(value) || YAML.isSeq(value)) {
             visit(value, childPath);
           } else if (YAML.isAlias(value)) {
             const resolved = resolveAliasString(value);
             if (resolved !== undefined) {
-              slots.push({ path: childPath, value: resolved, parent: node, pair });
+              slots.push({
+                path: childPath,
+                value: resolved,
+                parent: node,
+                pair,
+              });
             }
           }
         }
@@ -162,13 +224,23 @@ export class YamlFormatParser implements FormatParser {
           const childPath = [...path, String(i)];
           recordAnchor(item);
           if (YAML.isScalar(item) && typeof item.value === 'string') {
-            slots.push({ path: childPath, value: item.value, parent: node, index: i });
+            slots.push({
+              path: childPath,
+              value: item.value,
+              parent: node,
+              index: i,
+            });
           } else if (YAML.isMap(item) || YAML.isSeq(item)) {
             visit(item, childPath);
           } else if (YAML.isAlias(item)) {
             const resolved = resolveAliasString(item);
             if (resolved !== undefined) {
-              slots.push({ path: childPath, value: resolved, parent: node, index: i });
+              slots.push({
+                path: childPath,
+                value: resolved,
+                parent: node,
+                index: i,
+              });
             }
           }
         }

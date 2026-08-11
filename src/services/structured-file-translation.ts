@@ -7,15 +7,50 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'yaml';
-import { TranslationService, MAX_TEXT_BYTES } from './translation.js';
+import {
+  TranslationService,
+  MAX_TEXT_BYTES,
+  TRANSLATE_BATCH_SIZE,
+} from './translation.js';
 import { atomicWriteFile } from '../utils/atomic-write.js';
 import { TranslationOptions, Language } from '../types/index.js';
 import { safeReadFile } from '../utils/safe-read-file.js';
-import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
+import {
+  mapWithConcurrency,
+  MULTI_TARGET_CONCURRENCY,
+} from '../utils/concurrency.js';
 import { ValidationError, NetworkError } from '../utils/errors.js';
+import { describeKeyPath } from '../formats/format.js';
+
+/**
+ * Stack-safety ceiling for the direct `deepl translate <file>` path, which has
+ * no `.deepl-sync.yaml` and therefore no `sync.limits.max_depth` to consult.
+ * It matches `DEFAULT_JSON_MAX_DEPTH`: far above any realistic i18n file, far
+ * below the depth at which a recursive walk exhausts the stack.
+ */
+export const MAX_STRUCTURED_DEPTH = 100;
+
+/**
+ * Size ceiling for the direct `deepl translate <file.json|.yaml>` path, which
+ * has no `.deepl-sync.yaml` and therefore no `sync.limits.max_file_bytes` to
+ * consult. It matches `HARD_MAX_SYNC_LIMITS.max_file_bytes`, the value sync
+ * refuses to be configured above, so nothing sync can be made to accept is
+ * refused here.
+ *
+ * Parsing a structured file costs roughly 7-13x its size in resident memory,
+ * and the multi-target path parses a fresh copy per target language up to
+ * `MULTI_TARGET_CONCURRENCY` at a time: measured, a 19.2 MB file peaked at
+ * 252 MB for one target and 483 MB for five. The document route is capped far
+ * higher (`MAX_DOCUMENT_FILE_SIZE`, 30 MB) because it streams the bytes to the
+ * API once and never builds an object graph from them.
+ */
+export const MAX_STRUCTURED_FILE_BYTES = 10 * 1024 * 1024;
 
 interface FileTranslationOptions {
   preserveCode?: boolean;
+  /** Bypasses the cache read and write, so `--no-cache` reaches the batch
+   *  path that every structured i18n format goes through. */
+  skipCache?: boolean;
 }
 
 interface FileMultiTargetResult {
@@ -56,7 +91,7 @@ export class StructuredFileTranslationService {
     inputPath: string,
     outputPath: string,
     options: TranslationOptions,
-    _fileOptions: FileTranslationOptions = {}
+    fileOptions: FileTranslationOptions = {}
   ): Promise<void> {
     const content = await this.readFile(inputPath);
 
@@ -70,8 +105,9 @@ export class StructuredFileTranslationService {
 
     if (strings.length > 0) {
       const translations = await this.translateStringsInBatches(
-        strings.map(s => s.value),
-        options
+        strings.map((s) => s.value),
+        options,
+        fileOptions
       );
 
       if (parsed.format === 'yaml' && parsed.yamlDoc) {
@@ -91,7 +127,10 @@ export class StructuredFileTranslationService {
   async translateFileToMultiple(
     inputPath: string,
     targetLangs: Language[],
-    options: Omit<TranslationOptions, 'targetLang'> & { outputDir?: string } = {}
+    options: Omit<TranslationOptions, 'targetLang'> & {
+      outputDir?: string;
+    } = {},
+    fileOptions: FileTranslationOptions = {}
   ): Promise<FileMultiTargetResult[]> {
     const content = await this.readFile(inputPath);
 
@@ -104,7 +143,7 @@ export class StructuredFileTranslationService {
     // Parse once to extract strings (read-only, shared across all languages)
     const referenceParsed = this.parseFile(content, ext);
     const strings = this.extractStrings(referenceParsed.data);
-    const stringValues = strings.map(s => s.value);
+    const stringValues = strings.map((s) => s.value);
 
     // Create output directory once before fan-out to avoid races
     if (options.outputDir) {
@@ -120,7 +159,8 @@ export class StructuredFileTranslationService {
         if (strings.length > 0) {
           const translations = await this.translateStringsInBatches(
             stringValues,
-            { ...options, targetLang }
+            { ...options, targetLang },
+            fileOptions
           );
 
           if (parsed.format === 'yaml' && parsed.yamlDoc) {
@@ -155,6 +195,29 @@ export class StructuredFileTranslationService {
   }
 
   private async readFile(filePath: string): Promise<string> {
+    // Sized before the read, not after, so an oversize file is never resident:
+    // both entry points funnel through here, which is the only place the bound
+    // cannot be bypassed by a caller that forgets it.
+    try {
+      const stat = await fs.promises.stat(filePath);
+      if (stat.size > MAX_STRUCTURED_FILE_BYTES) {
+        const sizeMiB = (stat.size / (1024 * 1024)).toFixed(1);
+        const limitMiB = (MAX_STRUCTURED_FILE_BYTES / (1024 * 1024)).toFixed(0);
+        throw new ValidationError(
+          `${path.basename(filePath)} is ${sizeMiB} MiB, which exceeds the maximum of ${limitMiB} MiB for a JSON or YAML file translated in one command.`,
+          `Split the file, or use "deepl sync", which walks a locale directory file by file and translates only the keys that changed.`
+        );
+      }
+    } catch (err: unknown) {
+      if (err instanceof ValidationError) throw err;
+      const nodeErr = err as Error & { code?: string };
+      if (nodeErr.code === 'ENOENT') {
+        throw new ValidationError(`Input file not found: ${filePath}`);
+      }
+      // Any other stat failure flows through to the read below, which reports
+      // it in the terms the caller already handles.
+    }
+
     try {
       return await safeReadFile(filePath, 'utf-8');
     } catch (err: unknown) {
@@ -213,21 +276,37 @@ export class StructuredFileTranslationService {
     const strings: ExtractedString[] = [];
     let index = 0;
 
-    const walk = (value: unknown, currentPath: (string | number)[]): void => {
+    const walk = (
+      value: unknown,
+      currentPath: (string | number)[],
+      depth: number
+    ): void => {
       if (typeof value === 'string') {
         strings.push({ path: [...currentPath], value, index: index++ });
-      } else if (Array.isArray(value)) {
+        return;
+      }
+      if (depth > MAX_STRUCTURED_DEPTH) {
+        throw new ValidationError(
+          `Max nesting depth ${MAX_STRUCTURED_DEPTH} exceeded at '${describeKeyPath(currentPath.join('.'))}'. ` +
+            'Structured translation walks the document recursively, so a more deeply nested file would exhaust the stack.'
+        );
+      }
+      if (Array.isArray(value)) {
         for (let i = 0; i < value.length; i++) {
-          walk(value[i], [...currentPath, i]);
+          walk(value[i], [...currentPath, i], depth + 1);
         }
       } else if (value !== null && typeof value === 'object') {
         for (const key of Object.keys(value)) {
-          walk((value as Record<string, unknown>)[key], [...currentPath, key]);
+          walk(
+            (value as Record<string, unknown>)[key],
+            [...currentPath, key],
+            depth + 1
+          );
         }
       }
     };
 
-    walk(data, []);
+    walk(data, [], 1);
     return strings;
   }
 
@@ -306,48 +385,66 @@ export class StructuredFileTranslationService {
     return result;
   }
 
+  /**
+   * One output file cannot be partly translated, so a batch that comes back
+   * incomplete aborts the run. Batches are capped at `TRANSLATE_BATCH_SIZE` as
+   * well as by size, which keeps each call to a single API request: a rejection
+   * then surfaces with its own exit code instead of arriving as empty slots.
+   */
   private async translateStringsInBatches(
     strings: string[],
-    options: TranslationOptions
+    options: TranslationOptions,
+    fileOptions: FileTranslationOptions = {}
   ): Promise<string[]> {
     const results: string[] = [];
     let batch: string[] = [];
     let batchBytes = 0;
 
+    const flush = async (): Promise<void> => {
+      if (batch.length === 0) {
+        return;
+      }
+      const offset = results.length;
+      const batchResults = await this.translationService.translateBatch(
+        batch,
+        options,
+        { skipCache: fileOptions.skipCache }
+      );
+      if (batchResults.length !== batch.length) {
+        throw new NetworkError(
+          `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
+            'Aborting to prevent misaligned output.'
+        );
+      }
+      for (let i = 0; i < batch.length; i++) {
+        const result = batchResults[i];
+        if (!result) {
+          throw new NetworkError(
+            `Translation batch failed: no translation returned for string ${offset + i + 1} of ${strings.length}. ` +
+              'Aborting to prevent misaligned output.'
+          );
+        }
+        results.push(result.text);
+      }
+      batch = [];
+      batchBytes = 0;
+    };
+
     for (const str of strings) {
       const strBytes = Buffer.byteLength(str, 'utf-8');
 
-      if (batch.length > 0 && batchBytes + strBytes > MAX_TEXT_BYTES) {
-        const batchResults = await this.translationService.translateBatch(batch, options);
-        if (batchResults.length !== batch.length) {
-          throw new NetworkError(
-            `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
-            'Aborting to prevent misaligned output.'
-          );
-        }
-        for (const r of batchResults) {
-          results.push(r.text);
-        }
-        batch = [];
-        batchBytes = 0;
+      if (
+        batch.length >= TRANSLATE_BATCH_SIZE ||
+        (batch.length > 0 && batchBytes + strBytes > MAX_TEXT_BYTES)
+      ) {
+        await flush();
       }
 
       batch.push(str);
       batchBytes += strBytes;
     }
 
-    if (batch.length > 0) {
-      const batchResults = await this.translationService.translateBatch(batch, options);
-      if (batchResults.length !== batch.length) {
-        throw new NetworkError(
-          `Translation batch failed: expected ${batch.length} results but got ${batchResults.length}. ` +
-          'Aborting to prevent misaligned output.'
-        );
-      }
-      for (const r of batchResults) {
-        results.push(r.text);
-      }
-    }
+    await flush();
 
     return results;
   }

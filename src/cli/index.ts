@@ -11,14 +11,18 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve, isAbsolute, extname } from 'path';
 import { ConfigService } from '../storage/config.js';
-import { createCacheServiceGetter, resolveCacheOptions } from './cache-loader.js';
+import {
+  createCacheServiceGetter,
+  resolveCacheOptions,
+} from './cache-loader.js';
 import { resolvePaths } from '../utils/paths.js';
 import type { DeepLClient } from '../api/deepl-client.js';
 import { Logger } from '../utils/logger.js';
 import { AuthError, DeepLCLIError } from '../utils/errors.js';
-import { ExitCode, getExitCodeFromError } from '../utils/exit-codes.js';
+import { ExitCode, exitCodeForError } from '../utils/exit-codes.js';
 import { isSymlink } from '../utils/safe-read-file.js';
 import { setNoInput } from '../utils/confirm.js';
+import { emitJsonErrorAndExit } from './json-error-envelope.js';
 import { registerAuth } from './commands/register-auth.js';
 import { registerUsage } from './commands/register-usage.js';
 import { registerLanguages } from './commands/register-languages.js';
@@ -40,27 +44,28 @@ import { registerInit } from './commands/register-init.js';
 import { registerDetect } from './commands/register-detect.js';
 import { registerDescribe } from './commands/register-describe.js';
 import { validateApiUrl } from '../utils/validate-url.js';
-import { resolveEndpoint } from '../utils/resolve-endpoint.js';
+import {
+  resolveEndpoint,
+  nonStandardEndpointWarning,
+  type EndpointSource,
+} from '../utils/resolve-endpoint.js';
 import { installSignalExit } from '../utils/signal-exit.js';
 import { assertSupportedNodeVersion } from './node-version-check.js';
 
 assertSupportedNodeVersion();
 
-// Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Read version from package.json
 const packageJsonPath = join(__dirname, '../../package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as {
   version: string;
 };
 const { version } = packageJson;
 
-// Initialize services
 const paths = resolvePaths();
 
-// Create config service - can be overridden by --config flag
+// Reassigned by the preAction hook when --config names another file.
 let configService = new ConfigService(paths.configFile);
 
 // HTTP transport overrides from --timeout / --max-retries, applied to every
@@ -68,18 +73,30 @@ let configService = new ConfigService(paths.configFile);
 let httpOptions: { timeout?: number; maxRetries?: number } = {};
 
 const getCacheService = createCacheServiceGetter(() =>
-  resolveCacheOptions(configService, paths.cacheFile),
+  resolveCacheOptions(configService, paths.cacheFile)
 );
 
 /**
- * Handle error and exit with appropriate exit code
+ * Output format of the command commander is about to run, captured by the
+ * preAction hook. Read only by `handleError`, so a failure is reported in the
+ * shape the invocation asked for.
+ */
+let activeOutputFormat: string | undefined;
+
+/**
+ * Handle error and exit with appropriate exit code.
+ *
+ * With `--format json` in effect the failure is the command's result, so it
+ * goes to stdout as the same typed envelope every `deepl sync` subcommand
+ * emits, and the prose is inside it rather than on stderr.
  */
 function handleError(error: unknown): never {
+  if (activeOutputFormat === 'json') {
+    emitJsonErrorAndExit(error);
+  }
+
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-  const exitCode =
-    error instanceof Error
-      ? getExitCodeFromError(error)
-      : ExitCode.GeneralError;
+  const exitCode = exitCodeForError(error);
 
   Logger.error(chalk.red('Error:'), errorMessage);
 
@@ -103,6 +120,31 @@ function parseIntOption(raw: string, flag: string, min: number): number {
     process.exit(ExitCode.InvalidInput);
   }
   return value;
+}
+
+// Origins already announced this process. A run may build several API clients
+// (translation, usage, glossary) from the same endpoint, and the notice is about
+// the destination, not the client, so it is worth saying exactly once.
+const announcedEndpoints = new Set<string>();
+
+/**
+ * Announce a redirected endpoint before the API key is sent to it.
+ *
+ * Deliberately not gated behind --verbose: the user has no other way to learn
+ * where their key is going, and a `baseUrl` in a substituted config file is
+ * invisible otherwise. Logger.warn still respects --quiet.
+ */
+function announceEndpoint(baseUrl: string, override?: string): void {
+  const source: EndpointSource =
+    override !== undefined && override === baseUrl
+      ? { kind: 'flag' }
+      : { kind: 'config', path: configService.configFilePath };
+  const message = nonStandardEndpointWarning(baseUrl, source);
+  if (!message) return;
+  const key = `${source.kind}:${baseUrl}`;
+  if (announcedEndpoints.has(key)) return;
+  announcedEndpoints.add(key);
+  Logger.warn(message);
 }
 
 /**
@@ -134,13 +176,13 @@ async function createDeepLClient(
   if (baseUrl) {
     const { validateApiUrl } = await import('../utils/validate-url.js');
     validateApiUrl(baseUrl);
+    announceEndpoint(baseUrl, overrideBaseUrl);
   }
 
   const { DeepLClient: Client } = await import('../api/deepl-client.js');
   return new Client(key, { baseUrl, usePro, ...httpOptions });
 }
 
-// Create program
 const program = new Command();
 program.showSuggestionAfterError(true);
 
@@ -171,16 +213,18 @@ program
     '--max-retries <n>',
     'Maximum automatic retries for retryable requests (default: 3)'
   )
-  .hook('preAction', (thisCommand) => {
+  .hook('preAction', (thisCommand, actionCommand) => {
     const options = thisCommand.opts();
 
-    // Handle --config flag - reinitialize config service with custom path
+    // The format lives on the command being run, not on the program, and only
+    // the commands that declare --format have one at all.
+    activeOutputFormat = actionCommand.opts()['format'] as string | undefined;
+
     // SECURITY: Validate path to prevent traversal attacks
     if (options['config']) {
       const customConfigPath = options['config'] as string;
 
-      // Resolve to absolute path (handles both relative and absolute paths)
-      // resolve() automatically normalizes and resolves '..' sequences safely
+      // resolve() normalizes and resolves '..' sequences safely.
       const safePath = isAbsolute(customConfigPath)
         ? resolve(customConfigPath)
         : resolve(process.cwd(), customConfigPath);
@@ -202,7 +246,6 @@ program
       configService = new ConfigService(safePath);
     }
 
-    // Set quiet mode before any command runs
     if (options['quiet']) {
       Logger.setQuiet(true);
     }
@@ -226,7 +269,6 @@ program
       chalk.level = 0;
     }
 
-    // Set non-interactive mode
     if (options['input'] === false) {
       setNoInput(true);
     }
@@ -268,6 +310,7 @@ function getApiKeyAndOptions(): {
   const baseUrl = resolveEndpoint({ apiKey: key, configBaseUrl, usePro });
   if (baseUrl) {
     validateApiUrl(baseUrl);
+    announceEndpoint(baseUrl);
   }
 
   return { apiKey: key, options: { baseUrl, ...httpOptions } };
@@ -380,7 +423,12 @@ program.on('command:*', (operands: string[]) => {
   const candidates = program
     .createHelp()
     .visibleCommands(program)
-    .flatMap((cmd) => [cmd.name(), ...cmd.aliases()].map((name) => ({ name, target: cmd.name() })));
+    .flatMap((cmd) =>
+      [cmd.name(), ...cmd.aliases()].map((name) => ({
+        name,
+        target: cmd.name(),
+      }))
+    );
 
   let bestMatch = '';
   let bestDistance = Infinity;
@@ -410,16 +458,14 @@ program.on('command:*', (operands: string[]) => {
 // call process.exit() and thereby preempt the others.
 installSignalExit();
 
-// Show help and exit 0 if no arguments provided
 if (!process.argv.slice(2).length) {
   program.outputHelp();
   process.exit(0);
 }
 
-// Parse arguments. Commander propagates non-CommanderError throws from option
-// coercers (e.g. --tm-threshold) uncaught, so route DeepLCLIError subclasses
-// through handleError here — otherwise pre-handler validation crashes with a
-// stack trace instead of the documented exit code.
+// Commander propagates non-CommanderError throws from option coercers (e.g.
+// --tm-threshold) uncaught, so pre-handler validation has to be routed through
+// handleError here to reach its documented exit code.
 try {
   await program.parseAsync(process.argv);
 } catch (error) {

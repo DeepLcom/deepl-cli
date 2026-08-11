@@ -4,7 +4,9 @@ import * as os from 'os';
 import { resolvePaths } from '../../src/utils/paths';
 
 jest.mock('fs');
-const mockExistsSync = fs.existsSync as jest.MockedFunction<typeof fs.existsSync>;
+const mockExistsSync = fs.existsSync as jest.MockedFunction<
+  typeof fs.existsSync
+>;
 
 const HOME = os.homedir();
 
@@ -99,9 +101,13 @@ describe('resolvePaths', () => {
     const paths = resolvePaths();
 
     expect(paths.configDir).toBe(path.join(HOME, '.config', 'deepl-cli'));
-    expect(paths.configFile).toBe(path.join(HOME, '.config', 'deepl-cli', 'config.json'));
+    expect(paths.configFile).toBe(
+      path.join(HOME, '.config', 'deepl-cli', 'config.json')
+    );
     expect(paths.cacheDir).toBe(path.join(HOME, '.cache', 'deepl-cli'));
-    expect(paths.cacheFile).toBe(path.join(HOME, '.cache', 'deepl-cli', 'cache.db'));
+    expect(paths.cacheFile).toBe(
+      path.join(HOME, '.cache', 'deepl-cli', 'cache.db')
+    );
   });
 
   it('prefers legacy dir over XDG vars', () => {

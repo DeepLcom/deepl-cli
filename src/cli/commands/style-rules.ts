@@ -21,11 +21,17 @@ import { isColorEnabled } from '../../utils/formatters.js';
 
 /** Total leaf settings across all categories. Used as the "Rules" count column. */
 function countConfiguredRules(rules: ConfiguredRules): number {
-  return Object.values(rules).reduce((sum, group) => sum + Object.keys(group).length, 0);
+  return Object.values(rules).reduce(
+    (sum, group) => sum + Object.keys(group).length,
+    0
+  );
 }
 
 /** Render the configured-rules dictionary as indented text lines, sanitized. */
-function renderConfiguredRulesText(rules: ConfiguredRules, lines: string[]): void {
+function renderConfiguredRulesText(
+  rules: ConfiguredRules,
+  lines: string[]
+): void {
   if (countConfiguredRules(rules) === 0) {
     return;
   }
@@ -33,7 +39,9 @@ function renderConfiguredRulesText(rules: ConfiguredRules, lines: string[]): voi
   for (const [category, settings] of Object.entries(rules)) {
     lines.push(`      ${sanitizeForTerminal(category)}:`);
     for (const [key, value] of Object.entries(settings)) {
-      lines.push(`        ${sanitizeForTerminal(key)}: ${sanitizeForTerminal(value)}`);
+      lines.push(
+        `        ${sanitizeForTerminal(key)}: ${sanitizeForTerminal(value)}`
+      );
     }
   }
 }
@@ -53,7 +61,9 @@ export class StyleRulesCommand {
    * List available style rules, optionally filtered by language.
    * Returns detailed rules (with configuredRules/customInstructions) when requested.
    */
-  async list(options: StyleRulesListOptions = {}): Promise<(StyleRule | StyleRuleDetailed)[]> {
+  async list(
+    options: StyleRulesListOptions = {}
+  ): Promise<(StyleRule | StyleRuleDetailed)[]> {
     return this.service.getStyleRules(options);
   }
 
@@ -80,8 +90,12 @@ export class StyleRulesCommand {
         if (detailed.customInstructions.length > 0) {
           lines.push(`    Custom Instructions:`);
           for (const instruction of detailed.customInstructions) {
-            const langSuffix = instruction.sourceLanguage ? ` [${instruction.sourceLanguage}]` : '';
-            lines.push(`      - ${sanitizeForTerminal(instruction.label)}: ${sanitizeForTerminal(instruction.prompt)}${langSuffix}`);
+            const langSuffix = instruction.sourceLanguage
+              ? ` [${instruction.sourceLanguage}]`
+              : '';
+            lines.push(
+              `      - ${sanitizeForTerminal(instruction.label)}: ${sanitizeForTerminal(instruction.prompt)}${langSuffix}`
+            );
           }
         }
       }
@@ -103,11 +117,21 @@ export class StyleRulesCommand {
       return 'No style rules found.';
     }
 
-    const detailed = rules.some(r => 'configuredRules' in r);
+    const detailed = rules.some((r) => 'configuredRules' in r);
     const head = detailed
-      ? ['Name', 'ID', 'Language', 'Version', 'Updated', 'Rules', 'Instructions']
+      ? [
+          'Name',
+          'ID',
+          'Language',
+          'Version',
+          'Updated',
+          'Rules',
+          'Instructions',
+        ]
       : ['Name', 'ID', 'Language', 'Version', 'Updated'];
-    const colWidths = detailed ? [24, 18, 10, 9, 22, 7, 14] : [30, 20, 10, 9, 22];
+    const colWidths = detailed
+      ? [24, 18, 10, 9, 22, 7, 14]
+      : [30, 20, 10, 9, 22];
     const colorDisabled = !isColorEnabled();
 
     const table = new Table({
@@ -169,11 +193,17 @@ export class StyleRulesCommand {
     return this.service.createStyleRule(options);
   }
 
-  async show(styleId: string, detailed = false): Promise<StyleRule | StyleRuleDetailed> {
+  async show(
+    styleId: string,
+    detailed = false
+  ): Promise<StyleRule | StyleRuleDetailed> {
     return this.service.getStyleRule(styleId, detailed);
   }
 
-  async update(styleId: string, options: UpdateStyleRuleOptions): Promise<StyleRule> {
+  async update(
+    styleId: string,
+    options: UpdateStyleRuleOptions
+  ): Promise<StyleRule> {
     return this.service.updateStyleRule(styleId, options);
   }
 
@@ -181,7 +211,10 @@ export class StyleRulesCommand {
     return this.service.deleteStyleRule(styleId);
   }
 
-  async replaceRules(styleId: string, rules: ConfiguredRules): Promise<StyleRuleDetailed> {
+  async replaceRules(
+    styleId: string,
+    rules: ConfiguredRules
+  ): Promise<StyleRuleDetailed> {
     return this.service.replaceConfiguredRules(styleId, rules);
   }
 
@@ -200,8 +233,12 @@ export class StyleRulesCommand {
       if (rule.customInstructions.length > 0) {
         lines.push(`    Custom Instructions:`);
         for (const instruction of rule.customInstructions) {
-          const langSuffix = instruction.sourceLanguage ? ` [${instruction.sourceLanguage}]` : '';
-          lines.push(`      - ${sanitizeForTerminal(instruction.label)}: ${sanitizeForTerminal(instruction.prompt)}${langSuffix}`);
+          const langSuffix = instruction.sourceLanguage
+            ? ` [${instruction.sourceLanguage}]`
+            : '';
+          lines.push(
+            `      - ${sanitizeForTerminal(instruction.label)}: ${sanitizeForTerminal(instruction.prompt)}${langSuffix}`
+          );
         }
       }
     }
@@ -221,7 +258,7 @@ export class StyleRulesCommand {
 
   async addInstruction(
     styleId: string,
-    options: CreateCustomInstructionOptions,
+    options: CreateCustomInstructionOptions
   ): Promise<CustomInstruction> {
     return this.service.createCustomInstruction(styleId, options);
   }
@@ -229,7 +266,7 @@ export class StyleRulesCommand {
   async updateInstruction(
     styleId: string,
     label: string,
-    options: UpdateCustomInstructionOptions,
+    options: UpdateCustomInstructionOptions
   ): Promise<CustomInstruction> {
     return this.service.updateCustomInstruction(styleId, label, options);
   }
@@ -240,7 +277,9 @@ export class StyleRulesCommand {
 
   /** Format a single custom instruction for human-readable terminal output. */
   formatCustomInstruction(instruction: CustomInstruction): string {
-    const langSuffix = instruction.sourceLanguage ? ` [${instruction.sourceLanguage}]` : '';
+    const langSuffix = instruction.sourceLanguage
+      ? ` [${instruction.sourceLanguage}]`
+      : '';
     return `  ${sanitizeForTerminal(instruction.label)}${langSuffix}\n    ${sanitizeForTerminal(instruction.prompt)}`;
   }
 
@@ -249,7 +288,10 @@ export class StyleRulesCommand {
     if (instructions.length === 0) {
       return 'No custom instructions found.';
     }
-    const lines: string[] = [`Found ${instructions.length} custom instruction(s):`, ''];
+    const lines: string[] = [
+      `Found ${instructions.length} custom instruction(s):`,
+      '',
+    ];
     for (const instruction of instructions) {
       lines.push(this.formatCustomInstruction(instruction));
       lines.push('');
@@ -258,7 +300,9 @@ export class StyleRulesCommand {
   }
 
   /** Serialize a custom instruction or list as pretty-printed JSON. */
-  formatCustomInstructionJson(data: CustomInstruction | CustomInstruction[]): string {
+  formatCustomInstructionJson(
+    data: CustomInstruction | CustomInstruction[]
+  ): string {
     return JSON.stringify(data, null, 2);
   }
 }

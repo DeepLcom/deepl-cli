@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 10: Custom Instructions
+# Custom Instructions
 # Use custom instructions to guide DeepL translations with specific rules
 
 set -e
 
-echo "=== DeepL CLI Example 10: Custom Instructions ==="
+echo "=== DeepL CLI: Custom Instructions ==="
 echo
 
 # Check if API key is configured

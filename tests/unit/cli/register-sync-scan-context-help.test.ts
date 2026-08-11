@@ -30,8 +30,9 @@ function getSyncCommand(): Command {
 }
 
 function findOption(cmd: Command, flag: string) {
-  const opts = (cmd as unknown as { options: Array<{ flags: string; description: string }> })
-    .options;
+  const opts = (
+    cmd as unknown as { options: Array<{ flags: string; description: string }> }
+  ).options;
   return opts.find((o) => o.flags === flag);
 }
 

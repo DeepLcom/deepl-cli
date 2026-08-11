@@ -6,7 +6,11 @@
 
 import nock from 'nock';
 import { DeepLClient } from '../../src/api/deepl-client.js';
-import { DEEPL_FREE_API_URL, DEEPL_PRO_API_URL, TEST_API_KEY } from '../helpers';
+import {
+  DEEPL_FREE_API_URL,
+  DEEPL_PRO_API_URL,
+  TEST_API_KEY,
+} from '../helpers';
 
 describe('DeepLClient Integration', () => {
   const API_KEY = TEST_API_KEY;
@@ -16,11 +20,10 @@ describe('DeepLClient Integration', () => {
 
   afterEach(() => {
     nock.abortPendingRequests();
-    clients.forEach(c => c.destroy());
+    clients.forEach((c) => c.destroy());
     clients.length = 0;
     nock.cleanAll();
   });
-
 
   describe('constructor', () => {
     it('should create client with API key', () => {
@@ -142,7 +145,10 @@ describe('DeepLClient Integration', () => {
           translations: [{ text: 'Hola' }],
         });
 
-      await client.translate('Hello', { targetLang: 'es', context: 'This is a greeting' });
+      await client.translate('Hello', {
+        targetLang: 'es',
+        context: 'This is a greeting',
+      });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -159,7 +165,10 @@ describe('DeepLClient Integration', () => {
           translations: [{ text: 'Hola' }],
         });
 
-      await client.translate('Hello', { targetLang: 'es', splitSentences: 'nonewlines' });
+      await client.translate('Hello', {
+        targetLang: 'es',
+        splitSentences: 'nonewlines',
+      });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -176,7 +185,10 @@ describe('DeepLClient Integration', () => {
           translations: [{ text: '<p>Hola</p>' }],
         });
 
-      await client.translate('<p>Hello</p>', { targetLang: 'es', tagHandling: 'xml' });
+      await client.translate('<p>Hello</p>', {
+        targetLang: 'es',
+        tagHandling: 'xml',
+      });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -193,7 +205,10 @@ describe('DeepLClient Integration', () => {
           translations: [{ text: 'Hola' }],
         });
 
-      await client.translate('Hello', { targetLang: 'es', modelType: 'quality_optimized' });
+      await client.translate('Hello', {
+        targetLang: 'es',
+        modelType: 'quality_optimized',
+      });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -204,11 +219,13 @@ describe('DeepLClient Integration', () => {
       nock(FREE_API_URL)
         .post('/v2/translate')
         .reply(200, {
-          translations: [{
-            text: 'Hola',
-            detected_source_language: 'EN',
-            model_type_used: 'quality_optimized',
-          }],
+          translations: [
+            {
+              text: 'Hola',
+              detected_source_language: 'EN',
+              model_type_used: 'quality_optimized',
+            },
+          ],
         });
 
       const result = await client.translate('Hello', { targetLang: 'es' });
@@ -235,7 +252,7 @@ describe('DeepLClient Integration', () => {
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
-          'authorization': `DeepL-Auth-Key ${API_KEY}`,
+          authorization: `DeepL-Auth-Key ${API_KEY}`,
         },
       })
         .post('/v2/translate')
@@ -273,9 +290,9 @@ describe('DeepLClient Integration', () => {
         .post('/v2/translate')
         .reply(403, { message: 'Authorization failed' });
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
-        'Authentication failed: Invalid API key'
-      );
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow('Authentication failed: Invalid API key');
     });
 
     it('should handle 456 quota exceeded errors', async () => {
@@ -286,9 +303,9 @@ describe('DeepLClient Integration', () => {
         .post('/v2/translate')
         .reply(456, { message: 'Quota exceeded' });
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
-        'Quota exceeded: Character limit reached'
-      );
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow('Quota exceeded: Character limit reached');
     });
 
     it('should handle 429 rate limit errors', async () => {
@@ -300,9 +317,9 @@ describe('DeepLClient Integration', () => {
         .times(4)
         .reply(429, { message: 'Too many requests' });
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
-        'Rate limit exceeded: Too many requests'
-      );
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow('Rate limit exceeded: Too many requests');
     });
 
     it('should handle 503 service unavailable errors', async () => {
@@ -310,9 +327,13 @@ describe('DeepLClient Integration', () => {
       clients.push(client);
 
       // A translate POST is not replayed, so one attempt is all the server sees.
-      nock(FREE_API_URL).post('/v2/translate').reply(503, { message: 'Service temporarily unavailable' });
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(503, { message: 'Service temporarily unavailable' });
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow(
         'Service temporarily unavailable: Please try again later'
       );
     });
@@ -321,22 +342,27 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY, { timeout: 100, maxRetries: 0 });
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .post('/v2/translate')
-        .replyWithError({ code: 'ECONNABORTED', message: 'timeout of 100ms exceeded' });
+      nock(FREE_API_URL).post('/v2/translate').replyWithError({
+        code: 'ECONNABORTED',
+        message: 'timeout of 100ms exceeded',
+      });
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow();
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow();
     });
 
     it('should handle malformed API responses', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL).post('/v2/translate').reply(200, { invalid: 'response' });
+      nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(200, { invalid: 'response' });
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
-        'No translation returned'
-      );
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow('No translation returned');
     });
 
     it('should retry an idempotent request on 500 errors', async () => {
@@ -375,11 +401,13 @@ describe('DeepLClient Integration', () => {
       clients.push(client);
 
       // Only one request should be made for 4xx errors
-      const scope = nock(FREE_API_URL).post('/v2/translate').reply(403, 'Forbidden');
+      const scope = nock(FREE_API_URL)
+        .post('/v2/translate')
+        .reply(403, 'Forbidden');
 
-      await expect(client.translate('Hello', { targetLang: 'es' })).rejects.toThrow(
-        'Authentication failed'
-      );
+      await expect(
+        client.translate('Hello', { targetLang: 'es' })
+      ).rejects.toThrow('Authentication failed');
 
       expect(scope.isDone()).toBe(true);
       // No additional retries should have been attempted
@@ -392,12 +420,10 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      const scope = nock(FREE_API_URL)
-        .get('/v2/usage')
-        .reply(200, {
-          character_count: 200000,
-          character_limit: 500000,
-        });
+      const scope = nock(FREE_API_URL).get('/v2/usage').reply(200, {
+        character_count: 200000,
+        character_limit: 500000,
+      });
 
       const result = await client.getUsage();
 
@@ -410,12 +436,10 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .get('/v2/usage')
-        .reply(200, {
-          character_count: 12345,
-          character_limit: 50000,
-        });
+      nock(FREE_API_URL).get('/v2/usage').reply(200, {
+        character_count: 12345,
+        character_limit: 50000,
+      });
 
       const result = await client.getUsage();
 
@@ -427,7 +451,9 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL).get('/v2/usage').reply(403, { message: 'Invalid API key' });
+      nock(FREE_API_URL)
+        .get('/v2/usage')
+        .reply(403, { message: 'Invalid API key' });
 
       await expect(client.getUsage()).rejects.toThrow('Authentication failed');
     });
@@ -446,8 +472,16 @@ describe('DeepLClient Integration', () => {
           start_time: '2025-04-24T14:58:02Z',
           end_time: '2025-05-24T14:58:02Z',
           products: [
-            { product_type: 'translate', character_count: 900000, api_key_character_count: 880000 },
-            { product_type: 'write', character_count: 1250000, api_key_character_count: 1000000 },
+            {
+              product_type: 'translate',
+              character_count: 900000,
+              api_key_character_count: 880000,
+            },
+            {
+              product_type: 'write',
+              character_count: 1250000,
+              api_key_character_count: 1000000,
+            },
           ],
         });
 
@@ -460,8 +494,16 @@ describe('DeepLClient Integration', () => {
       expect(result.startTime).toBe('2025-04-24T14:58:02Z');
       expect(result.endTime).toBe('2025-05-24T14:58:02Z');
       expect(result.products).toEqual([
-        { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
-        { productType: 'write', characterCount: 1250000, apiKeyCharacterCount: 1000000 },
+        {
+          productType: 'translate',
+          characterCount: 900000,
+          apiKeyCharacterCount: 880000,
+        },
+        {
+          productType: 'write',
+          characterCount: 1250000,
+          apiKeyCharacterCount: 1000000,
+        },
       ]);
     });
 
@@ -469,12 +511,10 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .get('/v2/usage')
-        .reply(200, {
-          character_count: 12345,
-          character_limit: 50000,
-        });
+      nock(FREE_API_URL).get('/v2/usage').reply(200, {
+        character_count: 12345,
+        character_limit: 50000,
+      });
 
       const result = await client.getUsage();
 
@@ -487,16 +527,32 @@ describe('DeepLClient Integration', () => {
   });
 
   describe('getSupportedLanguages()', () => {
-    it('should make correct HTTP GET request for source languages', async () => {
+    it('should make correct HTTP GET request and filter source languages', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
       const scope = nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'source' })
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
         .reply(200, [
-          { language: 'EN', name: 'English' },
-          { language: 'DE', name: 'German' },
+          {
+            lang: 'en',
+            name: 'English',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'en-gb',
+            name: 'English (British)',
+            usable_as_source: false,
+            usable_as_target: true,
+          },
         ]);
 
       const result = await client.getSupportedLanguages('source');
@@ -508,23 +564,45 @@ describe('DeepLClient Integration', () => {
       expect(scope.isDone()).toBe(true);
     });
 
-    it('should make correct HTTP GET request for target languages', async () => {
+    it('should filter target languages from the same response shape', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
       const scope = nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'target' })
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
         .reply(200, [
-          { language: 'ES', name: 'Spanish' },
-          { language: 'FR', name: 'French' },
+          {
+            lang: 'es',
+            name: 'Spanish',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' } },
+          },
+          {
+            lang: 'fr',
+            name: 'French',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' } },
+          },
         ]);
 
       const result = await client.getSupportedLanguages('target');
 
       expect(result).toEqual([
-        { language: 'es', name: 'Spanish' },
-        { language: 'fr', name: 'French' },
+        {
+          language: 'es',
+          name: 'Spanish',
+          supportsFormality: true,
+          features: { formality: { status: 'stable' } },
+        },
+        {
+          language: 'fr',
+          name: 'French',
+          supportsFormality: true,
+          features: { formality: { status: 'stable' } },
+        },
       ]);
       expect(scope.isDone()).toBe(true);
     });
@@ -534,25 +612,42 @@ describe('DeepLClient Integration', () => {
       clients.push(client);
 
       nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'source' })
-        .reply(200, [{ language: 'EN-US', name: 'English (American)' }]);
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
+        .reply(200, [
+          { lang: 'EN-US', name: 'English (American)', usable_as_source: true },
+        ]);
 
       const result = await client.getSupportedLanguages('source');
 
       expect(result[0]?.language).toBe('en-us');
     });
 
-    it('should parse supports_formality for target languages', async () => {
+    it('should source formality support from the features matrix for targets', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
       nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'target' })
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
         .reply(200, [
-          { language: 'DE', name: 'German', supports_formality: true },
-          { language: 'EN-US', name: 'English (American)', supports_formality: false },
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: {
+              formality: { status: 'stable' },
+              glossary: { status: 'stable' },
+            },
+          },
+          {
+            lang: 'en-us',
+            name: 'English (American)',
+            usable_as_source: false,
+            usable_as_target: true,
+            features: { glossary: { status: 'stable' } },
+          },
         ]);
 
       const result = await client.getSupportedLanguages('target');
@@ -561,14 +656,14 @@ describe('DeepLClient Integration', () => {
       expect(result[1]?.supportsFormality).toBe(false);
     });
 
-    it('should omit supportsFormality when not in response', async () => {
+    it('should omit supportsFormality for source languages', async () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
       nock(FREE_API_URL)
-        .get('/v2/languages')
-        .query({ type: 'source' })
-        .reply(200, [{ language: 'EN', name: 'English' }]);
+        .get('/v3/languages')
+        .query({ resource: 'translate_text' })
+        .reply(200, [{ lang: 'en', name: 'English', usable_as_source: true }]);
 
       const result = await client.getSupportedLanguages('source');
 
@@ -584,14 +679,16 @@ describe('DeepLClient Integration', () => {
       const scope = nock(FREE_API_URL)
         .post('/v2/write/rephrase', (body) => {
           expect(body.text).toBe('Hello world');
-          expect(body.target_lang).toBe('en-US');
+          expect(body.target_lang).toBe('en-us');
           return true;
         })
         .reply(200, {
           improvements: [{ text: 'Hello, world!', target_language: 'en-US' }],
         });
 
-      const result = await client.improveText('Hello world', { targetLang: 'en-US' });
+      const result = await client.improveText('Hello world', {
+        targetLang: 'en-us',
+      });
 
       expect(result[0]?.text).toBe('Hello, world!');
       expect(result[0]?.targetLanguage).toBe('en-US');
@@ -611,7 +708,10 @@ describe('DeepLClient Integration', () => {
           improvements: [{ text: 'Improved text', target_language: 'en-US' }],
         });
 
-      await client.improveText('Test', { targetLang: 'en-US', writingStyle: 'business' });
+      await client.improveText('Test', {
+        targetLang: 'en-us',
+        writingStyle: 'business',
+      });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -628,10 +728,12 @@ describe('DeepLClient Integration', () => {
           improvements: [{ text: 'Improved text', target_language: 'en-US' }],
         });
 
-      await client.improveText('Test', { targetLang: 'en-US', tone: 'friendly' });
+      await client.improveText('Test', {
+        targetLang: 'en-us',
+        tone: 'friendly',
+      });
       expect(scope.isDone()).toBe(true);
     });
-
   });
 
   describe('custom API URLs', () => {
@@ -640,12 +742,10 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY, { baseUrl: customUrl });
       clients.push(client);
 
-      const scope = nock(customUrl)
-        .get('/v2/usage')
-        .reply(200, {
-          character_count: 100,
-          character_limit: 500,
-        });
+      const scope = nock(customUrl).get('/v2/usage').reply(200, {
+        character_count: 100,
+        character_limit: 500,
+      });
 
       await client.getUsage();
       expect(scope.isDone()).toBe(true);
@@ -655,12 +755,10 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY, { usePro: true });
       clients.push(client);
 
-      const scope = nock(PRO_API_URL)
-        .get('/v2/usage')
-        .reply(200, {
-          character_count: 100,
-          character_limit: 500,
-        });
+      const scope = nock(PRO_API_URL).get('/v2/usage').reply(200, {
+        character_count: 100,
+        character_limit: 500,
+      });
 
       await client.getUsage();
       expect(scope.isDone()).toBe(true);
@@ -676,7 +774,9 @@ describe('DeepLClient Integration', () => {
       const scope = nock(FREE_API_URL)
         .post('/v2/document', (body) => {
           // Verify multipart/form-data contains file and target_lang
-          return body.includes('test pdf content') && body.includes('target_lang');
+          return (
+            body.includes('test pdf content') && body.includes('target_lang')
+          );
         })
         .reply(200, {
           document_id: 'doc-123',
@@ -814,7 +914,7 @@ describe('DeepLClient Integration', () => {
 
       const scope = nock(FREE_API_URL, {
         reqheaders: {
-          'authorization': `DeepL-Auth-Key ${API_KEY}`,
+          authorization: `DeepL-Auth-Key ${API_KEY}`,
         },
       })
         .post('/v2/document')
@@ -861,7 +961,9 @@ describe('DeepLClient Integration', () => {
       clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
-      nock(FREE_API_URL).post('/v2/document').reply(403, { message: 'Invalid API key' });
+      nock(FREE_API_URL)
+        .post('/v2/document')
+        .reply(403, { message: 'Invalid API key' });
 
       await expect(
         client.uploadDocument(fileBuffer, {
@@ -876,7 +978,9 @@ describe('DeepLClient Integration', () => {
       clients.push(client);
       const fileBuffer = Buffer.from('test content');
 
-      nock(FREE_API_URL).post('/v2/document').reply(413, { message: 'File too large' });
+      nock(FREE_API_URL)
+        .post('/v2/document')
+        .reply(413, { message: 'File too large' });
 
       await expect(
         client.uploadDocument(fileBuffer, {
@@ -919,12 +1023,10 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .post('/v2/document/doc-123')
-        .reply(200, {
-          document_id: 'doc-123',
-          status: 'queued',
-        });
+      nock(FREE_API_URL).post('/v2/document/doc-123').reply(200, {
+        document_id: 'doc-123',
+        status: 'queued',
+      });
 
       const result = await client.getDocumentStatus({
         documentId: 'doc-123',
@@ -940,13 +1042,11 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .post('/v2/document/doc-123')
-        .reply(200, {
-          document_id: 'doc-123',
-          status: 'translating',
-          seconds_remaining: 10,
-        });
+      nock(FREE_API_URL).post('/v2/document/doc-123').reply(200, {
+        document_id: 'doc-123',
+        status: 'translating',
+        seconds_remaining: 10,
+      });
 
       const result = await client.getDocumentStatus({
         documentId: 'doc-123',
@@ -961,13 +1061,11 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .post('/v2/document/doc-123')
-        .reply(200, {
-          document_id: 'doc-123',
-          status: 'done',
-          billed_characters: 1234,
-        });
+      nock(FREE_API_URL).post('/v2/document/doc-123').reply(200, {
+        document_id: 'doc-123',
+        status: 'done',
+        billed_characters: 1234,
+      });
 
       const result = await client.getDocumentStatus({
         documentId: 'doc-123',
@@ -982,13 +1080,11 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .post('/v2/document/doc-123')
-        .reply(200, {
-          document_id: 'doc-123',
-          status: 'error',
-          error_message: 'Unsupported file format',
-        });
+      nock(FREE_API_URL).post('/v2/document/doc-123').reply(200, {
+        document_id: 'doc-123',
+        status: 'error',
+        error_message: 'Unsupported file format',
+      });
 
       const result = await client.getDocumentStatus({
         documentId: 'doc-123',
@@ -1144,9 +1240,13 @@ describe('DeepLClient Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/translate')
-        .reply(200, { translations: [{ text: 'Hola' }] }, {
-          'x-trace-id': 'abc-123-trace',
-        });
+        .reply(
+          200,
+          { translations: [{ text: 'Hola' }] },
+          {
+            'x-trace-id': 'abc-123-trace',
+          }
+        );
 
       await client.translate('Hello', { targetLang: 'es' });
       expect(client.lastTraceId).toBe('abc-123-trace');
@@ -1157,11 +1257,13 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .get('/v2/usage')
-        .reply(403, { message: 'Invalid API key' }, {
+      nock(FREE_API_URL).get('/v2/usage').reply(
+        403,
+        { message: 'Invalid API key' },
+        {
           'x-trace-id': 'err-456-trace',
-        });
+        }
+      );
 
       try {
         await client.getUsage();
@@ -1175,13 +1277,17 @@ describe('DeepLClient Integration', () => {
       const client = new DeepLClient(API_KEY);
       clients.push(client);
 
-      nock(FREE_API_URL)
-        .get('/v2/usage')
-        .reply(403, { message: 'Invalid API key' }, {
+      nock(FREE_API_URL).get('/v2/usage').reply(
+        403,
+        { message: 'Invalid API key' },
+        {
           'x-trace-id': 'trace-for-support',
-        });
+        }
+      );
 
-      await expect(client.getUsage()).rejects.toThrow('Trace ID: trace-for-support');
+      await expect(client.getUsage()).rejects.toThrow(
+        'Trace ID: trace-for-support'
+      );
     });
 
     it('should return undefined when no trace ID present', () => {
@@ -1196,18 +1302,26 @@ describe('DeepLClient Integration', () => {
 
       nock(FREE_API_URL)
         .post('/v2/translate')
-        .reply(200, { translations: [{ text: 'Hola' }] }, {
-          'x-trace-id': 'first-trace',
-        });
+        .reply(
+          200,
+          { translations: [{ text: 'Hola' }] },
+          {
+            'x-trace-id': 'first-trace',
+          }
+        );
 
       await client.translate('Hello', { targetLang: 'es' });
       expect(client.lastTraceId).toBe('first-trace');
 
       nock(FREE_API_URL)
         .post('/v2/translate')
-        .reply(200, { translations: [{ text: 'Bonjour' }] }, {
-          'x-trace-id': 'second-trace',
-        });
+        .reply(
+          200,
+          { translations: [{ text: 'Bonjour' }] },
+          {
+            'x-trace-id': 'second-trace',
+          }
+        );
 
       await client.translate('Hello', { targetLang: 'fr' });
       expect(client.lastTraceId).toBe('second-trace');

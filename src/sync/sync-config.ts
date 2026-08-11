@@ -4,7 +4,15 @@ import * as YAML from 'yaml';
 import { ConfigError } from '../utils/errors.js';
 import { safeReadFileSync } from '../utils/safe-read-file.js';
 import { sanitizeForTerminal } from '../utils/control-chars.js';
-import type { SyncConfig, SyncBucketConfig, SyncTranslationSettings, SyncValidationSettings, SyncBehavior, SyncTmsConfig } from './types.js';
+import { assertBoundedGlobExpansion } from '../utils/glob-safety.js';
+import type {
+  SyncConfig,
+  SyncBucketConfig,
+  SyncTranslationSettings,
+  SyncValidationSettings,
+  SyncBehavior,
+  SyncTmsConfig,
+} from './types.js';
 import { HARD_MAX_SYNC_LIMITS } from './types.js';
 import type { Formality } from '../types/common.js';
 
@@ -18,9 +26,15 @@ export const SYNC_CONFIG_FILENAME = '.deepl-sync.yaml';
 // rejected rather than merely denylisted.
 export const LOCALE_CODE_RE = /^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{2,8})*$/;
 
-// Directories a target_path_pattern must never resolve into: writing there
-// lets a translated-locale name become VCS metadata or CI workflow code.
-const FORBIDDEN_TARGET_SEGMENTS: ReadonlySet<string> = new Set(['.git', '.github']);
+// Directories no sync path may resolve into: writing there lets a
+// translated-locale name become VCS metadata or CI workflow code. Enforced
+// both here against a literal target_path_pattern and, for every path the
+// pipeline actually reads or writes, in assertPathWithinRoot — the default
+// locale-substitution path has no pattern to inspect.
+export const FORBIDDEN_TARGET_SEGMENTS: ReadonlySet<string> = new Set([
+  '.git',
+  '.github',
+]);
 
 export interface SyncConfigOverrides {
   frozen?: boolean;
@@ -154,12 +168,24 @@ const KNOWN_TMS_KEYS: readonly string[] = [
   'project_id',
   'api_key',
   'token',
-  'auto_push',
-  'auto_pull',
-  'require_review',
   'timeout_ms',
   'push_concurrency',
 ];
+
+/**
+ * `tms:` fields the schema once accepted, and documented, without any code
+ * reading them. They are rejected by name rather than as unknown fields,
+ * because "unknown" reads as a typo and sends the reader looking for the
+ * correct spelling of something that never existed.
+ */
+const RETIRED_TMS_KEYS: Readonly<Record<string, string>> = {
+  auto_push:
+    'Run "deepl sync push" after "deepl sync" instead, which also keeps the credential and destination decision on an explicit command.',
+  auto_pull:
+    'Run "deepl sync pull" before "deepl sync" instead, which also keeps the credential and destination decision on an explicit command.',
+  require_review:
+    'The TMS export contract carries no per-entry review flag, so this gate cannot be enforced. Preview a pull with "deepl sync pull --dry-run" and review the result before committing it.',
+};
 
 function levenshtein(a: string, b: string): number {
   if (a === b) return 0;
@@ -175,7 +201,7 @@ function levenshtein(a: string, b: string): number {
       curr[j] = Math.min(
         (curr[j - 1] ?? 0) + 1,
         (prev[j] ?? 0) + 1,
-        (prev[j - 1] ?? 0) + cost,
+        (prev[j - 1] ?? 0) + cost
       );
     }
     for (let j = 0; j <= b.length; j += 1) prev[j] = curr[j] ?? 0;
@@ -203,7 +229,7 @@ function findClosestKey(key: string, known: readonly string[]): string | null {
 function assertOnlyKnownKeys(
   obj: Record<string, unknown>,
   knownKeys: readonly string[],
-  context: string,
+  context: string
 ): void {
   for (const key of Object.keys(obj)) {
     if (knownKeys.includes(key)) continue;
@@ -212,19 +238,20 @@ function assertOnlyKnownKeys(
     const hint = suggestion
       ? `Did you mean "${suggestion}"? Remove or rename "${safeKey}" in ${context}.`
       : `Remove "${safeKey}" from ${context}, or check .deepl-sync.yaml schema documentation.`;
-    throw new ConfigError(
-      `Unknown field "${safeKey}" in ${context}`,
-      hint,
-    );
+    throw new ConfigError(`Unknown field "${safeKey}" in ${context}`, hint);
   }
 }
 
 function validateTmThreshold(value: unknown, keyPath: string): void {
   if (value === undefined) return;
-  if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 100) {
+  if (
+    !Number.isInteger(value) ||
+    (value as number) < 0 ||
+    (value as number) > 100
+  ) {
     throw new ConfigError(
       `${keyPath} must be an integer between 0 and 100, got: ${String(value)}`,
-      `Set ${keyPath} to an integer between 0 and 100 in .deepl-sync.yaml.`,
+      `Set ${keyPath} to an integer between 0 and 100 in .deepl-sync.yaml.`
     );
   }
 }
@@ -233,23 +260,34 @@ function validateTmModelType(
   translation: Record<string, unknown>,
   keyPath: string,
   tmInherited: boolean,
+  inheritedModelType?: unknown
 ): void {
   const hasTm = tmInherited || translation['translation_memory'] !== undefined;
   if (!hasTm) return;
-  const mt = translation['model_type'];
+  // Mirrors how the translator resolves the value: a locale override wins, and
+  // otherwise the top-level setting applies to this locale too.
+  const own = translation['model_type'];
+  const mt = own ?? inheritedModelType;
   if (mt !== undefined && mt !== 'quality_optimized') {
+    const source =
+      own !== undefined ? `${keyPath}.model_type` : 'translation.model_type';
     throw new ConfigError(
-      `${keyPath}.model_type must be 'quality_optimized' when translation_memory is set, got: ${String(mt)}`,
-      `Set ${keyPath}.model_type: quality_optimized or remove translation_memory.`,
+      `${source} must be 'quality_optimized' when translation_memory is set, got: ${String(mt)}`,
+      `Set ${keyPath}.model_type: quality_optimized or remove translation_memory.`
     );
   }
 }
 
 export function validateSyncConfig(raw: unknown): SyncConfig {
-  if (raw === null || raw === undefined || typeof raw !== 'object' || Array.isArray(raw)) {
+  if (
+    raw === null ||
+    raw === undefined ||
+    typeof raw !== 'object' ||
+    Array.isArray(raw)
+  ) {
     throw new ConfigError(
       'Sync config must be a YAML object',
-      'Ensure .deepl-sync.yaml contains a top-level mapping (key: value pairs).',
+      'Ensure .deepl-sync.yaml contains a top-level mapping (key: value pairs).'
     );
   }
 
@@ -260,46 +298,53 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
   if (obj['version'] === undefined) {
     throw new ConfigError(
       'Sync config missing required field: version',
-      'Add version: 1 at the top of .deepl-sync.yaml.',
+      'Add version: 1 at the top of .deepl-sync.yaml.'
     );
   }
   if (obj['version'] !== 1) {
     throw new ConfigError(
       `Unsupported sync config version: ${String(obj['version'])} (expected 1)`,
-      'Set version: 1 in .deepl-sync.yaml.',
+      'Set version: 1 in .deepl-sync.yaml.'
     );
   }
 
-  if (obj['source_locale'] === undefined || typeof obj['source_locale'] !== 'string' || obj['source_locale'].trim() === '') {
+  if (
+    obj['source_locale'] === undefined ||
+    typeof obj['source_locale'] !== 'string' ||
+    obj['source_locale'].trim() === ''
+  ) {
     throw new ConfigError(
       'Sync config missing required field: source_locale',
-      'Add source_locale: <code> to .deepl-sync.yaml (e.g., source_locale: en).',
+      'Add source_locale: <code> to .deepl-sync.yaml (e.g., source_locale: en).'
     );
   }
   if (!LOCALE_CODE_RE.test(obj['source_locale'])) {
     throw new ConfigError(
       `Invalid source locale "${sanitizeForTerminal(obj['source_locale'])}": must be a BCP-47 style code (letters, digits, hyphens; no path separators or "..")`,
-      'Set source_locale in .deepl-sync.yaml to a plain code like "en" or "en-US".',
+      'Set source_locale in .deepl-sync.yaml to a plain code like "en" or "en-US".'
     );
   }
 
-  if (!Array.isArray(obj['target_locales']) || obj['target_locales'].length === 0) {
+  if (
+    !Array.isArray(obj['target_locales']) ||
+    obj['target_locales'].length === 0
+  ) {
     throw new ConfigError(
       'Sync config target_locales must be a non-empty array of strings',
-      'Add target_locales: [<code>, ...] to .deepl-sync.yaml (e.g., [de, fr]).',
+      'Add target_locales: [<code>, ...] to .deepl-sync.yaml (e.g., [de, fr]).'
     );
   }
   for (const locale of obj['target_locales']) {
     if (typeof locale !== 'string') {
       throw new ConfigError(
         'Sync config target_locales must be a non-empty array of strings',
-        'Ensure every entry in target_locales is a quoted string locale code.',
+        'Ensure every entry in target_locales is a quoted string locale code.'
       );
     }
     if (!LOCALE_CODE_RE.test(locale)) {
       throw new ConfigError(
         `Invalid target locale "${sanitizeForTerminal(locale)}": must be a BCP-47 style code (letters, digits, hyphens; no path separators or "..")`,
-        'Set entries in target_locales to plain codes like "de" or "fr-CA".',
+        'Set entries in target_locales to plain codes like "de" or "fr-CA".'
       );
     }
   }
@@ -307,14 +352,19 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
   if ((obj['target_locales'] as string[]).includes(obj['source_locale'])) {
     throw new ConfigError(
       'target_locales must not contain source_locale',
-      'Remove the source_locale value from target_locales in .deepl-sync.yaml.',
+      'Remove the source_locale value from target_locales in .deepl-sync.yaml.'
     );
   }
 
-  if (obj['buckets'] === undefined || typeof obj['buckets'] !== 'object' || obj['buckets'] === null || Array.isArray(obj['buckets'])) {
+  if (
+    obj['buckets'] === undefined ||
+    typeof obj['buckets'] !== 'object' ||
+    obj['buckets'] === null ||
+    Array.isArray(obj['buckets'])
+  ) {
     throw new ConfigError(
       'Sync config buckets must be a non-empty object',
-      'Add a buckets: mapping to .deepl-sync.yaml with at least one named bucket.',
+      'Add a buckets: mapping to .deepl-sync.yaml with at least one named bucket.'
     );
   }
 
@@ -322,16 +372,21 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
   if (Object.keys(buckets).length === 0) {
     throw new ConfigError(
       'Sync config buckets must be a non-empty object',
-      'Define at least one bucket under buckets: in .deepl-sync.yaml.',
+      'Define at least one bucket under buckets: in .deepl-sync.yaml.'
     );
   }
 
   for (const [name, bucket] of Object.entries(buckets)) {
     const safeName = sanitizeForTerminal(name);
-    if (bucket === null || bucket === undefined || typeof bucket !== 'object' || Array.isArray(bucket)) {
+    if (
+      bucket === null ||
+      bucket === undefined ||
+      typeof bucket !== 'object' ||
+      Array.isArray(bucket)
+    ) {
       throw new ConfigError(
         `Sync config bucket "${safeName}" must be an object`,
-        `Define buckets.${safeName} as a mapping with at least an include: list.`,
+        `Define buckets.${safeName} as a mapping with at least an include: list.`
       );
     }
     const b = bucket as Record<string, unknown>;
@@ -339,14 +394,14 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
     if (!Array.isArray(b['include']) || b['include'].length === 0) {
       throw new ConfigError(
         `Sync config bucket "${safeName}" must have a non-empty include array`,
-        `Add a non-empty include: glob list under buckets.${safeName} in .deepl-sync.yaml.`,
+        `Add a non-empty include: glob list under buckets.${safeName} in .deepl-sync.yaml.`
       );
     }
     for (const inc of b['include']) {
       if (typeof inc !== 'string') {
         throw new ConfigError(
           `Sync config bucket "${safeName}" include must contain only strings`,
-          `Ensure every entry in buckets.${safeName}.include is a quoted glob string.`,
+          `Ensure every entry in buckets.${safeName}.include is a quoted glob string.`
         );
       }
       // Containment must be enforced here, not only in the `sync init` wizard
@@ -356,87 +411,141 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
       if (inc.split(/[/\\]/).some((segment) => segment === '..')) {
         throw new ConfigError(
           `Sync config bucket "${safeName}" include entry "${inc}" contains a ".." traversal segment`,
-          `Use globs relative to the project root without traversal segments in buckets.${safeName}.include.`,
+          `Use globs relative to the project root without traversal segments in buckets.${safeName}.include.`
         );
       }
       if (path.isAbsolute(inc)) {
         throw new ConfigError(
           `Sync config bucket "${safeName}" include entry "${inc}" must be relative to the project root`,
-          `Replace the absolute path in buckets.${safeName}.include with a path relative to the project root.`,
+          `Replace the absolute path in buckets.${safeName}.include with a path relative to the project root.`
         );
+      }
+      assertBoundedGlobExpansion(inc, `buckets.${safeName}.include`);
+    }
+    // exclude joins include on the way to fast-glob (as its `ignore` option),
+    // so it needs the same expansion bound.
+    if (Array.isArray(b['exclude'])) {
+      for (const exc of b['exclude']) {
+        if (typeof exc === 'string') {
+          assertBoundedGlobExpansion(exc, `buckets.${safeName}.exclude`);
+        }
       }
     }
     if (b['target_path_pattern'] !== undefined) {
       if (typeof b['target_path_pattern'] !== 'string') {
         throw new ConfigError(
           `Sync config bucket "${safeName}" target_path_pattern must be a string`,
-          `Quote buckets.${safeName}.target_path_pattern as a string with {locale}.`,
+          `Quote buckets.${safeName}.target_path_pattern as a string with {locale}.`
         );
       }
       if (!b['target_path_pattern'].includes('{locale}')) {
         throw new ConfigError(
           `Sync config bucket "${safeName}" target_path_pattern must contain {locale} placeholder`,
-          `Include the {locale} placeholder in buckets.${safeName}.target_path_pattern.`,
+          `Include the {locale} placeholder in buckets.${safeName}.target_path_pattern.`
         );
       }
       if (b['target_path_pattern'].includes('..')) {
         throw new ConfigError(
           `Sync config bucket "${safeName}" target_path_pattern must not contain ".."`,
-          `Remove ".." from buckets.${safeName}.target_path_pattern in .deepl-sync.yaml.`,
+          `Remove ".." from buckets.${safeName}.target_path_pattern in .deepl-sync.yaml.`
+        );
+      }
+      // A rendered target path is passed as a single argv entry to git, so a
+      // leading dash on its first segment is an option, not a path. Checked
+      // here against the literal pattern and again in resolveTargetPath
+      // against the rendered result, which {basename} and the default
+      // locale-substitution branch can also make dash-leading.
+      if (b['target_path_pattern'].startsWith('-')) {
+        throw new ConfigError(
+          `Sync config bucket "${safeName}" target_path_pattern must not begin with "-"`,
+          `Remove the leading "-" from buckets.${safeName}.target_path_pattern in .deepl-sync.yaml.`
         );
       }
       const forbidden = b['target_path_pattern']
         .split(/[/\\]/)
-        .find(seg => FORBIDDEN_TARGET_SEGMENTS.has(seg.toLowerCase()));
+        .find((seg) => FORBIDDEN_TARGET_SEGMENTS.has(seg.toLowerCase()));
       if (forbidden) {
         throw new ConfigError(
           `Sync config bucket "${safeName}" target_path_pattern must not write into "${forbidden}/"`,
-          `Point buckets.${safeName}.target_path_pattern at a locale directory outside ${forbidden}/.`,
+          `Point buckets.${safeName}.target_path_pattern at a locale directory outside ${forbidden}/.`
         );
       }
     }
   }
 
   for (const block of ['translation', 'validation', 'sync', 'tms'] as const) {
-    if (obj[block] !== undefined && (typeof obj[block] !== 'object' || Array.isArray(obj[block]) || obj[block] === null)) {
+    if (
+      obj[block] !== undefined &&
+      (typeof obj[block] !== 'object' ||
+        Array.isArray(obj[block]) ||
+        obj[block] === null)
+    ) {
       throw new ConfigError(
         `Sync config ${block} must be an object`,
-        `Define ${block}: as a mapping in .deepl-sync.yaml, or remove it.`,
+        `Define ${block}: as a mapping in .deepl-sync.yaml, or remove it.`
       );
     }
   }
 
   if (obj['translation'] !== undefined) {
-    assertOnlyKnownKeys(obj['translation'] as Record<string, unknown>, KNOWN_TRANSLATION_KEYS, 'translation');
+    assertOnlyKnownKeys(
+      obj['translation'] as Record<string, unknown>,
+      KNOWN_TRANSLATION_KEYS,
+      'translation'
+    );
     const tr = obj['translation'] as Record<string, unknown>;
-    if (tr['length_limits'] !== undefined && typeof tr['length_limits'] === 'object' && tr['length_limits'] !== null && !Array.isArray(tr['length_limits'])) {
-      assertOnlyKnownKeys(tr['length_limits'] as Record<string, unknown>, KNOWN_LENGTH_LIMITS_KEYS, 'translation.length_limits');
+    if (
+      tr['length_limits'] !== undefined &&
+      typeof tr['length_limits'] === 'object' &&
+      tr['length_limits'] !== null &&
+      !Array.isArray(tr['length_limits'])
+    ) {
+      assertOnlyKnownKeys(
+        tr['length_limits'] as Record<string, unknown>,
+        KNOWN_LENGTH_LIMITS_KEYS,
+        'translation.length_limits'
+      );
     }
     const overrides = tr['locale_overrides'];
-    if (overrides !== undefined && typeof overrides === 'object' && overrides !== null && !Array.isArray(overrides)) {
-      for (const [locale, ov] of Object.entries(overrides as Record<string, unknown>)) {
+    if (
+      overrides !== undefined &&
+      typeof overrides === 'object' &&
+      overrides !== null &&
+      !Array.isArray(overrides)
+    ) {
+      for (const [locale, ov] of Object.entries(
+        overrides as Record<string, unknown>
+      )) {
         if (ov !== null && typeof ov === 'object' && !Array.isArray(ov)) {
           assertOnlyKnownKeys(
             ov as Record<string, unknown>,
             KNOWN_LOCALE_OVERRIDE_KEYS,
-            `translation.locale_overrides.${locale}`,
+            `translation.locale_overrides.${locale}`
           );
         }
       }
     }
   }
   if (obj['validation'] !== undefined) {
-    assertOnlyKnownKeys(obj['validation'] as Record<string, unknown>, KNOWN_VALIDATION_KEYS, 'validation');
+    assertOnlyKnownKeys(
+      obj['validation'] as Record<string, unknown>,
+      KNOWN_VALIDATION_KEYS,
+      'validation'
+    );
   }
   if (obj['sync'] !== undefined) {
-    assertOnlyKnownKeys(obj['sync'] as Record<string, unknown>, KNOWN_SYNC_BEHAVIOR_KEYS, 'sync');
+    assertOnlyKnownKeys(
+      obj['sync'] as Record<string, unknown>,
+      KNOWN_SYNC_BEHAVIOR_KEYS,
+      'sync'
+    );
     const syncBlock = obj['sync'] as Record<string, unknown>;
     if (syncBlock['concurrency'] !== undefined) {
       const c = syncBlock['concurrency'];
       if (!Number.isInteger(c) || (c as number) <= 0) {
         throw new ConfigError(
           `sync.concurrency must be a positive integer, got: ${String(c)}`,
-          'Set sync.concurrency to a positive integer in .deepl-sync.yaml (default 5).',
+          'Set sync.concurrency to a positive integer in .deepl-sync.yaml (default 5).'
         );
       }
     }
@@ -445,7 +554,7 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
       if (!Number.isInteger(m) || (m as number) <= 0) {
         throw new ConfigError(
           `sync.max_scan_files must be a positive integer, got: ${String(m)}`,
-          'Set sync.max_scan_files to a positive integer in .deepl-sync.yaml (default 50000).',
+          'Set sync.max_scan_files to a positive integer in .deepl-sync.yaml (default 50000).'
         );
       }
     }
@@ -454,7 +563,7 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
       if (!Number.isInteger(s) || (s as number) <= 0) {
         throw new ConfigError(
           `sync.bak_sweep_max_age_seconds must be a positive integer (seconds), got: ${String(s)}`,
-          'Set sync.bak_sweep_max_age_seconds to a positive integer in .deepl-sync.yaml (default 300).',
+          'Set sync.bak_sweep_max_age_seconds to a positive integer in .deepl-sync.yaml (default 300).'
         );
       }
     }
@@ -466,7 +575,7 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
       ) {
         throw new ConfigError(
           'sync.limits must be an object mapping cap names to positive integers.',
-          'See docs/SYNC.md for valid keys: max_entries_per_file, max_file_bytes, max_depth, max_source_files.',
+          'See docs/SYNC.md for valid keys: max_entries_per_file, max_file_bytes, max_depth, max_source_files.'
         );
       }
       const limits = syncBlock['limits'] as Record<string, unknown>;
@@ -477,24 +586,58 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
         if (!Number.isInteger(raw) || (raw as number) <= 0) {
           throw new ConfigError(
             `sync.limits.${key} must be a positive integer, got: ${String(raw)}`,
-            `Set sync.limits.${key} to a positive integer in .deepl-sync.yaml.`,
+            `Set sync.limits.${key} to a positive integer in .deepl-sync.yaml.`
           );
         }
-        const hardMax = HARD_MAX_SYNC_LIMITS[key as keyof typeof HARD_MAX_SYNC_LIMITS];
+        const hardMax =
+          HARD_MAX_SYNC_LIMITS[key as keyof typeof HARD_MAX_SYNC_LIMITS];
         if ((raw as number) > hardMax) {
           throw new ConfigError(
             `sync.limits.${key} exceeds the hard ceiling of ${hardMax} (got: ${String(raw)}).`,
-            'Lower the value in .deepl-sync.yaml. The hard ceiling protects the parser from stack-overflow and memory-exhaustion edge cases.',
+            'Lower the value in .deepl-sync.yaml. The hard ceiling protects the parser from stack-overflow and memory-exhaustion edge cases.'
           );
         }
       }
     }
   }
   if (obj['tms'] !== undefined) {
-    assertOnlyKnownKeys(obj['tms'] as Record<string, unknown>, KNOWN_TMS_KEYS, 'tms');
+    const tmsBlock = obj['tms'] as Record<string, unknown>;
+    for (const [key, alternative] of Object.entries(RETIRED_TMS_KEYS)) {
+      if (tmsBlock[key] === undefined) continue;
+      throw new ConfigError(
+        `tms.${key} was never implemented and has been removed`,
+        alternative
+      );
+    }
+    assertOnlyKnownKeys(tmsBlock, KNOWN_TMS_KEYS, 'tms');
   }
-  if (obj['context'] !== undefined && typeof obj['context'] === 'object' && obj['context'] !== null && !Array.isArray(obj['context'])) {
-    assertOnlyKnownKeys(obj['context'] as Record<string, unknown>, KNOWN_CONTEXT_KEYS, 'context');
+  if (
+    obj['context'] !== undefined &&
+    typeof obj['context'] === 'object' &&
+    obj['context'] !== null &&
+    !Array.isArray(obj['context'])
+  ) {
+    assertOnlyKnownKeys(
+      obj['context'] as Record<string, unknown>,
+      KNOWN_CONTEXT_KEYS,
+      'context'
+    );
+    const scanPaths = (obj['context'] as Record<string, unknown>)['scan_paths'];
+    if (Array.isArray(scanPaths)) {
+      for (const scanPath of scanPaths) {
+        if (typeof scanPath === 'string') {
+          assertBoundedGlobExpansion(scanPath, 'context.scan_paths');
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(obj['ignore'])) {
+    for (const ignored of obj['ignore']) {
+      if (typeof ignored === 'string') {
+        assertBoundedGlobExpansion(ignored, 'ignore');
+      }
+    }
   }
 
   const tmsBlock = obj['tms'] as Record<string, unknown> | undefined;
@@ -503,7 +646,7 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
     if (!Number.isInteger(t) || (t as number) <= 0) {
       throw new ConfigError(
         `tms.timeout_ms must be a positive integer (milliseconds), got: ${String(t)}`,
-        'Set tms.timeout_ms to a positive integer in .deepl-sync.yaml (default 30000).',
+        'Set tms.timeout_ms to a positive integer in .deepl-sync.yaml (default 30000).'
       );
     }
   }
@@ -512,24 +655,33 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
     if (!Number.isInteger(c) || (c as number) <= 0) {
       throw new ConfigError(
         `tms.push_concurrency must be a positive integer, got: ${String(c)}`,
-        'Set tms.push_concurrency to a positive integer in .deepl-sync.yaml (default 10).',
+        'Set tms.push_concurrency to a positive integer in .deepl-sync.yaml (default 10).'
       );
     }
   }
 
   const t = obj['translation'] as Record<string, unknown> | undefined;
   if (t) {
-    validateTmThreshold(t['translation_memory_threshold'], 'translation.translation_memory_threshold');
+    validateTmThreshold(
+      t['translation_memory_threshold'],
+      'translation.translation_memory_threshold'
+    );
     validateTmModelType(t, 'translation', false);
     const topLevelTm = t['translation_memory'] !== undefined;
-    const overrides = t['locale_overrides'] as Record<string, Record<string, unknown>> | undefined;
+    const overrides = t['locale_overrides'] as
+      Record<string, Record<string, unknown>> | undefined;
     if (overrides) {
       for (const [locale, ov] of Object.entries(overrides)) {
         validateTmThreshold(
           ov['translation_memory_threshold'],
-          `translation.locale_overrides.${locale}.translation_memory_threshold`,
+          `translation.locale_overrides.${locale}.translation_memory_threshold`
         );
-        validateTmModelType(ov, `translation.locale_overrides.${locale}`, topLevelTm);
+        validateTmModelType(
+          ov,
+          `translation.locale_overrides.${locale}`,
+          topLevelTm,
+          t['model_type']
+        );
       }
     }
   }
@@ -539,12 +691,21 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
     source_locale: obj['source_locale'],
     target_locales: obj['target_locales'] as string[],
     buckets: obj['buckets'] as Record<string, SyncBucketConfig>,
-    ...(obj['translation'] !== undefined && { translation: obj['translation'] as SyncTranslationSettings }),
-    ...(obj['validation'] !== undefined && { validation: obj['validation'] as SyncValidationSettings }),
+    ...(obj['translation'] !== undefined && {
+      translation: obj['translation'] as SyncTranslationSettings,
+    }),
+    ...(obj['validation'] !== undefined && {
+      validation: obj['validation'] as SyncValidationSettings,
+    }),
     ...(obj['sync'] !== undefined && { sync: obj['sync'] as SyncBehavior }),
     ...(Array.isArray(obj['ignore']) && { ignore: obj['ignore'] as string[] }),
     ...(obj['tms'] !== undefined && { tms: obj['tms'] as SyncTmsConfig }),
-    ...(obj["context"] !== undefined && { context: typeof obj["context"] === "boolean" ? { enabled: obj["context"] } : obj["context"] as { enabled: boolean } }),
+    ...(obj['context'] !== undefined && {
+      context:
+        typeof obj['context'] === 'boolean'
+          ? { enabled: obj['context'] }
+          : (obj['context'] as { enabled: boolean }),
+    }),
   };
 }
 
@@ -556,16 +717,16 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
 // outside target_locales is a ConfigError rather than a silent no-op.
 export function applyCliOverrides(
   config: SyncConfig,
-  overrides: SyncConfigOverrides,
+  overrides: SyncConfigOverrides
 ): SyncConfig {
   if (overrides.localeFilter !== undefined) {
     const unconfigured = overrides.localeFilter.filter(
-      (locale) => !config.target_locales.includes(locale),
+      (locale) => !config.target_locales.includes(locale)
     );
     if (unconfigured.length > 0) {
       throw new ConfigError(
         `--locale ${unconfigured.join(', ')} not in target_locales (configured: ${config.target_locales.join(', ')})`,
-        'Pass only locales listed in target_locales, or add the locale to target_locales in .deepl-sync.yaml.',
+        'Pass only locales listed in target_locales, or add the locale to target_locales in .deepl-sync.yaml.'
       );
     }
   }
@@ -579,12 +740,15 @@ export function applyCliOverrides(
   }
   if (overrides.modelType !== undefined) {
     config.translation = config.translation ?? {};
-    config.translation.model_type = overrides.modelType as SyncTranslationSettings['model_type'];
-    if (config.translation.translation_memory !== undefined
-      && config.translation.model_type !== 'quality_optimized') {
+    config.translation.model_type =
+      overrides.modelType as SyncTranslationSettings['model_type'];
+    if (
+      config.translation.translation_memory !== undefined &&
+      config.translation.model_type !== 'quality_optimized'
+    ) {
       throw new ConfigError(
         `--model-type ${overrides.modelType} is incompatible with translation_memory (requires quality_optimized)`,
-        'Pass --model-type quality_optimized, or remove translation_memory from .deepl-sync.yaml.',
+        'Pass --model-type quality_optimized, or remove translation_memory from .deepl-sync.yaml.'
       );
     }
   }
@@ -607,7 +771,7 @@ export function applyCliOverrides(
 
 export async function loadSyncConfig(
   startDir?: string,
-  overrides: SyncConfigOverrides = {},
+  overrides: SyncConfigOverrides = {}
 ): Promise<ResolvedSyncConfig> {
   let configPath: string;
 
@@ -616,7 +780,7 @@ export async function loadSyncConfig(
     if (!fs.existsSync(configPath)) {
       throw new ConfigError(
         `Sync config file not found: ${configPath}`,
-        'Check the --config path, or create .deepl-sync.yaml at that location.',
+        'Check the --config path, or create .deepl-sync.yaml at that location.'
       );
     }
   } else {
@@ -624,7 +788,7 @@ export async function loadSyncConfig(
     if (!found) {
       throw new ConfigError(
         `No ${SYNC_CONFIG_FILENAME} found in ${startDir ?? process.cwd()} or any parent directory`,
-        "Run 'deepl sync init' to create one, or create .deepl-sync.yaml manually.",
+        "Run 'deepl sync init' to create one, or create .deepl-sync.yaml manually."
       );
     }
     configPath = found;
@@ -641,7 +805,7 @@ export async function loadSyncConfig(
     const message = err instanceof Error ? err.message : String(err);
     throw new ConfigError(
       `Failed to parse YAML in ${configPath}: ${message}`,
-      'Fix the YAML syntax in .deepl-sync.yaml (check indentation, quoting, and braces).',
+      'Fix the YAML syntax in .deepl-sync.yaml (check indentation, quoting, and braces).'
     );
   }
 
@@ -665,12 +829,12 @@ function warnOnInlineTmsCredentials(tms: SyncTmsConfig | undefined): void {
   if (!tms) return;
   if (tms.api_key && !process.env['TMS_API_KEY']) {
     process.stderr.write(
-      'Warning: TMS api_key is set in .deepl-sync.yaml. Use the TMS_API_KEY env var instead to avoid committing secrets.\n',
+      'Warning: TMS api_key is set in .deepl-sync.yaml. Use the TMS_API_KEY env var instead to avoid committing secrets.\n'
     );
   }
   if (tms.token && !process.env['TMS_TOKEN']) {
     process.stderr.write(
-      'Warning: TMS token is set in .deepl-sync.yaml. Use the TMS_TOKEN env var instead to avoid committing secrets.\n',
+      'Warning: TMS token is set in .deepl-sync.yaml. Use the TMS_TOKEN env var instead to avoid committing secrets.\n'
     );
   }
 }

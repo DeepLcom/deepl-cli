@@ -45,7 +45,7 @@ describe('Command Aliases E2E', () => {
     it('should dispatch to write option validation', () => {
       const result = runCLIExpectError('w "Hello" --format bogus');
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toContain("Allowed choices are text, json");
+      expect(result.output).toContain('Allowed choices are text, json');
     });
 
     it('should fail identically to write on an unknown option', () => {

@@ -1,8 +1,5 @@
 name: Release
 
-# This workflow only records the GitHub Release for a tag. Publishing to npm
-# happens from GitLab, so no `npm publish` step or NPM_TOKEN secret belongs in
-# this repository.
 on:
   push:
     tags:
@@ -18,8 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # A tag can be pushed at any commit, so a mislabelled tag would otherwise
-      # mint a Release whose title disagrees with the version it contains.
       - name: Verify tag matches package version
         run: |
           tag_version="${GITHUB_REF_NAME#v}"
@@ -29,8 +24,6 @@ jobs:
             exit 1
           fi
 
-      # Release notes come from the tag's CHANGELOG section; releases are
-      # immutable once published, but notes stay editable afterwards.
       - name: Extract changelog section
         id: notes
         run: |
@@ -44,7 +37,6 @@ jobs:
             echo "has_notes=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Skipped when the release exists, so re-runs are idempotent.
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

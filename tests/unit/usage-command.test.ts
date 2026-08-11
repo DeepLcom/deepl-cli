@@ -2,8 +2,6 @@
  * Tests for Usage Command
  */
 
- 
-
 import { UsageCommand } from '../../src/cli/commands/usage';
 import { createMockUsageService } from '../helpers/mock-factories';
 
@@ -71,25 +69,33 @@ describe('UsageCommand', () => {
     });
 
     it('should handle API errors', async () => {
-      mockService.getUsage = jest.fn().mockRejectedValue(new Error('API error'));
+      mockService.getUsage = jest
+        .fn()
+        .mockRejectedValue(new Error('API error'));
 
       await expect(usageCommand.getUsage()).rejects.toThrow('API error');
     });
 
     it('should handle authentication errors', async () => {
-      mockService.getUsage = jest.fn().mockRejectedValue(
-        new Error('Authentication failed: Invalid API key')
-      );
+      mockService.getUsage = jest
+        .fn()
+        .mockRejectedValue(new Error('Authentication failed: Invalid API key'));
 
-      await expect(usageCommand.getUsage()).rejects.toThrow('Authentication failed: Invalid API key');
+      await expect(usageCommand.getUsage()).rejects.toThrow(
+        'Authentication failed: Invalid API key'
+      );
     });
 
     it('should handle quota exceeded errors', async () => {
-      mockService.getUsage = jest.fn().mockRejectedValue(
-        new Error('Quota exceeded: Character limit reached')
-      );
+      mockService.getUsage = jest
+        .fn()
+        .mockRejectedValue(
+          new Error('Quota exceeded: Character limit reached')
+        );
 
-      await expect(usageCommand.getUsage()).rejects.toThrow('Quota exceeded: Character limit reached');
+      await expect(usageCommand.getUsage()).rejects.toThrow(
+        'Quota exceeded: Character limit reached'
+      );
     });
   });
 
@@ -152,8 +158,16 @@ describe('UsageCommand', () => {
         characterCount: 2150000,
         characterLimit: 20000000,
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
-          { productType: 'write', characterCount: 1250000, apiKeyCharacterCount: 1000000 },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
+          {
+            productType: 'write',
+            characterCount: 1250000,
+            apiKeyCharacterCount: 1000000,
+          },
         ],
       });
 
@@ -185,8 +199,16 @@ describe('UsageCommand', () => {
         startTime: '2025-04-24T14:58:02Z',
         endTime: '2025-05-24T14:58:02Z',
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
-          { productType: 'write', characterCount: 1250000, apiKeyCharacterCount: 1000000 },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
+          {
+            productType: 'write',
+            characterCount: 1250000,
+            apiKeyCharacterCount: 1000000,
+          },
         ],
       });
 
@@ -275,7 +297,9 @@ describe('UsageCommand', () => {
       });
 
       expect(formatted).toContain('Product Breakdown:');
-      expect(formatted).toContain('translate: 5,000 units (API key: 4,500 units)');
+      expect(formatted).toContain(
+        'translate: 5,000 units (API key: 4,500 units)'
+      );
     });
 
     it('should show unlimited for zero API key character limit', () => {
@@ -294,54 +318,18 @@ describe('UsageCommand', () => {
         characterCount: 2150000,
         characterLimit: 20000000,
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
         ],
       });
 
       expect(formatted).toContain('880,000');
     });
 
-    it('should display speech-to-text usage when available', () => {
-      const formatted = usageCommand.formatUsage({
-        characterCount: 2150000,
-        characterLimit: 20000000,
-        speechToTextMillisecondsCount: 3661000,
-        speechToTextMillisecondsLimit: 36000000,
-      });
-
-      expect(formatted).toContain('Speech-to-Text Usage:');
-      expect(formatted).toContain('1h 1m 1s');
-      expect(formatted).toContain('10h 0m 0s');
-      expect(formatted).toContain('10.2%');
-    });
-
-    it('should show warning for high speech-to-text usage', () => {
-      const formatted = usageCommand.formatUsage({
-        characterCount: 100,
-        characterLimit: 500000,
-        speechToTextMillisecondsCount: 30000000,
-        speechToTextMillisecondsLimit: 36000000,
-      });
-
-      expect(formatted).toContain('Speech-to-Text Usage:');
-      expect(formatted).toContain('83.3%');
-      expect(formatted).toContain('Warning: You are approaching your speech-to-text limit');
-    });
-
-    it('should format zero speech-to-text usage in seconds, not milliseconds', () => {
-      const formatted = usageCommand.formatUsage({
-        characterCount: 100,
-        characterLimit: 500000,
-        speechToTextMillisecondsCount: 0,
-        speechToTextMillisecondsLimit: 36000000,
-      });
-
-      expect(formatted).toContain('Speech-to-Text Usage:');
-      expect(formatted).toContain('0s');
-      expect(formatted).not.toContain('0ms');
-    });
-
-    it('should omit speech-to-text section when not available', () => {
+    it('should not render a dedicated speech-to-text section (voice usage lives in the product breakdown)', () => {
       const formatted = usageCommand.formatUsage({
         characterCount: 123456,
         characterLimit: 500000,
@@ -355,8 +343,17 @@ describe('UsageCommand', () => {
         characterCount: 2150000,
         characterLimit: 20000000,
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
-          { productType: 'speech_to_text', characterCount: 3661000, apiKeyCharacterCount: 3661000, billingUnit: 'milliseconds' },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
+          {
+            productType: 'speech_to_text',
+            characterCount: 3661000,
+            apiKeyCharacterCount: 3661000,
+            billingUnit: 'milliseconds',
+          },
         ],
       });
 
@@ -380,8 +377,70 @@ describe('UsageCommand', () => {
         ],
       });
 
-      expect(formatted).toContain('speech_to_text: 24h 23m 0s (API key: 24h 23m 0s)');
+      // No account-wide figure in the response, so only the API key's own usage
+      // is reported. Printing it in both columns implied an account total the
+      // response never carried.
+      expect(formatted).toContain('speech_to_text: 24h 23m 0s (API key)');
       expect(formatted).not.toContain('speech_to_text: 0 characters');
+    });
+
+    it('should not render a character count as minutes of usage', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 0,
+        characterLimit: 20000000,
+        products: [
+          {
+            productType: 'speechToText',
+            characterCount: 1000,
+            apiKeyCharacterCount: 1000,
+            billingUnit: 'minutes',
+          },
+        ],
+      });
+
+      // 1000 characters scaled by 60,000 would claim 16h 40m of voice usage.
+      expect(formatted).not.toContain('16h 40m');
+      expect(formatted).toContain('speech_to_text: not reported');
+    });
+
+    it('should ignore a null count rather than reporting it as zero', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 0,
+        characterLimit: 20000000,
+        products: [
+          {
+            productType: 'speechToText',
+            characterCount: 0,
+            apiKeyCharacterCount: 0,
+            accountUnitCount: null as unknown as number,
+            apiKeyUnitCount: 60,
+            billingUnit: 'minutes',
+          },
+        ],
+      });
+
+      expect(formatted).toContain('speech_to_text: 1h 0m 0s (API key)');
+    });
+
+    it('should report the account-wide duration when the response carries one', () => {
+      const formatted = usageCommand.formatUsage({
+        characterCount: 0,
+        characterLimit: 20000000,
+        products: [
+          {
+            productType: 'speechToText',
+            characterCount: 0,
+            apiKeyCharacterCount: 0,
+            accountUnitCount: 6000,
+            apiKeyUnitCount: 1463,
+            billingUnit: 'minutes',
+          },
+        ],
+      });
+
+      expect(formatted).toContain(
+        'speech_to_text: 100h 0m 0s (API key: 24h 23m 0s)'
+      );
     });
 
     it('should prefer unitCount over apiKeyUnitCount for minutes-billed totals', () => {
@@ -400,7 +459,9 @@ describe('UsageCommand', () => {
         ],
       });
 
-      expect(formatted).toContain('speech_to_text: 2h 0m 0s (API key: 1h 0m 0s)');
+      expect(formatted).toContain(
+        'speech_to_text: 2h 0m 0s (API key: 1h 0m 0s)'
+      );
     });
 
     it('should render camelCase product types with the documented snake_case names', () => {
@@ -408,7 +469,11 @@ describe('UsageCommand', () => {
         characterCount: 0,
         characterLimit: 20000000,
         products: [
-          { productType: 'textTranslation', characterCount: 900000, apiKeyCharacterCount: 880000 },
+          {
+            productType: 'textTranslation',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
         ],
       });
 
@@ -416,24 +481,32 @@ describe('UsageCommand', () => {
       expect(formatted).not.toContain('textTranslation');
     });
 
-    it('should display full Pro response with speech-to-text', () => {
+    it('should display full Pro response with voice usage in the product breakdown', () => {
       const formatted = usageCommand.formatUsage({
         characterCount: 2150000,
         characterLimit: 20000000,
         apiKeyCharacterCount: 1880000,
         apiKeyCharacterLimit: 0,
-        speechToTextMillisecondsCount: 120000,
-        speechToTextMillisecondsLimit: 36000000,
         startTime: '2025-04-24T14:58:02Z',
         endTime: '2025-05-24T14:58:02Z',
         products: [
-          { productType: 'translate', characterCount: 900000, apiKeyCharacterCount: 880000 },
-          { productType: 'speech_to_text', characterCount: 120000, apiKeyCharacterCount: 120000, billingUnit: 'milliseconds' },
+          {
+            productType: 'translate',
+            characterCount: 900000,
+            apiKeyCharacterCount: 880000,
+          },
+          {
+            productType: 'speech_to_text',
+            characterCount: 120000,
+            apiKeyCharacterCount: 120000,
+            billingUnit: 'milliseconds',
+          },
         ],
       });
 
       expect(formatted).toContain('Character Usage:');
-      expect(formatted).toContain('Speech-to-Text Usage:');
+      expect(formatted).not.toContain('Speech-to-Text Usage:');
+      expect(formatted).toContain('speech_to_text: 2m 0s');
       expect(formatted).toContain('Billing Period:');
       expect(formatted).toContain('API Key Usage:');
       expect(formatted).toContain('Product Breakdown:');
@@ -465,7 +538,7 @@ describe('UsageCommand', () => {
       expect(result).toContain('—'); // pct() returns em-dash when limit=0
     });
 
-    it('should add API key, account-unit, and STT rows when those fields are present', () => {
+    it('should add API key and account-unit rows when those fields are present', () => {
       const result = usageCommand.formatUsageTable({
         characterCount: 100,
         characterLimit: 500,
@@ -473,12 +546,10 @@ describe('UsageCommand', () => {
         accountUnitLimit: 10,
         apiKeyUnitCount: 2,
         apiKeyUnitLimit: 4,
-        speechToTextMillisecondsCount: 60000,
-        speechToTextMillisecondsLimit: 600000,
       });
       expect(result).toContain('Account units');
       expect(result).toContain('API key units');
-      expect(result).toContain('Speech-to-text');
+      expect(result).not.toContain('Speech-to-text');
     });
 
     it('should append a Product Breakdown table when products are present', () => {
@@ -486,7 +557,11 @@ describe('UsageCommand', () => {
         characterCount: 1000,
         characterLimit: 10000,
         products: [
-          { productType: 'translate', characterCount: 900, apiKeyCharacterCount: 800 },
+          {
+            productType: 'translate',
+            characterCount: 900,
+            apiKeyCharacterCount: 800,
+          },
           {
             productType: 'speech_to_text',
             characterCount: 120000,

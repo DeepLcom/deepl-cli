@@ -18,7 +18,9 @@ export class StyleRulesService {
     this.client = client;
   }
 
-  async getStyleRules(options: StyleRulesListOptions = {}): Promise<(StyleRule | StyleRuleDetailed)[]> {
+  async getStyleRules(
+    options: StyleRulesListOptions = {}
+  ): Promise<(StyleRule | StyleRuleDetailed)[]> {
     return this.client.getStyleRules(options);
   }
 
@@ -26,11 +28,17 @@ export class StyleRulesService {
     return this.client.createStyleRule(options);
   }
 
-  async getStyleRule(styleId: string, detailed = false): Promise<StyleRule | StyleRuleDetailed> {
+  async getStyleRule(
+    styleId: string,
+    detailed = false
+  ): Promise<StyleRule | StyleRuleDetailed> {
     return this.client.getStyleRule(styleId, detailed);
   }
 
-  async updateStyleRule(styleId: string, options: UpdateStyleRuleOptions): Promise<StyleRule> {
+  async updateStyleRule(
+    styleId: string,
+    options: UpdateStyleRuleOptions
+  ): Promise<StyleRule> {
     return this.client.updateStyleRule(styleId, options);
   }
 
@@ -38,25 +46,31 @@ export class StyleRulesService {
     return this.client.deleteStyleRule(styleId);
   }
 
-  async replaceConfiguredRules(styleId: string, rules: ConfiguredRules): Promise<StyleRuleDetailed> {
+  async replaceConfiguredRules(
+    styleId: string,
+    rules: ConfiguredRules
+  ): Promise<StyleRuleDetailed> {
     return this.client.replaceConfiguredRules(styleId, rules);
   }
 
   async createCustomInstruction(
     styleId: string,
-    options: CreateCustomInstructionOptions,
+    options: CreateCustomInstructionOptions
   ): Promise<CustomInstruction> {
     return this.client.createCustomInstruction(styleId, options);
   }
 
-  async getCustomInstruction(styleId: string, label: string): Promise<CustomInstruction> {
+  async getCustomInstruction(
+    styleId: string,
+    label: string
+  ): Promise<CustomInstruction> {
     return this.client.getCustomInstruction(styleId, label);
   }
 
   async updateCustomInstruction(
     styleId: string,
     label: string,
-    options: UpdateCustomInstructionOptions,
+    options: UpdateCustomInstructionOptions
   ): Promise<CustomInstruction> {
     return this.client.updateCustomInstruction(styleId, label, options);
   }

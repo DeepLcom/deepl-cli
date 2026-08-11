@@ -7,12 +7,14 @@ describe('isTranslationResult', () => {
   });
 
   it('should return true with optional fields', () => {
-    expect(isTranslationResult({
-      text: 'Hola',
-      detectedSourceLang: 'EN',
-      billedCharacters: 5,
-      modelTypeUsed: 'quality_optimized',
-    })).toBe(true);
+    expect(
+      isTranslationResult({
+        text: 'Hola',
+        detectedSourceLang: 'EN',
+        billedCharacters: 5,
+        modelTypeUsed: 'quality_optimized',
+      })
+    ).toBe(true);
   });
 
   it('should return false for missing text', () => {
@@ -42,9 +44,9 @@ describe('isTranslationResult', () => {
 
 describe('isWriteImprovementArray', () => {
   it('should return true for valid array', () => {
-    expect(isWriteImprovementArray([
-      { text: 'Improved text', targetLanguage: 'en' },
-    ])).toBe(true);
+    expect(
+      isWriteImprovementArray([{ text: 'Improved text', targetLanguage: 'en' }])
+    ).toBe(true);
   });
 
   it('should return true for empty array', () => {
@@ -52,10 +54,12 @@ describe('isWriteImprovementArray', () => {
   });
 
   it('should return true for multiple items', () => {
-    expect(isWriteImprovementArray([
-      { text: 'First', targetLanguage: 'en' },
-      { text: 'Second', targetLanguage: 'de' },
-    ])).toBe(true);
+    expect(
+      isWriteImprovementArray([
+        { text: 'First', targetLanguage: 'en' },
+        { text: 'Second', targetLanguage: 'de' },
+      ])
+    ).toBe(true);
   });
 
   it('should return false for non-array', () => {
@@ -71,9 +75,7 @@ describe('isWriteImprovementArray', () => {
   });
 
   it('should return false for array with invalid item (missing text)', () => {
-    expect(isWriteImprovementArray([
-      { targetLanguage: 'en' },
-    ])).toBe(false);
+    expect(isWriteImprovementArray([{ targetLanguage: 'en' }])).toBe(false);
   });
 
   it('should return false for array with null item', () => {

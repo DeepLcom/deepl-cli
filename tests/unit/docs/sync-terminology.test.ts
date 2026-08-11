@@ -43,7 +43,7 @@ function stripExemptRegions(source: string): string {
   // Blank out fenced code blocks while preserving line count so failure
   // messages cite the real line number in the source doc.
   let out = source.replace(/```[\s\S]*?```/g, (match) =>
-    match.replace(/[^\n]/g, ''),
+    match.replace(/[^\n]/g, '')
   );
   // Drop inline code spans (single-line, so line count is unaffected).
   out = out.replace(/`[^`\n]*`/g, '');
@@ -69,7 +69,7 @@ describe('sync terminology regression', () => {
           proseLines.forEach((line, idx) => {
             if (pattern.test(line)) {
               const tolerated = TOLERATED.some(
-                (t) => t.doc === rel && line.includes(t.snippet),
+                (t) => t.doc === rel && line.includes(t.snippet)
               );
               if (!tolerated) {
                 hits.push(`  ${rel}:${idx + 1}: ${line.trim()}`);

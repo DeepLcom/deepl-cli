@@ -42,10 +42,13 @@ describe('sync TOML fixture round-trip', () => {
   });
 
   it('translates source.toml and writes de.toml matching the expected fixture', async () => {
-    const source = fs.readFileSync(path.join(FIXTURE_DIR, 'source.toml'), 'utf-8');
+    const source = fs.readFileSync(
+      path.join(FIXTURE_DIR, 'source.toml'),
+      'utf-8'
+    );
     const expected = fs.readFileSync(
       path.join(FIXTURE_DIR, 'expected-after-sync', 'de.toml'),
-      'utf-8',
+      'utf-8'
     );
 
     writeSyncConfig(tmpDir, {
@@ -62,10 +65,26 @@ describe('sync TOML fixture round-trip', () => {
         // Order matches alphabetical sort of keys from TomlFormatParser.extract():
         // farewell, greeting, nav.home, nav.settings
         translations: [
-          { text: 'Auf Wiedersehen', detected_source_language: 'EN', billed_characters: 15 },
-          { text: 'Hallo', detected_source_language: 'EN', billed_characters: 5 },
-          { text: 'Startseite', detected_source_language: 'EN', billed_characters: 10 },
-          { text: 'Einstellungen', detected_source_language: 'EN', billed_characters: 13 },
+          {
+            text: 'Auf Wiedersehen',
+            detected_source_language: 'EN',
+            billed_characters: 15,
+          },
+          {
+            text: 'Hallo',
+            detected_source_language: 'EN',
+            billed_characters: 5,
+          },
+          {
+            text: 'Startseite',
+            detected_source_language: 'EN',
+            billed_characters: 10,
+          },
+          {
+            text: 'Einstellungen',
+            detected_source_language: 'EN',
+            billed_characters: 13,
+          },
         ],
       });
 

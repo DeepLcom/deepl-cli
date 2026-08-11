@@ -1,11 +1,24 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import {
+  assertDistinctKeys,
+  type ExtractedEntry,
+  type FormatParser,
+  type TranslatedEntry,
+} from './format.js';
 import { ValidationError } from '../utils/errors.js';
 import {
+  describeControlChar,
+  findForbiddenControlChar,
+} from './util/control-chars.js';
+import {
+  findElement,
+  insertBlocksAt,
+  lineIndentAt,
   replaceElements,
   scanElements,
   type ElementPattern,
   type ScannedElement,
 } from './xml-scan.js';
+import { primaryPluralItem } from './util/plurals.js';
 
 interface PluralItem {
   quantity: string;
@@ -15,22 +28,34 @@ interface PluralItem {
 const ATTRS = String.raw`((?:\s+[a-zA-Z_:][a-zA-Z0-9_:.-]*=(?:"[^"<]*"|'[^'<]*'))*)`;
 
 const STRING_EL: ElementPattern = {
-  open: new RegExp(String.raw`<string\s+name="([^"<]+)"${ATTRS}>`, 'y'),
+  open: new RegExp(
+    String.raw`<string\s+name=(["\'])((?:(?!\1)[^<])+)\1${ATTRS}>`,
+    'y'
+  ),
   close: /<\/string>/y,
 };
 
 const PLURALS_EL: ElementPattern = {
-  open: new RegExp(String.raw`<plurals\s+name="([^"<]+)"${ATTRS}>`, 'y'),
+  open: new RegExp(
+    String.raw`<plurals\s+name=(["\'])((?:(?!\1)[^<])+)\1${ATTRS}>`,
+    'y'
+  ),
   close: /<\/plurals>/y,
 };
 
 const PLURAL_ITEM_EL: ElementPattern = {
-  open: new RegExp(String.raw`<item\s+quantity="([^"<]+)"${ATTRS}>`, 'y'),
+  open: new RegExp(
+    String.raw`<item\s+quantity=(["\'])((?:(?!\1)[^<])+)\1${ATTRS}>`,
+    'y'
+  ),
   close: /<\/item>/y,
 };
 
 const STRING_ARRAY_EL: ElementPattern = {
-  open: new RegExp(String.raw`<string-array\s+name="([^"<]+)"${ATTRS}>`, 'y'),
+  open: new RegExp(
+    String.raw`<string-array\s+name=(["\'])((?:(?!\1)[^<])+)\1${ATTRS}>`,
+    'y'
+  ),
   close: /<\/string-array>/y,
 };
 
@@ -38,6 +63,40 @@ const ARRAY_ITEM_EL: ElementPattern = {
   open: /<item>/y,
   close: /<\/item>/y,
 };
+
+const RESOURCES_EL: ElementPattern = {
+  open: /<resources(?:\s[^><]*)?>/y,
+  close: /<\/resources>/y,
+};
+
+/**
+ * The `name` / `quantity` of a scanned element.
+ *
+ * Group 0 is the quote delimiter, captured so the value can exclude only the
+ * delimiter actually in use. Requiring a double quote would make
+ * `<string name='greeting'>` — well-formed XML, and already accepted for every
+ * other attribute by ATTRS — invisible to the scan, so the string would be
+ * neither extracted nor reported while shipping in the source language.
+ */
+function attrValue(element: ScannedElement): string {
+  // Entity-decoded, because the writer escapes `&`/`"` when it interpolates a
+  // key into the attribute. Without decoding here the key would not round-trip:
+  // extract would report `a&amp;b` for the key the writer was given as `a&b`.
+  return decodeXmlEntities(element.groups[1]!);
+}
+
+/** The element's remaining attributes, preserved verbatim on rewrite. */
+function otherAttrs(element: ScannedElement): string {
+  return element.groups[2] ?? '';
+}
+
+const INDENT_STEP = '    ';
+
+// A `<string-array>` element's entries are keyed `<name>.<index>`, so a key
+// ending in a dot-integer cannot be told apart from a plain resource whose name
+// happens to end that way. Writing a new resource for one would invent a
+// `<string>` named after an array slot, so those are left to the caller.
+const ARRAY_ITEM_KEY_RE = /\.\d+$/;
 
 const TRANSLATABLE_FALSE_RE = /\btranslatable\s*=\s*"false"/;
 
@@ -48,52 +107,113 @@ const XML_ENTITY_RE = /&(?:#x([0-9a-fA-F]+)|#(\d+)|(amp|lt|gt|quot|apos));/g;
  * `&lt;` rather than collapsing all the way to `<`.
  */
 function decodeXmlEntities(value: string): string {
-  return value.replace(XML_ENTITY_RE, (match, hex: string | undefined, dec: string | undefined, named: string | undefined) => {
-    if (hex !== undefined) {
-      const code = Number.parseInt(hex, 16);
-      return code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+  return value.replace(
+    XML_ENTITY_RE,
+    (
+      match,
+      hex: string | undefined,
+      dec: string | undefined,
+      named: string | undefined
+    ) => {
+      if (hex !== undefined) {
+        const code = Number.parseInt(hex, 16);
+        return code >= 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : match;
+      }
+      if (dec !== undefined) {
+        const code = Number.parseInt(dec, 10);
+        return code >= 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : match;
+      }
+      switch (named) {
+        case 'amp':
+          return '&';
+        case 'lt':
+          return '<';
+        case 'gt':
+          return '>';
+        case 'quot':
+          return '"';
+        case 'apos':
+          return "'";
+        default:
+          return match;
+      }
     }
-    if (dec !== undefined) {
-      const code = Number.parseInt(dec, 10);
-      return code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
-    }
-    switch (named) {
-      case 'amp': return '&';
-      case 'lt': return '<';
-      case 'gt': return '>';
-      case 'quot': return '"';
-      case 'apos': return "'";
-      default: return match;
-    }
-  });
+  );
 }
 
 function unescapeAndroid(value: string): string {
-  const withoutBackslashEscapes = value.replace(/\\(\\|'|"|n|t|r)/g, (_match, ch: string) => {
-    switch (ch) {
-      case '\\': return '\\';
-      case "'": return "'";
-      case '"': return '"';
-      case 'n': return '\n';
-      case 't': return '\t';
-      case 'r': return '\r';
-      default: return ch;
+  const withoutBackslashEscapes = value.replace(
+    /\\(\\|'|"|n|t|r)/g,
+    (_match, ch: string) => {
+      switch (ch) {
+        case '\\':
+          return '\\';
+        case "'":
+          return "'";
+        case '"':
+          return '"';
+        case 'n':
+          return '\n';
+        case 't':
+          return '\t';
+        case 'r':
+          return '\r';
+        default:
+          return ch;
+      }
     }
-  });
+  );
   return decodeXmlEntities(withoutBackslashEscapes);
 }
 
-function escapeAndroid(value: string): string {
+/**
+ * A value written inside a double-quoted XML attribute. `name` and `quantity`
+ * are interpolated from keys, which may hold `&` or `"` — raw, either produces
+ * an element no XML consumer can read.
+ */
+function escapeXmlAttr(value: string): string {
   return value
-    .replace(/\\/g, '\\\\')
-    .replace(/\n/g, '\\n')
-    .replace(/'/g, "\\'")
-    .replace(/"/g, '\\"')
-    // & must precede < and >, or the entities produced below get re-escaped
-    // into &amp;lt; — which compounds on every subsequent sync run.
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escapeAndroid(value: string): string {
+  return (
+    value
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      // & must precede < and >, or the entities produced below get re-escaped
+      // into &amp;lt; — which compounds on every subsequent sync run.
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  );
+}
+
+/**
+ * Refuse a value XML 1.0 cannot carry. Every C0 byte except tab, LF and CR is
+ * outside the `Char` production, so there is no escape and no numeric character
+ * reference for it: written raw the file stops being well-formed and aapt2
+ * rejects the resource. Fail fast naming the resource, matching this parser's
+ * existing stance on a CDATA breakout.
+ */
+function assertNoControlChars(name: string, value: string): void {
+  const found = findForbiddenControlChar(value);
+  if (found !== undefined) {
+    throw new ValidationError(
+      `Android resource "${name}" would contain ${describeControlChar(found)}, ` +
+        `which XML 1.0 cannot represent in any form.`,
+      'Remove the control character from the translation, or from the source string it came from.'
+    );
+  }
 }
 
 /**
@@ -107,7 +227,7 @@ function assertNoCdataBreakout(value: string): void {
   if (value.includes(']]>')) {
     throw new ValidationError(
       'Android CDATA values containing "]]>" are not supported.',
-      'Remove the "]]>" sequence from the text, or drop the <![CDATA[...]]> wrapper in the source file so the value is entity-escaped instead.',
+      'Remove the "]]>" sequence from the text, or drop the <![CDATA[...]]> wrapper in the source file so the value is entity-escaped instead.'
     );
   }
 }
@@ -124,6 +244,8 @@ export class AndroidXmlFormatParser implements FormatParser {
     this.extractPlurals(content, entries);
     this.extractStringArrays(content, entries);
 
+    assertDistinctKeys(entries, 'Android XML', '.');
+
     return entries;
   }
 
@@ -132,6 +254,7 @@ export class AndroidXmlFormatParser implements FormatParser {
     const pluralTranslations = new Map<string, Map<string, string>>();
     const arrayTranslations = new Map<string, Map<number, string>>();
     let arrayNames: Set<string> | undefined;
+    let pluralsNames: Set<string> | undefined;
 
     for (const entry of entries) {
       if (entry.metadata?.['plurals']) {
@@ -146,10 +269,24 @@ export class AndroidXmlFormatParser implements FormatParser {
         const arrayName = entry.key.substring(0, lastDot);
         const index = parseInt(entry.key.substring(lastDot + 1), 10);
         arrayNames ??= new Set(
-          scanElements(originalContent, STRING_ARRAY_EL).map((el) => el.groups[0]!),
+          scanElements(originalContent, STRING_ARRAY_EL).map((el) =>
+            attrValue(el)
+          )
+        );
+        // A key that NAMES a <plurals> element is that element, whatever shape it
+        // has: a plurals key like `x.0` also reads as an item of
+        // `<string-array name="x">`, and a carried-forward entry arrives with its
+        // plural metadata stripped. Routing on the key's shape alone would leave
+        // the element unclaimed, for the PLURALS_EL pass to delete.
+        pluralsNames ??= new Set(
+          scanElements(originalContent, PLURALS_EL).map((el) => attrValue(el))
         );
 
-        if (!isNaN(index) && arrayNames.has(arrayName)) {
+        if (
+          !isNaN(index) &&
+          arrayNames.has(arrayName) &&
+          !pluralsNames.has(entry.key)
+        ) {
           if (!arrayTranslations.has(arrayName)) {
             arrayTranslations.set(arrayName, new Map());
           }
@@ -163,34 +300,43 @@ export class AndroidXmlFormatParser implements FormatParser {
     }
 
     let result = replaceElements(originalContent, STRING_EL, (el) => {
-      const attrs = el.groups[1] ?? '';
+      const attrs = otherAttrs(el);
       if (TRANSLATABLE_FALSE_RE.test(attrs)) {
         return el.text;
       }
-      const translation = translations.get(el.groups[0]!);
+      const translation = translations.get(attrValue(el));
       if (translation === undefined) {
         return null;
       }
-      return this.rewriteInner(el, this.escapeForReconstruct(el.inner, translation));
+      return this.rewriteInner(
+        el,
+        this.escapeForReconstruct(attrValue(el), el.inner, translation)
+      );
     });
 
     result = replaceElements(result, PLURALS_EL, (el) => {
-      const quantityMap = pluralTranslations.get(el.groups[0]!);
+      const quantityMap = pluralTranslations.get(attrValue(el));
       if (!quantityMap) {
-        return null;
+        // An entry handed over without per-form translations is one whose
+        // plural forms this run did not translate: the element keeps the items
+        // it already holds. Only a key absent from the entry list is removed.
+        return translations.has(attrValue(el)) ? el.text : null;
       }
       const inner = replaceElements(el.inner, PLURAL_ITEM_EL, (item) => {
-        const translation = quantityMap.get(item.groups[0]!);
+        const translation = quantityMap.get(attrValue(item));
         if (translation === undefined) {
           return item.text;
         }
-        return this.rewriteInner(item, this.escapeForReconstruct(item.inner, translation));
+        return this.rewriteInner(
+          item,
+          this.escapeForReconstruct(attrValue(el), item.inner, translation)
+        );
       });
       return this.rewriteInner(el, inner);
     });
 
     result = replaceElements(result, STRING_ARRAY_EL, (el) => {
-      const indexMap = arrayTranslations.get(el.groups[0]!);
+      const indexMap = arrayTranslations.get(attrValue(el));
       if (!indexMap) {
         return null;
       }
@@ -201,12 +347,89 @@ export class AndroidXmlFormatParser implements FormatParser {
         if (translation === undefined) {
           return item.text;
         }
-        return this.rewriteInner(item, this.escapeForReconstruct(item.inner, translation));
+        return this.rewriteInner(
+          item,
+          this.escapeForReconstruct(attrValue(el), item.inner, translation)
+        );
       });
       return this.rewriteInner(el, inner);
     });
 
-    return result;
+    return this.writeMissingResources(result, translations, pluralTranslations);
+  }
+
+  /**
+   * Write a resource for every entry the document has no element for. Such an
+   * entry is a key added to the source file after this target was written: the
+   * target is the reconstruct template, so it has no slot, and dropping the
+   * entry loses the string with nothing to distinguish it from a key never
+   * asked for.
+   *
+   * A new `<string-array>` item is not written — see ARRAY_ITEM_KEY_RE.
+   */
+  private writeMissingResources(
+    content: string,
+    translations: Map<string, string>,
+    pluralTranslations: Map<string, Map<string, string>>
+  ): string {
+    const strings = scanElements(content, STRING_EL);
+    const plurals = scanElements(content, PLURALS_EL);
+    const arrays = scanElements(content, STRING_ARRAY_EL);
+    const slotted = new Set(
+      [...strings, ...plurals, ...arrays].map((el) => attrValue(el))
+    );
+
+    const missingStrings = [...translations].filter(
+      ([name]) => !slotted.has(name) && !ARRAY_ITEM_KEY_RE.test(name)
+    );
+    const missingPlurals = [...pluralTranslations].filter(
+      ([name, quantities]) => !slotted.has(name) && quantities.size > 0
+    );
+    if (missingStrings.length === 0 && missingPlurals.length === 0) {
+      return content;
+    }
+
+    const anchor =
+      strings[strings.length - 1] ??
+      plurals[plurals.length - 1] ??
+      arrays[arrays.length - 1];
+    let at: number;
+    let indent: string;
+    if (anchor) {
+      at = anchor.end;
+      indent = lineIndentAt(content, anchor.start);
+    } else {
+      const resources = findElement(content, RESOURCES_EL);
+      if (!resources) return content;
+      at = resources.start + resources.openTag.length;
+      indent = lineIndentAt(content, resources.start) + INDENT_STEP;
+    }
+
+    const blocks = [
+      ...missingStrings.map(([name, translation]) => {
+        // The KEY is checked as well as the translation: it is interpolated into
+        // the `name` attribute, and XML 1.0 has no representation for a C0 byte
+        // in any form, so a control byte in a source key yields a file no
+        // consumer reads and a live terminal sequence in `git diff`.
+        assertNoControlChars(name, name);
+        assertNoControlChars(name, translation);
+        return `<string name="${escapeXmlAttr(name)}">${escapeAndroid(translation)}</string>`;
+      }),
+      ...missingPlurals.map(([name, quantities]) => {
+        assertNoControlChars(name, name);
+        return [
+          `<plurals name="${escapeXmlAttr(name)}">`,
+          ...[...quantities].map(([quantity, value]) => {
+            assertNoControlChars(name, quantity);
+            assertNoControlChars(name, value);
+            return `${indent}${INDENT_STEP}<item quantity="${escapeXmlAttr(quantity)}">${escapeAndroid(value)}</item>`;
+          }),
+          `${indent}</plurals>`,
+        ].join('\n');
+      }),
+    ];
+
+    return insertBlocksAt(content, at, indent, blocks);
   }
 
   private rewriteInner(element: ScannedElement, inner: string): string {
@@ -215,35 +438,43 @@ export class AndroidXmlFormatParser implements FormatParser {
 
   private extractStrings(content: string, entries: ExtractedEntry[]): void {
     for (const el of scanElements(content, STRING_EL)) {
-      if (TRANSLATABLE_FALSE_RE.test(el.groups[1] ?? '')) {
+      if (TRANSLATABLE_FALSE_RE.test(otherAttrs(el))) {
         continue;
       }
-      entries.push({ key: el.groups[0]!, value: this.decodeValue(el.inner) });
+      entries.push({ key: attrValue(el), value: this.decodeValue(el.inner) });
     }
   }
 
   private extractPlurals(content: string, entries: ExtractedEntry[]): void {
     for (const el of scanElements(content, PLURALS_EL)) {
-      const plurals: PluralItem[] = scanElements(el.inner, PLURAL_ITEM_EL).map((item) => ({
-        quantity: item.groups[0]!,
-        value: this.decodeValue(item.inner),
-      }));
+      const plurals: PluralItem[] = scanElements(el.inner, PLURAL_ITEM_EL).map(
+        (item) => ({
+          quantity: attrValue(item),
+          value: this.decodeValue(item.inner),
+        })
+      );
 
-      const defaultItem = plurals.find(p => p.quantity === 'other') ?? plurals[0];
+      const defaultItem = primaryPluralItem(plurals);
       entries.push({
-        key: el.groups[0]!,
+        key: attrValue(el),
         value: defaultItem?.value ?? '',
         metadata: { plurals },
       });
     }
   }
 
-  private extractStringArrays(content: string, entries: ExtractedEntry[]): void {
+  private extractStringArrays(
+    content: string,
+    entries: ExtractedEntry[]
+  ): void {
     for (const el of scanElements(content, STRING_ARRAY_EL)) {
-      const name = el.groups[0]!;
+      const name = attrValue(el);
       let index = 0;
       for (const item of scanElements(el.inner, ARRAY_ITEM_EL)) {
-        entries.push({ key: `${name}.${index}`, value: this.decodeValue(item.inner) });
+        entries.push({
+          key: `${name}.${index}`,
+          value: this.decodeValue(item.inner),
+        });
         index++;
       }
     }
@@ -266,7 +497,12 @@ export class AndroidXmlFormatParser implements FormatParser {
     return unescapeAndroid(raw);
   }
 
-  private escapeForReconstruct(originalInner: string, translation: string): string {
+  private escapeForReconstruct(
+    name: string,
+    originalInner: string,
+    translation: string
+  ): string {
+    assertNoControlChars(name, translation);
     if (originalInner.startsWith('<![CDATA[')) {
       assertNoCdataBreakout(translation);
       return `<![CDATA[${translation}]]>`;

@@ -1,4 +1,7 @@
-import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../../src/utils/concurrency';
+import {
+  mapWithConcurrency,
+  MULTI_TARGET_CONCURRENCY,
+} from '../../src/utils/concurrency';
 
 describe('mapWithConcurrency', () => {
   it('should preserve result ordering', async () => {
@@ -6,7 +9,7 @@ describe('mapWithConcurrency', () => {
     const results = await mapWithConcurrency(
       items,
       async (ms) => {
-        await new Promise(r => setTimeout(r, ms));
+        await new Promise((r) => setTimeout(r, ms));
         return `done-${ms}`;
       },
       3
@@ -25,7 +28,7 @@ describe('mapWithConcurrency', () => {
       async (item) => {
         inflight++;
         maxInflight = Math.max(maxInflight, inflight);
-        await new Promise(r => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 10));
         inflight--;
         return item;
       },
@@ -37,11 +40,7 @@ describe('mapWithConcurrency', () => {
   });
 
   it('should handle empty array', async () => {
-    const results = await mapWithConcurrency(
-      [],
-      async () => 'never',
-      5
-    );
+    const results = await mapWithConcurrency([], async () => 'never', 5);
     expect(results).toEqual([]);
   });
 
@@ -76,7 +75,7 @@ describe('mapWithConcurrency', () => {
       async (item) => {
         inflight++;
         maxInflight = Math.max(maxInflight, inflight);
-        await new Promise(r => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 10));
         inflight--;
         return item;
       },

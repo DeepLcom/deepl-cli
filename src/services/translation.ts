@@ -4,20 +4,49 @@
  */
 
 import * as crypto from 'crypto';
-import { DeepLClient, TranslationResult, isTranslationResult, UsageInfo, LanguageInfo } from '../api/deepl-client.js';
+import {
+  DeepLClient,
+  TranslationResult,
+  isTranslationResult,
+  UsageInfo,
+  LanguageInfo,
+} from '../api/deepl-client.js';
 import { ConfigService } from '../storage/config.js';
 import type { CacheService } from '../storage/cache.js';
-import { TranslationOptions, Language, TranslationMemory } from '../types/index.js';
+import {
+  TranslationOptions,
+  Language,
+  TranslationMemory,
+} from '../types/index.js';
 import { Logger } from '../utils/logger.js';
-import { mapWithConcurrency, MULTI_TARGET_CONCURRENCY } from '../utils/concurrency.js';
+import {
+  mapWithConcurrency,
+  MULTI_TARGET_CONCURRENCY,
+} from '../utils/concurrency.js';
 import { ValidationError } from '../utils/errors.js';
 import { errorMessage } from '../utils/error-message.js';
-import { preserveCodeBlocks, preserveVariables, restorePlaceholders } from '../utils/text-preservation.js';
+import { resolveGlossaryWireParams } from '../utils/glossary-params.js';
+import { resolveTagHandlingVersion } from '../utils/tag-handling-version.js';
+import {
+  preserveCodeBlocks,
+  preserveVariables,
+  restorePlaceholders,
+  assertPlaceholdersSurvived,
+} from '../utils/text-preservation.js';
 
 export { MULTI_TARGET_CONCURRENCY };
 
 interface TranslateServiceOptions {
   preserveCode?: boolean;
+  skipCache?: boolean;
+}
+
+/**
+ * Service-level options for `translateBatch`. Separate from
+ * `TranslateServiceOptions` because code-block preservation is a single-text
+ * concern that the batch path does not apply.
+ */
+export interface TranslateBatchServiceOptions {
   skipCache?: boolean;
 }
 
@@ -43,13 +72,38 @@ export class TranslationService {
   // No cache means "run cacheless" — the CLI passes undefined when the
   // cache backend is unavailable (see cli/cache-loader.ts).
   private cache?: CacheService;
-  private languageCache: Map<'source' | 'target', { data: LanguageInfo[]; timestamp: number }> = new Map();
+  private languageCache: Map<
+    'source' | 'target',
+    { data: LanguageInfo[]; timestamp: number }
+  > = new Map();
   private readonly LANGUAGE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+  private announcedCacheNotices = new Set<string>();
 
-  constructor(client: DeepLClient, config: ConfigService, cache?: CacheService) {
+  constructor(
+    client: DeepLClient,
+    config: ConfigService,
+    cache?: CacheService
+  ) {
     this.client = client;
     this.config = config;
     this.cache = cache;
+  }
+
+  /**
+   * The cache state is a property of the run, not of one request, so repeat it
+   * no more than once. A file of more than `TRANSLATE_BATCH_SIZE` strings needs
+   * several requests, and one notice per request would bury the output.
+   */
+  private announceCacheMode(cacheEnabled: boolean, skipCache: boolean): void {
+    const notice = !cacheEnabled
+      ? 'ℹ️  Cache is disabled'
+      : skipCache
+        ? 'ℹ️  Cache bypassed for this request (--no-cache)'
+        : undefined;
+    if (notice && !this.announcedCacheNotices.has(notice)) {
+      this.announcedCacheNotices.add(notice);
+      Logger.info(notice);
+    }
   }
 
   /**
@@ -60,7 +114,6 @@ export class TranslationService {
     options: TranslationOptions,
     serviceOptions: TranslateServiceOptions = {}
   ): Promise<TranslationResult> {
-    // Validate inputs
     if (!text || text.trim() === '') {
       throw new ValidationError('Text cannot be empty');
     }
@@ -73,23 +126,21 @@ export class TranslationService {
     if (textBytes > MAX_TEXT_BYTES) {
       throw new ValidationError(
         `Text too large: ${textBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
-        'Split the text into smaller chunks or use file translation for large documents.'
+          'Split the text into smaller chunks or use file translation for large documents.'
       );
     }
 
-    // Get defaults from config
     const configData = this.config.get();
     const defaults = configData.defaults;
 
-    // Merge options with defaults
     const translationOptions: TranslationOptions = {
       ...options,
       sourceLang: options.sourceLang ?? defaults.sourceLang,
       formality: options.formality ?? defaults.formality,
-      preserveFormatting: options.preserveFormatting ?? defaults.preserveFormatting,
+      preserveFormatting:
+        options.preserveFormatting ?? defaults.preserveFormatting,
     };
 
-    // Preserve code blocks if requested
     let processedText = text;
     const preservationMap: Map<string, string> = new Map();
 
@@ -97,19 +148,12 @@ export class TranslationService {
       processedText = preserveCodeBlocks(text, preservationMap);
     }
 
-    // Always preserve variables
     processedText = preserveVariables(processedText, preservationMap);
 
-    // Check cache (only if cache is enabled AND skipCache is not set)
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
     const shouldUseCache = cacheEnabled && !serviceOptions.skipCache;
 
-    // Log when cache is bypassed
-    if (!cacheEnabled) {
-      Logger.info('ℹ️  Cache is disabled');
-    } else if (serviceOptions.skipCache) {
-      Logger.info('ℹ️  Cache bypassed for this request (--no-cache)');
-    }
+    this.announceCacheMode(cacheEnabled, serviceOptions.skipCache === true);
 
     const cacheKey = this.generateCacheKey(processedText, translationOptions);
 
@@ -117,6 +161,7 @@ export class TranslationService {
       const cachedResult = this.cache?.get(cacheKey, isTranslationResult);
       if (cachedResult) {
         Logger.verbose('[verbose] Cache hit');
+        assertPlaceholdersSurvived(cachedResult.text, preservationMap);
         return {
           ...cachedResult,
           text: restorePlaceholders(cachedResult.text, preservationMap),
@@ -126,13 +171,18 @@ export class TranslationService {
       Logger.verbose('[verbose] Cache miss');
     }
 
-    // Translate via API
     const startTime = Date.now();
-    const result = await this.client.translate(processedText, translationOptions);
+    const result = await this.client.translate(
+      processedText,
+      translationOptions
+    );
     const elapsed = Date.now() - startTime;
     Logger.verbose(`[verbose] API response time: ${elapsed}ms`);
 
-    // Store in cache
+    // Checked before the cache write: a response that lost a placeholder must
+    // not become a cache entry that reproduces the same output offline.
+    assertPlaceholdersSurvived(result.text, preservationMap);
+
     if (shouldUseCache) {
       this.cache?.set(cacheKey, result);
     }
@@ -151,11 +201,20 @@ export class TranslationService {
    *
    * @param texts - Array of texts to translate
    * @param options - Translation options
+   * @param serviceOptions - `skipCache` bypasses both the cache read and the
+   *   cache write, matching `translate()`. Every structured i18n format goes
+   *   through this path, so it is what makes `--no-cache` reach them.
+   * @returns One slot per input text, in input order. A slot is `null` when the
+   *   request carrying that text failed; the surviving batches are still
+   *   returned so callers that track failure per item can retry only those.
+   *   Callers needing all-or-nothing should submit at most
+   *   `TRANSLATE_BATCH_SIZE` texts, which makes any failure a rejection.
    */
   async translateBatch(
     texts: string[],
-    options: TranslationOptions
-  ): Promise<TranslationResult[]> {
+    options: TranslationOptions,
+    serviceOptions: TranslateBatchServiceOptions = {}
+  ): Promise<(TranslationResult | null)[]> {
     if (texts.length === 0) {
       return [];
     }
@@ -169,39 +228,44 @@ export class TranslationService {
       if (itemBytes > MAX_TEXT_BYTES) {
         throw new ValidationError(
           `Text at index ${i} too large: ${itemBytes} bytes exceeds the ${MAX_TEXT_BYTES} byte limit (128KB). ` +
-          'Split the text into smaller chunks or use file translation for large documents.'
+            'Split the text into smaller chunks or use file translation for large documents.'
         );
       }
     }
 
-    // Get config defaults
     const configData = this.config.get();
     const defaults = configData.defaults;
     const cacheEnabled = this.config.getValue<boolean>('cache.enabled') ?? true;
+    const shouldUseCache = cacheEnabled && !serviceOptions.skipCache;
 
-    // Merge options with defaults
+    this.announceCacheMode(cacheEnabled, serviceOptions.skipCache === true);
+
     const translationOptions: TranslationOptions = {
       ...options,
       sourceLang: options.sourceLang ?? defaults.sourceLang,
       formality: options.formality ?? defaults.formality,
-      preserveFormatting: options.preserveFormatting ?? defaults.preserveFormatting,
+      preserveFormatting:
+        options.preserveFormatting ?? defaults.preserveFormatting,
     };
 
-    // Check cache and separate cached vs non-cached texts
-    // Use Set for deduplication and Map to track all indices for each text
     const textsToTranslateSet = new Set<string>();
     const textIndexMap = new Map<string, number[]>(); // Maps text to ALL original indices
-    const results: (TranslationResult | null)[] = new Array<TranslationResult | null>(texts.length).fill(null);
+    const results: (TranslationResult | null)[] =
+      new Array<TranslationResult | null>(texts.length).fill(null);
 
     for (let i = 0; i < texts.length; i++) {
       const text = texts[i];
       if (!text) {
+        // An empty source value has an empty translation, filled in without a
+        // request: sending it is billed for nothing, and a null slot would be
+        // indistinguishable from a request that failed.
+        results[i] = { text: '', billedCharacters: 0 };
         continue;
       }
 
       const cacheKey = this.generateCacheKey(text, translationOptions);
 
-      if (cacheEnabled) {
+      if (shouldUseCache) {
         const cachedResult = this.cache?.get(cacheKey, isTranslationResult);
         if (cachedResult) {
           results[i] = cachedResult;
@@ -209,43 +273,36 @@ export class TranslationService {
         }
       }
 
-      // Not cached, need to translate
-      // Track this text for translation (deduplicated via Set)
       textsToTranslateSet.add(text);
 
-      // Track ALL indices for this text (handles duplicates)
       if (!textIndexMap.has(text)) {
         textIndexMap.set(text, []);
       }
       textIndexMap.get(text)!.push(i);
     }
 
-    // Convert Set to Array for batch translation
     const textsToTranslate = Array.from(textsToTranslateSet);
 
-    // If all texts were cached, return results preserving positional correspondence
     if (textsToTranslate.length === 0) {
-      return results as TranslationResult[];
+      return results;
     }
 
-    // Use batch API to translate all non-cached texts in a single request
-    // DeepL API supports up to TRANSLATE_BATCH_SIZE texts per request, so chunk if needed
     const BATCH_SIZE = TRANSLATE_BATCH_SIZE;
     const batches: string[][] = [];
     for (let i = 0; i < textsToTranslate.length; i += BATCH_SIZE) {
       batches.push(textsToTranslate.slice(i, i + BATCH_SIZE));
     }
 
-    // Process all batches and track failures
-    // Use a Map to correctly track which text maps to which result
     const textToResultMap = new Map<string, TranslationResult>();
     let lastError: Error | null = null;
 
     for (const batch of batches) {
       try {
-        const batchResults = await this.client.translateBatch(batch, translationOptions);
+        const batchResults = await this.client.translateBatch(
+          batch,
+          translationOptions
+        );
 
-        // Map each result to its corresponding text
         for (let i = 0; i < batch.length; i++) {
           const text = batch[i];
           const result = batchResults[i];
@@ -256,49 +313,46 @@ export class TranslationService {
       } catch (error) {
         lastError = error as Error;
         Logger.error(`Batch translation failed: ${errorMessage(error)}`);
-        // Mark all texts in this batch as processed (but failed)
-        // Continue with other batches rather than failing completely
+        // The other batches still run; only a run where every batch failed
+        // rejects.
       }
     }
 
-    // If all batches failed, throw the last error
     if (textToResultMap.size === 0 && lastError) {
       throw lastError;
     }
 
-    // Store results in cache and map back to ALL original indices
     for (const text of textsToTranslate) {
       const result = textToResultMap.get(text);
 
       if (!result) {
-        // Translation failed for this text
         continue;
       }
 
       const originalIndices = textIndexMap.get(text);
       if (originalIndices) {
-        // Assign result to ALL indices where this text appeared (handles duplicates)
+        // Each of the indices this text deduplicated to gets its own copy: the
+        // returned array is typed as one result per index, so a caller editing
+        // results[i] in place must not reach any other index.
         for (const index of originalIndices) {
-          results[index] = result;
+          results[index] = { ...result };
         }
 
-        // Cache the result (only once per unique text)
-        if (cacheEnabled) {
+        if (shouldUseCache) {
           const cacheKey = this.generateCacheKey(text, translationOptions);
           this.cache?.set(cacheKey, result);
         }
       }
     }
 
-    // Calculate actual failures
-    const actualFailures = results.filter(r => r === null).length;
+    const actualFailures = results.filter((r) => r === null).length;
     if (actualFailures > 0) {
-      Logger.warn(`⚠️  Warning: ${actualFailures} of ${texts.length} translations failed`);
+      Logger.warn(
+        `⚠️  Warning: ${actualFailures} of ${texts.length} translations failed`
+      );
     }
 
-    // Return sparse array preserving positional correspondence with input texts.
-    // Callers must check for null/undefined at each index.
-    return results as TranslationResult[];
+    return results;
   }
 
   /**
@@ -307,7 +361,9 @@ export class TranslationService {
   async translateToMultiple(
     text: string,
     targetLangs: Language[],
-    options: Omit<TranslationOptions, 'targetLang'> & { skipCache?: boolean } = {}
+    options: Omit<TranslationOptions, 'targetLang'> & {
+      skipCache?: boolean;
+    } = {}
   ): Promise<MultiTargetResult[]> {
     if (targetLangs.length === 0) {
       throw new ValidationError('At least one target language is required');
@@ -316,10 +372,14 @@ export class TranslationService {
     return mapWithConcurrency(
       targetLangs,
       async (targetLang) => {
-        const result = await this.translate(text, {
-          ...options,
-          targetLang,
-        }, { skipCache: options.skipCache });
+        const result = await this.translate(
+          text,
+          {
+            ...options,
+            targetLang,
+          },
+          { skipCache: options.skipCache }
+        );
 
         return {
           targetLang,
@@ -356,20 +416,18 @@ export class TranslationService {
   /**
    * Get supported languages with caching (24-hour TTL)
    */
-  async getSupportedLanguages(type: 'source' | 'target'): Promise<LanguageInfo[]> {
-    // Check cache first
+  async getSupportedLanguages(
+    type: 'source' | 'target'
+  ): Promise<LanguageInfo[]> {
     const cached = this.languageCache.get(type);
     const now = Date.now();
 
-    // Return cached data if it exists and hasn't expired
-    if (cached && (now - cached.timestamp) < this.LANGUAGE_CACHE_TTL) {
+    if (cached && now - cached.timestamp < this.LANGUAGE_CACHE_TTL) {
       return cached.data;
     }
 
-    // Fetch from API
     const languages = await this.client.getSupportedLanguages(type);
 
-    // Cache result with timestamp
     this.languageCache.set(type, { data: languages, timestamp: now });
 
     return languages;
@@ -378,39 +436,78 @@ export class TranslationService {
   /**
    * Generate cache key from text and options
    *
-   * IMPORTANT: This method creates a new object with properties in a FIXED order
-   * to ensure deterministic cache keys. Two translation requests with identical
-   * parameters must generate the same cache key, regardless of the order in which
-   * properties were specified in the input options object.
-   *
-   * The property order in `cacheData` is intentional and must not be changed,
-   * as it directly affects cache key generation via JSON.stringify().
+   * IMPORTANT: the property order in `cacheData` is fixed and must not be
+   * changed, because the key is a hash of its `JSON.stringify` output: two
+   * requests with identical parameters must produce the same key whatever order
+   * the caller specified those parameters in.
    *
    * The text is hashed byte-exact, with no Unicode normalization: NFC and NFD
    * encodings of the same visible string produce distinct cache keys. This is
    * intentional — the API receives the un-normalized bytes, so the cache keys
    * on exactly what is sent.
+   *
+   * New fields are appended after the existing ones, so a field left `undefined`
+   * does not perturb the key -- `JSON.stringify` omits it. `preserveFormatting`
+   * is the exception: the service merges a config default for it, so it is always
+   * materialized and every key reflects it. `glossaryIds` is hashed in the
+   * caller's order rather than sorted, because that order is what goes on the
+   * wire, and the API is free to return a different translation for a different
+   * ordering of the same glossaries.
+   *
+   * `tagHandlingVersion` is resolved rather than read straight off the options,
+   * so it holds the version the request will actually carry. Leaving it unset
+   * would let the key stay stable across a change of the API's own default,
+   * serving entries the API would no longer produce.
+   *
+   * Every parameter that changes the returned text belongs here, or the cache
+   * serves the wrong translation: a plain request and the same request with a
+   * translation memory, different --ignore-tags, or --preserve-formatting are
+   * different requests. `preserveFormatting` counts because preserve_formatting
+   * suppresses the sentence-boundary punctuation and case correction, which
+   * shows up in the text.
+   *
+   * `endpoint` is not a request parameter but decides who answers the request,
+   * and one cache DB is shared by every endpoint a config dir has ever talked
+   * to. Without it, a single run against `--api-url http://localhost:1234`
+   * serves its answers back for api.deepl.com for the full 30-day TTL, with no
+   * network involved. Custom endpoints are a supported feature — proxies,
+   * regional endpoints — so this needs no misuse to reach.
    */
   private generateCacheKey(text: string, options: TranslationOptions): string {
-    // Create a stable representation with deterministic property order
-    // Property order matters because JSON.stringify() preserves insertion order
+    // Keyed on the parameter the request will actually carry, so the two ways of
+    // naming one glossary share a key and an empty selection keys as no glossary
+    const glossary = resolveGlossaryWireParams(options);
+
     const cacheData = {
-      text,                      // 1. Text to translate
-      targetLang: options.targetLang,    // 2. Target language
-      sourceLang: options.sourceLang,    // 3. Source language (if specified)
-      formality: options.formality,      // 4. Formality level
-      glossaryId: options.glossaryId,    // 5. Glossary ID
-      context: options.context,          // 6. Context hint
-      modelType: options.modelType,      // 7. Model type affects output quality
+      text, // 1. Text to translate
+      targetLang: options.targetLang, // 2. Target language
+      sourceLang: options.sourceLang, // 3. Source language (if specified)
+      formality: options.formality, // 4. Formality level
+      glossaryId:
+        glossary && 'glossary_id' in glossary
+          ? glossary.glossary_id
+          : undefined, // 5. Glossary ID
+      context: options.context, // 6. Context hint
+      modelType: options.modelType, // 7. Model type affects output quality
       splitSentences: options.splitSentences, // 8. Sentence splitting behavior
-      tagHandling: options.tagHandling,  // 9. HTML/XML processing
-      tagHandlingVersion: options.tagHandlingVersion, // 10. Tag handling version
+      tagHandling: options.tagHandling, // 9. HTML/XML processing
+      tagHandlingVersion: resolveTagHandlingVersion(options), // 10. Tag handling version
       customInstructions: options.customInstructions, // 11. Custom instructions
-      styleId: options.styleId,          // 12. Style rules
-      // Note: preserveFormatting doesn't affect translation output, so not cached
+      styleId: options.styleId, // 12. Style rules
+      glossaryIds:
+        glossary && 'glossary_ids' in glossary
+          ? glossary.glossary_ids
+          : undefined, // 13. Multi-glossary selection (order-significant)
+      translationMemoryId: options.translationMemoryId, // 14. Memory consulted for matches
+      translationMemoryThreshold: options.translationMemoryThreshold, // 15. Which matches it reuses
+      ignoreTags: options.ignoreTags, // 16. Tags left untranslated
+      splittingTags: options.splittingTags, // 17. Tags that split sentences
+      nonSplittingTags: options.nonSplittingTags, // 18. Tags that do not
+      outlineDetection: options.outlineDetection, // 19. XML structure inference
+      preserveFormatting: options.preserveFormatting, // 20. Suppresses boundary correction
+      endpoint: this.client.resolvedBaseUrl, // 21. Who answered the request
     };
 
-    // Generate SHA-256 hash of the stable representation
     const hash = crypto
       .createHash('sha256')
       .update(JSON.stringify(cacheData))

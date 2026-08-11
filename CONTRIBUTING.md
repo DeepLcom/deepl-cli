@@ -12,7 +12,7 @@ project maintainer.
 
 ## Prerequisites
 
-- **Node.js** >= 24.0.0
+- **Node.js** >= 24.15.0 (the release where `node:sqlite` stopped being experimental)
 - **npm** >= 9.0.0
 - A [DeepL API key](https://www.deepl.com/pro-api) (free tier works for development)
 
@@ -35,6 +35,24 @@ npm link
 # Verify it works
 deepl --version
 ```
+
+### Enable the formatting hook
+
+CI runs `npm run format:check`, and `.git/hooks` is not version-controlled, so
+enable the format-on-commit hook once per clone. It formats only the staged
+`src/` and `tests/` TypeScript and re-stages it, so formatting is applied rather
+than something you have to remember:
+
+```bash
+cat >> .git/hooks/pre-commit <<'HOOK'
+npm run --silent format:staged || exit $?
+HOOK
+chmod +x .git/hooks/pre-commit
+```
+
+A partially staged file is reported and skipped rather than reformatted, because
+re-adding it would stage the hunks you deliberately left out. Run
+`npm run format` yourself in that case.
 
 ## Development Workflow
 
@@ -178,8 +196,11 @@ Contributions must be licensed under the same license as the project:
 2. **Write tests first**, then implement the feature (TDD).
 3. **Run the full check suite** before pushing:
    ```bash
-   npm test && npm run lint && npm run type-check && npm run build
+   npm run format:check && npm run lint && npm run type-check && npm run check-deps && npm run build && npm run test:coverage
    ```
+   These are the same six gates CI runs, in the same order.
+   `test:coverage` runs the same suite as `npm test` and additionally enforces
+   the coverage thresholds, which is what CI gates on.
 4. **Open a PR** with a clear description covering:
    - Summary of the change and motivation
    - List of specific changes
@@ -189,7 +210,7 @@ Contributions must be licensed under the same license as the project:
 
 ### PR Checklist
 
-- [ ] All tests pass (`npm test`)
+- [ ] All tests pass and coverage thresholds hold (`npm run test:coverage`)
 - [ ] Linter passes (`npm run lint`)
 - [ ] TypeScript compiles (`npm run type-check`)
 - [ ] New code includes unit, integration, and e2e tests
@@ -197,6 +218,7 @@ Contributions must be licensed under the same license as the project:
 - [ ] `CHANGELOG.md` updated under **Unreleased** section
 - [ ] `README.md` updated if user-facing feature changed
 - [ ] `docs/API.md` updated if command/flag added or changed
+- [ ] `docs/MIGRATION.md` updated if the change is breaking or requires action from an existing user
 - [ ] Example script added/updated in `examples/` for new features
 - [ ] Added new example script to `examples/run-all.sh` EXAMPLES array (for new CLI commands)
 

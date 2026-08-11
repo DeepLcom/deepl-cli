@@ -1,6 +1,7 @@
 /**
  * Tests for --dry-run flag across CLI commands
- * Tests translate (file/directory), glossary delete, cache clear, and watch commands
+ * Tests translate (text/file/directory), glossary delete, cache clear, and
+ * watch commands
  */
 
 import { Command } from 'commander';
@@ -73,7 +74,8 @@ describe('--dry-run flag', () => {
       const testFile = path.join(tmpDir, 'test-translate.txt');
       fs.writeFileSync(testFile, 'Hello world');
 
-      const { registerTranslate } = await import('../../src/cli/commands/register-translate');
+      const { registerTranslate } =
+        await import('../../src/cli/commands/register-translate');
 
       const program = new Command();
       const mockDeps = {
@@ -88,9 +90,14 @@ describe('--dry-run flag', () => {
       registerTranslate(program, mockDeps as any);
 
       await program.parseAsync([
-        'node', 'deepl', 'translate', testFile,
-        '--to', 'es',
-        '--output', '/tmp/out.txt',
+        'node',
+        'deepl',
+        'translate',
+        testFile,
+        '--to',
+        'es',
+        '--output',
+        '/tmp/out.txt',
         '--dry-run',
       ]);
 
@@ -111,7 +118,8 @@ describe('--dry-run flag', () => {
       }
       fs.writeFileSync(path.join(subDir, 'a.txt'), 'content');
 
-      const { registerTranslate } = await import('../../src/cli/commands/register-translate');
+      const { registerTranslate } =
+        await import('../../src/cli/commands/register-translate');
 
       const program = new Command();
       const mockDeps = {
@@ -126,10 +134,16 @@ describe('--dry-run flag', () => {
       registerTranslate(program, mockDeps as any);
 
       await program.parseAsync([
-        'node', 'deepl', 'translate', subDir,
-        '--to', 'de,fr',
-        '--output', '/tmp/out',
-        '--pattern', '*.txt',
+        'node',
+        'deepl',
+        'translate',
+        subDir,
+        '--to',
+        'de,fr',
+        '--output',
+        '/tmp/out',
+        '--pattern',
+        '*.txt',
         '--dry-run',
       ]);
 
@@ -148,7 +162,8 @@ describe('--dry-run flag', () => {
       const testFile = path.join(tmpDir, 'test-src-lang.txt');
       fs.writeFileSync(testFile, 'Bonjour');
 
-      const { registerTranslate } = await import('../../src/cli/commands/register-translate');
+      const { registerTranslate } =
+        await import('../../src/cli/commands/register-translate');
 
       const program = new Command();
       const mockDeps = {
@@ -163,10 +178,16 @@ describe('--dry-run flag', () => {
       registerTranslate(program, mockDeps as any);
 
       await program.parseAsync([
-        'node', 'deepl', 'translate', testFile,
-        '--to', 'en',
-        '--from', 'fr',
-        '--output', '/tmp/out.txt',
+        'node',
+        'deepl',
+        'translate',
+        testFile,
+        '--to',
+        'en',
+        '--from',
+        'fr',
+        '--output',
+        '/tmp/out.txt',
         '--dry-run',
       ]);
 
@@ -175,7 +196,8 @@ describe('--dry-run flag', () => {
     });
 
     it('should activate dry-run for plain text translation', async () => {
-      const { registerTranslate } = await import('../../src/cli/commands/register-translate');
+      const { registerTranslate } =
+        await import('../../src/cli/commands/register-translate');
 
       const program = new Command();
 
@@ -191,14 +213,19 @@ describe('--dry-run flag', () => {
       registerTranslate(program, mockDeps as any);
 
       await program.parseAsync([
-        'node', 'deepl', 'translate', 'Hello world',
-        '--to', 'es',
+        'node',
+        'deepl',
+        'translate',
+        'Hello world',
+        '--to',
+        'es',
         '--dry-run',
       ]);
 
       const outputCalls = mockLogger.output.mock.calls;
       const hasDryRun = outputCalls.some(
-        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('[dry-run]')
+        (call: unknown[]) =>
+          typeof call[0] === 'string' && call[0].includes('[dry-run]')
       );
       expect(hasDryRun).toBe(true);
       const outputStr = outputCalls.map((c: unknown[]) => c[0]).join('\n');
@@ -209,7 +236,8 @@ describe('--dry-run flag', () => {
 
   describe('glossary delete --dry-run', () => {
     it('should show dry-run message without deleting', async () => {
-      const { registerGlossary } = await import('../../src/cli/commands/register-glossary');
+      const { registerGlossary } =
+        await import('../../src/cli/commands/register-glossary');
 
       const program = new Command();
       const mockDeps = {
@@ -220,7 +248,11 @@ describe('--dry-run flag', () => {
       registerGlossary(program, mockDeps);
 
       await program.parseAsync([
-        'node', 'deepl', 'glossary', 'delete', 'my-glossary',
+        'node',
+        'deepl',
+        'glossary',
+        'delete',
+        'my-glossary',
         '--dry-run',
       ]);
 
@@ -236,7 +268,8 @@ describe('--dry-run flag', () => {
 
   describe('cache clear --dry-run', () => {
     it('should show cache stats without clearing', async () => {
-      const { registerCache } = await import('../../src/cli/commands/register-cache');
+      const { registerCache } =
+        await import('../../src/cli/commands/register-cache');
 
       const program = new Command();
       const mockCacheService = {
@@ -258,7 +291,10 @@ describe('--dry-run flag', () => {
       registerCache(program, mockDeps as any);
 
       await program.parseAsync([
-        'node', 'deepl', 'cache', 'clear',
+        'node',
+        'deepl',
+        'cache',
+        'clear',
         '--dry-run',
       ]);
 
@@ -277,7 +313,8 @@ describe('--dry-run flag', () => {
         fs.mkdirSync(watchDir, { recursive: true });
       }
 
-      const { registerWatch } = await import('../../src/cli/commands/register-watch');
+      const { registerWatch } =
+        await import('../../src/cli/commands/register-watch');
 
       const program = new Command();
       const mockDeps = {
@@ -290,8 +327,12 @@ describe('--dry-run flag', () => {
       registerWatch(program, mockDeps as any);
 
       await program.parseAsync([
-        'node', 'deepl', 'watch', watchDir,
-        '--to', 'es,fr',
+        'node',
+        'deepl',
+        'watch',
+        watchDir,
+        '--to',
+        'es,fr',
         '--dry-run',
       ]);
 
@@ -312,7 +353,8 @@ describe('--dry-run flag', () => {
         fs.mkdirSync(watchDir, { recursive: true });
       }
 
-      const { registerWatch } = await import('../../src/cli/commands/register-watch');
+      const { registerWatch } =
+        await import('../../src/cli/commands/register-watch');
 
       const program = new Command();
       const mockDeps = {
@@ -325,9 +367,14 @@ describe('--dry-run flag', () => {
       registerWatch(program, mockDeps as any);
 
       await program.parseAsync([
-        'node', 'deepl', 'watch', watchDir,
-        '--to', 'de',
-        '--pattern', '*.json',
+        'node',
+        'deepl',
+        'watch',
+        watchDir,
+        '--to',
+        'de',
+        '--pattern',
+        '*.json',
         '--auto-commit',
         '--dry-run',
       ]);
@@ -341,7 +388,8 @@ describe('--dry-run flag', () => {
       const watchFile = path.join(tmpDir, 'watch-single.txt');
       fs.writeFileSync(watchFile, 'content');
 
-      const { registerWatch } = await import('../../src/cli/commands/register-watch');
+      const { registerWatch } =
+        await import('../../src/cli/commands/register-watch');
 
       const program = new Command();
       const mockDeps = {
@@ -354,9 +402,14 @@ describe('--dry-run flag', () => {
       registerWatch(program, mockDeps as any);
 
       await program.parseAsync([
-        'node', 'deepl', 'watch', watchFile,
-        '--to', 'ja',
-        '--output', '/tmp/translations',
+        'node',
+        'deepl',
+        'watch',
+        watchFile,
+        '--to',
+        'ja',
+        '--output',
+        '/tmp/translations',
         '--dry-run',
       ]);
 

@@ -108,7 +108,7 @@ describe('sync message-preprocess pipeline positions', () => {
     );
   });
 
-  it('P3: detectIcu preserves length and rewrites exactly the ICU positions', () => {
+  it('P3: detectIcu preserves length and blanks exactly the ICU positions', () => {
     const icuText = 'You have {count, plural, one {# item} other {# items}}.';
     fc.assert(
       fc.property(
@@ -120,7 +120,8 @@ describe('sync message-preprocess pipeline positions', () => {
           const icuIndices = new Set(icuMappings.map((m) => m.textIndex));
           for (let i = 0; i < texts.length; i++) {
             if (icuIndices.has(i)) {
-              expect(extendedTexts[i]).toBe(`__ICU_PLACEHOLDER_${i}__`);
+              // Nothing to translate: the segments carry the text instead.
+              expect(extendedTexts[i]).toBe('');
             } else {
               expect(extendedTexts[i]).toBe(texts[i]);
             }

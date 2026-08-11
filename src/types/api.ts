@@ -2,17 +2,25 @@
  * API-related type definitions
  */
 
-import { Language, Formality } from './common';
+import { Language, Formality } from './common.js';
+import { WRITE_TARGET_LANGUAGES } from '../data/language-entries.js';
 
 export type ModelType =
-  | 'quality_optimized'
-  | 'prefer_quality_optimized'
-  | 'latency_optimized';
+  'quality_optimized' | 'prefer_quality_optimized' | 'latency_optimized';
 
 export interface TranslationOptions {
   sourceLang?: Language;
   targetLang: Language;
   glossaryId?: string;
+  /**
+   * Two to five glossaries applied to one request. Their entries are merged, so
+   * a term unique to any one of them applies. When more than one defines the
+   * same source term the API picks the winner, and it does not follow this
+   * order — do not rely on position to resolve a conflict. The order is still
+   * sent as given and never sorted, since it is part of the cache key.
+   * Mutually exclusive with `glossaryId`.
+   */
+  glossaryIds?: string[];
   translationMemoryId?: string;
   translationMemoryThreshold?: number;
   formality?: Formality;
@@ -30,7 +38,6 @@ export interface TranslationOptions {
   customInstructions?: string[];
   styleId?: string;
   tagHandlingVersion?: 'v1' | 'v2';
-  enableBetaLanguages?: boolean;
 }
 
 export interface TranslationMemory {
@@ -40,21 +47,12 @@ export interface TranslationMemory {
   target_languages: string[];
 }
 
-export type WriteLanguage =
-  | 'de'
-  | 'en'
-  | 'en-GB'
-  | 'en-US'
-  | 'es'
-  | 'fr'
-  | 'it'
-  | 'ja'
-  | 'ko'
-  | 'pt'
-  | 'pt-BR'
-  | 'pt-PT'
-  | 'zh'
-  | 'zh-Hans';
+/**
+ * Target languages the Write API accepts. Derived from the generated snapshot
+ * so that adding a language upstream widens this on `npm run generate:languages`
+ * rather than needing a second, hand-kept copy of the same list.
+ */
+export type WriteLanguage = (typeof WRITE_TARGET_LANGUAGES)[number];
 
 export type WritingStyle =
   | 'default'
@@ -90,15 +88,18 @@ export interface CorrectOptions {
 
 export interface WriteImprovement {
   text: string;
-  targetLanguage: WriteLanguage;
+  /** As echoed by the API, which uses its own casing (`en-GB`, `zh-Hans`). */
+  targetLanguage: string;
   detectedSourceLanguage?: string;
 }
 
-export function isWriteImprovementArray(data: unknown): data is WriteImprovement[] {
+export function isWriteImprovementArray(
+  data: unknown
+): data is WriteImprovement[] {
   if (!Array.isArray(data)) {
     return false;
   }
-  return data.every(item => {
+  return data.every((item) => {
     if (item === null || typeof item !== 'object') {
       return false;
     }
@@ -124,7 +125,17 @@ export interface DocumentStatus {
   errorMessage?: string;
 }
 
-export type DocumentOutputFormat = 'pdf' | 'docx' | 'pptx' | 'xlsx' | 'html' | 'htm' | 'txt' | 'srt' | 'xlf' | 'xliff';
+export type DocumentOutputFormat =
+  | 'pdf'
+  | 'docx'
+  | 'pptx'
+  | 'xlsx'
+  | 'html'
+  | 'htm'
+  | 'txt'
+  | 'srt'
+  | 'xlf'
+  | 'xliff';
 
 export interface DocumentTranslationOptions {
   sourceLang?: Language;
@@ -132,9 +143,10 @@ export interface DocumentTranslationOptions {
   filename?: string;
   formality?: Formality;
   glossaryId?: string;
+  /** See `TranslationOptions.glossaryIds`. */
+  glossaryIds?: string[];
   outputFormat?: DocumentOutputFormat;
   enableDocumentMinification?: boolean;
-  enableBetaLanguages?: boolean;
 }
 
 // Glossary Types

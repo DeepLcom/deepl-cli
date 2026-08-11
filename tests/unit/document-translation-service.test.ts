@@ -3,7 +3,10 @@
  * Tests for complete document translation workflow with polling
  */
 
-import { DocumentTranslationService, MAX_DOCUMENT_FILE_SIZE } from '../../src/services/document-translation.js';
+import {
+  DocumentTranslationService,
+  MAX_DOCUMENT_FILE_SIZE,
+} from '../../src/services/document-translation.js';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 
 // Mock the DeepL client
@@ -71,7 +74,8 @@ describe('DocumentTranslationService', () => {
         documentKey: 'key-456',
       });
 
-      mockClient.getDocumentStatus = jest.fn()
+      mockClient.getDocumentStatus = jest
+        .fn()
         .mockResolvedValueOnce({
           documentId: 'doc-123',
           status: 'queued',
@@ -87,7 +91,9 @@ describe('DocumentTranslationService', () => {
           billedCharacters: 500,
         });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(translatedBuffer);
 
       const result = await service.translateDocument(inputPath, outputPath, {
         targetLang: 'es',
@@ -120,7 +126,9 @@ describe('DocumentTranslationService', () => {
     });
 
     it('should throw error if input file does not exist', async () => {
-      const enoentErr = new Error('ENOENT: no such file or directory') as Error & { code: string };
+      const enoentErr = new Error(
+        'ENOENT: no such file or directory'
+      ) as Error & { code: string };
       enoentErr.code = 'ENOENT';
       mockStat.mockRejectedValue(enoentErr);
 
@@ -169,7 +177,8 @@ describe('DocumentTranslationService', () => {
         documentKey: 'key-456',
       });
 
-      mockClient.getDocumentStatus = jest.fn()
+      mockClient.getDocumentStatus = jest
+        .fn()
         .mockResolvedValueOnce({
           documentId: 'doc-123',
           status: 'queued',
@@ -184,11 +193,18 @@ describe('DocumentTranslationService', () => {
           status: 'done',
         });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(Buffer.from('translated'));
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(Buffer.from('translated'));
 
-      await service.translateDocument(inputPath, outputPath, {
-        targetLang: 'es',
-      }, progressCallback);
+      await service.translateDocument(
+        inputPath,
+        outputPath,
+        {
+          targetLang: 'es',
+        },
+        progressCallback
+      );
 
       expect(progressCallback).toHaveBeenCalledWith({
         status: 'queued',
@@ -225,14 +241,17 @@ describe('DocumentTranslationService', () => {
       });
 
       // Mock multiple polling attempts
-      mockClient.getDocumentStatus = jest.fn()
+      mockClient.getDocumentStatus = jest
+        .fn()
         .mockResolvedValueOnce({ documentId: 'doc-123', status: 'queued' })
         .mockResolvedValueOnce({ documentId: 'doc-123', status: 'queued' })
         .mockResolvedValueOnce({ documentId: 'doc-123', status: 'translating' })
         .mockResolvedValueOnce({ documentId: 'doc-123', status: 'translating' })
         .mockResolvedValueOnce({ documentId: 'doc-123', status: 'done' });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(Buffer.from('translated'));
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(Buffer.from('translated'));
 
       await service.translateDocument(inputPath, outputPath, {
         targetLang: 'es',
@@ -262,7 +281,9 @@ describe('DocumentTranslationService', () => {
         billedCharacters: 500,
       });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(translatedBuffer);
 
       await service.translateDocument(inputPath, outputPath, {
         targetLang: 'es',
@@ -299,7 +320,9 @@ describe('DocumentTranslationService', () => {
         billedCharacters: 300,
       });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(translatedBuffer);
 
       await service.translateDocument(inputPath, outputPath, {
         targetLang: 'es',
@@ -332,7 +355,9 @@ describe('DocumentTranslationService', () => {
         status: 'done',
       });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(translatedBuffer);
 
       await service.translateDocument(inputPath, outputPath, {
         targetLang: 'es',
@@ -368,7 +393,9 @@ describe('DocumentTranslationService', () => {
         status: 'done',
       });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(translatedBuffer);
 
       await service.translateDocument(inputPath, outputPath, {
         targetLang: 'es',
@@ -395,7 +422,9 @@ describe('DocumentTranslationService', () => {
           targetLang: 'es',
           enableDocumentMinification: true,
         })
-      ).rejects.toThrow('Document minification is only supported for PPTX and DOCX files');
+      ).rejects.toThrow(
+        'Document minification is only supported for PPTX and DOCX files'
+      );
 
       // uploadDocument should NOT have been called
       expect(mockClient.uploadDocument).not.toHaveBeenCalled();
@@ -410,7 +439,9 @@ describe('DocumentTranslationService', () => {
           targetLang: 'es',
           enableDocumentMinification: true,
         })
-      ).rejects.toThrow('Document minification is only supported for PPTX and DOCX files');
+      ).rejects.toThrow(
+        'Document minification is only supported for PPTX and DOCX files'
+      );
 
       expect(mockClient.uploadDocument).not.toHaveBeenCalled();
     });
@@ -424,7 +455,9 @@ describe('DocumentTranslationService', () => {
           targetLang: 'es',
           enableDocumentMinification: true,
         })
-      ).rejects.toThrow('Document minification is only supported for PPTX and DOCX files');
+      ).rejects.toThrow(
+        'Document minification is only supported for PPTX and DOCX files'
+      );
 
       expect(mockClient.uploadDocument).not.toHaveBeenCalled();
     });
@@ -434,7 +467,9 @@ describe('DocumentTranslationService', () => {
       const outputPath = '/test/output.es.pdf';
 
       mockSafeReadFile.mockRejectedValue(
-        new Error(`Symlinks are not supported for security reasons: ${inputPath}`)
+        new Error(
+          `Symlinks are not supported for security reasons: ${inputPath}`
+        )
       );
 
       await expect(
@@ -472,7 +507,9 @@ describe('DocumentTranslationService', () => {
         service.translateDocument(inputPath, outputPath, {
           targetLang: 'es',
         })
-      ).rejects.toThrow('File size (100.0 MB) exceeds the maximum allowed size of 30 MB');
+      ).rejects.toThrow(
+        'File size (100.0 MB) exceeds the maximum allowed size of 30 MB'
+      );
 
       expect(mockClient.uploadDocument).not.toHaveBeenCalled();
     });
@@ -496,7 +533,9 @@ describe('DocumentTranslationService', () => {
         billedCharacters: 200,
       });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(Buffer.from('translated'));
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(Buffer.from('translated'));
 
       const result = await service.translateDocument(inputPath, outputPath, {
         targetLang: 'es',
@@ -524,7 +563,9 @@ describe('DocumentTranslationService', () => {
         status: 'done',
       });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(Buffer.from('translated'));
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(Buffer.from('translated'));
 
       const result = await service.translateDocument(inputPath, outputPath, {
         targetLang: 'es',
@@ -544,7 +585,9 @@ describe('DocumentTranslationService', () => {
         service.translateDocument(inputPath, outputPath, {
           targetLang: 'es',
         })
-      ).rejects.toThrow('https://developers.deepl.com/docs/api-reference/document');
+      ).rejects.toThrow(
+        'https://developers.deepl.com/docs/api-reference/document'
+      );
 
       expect(mockClient.uploadDocument).not.toHaveBeenCalled();
     });
@@ -641,16 +684,15 @@ describe('DocumentTranslationService', () => {
       const abortController = new AbortController();
 
       // Mock getDocumentStatus to return "translating" and then abort after first call
-      mockClient.getDocumentStatus = jest.fn()
-        .mockImplementation(() => {
-          // Abort after first status check
-          abortController.abort();
-          return Promise.resolve({
-            documentId: 'doc-123',
-            status: 'translating',
-            secondsRemaining: 10,
-          });
+      mockClient.getDocumentStatus = jest.fn().mockImplementation(() => {
+        // Abort after first status check
+        abortController.abort();
+        return Promise.resolve({
+          documentId: 'doc-123',
+          status: 'translating',
+          secondsRemaining: 10,
         });
+      });
 
       await expect(
         service.translateDocument(
@@ -728,7 +770,9 @@ describe('DocumentTranslationService', () => {
         billedCharacters: 100,
       });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(translatedBuffer);
 
       // Create AbortController but don't abort
       const abortController = new AbortController();
@@ -748,7 +792,10 @@ describe('DocumentTranslationService', () => {
       });
 
       expect(mockClient.downloadDocument).toHaveBeenCalled();
-      expect(mockAtomicWriteFile).toHaveBeenCalledWith(outputPath, translatedBuffer);
+      expect(mockAtomicWriteFile).toHaveBeenCalledWith(
+        outputPath,
+        translatedBuffer
+      );
     });
 
     it('should work without AbortSignal (backward compatibility)', async () => {
@@ -769,14 +816,14 @@ describe('DocumentTranslationService', () => {
         status: 'done',
       });
 
-      mockClient.downloadDocument = jest.fn().mockResolvedValue(translatedBuffer);
+      mockClient.downloadDocument = jest
+        .fn()
+        .mockResolvedValue(translatedBuffer);
 
       // Call without serviceOptions (no AbortSignal)
-      const result = await service.translateDocument(
-        inputPath,
-        outputPath,
-        { targetLang: 'es' }
-      );
+      const result = await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'es',
+      });
 
       expect(result).toEqual({
         success: true,

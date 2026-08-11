@@ -1,4 +1,3 @@
- 
 import { Command } from 'commander';
 
 jest.mock('chalk', () => {
@@ -34,18 +33,31 @@ const mockLanguagesCommandInstance = {
   formatAllLanguagesTable: jest.fn().mockReturnValue('all-languages-table'),
 };
 
-async function withTTY<T>(value: boolean, fn: () => Promise<T> | T): Promise<T> {
+async function withTTY<T>(
+  value: boolean,
+  fn: () => Promise<T> | T
+): Promise<T> {
   const original = process.stdout.isTTY;
-  Object.defineProperty(process.stdout, 'isTTY', { value, configurable: true, writable: true });
+  Object.defineProperty(process.stdout, 'isTTY', {
+    value,
+    configurable: true,
+    writable: true,
+  });
   try {
     return await fn();
   } finally {
-    Object.defineProperty(process.stdout, 'isTTY', { value: original, configurable: true, writable: true });
+    Object.defineProperty(process.stdout, 'isTTY', {
+      value: original,
+      configurable: true,
+      writable: true,
+    });
   }
 }
 
 jest.mock('../../src/cli/commands/languages', () => ({
-  LanguagesCommand: jest.fn().mockImplementation(() => mockLanguagesCommandInstance),
+  LanguagesCommand: jest
+    .fn()
+    .mockImplementation(() => mockLanguagesCommandInstance),
 }));
 
 import { registerLanguages } from '../../src/cli/commands/register-languages';
@@ -62,7 +74,9 @@ describe('registerLanguages', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     const { LanguagesCommand } = require('../../src/cli/commands/languages');
-    (LanguagesCommand as jest.Mock).mockImplementation(() => mockLanguagesCommandInstance);
+    (LanguagesCommand as jest.Mock).mockImplementation(
+      () => mockLanguagesCommandInstance
+    );
 
     process.env = { ...origEnv };
     delete process.env['DEEPL_API_KEY'];
@@ -71,7 +85,11 @@ describe('registerLanguages', () => {
     createDeepLClient = jest.fn().mockResolvedValue({});
     mockGetValue = jest.fn().mockReturnValue(undefined);
     getConfigService = jest.fn().mockReturnValue({ getValue: mockGetValue });
-    registerLanguages(program, { getConfigService, createDeepLClient, handleError });
+    registerLanguages(program, {
+      getConfigService,
+      createDeepLClient,
+      handleError,
+    });
   });
 
   afterAll(() => {
@@ -86,112 +104,404 @@ describe('registerLanguages', () => {
     it('should show all languages by default', async () => {
       const sources = [{ code: 'en', name: 'English' }];
       const targets = [{ code: 'de', name: 'German' }];
-      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
-      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
-      mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue('all languages');
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+      mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue(
+        'all languages'
+      );
       await program.parseAsync(['node', 'test', 'languages']);
       expect(createDeepLClient).toHaveBeenCalled();
-      expect(mockLanguagesCommandInstance.formatAllLanguages).toHaveBeenCalledWith(sources, targets);
+      expect(
+        mockLanguagesCommandInstance.formatAllLanguages
+      ).toHaveBeenCalledWith(sources, targets, false);
       expect(Logger.output).toHaveBeenCalledWith('all languages');
     });
 
     it('should show only source languages with --source', async () => {
       const sources = [{ code: 'en', name: 'English' }];
-      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
-      mockLanguagesCommandInstance.formatLanguages.mockReturnValue('source list');
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.formatLanguages.mockReturnValue(
+        'source list'
+      );
       await program.parseAsync(['node', 'test', 'languages', '--source']);
-      expect(mockLanguagesCommandInstance.formatLanguages).toHaveBeenCalledWith(sources, 'source');
+      expect(mockLanguagesCommandInstance.formatLanguages).toHaveBeenCalledWith(
+        sources,
+        'source',
+        false
+      );
       expect(Logger.output).toHaveBeenCalledWith('source list');
     });
 
     it('should show only target languages with --target', async () => {
       const targets = [{ code: 'de', name: 'German' }];
-      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
-      mockLanguagesCommandInstance.formatLanguages.mockReturnValue('target list');
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+      mockLanguagesCommandInstance.formatLanguages.mockReturnValue(
+        'target list'
+      );
       await program.parseAsync(['node', 'test', 'languages', '--target']);
-      expect(mockLanguagesCommandInstance.formatLanguages).toHaveBeenCalledWith(targets, 'target');
+      expect(mockLanguagesCommandInstance.formatLanguages).toHaveBeenCalledWith(
+        targets,
+        'target',
+        false
+      );
       expect(Logger.output).toHaveBeenCalledWith('target list');
     });
 
     it('should show all when both --source and --target are given', async () => {
       const sources = [{ code: 'en', name: 'English' }];
       const targets = [{ code: 'de', name: 'German' }];
-      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
-      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
       mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue('all');
-      await program.parseAsync(['node', 'test', 'languages', '--source', '--target']);
-      expect(mockLanguagesCommandInstance.formatAllLanguages).toHaveBeenCalledWith(sources, targets);
+      await program.parseAsync([
+        'node',
+        'test',
+        'languages',
+        '--source',
+        '--target',
+      ]);
+      expect(
+        mockLanguagesCommandInstance.formatAllLanguages
+      ).toHaveBeenCalledWith(sources, targets, false);
     });
 
     it('should output JSON for source languages with --format json --source', async () => {
       const sources = [{ language: 'en', name: 'English' }];
-      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
-      await program.parseAsync(['node', 'test', 'languages', '--source', '--format', 'json']);
-      expect(Logger.output).toHaveBeenCalledWith(JSON.stringify(sources, null, 2));
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      await program.parseAsync([
+        'node',
+        'test',
+        'languages',
+        '--source',
+        '--format',
+        'json',
+      ]);
+      expect(Logger.output).toHaveBeenCalledWith(
+        JSON.stringify(sources, null, 2)
+      );
     });
 
     it('should output JSON for target languages with --format json --target', async () => {
       const targets = [{ language: 'de', name: 'German' }];
-      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
-      await program.parseAsync(['node', 'test', 'languages', '--target', '--format', 'json']);
-      expect(Logger.output).toHaveBeenCalledWith(JSON.stringify(targets, null, 2));
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+      await program.parseAsync([
+        'node',
+        'test',
+        'languages',
+        '--target',
+        '--format',
+        'json',
+      ]);
+      expect(Logger.output).toHaveBeenCalledWith(
+        JSON.stringify(targets, null, 2)
+      );
     });
 
     it('should output JSON for all languages with --format json', async () => {
       const sources = [{ language: 'en', name: 'English' }];
       const targets = [{ language: 'de', name: 'German' }];
-      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
-      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
-      await program.parseAsync(['node', 'test', 'languages', '--format', 'json']);
-      const expected = JSON.stringify({ source: sources, target: targets }, null, 2);
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+      await program.parseAsync([
+        'node',
+        'test',
+        'languages',
+        '--format',
+        'json',
+      ]);
+      const expected = JSON.stringify(
+        { source: sources, target: targets },
+        null,
+        2
+      );
       expect(Logger.output).toHaveBeenCalledWith(expected);
     });
 
     it('should render cli-table3 output for all languages when --format table and stdout is a TTY', async () => {
       const sources = [{ language: 'en', name: 'English' }];
       const targets = [{ language: 'de', name: 'German' }];
-      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
-      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
-      mockLanguagesCommandInstance.formatAllLanguagesTable.mockReturnValue('all-languages-table');
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+      mockLanguagesCommandInstance.formatAllLanguagesTable.mockReturnValue(
+        'all-languages-table'
+      );
 
       await withTTY(true, async () => {
-        await program.parseAsync(['node', 'test', 'languages', '--format', 'table']);
+        await program.parseAsync([
+          'node',
+          'test',
+          'languages',
+          '--format',
+          'table',
+        ]);
       });
 
-      expect(mockLanguagesCommandInstance.formatAllLanguagesTable).toHaveBeenCalledWith(sources, targets);
-      expect(mockLanguagesCommandInstance.formatAllLanguages).not.toHaveBeenCalled();
+      expect(
+        mockLanguagesCommandInstance.formatAllLanguagesTable
+      ).toHaveBeenCalledWith(sources, targets, false);
+      expect(
+        mockLanguagesCommandInstance.formatAllLanguages
+      ).not.toHaveBeenCalled();
       expect(Logger.output).toHaveBeenCalledWith('all-languages-table');
-      expect(Logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+      expect(Logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('non-TTY')
+      );
     });
 
     it('should render the source-only table when --format table --source on a TTY', async () => {
       const sources = [{ language: 'en', name: 'English' }];
-      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
-      mockLanguagesCommandInstance.formatLanguagesTable.mockReturnValue('languages-table');
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.formatLanguagesTable.mockReturnValue(
+        'languages-table'
+      );
 
       await withTTY(true, async () => {
-        await program.parseAsync(['node', 'test', 'languages', '--source', '--format', 'table']);
+        await program.parseAsync([
+          'node',
+          'test',
+          'languages',
+          '--source',
+          '--format',
+          'table',
+        ]);
       });
 
-      expect(mockLanguagesCommandInstance.formatLanguagesTable).toHaveBeenCalledWith(sources, 'source');
-      expect(mockLanguagesCommandInstance.formatLanguages).not.toHaveBeenCalled();
+      expect(
+        mockLanguagesCommandInstance.formatLanguagesTable
+      ).toHaveBeenCalledWith(sources, 'source', false);
+      expect(
+        mockLanguagesCommandInstance.formatLanguages
+      ).not.toHaveBeenCalled();
     });
 
     it('should fall back to plain text with a warn when --format table in non-TTY', async () => {
       const sources = [{ language: 'en', name: 'English' }];
       const targets = [{ language: 'de', name: 'German' }];
-      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(sources);
-      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(targets);
-      mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue('plain text');
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+      mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue(
+        'plain text'
+      );
 
       await withTTY(false, async () => {
-        await program.parseAsync(['node', 'test', 'languages', '--format', 'table']);
+        await program.parseAsync([
+          'node',
+          'test',
+          'languages',
+          '--format',
+          'table',
+        ]);
       });
 
-      expect(mockLanguagesCommandInstance.formatAllLanguagesTable).not.toHaveBeenCalled();
-      expect(mockLanguagesCommandInstance.formatAllLanguages).toHaveBeenCalledWith(sources, targets);
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+      expect(
+        mockLanguagesCommandInstance.formatAllLanguagesTable
+      ).not.toHaveBeenCalled();
+      expect(
+        mockLanguagesCommandInstance.formatAllLanguages
+      ).toHaveBeenCalledWith(sources, targets, false);
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('non-TTY')
+      );
       expect(Logger.output).toHaveBeenCalledWith('plain text');
+    });
+  });
+
+  describe('--features', () => {
+    beforeEach(() => {
+      mockGetValue.mockReturnValue('fake-key');
+    });
+
+    it('should request the feature matrix for the combined listing', async () => {
+      const sources = [{ language: 'en', name: 'English' }];
+      const targets = [{ language: 'de', name: 'German' }];
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+      mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue('all');
+
+      await program.parseAsync(['node', 'test', 'languages', '--features']);
+
+      expect(
+        mockLanguagesCommandInstance.formatAllLanguages
+      ).toHaveBeenCalledWith(sources, targets, true);
+    });
+
+    it('should request the feature matrix for a single-role listing', async () => {
+      const targets = [{ language: 'de', name: 'German' }];
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+      mockLanguagesCommandInstance.formatLanguages.mockReturnValue(
+        'target list'
+      );
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'languages',
+        '--target',
+        '--features',
+      ]);
+
+      expect(mockLanguagesCommandInstance.formatLanguages).toHaveBeenCalledWith(
+        targets,
+        'target',
+        true
+      );
+    });
+
+    it('should request the feature matrix for table output', async () => {
+      const sources = [{ language: 'en', name: 'English' }];
+      const targets = [{ language: 'de', name: 'German' }];
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+
+      await withTTY(true, async () => {
+        await program.parseAsync([
+          'node',
+          'test',
+          'languages',
+          '--features',
+          '--format',
+          'table',
+        ]);
+      });
+
+      expect(
+        mockLanguagesCommandInstance.formatAllLanguagesTable
+      ).toHaveBeenCalledWith(sources, targets, true);
+    });
+
+    it('should include features in JSON output when requested', async () => {
+      const targets = [
+        {
+          language: 'de',
+          name: 'German',
+          features: { glossary: { status: 'stable' } },
+        },
+      ];
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'languages',
+        '--target',
+        '--features',
+        '--format',
+        'json',
+      ]);
+
+      expect(Logger.output).toHaveBeenCalledWith(
+        JSON.stringify(targets, null, 2)
+      );
+    });
+
+    it('should strip features from JSON output when not requested', async () => {
+      const targets = [
+        {
+          language: 'de',
+          name: 'German',
+          features: { glossary: { status: 'stable' } },
+        },
+      ];
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'languages',
+        '--target',
+        '--format',
+        'json',
+      ]);
+
+      expect(Logger.output).toHaveBeenCalledWith(
+        JSON.stringify([{ language: 'de', name: 'German' }], null, 2)
+      );
+    });
+
+    it('should strip features from both roles of the combined JSON output', async () => {
+      const sources = [
+        {
+          language: 'en',
+          name: 'English',
+          features: { glossary: { status: 'stable' } },
+        },
+      ];
+      const targets = [
+        {
+          language: 'de',
+          name: 'German',
+          features: { glossary: { status: 'stable' } },
+        },
+      ];
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue(
+        sources
+      );
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue(
+        targets
+      );
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'languages',
+        '--format',
+        'json',
+      ]);
+
+      expect(Logger.output).toHaveBeenCalledWith(
+        JSON.stringify(
+          {
+            source: [{ language: 'en', name: 'English' }],
+            target: [{ language: 'de', name: 'German' }],
+          },
+          null,
+          2
+        )
+      );
     });
   });
 
@@ -212,9 +522,35 @@ describe('registerLanguages', () => {
       mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue([]);
       mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue('local');
       await program.parseAsync(['node', 'test', 'languages']);
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('No API key'));
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('No API key')
+      );
       expect(createDeepLClient).not.toHaveBeenCalled();
       expect(Logger.output).toHaveBeenCalledWith('local');
+    });
+
+    it('should warn that --features needs an API key', async () => {
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue([]);
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue([]);
+      mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue('local');
+
+      await program.parseAsync(['node', 'test', 'languages', '--features']);
+
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('--features needs an API key')
+      );
+    });
+
+    it('should not mention --features when the flag is absent', async () => {
+      mockLanguagesCommandInstance.getSourceLanguages.mockResolvedValue([]);
+      mockLanguagesCommandInstance.getTargetLanguages.mockResolvedValue([]);
+      mockLanguagesCommandInstance.formatAllLanguages.mockReturnValue('local');
+
+      await program.parseAsync(['node', 'test', 'languages']);
+
+      expect(Logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('--features')
+      );
     });
   });
 
@@ -224,7 +560,7 @@ describe('registerLanguages', () => {
       createDeepLClient.mockRejectedValue(new Error('connection failed'));
       await program.parseAsync(['node', 'test', 'languages']);
       expect(handleError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'connection failed' }),
+        expect.objectContaining({ message: 'connection failed' })
       );
     });
   });

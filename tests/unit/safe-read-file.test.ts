@@ -3,7 +3,11 @@
  * Verifies symlink detection across all file-reading paths
  */
 
-import { safeReadFileSync, safeReadFile, isSymlink } from '../../src/utils/safe-read-file.js';
+import {
+  safeReadFileSync,
+  safeReadFile,
+  isSymlink,
+} from '../../src/utils/safe-read-file.js';
 import * as fs from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -12,7 +16,10 @@ describe('safe-read-file', () => {
   let testDir: string;
 
   beforeEach(() => {
-    testDir = join(tmpdir(), `deepl-cli-safe-read-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    testDir = join(
+      tmpdir(),
+      `deepl-cli-safe-read-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     fs.mkdirSync(testDir, { recursive: true });
   });
 

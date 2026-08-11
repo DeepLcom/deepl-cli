@@ -21,6 +21,7 @@ describe('Logger', () => {
     // Reset logger state
     Logger.setQuiet(false);
     Logger.setVerbose(false);
+    Logger.clearSecrets();
   });
 
   describe('setQuiet()', () => {
@@ -174,7 +175,9 @@ describe('Logger', () => {
     });
 
     it('should redact &token= query parameter from URLs', () => {
-      Logger.verbose('https://api.deepl.com/ws?lang=en&token=abc123-secret&format=text');
+      Logger.verbose(
+        'https://api.deepl.com/ws?lang=en&token=abc123-secret&format=text'
+      );
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'https://api.deepl.com/ws?lang=en&token=[REDACTED]&format=text'
       );
@@ -189,9 +192,7 @@ describe('Logger', () => {
 
     it('should redact DeepL-Auth-Key case-insensitively', () => {
       Logger.verbose('deepl-auth-key MY-KEY:fx');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'DeepL-Auth-Key [REDACTED]'
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('DeepL-Auth-Key [REDACTED]');
     });
 
     it('should redact X-Api-Key header values', () => {
@@ -210,13 +211,13 @@ describe('Logger', () => {
 
     it('should redact X-Api-Key case-insensitively', () => {
       Logger.verbose('x-api-key: MY-SECRET');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'X-Api-Key: [REDACTED]'
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('X-Api-Key: [REDACTED]');
     });
 
     it('should redact ?api_key= query parameter from URLs', () => {
-      Logger.verbose('https://tms.example.com/projects?api_key=abc123&format=json');
+      Logger.verbose(
+        'https://tms.example.com/projects?api_key=abc123&format=json'
+      );
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'https://tms.example.com/projects?api_key=[REDACTED]&format=json'
       );
@@ -499,7 +500,7 @@ describe('Logger', () => {
     it('should not redact when TMS_API_KEY is not set', () => {
       Logger.info('Generic message without any TMS values');
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Generic message without any TMS values',
+        'Generic message without any TMS values'
       );
     });
 
@@ -558,7 +559,7 @@ describe('Logger', () => {
       process.env['TMS_TOKEN'] = 'test-tms-token-67890';
       try {
         Logger.info(
-          'deepl=deepl-key-abc:fx tmsKey=test-tms-api-key-12345 tmsTok=test-tms-token-67890 url?token=qp-secret DeepL-Auth-Key deepl-key-abc:fx Authorization: Bearer jwt.abc',
+          'deepl=deepl-key-abc:fx tmsKey=test-tms-api-key-12345 tmsTok=test-tms-token-67890 url?token=qp-secret DeepL-Auth-Key deepl-key-abc:fx Authorization: Bearer jwt.abc'
         );
         const logged = consoleErrorSpy.mock.calls[0]?.[0] as string;
         expect(logged).not.toContain('deepl-key-abc:fx');
@@ -599,10 +600,15 @@ describe('Logger', () => {
     });
 
     it('should guard against circular references', () => {
-      const obj: Record<string, unknown> = { url: 'https://host?token=loop-secret' };
+      const obj: Record<string, unknown> = {
+        url: 'https://host?token=loop-secret',
+      };
       obj['self'] = obj;
       Logger.error(obj);
-      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Record<
+        string,
+        unknown
+      >;
       expect(logged['url']).toBe('https://host?token=[REDACTED]');
       expect(logged['self']).toBe('[Circular]');
     });
@@ -620,31 +626,280 @@ describe('Logger', () => {
 
     it('should redact extra properties attached to an Error', () => {
       const err = new Error('boom') as Error & { config?: unknown };
-      err.config = { headers: { Authorization: 'Authorization: ApiKey axios-secret' } };
+      err.config = {
+        headers: { Authorization: 'Authorization: ApiKey axios-secret' },
+      };
       Logger.error(err);
       const logged = consoleErrorSpy.mock.calls[0]?.[0] as Error & {
         config?: { headers?: { Authorization?: string } };
       };
       expect(logged).toBeInstanceOf(Error);
-      expect(logged.config?.headers?.Authorization).toBe('Authorization: ApiKey [REDACTED]');
+      expect(logged.config?.headers?.Authorization).toBe(
+        'Authorization: ApiKey [REDACTED]'
+      );
     });
 
-    it('should pass non-plain objects through unchanged', () => {
+    it('should redact inside a class instance while keeping its class', () => {
       class Custom {
         value = 'https://host?token=class-secret';
       }
       const instance = new Custom();
-      const map = new Map([['k', 'v']]);
-      Logger.error(instance, map);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(instance, map);
+      Logger.error(instance);
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Custom;
+      expect(logged).toBeInstanceOf(Custom);
+      expect(logged.value).toBe('https://host?token=[REDACTED]');
+      // The caller's instance is not mutated.
+      expect(instance.value).toBe('https://host?token=class-secret');
+    });
+
+    it('should redact an auth header held on a class instance inside an Error', () => {
+      class AxiosHeaders {
+        Authorization = 'DeepL-Auth-Key SUPER-SECRET-KEY-FROM-CONFIG';
+      }
+      const err = new Error('boom') as Error & { config?: unknown };
+      err.config = { headers: new AxiosHeaders() };
+      Logger.error(err);
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Error & {
+        config?: { headers?: { Authorization?: string } };
+      };
+      expect(logged.config?.headers?.Authorization).toBe(
+        'DeepL-Auth-Key [REDACTED]'
+      );
+    });
+
+    it('should redact Map keys and values while keeping it a Map', () => {
+      const map = new Map([
+        ['url', 'https://host?token=map-secret'],
+        ['https://host?api_key=key-secret', 'value'],
+      ]);
+      Logger.error(map);
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Map<string, string>;
+      expect(logged).toBeInstanceOf(Map);
+      expect(logged.get('url')).toBe('https://host?token=[REDACTED]');
+      expect(logged.get('https://host?api_key=[REDACTED]')).toBe('value');
+    });
+
+    it('should redact Set members while keeping it a Set', () => {
+      Logger.error(new Set(['https://host?token=set-secret', 'safe']));
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Set<string>;
+      expect(logged).toBeInstanceOf(Set);
+      expect([...logged]).toEqual(['https://host?token=[REDACTED]', 'safe']);
+    });
+
+    it.each([
+      ['a Date', new Date(0)],
+      ['a RegExp', /token=secret/],
+      ['an ArrayBuffer', new ArrayBuffer(8)],
+    ])('should pass %s through unchanged', (_label, value) => {
+      Logger.error(value);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(value);
+    });
+
+    it('should pass a Buffer through without enumerating its bytes', () => {
+      const buffer = Buffer.from('DeepL-Auth-Key not-text-in-inspect');
+      Logger.error(buffer);
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Buffer;
+      expect(Buffer.isBuffer(logged)).toBe(true);
+      expect(logged).toBe(buffer);
     });
 
     it('should redact values in null-prototype objects', () => {
       const obj = Object.create(null) as Record<string, unknown>;
       obj['url'] = 'https://host?api_key=np-secret';
       Logger.error(obj);
-      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Record<
+        string,
+        unknown
+      >;
       expect(logged['url']).toBe('https://host?api_key=[REDACTED]');
+    });
+  });
+
+  describe('registerSecret()', () => {
+    it('should redact a registered credential the environment does not hold', () => {
+      Logger.registerSecret('CONFIG-FILE-KEY-WINS:fx');
+      Logger.error('rejected credential CONFIG-FILE-KEY-WINS:fx');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'rejected credential [REDACTED]'
+      );
+    });
+
+    it('should redact a registered credential nested in an object', () => {
+      Logger.registerSecret('CONFIG-FILE-KEY-WINS:fx');
+      Logger.error({ body: { message: 'CONFIG-FILE-KEY-WINS:fx' } });
+      expect(consoleErrorSpy).toHaveBeenCalledWith({
+        body: { message: '[REDACTED]' },
+      });
+    });
+
+    it('should redact every registered credential', () => {
+      Logger.registerSecret('first-registered-key');
+      Logger.registerSecret('second-registered-key');
+      Logger.error('first-registered-key and second-registered-key');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[REDACTED] and [REDACTED]');
+    });
+
+    it('should ignore an undefined credential', () => {
+      Logger.registerSecret(undefined);
+      Logger.error('nothing to redact here');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('nothing to redact here');
+    });
+
+    it('should stop redacting a credential after clearSecrets()', () => {
+      Logger.registerSecret('CONFIG-FILE-KEY-WINS:fx');
+      Logger.clearSecrets();
+      Logger.error('CONFIG-FILE-KEY-WINS:fx');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('CONFIG-FILE-KEY-WINS:fx');
+    });
+  });
+
+  describe('minimum length for literal credential redaction', () => {
+    const withEnv = (name: string, value: string, run: () => void): void => {
+      const original = process.env[name];
+      process.env[name] = value;
+      try {
+        run();
+      } finally {
+        if (original === undefined) {
+          delete process.env[name];
+        } else {
+          process.env[name] = original;
+        }
+      }
+    };
+
+    it('should leave ordinary words intact when DEEPL_API_KEY is one character', () => {
+      withEnv('DEEPL_API_KEY', 'k', () => {
+        Logger.error('Check your internet connection and proxy settings');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Check your internet connection and proxy settings'
+        );
+      });
+    });
+
+    it('should not redact a DEEPL_API_KEY shorter than eight characters', () => {
+      withEnv('DEEPL_API_KEY', 'env-key', () => {
+        Logger.error('Using key env-key for request');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Using key env-key for request'
+        );
+      });
+    });
+
+    it('should redact a DEEPL_API_KEY of exactly eight characters', () => {
+      withEnv('DEEPL_API_KEY', 'env-keys', () => {
+        Logger.error('Using key env-keys for request');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Using key [REDACTED] for request'
+        );
+      });
+    });
+
+    it('should not redact a TMS_API_KEY shorter than eight characters', () => {
+      withEnv('TMS_API_KEY', 'tms', () => {
+        Logger.error('tms transport failed');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('tms transport failed');
+      });
+    });
+
+    it('should not redact a TMS_TOKEN shorter than eight characters', () => {
+      withEnv('TMS_TOKEN', 'tok', () => {
+        Logger.error('token exchange failed');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('token exchange failed');
+      });
+    });
+
+    it('should not redact a registered credential shorter than eight characters', () => {
+      Logger.registerSecret('short');
+      Logger.error('a short message');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('a short message');
+    });
+  });
+
+  describe('terminal control sequence handling', () => {
+    const OSC_TITLE = '\x1b]0;PWNED\x07';
+    let originalIsTTY: boolean | undefined;
+
+    function setStdoutTTY(value: boolean | undefined): void {
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value,
+        configurable: true,
+      });
+    }
+
+    beforeEach(() => {
+      originalIsTTY = process.stdout.isTTY;
+    });
+
+    afterEach(() => {
+      setStdoutTTY(originalIsTTY);
+    });
+
+    it('should neutralize escape sequences on stdout when stdout is a TTY', () => {
+      setStdoutTTY(true);
+      Logger.output(`${OSC_TITLE}Bonjour`);
+      expect(consoleLogSpy).toHaveBeenCalledWith('?]0;PWNED?Bonjour');
+    });
+
+    it('should neutralize a forged clean result built from erase and cursor moves', () => {
+      setStdoutTTY(true);
+      Logger.output('\x1b[2K\x1b[1;1HAll good');
+      expect(consoleLogSpy).toHaveBeenCalledWith('?[2K?[1;1HAll good');
+    });
+
+    it('should keep chalk colour codes on stdout when stdout is a TTY', () => {
+      setStdoutTTY(true);
+      Logger.output('\x1b[32mgreen\x1b[39m');
+      expect(consoleLogSpy).toHaveBeenCalledWith('\x1b[32mgreen\x1b[39m');
+    });
+
+    it('should keep piped stdout byte-faithful when stdout is not a TTY', () => {
+      setStdoutTTY(undefined);
+      const translated = `line one\nline two\tindented\nنمی\u200cخواهم${OSC_TITLE}`;
+      Logger.output(translated);
+      expect(consoleLogSpy).toHaveBeenCalledWith(translated);
+    });
+
+    it('should keep newlines and zero-width joiners in TTY stdout translations', () => {
+      setStdoutTTY(true);
+      Logger.output('erste Zeile\nzweite\tZeile\nنمی\u200cخواهم');
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'erste Zeile\nzweite\tZeile\nنمی\u200cخواهم'
+      );
+    });
+
+    it('should neutralize escape sequences nested in objects on TTY stdout', () => {
+      setStdoutTTY(true);
+      Logger.output({ text: `${OSC_TITLE}hi` });
+      expect(consoleLogSpy).toHaveBeenCalledWith({ text: '?]0;PWNED?hi' });
+    });
+
+    it('should neutralize escape sequences on stderr regardless of TTY', () => {
+      setStdoutTTY(undefined);
+      Logger.error(`API error: ${OSC_TITLE}`);
+      Logger.warn(`warn: ${OSC_TITLE}`);
+      Logger.info(`info: ${OSC_TITLE}`);
+      Logger.success(`success: ${OSC_TITLE}`);
+      Logger.setVerbose(true);
+      Logger.verbose(`verbose: ${OSC_TITLE}`);
+      expect(consoleErrorSpy.mock.calls.map((call) => call[0])).toEqual([
+        'API error: ?]0;PWNED?',
+        'warn: ?]0;PWNED?',
+        'info: ?]0;PWNED?',
+        'success: ?]0;PWNED?',
+        'verbose: ?]0;PWNED?',
+      ]);
+    });
+
+    it('should keep chalk colour codes on stderr', () => {
+      Logger.error('\x1b[31mred\x1b[39m');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('\x1b[31mred\x1b[39m');
+    });
+
+    it('should neutralize escape sequences inside a redacted Error message', () => {
+      Logger.error(new Error(`boom ${OSC_TITLE} DeepL-Auth-Key secret-value`));
+      const logged = consoleErrorSpy.mock.calls[0]?.[0] as Error;
+      expect(logged.message).toBe('boom ?]0;PWNED? DeepL-Auth-Key [REDACTED]');
     });
   });
 });

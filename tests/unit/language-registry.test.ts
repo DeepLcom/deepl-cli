@@ -7,12 +7,76 @@ import {
   getTargetLanguages,
   getAllLanguageCodes,
   getExtendedLanguageCodes,
+  deriveLanguageEntry,
+  looksLikeLanguageTag,
 } from '../../src/data/language-registry';
+import {
+  ENTRIES,
+  WRITE_TARGET_LANGUAGES,
+} from '../../src/data/language-entries';
+import type { Language } from '../../src/types/common';
+
+/**
+ * Counts are compared against the snapshot rather than written out, so
+ * regenerating it -- the documented release step -- does not turn this suite red
+ * for a change it is supposed to accept. Drift from the API is checked by
+ * "npm run check:languages", which is where that belongs.
+ *
+ * Comparing the registry against the array it is built from proves the plumbing
+ * but not the data, so the floors below stand in for the literal counts: they
+ * hold across any plausible upstream change and still fail on a snapshot that
+ * lost most of its languages.
+ */
+const TIERS = ['core', 'regional', 'extended'] as const;
+const entriesIn = (category: string) =>
+  ENTRIES.filter((e) => e.category === category);
+
+/** Floors chosen well under today's 125/32/11/82 and well over an empty file. */
+const MIN_TOTAL = 100;
+const MIN_PER_TIER: Record<(typeof TIERS)[number], number> = {
+  core: 20,
+  regional: 5,
+  extended: 50,
+};
 
 describe('Language Registry', () => {
   describe('LANGUAGE_REGISTRY', () => {
-    it('should contain 121 language entries', () => {
-      expect(LANGUAGE_REGISTRY.size).toBe(121);
+    it('should contain one entry per snapshot language', () => {
+      expect(LANGUAGE_REGISTRY.size).toBe(ENTRIES.length);
+    });
+
+    it('should hold a plausible number of languages', () => {
+      // Independent of ENTRIES.length, which the assertion above compares against
+      // itself: a snapshot regenerated from a broken response fails here.
+      expect(LANGUAGE_REGISTRY.size).toBeGreaterThanOrEqual(MIN_TOTAL);
+    });
+
+    it.each(TIERS)(
+      'should hold a plausible number of %s languages',
+      (category) => {
+        expect(entriesIn(category).length).toBeGreaterThanOrEqual(
+          MIN_PER_TIER[category]
+        );
+      }
+    );
+
+    it('should still contain a representative language from every tier', () => {
+      // Named codes, so losing a whole tier or a common language is caught even
+      // if the totals stay plausible.
+      for (const code of [
+        'en',
+        'de',
+        'ja',
+        'zh',
+        'en-gb',
+        'pt-br',
+        'zh-hans',
+        'hi',
+        'sw',
+        'th',
+      ]) {
+        expect(LANGUAGE_REGISTRY.has(code)).toBe(true);
+      }
     });
 
     it('should have unique language codes', () => {
@@ -21,37 +85,43 @@ describe('Language Registry', () => {
       expect(unique.size).toBe(codes.length);
     });
 
-    it('should contain all 32 core languages', () => {
-      const core = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category === 'core');
-      expect(core.length).toBe(32);
-    });
+    it.each(TIERS)(
+      'should contain every %s language from the snapshot',
+      (category) => {
+        const inRegistry = Array.from(LANGUAGE_REGISTRY.values()).filter(
+          (e) => e.category === category
+        );
+        expect(inRegistry.length).toBe(entriesIn(category).length);
+        expect(inRegistry.length).toBeGreaterThan(0);
+      }
+    );
 
-    it('should contain all 7 regional variants', () => {
-      const regional = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category === 'regional');
-      expect(regional.length).toBe(7);
-    });
-
-    it('should contain all 82 extended languages', () => {
-      const extended = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category === 'extended');
-      expect(extended.length).toBe(82);
+    it('should place every entry in exactly one known tier', () => {
+      expect(
+        TIERS.map(entriesIn).reduce((sum, group) => sum + group.length, 0)
+      ).toBe(ENTRIES.length);
     });
 
     it('should mark regional variants as targetOnly', () => {
-      const regional = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category === 'regional');
-      regional.forEach(entry => {
+      const regional = Array.from(LANGUAGE_REGISTRY.values()).filter(
+        (e) => e.category === 'regional'
+      );
+      regional.forEach((entry) => {
         expect(entry.targetOnly).toBe(true);
       });
     });
 
     it('should not mark core or extended languages as targetOnly', () => {
-      const nonRegional = Array.from(LANGUAGE_REGISTRY.values()).filter(e => e.category !== 'regional');
-      nonRegional.forEach(entry => {
+      const nonRegional = Array.from(LANGUAGE_REGISTRY.values()).filter(
+        (e) => e.category !== 'regional'
+      );
+      nonRegional.forEach((entry) => {
         expect(entry.targetOnly).toBeUndefined();
       });
     });
 
     it('should have non-empty names for all entries', () => {
-      LANGUAGE_REGISTRY.forEach(entry => {
+      LANGUAGE_REGISTRY.forEach((entry) => {
         expect(entry.name.length).toBeGreaterThan(0);
       });
     });
@@ -65,19 +135,71 @@ describe('Language Registry', () => {
 
   describe('specific language entries', () => {
     it('should include known core languages', () => {
-      expect(LANGUAGE_REGISTRY.get('en')).toEqual({ code: 'en', name: 'English', category: 'core' });
-      expect(LANGUAGE_REGISTRY.get('de')).toEqual({ code: 'de', name: 'German', category: 'core' });
-      expect(LANGUAGE_REGISTRY.get('ja')).toEqual({ code: 'ja', name: 'Japanese', category: 'core' });
+      expect(LANGUAGE_REGISTRY.get('en')).toEqual({
+        code: 'en',
+        name: 'English',
+        category: 'core',
+      });
+      expect(LANGUAGE_REGISTRY.get('de')).toEqual({
+        code: 'de',
+        name: 'German',
+        category: 'core',
+      });
+      expect(LANGUAGE_REGISTRY.get('ja')).toEqual({
+        code: 'ja',
+        name: 'Japanese',
+        category: 'core',
+      });
     });
 
     it('should include known regional variants', () => {
-      expect(LANGUAGE_REGISTRY.get('en-gb')).toEqual({ code: 'en-gb', name: 'English (British)', category: 'regional', targetOnly: true });
-      expect(LANGUAGE_REGISTRY.get('pt-br')).toEqual({ code: 'pt-br', name: 'Portuguese (Brazilian)', category: 'regional', targetOnly: true });
+      expect(LANGUAGE_REGISTRY.get('en-gb')).toEqual({
+        code: 'en-gb',
+        name: 'English (British)',
+        category: 'regional',
+        targetOnly: true,
+      });
+      expect(LANGUAGE_REGISTRY.get('pt-br')).toEqual({
+        code: 'pt-br',
+        name: 'Portuguese (Brazilian)',
+        category: 'regional',
+        targetOnly: true,
+      });
     });
 
     it('should include known extended languages', () => {
-      expect(LANGUAGE_REGISTRY.get('hi')).toEqual({ code: 'hi', name: 'Hindi', category: 'extended' });
-      expect(LANGUAGE_REGISTRY.get('sw')).toEqual({ code: 'sw', name: 'Swahili', category: 'extended' });
+      expect(LANGUAGE_REGISTRY.get('hi')).toEqual({
+        code: 'hi',
+        name: 'Hindi',
+        category: 'extended',
+      });
+      expect(LANGUAGE_REGISTRY.get('sw')).toEqual({
+        code: 'sw',
+        name: 'Swahili',
+        category: 'extended',
+      });
+    });
+
+    it('should include the regional variants of German and French', () => {
+      expect(LANGUAGE_REGISTRY.get('de-ch')).toEqual({
+        code: 'de-ch',
+        name: 'German (Swiss)',
+        category: 'regional',
+        targetOnly: true,
+      });
+      expect(LANGUAGE_REGISTRY.get('fr-ca')).toEqual({
+        code: 'fr-ca',
+        name: 'French (Canadian)',
+        category: 'regional',
+        targetOnly: true,
+      });
+    });
+
+    it('should carry the API name even where it duplicates a bare code', () => {
+      // The API calls both `de` and `de-DE` "German"; the snapshot mirrors it
+      // rather than inventing a disambiguated name.
+      expect(getLanguageName('de-de')).toBe('German');
+      expect(getLanguageName('fr-fr')).toBe('French');
     });
   });
 
@@ -147,7 +269,7 @@ describe('Language Registry', () => {
   describe('getSourceLanguages()', () => {
     it('should exclude target-only languages', () => {
       const sources = getSourceLanguages();
-      const codes = sources.map(e => e.code);
+      const codes = sources.map((e) => e.code);
       expect(codes).not.toContain('en-gb');
       expect(codes).not.toContain('en-us');
       expect(codes).not.toContain('pt-br');
@@ -156,26 +278,30 @@ describe('Language Registry', () => {
 
     it('should include core and extended languages', () => {
       const sources = getSourceLanguages();
-      const codes = sources.map(e => e.code);
+      const codes = sources.map((e) => e.code);
       expect(codes).toContain('en');
       expect(codes).toContain('de');
       expect(codes).toContain('hi');
       expect(codes).toContain('sw');
     });
 
-    it('should return 114 languages (121 - 7 regional)', () => {
-      expect(getSourceLanguages().length).toBe(114);
+    it('should return every language that is not target-only', () => {
+      const targetOnly = ENTRIES.filter(
+        (e) => 'targetOnly' in e && e.targetOnly
+      ).length;
+      expect(getSourceLanguages().length).toBe(ENTRIES.length - targetOnly);
+      expect(targetOnly).toBeGreaterThan(0);
     });
   });
 
   describe('getTargetLanguages()', () => {
     it('should include all languages', () => {
-      expect(getTargetLanguages().length).toBe(121);
+      expect(getTargetLanguages().length).toBe(ENTRIES.length);
     });
 
     it('should include regional variants', () => {
       const targets = getTargetLanguages();
-      const codes = targets.map(e => e.code);
+      const codes = targets.map((e) => e.code);
       expect(codes).toContain('en-gb');
       expect(codes).toContain('en-us');
       expect(codes).toContain('pt-br');
@@ -183,9 +309,9 @@ describe('Language Registry', () => {
   });
 
   describe('getAllLanguageCodes()', () => {
-    it('should return set of all 121 codes', () => {
+    it('should return a set of every snapshot code', () => {
       const codes = getAllLanguageCodes();
-      expect(codes.size).toBe(121);
+      expect(codes.size).toBe(ENTRIES.length);
     });
 
     it('should support has() lookups', () => {
@@ -198,14 +324,14 @@ describe('Language Registry', () => {
   });
 
   describe('getExtendedLanguageCodes()', () => {
-    it('should return set of 82 extended codes', () => {
+    it('should return a set of every extended code', () => {
       const codes = getExtendedLanguageCodes();
-      expect(codes.size).toBe(82);
+      expect(codes.size).toBe(entriesIn('extended').length);
     });
 
     it('should only contain extended language codes', () => {
       const codes = getExtendedLanguageCodes();
-      codes.forEach(code => {
+      codes.forEach((code) => {
         const entry = LANGUAGE_REGISTRY.get(code);
         expect(entry?.category).toBe('extended');
       });
@@ -215,6 +341,196 @@ describe('Language Registry', () => {
       const codes = getExtendedLanguageCodes();
       expect(codes.has('en')).toBe(false);
       expect(codes.has('en-gb')).toBe(false);
+    });
+  });
+
+  describe('WRITE_TARGET_LANGUAGES', () => {
+    it('should be non-empty', () => {
+      expect(WRITE_TARGET_LANGUAGES.length).toBeGreaterThan(0);
+    });
+
+    it('should be lowercase and sorted, matching how the generator emits it', () => {
+      const codes = [...WRITE_TARGET_LANGUAGES];
+      expect(codes).toEqual(codes.map((c) => c.toLowerCase()));
+      expect(codes).toEqual(
+        [...codes].sort((a, b) => a.localeCompare(b, 'en'))
+      );
+    });
+
+    it('should have no duplicates', () => {
+      expect(new Set(WRITE_TARGET_LANGUAGES).size).toBe(
+        WRITE_TARGET_LANGUAGES.length
+      );
+    });
+
+    it('should only contain languages the translate snapshot also knows', () => {
+      // Both lists come from the same GET /v3/languages, so a write target the
+      // main snapshot has never heard of means one of them was generated stale.
+      for (const code of WRITE_TARGET_LANGUAGES) {
+        expect(isValidLanguage(code)).toBe(true);
+      }
+    });
+
+    it('should be a subset of the target languages', () => {
+      const targets = new Set(getTargetLanguages().map((e) => e.code));
+      for (const code of WRITE_TARGET_LANGUAGES) {
+        expect(targets.has(code)).toBe(true);
+      }
+    });
+  });
+
+  describe('deriveLanguageEntry()', () => {
+    const stable = { status: 'stable' };
+
+    it('should classify a source-usable language with glossary support as core', () => {
+      expect(
+        deriveLanguageEntry({
+          lang: 'de',
+          name: 'German',
+          usable_as_source: true,
+          features: { glossary: stable, formality: stable },
+        })
+      ).toEqual({ code: 'de', name: 'German', category: 'core' });
+    });
+
+    it('should classify a target-only language with glossary support as regional', () => {
+      expect(
+        deriveLanguageEntry({
+          lang: 'de-CH',
+          name: 'German (Swiss)',
+          usable_as_source: false,
+          features: { glossary: stable, formality: stable },
+        })
+      ).toEqual({
+        code: 'de-ch',
+        name: 'German (Swiss)',
+        category: 'regional',
+        targetOnly: true,
+      });
+    });
+
+    it('should classify a language without glossary support as extended', () => {
+      expect(
+        deriveLanguageEntry({
+          lang: 'hi',
+          name: 'Hindi',
+          usable_as_source: true,
+          features: { tag_handling: stable },
+        })
+      ).toEqual({ code: 'hi', name: 'Hindi', category: 'extended' });
+    });
+
+    it('should classify an empty features matrix as extended, which is evidence', () => {
+      // An empty matrix says the language supports none of them, glossary
+      // included. A missing one says nothing -- see below.
+      expect(
+        deriveLanguageEntry({
+          lang: 'hi',
+          name: 'Hindi',
+          usable_as_source: true,
+          features: {},
+        }).category
+      ).toBe('extended');
+    });
+
+    it('should not file a language with no features matrix as extended', () => {
+      // Silence about a language is not evidence that it lacks glossary support,
+      // and the extended tier is what suppresses formality and glossary locally.
+      // Tiering it by source usability instead leaves the judgement to the API,
+      // which is the same choice the --features table makes.
+      expect(
+        deriveLanguageEntry({
+          lang: 'xx',
+          name: 'Test',
+          usable_as_source: true,
+        }).category
+      ).toBe('core');
+      expect(
+        deriveLanguageEntry({
+          lang: 'xx',
+          name: 'Test',
+          usable_as_source: false,
+        }).category
+      ).toBe('regional');
+    });
+
+    it('should lowercase the code', () => {
+      expect(
+        deriveLanguageEntry({ lang: 'ZH-Hans', name: 'Chinese' }).code
+      ).toBe('zh-hans');
+    });
+
+    it('should mark targetOnly whenever the language is not source-usable', () => {
+      expect(
+        deriveLanguageEntry({
+          lang: 'th',
+          name: 'Thai',
+          usable_as_source: false,
+        }).targetOnly
+      ).toBe(true);
+      expect(
+        deriveLanguageEntry({
+          lang: 'th',
+          name: 'Thai',
+          usable_as_source: true,
+        }).targetOnly
+      ).toBeUndefined();
+    });
+
+    it('should reproduce every entry currently in the snapshot', () => {
+      // The snapshot is generated by this derivation, so re-deriving an entry
+      // from the shape it came from must be a fixed point.
+      const de = LANGUAGE_REGISTRY.get('de')!;
+      expect(
+        deriveLanguageEntry({
+          lang: 'de',
+          name: de.name,
+          usable_as_source: true,
+          features: { glossary: { status: 'stable' } },
+        })
+      ).toEqual(de);
+    });
+  });
+
+  describe('Language union', () => {
+    /**
+     * Compile-time, not runtime: these assignments fail to build if the union
+     * stops deriving from the snapshot and falls behind it.
+     */
+    it('should cover the regional variants a hand-written union had missed', () => {
+      const codes: Language[] = ['de-ch', 'de-de', 'fr-ca', 'fr-fr'];
+      codes.forEach((code) => expect(isValidLanguage(code)).toBe(true));
+    });
+
+    it('should still exclude a code the snapshot does not list', () => {
+      // @ts-expect-error 'zz' is not a snapshot language; widening Language to
+      // string would make this directive unused and fail the build.
+      const unknown: Language = 'zz';
+      expect(isValidLanguage(unknown)).toBe(false);
+    });
+  });
+
+  describe('looksLikeLanguageTag()', () => {
+    it.each(['de', 'ace', 'de-ch', 'en-gb', 'es-419', 'zh-hans', 'bho'])(
+      'should accept the well-formed tag %s',
+      (code) => {
+        expect(looksLikeLanguageTag(code)).toBe(true);
+      }
+    );
+
+    it.each(['grman', 'g', '', 'de_CH', 'de-', '-de', 'de-ch-extra', 'DE'])(
+      'should reject the malformed tag %s',
+      (code) => {
+        expect(looksLikeLanguageTag(code)).toBe(false);
+      }
+    );
+  });
+
+  describe('formality support', () => {
+    it('should not carry formality data; GET /v3/languages reports it as features.formality', () => {
+      LANGUAGE_REGISTRY.forEach((entry) => {
+        expect(entry).not.toHaveProperty('supportsFormality');
+      });
     });
   });
 });

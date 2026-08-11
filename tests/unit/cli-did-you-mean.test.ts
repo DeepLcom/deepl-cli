@@ -11,7 +11,11 @@ describe('CLI did-you-mean suggestions', () => {
   // the 10s execSync timeout under full-suite parallelism.
   const cliPath = path.resolve(__dirname, '../../dist/cli/index.js');
 
-  function runCLI(args: string): { stdout: string; stderr: string; exitCode: number } {
+  function runCLI(args: string): {
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+  } {
     try {
       const stdout = execSync(`node "${cliPath}" ${args}`, {
         encoding: 'utf-8',
@@ -70,9 +74,12 @@ describe('CLI did-you-mean suggestions', () => {
     expect(combined).toContain('Did you mean: deepl translate?');
   });
 
-  it.each(['descibe', 'describe'])('should never suggest the hidden _describe command (%s)', (typo) => {
-    const result = runCLI(typo);
-    const combined = result.stdout + result.stderr;
-    expect(combined).not.toContain('_describe');
-  });
+  it.each(['descibe', 'describe'])(
+    'should never suggest the hidden _describe command (%s)',
+    (typo) => {
+      const result = runCLI(typo);
+      const combined = result.stdout + result.stderr;
+      expect(combined).not.toContain('_describe');
+    }
+  );
 });

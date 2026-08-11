@@ -2,8 +2,6 @@
  * Tests for Glossary Command
  */
 
- 
-
 import { GlossaryCommand } from '../../src/cli/commands/glossary';
 import { GlossaryService } from '../../src/services/glossary';
 import { GlossaryInfo } from '../../src/types/glossary.js';
@@ -32,11 +30,13 @@ describe('GlossaryCommand', () => {
     name: 'Tech Terms',
     source_lang: 'en',
     target_langs: ['es'],
-    dictionaries: [{
-      source_lang: 'en',
-      target_lang: 'es',
-      entry_count: 10,
-    }],
+    dictionaries: [
+      {
+        source_lang: 'en',
+        target_lang: 'es',
+        entry_count: 10,
+      },
+    ],
     creation_time: '2024-01-15T10:30:00Z',
   };
 
@@ -50,7 +50,9 @@ describe('GlossaryCommand', () => {
       getGlossary: jest.fn().mockResolvedValue(mockGlossary),
       getGlossaryByName: jest.fn().mockResolvedValue(mockGlossary),
       deleteGlossary: jest.fn().mockResolvedValue(undefined),
-      getGlossaryEntries: jest.fn().mockResolvedValue({ hello: 'hola', world: 'mundo' }),
+      getGlossaryEntries: jest
+        .fn()
+        .mockResolvedValue({ hello: 'hola', world: 'mundo' }),
       getGlossaryLanguages: jest.fn().mockResolvedValue([]),
       addEntry: jest.fn().mockResolvedValue(mockGlossary),
       updateEntry: jest.fn().mockResolvedValue(mockGlossary),
@@ -64,16 +66,28 @@ describe('GlossaryCommand', () => {
   describe('create()', () => {
     beforeEach(() => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue('hello\thola\nworld\tmundo');
-      (fs.lstatSync as jest.Mock).mockReturnValue({ isSymbolicLink: () => false });
+      (fs.readFileSync as jest.Mock).mockReturnValue(
+        'hello\thola\nworld\tmundo'
+      );
+      (fs.lstatSync as jest.Mock).mockReturnValue({
+        isSymbolicLink: () => false,
+      });
     });
 
     it('should create glossary from TSV file', async () => {
-      const result = await glossaryCommand.create('Tech Terms', 'en', ['es'], '/path/to/glossary.tsv');
+      const result = await glossaryCommand.create(
+        'Tech Terms',
+        'en',
+        ['es'],
+        '/path/to/glossary.tsv'
+      );
 
       expect(result).toEqual(mockGlossary);
       expect(fs.existsSync).toHaveBeenCalledWith('/path/to/glossary.tsv');
-      expect(fs.readFileSync).toHaveBeenCalledWith('/path/to/glossary.tsv', 'utf-8');
+      expect(fs.readFileSync).toHaveBeenCalledWith(
+        '/path/to/glossary.tsv',
+        'utf-8'
+      );
       expect(mockGlossaryService.createGlossaryFromTSV).toHaveBeenCalledWith(
         'Tech Terms',
         'en',
@@ -86,7 +100,12 @@ describe('GlossaryCommand', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       await expect(
-        glossaryCommand.create('Tech Terms', 'en', ['es'], '/path/to/missing.tsv')
+        glossaryCommand.create(
+          'Tech Terms',
+          'en',
+          ['es'],
+          '/path/to/missing.tsv'
+        )
       ).rejects.toThrow('File not found');
     });
 
@@ -99,26 +118,43 @@ describe('GlossaryCommand', () => {
     });
 
     it('should handle glossary service errors', async () => {
-      (mockGlossaryService.createGlossaryFromTSV as jest.Mock).mockRejectedValueOnce(
-        new Error('Invalid glossary format')
-      );
+      (
+        mockGlossaryService.createGlossaryFromTSV as jest.Mock
+      ).mockRejectedValueOnce(new Error('Invalid glossary format'));
 
       await expect(
-        glossaryCommand.create('Tech Terms', 'en', ['es'], '/path/to/glossary.tsv')
+        glossaryCommand.create(
+          'Tech Terms',
+          'en',
+          ['es'],
+          '/path/to/glossary.tsv'
+        )
       ).rejects.toThrow('Invalid glossary format');
     });
 
     it('should reject symlinks for security', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.lstatSync as jest.Mock).mockReturnValue({ isSymbolicLink: () => true });
+      (fs.lstatSync as jest.Mock).mockReturnValue({
+        isSymbolicLink: () => true,
+      });
 
       await expect(
-        glossaryCommand.create('Tech Terms', 'en', ['es'], '/path/to/symlink.tsv')
+        glossaryCommand.create(
+          'Tech Terms',
+          'en',
+          ['es'],
+          '/path/to/symlink.tsv'
+        )
       ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
 
     it('should support multiple target languages', async () => {
-      const result = await glossaryCommand.create('Multi Terms', 'en', ['es', 'fr', 'de'], '/path/to/glossary.tsv');
+      const result = await glossaryCommand.create(
+        'Multi Terms',
+        'en',
+        ['es', 'fr', 'de'],
+        '/path/to/glossary.tsv'
+      );
 
       expect(result).toEqual(mockGlossary);
       expect(mockGlossaryService.createGlossaryFromTSV).toHaveBeenCalledWith(
@@ -139,7 +175,9 @@ describe('GlossaryCommand', () => {
     });
 
     it('should return empty array when no glossaries exist', async () => {
-      (mockGlossaryService.listGlossaries as jest.Mock).mockResolvedValueOnce([]);
+      (mockGlossaryService.listGlossaries as jest.Mock).mockResolvedValueOnce(
+        []
+      );
 
       const result = await glossaryCommand.list();
 
@@ -152,7 +190,9 @@ describe('GlossaryCommand', () => {
       const result = await glossaryCommand.show('123-456-789');
 
       expect(result).toEqual(mockGlossary);
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
     });
 
     it('should fallback to get by name if ID fails', async () => {
@@ -162,8 +202,12 @@ describe('GlossaryCommand', () => {
 
       const result = await glossaryCommand.show('Tech Terms');
 
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('Tech Terms');
-      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
       expect(result).toEqual(mockGlossary);
     });
 
@@ -171,9 +215,13 @@ describe('GlossaryCommand', () => {
       (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(
         new Error('Not found')
       );
-      (mockGlossaryService.getGlossaryByName as jest.Mock).mockResolvedValueOnce(null);
+      (
+        mockGlossaryService.getGlossaryByName as jest.Mock
+      ).mockResolvedValueOnce(null);
 
-      await expect(glossaryCommand.show('NonExistent')).rejects.toThrow('Glossary not found');
+      await expect(glossaryCommand.show('NonExistent')).rejects.toThrow(
+        'Glossary not found'
+      );
     });
   });
 
@@ -181,8 +229,12 @@ describe('GlossaryCommand', () => {
     it('should delete glossary by ID', async () => {
       await glossaryCommand.delete('123-456-789');
 
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
-      expect(mockGlossaryService.deleteGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
+      expect(mockGlossaryService.deleteGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
     });
 
     it('should delete glossary by name', async () => {
@@ -192,15 +244,25 @@ describe('GlossaryCommand', () => {
 
       await glossaryCommand.delete('Tech Terms');
 
-      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
-      expect(mockGlossaryService.deleteGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
+      expect(mockGlossaryService.deleteGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
     });
 
     it('should propagate error when glossary not found for deletion', async () => {
-      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
-      (mockGlossaryService.getGlossaryByName as jest.Mock).mockResolvedValueOnce(null);
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('Not found')
+      );
+      (
+        mockGlossaryService.getGlossaryByName as jest.Mock
+      ).mockResolvedValueOnce(null);
 
-      await expect(glossaryCommand.delete('NonExistent')).rejects.toThrow('Glossary not found');
+      await expect(glossaryCommand.delete('NonExistent')).rejects.toThrow(
+        'Glossary not found'
+      );
     });
 
     it('should handle delete service errors', async () => {
@@ -208,7 +270,9 @@ describe('GlossaryCommand', () => {
         new Error('Permission denied')
       );
 
-      await expect(glossaryCommand.delete('123-456-789')).rejects.toThrow('Permission denied');
+      await expect(glossaryCommand.delete('123-456-789')).rejects.toThrow(
+        'Permission denied'
+      );
     });
   });
 
@@ -217,8 +281,14 @@ describe('GlossaryCommand', () => {
       const result = await glossaryCommand.entries('123-456-789');
 
       expect(result).toEqual({ hello: 'hola', world: 'mundo' });
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
-      expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith('123-456-789', 'en', 'es');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
+      expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es'
+      );
     });
 
     it('should get entries with explicit target language', async () => {
@@ -233,22 +303,36 @@ describe('GlossaryCommand', () => {
         ],
         creation_time: '2024-01-15T10:30:00Z',
       };
-      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multilingualGlossary);
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(
+        multilingualGlossary
+      );
 
       const result = await glossaryCommand.entries('multi-123', 'fr');
 
       expect(result).toEqual({ hello: 'hola', world: 'mundo' });
-      expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith('multi-123', 'en', 'fr');
+      expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith(
+        'multi-123',
+        'en',
+        'fr'
+      );
     });
 
     it('should get entries by glossary name', async () => {
-      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('Not found')
+      );
 
       const result = await glossaryCommand.entries('Tech Terms');
 
       expect(result).toEqual({ hello: 'hola', world: 'mundo' });
-      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
-      expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith('123-456-789', 'en', 'es');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
+      expect(mockGlossaryService.getGlossaryEntries).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es'
+      );
     });
   });
 
@@ -258,7 +342,9 @@ describe('GlossaryCommand', () => {
         { sourceLang: 'en', targetLang: 'es' },
         { sourceLang: 'de', targetLang: 'en' },
       ];
-      (mockGlossaryService.getGlossaryLanguages as jest.Mock).mockResolvedValue(mockPairs);
+      (mockGlossaryService.getGlossaryLanguages as jest.Mock).mockResolvedValue(
+        mockPairs
+      );
 
       const result = await glossaryCommand.listLanguages();
 
@@ -273,18 +359,36 @@ describe('GlossaryCommand', () => {
 
       await glossaryCommand.addEntry('123-456-789', 'hello', 'hola');
 
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
-      expect(mockGlossaryService.addEntry).toHaveBeenCalledWith('123-456-789', 'en', 'es', 'hello', 'hola');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
+      expect(mockGlossaryService.addEntry).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es',
+        'hello',
+        'hola'
+      );
     });
 
     it('should add entry to glossary by name', async () => {
-      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('Not found')
+      );
       (mockGlossaryService.addEntry as jest.Mock).mockResolvedValue(undefined);
 
       await glossaryCommand.addEntry('Tech Terms', 'hello', 'hola');
 
-      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
-      expect(mockGlossaryService.addEntry).toHaveBeenCalledWith('123-456-789', 'en', 'es', 'hello', 'hola');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
+      expect(mockGlossaryService.addEntry).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es',
+        'hello',
+        'hola'
+      );
     });
 
     it('should add entry with explicit target language for multilingual glossary', async () => {
@@ -299,12 +403,20 @@ describe('GlossaryCommand', () => {
         ],
         creation_time: '2024-01-15T10:30:00Z',
       };
-      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multilingualGlossary);
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(
+        multilingualGlossary
+      );
       (mockGlossaryService.addEntry as jest.Mock).mockResolvedValue(undefined);
 
       await glossaryCommand.addEntry('multi-123', 'hello', 'bonjour', 'fr');
 
-      expect(mockGlossaryService.addEntry).toHaveBeenCalledWith('multi-123', 'en', 'fr', 'hello', 'bonjour');
+      expect(mockGlossaryService.addEntry).toHaveBeenCalledWith(
+        'multi-123',
+        'en',
+        'fr',
+        'hello',
+        'bonjour'
+      );
     });
 
     it('should handle addEntry service errors', async () => {
@@ -320,22 +432,44 @@ describe('GlossaryCommand', () => {
 
   describe('updateEntry()', () => {
     it('should update entry in glossary by ID', async () => {
-      (mockGlossaryService.updateEntry as jest.Mock).mockResolvedValue(undefined);
+      (mockGlossaryService.updateEntry as jest.Mock).mockResolvedValue(
+        undefined
+      );
 
       await glossaryCommand.updateEntry('123-456-789', 'hello', 'hola updated');
 
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
-      expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith('123-456-789', 'en', 'es', 'hello', 'hola updated');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
+      expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es',
+        'hello',
+        'hola updated'
+      );
     });
 
     it('should update entry in glossary by name', async () => {
-      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
-      (mockGlossaryService.updateEntry as jest.Mock).mockResolvedValue(undefined);
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('Not found')
+      );
+      (mockGlossaryService.updateEntry as jest.Mock).mockResolvedValue(
+        undefined
+      );
 
       await glossaryCommand.updateEntry('Tech Terms', 'hello', 'hola updated');
 
-      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
-      expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith('123-456-789', 'en', 'es', 'hello', 'hola updated');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
+      expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es',
+        'hello',
+        'hola updated'
+      );
     });
 
     it('should update entry with explicit target language for multilingual glossary', async () => {
@@ -350,33 +484,68 @@ describe('GlossaryCommand', () => {
         ],
         creation_time: '2024-01-15T10:30:00Z',
       };
-      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multilingualGlossary);
-      (mockGlossaryService.updateEntry as jest.Mock).mockResolvedValue(undefined);
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(
+        multilingualGlossary
+      );
+      (mockGlossaryService.updateEntry as jest.Mock).mockResolvedValue(
+        undefined
+      );
 
-      await glossaryCommand.updateEntry('multi-123', 'hello', 'bonjour updated', 'fr');
+      await glossaryCommand.updateEntry(
+        'multi-123',
+        'hello',
+        'bonjour updated',
+        'fr'
+      );
 
-      expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith('multi-123', 'en', 'fr', 'hello', 'bonjour updated');
+      expect(mockGlossaryService.updateEntry).toHaveBeenCalledWith(
+        'multi-123',
+        'en',
+        'fr',
+        'hello',
+        'bonjour updated'
+      );
     });
   });
 
   describe('removeEntry()', () => {
     it('should remove entry from glossary by ID', async () => {
-      (mockGlossaryService.removeEntry as jest.Mock).mockResolvedValue(undefined);
+      (mockGlossaryService.removeEntry as jest.Mock).mockResolvedValue(
+        undefined
+      );
 
       await glossaryCommand.removeEntry('123-456-789', 'hello');
 
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
-      expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith('123-456-789', 'en', 'es', 'hello');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
+      expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es',
+        'hello'
+      );
     });
 
     it('should remove entry from glossary by name', async () => {
-      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
-      (mockGlossaryService.removeEntry as jest.Mock).mockResolvedValue(undefined);
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('Not found')
+      );
+      (mockGlossaryService.removeEntry as jest.Mock).mockResolvedValue(
+        undefined
+      );
 
       await glossaryCommand.removeEntry('Tech Terms', 'hello');
 
-      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
-      expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith('123-456-789', 'en', 'es', 'hello');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
+      expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith(
+        '123-456-789',
+        'en',
+        'es',
+        'hello'
+      );
     });
 
     it('should remove entry with explicit target language for multilingual glossary', async () => {
@@ -391,33 +560,58 @@ describe('GlossaryCommand', () => {
         ],
         creation_time: '2024-01-15T10:30:00Z',
       };
-      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multilingualGlossary);
-      (mockGlossaryService.removeEntry as jest.Mock).mockResolvedValue(undefined);
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(
+        multilingualGlossary
+      );
+      (mockGlossaryService.removeEntry as jest.Mock).mockResolvedValue(
+        undefined
+      );
 
       await glossaryCommand.removeEntry('multi-123', 'hello', 'fr');
 
-      expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith('multi-123', 'en', 'fr', 'hello');
+      expect(mockGlossaryService.removeEntry).toHaveBeenCalledWith(
+        'multi-123',
+        'en',
+        'fr',
+        'hello'
+      );
     });
   });
 
   describe('rename()', () => {
     it('should rename glossary by ID', async () => {
-      (mockGlossaryService.renameGlossary as jest.Mock).mockResolvedValue(undefined);
+      (mockGlossaryService.renameGlossary as jest.Mock).mockResolvedValue(
+        undefined
+      );
 
       await glossaryCommand.rename('123-456-789', 'New Name');
 
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
-      expect(mockGlossaryService.renameGlossary).toHaveBeenCalledWith('123-456-789', 'New Name');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
+      expect(mockGlossaryService.renameGlossary).toHaveBeenCalledWith(
+        '123-456-789',
+        'New Name'
+      );
     });
 
     it('should rename glossary by name', async () => {
-      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
-      (mockGlossaryService.renameGlossary as jest.Mock).mockResolvedValue(undefined);
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('Not found')
+      );
+      (mockGlossaryService.renameGlossary as jest.Mock).mockResolvedValue(
+        undefined
+      );
 
       await glossaryCommand.rename('Tech Terms', 'New Name');
 
-      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
-      expect(mockGlossaryService.renameGlossary).toHaveBeenCalledWith('123-456-789', 'New Name');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
+      expect(mockGlossaryService.renameGlossary).toHaveBeenCalledWith(
+        '123-456-789',
+        'New Name'
+      );
     });
 
     it('should handle rename errors', async () => {
@@ -437,8 +631,8 @@ describe('GlossaryCommand', () => {
 
       expect(result).toContain('Name: Tech Terms');
       expect(result).toContain('ID: 123-456-789');
-      expect(result).toContain('Source language: EN');
-      expect(result).toContain('Target languages: ES');
+      expect(result).toContain('Source language: en');
+      expect(result).toContain('Target languages: es');
       expect(result).toContain('Total entries: 10');
       expect(result).toContain('Type: Single target');
     });
@@ -459,12 +653,12 @@ describe('GlossaryCommand', () => {
       const result = glossaryCommand.formatGlossaryInfo(multilingualGlossary);
 
       expect(result).toContain('Name: Multi Terms');
-      expect(result).toContain('Target languages: ES, FR');
+      expect(result).toContain('Target languages: es, fr');
       expect(result).toContain('Type: Multilingual');
       expect(result).toContain('Total entries: 8');
       expect(result).toContain('Language pairs:');
-      expect(result).toContain('EN → ES: 5 entries');
-      expect(result).toContain('EN → FR: 3 entries');
+      expect(result).toContain('en → es: 5 entries');
+      expect(result).toContain('en → fr: 3 entries');
     });
 
     it('should include creation time as a locale-independent ISO timestamp', () => {
@@ -544,7 +738,10 @@ describe('GlossaryCommand', () => {
         creation_time: '2024-02-01T08:00:00Z',
       };
 
-      const result = glossaryCommand.formatGlossaryList([mockGlossary, secondGlossary]);
+      const result = glossaryCommand.formatGlossaryList([
+        mockGlossary,
+        secondGlossary,
+      ]);
 
       expect(result).toContain('Tech Terms');
       expect(result).toContain('Medical Terms');
@@ -569,17 +766,31 @@ describe('GlossaryCommand', () => {
   describe('replaceDictionary()', () => {
     beforeEach(() => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue('hello\thola\nworld\tmundo');
-      (fs.lstatSync as jest.Mock).mockReturnValue({ isSymbolicLink: () => false });
-      mockGlossaryService.replaceGlossaryDictionary = jest.fn().mockResolvedValue(undefined);
+      (fs.readFileSync as jest.Mock).mockReturnValue(
+        'hello\thola\nworld\tmundo'
+      );
+      (fs.lstatSync as jest.Mock).mockReturnValue({
+        isSymbolicLink: () => false,
+      });
+      mockGlossaryService.replaceGlossaryDictionary = jest
+        .fn()
+        .mockResolvedValue(undefined);
     });
 
     it('should replace dictionary entries from file', async () => {
-      await glossaryCommand.replaceDictionary('123-456-789', 'es', '/path/to/glossary.tsv');
+      await glossaryCommand.replaceDictionary(
+        '123-456-789',
+        'es',
+        '/path/to/glossary.tsv'
+      );
 
       expect(fs.existsSync).toHaveBeenCalledWith('/path/to/glossary.tsv');
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
-      expect(mockGlossaryService.replaceGlossaryDictionary).toHaveBeenCalledWith(
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
+      expect(
+        mockGlossaryService.replaceGlossaryDictionary
+      ).toHaveBeenCalledWith(
         '123-456-789',
         'en',
         'es',
@@ -591,25 +802,45 @@ describe('GlossaryCommand', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       await expect(
-        glossaryCommand.replaceDictionary('123-456-789', 'es', '/path/to/missing.tsv')
+        glossaryCommand.replaceDictionary(
+          '123-456-789',
+          'es',
+          '/path/to/missing.tsv'
+        )
       ).rejects.toThrow('File not found: /path/to/missing.tsv');
     });
 
     it('should reject symlinks for security', async () => {
-      (fs.lstatSync as jest.Mock).mockReturnValue({ isSymbolicLink: () => true });
+      (fs.lstatSync as jest.Mock).mockReturnValue({
+        isSymbolicLink: () => true,
+      });
 
       await expect(
-        glossaryCommand.replaceDictionary('123-456-789', 'es', '/path/to/symlink.tsv')
+        glossaryCommand.replaceDictionary(
+          '123-456-789',
+          'es',
+          '/path/to/symlink.tsv'
+        )
       ).rejects.toThrow('Symlinks are not supported for security reasons');
     });
 
     it('should resolve glossary by name for replaceDictionary', async () => {
-      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('Not found')
+      );
 
-      await glossaryCommand.replaceDictionary('Tech Terms', 'es', '/path/to/glossary.tsv');
+      await glossaryCommand.replaceDictionary(
+        'Tech Terms',
+        'es',
+        '/path/to/glossary.tsv'
+      );
 
-      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
-      expect(mockGlossaryService.replaceGlossaryDictionary).toHaveBeenCalledWith(
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
+      expect(
+        mockGlossaryService.replaceGlossaryDictionary
+      ).toHaveBeenCalledWith(
         '123-456-789',
         'en',
         'es',
@@ -620,13 +851,17 @@ describe('GlossaryCommand', () => {
 
   describe('deleteDictionary()', () => {
     beforeEach(() => {
-      mockGlossaryService.deleteGlossaryDictionary = jest.fn().mockResolvedValue(undefined);
+      mockGlossaryService.deleteGlossaryDictionary = jest
+        .fn()
+        .mockResolvedValue(undefined);
     });
 
     it('should delete dictionary by glossary ID and target language', async () => {
       await glossaryCommand.deleteDictionary('123-456-789', 'es');
 
-      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith('123-456-789');
+      expect(mockGlossaryService.getGlossary).toHaveBeenCalledWith(
+        '123-456-789'
+      );
       expect(mockGlossaryService.deleteGlossaryDictionary).toHaveBeenCalledWith(
         '123-456-789',
         'en',
@@ -635,11 +870,15 @@ describe('GlossaryCommand', () => {
     });
 
     it('should delete dictionary by glossary name and target language', async () => {
-      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      (mockGlossaryService.getGlossary as jest.Mock).mockRejectedValueOnce(
+        new Error('Not found')
+      );
 
       await glossaryCommand.deleteDictionary('Tech Terms', 'es');
 
-      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith('Tech Terms');
+      expect(mockGlossaryService.getGlossaryByName).toHaveBeenCalledWith(
+        'Tech Terms'
+      );
       expect(mockGlossaryService.deleteGlossaryDictionary).toHaveBeenCalledWith(
         '123-456-789',
         'en',
@@ -648,9 +887,9 @@ describe('GlossaryCommand', () => {
     });
 
     it('should handle delete dictionary service errors', async () => {
-      mockGlossaryService.deleteGlossaryDictionary = jest.fn().mockRejectedValueOnce(
-        new Error('Dictionary not found')
-      );
+      mockGlossaryService.deleteGlossaryDictionary = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Dictionary not found'));
 
       await expect(
         glossaryCommand.deleteDictionary('123-456-789', 'fr')
@@ -737,7 +976,9 @@ describe('GlossaryCommand', () => {
     });
 
     it('should produce valid JSON for empty glossary list', async () => {
-      (mockGlossaryService.listGlossaries as jest.Mock).mockResolvedValueOnce([]);
+      (mockGlossaryService.listGlossaries as jest.Mock).mockResolvedValueOnce(
+        []
+      );
       const glossaries = await glossaryCommand.list();
       const json = JSON.stringify(glossaries, null, 2);
       const parsed = JSON.parse(json);
@@ -756,7 +997,9 @@ describe('GlossaryCommand', () => {
         ],
         creation_time: '2024-01-15T10:30:00Z',
       };
-      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(multiGlossary);
+      (mockGlossaryService.getGlossary as jest.Mock).mockResolvedValueOnce(
+        multiGlossary
+      );
 
       const glossary = await glossaryCommand.show('multi-123');
       const json = JSON.stringify(glossary, null, 2);

@@ -2,8 +2,6 @@
  * Tests for Auth Command
  */
 
- 
-
 import { Command } from 'commander';
 import { AuthCommand } from '../../src/cli/commands/auth';
 import { ConfigService } from '../../src/storage/config';
@@ -15,8 +13,13 @@ import { NetworkError } from '../../src/utils/errors';
 jest.mock('chalk', () => {
   const passthrough = (s: string) => s;
   const obj: Record<string, unknown> & { level: number } = {
-    level: 3, red: passthrough, green: passthrough, blue: passthrough,
-    yellow: passthrough, gray: passthrough, bold: passthrough,
+    level: 3,
+    red: passthrough,
+    green: passthrough,
+    blue: passthrough,
+    yellow: passthrough,
+    gray: passthrough,
+    bold: passthrough,
   };
   return { __esModule: true, default: obj };
 });
@@ -52,27 +55,42 @@ describe('AuthCommand', () => {
   describe('setKey()', () => {
     it('should store API key in config', async () => {
       // Mock DeepL client validation
-      const mockGetUsage = jest.fn().mockResolvedValue({ character: { count: 0, limit: 500000 } });
-      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-        getUsage: mockGetUsage,
-      } as any));
+      const mockGetUsage = jest
+        .fn()
+        .mockResolvedValue({ character: { count: 0, limit: 500000 } });
+      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(
+        () =>
+          ({
+            getUsage: mockGetUsage,
+          }) as any
+      );
 
       await authCommand.setKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx');
 
-      expect(mockConfigService.set).toHaveBeenCalledWith('auth.apiKey', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx');
+      expect(mockConfigService.set).toHaveBeenCalledWith(
+        'auth.apiKey',
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx'
+      );
       expect(mockGetUsage).toHaveBeenCalled();
     });
 
     it('should throw error for empty API key', async () => {
-      await expect(authCommand.setKey('')).rejects.toThrow('API key cannot be empty');
+      await expect(authCommand.setKey('')).rejects.toThrow(
+        'API key cannot be empty'
+      );
     });
 
     it('should validate API key with DeepL API', async () => {
       // Mock DeepL client validation
-      const mockGetUsage = jest.fn().mockResolvedValue({ character: { count: 0, limit: 500000 } });
-      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-        getUsage: mockGetUsage,
-      } as any));
+      const mockGetUsage = jest
+        .fn()
+        .mockResolvedValue({ character: { count: 0, limit: 500000 } });
+      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(
+        () =>
+          ({
+            getUsage: mockGetUsage,
+          }) as any
+      );
 
       await authCommand.setKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx');
 
@@ -83,33 +101,55 @@ describe('AuthCommand', () => {
 
     it('should handle config save errors', async () => {
       // Mock DeepL client validation to succeed
-      const mockGetUsage = jest.fn().mockResolvedValue({ character: { count: 0, limit: 500000 } });
-      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-        getUsage: mockGetUsage,
-      } as any));
+      const mockGetUsage = jest
+        .fn()
+        .mockResolvedValue({ character: { count: 0, limit: 500000 } });
+      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(
+        () =>
+          ({
+            getUsage: mockGetUsage,
+          }) as any
+      );
 
-      (mockConfigService.set as jest.Mock).mockImplementationOnce(() => { throw new Error('Failed to save config'); });
+      (mockConfigService.set as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('Failed to save config');
+      });
 
-      await expect(authCommand.setKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx')).rejects.toThrow('Failed to save config');
+      await expect(
+        authCommand.setKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx')
+      ).rejects.toThrow('Failed to save config');
     });
 
     it('should handle non-Error exceptions during validation', async () => {
       // Mock DeepL client to throw non-Error exception
       const mockGetUsage = jest.fn().mockRejectedValue('String error');
-      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-        getUsage: mockGetUsage,
-      } as any));
+      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(
+        () =>
+          ({
+            getUsage: mockGetUsage,
+          }) as any
+      );
 
-      await expect(authCommand.setKey('test-key')).rejects.toThrow('Failed to validate API key');
+      await expect(authCommand.setKey('test-key')).rejects.toThrow(
+        'Failed to validate API key'
+      );
     });
 
     it('should pass HTTP client options through to the validation client', async () => {
-      const mockGetUsage = jest.fn().mockResolvedValue({ character: { count: 0, limit: 500000 } });
-      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-        getUsage: mockGetUsage,
-      } as any));
+      const mockGetUsage = jest
+        .fn()
+        .mockResolvedValue({ character: { count: 0, limit: 500000 } });
+      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(
+        () =>
+          ({
+            getUsage: mockGetUsage,
+          }) as any
+      );
 
-      const cmd = new AuthCommand(mockConfigService, { timeout: 1234, maxRetries: 9 });
+      const cmd = new AuthCommand(mockConfigService, {
+        timeout: 1234,
+        maxRetries: 9,
+      });
       await cmd.setKey('test-key');
 
       expect(DeepLClient).toHaveBeenCalledWith(
@@ -120,12 +160,19 @@ describe('AuthCommand', () => {
 
     it('should handle non-authentication API errors', async () => {
       // Mock DeepL client to throw error without "Authentication failed" message
-      const mockGetUsage = jest.fn().mockRejectedValue(new Error('Network timeout'));
-      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-        getUsage: mockGetUsage,
-      } as any));
+      const mockGetUsage = jest
+        .fn()
+        .mockRejectedValue(new Error('Network timeout'));
+      (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(
+        () =>
+          ({
+            getUsage: mockGetUsage,
+          }) as any
+      );
 
-      await expect(authCommand.setKey('test-key')).rejects.toThrow('Network timeout');
+      await expect(authCommand.setKey('test-key')).rejects.toThrow(
+        'Network timeout'
+      );
     });
 
     describe('offline storage', () => {
@@ -133,32 +180,46 @@ describe('AuthCommand', () => {
       // documented way to store a key was closed.
       it('should store the key without contacting the API when verify is false', async () => {
         const mockGetUsage = jest.fn();
-        (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-          getUsage: mockGetUsage,
-        } as any));
+        (
+          DeepLClient as jest.MockedClass<typeof DeepLClient>
+        ).mockImplementation(
+          () =>
+            ({
+              getUsage: mockGetUsage,
+            }) as any
+        );
 
-        await authCommand.setKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx', { verify: false });
+        await authCommand.setKey('a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx', {
+          verify: false,
+        });
 
         expect(mockConfigService.set).toHaveBeenCalledWith(
           'auth.apiKey',
-          'a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx',
+          'a1b2c3d4-e5f6-7890-abcd-ef1234567890:fx'
         );
         expect(mockGetUsage).not.toHaveBeenCalled();
       });
 
       it('should still reject an empty key when verification is skipped', async () => {
         await expect(authCommand.setKey('', { verify: false })).rejects.toThrow(
-          'API key cannot be empty',
+          'API key cannot be empty'
         );
       });
 
       it('should name the offline alternatives when the API is unreachable', async () => {
         const mockGetUsage = jest
           .fn()
-          .mockRejectedValue(new NetworkError('connect ECONNREFUSED 127.0.0.1:443'));
-        (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-          getUsage: mockGetUsage,
-        } as any));
+          .mockRejectedValue(
+            new NetworkError('connect ECONNREFUSED 127.0.0.1:443')
+          );
+        (
+          DeepLClient as jest.MockedClass<typeof DeepLClient>
+        ).mockImplementation(
+          () =>
+            ({
+              getUsage: mockGetUsage,
+            }) as any
+        );
 
         await expect(authCommand.setKey('test-key')).rejects.toMatchObject({
           suggestion: expect.stringContaining('--no-verify'),
@@ -170,7 +231,9 @@ describe('AuthCommand', () => {
 
   describe('getKey()', () => {
     it('should retrieve API key from config', async () => {
-      (mockConfigService.getValue as jest.Mock).mockReturnValueOnce('test-api-key-123');
+      (mockConfigService.getValue as jest.Mock).mockReturnValueOnce(
+        'test-api-key-123'
+      );
 
       const key = await authCommand.getKey();
 
@@ -204,7 +267,9 @@ describe('AuthCommand', () => {
 
     it('should prefer config over environment variable', async () => {
       process.env['DEEPL_API_KEY'] = 'env-api-key';
-      (mockConfigService.getValue as jest.Mock).mockReturnValueOnce('config-api-key');
+      (mockConfigService.getValue as jest.Mock).mockReturnValueOnce(
+        'config-api-key'
+      );
 
       const key = await authCommand.getKey();
 
@@ -222,7 +287,9 @@ describe('AuthCommand', () => {
     });
 
     it('should handle config delete errors', async () => {
-      (mockConfigService.delete as jest.Mock).mockImplementationOnce(() => { throw new Error('Failed to delete'); });
+      (mockConfigService.delete as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('Failed to delete');
+      });
 
       await expect(authCommand.clearKey()).rejects.toThrow('Failed to delete');
     });
@@ -234,7 +301,8 @@ describe('registerAuth - deprecation warning', () => {
   let registerAuth: typeof import('../../src/cli/commands/register-auth').registerAuth;
 
   beforeAll(async () => {
-    registerAuth = (await import('../../src/cli/commands/register-auth')).registerAuth;
+    registerAuth = (await import('../../src/cli/commands/register-auth'))
+      .registerAuth;
   });
 
   beforeEach(() => {
@@ -243,42 +311,68 @@ describe('registerAuth - deprecation warning', () => {
 
   it('should warn when positional API key is passed without --from-stdin', async () => {
     const mockConfigService = createMockConfigService();
-    const mockGetUsage = jest.fn().mockResolvedValue({ character: { count: 0, limit: 500000 } });
-    (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-      getUsage: mockGetUsage,
-    } as any));
+    const mockGetUsage = jest
+      .fn()
+      .mockResolvedValue({ character: { count: 0, limit: 500000 } });
+    (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(
+      () =>
+        ({
+          getUsage: mockGetUsage,
+        }) as any
+    );
 
     const program = new Command();
     program.exitOverride();
     registerAuth(program, {
       getConfigService: () => mockConfigService,
-      handleError: (error: unknown) => { throw error; },
+      handleError: (error: unknown) => {
+        throw error;
+      },
     });
 
-    await program.parseAsync(['node', 'deepl', 'auth', 'set-key', 'test-key-123']);
+    await program.parseAsync([
+      'node',
+      'deepl',
+      'auth',
+      'set-key',
+      'test-key-123',
+    ]);
 
     const { Logger } = await import('../../src/utils/logger');
     expect(Logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('deprecated'),
+      expect.stringContaining('deprecated')
     );
   });
 
   it('should thread getHttpOptions into the key-validation client', async () => {
     const mockConfigService = createMockConfigService();
-    const mockGetUsage = jest.fn().mockResolvedValue({ character: { count: 0, limit: 500000 } });
-    (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(() => ({
-      getUsage: mockGetUsage,
-    } as any));
+    const mockGetUsage = jest
+      .fn()
+      .mockResolvedValue({ character: { count: 0, limit: 500000 } });
+    (DeepLClient as jest.MockedClass<typeof DeepLClient>).mockImplementation(
+      () =>
+        ({
+          getUsage: mockGetUsage,
+        }) as any
+    );
 
     const program = new Command();
     program.exitOverride();
     registerAuth(program, {
       getConfigService: () => mockConfigService,
       getHttpOptions: () => ({ timeout: 55, maxRetries: 1 }),
-      handleError: (error: unknown) => { throw error; },
+      handleError: (error: unknown) => {
+        throw error;
+      },
     });
 
-    await program.parseAsync(['node', 'deepl', 'auth', 'set-key', 'test-key-123']);
+    await program.parseAsync([
+      'node',
+      'deepl',
+      'auth',
+      'set-key',
+      'test-key-123',
+    ]);
 
     expect(DeepLClient).toHaveBeenCalledWith(
       'test-key-123',

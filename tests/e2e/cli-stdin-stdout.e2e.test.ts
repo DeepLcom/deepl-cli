@@ -16,7 +16,9 @@ describe('CLI Stdin/Stdout E2E', () => {
   const testFiles = createTestDir('stdio-test');
   const testDir = testFiles.path;
   const testConfigDir = testConfig.path;
-  const { runCLIExpectError, runCLIWithStdin } = makeNodeRunCLI(testConfig.path);
+  const { runCLIExpectError, runCLIWithStdin } = makeNodeRunCLI(
+    testConfig.path
+  );
 
   afterAll(() => {
     testConfig.cleanup();
@@ -26,7 +28,9 @@ describe('CLI Stdin/Stdout E2E', () => {
   describe('stdin input handling', () => {
     it('should accept text from stdin for translation', () => {
       // Test that stdin is accepted (will fail at API call but should parse stdin)
-      const result = runCLIWithStdin('translate --to es', 'Hello world', { apiKey: 'test-key:fx' });
+      const result = runCLIWithStdin('translate --to es', 'Hello world', {
+        apiKey: 'test-key:fx',
+      });
 
       expect(result.status).toBeGreaterThan(0);
       // Should fail at API call, not stdin reading
@@ -34,7 +38,9 @@ describe('CLI Stdin/Stdout E2E', () => {
     });
 
     it('should handle empty stdin gracefully', () => {
-      const result = runCLIWithStdin('translate --to es', '', { apiKey: 'test-key:fx' });
+      const result = runCLIWithStdin('translate --to es', '', {
+        apiKey: 'test-key:fx',
+      });
 
       expect(result.status).toBeGreaterThan(0);
       // Should handle empty input (may fail at validation or API)
@@ -43,7 +49,9 @@ describe('CLI Stdin/Stdout E2E', () => {
 
     it('should handle multiline stdin', () => {
       const multiline = 'Line 1\\nLine 2\\nLine 3';
-      const result = runCLIWithStdin('translate --to es', multiline, { apiKey: 'test-key:fx' });
+      const result = runCLIWithStdin('translate --to es', multiline, {
+        apiKey: 'test-key:fx',
+      });
 
       expect(result.status).toBeGreaterThan(0);
       // Should accept multiline input
@@ -77,18 +85,25 @@ describe('CLI Stdin/Stdout E2E', () => {
 
   describe('stderr error handling', () => {
     it('should write errors to stderr', () => {
-      const result = runCLIExpectError('translate nonexistent-file.txt --to es', { apiKey: 'test-key:fx' });
+      const result = runCLIExpectError(
+        'translate nonexistent-file.txt --to es',
+        { apiKey: 'test-key:fx' }
+      );
 
       expect(result.status).toBeGreaterThan(0);
       // Errors should be in output (stderr or stdout)
-      expect(result.output).toMatch(/error|not found|enoent|authentication|api/i);
+      expect(result.output).toMatch(
+        /error|not found|enoent|authentication|api/i
+      );
     });
 
     it('should write missing API key error to stderr', () => {
       const testFile = path.join(testDir, 'error-test.txt');
       fs.writeFileSync(testFile, 'Test');
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es`, { apiKey: '' });
+      const result = runCLIExpectError(`translate "${testFile}" --to es`, {
+        apiKey: '',
+      });
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toMatch(/api key/i);
@@ -99,10 +114,14 @@ describe('CLI Stdin/Stdout E2E', () => {
       fs.writeFileSync(testFile, 'Test');
 
       // Missing required --to flag
-      const result = runCLIExpectError(`translate "${testFile}"`, { apiKey: 'test-key:fx' });
+      const result = runCLIExpectError(`translate "${testFile}"`, {
+        apiKey: 'test-key:fx',
+      });
 
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/required option.*--to|missing.*--to|target language.*--to|No target language specified/i);
+      expect(result.output).toMatch(
+        /required option.*--to|missing.*--to|target language.*--to|No target language specified/i
+      );
     });
   });
 
@@ -131,14 +150,17 @@ describe('CLI Stdin/Stdout E2E', () => {
     it('should support chaining with pipes', () => {
       // Test that help output can be piped to grep
       try {
-        const result = execSync(`node ${CLI_PATH} translate --help | grep "Usage:"`, {
-          encoding: 'utf-8',
-          shell: '/bin/bash',
-          env: {
-            ...process.env,
-            DEEPL_CONFIG_DIR: testConfigDir,
-          },
-        });
+        const result = execSync(
+          `node ${CLI_PATH} translate --help | grep "Usage:"`,
+          {
+            encoding: 'utf-8',
+            shell: '/bin/bash',
+            env: {
+              ...process.env,
+              DEEPL_CONFIG_DIR: testConfigDir,
+            },
+          }
+        );
 
         expect(result).toContain('Usage:');
       } catch (error) {
@@ -150,7 +172,9 @@ describe('CLI Stdin/Stdout E2E', () => {
       const inputFile = path.join(testDir, 'input.txt');
       fs.writeFileSync(inputFile, 'Test content');
 
-      const result = runCLIWithStdin('translate --to es', 'Test from stdin', { apiKey: 'test-key:fx' });
+      const result = runCLIWithStdin('translate --to es', 'Test from stdin', {
+        apiKey: 'test-key:fx',
+      });
 
       // Should accept piped input
       expect(result.status).toBeGreaterThan(0); // Will fail at API call
@@ -178,7 +202,9 @@ describe('CLI Stdin/Stdout E2E', () => {
     });
 
     it('should exit with non-zero for errors', () => {
-      const result = runCLIExpectError('translate nonexistent.txt --to es', { apiKey: 'test-key' });
+      const result = runCLIExpectError('translate nonexistent.txt --to es', {
+        apiKey: 'test-key',
+      });
 
       expect(result.status).toBeGreaterThan(0);
     });
@@ -187,11 +213,12 @@ describe('CLI Stdin/Stdout E2E', () => {
       const testFile = path.join(testDir, 'exit-code-test.txt');
       fs.writeFileSync(testFile, 'Test');
 
-      const result = runCLIExpectError(`translate "${testFile}"`, { apiKey: 'test-key' });
+      const result = runCLIExpectError(`translate "${testFile}"`, {
+        apiKey: 'test-key',
+      });
 
       expect(result.status).toBeGreaterThan(0);
     });
-
   });
 
   describe('quiet mode', () => {
@@ -199,7 +226,10 @@ describe('CLI Stdin/Stdout E2E', () => {
       const testFile = path.join(testDir, 'quiet-test.txt');
       fs.writeFileSync(testFile, 'Test');
 
-      const result = runCLIExpectError(`translate "${testFile}" --to es --quiet`, { apiKey: 'test-key:fx' });
+      const result = runCLIExpectError(
+        `translate "${testFile}" --to es --quiet`,
+        { apiKey: 'test-key:fx' }
+      );
 
       // Will fail at API call, but --quiet flag should be accepted
       expect(result.output).not.toMatch(/unknown option.*quiet/i);
@@ -210,10 +240,14 @@ describe('CLI Stdin/Stdout E2E', () => {
       fs.writeFileSync(testFile, 'Test');
 
       // Missing --to flag should still show error
-      const result = runCLIExpectError(`translate "${testFile}" --quiet`, { apiKey: 'test-key:fx' });
+      const result = runCLIExpectError(`translate "${testFile}" --quiet`, {
+        apiKey: 'test-key:fx',
+      });
 
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/required option.*--to|target language.*--to|No target language specified/i);
+      expect(result.output).toMatch(
+        /required option.*--to|target language.*--to|No target language specified/i
+      );
     });
   });
 });

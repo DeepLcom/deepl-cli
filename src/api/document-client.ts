@@ -1,7 +1,19 @@
-import { HttpClient, DeepLClientOptions } from './http-client.js';
-import { DocumentTranslationOptions, DocumentHandle, DocumentStatus } from '../types/index.js';
-import { ValidationError } from '../utils/errors.js';
+import {
+  HttpClient,
+  DeepLClientOptions,
+  MAX_TRANSFER_BYTES,
+} from './http-client.js';
+import {
+  DocumentTranslationOptions,
+  DocumentHandle,
+  DocumentStatus,
+} from '../types/index.js';
+import { NetworkError, ValidationError } from '../utils/errors.js';
 import { normalizeFormality } from '../utils/formality.js';
+import {
+  resolveGlossaryWireParams,
+  encodeGlossaryIdsForMultipart,
+} from '../utils/glossary-params.js';
 
 interface DeepLDocumentUploadResponse {
   document_id: string;
@@ -19,6 +31,35 @@ interface DeepLDocumentStatusResponse {
 /** Uploads and downloads move whole files, so they need far more headroom
  *  than the interactive request timeout. */
 const TRANSFER_TIMEOUT_MS = 300_000;
+
+/**
+ * A document ID is opaque to this client and goes straight into a URL path, so
+ * only characters that cannot change the path's structure are allowed. DeepL
+ * returns uppercase hex; the wider alphabet leaves room for a format change
+ * without leaving room for `..`, `/`, `%`, `?` or `#`.
+ */
+const DOCUMENT_ID_RE = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * The document ID reaching `/v2/document/{id}` comes from the upload response,
+ * which is untrusted: `--api-url`, `api.baseUrl` or a proxy can redirect the
+ * endpoint, and a redirected host that answers with
+ * `document_id: '../../v3/glossaries'` steers the client's own follow-up
+ * requests onto a different route. Checked at each interpolation site rather
+ * than once on the upload response, so a handle assembled anywhere else is
+ * covered too.
+ *
+ * `NetworkError` rather than `ValidationError`: nothing the user typed is
+ * wrong. That is also why this reads differently from
+ * `GlossaryClient.validateGlossaryId`, which guards an ID the user supplied.
+ */
+function assertUsableDocumentId(documentId: string): void {
+  if (typeof documentId === 'string' && DOCUMENT_ID_RE.test(documentId)) return;
+  throw new NetworkError(
+    `Unexpected API response: document_id must be a document identifier, got ${JSON.stringify(documentId)}. The endpoint that returned it can redirect this client's own requests.`,
+    'Check the endpoint in use (--api-url, api.baseUrl, or a proxy). No further document request was sent.'
+  );
+}
 
 export class DocumentClient extends HttpClient {
   constructor(apiKey: string, options: DeepLClientOptions = {}) {
@@ -38,7 +79,9 @@ export class DocumentClient extends HttpClient {
     }
 
     if (!options.filename) {
-      throw new ValidationError('filename is required when uploading document as Buffer');
+      throw new ValidationError(
+        'filename is required when uploading document as Buffer'
+      );
     }
 
     const { default: FormData } = await import('form-data');
@@ -50,25 +93,39 @@ export class DocumentClient extends HttpClient {
         () => {
           const formData = new FormData();
           formData.append('file', file, options.filename);
-          formData.append('target_lang', this.normalizeLanguage(options.targetLang).toUpperCase());
+          formData.append(
+            'target_lang',
+            this.normalizeLanguage(options.targetLang).toUpperCase()
+          );
 
           if (options.sourceLang) {
-            formData.append('source_lang', this.normalizeLanguage(options.sourceLang).toUpperCase());
+            formData.append(
+              'source_lang',
+              this.normalizeLanguage(options.sourceLang).toUpperCase()
+            );
           }
           if (options.formality) {
-            formData.append('formality', normalizeFormality(options.formality, 'text'));
+            formData.append(
+              'formality',
+              normalizeFormality(options.formality, 'text')
+            );
           }
-          if (options.glossaryId) {
-            formData.append('glossary_id', options.glossaryId);
+          const glossaryParams = resolveGlossaryWireParams(options);
+          if (glossaryParams) {
+            if ('glossary_id' in glossaryParams) {
+              formData.append('glossary_id', glossaryParams.glossary_id);
+            } else {
+              formData.append(
+                'glossary_ids',
+                encodeGlossaryIdsForMultipart(glossaryParams.glossary_ids)
+              );
+            }
           }
           if (options.outputFormat) {
             formData.append('output_format', options.outputFormat);
           }
           if (options.enableDocumentMinification) {
             formData.append('enable_document_minification', '1');
-          }
-          if (options.enableBetaLanguages) {
-            formData.append('enable_beta_languages', '1');
           }
 
           return {
@@ -91,6 +148,7 @@ export class DocumentClient extends HttpClient {
   }
 
   async getDocumentStatus(handle: DocumentHandle): Promise<DocumentStatus> {
+    assertUsableDocumentId(handle.documentId);
     try {
       const response = await this.makeRequest<DeepLDocumentStatusResponse>(
         'POST',
@@ -116,6 +174,7 @@ export class DocumentClient extends HttpClient {
    * permanently, so this request is never retried.
    */
   async downloadDocument(handle: DocumentHandle): Promise<Buffer> {
+    assertUsableDocumentId(handle.documentId);
     try {
       const response = await this.makeRawRequest<Buffer>(
         'POST',
@@ -131,7 +190,11 @@ export class DocumentClient extends HttpClient {
             responseType: 'arraybuffer',
           };
         },
-        { maxRetries: 0, timeout: this.transferTimeout }
+        {
+          maxRetries: 0,
+          timeout: this.transferTimeout,
+          maxContentLength: MAX_TRANSFER_BYTES,
+        }
       );
 
       return Buffer.from(response);

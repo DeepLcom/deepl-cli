@@ -20,10 +20,9 @@ interface InitOptions {
   format?: string;
 }
 
-
 export function registerSyncInit(
   parent: Command,
-  deps: Pick<ServiceDeps, 'handleError'>,
+  deps: Pick<ServiceDeps, 'handleError'>
 ): Command {
   // Choices are filled in lazily so registration does not load every format
   // parser (yaml, smol-toml, ...) on unrelated CLI invocations. The
@@ -38,14 +37,19 @@ export function registerSyncInit(
     .addOption(fileFormatOption)
     .option('--path <pattern>', 'Source file pattern')
     .addOption(
-      new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'),
+      new Option('--format <format>', 'Output format')
+        .choices(['text', 'json'])
+        .default('text')
     )
     .option('--sync-config <path>', 'Path to .deepl-sync.yaml')
-    .action((options: InitOptions, command: Command) => handleSyncInit(options, command, deps));
+    .action((options: InitOptions, command: Command) =>
+      handleSyncInit(options, command, deps)
+    );
 
   parent.hook('preSubcommand', async (_thisCommand, actionCommand) => {
     if (actionCommand === cmd && fileFormatOption.argChoices === undefined) {
-      const { SUPPORTED_FORMAT_KEYS } = await import('../../../formats/index.js');
+      const { SUPPORTED_FORMAT_KEYS } =
+        await import('../../../formats/index.js');
       fileFormatOption.choices([...SUPPORTED_FORMAT_KEYS]);
     }
   });
@@ -62,7 +66,7 @@ interface InitSuccessPayload {
 
 function emitInitSuccess(
   format: string | undefined,
-  payload: InitSuccessPayload,
+  payload: InitSuccessPayload
 ): void {
   if (format === 'json') {
     emitJsonInitSuccessAndExit(payload);
@@ -73,47 +77,51 @@ function emitInitSuccess(
 async function handleSyncInit(
   options: InitOptions,
   command: Command,
-  deps: Pick<ServiceDeps, 'handleError'>,
+  deps: Pick<ServiceDeps, 'handleError'>
 ): Promise<void> {
   const { handleError } = deps;
   options.format = resolveFormat(options, command);
   try {
-    const { configExists, detectI18nFiles, generateSyncConfig, resolveInitConfigPath, writeSyncConfig } =
-      await import('../../../sync/sync-init.js');
+    const {
+      configExists,
+      detectI18nFiles,
+      generateSyncConfig,
+      resolveInitConfigPath,
+      writeSyncConfig,
+    } = await import('../../../sync/sync-init.js');
     const pathMod = await import('path');
 
     const targetConfigPath = resolveInitConfigPath(
       process.cwd(),
-      resolveSyncConfig(options, command),
+      resolveSyncConfig(options, command)
     );
     const cwd = pathMod.dirname(targetConfigPath);
-    const displayPath = pathMod.relative(process.cwd(), targetConfigPath) || targetConfigPath;
+    const displayPath =
+      pathMod.relative(process.cwd(), targetConfigPath) || targetConfigPath;
 
     if (configExists(targetConfigPath)) {
       if (options.format === 'json') {
         // Already-present config is not an error per se, but scripted
         // bootstrap flows need a non-ok envelope to branch on.
-        const envelope = {
-          ok: false,
-          error: {
-            code: 'ConfigError',
-            message: `Config file ${displayPath} already exists.`,
-            suggestion:
-              'Remove or rename the existing config file, or edit it directly.',
-          },
-          exitCode: ExitCode.ConfigError,
-        };
-        process.stderr.write(JSON.stringify(envelope) + '\n');
-        process.exit(ExitCode.ConfigError);
+        emitJsonErrorAndExit(
+          new ConfigError(
+            `Config file ${displayPath} already exists.`,
+            'Remove or rename the existing config file, or edit it directly.'
+          )
+        );
       }
       Logger.warn(chalk.yellow(`Config file ${displayPath} already exists.`));
       return;
     }
 
-    if (options.sourceLocale && options.targetLocales && options.fileFormat && options.path) {
-      const { validateSyncInitFlags } = await import(
-        '../../../sync/sync-init-validate.js'
-      );
+    if (
+      options.sourceLocale &&
+      options.targetLocales &&
+      options.fileFormat &&
+      options.path
+    ) {
+      const { validateSyncInitFlags } =
+        await import('../../../sync/sync-init-validate.js');
       const validated = validateSyncInitFlags({
         sourceLocale: options.sourceLocale,
         targetLocales: options.targetLocales,
@@ -146,7 +154,7 @@ async function handleSyncInit(
     ].filter(Boolean) as string[];
     if (partialFlags.length > 0) {
       Logger.warn(
-        `Partial flags provided (${partialFlags.join(', ')}); all of --source-locale, --target-locales, --file-format, and --path are required for non-interactive mode. Falling back to detection.`,
+        `Partial flags provided (${partialFlags.join(', ')}); all of --source-locale, --target-locales, --file-format, and --path are required for non-interactive mode. Falling back to detection.`
       );
     }
 
@@ -154,7 +162,7 @@ async function handleSyncInit(
     if (detected.length === 0) {
       const noFilesError = new ConfigError(
         'No i18n files detected. No config created. Re-run with all four flags: --source-locale <locale> --target-locales <list> --file-format <format> --path <glob>',
-        'Re-run with --source-locale <locale> --target-locales <list> --file-format <format> --path <glob>',
+        'Re-run with --source-locale <locale> --target-locales <list> --file-format <format> --path <glob>'
       );
       if (options.format === 'json') {
         emitJsonErrorAndExit(noFilesError);
@@ -166,17 +174,18 @@ async function handleSyncInit(
     if (!process.stdin.isTTY) {
       throw new ValidationError(
         'All four flags (--source-locale, --target-locales, --file-format, --path) are required when stdin is not a TTY.',
-        'Provide all four flags for non-interactive use (CI, piped shells), or run in an interactive terminal.',
+        'Provide all four flags for non-interactive use (CI, piped shells), or run in an interactive terminal.'
       );
     }
 
     const project = detected[0]!;
-    Logger.info(`Detected ${project.format} project (${project.keyCount} keys)`);
+    Logger.info(
+      `Detected ${project.format} project (${project.keyCount} keys)`
+    );
 
     const { input, checkbox } = await import('@inquirer/prompts');
-    const { buildTargetLocaleChoices } = await import(
-      '../../../sync/sync-init-validate.js'
-    );
+    const { buildTargetLocaleChoices } =
+      await import('../../../sync/sync-init-validate.js');
     const sourceLocale =
       options.sourceLocale ??
       (await input({

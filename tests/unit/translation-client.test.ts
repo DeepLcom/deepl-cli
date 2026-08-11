@@ -3,7 +3,12 @@
  * Covers translate, translateBatch, getUsage, getSupportedLanguages
  */
 
-import { TranslationClient, isTranslationResult, MAX_TRANSLATION_MEMORY_LIST_PAGES, TRANSLATION_MEMORY_LIST_PAGE_SIZE } from '../../src/api/translation-client.js';
+import {
+  TranslationClient,
+  isTranslationResult,
+  MAX_TRANSLATION_MEMORY_LIST_PAGES,
+  TRANSLATION_MEMORY_LIST_PAGE_SIZE,
+} from '../../src/api/translation-client.js';
 import { Logger } from '../../src/utils/logger.js';
 import axios from 'axios';
 
@@ -44,7 +49,7 @@ describe('TranslationClient', () => {
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({
           baseURL: 'https://api-free.deepl.com',
-        }),
+        })
       );
     });
   });
@@ -97,7 +102,9 @@ describe('TranslationClient', () => {
     it('should include model_type_used when present', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: {
-          translations: [{ text: 'Hola', model_type_used: 'quality_optimized' }],
+          translations: [
+            { text: 'Hola', model_type_used: 'quality_optimized' },
+          ],
         },
         status: 200,
         headers: {},
@@ -148,7 +155,9 @@ describe('TranslationClient', () => {
         headers: {},
       });
 
-      const result = await client.translateBatch(['Hello', 'World'], { targetLang: 'es' });
+      const result = await client.translateBatch(['Hello', 'World'], {
+        targetLang: 'es',
+      });
 
       expect(result).toHaveLength(2);
       expect(result[0]!.text).toBe('Hola');
@@ -187,6 +196,81 @@ describe('TranslationClient', () => {
         client.translateBatch(['Hello'], { targetLang: 'es' })
       ).rejects.toThrow('Unexpected API response');
     });
+
+    describe('reordered-echo rejection', () => {
+      const replyWith = (texts: string[]): void => {
+        mockAxiosInstance.request.mockResolvedValue({
+          data: { translations: texts.map((text) => ({ text })) },
+          status: 200,
+          headers: {},
+        });
+      };
+
+      it('should reject a response that rotates the submitted texts', async () => {
+        const texts = ['Delete account permanently', 'Cancel', 'Save changes'];
+        replyWith(['Cancel', 'Save changes', 'Delete account permanently']);
+
+        await expect(
+          client.translateBatch(texts, { targetLang: 'de' })
+        ).rejects.toThrow('returned the submitted texts in a different order');
+      });
+
+      it('should reject a response that swaps two of the submitted texts', async () => {
+        replyWith(['Hola', 'Adiós', 'Sí']);
+        await expect(
+          client.translateBatch(['Hola', 'Sí', 'Adiós'], { targetLang: 'es' })
+        ).rejects.toThrow('returned the submitted texts in a different order');
+      });
+
+      it('should accept a response that echoes every text in place', async () => {
+        replyWith(['Hello', 'World']);
+
+        const result = await client.translateBatch(['Hello', 'World'], {
+          targetLang: 'en-us',
+        });
+
+        expect(result.map((r) => r.text)).toEqual(['Hello', 'World']);
+      });
+
+      it('should accept a translation that coincides with another item’s source text', async () => {
+        // 'Hello' translates to 'Hallo', which is also the second submitted
+        // text: one displaced position, but not a rearrangement of the batch.
+        replyWith(['Hallo', 'Hallo']);
+
+        const result = await client.translateBatch(['Hello', 'Hallo'], {
+          targetLang: 'de',
+        });
+
+        expect(result.map((r) => r.text)).toEqual(['Hallo', 'Hallo']);
+      });
+
+      it('should accept a single echoed text', async () => {
+        replyWith(['OK']);
+
+        const result = await client.translateBatch(['OK'], {
+          targetLang: 'de',
+        });
+
+        expect(result[0]!.text).toBe('OK');
+      });
+
+      it('should accept a response that repeats one submitted text out of place', async () => {
+        // Duplicate-aware: the returned multiset differs from the submitted
+        // one, so this is a bad translation, not a detectable reordering.
+        replyWith(['Cancel', 'Cancel', 'Guardar']);
+
+        const result = await client.translateBatch(
+          ['Delete', 'Cancel', 'Save'],
+          { targetLang: 'es' }
+        );
+
+        expect(result.map((r) => r.text)).toEqual([
+          'Cancel',
+          'Cancel',
+          'Guardar',
+        ]);
+      });
+    });
   });
 
   describe('translation memory params', () => {
@@ -206,12 +290,18 @@ describe('TranslationClient', () => {
     };
 
     it('should emit translation_memory_id when translationMemoryId is set', async () => {
-      await client.translate('Hello', { targetLang: 'es', translationMemoryId: TM_UUID });
+      await client.translate('Hello', {
+        targetLang: 'es',
+        translationMemoryId: TM_UUID,
+      });
       expect(getRequestBody()).toContain(`translation_memory_id=${TM_UUID}`);
     });
 
     it('should default translation_memory_threshold to 75 when only translationMemoryId is set', async () => {
-      await client.translate('Hello', { targetLang: 'es', translationMemoryId: TM_UUID });
+      await client.translate('Hello', {
+        targetLang: 'es',
+        translationMemoryId: TM_UUID,
+      });
       expect(getRequestBody()).toContain('translation_memory_threshold=75');
     });
 
@@ -225,7 +315,10 @@ describe('TranslationClient', () => {
     });
 
     it('should omit both keys when translationMemoryId is not set', async () => {
-      await client.translate('Hello', { targetLang: 'es', translationMemoryThreshold: 80 });
+      await client.translate('Hello', {
+        targetLang: 'es',
+        translationMemoryThreshold: 80,
+      });
       const body = getRequestBody();
       expect(body).not.toContain('translation_memory_id');
       expect(body).not.toContain('translation_memory_threshold');
@@ -241,6 +334,100 @@ describe('TranslationClient', () => {
       const body = getRequestBody();
       expect(body).toContain(`glossary_id=${GLOSSARY_UUID}`);
       expect(body).toContain(`translation_memory_id=${TM_UUID}`);
+    });
+  });
+
+  describe('glossary params', () => {
+    const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const C = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+    beforeEach(() => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { translations: [{ text: 'Hola' }] },
+        status: 200,
+        headers: {},
+      });
+    });
+
+    const getRequestBody = (): string => {
+      const call = mockAxiosInstance.request.mock.calls[0]?.[0];
+      return (call?.data ?? '') as string;
+    };
+
+    it('should send glossary_id for a single glossaryId', async () => {
+      await client.translate('Hello', { targetLang: 'es', glossaryId: A });
+      const body = getRequestBody();
+      expect(body).toContain(`glossary_id=${A}`);
+      expect(body).not.toContain('glossary_ids');
+    });
+
+    it('should send glossary_id when glossaryIds holds exactly one ID', async () => {
+      await client.translate('Hello', { targetLang: 'es', glossaryIds: [A] });
+      const body = getRequestBody();
+      expect(body).toContain(`glossary_id=${A}`);
+      expect(body).not.toContain('glossary_ids');
+    });
+
+    it('should send repeated glossary_ids fields for several glossaries', async () => {
+      await client.translate('Hello', {
+        targetLang: 'es',
+        glossaryIds: [A, B, C],
+      });
+      const body = getRequestBody();
+      expect(body).toContain(`glossary_ids=${A}`);
+      expect(body).toContain(`glossary_ids=${B}`);
+      expect(body).toContain(`glossary_ids=${C}`);
+      expect(body).not.toMatch(/(^|&)glossary_id=/);
+    });
+
+    it('should keep the caller order on the wire rather than sorting it', async () => {
+      await client.translate('Hello', {
+        targetLang: 'es',
+        glossaryIds: [C, A],
+      });
+      expect(getRequestBody()).toContain(`glossary_ids=${C}&glossary_ids=${A}`);
+    });
+
+    it('should omit glossary params entirely when none are set', async () => {
+      await client.translate('Hello', { targetLang: 'es' });
+      expect(getRequestBody()).not.toContain('glossary');
+    });
+
+    it('should reject more than five glossaries before sending a request', async () => {
+      await expect(
+        client.translate('Hello', {
+          targetLang: 'es',
+          glossaryIds: [A, B, C, A, B, C],
+        })
+      ).rejects.toThrow(/maximum of 5 glossaries/);
+      expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+    });
+
+    it('should reject glossaryId combined with glossaryIds', async () => {
+      await expect(
+        client.translate('Hello', {
+          targetLang: 'es',
+          glossaryId: A,
+          glossaryIds: [B],
+        })
+      ).rejects.toThrow(/Cannot combine/);
+      expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+    });
+
+    it('should apply the same shape to translateBatch', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: { translations: [{ text: 'Hola' }, { text: 'Adios' }] },
+        status: 200,
+        headers: {},
+      });
+      await client.translateBatch(['Hello', 'Bye'], {
+        targetLang: 'es',
+        glossaryIds: [A, B],
+      });
+      const body = getRequestBody();
+      expect(body).toContain(`glossary_ids=${A}`);
+      expect(body).toContain(`glossary_ids=${B}`);
     });
   });
 
@@ -270,8 +457,6 @@ describe('TranslationClient', () => {
           api_key_character_limit: 500,
           start_time: '2024-01-01',
           end_time: '2024-12-31',
-          speech_to_text_milliseconds_count: 5000,
-          speech_to_text_milliseconds_limit: 60000,
           api_key_unit_count: 10,
           api_key_unit_limit: 100,
           account_unit_count: 20,
@@ -287,8 +472,6 @@ describe('TranslationClient', () => {
       expect(result.apiKeyCharacterLimit).toBe(500);
       expect(result.startTime).toBe('2024-01-01');
       expect(result.endTime).toBe('2024-12-31');
-      expect(result.speechToTextMillisecondsCount).toBe(5000);
-      expect(result.speechToTextMillisecondsLimit).toBe(60000);
       expect(result.apiKeyUnitCount).toBe(10);
       expect(result.apiKeyUnitLimit).toBe(100);
       expect(result.accountUnitCount).toBe(20);
@@ -325,11 +508,54 @@ describe('TranslationClient', () => {
   });
 
   describe('getSupportedLanguages()', () => {
+    it('should treat an absent role flag as usable, matching the registry', async () => {
+      // The registry reads `usable_as_source !== false`, so an entry with the
+      // flag absent is recorded as core there. Dropping it here instead would
+      // make `deepl languages` omit a language the generator files as usable.
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [{ lang: 'en', name: 'English' }],
+        status: 200,
+        headers: {},
+      });
+
+      await expect(
+        client.getSupportedLanguages('source')
+      ).resolves.toHaveLength(1);
+    });
+
+    it('should still drop a language whose role flag is explicitly false', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          { lang: 'en-gb', name: 'English (British)', usable_as_source: false },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      await expect(client.getSupportedLanguages('source')).resolves.toEqual([]);
+    });
+
     it('should return source languages', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: [
-          { language: 'EN', name: 'English' },
-          { language: 'DE', name: 'German', supports_formality: true },
+          {
+            lang: 'en',
+            name: 'English',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+          {
+            lang: 'en-gb',
+            name: 'English (British)',
+            usable_as_source: false,
+            usable_as_target: true,
+          },
         ],
         status: 200,
         headers: {},
@@ -340,13 +566,35 @@ describe('TranslationClient', () => {
       expect(result).toHaveLength(2);
       expect(result[0]!.language).toBe('en');
       expect(result[0]!.name).toBe('English');
-      expect(result[1]!.supportsFormality).toBe(true);
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'GET',
+          url: '/v3/languages',
+          params: { resource: 'translate_text' },
+        })
+      );
     });
 
-    it('should return target languages', async () => {
+    it('should derive target formality from the features matrix', async () => {
       mockAxiosInstance.request.mockResolvedValue({
         data: [
-          { language: 'ES', name: 'Spanish', supports_formality: true },
+          {
+            lang: 'es',
+            name: 'Spanish',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: {
+              formality: { status: 'stable' },
+              glossary: { status: 'stable' },
+            },
+          },
+          {
+            lang: 'ko',
+            name: 'Korean',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { glossary: { status: 'stable' } },
+          },
         ],
         status: 200,
         headers: {},
@@ -354,8 +602,98 @@ describe('TranslationClient', () => {
 
       const result = await client.getSupportedLanguages('target');
 
-      expect(result).toHaveLength(1);
-      expect(result[0]!.language).toBe('es');
+      expect(result[0]!.supportsFormality).toBe(true);
+      expect(result[1]!.supportsFormality).toBe(false);
+    });
+
+    it('should report formality for a language the static registry never flagged', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          {
+            lang: 'pt',
+            name: 'Portuguese',
+            usable_as_source: true,
+            usable_as_target: true,
+            features: { formality: { status: 'stable' } },
+          },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.getSupportedLanguages('target');
+
+      expect(result[0]!.supportsFormality).toBe(true);
+    });
+
+    it('should pass the features matrix through for both roles', async () => {
+      const features = {
+        glossary: { status: 'stable' },
+        style_rules: { status: 'beta' },
+      };
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+            features,
+          },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      const source = await client.getSupportedLanguages('source');
+      const target = await client.getSupportedLanguages('target');
+
+      expect(source[0]!.features).toEqual(features);
+      expect(target[0]!.features).toEqual(features);
+    });
+
+    it('should omit features when the response carries none', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      const result = await client.getSupportedLanguages('target');
+
+      // Formality support is left unstated rather than denied: a response that
+      // described no features is not evidence that formality is unavailable, and
+      // claiming false would turn on the [F] legend with no [F] to explain.
+      expect(result[0]).not.toHaveProperty('features');
+      expect(result[0]!.supportsFormality).toBeUndefined();
+    });
+
+    it('should fetch the language list once for both roles', async () => {
+      mockAxiosInstance.request.mockResolvedValue({
+        data: [
+          {
+            lang: 'de',
+            name: 'German',
+            usable_as_source: true,
+            usable_as_target: true,
+          },
+        ],
+        status: 200,
+        headers: {},
+      });
+
+      await client.getSupportedLanguages('source');
+      await client.getSupportedLanguages('target');
+
+      // The request does not vary by role -- both are filtered out of one payload.
+      expect(mockAxiosInstance.request).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -364,7 +702,11 @@ describe('TranslationClient', () => {
       expect.assertions(2);
       const axiosError = Object.assign(new Error('Request failed'), {
         isAxiosError: true,
-        response: { status: 403, data: { message: 'Invalid API key' }, headers: {} },
+        response: {
+          status: 403,
+          data: { message: 'Invalid API key' },
+          headers: {},
+        },
         config: {},
       });
       mockAxiosInstance.request.mockRejectedValue(axiosError);
@@ -398,7 +740,10 @@ describe('TranslationClient', () => {
 
       expect(result).toEqual([tm]);
       expect(mockAxiosInstance.request).toHaveBeenCalledWith(
-        expect.objectContaining({ method: 'GET', url: '/v3/translation_memories' }),
+        expect.objectContaining({
+          method: 'GET',
+          url: '/v3/translation_memories',
+        })
       );
     });
 
@@ -460,7 +805,9 @@ describe('TranslationClient', () => {
         target_lang: 'DE',
       });
       const firstPage = Array.from({ length: pageSize }, (_, i) => buildTm(i));
-      const secondPage = Array.from({ length: pageSize }, (_, i) => buildTm(pageSize + i));
+      const secondPage = Array.from({ length: pageSize }, (_, i) =>
+        buildTm(pageSize + i)
+      );
       const thirdPage = [buildTm(pageSize * 2)];
       const total = pageSize * 2 + 1;
 
@@ -489,8 +836,14 @@ describe('TranslationClient', () => {
       expect(result[pageSize * 2]).toEqual(thirdPage[0]);
       expect(mockAxiosInstance.request).toHaveBeenCalledTimes(3);
       expect(mockAxiosInstance.request.mock.calls[0][0].params).toBeUndefined();
-      expect(mockAxiosInstance.request.mock.calls[1][0].params).toEqual({ page: 1, page_size: pageSize });
-      expect(mockAxiosInstance.request.mock.calls[2][0].params).toEqual({ page: 2, page_size: pageSize });
+      expect(mockAxiosInstance.request.mock.calls[1][0].params).toEqual({
+        page: 1,
+        page_size: pageSize,
+      });
+      expect(mockAxiosInstance.request.mock.calls[2][0].params).toEqual({
+        page: 2,
+        page_size: pageSize,
+      });
     });
 
     it('should stop once accumulated results reach total_count', async () => {
@@ -554,17 +907,26 @@ describe('TranslationClient', () => {
       const fullPage = Array.from({ length: pageSize }, (_, i) => buildTm(i));
 
       mockAxiosInstance.request.mockResolvedValue({
-        data: { translation_memories: fullPage, total_count: Number.MAX_SAFE_INTEGER },
+        data: {
+          translation_memories: fullPage,
+          total_count: Number.MAX_SAFE_INTEGER,
+        },
         status: 200,
         headers: {},
       });
-      const warnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+      const warnSpy = jest
+        .spyOn(Logger, 'warn')
+        .mockImplementation(() => undefined);
 
       try {
         const result = await client.listTranslationMemories();
 
-        expect(mockAxiosInstance.request).toHaveBeenCalledTimes(MAX_TRANSLATION_MEMORY_LIST_PAGES);
-        expect(result).toHaveLength(MAX_TRANSLATION_MEMORY_LIST_PAGES * pageSize);
+        expect(mockAxiosInstance.request).toHaveBeenCalledTimes(
+          MAX_TRANSLATION_MEMORY_LIST_PAGES
+        );
+        expect(result).toHaveLength(
+          MAX_TRANSLATION_MEMORY_LIST_PAGES * pageSize
+        );
         expect(warnSpy).toHaveBeenCalled();
         const warned = warnSpy.mock.calls.flat().join(' ');
         expect(warned).toMatch(/translation memor/i);
@@ -596,5 +958,4 @@ describe('TranslationClient', () => {
       expect(isTranslationResult({ text: 123 })).toBe(false);
     });
   });
-
 });

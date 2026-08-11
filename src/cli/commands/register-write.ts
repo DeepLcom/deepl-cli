@@ -2,26 +2,94 @@ import { type Command, Option } from 'commander';
 import { existsSync } from 'fs';
 import { atomicWriteFile } from '../../utils/atomic-write.js';
 import chalk from 'chalk';
-import type { WriteLanguage, WritingStyle, WriteTone } from '../../types/index.js';
+import type {
+  WriteLanguage,
+  WritingStyle,
+  WriteTone,
+} from '../../types/index.js';
+import { WRITE_TARGET_LANGUAGES } from '../../data/language-entries.js';
+import { looksLikeLanguageTag } from '../../data/language-registry.js';
 import { Logger } from '../../utils/logger.js';
 import { ExitCode } from '../../utils/exit-codes.js';
 import { isNoInput } from '../../utils/confirm.js';
 import { ValidationError } from '../../utils/errors.js';
 import { createWriteCommand, type ServiceDeps } from './service-factory.js';
 
-export const WRITE_LANGUAGES = ['de', 'en', 'en-GB', 'en-US', 'es', 'fr', 'it', 'ja', 'ko', 'pt', 'pt-BR', 'pt-PT', 'zh', 'zh-Hans'] as const;
 /**
- * Codes are accepted in any casing and normalized to the API's form, matching
- * `translate --to` and the lowercase codes `deepl languages` prints.
+ * Generated from GET /v3/languages?resource=write. Small enough that an error can
+ * name every option, which is why it is checked locally at all. It is still a
+ * snapshot, so a code shaped like a language tag but absent from it goes to the
+ * API with a warning rather than being rejected -- otherwise a language DeepL
+ * adds is unreachable until the file is regenerated.
+ */
+export const WRITE_LANGUAGES = WRITE_TARGET_LANGUAGES;
+/**
+ * Codes are accepted in any casing and normalized to lowercase, matching
+ * `translate --to` and the codes `deepl languages` prints. The Write API
+ * accepts any casing and echoes its own (`en-GB`, `zh-Hans`) regardless.
  */
 const WRITE_LANGUAGE_BY_LOWERCASE = new Map<string, WriteLanguage>(
-  WRITE_LANGUAGES.map((language) => [language.toLowerCase(), language]),
+  WRITE_LANGUAGES.map((language) => [language.toLowerCase(), language])
 );
 
-const WRITE_STYLES = ['default', 'simple', 'business', 'academic', 'casual', 'prefer_simple', 'prefer_business', 'prefer_academic', 'prefer_casual'] as const;
-const WRITE_TONES = ['default', 'enthusiastic', 'friendly', 'confident', 'diplomatic', 'prefer_enthusiastic', 'prefer_friendly', 'prefer_confident', 'prefer_diplomatic'] as const;
+const WRITE_STYLES = [
+  'default',
+  'simple',
+  'business',
+  'academic',
+  'casual',
+  'prefer_simple',
+  'prefer_business',
+  'prefer_academic',
+  'prefer_casual',
+] as const;
+const WRITE_TONES = [
+  'default',
+  'enthusiastic',
+  'friendly',
+  'confident',
+  'diplomatic',
+  'prefer_enthusiastic',
+  'prefer_friendly',
+  'prefer_confident',
+  'prefer_diplomatic',
+] as const;
 
-export type WriteDeps = Pick<ServiceDeps, 'createDeepLClient' | 'getConfigService' | 'getCacheService' | 'handleError'>;
+export type WriteDeps = Pick<
+  ServiceDeps,
+  'createDeepLClient' | 'getConfigService' | 'getCacheService' | 'handleError'
+>;
+
+/**
+ * Result payload for `write --check` / `correct --check` under `--format json`.
+ *
+ * `ok` is true whichever way the check comes out: the command did its job, and
+ * the verdict is `needsChanges` — which the exit code repeats as 0 or 8. A
+ * failure on this path emits the error envelope instead, so a consumer
+ * discriminates the two on `ok`.
+ */
+export interface WriteCheckJsonResult {
+  ok: true;
+  mode: 'write' | 'correct';
+  needsChanges: boolean;
+  changes: number;
+  /** Absolute path, present only when the input was a file. */
+  file?: string;
+}
+
+/**
+ * Result payload for `write --diff` / `correct --diff` under `--format json`.
+ *
+ * `diff` is the uncoloured unified patch between `original` and `improved`, so a
+ * consumer gets the same three things the text report shows, without the colour
+ * escapes that report writes for a terminal.
+ */
+export interface WriteDiffJsonResult {
+  ok: true;
+  original: string;
+  improved: string;
+  diff: string;
+}
 
 interface WriteActionOptions {
   lang?: string;
@@ -48,7 +116,7 @@ interface WriteActionOptions {
  */
 export function createWriteAction(
   deps: WriteDeps,
-  mode: 'write' | 'correct',
+  mode: 'write' | 'correct'
 ): (text: string | undefined, options: WriteActionOptions) => Promise<void> {
   const { handleError } = deps;
   const correct = mode === 'correct';
@@ -56,9 +124,13 @@ export function createWriteAction(
 
   return async (text: string | undefined, options: WriteActionOptions) => {
     try {
-      if (options.to !== undefined && options.lang !== undefined && options.to !== options.lang) {
+      if (
+        options.to !== undefined &&
+        options.lang !== undefined &&
+        options.to !== options.lang
+      ) {
         throw new ValidationError(
-          'Cannot specify both --to and --lang with different values. --to is an alias of --lang; pick one.',
+          'Cannot specify both --to and --lang with different values. --to is an alias of --lang; pick one.'
         );
       }
       if (options.to !== undefined && options.lang === undefined) {
@@ -69,33 +141,62 @@ export function createWriteAction(
         const { readStdin } = await import('../../utils/read-stdin.js');
         const stdinText = await readStdin();
         if (!stdinText || stdinText.trim() === '') {
-          throw new ValidationError('No input provided. Provide text as an argument, a file path, or pipe via stdin.');
+          throw new ValidationError(
+            'No input provided. Provide text as an argument, a file path, or pipe via stdin.'
+          );
         }
         text = stdinText;
       }
 
       if (options.lang) {
-        const canonical = WRITE_LANGUAGE_BY_LOWERCASE.get(options.lang.toLowerCase());
-        if (!canonical) {
-          throw new ValidationError(`Invalid language code: ${options.lang}. Valid options: ${WRITE_LANGUAGES.join(', ')}`);
+        const canonical = WRITE_LANGUAGE_BY_LOWERCASE.get(
+          options.lang.toLowerCase()
+        );
+        if (canonical) {
+          options.lang = canonical;
+        } else if (looksLikeLanguageTag(options.lang.toLowerCase())) {
+          // The snapshot can lag the API, so a well-formed code it does not list
+          // is the API's to accept or reject.
+          Logger.warn(
+            `Note: "${options.lang}" is not in the bundled Write language list; deferring to the API.\n` +
+              `      Bundled options: ${WRITE_LANGUAGES.join(', ')}`
+          );
+          options.lang = options.lang.toLowerCase();
+        } else {
+          throw new ValidationError(
+            `Invalid language code: ${options.lang}. Valid options: ${WRITE_LANGUAGES.join(', ')}`
+          );
         }
-        options.lang = canonical;
       }
 
-      if (options.style && !(WRITE_STYLES as readonly string[]).includes(options.style)) {
-        throw new ValidationError(`Invalid writing style: ${options.style}. Valid options: ${WRITE_STYLES.join(', ')}`);
+      if (
+        options.style &&
+        !(WRITE_STYLES as readonly string[]).includes(options.style)
+      ) {
+        throw new ValidationError(
+          `Invalid writing style: ${options.style}. Valid options: ${WRITE_STYLES.join(', ')}`
+        );
       }
 
-      if (options.tone && !(WRITE_TONES as readonly string[]).includes(options.tone)) {
-        throw new ValidationError(`Invalid tone: ${options.tone}. Valid options: ${WRITE_TONES.join(', ')}`);
+      if (
+        options.tone &&
+        !(WRITE_TONES as readonly string[]).includes(options.tone)
+      ) {
+        throw new ValidationError(
+          `Invalid tone: ${options.tone}. Valid options: ${WRITE_TONES.join(', ')}`
+        );
       }
 
       if (options.style && options.tone) {
-        throw new ValidationError('Cannot specify both --style and --tone. Use one or the other.');
+        throw new ValidationError(
+          'Cannot specify both --style and --tone. Use one or the other.'
+        );
       }
 
       if (options.interactive && (isNoInput() || !process.stdin.isTTY)) {
-        throw new ValidationError('--interactive requires an interactive terminal. Run without --interactive in CI or non-TTY environments, or pipe input via stdin.');
+        throw new ValidationError(
+          '--interactive requires an interactive terminal. Run without --interactive in CI or non-TTY environments, or pipe input via stdin.'
+        );
       }
 
       if (options.backup && !options.fix) {
@@ -118,25 +219,48 @@ export function createWriteAction(
       };
 
       if (options.check) {
+        const asJson = options.format === 'json';
         let needsImprovement: boolean;
         let changes = 0;
+        let checkedFile: string | undefined;
 
         if (existsSync(text)) {
           const result = await writeCommand.checkFile(text, writeOptions);
           needsImprovement = result.needsImprovement;
           changes = result.changes;
-          Logger.info(chalk.gray(`File: ${text}`));
+          checkedFile = result.filePath;
+          if (!asJson) {
+            Logger.info(chalk.gray(`File: ${text}`));
+          }
         } else {
           const result = await writeCommand.checkText(text, writeOptions);
           needsImprovement = result.needsImprovement;
           changes = result.changes;
         }
 
-        if (needsImprovement) {
-          Logger.warn(chalk.yellow(`⚠ Text ${needsChangesLabel} (${changes} potential changes)`));
-          process.exitCode = ExitCode.CheckFailed;
+        // The payload replaces the human report rather than joining it: it
+        // carries the file path and the count the prose would have said.
+        if (asJson) {
+          const payload: WriteCheckJsonResult = {
+            ok: true,
+            mode,
+            needsChanges: needsImprovement,
+            changes,
+            ...(checkedFile ? { file: checkedFile } : {}),
+          };
+          process.stdout.write(JSON.stringify(payload) + '\n');
+        } else if (needsImprovement) {
+          Logger.warn(
+            chalk.yellow(
+              `⚠ Text ${needsChangesLabel} (${changes} potential changes)`
+            )
+          );
         } else {
           Logger.success(chalk.green('✓ Text looks good'));
+        }
+
+        if (needsImprovement) {
+          process.exitCode = ExitCode.CheckFailed;
         }
         return;
       }
@@ -149,13 +273,19 @@ export function createWriteAction(
         const result = await writeCommand.autoFixFile(text, writeOptions);
 
         if (result.fixed) {
-          Logger.success(chalk.green(correct ? '✓ File corrected' : '✓ File improved'));
+          Logger.success(
+            chalk.green(correct ? '✓ File corrected' : '✓ File improved')
+          );
           if (result.backupPath) {
             Logger.info(chalk.gray(`Backup: ${result.backupPath}`));
           }
           Logger.info(chalk.gray(`Changes: ${result.changes}`));
         } else {
-          Logger.success(chalk.green(correct ? '✓ No corrections needed' : '✓ No improvements needed'));
+          Logger.success(
+            chalk.green(
+              correct ? '✓ No corrections needed' : '✓ No improvements needed'
+            )
+          );
         }
         return;
       }
@@ -167,6 +297,17 @@ export function createWriteAction(
           result = await writeCommand.improveFileWithDiff(text, writeOptions);
         } else {
           result = await writeCommand.improveWithDiff(text, writeOptions);
+        }
+
+        if (options.format === 'json') {
+          const payload: WriteDiffJsonResult = {
+            ok: true,
+            original: result.original,
+            improved: result.improved,
+            diff: writeCommand.generatePatch(result.original, result.improved),
+          };
+          process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
+          return;
         }
 
         Logger.output(chalk.bold('Original:'));
@@ -184,9 +325,11 @@ export function createWriteAction(
         let result: string;
 
         if (existsSync(text)) {
-          const interactiveResult = await writeCommand.improveFileInteractive(text, writeOptions);
+          const interactiveResult = await writeCommand.improveFileInteractive(
+            text,
+            writeOptions
+          );
           result = interactiveResult.selected;
-
 
           if (options.output || options.inPlace) {
             const outputPath = options.inPlace ? text : options.output!;
@@ -198,7 +341,9 @@ export function createWriteAction(
         }
 
         Logger.output();
-        Logger.output(chalk.bold(correct ? 'Selected correction:' : 'Selected improvement:'));
+        Logger.output(
+          chalk.bold(correct ? 'Selected correction:' : 'Selected improvement:')
+        );
         Logger.output(result);
         return;
       }
@@ -221,35 +366,50 @@ export function createWriteAction(
   };
 }
 
-export function registerWrite(
-  program: Command,
-  deps: WriteDeps,
-): void {
+export function registerWrite(program: Command, deps: WriteDeps): void {
   program
     .command('write')
     .alias('w')
     .description('Improve text using DeepL Write API (grammar, style, tone)')
     .argument('[text]', 'Text to improve, file path, or read from stdin')
     .optionsGroup('Core Options:')
-    .option('-l, --lang <language>', `Target language: ${WRITE_LANGUAGES.join(', ')} (auto-detect if omitted)`)
-    .option('--to <language>', 'Alias of --lang — accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`.')
+    .option(
+      '-l, --lang <language>',
+      `Target language: ${WRITE_LANGUAGES.join(', ')} (auto-detect if omitted)`
+    )
+    .option(
+      '--to <language>',
+      'Alias of --lang — accepts the same language values. Provided for muscle-memory consistency with `deepl translate --to`.'
+    )
     .option('--style <style>', `Writing style: ${WRITE_STYLES.join(', ')}`)
     .option('--tone <tone>', `Tone: ${WRITE_TONES.join(', ')}`)
     .optionsGroup('Output Modes:')
     .option('-a, --alternatives', 'Show all alternative improvements')
     .option('-o, --output <file>', 'Write improved text to file')
     .option('--in-place', 'Edit file in place (use with file input)')
-    .option('-i, --interactive', 'Interactive mode - choose from multiple suggestions')
+    .option(
+      '-i, --interactive',
+      'Interactive mode - choose from multiple suggestions'
+    )
     .option('-d, --diff', 'Show diff between original and improved text')
     .optionsGroup('Fix Operations:')
-    .option('--check', 'Check if text needs improvement (exit 0 if clean, exit 8 if changes needed)')
+    .option(
+      '--check',
+      'Check if text needs improvement (exit 0 if clean, exit 8 if changes needed)'
+    )
     .option('--fix', 'Automatically fix file in place')
     .option('-b, --backup', 'Create backup file before fixing (use with --fix)')
     .optionsGroup('Advanced:')
     .option('--no-cache', 'Bypass cache for this request')
     .optionsGroup('Output:')
-    .addOption(new Option('--format <format>', 'Output format').choices(['text', 'json']).default('text'))
-    .addHelpText('after', `
+    .addOption(
+      new Option('--format <format>', 'Output format')
+        .choices(['text', 'json'])
+        .default('text')
+    )
+    .addHelpText(
+      'after',
+      `
 Examples:
   $ deepl write "Their going to the store" --lang en-US
   $ deepl write "Their going to the store" --to en-US      (--to is an alias of --lang)
@@ -262,6 +422,7 @@ Examples:
   $ deepl write "Hello world" --alternatives
   $ deepl write report.txt --output improved.txt
   $ deepl write "Text here" --format json
-`)
+`
+    )
     .action(createWriteAction(deps, 'write'));
 }

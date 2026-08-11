@@ -1,7 +1,8 @@
 /**
  * Integration Tests for Document Translation Workflow
  * Tests the multi-step upload -> poll -> download flow with nock HTTP mocking.
- * Validates API interaction contracts at both service and CLI levels.
+ * Every case is service-level; CLI flag and exit-code behavior lives in
+ * tests/e2e/cli-document-translation.e2e.test.ts.
  */
 
 import nock from 'nock';
@@ -10,12 +11,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { DeepLClient } from '../../src/api/deepl-client.js';
 import { DocumentTranslationService } from '../../src/services/document-translation.js';
-import {
-  DEEPL_FREE_API_URL,
-  createTestConfigDir,
-  createTestDir,
-  makeRunCLI,
-} from '../helpers';
+import { DEEPL_FREE_API_URL } from '../helpers';
 
 const FREE_API_URL = DEEPL_FREE_API_URL;
 const API_KEY = 'test-api-key-integration:fx';
@@ -39,6 +35,94 @@ describe('Document Translation Integration', () => {
     clients.forEach((c) => c.destroy());
     clients.length = 0;
     nock.cleanAll();
+  });
+
+  describe('Service-level: glossaries on the multipart upload', () => {
+    const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+    /**
+     * Runs one upload and hands back the raw multipart body, so the encoding
+     * the API actually requires is asserted rather than assumed.
+     */
+    const uploadWith = async (
+      glossary: { glossaryId?: string; glossaryIds?: string[] },
+      label: string
+    ): Promise<string> => {
+      const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
+      const service = new DocumentTranslationService(client);
+
+      const inputPath = path.join(testDir, `glossary-${label}.pdf`);
+      const outputPath = path.join(testDir, `glossary-${label}-out.pdf`);
+      fs.writeFileSync(inputPath, Buffer.from('%PDF-1.4 test content'));
+
+      let capturedBody = '';
+      nock(FREE_API_URL)
+        .post('/v2/document', (body: string) => {
+          capturedBody = body;
+          return true;
+        })
+        .reply(200, {
+          document_id: `doc-${label}`,
+          document_key: `key-${label}`,
+        });
+
+      nock(FREE_API_URL)
+        .post(`/v2/document/doc-${label}`)
+        .reply(200, {
+          document_id: `doc-${label}`,
+          status: 'done',
+          billed_characters: 10,
+        });
+
+      nock(FREE_API_URL)
+        .post(`/v2/document/doc-${label}/result`)
+        .reply(200, Buffer.from('%PDF-1.4 translated'));
+
+      await service.translateDocument(inputPath, outputPath, {
+        targetLang: 'de',
+        sourceLang: 'en',
+        ...glossary,
+      });
+
+      return capturedBody;
+    };
+
+    it('sends glossary_id for a single glossary', async () => {
+      const body = await uploadWith({ glossaryId: A }, 'single');
+
+      expect(body).toContain('name="glossary_id"');
+      expect(body).toContain(A);
+      expect(body).not.toContain('name="glossary_ids"');
+    });
+
+    /**
+     * Multipart uploads keep only the first of several repeated fields, so the
+     * IDs must arrive comma-joined with no whitespace or the API silently
+     * applies just one glossary.
+     */
+    it('comma-joins several glossaries into one glossary_ids field', async () => {
+      const body = await uploadWith({ glossaryIds: [A, B] }, 'multi');
+
+      expect(body).toContain('name="glossary_ids"');
+      expect(body).toContain(`${A},${B}`);
+      expect(body.match(/name="glossary_ids"/g)).toHaveLength(1);
+      expect(body).not.toContain(`${A}, ${B}`);
+    });
+
+    it('preserves the given order, which selects the winning glossary', async () => {
+      const body = await uploadWith({ glossaryIds: [B, A] }, 'reversed');
+
+      expect(body).toContain(`${B},${A}`);
+    });
+
+    it('sends no glossary field when none is selected', async () => {
+      const body = await uploadWith({}, 'none');
+
+      expect(body).not.toContain('name="glossary_id"');
+      expect(body).not.toContain('name="glossary_ids"');
+    });
   });
 
   describe('Service-level: happy path (upload -> poll -> download)', () => {
@@ -181,13 +265,11 @@ describe('Document Translation Integration', () => {
         })
         .reply(200, { document_id: 'd1', document_key: 'k1' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/d1')
-        .reply(200, {
-          document_id: 'd1',
-          status: 'done',
-          billed_characters: 5,
-        });
+      nock(FREE_API_URL).post('/v2/document/d1').reply(200, {
+        document_id: 'd1',
+        status: 'done',
+        billed_characters: 5,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/d1/result')
@@ -216,13 +298,11 @@ describe('Document Translation Integration', () => {
         })
         .reply(200, { document_id: 'd2', document_key: 'k2' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/d2')
-        .reply(200, {
-          document_id: 'd2',
-          status: 'done',
-          billed_characters: 4,
-        });
+      nock(FREE_API_URL).post('/v2/document/d2').reply(200, {
+        document_id: 'd2',
+        status: 'done',
+        billed_characters: 4,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/d2/result')
@@ -252,13 +332,11 @@ describe('Document Translation Integration', () => {
         })
         .reply(200, { document_id: 'd3', document_key: 'k3' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/d3')
-        .reply(200, {
-          document_id: 'd3',
-          status: 'done',
-          billed_characters: 4,
-        });
+      nock(FREE_API_URL).post('/v2/document/d3').reply(200, {
+        document_id: 'd3',
+        status: 'done',
+        billed_characters: 4,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/d3/result')
@@ -288,13 +366,11 @@ describe('Document Translation Integration', () => {
         })
         .reply(200, { document_id: 'd4', document_key: 'k4' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/d4')
-        .reply(200, {
-          document_id: 'd4',
-          status: 'done',
-          billed_characters: 4,
-        });
+      nock(FREE_API_URL).post('/v2/document/d4').reply(200, {
+        document_id: 'd4',
+        status: 'done',
+        billed_characters: 4,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/d4/result')
@@ -324,13 +400,11 @@ describe('Document Translation Integration', () => {
         })
         .reply(200, { document_id: 'd5', document_key: 'k5' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/d5')
-        .reply(200, {
-          document_id: 'd5',
-          status: 'done',
-          billed_characters: 12,
-        });
+      nock(FREE_API_URL).post('/v2/document/d5').reply(200, {
+        document_id: 'd5',
+        status: 'done',
+        billed_characters: 12,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/d5/result')
@@ -359,13 +433,11 @@ describe('Document Translation Integration', () => {
         })
         .reply(200, { document_id: 'd6', document_key: 'k6' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/d6')
-        .reply(200, {
-          document_id: 'd6',
-          status: 'done',
-          billed_characters: 12,
-        });
+      nock(FREE_API_URL).post('/v2/document/d6').reply(200, {
+        document_id: 'd6',
+        status: 'done',
+        billed_characters: 12,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/d6/result')
@@ -395,13 +467,11 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'da', document_key: 'ka' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/da')
-        .reply(200, {
-          document_id: 'da',
-          status: 'done',
-          billed_characters: 4,
-        });
+      nock(FREE_API_URL).post('/v2/document/da').reply(200, {
+        document_id: 'da',
+        status: 'done',
+        billed_characters: 4,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/da/result')
@@ -468,13 +538,11 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'dd1', document_key: 'kd1' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/dd1')
-        .reply(200, {
-          document_id: 'dd1',
-          status: 'done',
-          billed_characters: 4,
-        });
+      nock(FREE_API_URL).post('/v2/document/dd1').reply(200, {
+        document_id: 'dd1',
+        status: 'done',
+        billed_characters: 4,
+      });
 
       const downloadScope = nock(FREE_API_URL, {
         reqheaders: {
@@ -506,13 +574,11 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'db1', document_key: 'kb1' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/db1')
-        .reply(200, {
-          document_id: 'db1',
-          status: 'done',
-          billed_characters: 100,
-        });
+      nock(FREE_API_URL).post('/v2/document/db1').reply(200, {
+        document_id: 'db1',
+        status: 'done',
+        billed_characters: 100,
+      });
 
       const pdfBytes = Buffer.from([
         0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34,
@@ -704,13 +770,11 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'ddl1', document_key: 'kdl1' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/ddl1')
-        .reply(200, {
-          document_id: 'ddl1',
-          status: 'done',
-          billed_characters: 4,
-        });
+      nock(FREE_API_URL).post('/v2/document/ddl1').reply(200, {
+        document_id: 'ddl1',
+        status: 'done',
+        billed_characters: 4,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/ddl1/result')
@@ -734,13 +798,11 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'ddl2', document_key: 'kdl2' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/ddl2')
-        .reply(200, {
-          document_id: 'ddl2',
-          status: 'done',
-          billed_characters: 4,
-        });
+      nock(FREE_API_URL).post('/v2/document/ddl2').reply(200, {
+        document_id: 'ddl2',
+        status: 'done',
+        billed_characters: 4,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/ddl2/result')
@@ -771,13 +833,11 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'dm1', document_key: 'km1' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/dm1')
-        .reply(200, {
-          document_id: 'dm1',
-          status: 'done',
-          billed_characters: 4,
-        });
+      nock(FREE_API_URL).post('/v2/document/dm1').reply(200, {
+        document_id: 'dm1',
+        status: 'done',
+        billed_characters: 4,
+      });
 
       nock(FREE_API_URL)
         .post('/v2/document/dm1/result')
@@ -815,6 +875,39 @@ describe('Document Translation Integration', () => {
     });
   });
 
+  describe('Service-level: a hostile document_id in the upload response', () => {
+    it('aborts the workflow, issues no follow-up request, and writes no output', async () => {
+      const client = new DeepLClient(API_KEY, { maxRetries: 0 });
+      clients.push(client);
+      const service = new DocumentTranslationService(client);
+
+      const inputPath = path.join(testDir, 'input-traversal.pdf');
+      const outputPath = path.join(testDir, 'output-traversal.pdf');
+      fs.writeFileSync(inputPath, Buffer.from('%PDF-1.4 test content'));
+
+      const uploadScope = nock(FREE_API_URL).post('/v2/document').reply(200, {
+        document_id: '../../v3/glossaries%3fpwned=1',
+        document_key: 'kt1',
+      });
+
+      // The route the traversal collapses onto. Left unmatched deliberately:
+      // nock rejects an unmatched request, so this interceptor existing and
+      // staying pending is what proves the request was never issued.
+      const traversedScope = nock(FREE_API_URL)
+        .post('/v3/glossaries%3fpwned=1')
+        .reply(200, { document_id: 'x', status: 'done' });
+
+      await expect(
+        service.translateDocument(inputPath, outputPath, { targetLang: 'de' })
+      ).rejects.toThrow(/Unexpected API response: document_id/);
+
+      expect(uploadScope.isDone()).toBe(true);
+      expect(traversedScope.isDone()).toBe(false);
+      expect(fs.existsSync(outputPath)).toBe(false);
+      nock.cleanAll();
+    });
+  });
+
   describe('Service-level: abort signal support', () => {
     it('should cancel translation when abort signal fires', async () => {
       const client = new DeepLClient(API_KEY, { maxRetries: 0 });
@@ -829,13 +922,11 @@ describe('Document Translation Integration', () => {
         .post('/v2/document')
         .reply(200, { document_id: 'da1', document_key: 'ka1' });
 
-      nock(FREE_API_URL)
-        .post('/v2/document/da1')
-        .reply(200, {
-          document_id: 'da1',
-          status: 'translating',
-          seconds_remaining: 60,
-        });
+      nock(FREE_API_URL).post('/v2/document/da1').reply(200, {
+        document_id: 'da1',
+        status: 'translating',
+        seconds_remaining: 60,
+      });
 
       const controller = new AbortController();
 
@@ -852,130 +943,5 @@ describe('Document Translation Integration', () => {
 
       await expect(promise).rejects.toThrow('Document translation cancelled');
     });
-  });
-});
-
-describe('Document Translation CLI Integration', () => {
-  const cliTestConfig = createTestConfigDir('doc-cli');
-  const cliTestFiles = createTestDir('doc-cli-files');
-  const testDir = cliTestFiles.path;
-  const { runCLI } = makeRunCLI(cliTestConfig.path);
-
-  afterAll(() => {
-    cliTestConfig.cleanup();
-    cliTestFiles.cleanup();
-  });
-
-  describe('CLI argument validation for document translation', () => {
-    it('should require --to flag for document files', () => {
-      const testFile = path.join(testDir, 'cli-doc.pdf');
-      fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
-
-      expect.assertions(1);
-      try {
-        runCLI(`deepl translate "${testFile}"`, { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/required.*--to|target.*language/i);
-      }
-    });
-
-    it('should require --output flag for file translation', () => {
-      const testFile = path.join(testDir, 'cli-doc2.txt');
-      fs.writeFileSync(testFile, 'Hello world test content');
-
-      expect.assertions(1);
-      try {
-        runCLI(`deepl translate "${testFile}" --to es`, { stdio: 'pipe' });
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).toMatch(/API key|auth|output/i);
-      }
-    });
-
-    it('should require API key for document translation', () => {
-      const testFile = path.join(testDir, 'cli-doc3.pdf');
-      fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
-
-      expect.assertions(1);
-      try {
-        runCLI(
-          `deepl translate "${testFile}" --to es --output "${testDir}/out.pdf"`,
-          {
-            stdio: 'pipe',
-          }
-        );
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option|unsupported.*file.*type/i);
-      }
-    });
-
-    it('should accept --output-format flag without unknown option error', () => {
-      const testFile = path.join(testDir, 'cli-doc4.pdf');
-      fs.writeFileSync(testFile, Buffer.from([0x25, 0x50, 0x44, 0x46]));
-
-      expect.assertions(1);
-      try {
-        runCLI(
-          `deepl translate "${testFile}" --to es --output "${testDir}/out.docx" --output-format docx`,
-          { stdio: 'pipe' }
-        );
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option.*output-format/i);
-      }
-    });
-
-    it('should accept --enable-minification flag without unknown option error', () => {
-      const testFile = path.join(testDir, 'cli-doc5.pptx');
-      fs.writeFileSync(testFile, Buffer.from([0x50, 0x4b, 0x03, 0x04]));
-
-      expect.assertions(1);
-      try {
-        runCLI(
-          `deepl translate "${testFile}" --to es --output "${testDir}/out.pptx" --enable-minification`,
-          { stdio: 'pipe' }
-        );
-      } catch (error: any) {
-        const output = error.stderr ?? error.stdout;
-        expect(output).not.toMatch(/unknown.*option.*enable-minification/i);
-      }
-    });
-  });
-
-  describe('supported document file types via CLI', () => {
-    const documentTypes = [
-      { ext: 'pdf', header: [0x25, 0x50, 0x44, 0x46] },
-      { ext: 'docx', header: [0x50, 0x4b, 0x03, 0x04] },
-      { ext: 'pptx', header: [0x50, 0x4b, 0x03, 0x04] },
-      { ext: 'xlsx', header: [0x50, 0x4b, 0x03, 0x04] },
-      { ext: 'html', header: null, content: '<html><body>Test</body></html>' },
-      { ext: 'htm', header: null, content: '<html><body>Test</body></html>' },
-    ];
-
-    for (const docType of documentTypes) {
-      it(`should accept .${docType.ext} files`, () => {
-        const testFile = path.join(testDir, `cli-type-test.${docType.ext}`);
-        const outputFile = path.join(testDir, `cli-type-out.${docType.ext}`);
-
-        if (docType.header) {
-          fs.writeFileSync(testFile, Buffer.from(docType.header));
-        } else {
-          fs.writeFileSync(testFile, docType.content ?? '');
-        }
-
-        expect.assertions(1);
-        try {
-          runCLI(
-            `deepl translate "${testFile}" --to es --output "${outputFile}"`,
-            { stdio: 'pipe' }
-          );
-        } catch (error: any) {
-          const output = error.stderr ?? error.stdout;
-          expect(output).not.toMatch(/unsupported.*file.*type/i);
-        }
-      });
-    }
   });
 });

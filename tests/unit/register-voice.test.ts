@@ -1,5 +1,3 @@
- 
-
 import { Command } from 'commander';
 
 // ── Mock chalk ──────────────────────────────────────────────────────────────
@@ -63,7 +61,9 @@ function resetAllMockImplementations() {
   mockTranslate.mockResolvedValue('Translated audio text');
   mockTranslateFromStdin.mockResolvedValue('Translated stdin text');
 
-  const { createVoiceCommand } = require('../../src/cli/commands/service-factory');
+  const {
+    createVoiceCommand,
+  } = require('../../src/cli/commands/service-factory');
   createVoiceCommand.mockResolvedValue(mockVoiceCmdObj);
 }
 
@@ -76,7 +76,9 @@ describe('registerVoice', () => {
   beforeEach(() => {
     resetAllMockImplementations();
     mockResolveGlossaryId.mockReset();
-    mockResolveGlossaryId.mockImplementation((id: string) => Promise.resolve(id));
+    mockResolveGlossaryId.mockImplementation((id: string) =>
+      Promise.resolve(id)
+    );
 
     program = new Command();
     program.exitOverride();
@@ -91,26 +93,40 @@ describe('registerVoice', () => {
   });
 
   async function loadAndRegister() {
-    const { registerVoice } = await import('../../src/cli/commands/register-voice');
-    registerVoice(program, { getApiKeyAndOptions, createDeepLClient, handleError } as any);
+    const { registerVoice } =
+      await import('../../src/cli/commands/register-voice');
+    registerVoice(program, {
+      getApiKeyAndOptions,
+      createDeepLClient,
+      handleError,
+    } as any);
   }
 
   it('should throw error when --to is missing', async () => {
     await loadAndRegister();
     await expect(
-      program.parseAsync(['node', 'test', 'voice', 'recording.ogg']),
+      program.parseAsync(['node', 'test', 'voice', 'recording.ogg'])
     ).rejects.toThrow(/required option.*--to/i);
   });
 
   it('should call translate for file argument and Logger.output the result', async () => {
     await loadAndRegister();
-    await program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de']);
+    await program.parseAsync([
+      'node',
+      'test',
+      'voice',
+      'recording.ogg',
+      '--to',
+      'de',
+    ]);
 
-    const { createVoiceCommand } = require('../../src/cli/commands/service-factory');
+    const {
+      createVoiceCommand,
+    } = require('../../src/cli/commands/service-factory');
     expect(createVoiceCommand).toHaveBeenCalledWith(getApiKeyAndOptions);
     expect(mockTranslate).toHaveBeenCalledWith(
       'recording.ogg',
-      expect.objectContaining({ to: 'de' }),
+      expect.objectContaining({ to: 'de' })
     );
     expect(mockLogger.output).toHaveBeenCalledWith('Translated audio text');
   });
@@ -120,7 +136,7 @@ describe('registerVoice', () => {
     await program.parseAsync(['node', 'test', 'voice', '-', '--to', 'es']);
 
     expect(mockTranslateFromStdin).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'es' }),
+      expect.objectContaining({ to: 'es' })
     );
     expect(mockLogger.output).toHaveBeenCalledWith('Translated stdin text');
   });
@@ -131,7 +147,14 @@ describe('registerVoice', () => {
 
     await loadAndRegister();
     await expect(
-      program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de']),
+      program.parseAsync([
+        'node',
+        'test',
+        'voice',
+        'recording.ogg',
+        '--to',
+        'de',
+      ])
     ).rejects.toThrow('Voice API unavailable');
 
     expect(handleError).toHaveBeenCalledWith(translateError);
@@ -140,16 +163,27 @@ describe('registerVoice', () => {
   it('should pass format and other options through correctly', async () => {
     await loadAndRegister();
     await program.parseAsync([
-      'node', 'test', 'voice', 'recording.ogg',
-      '--to', 'de',
-      '--from', 'en',
-      '--formality', 'more',
-      '--glossary', 'gloss-123',
-      '--content-type', 'audio/ogg',
-      '--chunk-size', '8000',
-      '--chunk-interval', '300',
+      'node',
+      'test',
+      'voice',
+      'recording.ogg',
+      '--to',
+      'de',
+      '--from',
+      'en',
+      '--formality',
+      'more',
+      '--glossary',
+      'gloss-123',
+      '--content-type',
+      'audio/ogg',
+      '--chunk-size',
+      '8000',
+      '--chunk-interval',
+      '300',
       '--no-stream',
-      '--format', 'json',
+      '--format',
+      'json',
     ]);
 
     expect(mockTranslate).toHaveBeenCalledWith(
@@ -164,7 +198,7 @@ describe('registerVoice', () => {
         chunkInterval: 300,
         stream: false,
         format: 'json',
-      }),
+      })
     );
   });
 
@@ -177,17 +211,35 @@ describe('registerVoice', () => {
     ])('should reject %s --chunk-size (%s)', async (_label, value) => {
       await loadAndRegister();
       await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-size', value]),
+        program.parseAsync([
+          'node',
+          'test',
+          'voice',
+          'recording.ogg',
+          '--to',
+          'de',
+          '--chunk-size',
+          value,
+        ])
       ).rejects.toThrow(/chunk-size/i);
     });
 
     it('should accept valid --chunk-size', async () => {
       await loadAndRegister();
-      await program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-size', '3200']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'voice',
+        'recording.ogg',
+        '--to',
+        'de',
+        '--chunk-size',
+        '3200',
+      ]);
 
       expect(mockTranslate).toHaveBeenCalledWith(
         'recording.ogg',
-        expect.objectContaining({ chunkSize: 3200 }),
+        expect.objectContaining({ chunkSize: 3200 })
       );
     });
 
@@ -199,17 +251,35 @@ describe('registerVoice', () => {
     ])('should reject %s --chunk-interval (%s)', async (_label, value) => {
       await loadAndRegister();
       await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-interval', value]),
+        program.parseAsync([
+          'node',
+          'test',
+          'voice',
+          'recording.ogg',
+          '--to',
+          'de',
+          '--chunk-interval',
+          value,
+        ])
       ).rejects.toThrow(/chunk-interval/i);
     });
 
     it('should accept valid --chunk-interval', async () => {
       await loadAndRegister();
-      await program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--chunk-interval', '100']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'voice',
+        'recording.ogg',
+        '--to',
+        'de',
+        '--chunk-interval',
+        '100',
+      ]);
 
       expect(mockTranslate).toHaveBeenCalledWith(
         'recording.ogg',
-        expect.objectContaining({ chunkInterval: 100 }),
+        expect.objectContaining({ chunkInterval: 100 })
       );
     });
 
@@ -217,24 +287,48 @@ describe('registerVoice', () => {
       ['non-numeric', 'abc'],
       ['negative', '-1'],
       ['excessively large', '101'],
-    ])('should reject %s --max-reconnect-attempts (%s)', async (_label, value) => {
-      await loadAndRegister();
-      await expect(
-        program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--max-reconnect-attempts', value]),
-      ).rejects.toThrow(/max-reconnect-attempts/i);
-    });
+    ])(
+      'should reject %s --max-reconnect-attempts (%s)',
+      async (_label, value) => {
+        await loadAndRegister();
+        await expect(
+          program.parseAsync([
+            'node',
+            'test',
+            'voice',
+            'recording.ogg',
+            '--to',
+            'de',
+            '--max-reconnect-attempts',
+            value,
+          ])
+        ).rejects.toThrow(/max-reconnect-attempts/i);
+      }
+    );
 
     it.each([
       ['zero (disable reconnection)', '0', 0],
       ['valid', '5', 5],
-    ])('should accept %s --max-reconnect-attempts (%s)', async (_label, value, expected) => {
-      await loadAndRegister();
-      await program.parseAsync(['node', 'test', 'voice', 'recording.ogg', '--to', 'de', '--max-reconnect-attempts', value]);
+    ])(
+      'should accept %s --max-reconnect-attempts (%s)',
+      async (_label, value, expected) => {
+        await loadAndRegister();
+        await program.parseAsync([
+          'node',
+          'test',
+          'voice',
+          'recording.ogg',
+          '--to',
+          'de',
+          '--max-reconnect-attempts',
+          value,
+        ]);
 
-      expect(mockTranslate).toHaveBeenCalledWith(
-        'recording.ogg',
-        expect.objectContaining({ maxReconnectAttempts: expected }),
-      );
-    });
+        expect(mockTranslate).toHaveBeenCalledWith(
+          'recording.ogg',
+          expect.objectContaining({ maxReconnectAttempts: expected })
+        );
+      }
+    );
   });
 });

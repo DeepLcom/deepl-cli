@@ -238,6 +238,110 @@ describe('xliff parser', () => {
     });
   });
 
+  describe('reconstruct writing a unit the document has no id for', () => {
+    it('should write into an empty <body> in v1.2', () => {
+      const xliff = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<xliff version="1.2">',
+        '  <file source-language="en" target-language="de" original="x">',
+        '    <body>',
+        '    </body>',
+        '  </file>',
+        '</xliff>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xliff, [
+        { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+      ]);
+
+      expect(parser.extract(result).map((e) => e.key)).toEqual(['msg1']);
+      expect(result).toContain('      <trans-unit id="msg1">');
+      expect(parser.extractTranslations(result).get('msg1')).toBe('Willkommen');
+    });
+
+    it('should write into a <file> holding no units in v2.0', () => {
+      const xliff = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<xliff version="2.0" srcLang="en" trgLang="de">',
+        '  <file id="f1">',
+        '  </file>',
+        '</xliff>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xliff, [
+        { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+      ]);
+
+      expect(parser.extract(result).map((e) => e.key)).toEqual(['msg1']);
+      expect(result).toContain('<segment>');
+      expect(parser.extractTranslations(result).get('msg1')).toBe('Willkommen');
+    });
+
+    it('should carry the namespace prefix of the unit it is written beside', () => {
+      const xliff = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<x:xliff version="1.2" xmlns:x="urn:oasis:names:tc:xliff:document:1.2">',
+        '  <x:file source-language="en" target-language="de" original="x">',
+        '    <x:body>',
+        '      <x:trans-unit id="msg1">',
+        '        <x:source>Welcome</x:source>',
+        '        <x:target>Willkommen</x:target>',
+        '      </x:trans-unit>',
+        '    </x:body>',
+        '  </x:file>',
+        '</x:xliff>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xliff, [
+        { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+        { key: 'msg2', value: 'Bye', translation: 'Tschuess' },
+      ]);
+
+      expect(result).toContain('<x:trans-unit id="msg2">');
+      expect(result).toContain('<x:target>Tschuess</x:target>');
+      expect(result).not.toContain('<trans-unit');
+      expect(parser.extract(result).map((e) => e.key)).toEqual([
+        'msg1',
+        'msg2',
+      ]);
+    });
+
+    it('should escape XML metacharacters in a written source and target', () => {
+      const xliff = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<xliff version="1.2">',
+        '  <file source-language="en" target-language="de" original="x">',
+        '    <body>',
+        '      <trans-unit id="msg1">',
+        '        <source>Welcome</source>',
+        '      </trans-unit>',
+        '    </body>',
+        '  </file>',
+        '</xliff>',
+        '',
+      ].join('\n');
+      const result = parser.reconstruct(xliff, [
+        { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+        { key: 'msg2', value: 'a < b & c', translation: 'x > y' },
+      ]);
+
+      expect(result).toContain('<source>a &lt; b &amp; c</source>');
+      expect(result).toContain('<target>x &gt; y</target>');
+      const reread = parser.extract(result);
+      expect(reread.find((e) => e.key === 'msg2')?.value).toBe('a < b & c');
+      expect(parser.extractTranslations(result).get('msg2')).toBe('x > y');
+    });
+
+    it('should leave a unit out when the document has no container for it', () => {
+      const notXliff = '<?xml version="1.0"?>\n<other/>\n';
+      expect(
+        parser.reconstruct(notXliff, [
+          { key: 'msg1', value: 'Welcome', translation: 'Willkommen' },
+        ])
+      ).toBe(notXliff);
+    });
+  });
+
   describe('reconstruct with $-patterns in translations', () => {
     it('should preserve literal $1 and $& in v1.2 target replacement', () => {
       const xliff = `<?xml version="1.0" encoding="UTF-8"?>
@@ -363,7 +467,9 @@ describe('xliff parser', () => {
 <xliff version="1.2"><file source-language="en"><body>
 <trans-unit id="a"><source><![CDATA[<b>bold</b>]]></source></trans-unit>
 </body></file></xliff>`;
-      expect(() => parser.extract(xliff)).toThrow(/<source> \/ <target> elements containing CDATA/);
+      expect(() => parser.extract(xliff)).toThrow(
+        /<source> \/ <target> elements containing CDATA/
+      );
     });
 
     it('rejects CDATA inside <target> with ValidationError', () => {
@@ -371,7 +477,9 @@ describe('xliff parser', () => {
 <xliff version="1.2"><file source-language="en" target-language="de"><body>
 <trans-unit id="a"><source>Hello</source><target><![CDATA[<b>Hallo</b>]]></target></trans-unit>
 </body></file></xliff>`;
-      expect(() => parser.extract(xliff)).toThrow(/<source> \/ <target> elements containing CDATA/);
+      expect(() => parser.extract(xliff)).toThrow(
+        /<source> \/ <target> elements containing CDATA/
+      );
     });
 
     it('accepts CDATA elsewhere (e.g. <note>)', () => {
@@ -429,7 +537,9 @@ describe('xliff parser', () => {
         version === '2.0'
           ? '      <unit id="k"><segment><source>v</source>\n'
           : '      <trans-unit id="k"><source>v</source>\n';
-      return head + opener.repeat(Math.ceil((bytes - head.length) / opener.length));
+      return (
+        head + opener.repeat(Math.ceil((bytes - head.length) / opener.length))
+      );
     }
 
     const v12 = unclosedOpeners(4 * 1024 * 1024, '1.2');
@@ -463,5 +573,217 @@ describe('xliff parser', () => {
       const ms = Number(process.hrtime.bigint() - start) / 1e6;
       expect(ms).toBeLessThan(2000);
     });
+  });
+});
+
+describe('unit ids containing a quote character', () => {
+  // The id scanner excluded BOTH quote characters from the value, so a
+  // double-quoted id truncated at its first apostrophe. Two ids differing only
+  // after the apostrophe collapsed to one key, and XLIFF is exempt from
+  // assertDistinctKeys, so the single fetched translation was written into both
+  // units with nothing reported.
+  const V12 = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2">
+  <file source-language="en" target-language="es">
+    <body>
+      <trans-unit id="label.don't">
+        <source>Good morning</source>
+      </trans-unit>
+      <trans-unit id="label.don'x">
+        <source>Good evening</source>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+
+  const V2 = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="2.0" srcLang="en" trgLang="es">
+  <file id="f1">
+    <unit id="label.don't">
+      <segment>
+        <source>Good morning</source>
+      </segment>
+    </unit>
+    <unit id="label.don'x">
+      <segment>
+        <source>Good evening</source>
+      </segment>
+    </unit>
+  </file>
+</xliff>`;
+
+  it('keeps an apostrophe in a double-quoted v1.2 trans-unit id', () => {
+    const entries = parser.extract(V12);
+    expect(entries.map((e) => e.key)).toEqual(["label.don't", "label.don'x"]);
+    expect(entries.map((e) => e.value)).toEqual([
+      'Good morning',
+      'Good evening',
+    ]);
+  });
+
+  it('keeps an apostrophe in a double-quoted v2.0 unit id', () => {
+    const entries = parser.extract(V2);
+    expect(entries.map((e) => e.key)).toEqual(["label.don't", "label.don'x"]);
+  });
+
+  it('writes each translation into its own unit rather than into both', () => {
+    const written = parser.reconstruct(V12, [
+      { key: "label.don't", value: 'Good morning', translation: 'Buenos días' },
+      {
+        key: "label.don'x",
+        value: 'Good evening',
+        translation: 'Buenas tardes',
+      },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('<target>Buenos días</target>');
+    expect(written).toContain('<target>Buenas tardes</target>');
+    // Round-trips: re-reading finds both ids and both translations.
+    const back = [...parser.extractTranslations(written).entries()];
+    expect(back).toEqual([
+      ["label.don't", 'Buenos días'],
+      ["label.don'x", 'Buenas tardes'],
+    ]);
+  });
+
+  it('still reads a single-quoted id, and keeps a double quote inside it', () => {
+    const singleQuoted = V12.replace(
+      `id="label.don't"`,
+      `id='label.say"hi'`
+    ).replace(`id="label.don'x"`, `id='plain'`);
+
+    const entries = parser.extract(singleQuoted);
+    expect(entries.map((e) => e.key)).toEqual(['label.say"hi', 'plain']);
+  });
+
+  it('does not swallow a following attribute into the id', () => {
+    const withAttrs = V12.replace(
+      `id="label.don't"`,
+      `id="label.don't" xml:space="preserve"`
+    );
+
+    const entries = parser.extract(withAttrs);
+    expect(entries.map((e) => e.key)).toEqual(["label.don't", "label.don'x"]);
+  });
+});
+
+describe('appending a unit whose KEY needs guarding', () => {
+  // Both append paths ran assertNoControlChars on the TRANSLATION and then
+  // interpolated the key raw into `id="..."`. A control byte in a source key
+  // produced a file no XML consumer reads and a live terminal sequence in
+  // `git diff`; a quote or ampersand broke the attribute outright.
+  const EMPTY_V12 = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<xliff version="1.2">',
+    '  <file source-language="en" target-language="es">',
+    '    <body>',
+    '    </body>',
+    '  </file>',
+    '</xliff>',
+  ].join('\n');
+
+  it('refuses a key carrying a control byte XML cannot represent', () => {
+    expect(() =>
+      parser.reconstruct(EMPTY_V12, [
+        { key: 'bad\x1bkey', value: 'Hello', translation: 'Hola' },
+      ] as TranslatedEntry[])
+    ).toThrow(/U\+001B|control/i);
+  });
+
+  it('escapes a key containing XML markup characters', () => {
+    const written = parser.reconstruct(EMPTY_V12, [
+      { key: 'a&b<c>"d"', value: 'Hello', translation: 'Hola' },
+    ] as TranslatedEntry[]);
+
+    expect(written).toContain('&amp;');
+    expect(written).toContain('&quot;');
+    expect(written).not.toContain('id="a&b');
+    // The key round-trips: the escaped attribute decodes back to the original.
+    expect(parser.extract(written).map((e) => e.key)).toEqual(['a&b<c>"d"']);
+  });
+
+  it('still appends an ordinary key unescaped', () => {
+    const written = parser.reconstruct(EMPTY_V12, [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+    ] as TranslatedEntry[]);
+    expect(written).toContain('<trans-unit id="greeting">');
+  });
+});
+
+describe('review-state attributes on an element the run rewrites', () => {
+  // STATE_ATTR_RE was one unanchored, non-global regex, so it returned the FIRST
+  // `state=...` in the attribute string -- including one sitting inside ANOTHER
+  // attribute's value. The real review state was then neither read (needsReview
+  // missed it) nor rewritten (the decoy was corrupted instead), so a
+  // `needs-review-translation` marker stayed attached to freshly machine
+  // translated text.
+  const withDecoy = (targetAttrs: string): string =>
+    [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<xliff version="1.2">',
+      '  <file source-language="en" target-language="es">',
+      '    <body>',
+      '      <trans-unit id="greeting">',
+      '        <source>Hello</source>',
+      `        <target${targetAttrs}>Viejo</target>`,
+      '      </trans-unit>',
+      '    </body>',
+      '  </file>',
+      '</xliff>',
+    ].join('\n');
+
+  const DECOY_ATTRS = ` note="compare state='final' with the old one" state="needs-review-translation"`;
+
+  it('reads the real state, not a state= sequence inside another value', () => {
+    const flagged = parser.extractNeedsReview(withDecoy(DECOY_ATTRS));
+    expect([...flagged]).toEqual(['greeting']);
+  });
+
+  it('rewrites the real state and leaves the decoy value alone', () => {
+    const written = parser.reconstruct(withDecoy(DECOY_ATTRS), [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+    ]);
+
+    expect(written).toContain('state="translated"');
+    expect(written).not.toContain('state="needs-review-translation"');
+    // The other attribute's value is content, not a marker to rewrite.
+    expect(written).toContain(`note="compare state='final' with the old one"`);
+  });
+
+  it('does not treat an attribute merely ending in "state" as the state', () => {
+    const written = parser.reconstruct(
+      withDecoy(' xstate="needs-review-translation" state="new"'),
+      [{ key: 'greeting', value: 'Hello', translation: 'Hola' }]
+    );
+    expect(written).toContain('xstate="needs-review-translation"');
+    expect(written).toContain('state="translated"');
+  });
+
+  it('withdraws approved="yes" from text this run replaced', () => {
+    const written = parser.reconstruct(withDecoy(' approved="yes"'), [
+      { key: 'greeting', value: 'Hello', translation: 'Hola' },
+    ]);
+    expect(written).toContain('approved="no"');
+    expect(written).not.toContain('approved="yes"');
+  });
+
+  it('drops a state-qualifier that no longer describes the text', () => {
+    const written = parser.reconstruct(
+      withDecoy(
+        ' state="needs-review-translation" state-qualifier="mt-suggestion"'
+      ),
+      [{ key: 'greeting', value: 'Hello', translation: 'Hola' }]
+    );
+    expect(written).toContain('state="translated"');
+    expect(written).not.toContain('state-qualifier');
+  });
+
+  it('leaves every marker alone when the run writes the same text', () => {
+    const unchanged = withDecoy(' approved="yes" state="signed-off"');
+    const written = parser.reconstruct(unchanged, [
+      { key: 'greeting', value: 'Hello', translation: 'Viejo' },
+    ]);
+    expect(written).toContain('approved="yes"');
+    expect(written).toContain('state="signed-off"');
   });
 });

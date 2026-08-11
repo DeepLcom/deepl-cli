@@ -15,14 +15,16 @@ DeepL CLI is a command-line interface for the DeepL API that integrates translat
 ```
 CLI Commands (translate, write, voice, sync, watch, glossary, tm, …)
            ↓
-Service Layer (Translation, Write, Voice, Batch, Watch, Glossary,
-               TranslationMemory, StyleRules, Admin, Document,
-               GitHooks, Usage, Detect, Languages)
+Service Layer (Translation, Write, Voice, VoiceStreamSession, Batch, Watch,
+               Glossary, TranslationMemory, StyleRules, Admin, Document,
+               FileTranslation, StructuredFileTranslation, GitHooks, Usage,
+               Detect, Languages)
            ↓                         ↓
-Sync Engine (src/sync)        Format Parsers (src/formats — 11 i18n formats)
+Sync Engine (src/sync —        Format Parsers (src/formats — 11 i18n formats)
+  incl. TmsClient)
            ↓                         ↓
 API Client (Translate, Write, Glossary, Document, Voice,
-            StyleRules, Admin, TMS)
+            StyleRules, Admin)
            ↓
 Storage (node:sqlite Cache, Config) + Static Data (src/data — language registry)
 ```
@@ -43,6 +45,11 @@ Storage (node:sqlite Cache, Config) + Static Data (src/data — language registr
 
 - **CHANGELOG.md** - Release history and version notes
 - **docs/API.md** - Complete CLI command reference
+- **docs/MIGRATION.md** - 1.x → 2.0.0 upgrade guide; update it with any breaking change
+- **docs/SYNC.md** - Continuous-localization reference and `.deepl-sync.yaml` schema
+- **docs/TROUBLESHOOTING.md** - Diagnostics for common failures
+- **CONTRIBUTING.md** - Contributor workflow and PR checklist
+- **SECURITY.md** - Supported versions and vulnerability reporting
 
 ## Development Philosophy
 
@@ -77,10 +84,14 @@ Use **Semantic Versioning** with **Conventional Commits**:
 
 ### When Cutting a Release
 
-1. Move Unreleased items to `## [X.Y.Z] - YYYY-MM-DD`
-2. Set the version with `npm version X.Y.Z --no-git-tag-version` (updates `package.json` and the lockfile together; the release workflow refuses to publish if the tag and `package.json` disagree)
-3. Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: <summary>"`
-4. Push: `git push && git push --tags`
+1. Refresh the bundled language lists: `npm run generate:languages` (needs `DEEPL_API_KEY` and a current build). Commit if changed — `npm run check:languages` reports which list drifted without writing. Both come from `GET /v3/languages`: the translation snapshot (`resource=translate_text`) and the Write target list (`resource=write`). Neither list is a hard gate: a well-formed code absent from either defers to the API with a warning, so a language DeepL adds is reachable before a regenerate. What does go stale is `deepl languages` offline, the derived core/regional/extended tiers, and the "Bundled options:" list `write`/`correct` print in their errors. Rebuild after regenerating, since the generator reads the derivation out of `dist/`
+2. Move Unreleased items to `## [X.Y.Z] - YYYY-MM-DD`
+3. For a MAJOR: update the supported-versions table in `SECURITY.md`, and confirm `docs/MIGRATION.md` covers every **Changed**, **Removed** and action-requiring **Security** entry in the section just dated
+4. Set the version with `npm version X.Y.Z --no-git-tag-version` (updates `package.json` and the lockfile together; the release workflow refuses to publish if the tag and `package.json` disagree)
+5. Review the tarball: `npm pack --dry-run` — confirm the file list, the version, and that nothing private is in it
+6. Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: <summary>"`
+7. Push to `github` only — `origin` (internal GitLab) autosyncs from it: `git push github main && git push github vX.Y.Z`. Pushing the tag triggers `.github/workflows/release.yml`, which records the GitHub Release and nothing more
+8. **Publish to npm separately.** `release.yml` deliberately carries no `npm publish` step or `NPM_TOKEN` — its header says publishing happens from GitLab — so the tag alone does not make the package installable. Run that publish job, then verify from a clean machine: `npm view @deepl/cli version` and `npx @deepl/cli@X.Y.Z --version`
 
 ## Code Style
 
@@ -178,6 +189,7 @@ Use conventional commits:
 - Make separate commits per logical change
 - Group tests with the logic they test
 - **Run `npm run lint` and `npm run type-check` before every commit**
+- **Never silence a lint warning to get past the gate** — `lint` runs with `--max-warnings 0`, so a warning fails CI. Fix the cause; if a rule genuinely does not apply, scope a disable directive to the code it covers and say why
 
 ## Pull Request Guidelines
 
@@ -191,7 +203,9 @@ PR descriptions should include:
 ## Pre-Commit Checklist
 
 - [ ] All tests pass (`npm test`)
-- [ ] Linter passes (`npm run lint`)
+- [ ] Coverage thresholds hold (`npm run test:coverage`) — this is what CI runs, so a change that passes `npm test` can still fail the build
+- [ ] Formatting is clean (`npm run format:check`) — the format-on-commit hook handles this if enabled; see CONTRIBUTING.md
+- [ ] Linter passes (`npm run lint`) — warnings fail the build (`--max-warnings 0`)
 - [ ] TypeScript compiles (`npm run type-check`)
 - [ ] Unit, integration, and E2E tests written for new features
 - [ ] HTTP mocking with nock for API interactions

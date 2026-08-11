@@ -16,7 +16,6 @@ import * as os from 'os';
 import { createMockVoiceClient } from '../helpers/mock-factories';
 
 jest.mock('ws', () => {
-   
   const { EventEmitter: EE } = require('events');
   class MockWebSocket extends EE {
     static OPEN = 1;
@@ -44,20 +43,22 @@ function setupSessionMock(
   mockClient: jest.Mocked<VoiceClient>,
   sessionId: string,
   mockWs: ReturnType<typeof createMockWebSocket>,
-  onOpen: (callbacks: any) => void,
+  onOpen: (callbacks: any) => void
 ) {
   mockClient.createSession.mockResolvedValue({
     streaming_url: 'wss://test',
     token: 'token',
     session_id: sessionId,
   });
-  mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
-    process.nextTick(() => {
-      mockWs.emit('open');
-      process.nextTick(() => onOpen(callbacks));
-    });
-    return mockWs as any;
-  });
+  mockClient.createWebSocket.mockImplementation(
+    (_url: string, _token: string, callbacks: any) => {
+      process.nextTick(() => {
+        mockWs.emit('open');
+        process.nextTick(() => onOpen(callbacks));
+      });
+      return mockWs as any;
+    }
+  );
 }
 
 describe('VoiceService', () => {
@@ -65,7 +66,9 @@ describe('VoiceService', () => {
   let mockClient: jest.Mocked<VoiceClient>;
 
   beforeEach(() => {
-    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
+    jest.useFakeTimers({
+      doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'],
+    });
     jest.clearAllMocks();
     mockClient = createMockVoiceClient();
 
@@ -82,7 +85,9 @@ describe('VoiceService', () => {
     });
 
     it('should throw error if client is not provided', () => {
-      expect(() => new VoiceService(null as unknown as VoiceClient)).toThrow(ValidationError);
+      expect(() => new VoiceService(null as unknown as VoiceClient)).toThrow(
+        ValidationError
+      );
     });
   });
 
@@ -94,19 +99,27 @@ describe('VoiceService', () => {
 
   describe('detectContentType()', () => {
     it('should detect .ogg as opus/ogg', () => {
-      expect(service.detectContentType('audio.ogg')).toBe('audio/opus;container=ogg');
+      expect(service.detectContentType('audio.ogg')).toBe(
+        'audio/opus;container=ogg'
+      );
     });
 
     it('should detect .opus as opus/ogg', () => {
-      expect(service.detectContentType('audio.opus')).toBe('audio/opus;container=ogg');
+      expect(service.detectContentType('audio.opus')).toBe(
+        'audio/opus;container=ogg'
+      );
     });
 
     it('should detect .webm as opus/webm', () => {
-      expect(service.detectContentType('audio.webm')).toBe('audio/opus;container=webm');
+      expect(service.detectContentType('audio.webm')).toBe(
+        'audio/opus;container=webm'
+      );
     });
 
     it('should detect .mka as opus/matroska', () => {
-      expect(service.detectContentType('audio.mka')).toBe('audio/opus;container=matroska');
+      expect(service.detectContentType('audio.mka')).toBe(
+        'audio/opus;container=matroska'
+      );
     });
 
     it('should detect .flac as audio/flac', () => {
@@ -118,11 +131,15 @@ describe('VoiceService', () => {
     });
 
     it('should detect .pcm as PCM 16kHz', () => {
-      expect(service.detectContentType('raw.pcm')).toBe('audio/pcm;encoding=s16le;rate=16000');
+      expect(service.detectContentType('raw.pcm')).toBe(
+        'audio/pcm;encoding=s16le;rate=16000'
+      );
     });
 
     it('should detect .raw as PCM 16kHz', () => {
-      expect(service.detectContentType('raw.raw')).toBe('audio/pcm;encoding=s16le;rate=16000');
+      expect(service.detectContentType('raw.raw')).toBe(
+        'audio/pcm;encoding=s16le;rate=16000'
+      );
     });
 
     it('should return undefined for unknown extensions', () => {
@@ -135,19 +152,27 @@ describe('VoiceService', () => {
 
     it('should handle uppercase extensions via extname', () => {
       // extname('audio.OGG') returns '.OGG', and toLowerCase() handles it
-      expect(service.detectContentType('audio.OGG')).toBe('audio/opus;container=ogg');
-      expect(service.detectContentType('audio.ogg')).toBe('audio/opus;container=ogg');
+      expect(service.detectContentType('audio.OGG')).toBe(
+        'audio/opus;container=ogg'
+      );
+      expect(service.detectContentType('audio.ogg')).toBe(
+        'audio/opus;container=ogg'
+      );
     });
 
     it('should handle paths with directories', () => {
-      expect(service.detectContentType('/path/to/audio.mp3')).toBe('audio/mpeg');
+      expect(service.detectContentType('/path/to/audio.mp3')).toBe(
+        'audio/mpeg'
+      );
     });
   });
 
   describe('validateOptions()', () => {
     it('should accept valid options with one target language', () => {
       expect(() =>
-        service.validateOptions({ targetLangs: ['de'] } as VoiceTranslateOptions),
+        service.validateOptions({
+          targetLangs: ['de'],
+        } as VoiceTranslateOptions)
       ).not.toThrow();
     });
 
@@ -155,22 +180,22 @@ describe('VoiceService', () => {
       expect(() =>
         service.validateOptions({
           targetLangs: ['de', 'fr', 'es', 'it', 'pt'],
-        } as VoiceTranslateOptions),
+        } as VoiceTranslateOptions)
       ).not.toThrow();
     });
 
     it('should reject empty target languages', () => {
       expect(() =>
-        service.validateOptions({ targetLangs: [] } as VoiceTranslateOptions),
+        service.validateOptions({ targetLangs: [] } as VoiceTranslateOptions)
       ).toThrow(ValidationError);
       expect(() =>
-        service.validateOptions({ targetLangs: [] } as VoiceTranslateOptions),
+        service.validateOptions({ targetLangs: [] } as VoiceTranslateOptions)
       ).toThrow(/at least one target language/i);
     });
 
     it('should reject undefined target languages', () => {
       expect(() =>
-        service.validateOptions({} as VoiceTranslateOptions),
+        service.validateOptions({} as VoiceTranslateOptions)
       ).toThrow(ValidationError);
     });
 
@@ -178,12 +203,12 @@ describe('VoiceService', () => {
       expect(() =>
         service.validateOptions({
           targetLangs: ['de', 'fr', 'es', 'it', 'pt', 'ja'],
-        } as VoiceTranslateOptions),
+        } as VoiceTranslateOptions)
       ).toThrow(ValidationError);
       expect(() =>
         service.validateOptions({
           targetLangs: ['de', 'fr', 'es', 'it', 'pt', 'ja'],
-        } as VoiceTranslateOptions),
+        } as VoiceTranslateOptions)
       ).toThrow(/maximum 5/i);
     });
   });
@@ -197,7 +222,9 @@ describe('VoiceService', () => {
       tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'voice-test-'));
       testFile = path.join(tmpDir, 'test.mp3');
       await fs.writeFile(testFile, Buffer.alloc(1024));
-      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
+      jest.useFakeTimers({
+        doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'],
+      });
     });
 
     afterEach(async () => {
@@ -209,12 +236,14 @@ describe('VoiceService', () => {
       jest.useRealTimers();
       const unknownFile = path.join(tmpDir, 'test.wav');
       await fs.writeFile(unknownFile, Buffer.alloc(100));
-      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
+      jest.useFakeTimers({
+        doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'],
+      });
 
       await expect(
         service.translateFile(unknownFile, {
           targetLangs: ['de'],
-        }),
+        })
       ).rejects.toThrow(ValidationError);
     });
 
@@ -227,7 +256,9 @@ describe('VoiceService', () => {
       jest.useRealTimers();
       const wavFile = path.join(tmpDir, 'test.wav');
       await fs.writeFile(wavFile, Buffer.alloc(100));
-      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
+      jest.useFakeTimers({
+        doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'],
+      });
 
       const result = await service.translateFile(wavFile, {
         targetLangs: ['de'],
@@ -241,7 +272,7 @@ describe('VoiceService', () => {
       await expect(
         service.translateFile('/nonexistent/file.mp3', {
           targetLangs: ['de'],
-        }),
+        })
       ).rejects.toThrow();
     });
 
@@ -251,17 +282,19 @@ describe('VoiceService', () => {
       const symlinkFile = path.join(tmpDir, 'link.mp3');
       await fs.writeFile(targetFile, Buffer.alloc(100));
       await fs.symlink(targetFile, symlinkFile);
-      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
+      jest.useFakeTimers({
+        doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'],
+      });
 
       await expect(
         service.translateFile(symlinkFile, {
           targetLangs: ['de'],
-        }),
+        })
       ).rejects.toThrow(ValidationError);
       await expect(
         service.translateFile(symlinkFile, {
           targetLangs: ['de'],
-        }),
+        })
       ).rejects.toThrow(/symlinks are not supported/i);
     });
 
@@ -295,7 +328,7 @@ describe('VoiceService', () => {
       expect(mockClient.createSession).toHaveBeenCalledWith(
         expect.objectContaining({
           source_media_content_type: 'audio/mpeg',
-        }),
+        })
       );
       expect(result.sessionId).toBe('session-mp3');
     });
@@ -304,7 +337,14 @@ describe('VoiceService', () => {
       const mockWs = createMockWebSocket();
       setupSessionMock(mockClient, 'session-transcript', mockWs, (cb) => {
         cb.onSourceTranscript?.({
-          concluded: [{ text: 'Hello world', language: 'en', start_time: 0, end_time: 1.5 }],
+          concluded: [
+            {
+              text: 'Hello world',
+              language: 'en',
+              start_time: 0,
+              end_time: 1.5,
+            },
+          ],
           tentative: [],
         });
         cb.onTargetTranscript?.({
@@ -331,11 +371,22 @@ describe('VoiceService', () => {
       const mockWs = createMockWebSocket();
       setupSessionMock(mockClient, 'session-multi', mockWs, (cb) => {
         cb.onSourceTranscript?.({
-          concluded: [{ text: 'Hello', language: 'en', start_time: 0, end_time: 0.5 }],
-          tentative: [{ text: 'world', language: 'en', start_time: 0.5, end_time: 1 }],
+          concluded: [
+            { text: 'Hello', language: 'en', start_time: 0, end_time: 0.5 },
+          ],
+          tentative: [
+            { text: 'world', language: 'en', start_time: 0.5, end_time: 1 },
+          ],
         });
         cb.onSourceTranscript?.({
-          concluded: [{ text: 'world', language: 'en', start_time: 0.5, end_time: 1 }],
+          concluded: [
+            { text: 'world', language: 'en', start_time: 0.5, end_time: 1 },
+          ],
+          tentative: [],
+        });
+        cb.onTargetTranscript?.({
+          language: 'de',
+          concluded: [{ text: 'Hallo Welt', start_time: 0, end_time: 1 }],
           tentative: [],
         });
         cb.onEndOfStream?.();
@@ -367,6 +418,11 @@ describe('VoiceService', () => {
             tentative: [],
           });
         }
+        cb.onTargetTranscript?.({
+          language: 'de',
+          concluded: [{ text: 'Segmente', start_time: 0, end_time: 1 }],
+          tentative: [],
+        });
         cb.onEndOfStream?.();
       });
 
@@ -389,6 +445,11 @@ describe('VoiceService', () => {
             { text: 'Two', language: 'en', start_time: 0.5, end_time: 1 },
             { text: 'Three', language: 'en', start_time: 1, end_time: 1.5 },
           ],
+          tentative: [],
+        });
+        cb.onTargetTranscript?.({
+          language: 'de',
+          concluded: [{ text: 'Eins Zwei Drei', start_time: 0, end_time: 1.5 }],
           tentative: [],
         });
         cb.onEndOfStream?.();
@@ -444,7 +505,7 @@ describe('VoiceService', () => {
         service.translateFile(testFile, {
           targetLangs: ['de'],
           chunkInterval: 0,
-        }),
+        })
       ).rejects.toThrow(VoiceError);
     });
 
@@ -466,7 +527,7 @@ describe('VoiceService', () => {
           target_languages: ['de'],
           formality: 'more',
           glossary_id: 'glossary-123',
-        }),
+        })
       );
     });
 
@@ -478,29 +539,31 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-ws-error',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          // ws always emits close after an error; the session reports the
-          // transport failure from there.
-          mockWs.emit('error', new Error('Connection refused'));
-          mockWs.emit('close');
-        });
-        return mockWs as any;
-      });
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
+          process.nextTick(() => {
+            // ws always emits close after an error; the session reports the
+            // transport failure from there.
+            mockWs.emit('error', new Error('Connection refused'));
+            mockWs.emit('close');
+          });
+          return mockWs as any;
+        }
+      );
 
       await expect(
         service.translateFile(testFile, {
           targetLangs: ['de'],
           chunkInterval: 0,
           reconnect: false,
-        }),
+        })
       ).rejects.toThrow(VoiceError);
       await expect(
         service.translateFile(testFile, {
           targetLangs: ['de'],
           chunkInterval: 0,
           reconnect: false,
-        }),
+        })
       ).rejects.toThrow(/WebSocket connection failed: Connection refused/);
     });
 
@@ -513,16 +576,18 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-close',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, callbacks: any) => {
           process.nextTick(() => {
-            callbacks.onEndOfStream?.();
-            mockWs.emit('close');
+            mockWs.emit('open');
+            process.nextTick(() => {
+              callbacks.onEndOfStream?.();
+              mockWs.emit('close');
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       await service.translateFile(testFile, {
         targetLangs: ['de'],
@@ -545,16 +610,20 @@ describe('VoiceService', () => {
       // (indicating chunk streaming completed), ensuring SIGINT fires mid-stream
       let endStreamCb: (() => void) | null = null;
       mockClient.sendEndOfSource.mockImplementation(() => {
-        if (endStreamCb) { process.nextTick(endStreamCb); }
+        if (endStreamCb) {
+          process.nextTick(endStreamCb);
+        }
       });
 
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
-        endStreamCb = () => callbacks.onEndOfStream?.();
-        process.nextTick(() => {
-          mockWs.emit('open');
-        });
-        return mockWs as any;
-      });
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, callbacks: any) => {
+          endStreamCb = () => callbacks.onEndOfStream?.();
+          process.nextTick(() => {
+            mockWs.emit('open');
+          });
+          return mockWs as any;
+        }
+      );
 
       await service.translateFile(testFile, {
         targetLangs: ['de'],
@@ -570,25 +639,29 @@ describe('VoiceService', () => {
       jest.useRealTimers();
       const largeFile = path.join(tmpDir, 'large.mp3');
       await fs.writeFile(largeFile, Buffer.alloc(10000));
-      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
+      jest.useFakeTimers({
+        doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'],
+      });
 
       mockClient.createSession.mockResolvedValue({
         streaming_url: 'wss://test',
         token: 'token',
         session_id: 'session-readystate',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, callbacks: any) => {
           process.nextTick(() => {
-            mockWs.readyState = 3; // CLOSED
+            mockWs.emit('open');
             process.nextTick(() => {
-              callbacks.onEndOfStream?.();
+              mockWs.readyState = 3; // CLOSED
+              process.nextTick(() => {
+                callbacks.onEndOfStream?.();
+              });
             });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const promise = service.translateFile(largeFile, {
         targetLangs: ['de'],
@@ -614,19 +687,23 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-chunk-error',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
-        });
-        return mockWs as any;
-      });
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
+          process.nextTick(() => {
+            mockWs.emit('open');
+          });
+          return mockWs as any;
+        }
+      );
 
       // Mock the chunk reader to throw deterministically
       // (avoids a filesystem race between createReadStream and unlink)
-      // eslint-disable-next-line require-yield
-      jest.spyOn(service as any, 'readFileInChunks').mockImplementation(async function*() {
-        throw new Error('ENOENT: no such file or directory');
-      });
+      jest
+        .spyOn(service as any, 'readFileInChunks')
+        // eslint-disable-next-line require-yield
+        .mockImplementation(async function* () {
+          throw new Error('ENOENT: no such file or directory');
+        });
 
       const promise = service.translateFile(testFile, {
         targetLangs: ['de'],
@@ -646,12 +723,16 @@ describe('VoiceService', () => {
         cb.onEndOfStream?.();
       });
 
-      await service.translateFile(testFile, {
-        targetLangs: ['de'],
-        chunkInterval: 0,
-      }, {
-        onEndOfSourceTranscript,
-      });
+      await service.translateFile(
+        testFile,
+        {
+          targetLangs: ['de'],
+          chunkInterval: 0,
+        },
+        {
+          onEndOfSourceTranscript,
+        }
+      );
 
       expect(onEndOfSourceTranscript).toHaveBeenCalledTimes(1);
     });
@@ -665,12 +746,16 @@ describe('VoiceService', () => {
         cb.onEndOfStream?.();
       });
 
-      await service.translateFile(testFile, {
-        targetLangs: ['de'],
-        chunkInterval: 0,
-      }, {
-        onEndOfTargetTranscript,
-      });
+      await service.translateFile(
+        testFile,
+        {
+          targetLangs: ['de'],
+          chunkInterval: 0,
+        },
+        {
+          onEndOfTargetTranscript,
+        }
+      );
 
       expect(onEndOfTargetTranscript).toHaveBeenCalledTimes(1);
       expect(onEndOfTargetTranscript).toHaveBeenCalledWith('de');
@@ -689,7 +774,9 @@ describe('VoiceService', () => {
       largeFile = path.join(tmpDir, 'large.mp3');
       await fs.writeFile(testFile, Buffer.alloc(1024));
       await fs.writeFile(largeFile, Buffer.alloc(5000));
-      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
+      jest.useFakeTimers({
+        doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'],
+      });
     });
 
     afterEach(async () => {
@@ -717,37 +804,45 @@ describe('VoiceService', () => {
       });
 
       let wsCallCount = 0;
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
-        wsCallCount++;
-        if (wsCallCount === 1) {
-          process.nextTick(() => {
-            mockWs1.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, callbacks: any) => {
+          wsCallCount++;
+          if (wsCallCount === 1) {
             process.nextTick(() => {
-              // Simulate unexpected close (no end_of_stream)
-              mockWs1.readyState = 3;
-              mockWs1.emit('close');
+              mockWs1.emit('open');
+              process.nextTick(() => {
+                // Simulate unexpected close (no end_of_stream)
+                mockWs1.readyState = 3;
+                mockWs1.emit('close');
+              });
             });
-          });
-          return mockWs1 as any;
-        } else {
-          process.nextTick(() => {
-            mockWs2.emit('open');
+            return mockWs1 as any;
+          } else {
             process.nextTick(() => {
-              callbacks.onEndOfStream?.();
+              mockWs2.emit('open');
+              process.nextTick(() => {
+                callbacks.onEndOfStream?.();
+              });
             });
-          });
-          return mockWs2 as any;
+            return mockWs2 as any;
+          }
         }
-      });
+      );
 
-      const result = await service.translateFile(testFile, {
-        targetLangs: ['de'],
-        chunkInterval: 0,
-      }, { onReconnecting });
+      const result = await service.translateFile(
+        testFile,
+        {
+          targetLangs: ['de'],
+          chunkInterval: 0,
+        },
+        { onReconnecting }
+      );
 
       expect(result.sessionId).toBe('session-reconnect');
       expect(onReconnecting).toHaveBeenCalledWith(1);
-      expect((mockClient as any).reconnectSession).toHaveBeenCalledWith('token-1');
+      expect((mockClient as any).reconnectSession).toHaveBeenCalledWith(
+        'token-1'
+      );
     });
 
     it('should reject after max reconnect attempts exhausted', async () => {
@@ -758,40 +853,44 @@ describe('VoiceService', () => {
       });
 
       let tokenCounter = 1;
-      (mockClient as any).reconnectSession = jest.fn().mockImplementation(() => {
-        tokenCounter++;
-        return Promise.resolve({
-          streaming_url: `wss://test-${tokenCounter}`,
-          token: `token-${tokenCounter}`,
-        });
-      });
-
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        const mockWs = createMockWebSocket();
-
-        process.nextTick(() => {
-          mockWs.emit('open');
-          process.nextTick(() => {
-            mockWs.readyState = 3;
-            mockWs.emit('close');
+      (mockClient as any).reconnectSession = jest
+        .fn()
+        .mockImplementation(() => {
+          tokenCounter++;
+          return Promise.resolve({
+            streaming_url: `wss://test-${tokenCounter}`,
+            token: `token-${tokenCounter}`,
           });
         });
-        return mockWs as any;
-      });
+
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
+          const mockWs = createMockWebSocket();
+
+          process.nextTick(() => {
+            mockWs.emit('open');
+            process.nextTick(() => {
+              mockWs.readyState = 3;
+              mockWs.emit('close');
+            });
+          });
+          return mockWs as any;
+        }
+      );
 
       await expect(
         service.translateFile(testFile, {
           targetLangs: ['de'],
           chunkInterval: 0,
           maxReconnectAttempts: 2,
-        }),
+        })
       ).rejects.toThrow(VoiceError);
       await expect(
         service.translateFile(testFile, {
           targetLangs: ['de'],
           chunkInterval: 0,
           maxReconnectAttempts: 2,
-        }),
+        })
       ).rejects.toThrow(/WebSocket closed unexpectedly/);
     });
 
@@ -805,23 +904,25 @@ describe('VoiceService', () => {
       });
       (mockClient as any).reconnectSession = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            mockWs.readyState = 3;
-            mockWs.emit('close');
+            mockWs.emit('open');
+            process.nextTick(() => {
+              mockWs.readyState = 3;
+              mockWs.emit('close');
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       await expect(
         service.translateFile(testFile, {
           targetLangs: ['de'],
           chunkInterval: 0,
           reconnect: false,
-        }),
+        })
       ).rejects.toThrow(VoiceError);
 
       expect((mockClient as any).reconnectSession).not.toHaveBeenCalled();
@@ -837,17 +938,19 @@ describe('VoiceService', () => {
       });
       (mockClient as any).reconnectSession = jest.fn();
 
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, callbacks: any) => {
           process.nextTick(() => {
-            callbacks.onEndOfStream?.();
-            // Simulate ws.close() triggering 'close' event
-            mockWs.emit('close');
+            mockWs.emit('open');
+            process.nextTick(() => {
+              callbacks.onEndOfStream?.();
+              // Simulate ws.close() triggering 'close' event
+              mockWs.emit('close');
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const result = await service.translateFile(testFile, {
         targetLangs: ['de'],
@@ -866,26 +969,28 @@ describe('VoiceService', () => {
         token: 'token-1',
         session_id: 'session-reconnect-fail',
       });
-      (mockClient as any).reconnectSession = jest.fn().mockRejectedValue(
-        new VoiceError('Voice API access denied.'),
-      );
+      (mockClient as any).reconnectSession = jest
+        .fn()
+        .mockRejectedValue(new VoiceError('Voice API access denied.'));
 
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            mockWs.readyState = 3;
-            mockWs.emit('close');
+            mockWs.emit('open');
+            process.nextTick(() => {
+              mockWs.readyState = 3;
+              mockWs.emit('close');
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       await expect(
         service.translateFile(testFile, {
           targetLangs: ['de'],
           chunkInterval: 0,
-        }),
+        })
       ).rejects.toThrow(VoiceError);
     });
 
@@ -912,21 +1017,23 @@ describe('VoiceService', () => {
 
       let ws2Callbacks: any = null;
 
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, callbacks: any) => {
-        wsCallCount++;
-        if (wsCallCount === 1) {
-          process.nextTick(() => {
-            mockWs1.emit('open');
-          });
-          return mockWs1 as any;
-        } else {
-          ws2Callbacks = callbacks;
-          process.nextTick(() => {
-            mockWs2.emit('open');
-          });
-          return mockWs2 as any;
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, callbacks: any) => {
+          wsCallCount++;
+          if (wsCallCount === 1) {
+            process.nextTick(() => {
+              mockWs1.emit('open');
+            });
+            return mockWs1 as any;
+          } else {
+            ws2Callbacks = callbacks;
+            process.nextTick(() => {
+              mockWs2.emit('open');
+            });
+            return mockWs2 as any;
+          }
         }
-      });
+      );
 
       // Signal end-of-stream when sendEndOfSource is called, after all chunks
       // have been sent. Driving it off the call rather than polling keeps this
@@ -974,12 +1081,12 @@ describe('VoiceService', () => {
       await expect(
         service.translateStdin({
           targetLangs: ['de'],
-        }),
+        })
       ).rejects.toThrow(ValidationError);
       await expect(
         service.translateStdin({
           targetLangs: ['de'],
-        }),
+        })
       ).rejects.toThrow(/content type is required/i);
     });
 
@@ -988,7 +1095,7 @@ describe('VoiceService', () => {
         service.translateStdin({
           targetLangs: [],
           contentType: 'audio/mpeg',
-        }),
+        })
       ).rejects.toThrow(ValidationError);
     });
 
@@ -1002,16 +1109,18 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-stdin',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            mockStdin.write(Buffer.alloc(100));
-            mockStdin.end();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              mockStdin.write(Buffer.alloc(100));
+              mockStdin.end();
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const promise = service.translateStdin({
         targetLangs: ['de'],
@@ -1030,7 +1139,7 @@ describe('VoiceService', () => {
       expect(mockClient.createSession).toHaveBeenCalledWith(
         expect.objectContaining({
           source_media_content_type: 'audio/mpeg',
-        }),
+        })
       );
       expect(mockClient.sendAudioChunk).toHaveBeenCalled();
     });
@@ -1045,17 +1154,19 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-stdin-defaults',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            // Write more than default chunkSize (6400) to verify chunking
-            mockStdin.write(Buffer.alloc(7000));
-            mockStdin.end();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              // Write more than default chunkSize (6400) to verify chunking
+              mockStdin.write(Buffer.alloc(7000));
+              mockStdin.end();
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const promise = service.translateStdin({
         targetLangs: ['de'],
@@ -1086,21 +1197,23 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-large-stream',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            const totalSize = 65536;
-            const pushSize = 256;
-            for (let i = 0; i < totalSize / pushSize; i++) {
-              const buf = Buffer.alloc(pushSize, i & 0xff);
-              mockStdin.write(buf);
-            }
-            mockStdin.end();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              const totalSize = 65536;
+              const pushSize = 256;
+              for (let i = 0; i < totalSize / pushSize; i++) {
+                const buf = Buffer.alloc(pushSize, i & 0xff);
+                mockStdin.write(buf);
+              }
+              mockStdin.end();
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const chunkSize = 6400;
       const promise = service.translateStdin({
@@ -1143,16 +1256,18 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-exact-multiple',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            mockStdin.write(Buffer.alloc(12800));
-            mockStdin.end();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              mockStdin.write(Buffer.alloc(12800));
+              mockStdin.end();
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const chunkSize = 6400;
       const promise = service.translateStdin({
@@ -1194,19 +1309,21 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-single-byte',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            const totalBytes = 25;
-            for (let i = 0; i < totalBytes; i++) {
-              mockStdin.write(Buffer.from([i]));
-            }
-            mockStdin.end();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              const totalBytes = 25;
+              for (let i = 0; i < totalBytes; i++) {
+                mockStdin.write(Buffer.from([i]));
+              }
+              mockStdin.end();
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const chunkSize = 10;
       const promise = service.translateStdin({
@@ -1248,17 +1365,19 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-stdin-remainder',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            // Write less than one chunk to test remainder yielding (line 242-243)
-            mockStdin.write(Buffer.alloc(50));
-            mockStdin.end();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              // Write less than one chunk to test remainder yielding (line 242-243)
+              mockStdin.write(Buffer.alloc(50));
+              mockStdin.end();
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const promise = service.translateStdin({
         targetLangs: ['de'],
@@ -1289,15 +1408,17 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-empty-stdin',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            mockStdin.end();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              mockStdin.end();
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const promise = service.translateStdin({
         targetLangs: ['de'],
@@ -1327,21 +1448,23 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-large-stdin',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            // Write 256KB of data -- double the translate command's 128KB limit
-            const totalSize = 256 * 1024;
-            const pushSize = 4096;
-            for (let i = 0; i < totalSize / pushSize; i++) {
-              mockStdin.write(Buffer.alloc(pushSize, i & 0xff));
-            }
-            mockStdin.end();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              // Write 256KB of data -- double the translate command's 128KB limit
+              const totalSize = 256 * 1024;
+              const pushSize = 4096;
+              for (let i = 0; i < totalSize / pushSize; i++) {
+                mockStdin.write(Buffer.alloc(pushSize, i & 0xff));
+              }
+              mockStdin.end();
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const chunkSize = 6400;
       const promise = service.translateStdin({
@@ -1382,20 +1505,22 @@ describe('VoiceService', () => {
         token: 'token',
         session_id: 'session-accumulate',
       });
-      mockClient.createWebSocket.mockImplementation((_url: string, _token: string, _callbacks: any) => {
-        process.nextTick(() => {
-          mockWs.emit('open');
+      mockClient.createWebSocket.mockImplementation(
+        (_url: string, _token: string, _callbacks: any) => {
           process.nextTick(() => {
-            // Push 3 chunks of 40 bytes each (120 total) with chunkSize=100
-            // Should yield one 100-byte chunk + one 20-byte remainder
-            mockStdin.write(Buffer.alloc(40, 0xaa));
-            mockStdin.write(Buffer.alloc(40, 0xbb));
-            mockStdin.write(Buffer.alloc(40, 0xcc));
-            mockStdin.end();
+            mockWs.emit('open');
+            process.nextTick(() => {
+              // Push 3 chunks of 40 bytes each (120 total) with chunkSize=100
+              // Should yield one 100-byte chunk + one 20-byte remainder
+              mockStdin.write(Buffer.alloc(40, 0xaa));
+              mockStdin.write(Buffer.alloc(40, 0xbb));
+              mockStdin.write(Buffer.alloc(40, 0xcc));
+              mockStdin.end();
+            });
           });
-        });
-        return mockWs as any;
-      });
+          return mockWs as any;
+        }
+      );
 
       const chunkSize = 100;
       const promise = service.translateStdin({

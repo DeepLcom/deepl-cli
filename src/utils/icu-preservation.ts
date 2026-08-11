@@ -35,36 +35,52 @@ export interface IcuParseResult {
  * If parsing fails, returns the same (safe fallback — string passes through unchanged).
  */
 export function parseIcu(text: string): IcuParseResult {
-  const match = ICU_DETECT_RE.exec(text);
-  if (!match) {
+  if (!ICU_DETECT_RE.test(text)) {
     return { isIcu: false, segments: [], reassemble: () => text };
   }
 
   try {
-    const blockStart = match.index;
-    const result = parseIcuBlock(text, blockStart);
-    if (!result) {
-      return { isIcu: false, segments: [], reassemble: () => text };
-    }
-
-    // Text on either side of the block is ordinary prose and must be
-    // translated too — dropping it from the template silently deleted it.
-    const prefix = text.slice(0, blockStart);
-    // endIndex points AT the block's closing brace, which result.template
-    // already includes, so the suffix starts one past it.
-    const suffix = text.slice(result.endIndex + 1);
     const segments: IcuSegment[] = [];
     let template = '';
+    let pos = 0;
 
-    if (prefix !== '') {
-      template += `__ICU_LEAF_P__`;
-      segments.push({ text: prefix, isPluralBranch: false });
+    // Every block is protected, not just the first: a block left inside a prose
+    // segment would reach the engine as raw ICU syntax.
+    for (;;) {
+      const match = ICU_DETECT_RE.exec(text.slice(pos));
+      if (!match) break;
+
+      const blockStart = pos + match.index;
+      const block = parseIcuBlock(text, blockStart);
+      if (!block) {
+        // Documented safe fallback: a string holding a block that will not
+        // parse passes through untouched rather than partly protected.
+        return { isIcu: false, segments: [], reassemble: () => text };
+      }
+
+      // Text between blocks is ordinary prose and must be translated too.
+      const prose = text.slice(pos, blockStart);
+      if (prose !== '') {
+        template += `__ICU_LEAF_${segments.length}__`;
+        segments.push({ text: prose, isPluralBranch: false });
+      }
+
+      template += reindexLeaves(
+        block.template,
+        block.segments,
+        segments.length
+      );
+      segments.push(...block.segments);
+
+      // endIndex points AT the block's closing brace, which block.template
+      // already includes, so the next scan starts one past it.
+      pos = block.endIndex + 1;
     }
-    template += result.template;
-    segments.push(...result.segments);
-    if (suffix !== '') {
-      template += `__ICU_LEAF_S__`;
-      segments.push({ text: suffix, isPluralBranch: false });
+
+    const tail = text.slice(pos);
+    if (tail !== '') {
+      template += `__ICU_LEAF_${segments.length}__`;
+      segments.push({ text: tail, isPluralBranch: false });
     }
 
     return {
@@ -72,19 +88,39 @@ export function parseIcu(text: string): IcuParseResult {
       segments,
       reassemble: (translations: string[]) => {
         if (translations.length !== segments.length) {
-          // Filling missing values with '' produced empty plural branches,
-          // which render nothing for that category.
+          // Filling the missing values with '' would produce empty plural
+          // branches, which render nothing for that category.
           throw new Error(
-            `ICU reassemble expected ${segments.length} translations, received ${translations.length}`,
+            `ICU reassemble expected ${segments.length} translations, received ${translations.length}`
           );
         }
-        let idx = 0;
-        return template.replace(/__ICU_LEAF_(?:\d+|P|S)__/g, () => translations[idx++] ?? '');
+        return template.replace(
+          /__ICU_LEAF_(\d+)__/g,
+          (_, index: string) => translations[Number(index)] ?? ''
+        );
       },
     };
   } catch {
     return { isIcu: false, segments: [], reassemble: () => text };
   }
+}
+
+/**
+ * Shifts a sub-template's leaf references by `offset` so they index the combined
+ * segment list. Descending order keeps a rewritten reference from being rewritten
+ * again by a lower index.
+ */
+function reindexLeaves(
+  template: string,
+  segments: IcuSegment[],
+  offset: number
+): string {
+  if (offset === 0) return template;
+  let out = template;
+  for (let j = segments.length - 1; j >= 0; j--) {
+    out = out.replace(`__ICU_LEAF_${j}__`, `__ICU_LEAF_${offset + j}__`);
+  }
+  return out;
 }
 
 interface ParseBlockResult {
@@ -95,7 +131,11 @@ interface ParseBlockResult {
 
 const OFFSET_RE = /^offset\s*:\s*\d+/;
 
-function parseIcuBlock(text: string, start: number, inPluralContext = false): ParseBlockResult | null {
+function parseIcuBlock(
+  text: string,
+  start: number,
+  inPluralContext = false
+): ParseBlockResult | null {
   let i = start;
 
   // Skip leading whitespace
@@ -174,7 +214,11 @@ function parseIcuBlock(text: string, start: number, inPluralContext = false): Pa
     i = branchContent.endIndex + 1;
 
     // Check if branch content itself contains nested ICU
-    const nestedResult = tryParseNestedContent(content, pluralContext, segments);
+    const nestedResult = tryParseNestedContent(
+      content,
+      pluralContext,
+      segments
+    );
     const leafIndex = segments.length;
 
     if (nestedResult) {
@@ -192,29 +236,26 @@ function parseIcuBlock(text: string, start: number, inPluralContext = false): Pa
 function tryParseNestedContent(
   content: string,
   inPluralContext: boolean,
-  segments: IcuSegment[],
+  segments: IcuSegment[]
 ): { template: string } | null {
-  // Check if content contains a nested ICU block
-  // e.g., "{gender, select, male {He has # items} female {She has # items}}"
-  // Content might be mixed: "text before {var, plural, ...} text after"
-
-  // For MVP: only handle content that IS a full ICU block (starts with {var, keyword, ...})
+  // Only content that IS a full ICU block nests, e.g.
+  // "{gender, select, male {He has # items} female {She has # items}}".
+  // Mixed content — "text before {var, plural, ...} text after" — stays a leaf.
   const trimmed = content.trim();
   if (!ICU_DETECT_RE.test(trimmed)) return null;
 
   const nested = parseIcuBlock(trimmed, 0, inPluralContext);
   if (!nested || nested.endIndex < trimmed.length - 1) return null;
 
+  const reindexed = reindexLeaves(
+    nested.template,
+    nested.segments,
+    segments.length
+  );
+
   // Merge nested segments into parent segments array
-  const baseIndex = segments.length;
   for (const seg of nested.segments) {
     segments.push(seg);
-  }
-
-  // Reindex the nested template's leaf references
-  let reindexed = nested.template;
-  for (let j = nested.segments.length - 1; j >= 0; j--) {
-    reindexed = reindexed.replace(`__ICU_LEAF_${j}__`, `__ICU_LEAF_${baseIndex + j}__`);
   }
 
   return { template: reindexed };
@@ -229,7 +270,7 @@ function tryParseNestedContent(
 function extractBraceContent(
   text: string,
   start: number,
-  inPluralContext: boolean,
+  inPluralContext: boolean
 ): { content: string; endIndex: number } | null {
   if (text[start] !== '{') return null;
 

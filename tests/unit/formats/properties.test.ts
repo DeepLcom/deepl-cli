@@ -15,15 +15,15 @@ describe('PropertiesFormatParser', () => {
       const content = 'greeting=Hello\nfarewell=Goodbye\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
-      expect(entries.find(e => e.key === 'farewell')!.value).toBe('Goodbye');
-      expect(entries.find(e => e.key === 'greeting')!.value).toBe('Hello');
+      expect(entries.find((e) => e.key === 'farewell')!.value).toBe('Goodbye');
+      expect(entries.find((e) => e.key === 'greeting')!.value).toBe('Hello');
     });
 
     it('should handle key: value separator', () => {
       const content = 'greeting: Hello\nfarewell: Goodbye\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
-      expect(entries.find(e => e.key === 'farewell')!.value).toBe('Goodbye');
+      expect(entries.find((e) => e.key === 'farewell')!.value).toBe('Goodbye');
     });
 
     it('should handle spaces around separator', () => {
@@ -34,7 +34,8 @@ describe('PropertiesFormatParser', () => {
     });
 
     it('should skip comment lines', () => {
-      const content = '# This is a comment\ngreeting=Hello\n! Another comment\nfarewell=Goodbye\n';
+      const content =
+        '# This is a comment\ngreeting=Hello\n! Another comment\nfarewell=Goodbye\n';
       const entries = parser.extract(content);
       expect(entries).toHaveLength(2);
     });
@@ -95,6 +96,42 @@ describe('PropertiesFormatParser', () => {
       expect(result).not.toContain('farewell');
     });
 
+    it('should write a key with no line, keeping the trailing newline', () => {
+      const result = parser.reconstruct('greeting=Hello\n', [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        { key: 'added', value: 'Goodbye', translation: 'Tschuess' },
+      ]);
+      expect(result).toBe('greeting=Hallo\nadded=Tschuess\n');
+    });
+
+    it('should write a key with no line into a file with no trailing newline', () => {
+      const result = parser.reconstruct('greeting=Hello', [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        { key: 'added', value: 'Goodbye', translation: 'Tschuess' },
+      ]);
+      expect(result).toBe('greeting=Hallo\nadded=Tschuess');
+    });
+
+    it('should keep a dangling comment above a written key', () => {
+      const result = parser.reconstruct('# Header\n', [
+        { key: 'added', value: 'Goodbye', translation: 'Tschuess' },
+      ]);
+      expect(result).toBe('# Header\nadded=Tschuess\n');
+    });
+
+    it('should escape a written value the way an in-place one is escaped', () => {
+      const result = parser.reconstruct('greeting=Hello\n', [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo' },
+        { key: 'added', value: 'x', translation: 'line\tone\\two' },
+      ]);
+      expect(result).toContain('added=line\\tone\\\\two');
+      expect(
+        new Map(parser.extract(result).map((e) => [e.key, e.value])).get(
+          'added'
+        )
+      ).toBe('line\tone\\two');
+    });
+
     it('should preserve comments for kept keys', () => {
       const content = '# Welcome\ngreeting=Hello\n';
       const entries: TranslatedEntry[] = [
@@ -132,7 +169,7 @@ describe('PropertiesFormatParser', () => {
       const result = parser.reconstruct(content, entries);
       expect(result).toContain('greeting=Hallo Welt');
       const lines = result.split('\n');
-      const greetingLine = lines.find(l => l.startsWith('greeting='));
+      const greetingLine = lines.find((l) => l.startsWith('greeting='));
       expect(greetingLine).toBe('greeting=Hallo Welt');
     });
 
@@ -197,7 +234,11 @@ describe('PropertiesFormatParser', () => {
     it('should handle line continuations in reconstruct', () => {
       const content = 'long=This is \\\n    a continued \\\n    line\n';
       const entries: TranslatedEntry[] = [
-        { key: 'long', value: 'This is a continued line', translation: 'Translated' },
+        {
+          key: 'long',
+          value: 'This is a continued line',
+          translation: 'Translated',
+        },
       ];
       const result = parser.reconstruct(content, entries);
       expect(result).toContain('long=Translated');
@@ -290,6 +331,69 @@ describe('PropertiesFormatParser', () => {
     });
   });
 
+  describe('escaped trailing backslash is not a line continuation', () => {
+    // The writer escapes a literal trailing backslash as `\\`, which the
+    // continuation test read as "this line continues" — swallowing the next
+    // entry and appending its raw `key=value` text to the previous value.
+    it('should not treat an even-length trailing backslash run as a continuation', () => {
+      const entries = parser.extract('greeting=Hallo\\\\\nnext=KEEPME\n');
+
+      expect(entries.map((e) => e.key)).toEqual(['greeting', 'next']);
+      expect(entries[0]!.value).toBe('Hallo\\');
+      expect(entries[1]!.value).toBe('KEEPME');
+    });
+
+    it('should still honour an odd-length trailing backslash run', () => {
+      const entries = parser.extract('greeting=Hallo\\\\\\\n  more\n');
+
+      expect(entries).toHaveLength(1);
+      expect(entries[0]!.value).toBe('Hallo\\more');
+    });
+
+    it('should still honour a single trailing backslash', () => {
+      const entries = parser.extract('greeting=Hallo\\\n  world\n');
+
+      expect(entries).toHaveLength(1);
+      expect(entries[0]!.value).toBe('Halloworld');
+    });
+
+    it.each([
+      ['x\\', 'x\\'],
+      ['\\', '\\'],
+      ['a\\b\\', 'a\\b\\'],
+      ['C:\\', 'C:\\'],
+      ['a\\\\b', 'a\\\\b'],
+    ])(
+      'should round-trip the value %j through reconstruct and back',
+      (value, expected) => {
+        const source = 'k=placeholder\nnext=KEEPME\n';
+        const written = parser.reconstruct(source, [
+          { key: 'k', value: 'placeholder', translation: value },
+          { key: 'next', value: 'KEEPME', translation: 'KEEPME' },
+        ]);
+        const back = parser.extract(written);
+
+        expect(back.find((e) => e.key === 'k')!.value).toBe(expected);
+        expect(back.find((e) => e.key === 'next')).toBeDefined();
+      }
+    );
+
+    it('should not swallow the following entry during reconstruct either', () => {
+      const source = 'greeting=Hello\napi_key=SECRET_VALUE\nfooter=Bye\n';
+      const written = parser.reconstruct(source, [
+        { key: 'greeting', value: 'Hello', translation: 'Hallo\\' },
+        { key: 'api_key', value: 'SECRET_VALUE', translation: 'SECRET_VALUE' },
+        { key: 'footer', value: 'Bye', translation: 'Bye' },
+      ]);
+
+      expect(written).toContain('api_key=SECRET_VALUE');
+      const back = parser.extract(written);
+      expect(back.map((e) => e.key)).toEqual(['greeting', 'api_key', 'footer']);
+      expect(back[0]!.value).toBe('Hallo\\');
+      expect(back[0]!.value).not.toContain('SECRET_VALUE');
+    });
+  });
+
   describe('escapeValue()', () => {
     it('should escape \\r in output', () => {
       const content = 'key=Hello\n';
@@ -326,5 +430,53 @@ describe('PropertiesFormatParser', () => {
       const result = parser.reconstruct(content, entries);
       expect(result).toContain('back\\\\slash');
     });
+  });
+});
+
+describe('PropertiesFormatParser — a key containing an escaped separator', () => {
+  // `escapeKey` escapes `=`, `:`, space and backslash when writing a key, but
+  // ENTRY_RE's key part excluded `=` and `:` outright — so the parser could not
+  // read back a key it had just written. `greeting\:formal=Hello` split at the
+  // escaped colon, making the key `greeting\` and the value `formal=Hello`: half
+  // the key was sent for translation as the value, and the real key never
+  // reached the target file.
+  it('reads a key whose colon is escaped', () => {
+    const entries = parser.extract('greeting\\:formal=Hello\n');
+    expect(entries).toEqual([{ key: 'greeting:formal', value: 'Hello' }]);
+  });
+
+  it('reads a key whose equals sign is escaped', () => {
+    const entries = parser.extract('a\\=b=Hello\n');
+    expect(entries).toEqual([{ key: 'a=b', value: 'Hello' }]);
+  });
+
+  it('reads a key whose space is escaped', () => {
+    const entries = parser.extract('with\\ space=Hello\n');
+    expect(entries).toEqual([{ key: 'with space', value: 'Hello' }]);
+  });
+
+  it('round-trips a key containing a separator character', () => {
+    const written = parser.reconstruct('', [
+      { key: 'greeting:formal', value: 'Hello', translation: 'Buenos días' },
+    ]);
+    expect(parser.extract(written)).toEqual([
+      { key: 'greeting:formal', value: 'Buenos días' },
+    ]);
+  });
+
+  it('rewrites the translation of an escaped-separator key in place', () => {
+    const written = parser.reconstruct('greeting\\:formal=Hello\n', [
+      { key: 'greeting:formal', value: 'Hello', translation: 'Buenos dias' },
+    ]);
+    // The key keeps its own bytes; only the value is replaced.
+    expect(written).toContain('greeting\\:formal=Buenos dias');
+    expect(parser.extract(written)).toEqual([
+      { key: 'greeting:formal', value: 'Buenos dias' },
+    ]);
+  });
+
+  it('still splits an ordinary key at its first separator', () => {
+    expect(parser.extract('a.b=x=y\n')).toEqual([{ key: 'a.b', value: 'x=y' }]);
+    expect(parser.extract('a.b:x:y\n')).toEqual([{ key: 'a.b', value: 'x:y' }]);
   });
 });

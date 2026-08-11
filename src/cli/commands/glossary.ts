@@ -5,7 +5,14 @@
 
 import * as fs from 'fs';
 import { GlossaryService } from '../../services/glossary.js';
-import { GlossaryInfo, GlossaryLanguagePair, Language, getTargetLang, getTotalEntryCount, isMultilingual } from '../../types/index.js';
+import {
+  GlossaryInfo,
+  GlossaryLanguagePair,
+  Language,
+  getTargetLang,
+  getTotalEntryCount,
+  isMultilingual,
+} from '../../types/index.js';
 import { safeReadFileSync } from '../../utils/safe-read-file.js';
 import { sanitizeForTerminal } from '../../utils/control-chars.js';
 import { ValidationError, ConfigError } from '../../utils/errors.js';
@@ -50,11 +57,9 @@ export class GlossaryCommand {
    * Show glossary details
    */
   async show(nameOrId: string): Promise<GlossaryInfo> {
-    // Try to get by ID first
     try {
       return await this.glossaryService.getGlossary(nameOrId);
     } catch {
-      // If failed, try by name
       const glossary = await this.glossaryService.getGlossaryByName(nameOrId);
       if (!glossary) {
         throw new ConfigError(`Glossary not found: ${nameOrId}`);
@@ -67,7 +72,6 @@ export class GlossaryCommand {
    * Delete glossary
    */
   async delete(nameOrId: string): Promise<void> {
-    // Try to get glossary first to find ID
     const glossary = await this.show(nameOrId);
     await this.glossaryService.deleteGlossary(glossary.glossary_id);
   }
@@ -75,9 +79,11 @@ export class GlossaryCommand {
   /**
    * Get glossary entries (v3 API - requires target lang for multilingual glossaries)
    */
-  async entries(nameOrId: string, targetLang?: Language): Promise<Record<string, string>> {
+  async entries(
+    nameOrId: string,
+    targetLang?: Language
+  ): Promise<Record<string, string>> {
     const glossary = await this.show(nameOrId);
-    // Get target language (will throw if glossary is multilingual and targetLang not provided)
     const target = getTargetLang(glossary, targetLang);
     return this.glossaryService.getGlossaryEntries(
       glossary.glossary_id,
@@ -103,7 +109,6 @@ export class GlossaryCommand {
     targetLang?: Language
   ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    // Get target language (will throw if glossary is multilingual and targetLang not provided)
     const target = getTargetLang(glossary, targetLang);
     await this.glossaryService.addEntry(
       glossary.glossary_id,
@@ -124,7 +129,6 @@ export class GlossaryCommand {
     targetLang?: Language
   ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    // Get target language (will throw if glossary is multilingual and targetLang not provided)
     const target = getTargetLang(glossary, targetLang);
     await this.glossaryService.updateEntry(
       glossary.glossary_id,
@@ -144,7 +148,6 @@ export class GlossaryCommand {
     targetLang?: Language
   ): Promise<void> {
     const glossary = await this.show(nameOrId);
-    // Get target language (will throw if glossary is multilingual and targetLang not provided)
     const target = getTargetLang(glossary, targetLang);
     await this.glossaryService.removeEntry(
       glossary.glossary_id,
@@ -170,7 +173,7 @@ export class GlossaryCommand {
     const glossary = await this.show(nameOrId);
     await this.glossaryService.updateGlossary(glossary.glossary_id, {
       name: options.name,
-      dictionaries: options.dictionaries?.map(dict => ({
+      dictionaries: options.dictionaries?.map((dict) => ({
         sourceLang: glossary.source_lang,
         targetLang: dict.targetLang,
         entries: dict.entries,
@@ -181,10 +184,7 @@ export class GlossaryCommand {
   /**
    * Rename a glossary (v3 API - uses PATCH)
    */
-  async rename(
-    nameOrId: string,
-    newName: string
-  ): Promise<void> {
+  async rename(nameOrId: string, newName: string): Promise<void> {
     const glossary = await this.show(nameOrId);
     await this.glossaryService.renameGlossary(glossary.glossary_id, newName);
   }
@@ -241,8 +241,8 @@ export class GlossaryCommand {
     const lines = [
       `Name: ${sanitizeForTerminal(glossary.name)}`,
       `ID: ${glossary.glossary_id}`,
-      `Source language: ${glossary.source_lang.toUpperCase()}`,
-      `Target languages: ${glossary.target_langs.map(l => l.toUpperCase()).join(', ')}`,
+      `Source language: ${glossary.source_lang}`,
+      `Target languages: ${glossary.target_langs.join(', ')}`,
       `Type: ${multilingual ? 'Multilingual' : 'Single target'}`,
       `Total entries: ${totalEntries}`,
       `Created: ${createdStr}`,
@@ -250,8 +250,12 @@ export class GlossaryCommand {
 
     if (multilingual) {
       lines.push('\nLanguage pairs:');
-      glossary.dictionaries.forEach(dict => {
-        lines.push(`  ${dict.source_lang.toUpperCase()} → ${dict.target_lang.toUpperCase()}: ${dict.entry_count} entries`);
+      glossary.dictionaries.forEach((dict) => {
+        // Lowercased like the summary above; normalizeGlossaryInfo only touches
+        // the top-level fields.
+        lines.push(
+          `  ${dict.source_lang.toLowerCase()} → ${dict.target_lang.toLowerCase()}: ${dict.entry_count} entries`
+        );
       });
     }
 
@@ -266,11 +270,12 @@ export class GlossaryCommand {
       return 'No glossaries found';
     }
 
-    const lines = glossaries.map(g => {
+    const lines = glossaries.map((g) => {
       const totalEntries = getTotalEntryCount(g);
-      const targetStr = g.target_langs.length === 1
-        ? g.target_langs[0]
-        : `${g.target_langs.length} targets`;
+      const targetStr =
+        g.target_langs.length === 1
+          ? g.target_langs[0]
+          : `${g.target_langs.length} targets`;
       const icon = isMultilingual(g) ? '📚' : '📖';
       return `${icon} ${sanitizeForTerminal(g.name)} (${g.source_lang}→${targetStr}) - ${totalEntries} entries`;
     });

@@ -8,7 +8,11 @@ import { spawn, spawnSync, ChildProcess, execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import nock from 'nock';
-import { assertErrorEnvelope, createTestConfigDir, createTestDir } from '../helpers';
+import {
+  assertErrorEnvelope,
+  createTestConfigDir,
+  createTestDir,
+} from '../helpers';
 
 const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
 
@@ -39,7 +43,10 @@ describe('CLI Sync E2E', () => {
 
       child.stderr.on('data', (data: Buffer) => {
         const msg = data.toString();
-        if (!msg.includes('ExperimentalWarning') && !msg.includes('--experimental')) {
+        if (
+          !msg.includes('ExperimentalWarning') &&
+          !msg.includes('--experimental')
+        ) {
           process.stderr.write(`[mock-server stderr] ${msg}`);
         }
       });
@@ -51,7 +58,10 @@ describe('CLI Sync E2E', () => {
         }
       });
 
-      setTimeout(() => reject(new Error('Mock server did not start within 15s')), 15000);
+      setTimeout(
+        () => reject(new Error('Mock server did not start within 15s')),
+        15000
+      );
     });
   }
 
@@ -68,30 +78,44 @@ describe('CLI Sync E2E', () => {
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
     };
-    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(configDir, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
   }
 
-  function writeSyncConfig(projectDir: string, locales: string[] = ['de']): void {
-    const yaml = [
-      'version: 1',
-      'source_locale: en',
-      'target_locales:',
-      ...locales.map(l => `  - ${l}`),
-      'buckets:',
-      '  json:',
-      '    include:',
-      '      - "locales/en.json"',
-    ].join('\n') + '\n';
+  function writeSyncConfig(
+    projectDir: string,
+    locales: string[] = ['de']
+  ): void {
+    const yaml =
+      [
+        'version: 1',
+        'source_locale: en',
+        'target_locales:',
+        ...locales.map((l) => `  - ${l}`),
+        'buckets:',
+        '  json:',
+        '    include:',
+        '      - "locales/en.json"',
+      ].join('\n') + '\n';
     fs.writeFileSync(path.join(projectDir, '.deepl-sync.yaml'), yaml);
   }
 
   function writeSourceFile(projectDir: string): void {
     const dir = path.join(projectDir, 'locales');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'en.json'), JSON.stringify({
-      greeting: 'Hello',
-      farewell: 'Goodbye',
-    }, null, 2) + '\n');
+    fs.writeFileSync(
+      path.join(dir, 'en.json'),
+      JSON.stringify(
+        {
+          greeting: 'Hello',
+          farewell: 'Goodbye',
+        },
+        null,
+        2
+      ) + '\n'
+    );
   }
 
   function buildEnv(): Record<string, string | undefined> {
@@ -128,7 +152,30 @@ describe('CLI Sync E2E', () => {
     });
   }
 
-  function runSyncExpectError(args: string = ''): { status: number; output: string } {
+  /**
+   * Machine-readable output only, taken from stdout alone.
+   *
+   * `runSyncAll` merges stderr so its callers can assert on warnings, but a JSON
+   * parse cannot survive anything else written to that stream: one
+   * `ExperimentalWarning` from the Node runtime is enough to turn the output into
+   * `(node:1234) ...{...}` and fail at the first token.
+   */
+  function runSyncJson<T>(args: string = ''): T {
+    const stdout = execSync(`node ${CLI_PATH} sync ${args}`, {
+      encoding: 'utf-8',
+      shell: '/bin/sh',
+      cwd: testFiles.path,
+      env: buildEnv(),
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 15000,
+    });
+    return JSON.parse(stdout) as T;
+  }
+
+  function runSyncExpectError(args: string = ''): {
+    status: number;
+    output: string;
+  } {
     try {
       const output = execSync(`node ${CLI_PATH} sync ${args} 2>&1`, {
         encoding: 'utf-8',
@@ -139,10 +186,15 @@ describe('CLI Sync E2E', () => {
       });
       return { status: 0, output };
     } catch (error: unknown) {
-      const err = error as { status?: number; stderr?: string; stdout?: string };
+      const err = error as {
+        status?: number;
+        stderr?: string;
+        stdout?: string;
+      };
       return {
+        status: err.status ?? 1,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- intentional: empty stderr should fall through to stdout
-        status: err.status ?? 1, output: err.stderr?.toString() || err.stdout?.toString() || '',
+        output: err.stderr?.toString() || err.stdout?.toString() || '',
       };
     }
   }
@@ -169,6 +221,10 @@ describe('CLI Sync E2E', () => {
     if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
     const syncConfig = path.join(testFiles.path, '.deepl-sync.yaml');
     if (fs.existsSync(syncConfig)) fs.unlinkSync(syncConfig);
+    // A pidfile left behind by a test that failed part-way through would make
+    // every following `sync` in this file exit 7 on the process lock.
+    const pidFile = path.join(testFiles.path, '.deepl-sync.lock.pidfile');
+    if (fs.existsSync(pidFile)) fs.unlinkSync(pidFile);
   });
 
   afterAll(() => {
@@ -205,6 +261,35 @@ describe('CLI Sync E2E', () => {
       expect(parsed['farewell']).toBeDefined();
     });
 
+    it('should carry an empty source value into the target rather than dropping the key', () => {
+      writeSyncConfig(testFiles.path, ['de']);
+      const dir = path.join(testFiles.path, 'locales');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, 'en.json'),
+        JSON.stringify(
+          { title: 'Hello world', placeholder: '', footer: 'Goodbye' },
+          null,
+          2
+        ) + '\n'
+      );
+
+      const first = runSyncExpectError();
+
+      expect(first.status).toBe(0);
+      expect(first.output).toContain('3/3 keys');
+      const parsed = JSON.parse(
+        fs.readFileSync(path.join(dir, 'de.json'), 'utf-8')
+      ) as Record<string, string>;
+      expect(parsed['placeholder']).toBe('');
+      expect(Object.keys(parsed)).toHaveLength(3);
+
+      // The empty key is settled, not queued for a retry that can never succeed.
+      const second = runSyncExpectError();
+      expect(second.status).toBe(0);
+      expect(second.output).toContain('3 current');
+    });
+
     it('should show dry-run preview without creating files', () => {
       writeSyncConfig(testFiles.path, ['de']);
       writeSourceFile(testFiles.path);
@@ -214,6 +299,166 @@ describe('CLI Sync E2E', () => {
       expect(output.toLowerCase()).toContain('dry-run');
       const targetFile = path.join(testFiles.path, 'locales', 'de.json');
       expect(fs.existsSync(targetFile)).toBe(false);
+    });
+  });
+
+  // Recovering from a crash means re-running sync, and the startup sweep used
+  // to delete the crashed run's backup on age before that run's own
+  // COPYFILE_EXCL guard could protect it.
+  describe('recovery run over a backup left by a crashed run', () => {
+    it('keeps a stale backup whose target has diverged and says so', () => {
+      writeSyncConfig(testFiles.path, ['de']);
+      const dir = path.join(testFiles.path, 'locales');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, 'en.json'),
+        JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
+      );
+      // What a `kill -9` mid-sync leaves behind: machine output in the target,
+      // the only copy of the human translations in the backup, no lockfile.
+      fs.writeFileSync(
+        path.join(dir, 'de.json'),
+        JSON.stringify({ greeting: 'machine output' }, null, 2) + '\n'
+      );
+      const bakPath = path.join(dir, 'de.json.deepl.bak');
+      fs.writeFileSync(
+        bakPath,
+        JSON.stringify({ greeting: 'Guten Tag' }, null, 2) + '\n'
+      );
+      const anHourAgo = new Date(Date.now() - 60 * 60_000);
+      fs.utimesSync(bakPath, anHourAgo, anHourAgo);
+
+      const result = runSyncExpectError('--yes');
+
+      expect(result.status).toBe(0);
+      expect(result.output).toContain('de.json.deepl.bak');
+      expect(result.output).toMatch(/from a run that did not finish/);
+      expect(fs.existsSync(bakPath)).toBe(true);
+      const parsed = JSON.parse(fs.readFileSync(bakPath, 'utf-8')) as Record<
+        string,
+        string
+      >;
+      expect(parsed['greeting']).toBe('Guten Tag');
+    });
+  });
+
+  // A key colliding with an Object.prototype member reaches the insertion path
+  // the second time round: the target file already exists, so a key the source
+  // has just gained has to be added to it.
+  describe('an .arb key named like an Object.prototype member', () => {
+    const sourcePath = () => path.join(testFiles.path, 'locales', 'app_en.arb');
+    const targetPath = () => path.join(testFiles.path, 'locales', 'app_de.arb');
+
+    function writeArbConfig(): void {
+      const yaml =
+        [
+          'version: 1',
+          'source_locale: en',
+          'target_locales:',
+          '  - de',
+          'buckets:',
+          '  arb:',
+          '    include:',
+          '      - "locales/app_en.arb"',
+        ].join('\n') + '\n';
+      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.yaml'), yaml);
+    }
+
+    function writeSource(keys: Record<string, string>): void {
+      fs.mkdirSync(path.join(testFiles.path, 'locales'), { recursive: true });
+      fs.writeFileSync(sourcePath(), JSON.stringify(keys, null, 2) + '\n');
+    }
+
+    it('should write a key the source gained into the existing target', () => {
+      writeArbConfig();
+      writeSource({ greeting: 'Hello' });
+      runSyncAll();
+
+      writeSource({
+        greeting: 'Hello',
+        toString: 'Convert to text',
+        hasOwnProperty: 'Check the property',
+        plainNewKey: 'A plain new key',
+      });
+      const output = runSyncAll();
+
+      expect(output).toContain('Sync complete');
+      const written = JSON.parse(
+        fs.readFileSync(targetPath(), 'utf-8')
+      ) as Record<string, unknown>;
+      expect(Object.hasOwn(written, 'toString')).toBe(true);
+      expect(Object.hasOwn(written, 'hasOwnProperty')).toBe(true);
+      expect(Object.hasOwn(written, 'plainNewKey')).toBe(true);
+    });
+  });
+
+  describe('a lock file the repository controls', () => {
+    const lockPath = () => path.join(testFiles.path, '.deepl-sync.lock');
+
+    function syncWithLock(lock: string): string {
+      writeSyncConfig(testFiles.path, ['de']);
+      writeSourceFile(testFiles.path);
+      fs.writeFileSync(lockPath(), lock);
+      return runSyncAll();
+    }
+
+    it('should not crash after billing when stats is missing', () => {
+      const output = syncWithLock(
+        '{"version":1,"source_locale":"en","entries":{}}'
+      );
+
+      expect(output).not.toContain('Cannot set properties of undefined');
+      expect(output).toContain('Sync complete');
+      const written = JSON.parse(fs.readFileSync(lockPath(), 'utf-8')) as {
+        stats: { total_keys: number };
+      };
+      expect(written.stats.total_keys).toBe(2);
+    });
+
+    it('should drop an entry with no translations container and record the run', () => {
+      const output = syncWithLock(
+        JSON.stringify({
+          version: 1,
+          source_locale: 'en',
+          entries: {
+            'locales/en.json': {
+              greeting: { source_hash: '185f8db32271', source_text: 'Hello' },
+            },
+          },
+          stats: { total_keys: 1, total_translations: 1, last_sync: 'x' },
+        })
+      );
+
+      expect(output).not.toContain('Cannot read properties of undefined');
+      expect(output).toContain('malformed');
+      const written = JSON.parse(fs.readFileSync(lockPath(), 'utf-8')) as {
+        entries: Record<string, Record<string, unknown>>;
+      };
+      expect(Object.keys(written.entries['locales/en.json']!)).toContain(
+        'greeting'
+      );
+    });
+
+    it('should not leave a per-file map that is a string unrecorded', () => {
+      const output = syncWithLock(
+        '{"version":1,"source_locale":"en","entries":{"locales/en.json":"pwn"},"stats":{"total_keys":0,"total_translations":0,"last_sync":"x"}}'
+      );
+
+      expect(output).not.toContain('Cannot delete property');
+      expect(output).toContain('Sync complete');
+    });
+
+    it('should record entries when the lock file arrives with entries as an array', () => {
+      const output = syncWithLock(
+        '{"version":1,"source_locale":"en","entries":[],"stats":{"total_keys":0,"total_translations":0,"last_sync":"x"}}'
+      );
+
+      expect(output).toContain('performing full sync');
+      const written = JSON.parse(fs.readFileSync(lockPath(), 'utf-8')) as {
+        entries: Record<string, Record<string, unknown>>;
+      };
+      expect(Array.isArray(written.entries)).toBe(false);
+      expect(Object.keys(written.entries['locales/en.json']!)).toHaveLength(2);
     });
   });
 
@@ -244,7 +489,9 @@ describe('CLI Sync E2E', () => {
 
       const output = runSyncAll('--format json');
       // Extract the final pretty-printed JSON result (identified by the stable "ok" field)
-      const resultMatch = output.match(/\{[^{}]*"ok"[\s\S]*\}(?![\s\S]*\{[^{}]*"ok")/);
+      const resultMatch = output.match(
+        /\{[^{}]*"ok"[\s\S]*\}(?![\s\S]*\{[^{}]*"ok")/
+      );
       expect(resultMatch).not.toBeNull();
       const parsed = JSON.parse(resultMatch![0]) as Record<string, unknown>;
       expect(parsed).toHaveProperty('ok');
@@ -258,10 +505,12 @@ describe('CLI Sync E2E', () => {
     it('should fail without config file', () => {
       const result = runSyncExpectError();
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output.toLowerCase()).toMatch(/config|\.deepl-sync\.yaml|init/);
+      expect(result.output.toLowerCase()).toMatch(
+        /config|\.deepl-sync\.yaml|init/
+      );
     });
 
-    it('emits a parseable JSON error envelope to stderr when --format json and config is missing', () => {
+    it('emits a parseable JSON error envelope when --format json and config is missing', () => {
       const result = runSyncExpectError('--format json');
 
       expect(result.status).toBe(7);
@@ -294,7 +543,9 @@ describe('CLI Sync E2E', () => {
       const targetFile = path.join(testFiles.path, 'locales', 'de.json');
       expect(fs.existsSync(targetFile)).toBe(true);
 
-      const output = runSyncAll('--force');
+      // --yes is required: execSync gives the CLI no TTY, and --force refuses
+      // rather than assuming confirmation when it cannot prompt.
+      const output = runSyncAll('--force --yes');
       expect(output).toBeDefined();
       expect(fs.existsSync(targetFile)).toBe(true);
     });
@@ -321,6 +572,75 @@ describe('CLI Sync E2E', () => {
       expect(output).toContain('de');
       expect(output).toMatch(/\d+\s*keys/);
     });
+
+    // A target file that has lost translations the lockfile calls translated
+    // used to report 100% complete at exit 0 on every surface.
+    describe('a target file the lockfile over-reports', () => {
+      function damageTarget(): void {
+        writeSyncConfig(testFiles.path, ['de']);
+        writeSourceFile(testFiles.path);
+        runSyncAll('--yes');
+        const targetPath = path.join(testFiles.path, 'locales', 'de.json');
+        const parsed = JSON.parse(
+          fs.readFileSync(targetPath, 'utf-8')
+        ) as Record<string, string>;
+        delete parsed['farewell'];
+        fs.writeFileSync(targetPath, JSON.stringify(parsed, null, 2) + '\n');
+      }
+
+      it('names the count and the file in status', () => {
+        damageTarget();
+
+        const output = runSyncAll('status');
+
+        expect(output).toContain('1 unwritten');
+        expect(output).toContain('locales/de.json');
+        expect(output).toMatch(/recorded as translated/);
+        expect(output).not.toContain('100%');
+      });
+
+      it('carries the count in --format json', () => {
+        damageTarget();
+
+        const parsed = runSyncJson<{
+          locales: { locale: string; unwritten: number; complete: number }[];
+          unwrittenByLocale: { locale: string; file: string; keys: string[] }[];
+        }>('status --format json');
+
+        expect(parsed.locales[0]?.unwritten).toBe(1);
+        expect(parsed.unwrittenByLocale).toEqual([
+          { locale: 'de', file: 'locales/de.json', keys: ['farewell'] },
+        ]);
+      });
+
+      it('is drift for --frozen, at exit 10', () => {
+        damageTarget();
+
+        const result = runSyncExpectError('--frozen');
+
+        expect(result.status).toBe(10);
+        expect(result.output).toContain('1 unwritten');
+        expect(result.output).toMatch(
+          /could not be confirmed in the target file/
+        );
+        expect(result.output).toContain('deepl sync status');
+      });
+
+      it('is repaired by the next sync', () => {
+        damageTarget();
+
+        const result = runSyncExpectError('--yes');
+
+        expect(result.status).toBe(0);
+        const parsed = JSON.parse(
+          fs.readFileSync(
+            path.join(testFiles.path, 'locales', 'de.json'),
+            'utf-8'
+          )
+        ) as Record<string, string>;
+        expect(parsed['farewell']).toBeDefined();
+      });
+    });
   });
 
   describe('subcommand: validate', () => {
@@ -330,7 +650,9 @@ describe('CLI Sync E2E', () => {
       runSyncAll();
 
       const output = runSyncAll('validate');
-      expect(output.toLowerCase()).toMatch(/checked|translation|validation|passed/);
+      expect(output.toLowerCase()).toMatch(
+        /checked|translation|validation|passed/
+      );
     });
   });
 
@@ -338,7 +660,9 @@ describe('CLI Sync E2E', () => {
     it('should generate working config for JSON format', () => {
       writeSourceFile(testFiles.path);
 
-      runSyncAll('init --source-locale en --target-locales de --file-format json --path "locales/en.json"');
+      runSyncAll(
+        'init --source-locale en --target-locales de --file-format json --path "locales/en.json"'
+      );
 
       const configPath = path.join(testFiles.path, '.deepl-sync.yaml');
       expect(fs.existsSync(configPath)).toBe(true);
@@ -362,7 +686,7 @@ describe('CLI Sync E2E', () => {
           stdio: ['ignore', 'pipe', 'pipe'],
           encoding: 'utf-8',
           timeout: 10000,
-        },
+        }
       );
 
       expect(result.status).toBe(6);
@@ -386,10 +710,14 @@ describe('CLI Sync E2E', () => {
           CLI_PATH,
           'sync',
           'init',
-          '--source-locale', 'en',
-          '--target-locales', 'de',
-          '--file-format', 'json',
-          '--path', 'locales/en.json',
+          '--source-locale',
+          'en',
+          '--target-locales',
+          'de',
+          '--file-format',
+          'json',
+          '--path',
+          'locales/en.json',
         ],
         {
           cwd: testFiles.path,
@@ -397,7 +725,7 @@ describe('CLI Sync E2E', () => {
           stdio: ['ignore', 'pipe', 'pipe'],
           encoding: 'utf-8',
           timeout: 10000,
-        },
+        }
       );
 
       expect(result.status).toBe(0);
@@ -405,18 +733,17 @@ describe('CLI Sync E2E', () => {
       expect(fs.existsSync(configPath)).toBe(true);
     });
 
-    function runInitFlags(args: string[]): { status: number | null; output: string } {
-      const result = spawnSync(
-        'node',
-        [CLI_PATH, 'sync', 'init', ...args],
-        {
-          cwd: testFiles.path,
-          env: buildEnv(),
-          stdio: ['ignore', 'pipe', 'pipe'],
-          encoding: 'utf-8',
-          timeout: 10000,
-        },
-      );
+    function runInitFlags(args: string[]): {
+      status: number | null;
+      output: string;
+    } {
+      const result = spawnSync('node', [CLI_PATH, 'sync', 'init', ...args], {
+        cwd: testFiles.path,
+        env: buildEnv(),
+        stdio: ['ignore', 'pipe', 'pipe'],
+        encoding: 'utf-8',
+        timeout: 10000,
+      });
       return {
         status: result.status,
         output: `${result.stdout ?? ''}${result.stderr ?? ''}`,
@@ -427,10 +754,14 @@ describe('CLI Sync E2E', () => {
       writeSourceFile(testFiles.path);
 
       const result = runInitFlags([
-        '--source-locale', 'en',
-        '--target-locales', 'de,en,fr',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de,en,fr',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ]);
 
       expect(result.status).toBe(6);
@@ -444,10 +775,14 @@ describe('CLI Sync E2E', () => {
       writeSourceFile(testFiles.path);
 
       const result = runInitFlags([
-        '--source-locale', 'en',
-        '--target-locales', 'de,fr,DE',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de,fr,DE',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ]);
 
       expect(result.status).toBe(6);
@@ -460,14 +795,20 @@ describe('CLI Sync E2E', () => {
       writeSourceFile(testFiles.path);
 
       const result = runInitFlags([
-        '--source-locale', 'en',
-        '--target-locales', 'de,xx_YY',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de,xx_YY',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ]);
 
       expect(result.status).toBe(6);
-      expect(result.output.toLowerCase()).toMatch(/locale|code|malformed|invalid/);
+      expect(result.output.toLowerCase()).toMatch(
+        /locale|code|malformed|invalid/
+      );
       const configPath = path.join(testFiles.path, '.deepl-sync.yaml');
       expect(fs.existsSync(configPath)).toBe(false);
     });
@@ -476,10 +817,14 @@ describe('CLI Sync E2E', () => {
       writeSourceFile(testFiles.path);
 
       const result = runInitFlags([
-        '--source-locale', 'en',
-        '--target-locales', 'de',
-        '--file-format', 'json',
-        '--path', '../etc/en.json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de',
+        '--file-format',
+        'json',
+        '--path',
+        '../etc/en.json',
       ]);
 
       expect(result.status).toBe(6);
@@ -490,10 +835,14 @@ describe('CLI Sync E2E', () => {
 
     it('warns (but succeeds) when --path does not yet exist', () => {
       const result = runInitFlags([
-        '--source-locale', 'en',
-        '--target-locales', 'de',
-        '--file-format', 'json',
-        '--path', 'locales/en.json',
+        '--source-locale',
+        'en',
+        '--target-locales',
+        'de',
+        '--file-format',
+        'json',
+        '--path',
+        'locales/en.json',
       ]);
 
       expect(result.status).toBe(0);
@@ -507,25 +856,33 @@ describe('CLI Sync E2E', () => {
     it('should translate Android XML files using target_path_pattern', () => {
       const resDir = path.join(testFiles.path, 'res', 'values');
       fs.mkdirSync(resDir, { recursive: true });
-      fs.writeFileSync(path.join(resDir, 'strings.xml'),
-        '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n  <string name="greeting">Hello</string>\n</resources>\n');
+      fs.writeFileSync(
+        path.join(resDir, 'strings.xml'),
+        '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n  <string name="greeting">Hello</string>\n</resources>\n'
+      );
 
-      const yaml = [
-        'version: 1',
-        'source_locale: en',
-        'target_locales:',
-        '  - de',
-        'buckets:',
-        '  android_xml:',
-        '    include:',
-        '      - "res/values/strings.xml"',
-        '    target_path_pattern: "res/values-{locale}/strings.xml"',
-      ].join('\n') + '\n';
+      const yaml =
+        [
+          'version: 1',
+          'source_locale: en',
+          'target_locales:',
+          '  - de',
+          'buckets:',
+          '  android_xml:',
+          '    include:',
+          '      - "res/values/strings.xml"',
+          '    target_path_pattern: "res/values-{locale}/strings.xml"',
+        ].join('\n') + '\n';
       fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.yaml'), yaml);
 
       runSyncAll();
 
-      const targetFile = path.join(testFiles.path, 'res', 'values-de', 'strings.xml');
+      const targetFile = path.join(
+        testFiles.path,
+        'res',
+        'values-de',
+        'strings.xml'
+      );
       expect(fs.existsSync(targetFile)).toBe(true);
       const content = fs.readFileSync(targetFile, 'utf-8');
       expect(content).toContain('greeting');
@@ -534,35 +891,44 @@ describe('CLI Sync E2E', () => {
     it('should translate XLIFF files using target_path_pattern', () => {
       const localeDir = path.join(testFiles.path, 'src', 'locale');
       fs.mkdirSync(localeDir, { recursive: true });
-      fs.writeFileSync(path.join(localeDir, 'messages.xlf'), [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">',
-        '  <file source-language="en" target-language="" datatype="plaintext">',
-        '    <body>',
-        '      <trans-unit id="greeting">',
-        '        <source>Hello</source>',
-        '      </trans-unit>',
-        '    </body>',
-        '  </file>',
-        '</xliff>',
-      ].join('\n') + '\n');
+      fs.writeFileSync(
+        path.join(localeDir, 'messages.xlf'),
+        [
+          '<?xml version="1.0" encoding="UTF-8"?>',
+          '<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">',
+          '  <file source-language="en" target-language="" datatype="plaintext">',
+          '    <body>',
+          '      <trans-unit id="greeting">',
+          '        <source>Hello</source>',
+          '      </trans-unit>',
+          '    </body>',
+          '  </file>',
+          '</xliff>',
+        ].join('\n') + '\n'
+      );
 
-      const yaml = [
-        'version: 1',
-        'source_locale: en',
-        'target_locales:',
-        '  - de',
-        'buckets:',
-        '  xliff:',
-        '    include:',
-        '      - "src/locale/messages.xlf"',
-        '    target_path_pattern: "src/locale/messages.{locale}.xlf"',
-      ].join('\n') + '\n';
+      const yaml =
+        [
+          'version: 1',
+          'source_locale: en',
+          'target_locales:',
+          '  - de',
+          'buckets:',
+          '  xliff:',
+          '    include:',
+          '      - "src/locale/messages.xlf"',
+          '    target_path_pattern: "src/locale/messages.{locale}.xlf"',
+        ].join('\n') + '\n';
       fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.yaml'), yaml);
 
       runSyncAll();
 
-      const targetFile = path.join(testFiles.path, 'src', 'locale', 'messages.de.xlf');
+      const targetFile = path.join(
+        testFiles.path,
+        'src',
+        'locale',
+        'messages.de.xlf'
+      );
       expect(fs.existsSync(targetFile)).toBe(true);
       const content = fs.readFileSync(targetFile, 'utf-8');
       expect(content).toContain('greeting');
@@ -578,7 +944,10 @@ describe('CLI Sync E2E', () => {
 
       const targetFile = path.join(testFiles.path, 'locales', 'de.json');
       expect(fs.existsSync(targetFile)).toBe(true);
-      const parsed = JSON.parse(fs.readFileSync(targetFile, 'utf-8')) as Record<string, string>;
+      const parsed = JSON.parse(fs.readFileSync(targetFile, 'utf-8')) as Record<
+        string,
+        string
+      >;
       expect(parsed['greeting']).toBeDefined();
       expect(parsed['farewell']).toBeDefined();
 
@@ -589,7 +958,9 @@ describe('CLI Sync E2E', () => {
       runSyncAll('--no-batch');
 
       expect(fs.existsSync(targetFile)).toBe(true);
-      const parsed2 = JSON.parse(fs.readFileSync(targetFile, 'utf-8')) as Record<string, string>;
+      const parsed2 = JSON.parse(
+        fs.readFileSync(targetFile, 'utf-8')
+      ) as Record<string, string>;
       expect(parsed2['greeting']).toBeDefined();
       expect(parsed2['farewell']).toBeDefined();
     });
@@ -600,16 +971,26 @@ describe('CLI Sync E2E', () => {
       writeSyncConfig(testFiles.path, ['de']);
       const dir = path.join(testFiles.path, 'locales');
       fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, 'en.json'), JSON.stringify({
-        itemCount: '{count, plural, one {# item} other {# items}}',
-        greeting: 'Hello',
-      }, null, 2) + '\n');
+      fs.writeFileSync(
+        path.join(dir, 'en.json'),
+        JSON.stringify(
+          {
+            itemCount: '{count, plural, one {# item} other {# items}}',
+            greeting: 'Hello',
+          },
+          null,
+          2
+        ) + '\n'
+      );
 
       runSyncAll();
 
       const targetFile = path.join(testFiles.path, 'locales', 'de.json');
       expect(fs.existsSync(targetFile)).toBe(true);
-      const parsed = JSON.parse(fs.readFileSync(targetFile, 'utf-8')) as Record<string, string>;
+      const parsed = JSON.parse(fs.readFileSync(targetFile, 'utf-8')) as Record<
+        string,
+        string
+      >;
 
       // ICU structure preserved: variable name, keyword, and branch selectors intact
       expect(parsed['itemCount']).toContain('{count, plural,');
@@ -641,16 +1022,25 @@ describe('CLI Sync E2E', () => {
 
       const frFile = path.join(testFiles.path, 'locales', 'fr.json');
       expect(fs.existsSync(frFile)).toBe(true);
-      const frParsed = JSON.parse(fs.readFileSync(frFile, 'utf-8')) as Record<string, string>;
+      const frParsed = JSON.parse(fs.readFileSync(frFile, 'utf-8')) as Record<
+        string,
+        string
+      >;
       expect(frParsed['greeting']).toBeDefined();
       expect(frParsed['farewell']).toBeDefined();
 
       // Verify lock file has translations for both locales
-      const lockContent = JSON.parse(fs.readFileSync(
-        path.join(testFiles.path, '.deepl-sync.lock'), 'utf-8',
-      )) as Record<string, unknown>;
-      const entries = lockContent['entries'] as Record<string, Record<string, unknown>>;
-      const bucket = entries['locales/en.json'] as Record<string, Record<string, unknown>>;
+      const lockContent = JSON.parse(
+        fs.readFileSync(path.join(testFiles.path, '.deepl-sync.lock'), 'utf-8')
+      ) as Record<string, unknown>;
+      const entries = lockContent['entries'] as Record<
+        string,
+        Record<string, unknown>
+      >;
+      const bucket = entries['locales/en.json'] as Record<
+        string,
+        Record<string, unknown>
+      >;
       // Lock entries are keyed by i18n key, each with a translations object per locale
       const firstKey = Object.keys(bucket)[0]!;
       const keyEntry = bucket[firstKey] as Record<string, unknown>;
@@ -668,16 +1058,60 @@ describe('CLI Sync E2E', () => {
       // Source has a placeholder; hand-written target drops it
       fs.writeFileSync(
         path.join(dir, 'en.json'),
-        JSON.stringify({ welcome: 'Hello {name}' }, null, 2) + '\n',
+        JSON.stringify({ welcome: 'Hello {name}' }, null, 2) + '\n'
       );
       fs.writeFileSync(
         path.join(dir, 'de.json'),
-        JSON.stringify({ welcome: 'Hallo' }, null, 2) + '\n',
+        JSON.stringify({ welcome: 'Hallo' }, null, 2) + '\n'
       );
 
       const result = runSyncExpectError('validate');
       expect(result.status).toBe(8);
       expect(result.output.toLowerCase()).toMatch(/placeholder|welcome/);
+    });
+
+    it('exits with CheckFailed (8) on an unreadable target file, after validating the rest', () => {
+      writeSyncConfig(testFiles.path, ['de', 'fr']);
+      const dir = path.join(testFiles.path, 'locales');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, 'en.json'),
+        JSON.stringify({ welcome: 'Hello {name}' }, null, 2) + '\n'
+      );
+      fs.writeFileSync(
+        path.join(dir, 'de.json'),
+        JSON.stringify({ welcome: 'Hallo {name}' }, null, 2) + '\n'
+      );
+      fs.writeFileSync(path.join(dir, 'fr.json'), '{ not json at all');
+
+      const result = runSyncExpectError('validate');
+      expect(result.status).toBe(8);
+      // The healthy locale was still validated, and the unreadable file is
+      // reported as the issue rather than ending the command.
+      expect(result.output).toMatch(/Checked 1 translation/);
+      expect(result.output).toContain('fr.json');
+      expect(result.output).toMatch(/could not be read/);
+    });
+
+    it('does not emit raw terminal control characters from a hostile i18n key', () => {
+      writeSyncConfig(testFiles.path, ['de']);
+      const dir = path.join(testFiles.path, 'locales');
+      fs.mkdirSync(dir, { recursive: true });
+      const hostileKey = 'welcome\u001b]52;c;cHduZWQ=\u0007\u001b[2J';
+      fs.writeFileSync(
+        path.join(dir, 'en.json'),
+        JSON.stringify({ [hostileKey]: 'Hello {name}' }, null, 2) + '\n'
+      );
+      fs.writeFileSync(
+        path.join(dir, 'de.json'),
+        JSON.stringify({ [hostileKey]: 'Hallo' }, null, 2) + '\n'
+      );
+
+      const result = runSyncExpectError('validate');
+      expect(result.status).toBe(8);
+      expect(result.output).toContain('welcome');
+      // eslint-disable-next-line no-control-regex -- asserting the absence of control chars in rendered output
+      expect(result.output).not.toMatch(/[\x00-\x08\x0b\x0c\x0e-\x1f]/);
     });
   });
 
@@ -717,6 +1151,39 @@ describe('CLI Sync E2E', () => {
     });
   });
 
+  /** A lockfile carrying real git conflict markers around one translation. */
+  function conflictedLockFixture(): string {
+    const entry = (hash: string): string =>
+      JSON.stringify({
+        hash,
+        translated_at: '2026-04-18T12:00:00Z',
+        status: 'translated',
+      });
+    return [
+      '{',
+      '  "version": 1,',
+      '  "generated_at": "2026-04-18T12:00:00Z",',
+      '  "source_locale": "en",',
+      '  "entries": {',
+      '    "locales/en.json": {',
+      '      "greeting": {',
+      '        "source_hash": "src1",',
+      '        "source_text": "Hello",',
+      '        "translations": {',
+      '<<<<<<< HEAD',
+      `          "de": ${entry('abc123')}`,
+      '=======',
+      `          "de": ${entry('xyz789')}`,
+      '>>>>>>> feature/other',
+      '        }',
+      '      }',
+      '    }',
+      '  },',
+      '  "stats": { "total_keys": 1, "total_translations": 1, "last_sync": "2026-04-18T12:00:00Z" }',
+      '}',
+    ].join('\n');
+  }
+
   describe('sync resolve on conflict-marked lockfile', () => {
     it('rewrites a lockfile that contains git conflict markers as valid JSON and exits 0', () => {
       writeSyncConfig(testFiles.path, ['de']);
@@ -752,24 +1219,73 @@ describe('CLI Sync E2E', () => {
         '  "stats": { "total_keys": 1, "total_translations": 1, "last_sync": "2026-04-18T12:00:00Z" }',
         '}',
       ].join('\n');
-      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.lock'), conflictedLock);
+      fs.writeFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        conflictedLock
+      );
 
       const output = runSyncAll('resolve');
       expect(output.toLowerCase()).toMatch(/resolv/);
 
-      const after = fs.readFileSync(path.join(testFiles.path, '.deepl-sync.lock'), 'utf-8');
+      const after = fs.readFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        'utf-8'
+      );
       expect(() => JSON.parse(after)).not.toThrow();
       expect(after).not.toContain('<<<<<<<');
       expect(after).not.toContain('=======');
       expect(after).not.toContain('>>>>>>>');
     });
 
+    it('refuses to run while another sync holds the process lock, leaving the lockfile untouched', () => {
+      writeSyncConfig(testFiles.path, ['de']);
+      writeSourceFile(testFiles.path);
+      const lockPath = path.join(testFiles.path, '.deepl-sync.lock');
+      fs.writeFileSync(lockPath, conflictedLockFixture());
+
+      // This test process is alive, so the pidfile describes a running sync.
+      const pidFile = path.join(testFiles.path, '.deepl-sync.lock.pidfile');
+      fs.writeFileSync(
+        pidFile,
+        JSON.stringify({
+          pid: process.pid,
+          startedAt: new Date('2026-04-18T12:00:00Z').toISOString(),
+        })
+      );
+
+      const blocked = runSyncExpectError('resolve');
+
+      expect(blocked.status).toBe(7);
+      expect(blocked.output).toContain(
+        'Another `deepl sync` process is running'
+      );
+      // The merge result would be erased by the running sync's own lockfile
+      // write, so nothing may be written while the lock is held.
+      expect(fs.readFileSync(lockPath, 'utf-8')).toContain('<<<<<<<');
+
+      fs.unlinkSync(pidFile);
+      const output = runSyncAll('resolve');
+
+      expect(output.toLowerCase()).toMatch(/resolv/);
+      expect(fs.readFileSync(lockPath, 'utf-8')).not.toContain('<<<<<<<');
+      // The lock is released even though resolve wrote the lockfile.
+      expect(fs.existsSync(pidFile)).toBe(false);
+    });
+
     it('prints a per-entry decision report with summary line', () => {
       writeSyncConfig(testFiles.path, ['de']);
       writeSourceFile(testFiles.path);
 
-      const ourEntry = { hash: 'a', translated_at: '2026-04-20T09:33:15Z', status: 'translated' };
-      const theirEntry = { hash: 'b', translated_at: '2026-04-20T08:12:03Z', status: 'translated' };
+      const ourEntry = {
+        hash: 'a',
+        translated_at: '2026-04-20T09:33:15Z',
+        status: 'translated',
+      };
+      const theirEntry = {
+        hash: 'b',
+        translated_at: '2026-04-20T08:12:03Z',
+        status: 'translated',
+      };
       const conflictedLock = [
         '{',
         '  "version": 1,',
@@ -787,7 +1303,10 @@ describe('CLI Sync E2E', () => {
         '  "stats": { "total_keys": 1, "total_translations": 1, "last_sync": "2026-04-20T12:00:00Z" }',
         '}',
       ].join('\n');
-      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.lock'), conflictedLock);
+      fs.writeFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        conflictedLock
+      );
 
       const output = runSyncAll('resolve');
       expect(output).toMatch(/Resolved\s+.+:greeting/);
@@ -799,11 +1318,15 @@ describe('CLI Sync E2E', () => {
       writeSyncConfig(testFiles.path, ['de']);
       writeSourceFile(testFiles.path);
 
-      // Both halves end with a trailing comma, so the per-region JSON.parse
-      // fails and the length heuristic kicks in; the following non-conflicted
-      // entry keeps the merged document valid.
-      const ourEntry = { hash: 'a', translated_at: '2026-04-20T09:33:15Z', status: 'translated' };
-      const theirEntry = { hash: 'b', translated_at: '2026-04-20T08:12:03Z', status: 'translated' };
+      // One side deleted the entry the other modified, so the halves disagree on
+      // whether the region ends a member list. Guessing a terminator there could
+      // emit invalid JSON, so the region falls to the length heuristic instead;
+      // the following non-conflicted entry keeps the merged document valid.
+      const theirEntry = {
+        hash: 'b',
+        translated_at: '2026-04-20T08:12:03Z',
+        status: 'translated',
+      };
       const conflictedLock = [
         '{',
         '  "version": 1,',
@@ -812,7 +1335,6 @@ describe('CLI Sync E2E', () => {
         '  "entries": {',
         '    "locales/en.json": {',
         '<<<<<<< HEAD',
-        `      "greeting": { "source_hash": "src1", "source_text": "Hello", "translations": { "de": ${JSON.stringify(ourEntry)} } },`,
         '=======',
         `      "greeting": { "source_hash": "src2", "source_text": "Hello", "translations": { "de": ${JSON.stringify(theirEntry)} } },`,
         '>>>>>>> feature/other',
@@ -822,7 +1344,10 @@ describe('CLI Sync E2E', () => {
         '  "stats": { "total_keys": 2, "total_translations": 1, "last_sync": "2026-04-20T12:00:00Z" }',
         '}',
       ].join('\n');
-      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.lock'), conflictedLock);
+      fs.writeFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        conflictedLock
+      );
 
       const output = runSyncAll('resolve');
 
@@ -855,7 +1380,10 @@ describe('CLI Sync E2E', () => {
         '  "stats": { "total_keys": 1, "total_translations": 1, "last_sync": "2026-04-20T12:00:00Z" }',
         '}',
       ].join('\n');
-      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.lock'), conflictedLock);
+      fs.writeFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        conflictedLock
+      );
 
       const result = runSyncExpectError('resolve');
       expect(result.status).toBe(11);
@@ -867,8 +1395,16 @@ describe('CLI Sync E2E', () => {
       writeSyncConfig(testFiles.path, ['de']);
       writeSourceFile(testFiles.path);
 
-      const ourEntry = { hash: 'a', translated_at: '2026-04-20T09:33:15Z', status: 'translated' };
-      const theirEntry = { hash: 'b', translated_at: '2026-04-20T08:12:03Z', status: 'translated' };
+      const ourEntry = {
+        hash: 'a',
+        translated_at: '2026-04-20T09:33:15Z',
+        status: 'translated',
+      };
+      const theirEntry = {
+        hash: 'b',
+        translated_at: '2026-04-20T08:12:03Z',
+        status: 'translated',
+      };
       const conflictedLock = [
         '{',
         '  "version": 1,',
@@ -925,23 +1461,39 @@ describe('CLI Sync E2E', () => {
       writeSyncConfig(testFiles.path, ['de']);
       writeSourceFile(testFiles.path);
 
-      const ourEntry = { hash: 'a', translated_at: '2026-04-20T09:33:15Z', status: 'translated' };
-      const theirEntry = { hash: 'b', translated_at: '2026-04-20T08:12:03Z', status: 'translated' };
+      const ourEntry = {
+        hash: 'a',
+        translated_at: '2026-04-20T09:33:15Z',
+        status: 'translated',
+      };
+      const theirEntry = {
+        hash: 'b',
+        translated_at: '2026-04-20T08:12:03Z',
+        status: 'translated',
+      };
       fs.writeFileSync(
         path.join(testFiles.path, '.deepl-sync.lock'),
-        makeConflictedLock(ourEntry, theirEntry),
+        makeConflictedLock(ourEntry, theirEntry)
       );
 
-      const result = spawnSync('node', [CLI_PATH, 'sync', 'resolve', '--format', 'json'], {
-        encoding: 'utf-8',
-        cwd: testFiles.path,
-        env: buildEnv(),
-        stdio: ['ignore', 'pipe', 'pipe'],
-        timeout: 15000,
-      });
+      const result = spawnSync(
+        'node',
+        [CLI_PATH, 'sync', 'resolve', '--format', 'json'],
+        {
+          encoding: 'utf-8',
+          cwd: testFiles.path,
+          env: buildEnv(),
+          stdio: ['ignore', 'pipe', 'pipe'],
+          timeout: 15000,
+        }
+      );
 
       expect(result.status).toBe(0);
-      const envelope = JSON.parse(result.stdout) as { ok: boolean; resolved: number; decisions: unknown[] };
+      const envelope = JSON.parse(result.stdout) as {
+        ok: boolean;
+        resolved: number;
+        decisions: unknown[];
+      };
       expect(envelope.ok).toBe(true);
       expect(typeof envelope.resolved).toBe('number');
       expect(envelope.resolved).toBeGreaterThan(0);
@@ -953,25 +1505,44 @@ describe('CLI Sync E2E', () => {
       writeSyncConfig(testFiles.path, ['de']);
       writeSourceFile(testFiles.path);
 
-      const cleanLock = JSON.stringify({
-        version: 1,
-        generated_at: '2026-04-20T12:00:00Z',
-        source_locale: 'en',
-        entries: {},
-        stats: { total_keys: 0, total_translations: 0, last_sync: '2026-04-20T12:00:00Z' },
-      }, null, 2);
-      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.lock'), cleanLock);
+      const cleanLock = JSON.stringify(
+        {
+          version: 1,
+          generated_at: '2026-04-20T12:00:00Z',
+          source_locale: 'en',
+          entries: {},
+          stats: {
+            total_keys: 0,
+            total_translations: 0,
+            last_sync: '2026-04-20T12:00:00Z',
+          },
+        },
+        null,
+        2
+      );
+      fs.writeFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        cleanLock
+      );
 
-      const result = spawnSync('node', [CLI_PATH, 'sync', 'resolve', '--format', 'json'], {
-        encoding: 'utf-8',
-        cwd: testFiles.path,
-        env: buildEnv(),
-        stdio: ['ignore', 'pipe', 'pipe'],
-        timeout: 15000,
-      });
+      const result = spawnSync(
+        'node',
+        [CLI_PATH, 'sync', 'resolve', '--format', 'json'],
+        {
+          encoding: 'utf-8',
+          cwd: testFiles.path,
+          env: buildEnv(),
+          stdio: ['ignore', 'pipe', 'pipe'],
+          timeout: 15000,
+        }
+      );
 
       expect(result.status).toBe(0);
-      const envelope = JSON.parse(result.stdout) as { ok: boolean; resolved: number; decisions: unknown[] };
+      const envelope = JSON.parse(result.stdout) as {
+        ok: boolean;
+        resolved: number;
+        decisions: unknown[];
+      };
       expect(envelope.ok).toBe(true);
       expect(envelope.resolved).toBe(0);
       expect(envelope.decisions).toEqual([]);
@@ -1013,7 +1584,7 @@ describe('CLI Sync E2E', () => {
       expect(Number.isInteger(first['coverage'])).toBe(true);
     });
 
-    it('emits a parseable JSON error envelope to stderr when config is missing', () => {
+    it('emits a parseable JSON error envelope when config is missing', () => {
       // No .deepl-sync.yaml in testFiles.path (beforeEach cleans it up).
       const result = runSyncExpectError('status --format json');
 
@@ -1029,13 +1600,25 @@ describe('CLI Sync E2E', () => {
       // it two different German translations — a real inconsistency.
       const sourceDir = path.join(testFiles.path, 'locales', 'en');
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(path.join(sourceDir, 'common.json'), JSON.stringify({ greeting: 'Dashboard' }, null, 2));
-      fs.writeFileSync(path.join(sourceDir, 'admin.json'), JSON.stringify({ header: 'Dashboard' }, null, 2));
+      fs.writeFileSync(
+        path.join(sourceDir, 'common.json'),
+        JSON.stringify({ greeting: 'Dashboard' }, null, 2)
+      );
+      fs.writeFileSync(
+        path.join(sourceDir, 'admin.json'),
+        JSON.stringify({ header: 'Dashboard' }, null, 2)
+      );
 
       const targetDir = path.join(testFiles.path, 'locales', 'de');
       fs.mkdirSync(targetDir, { recursive: true });
-      fs.writeFileSync(path.join(targetDir, 'common.json'), JSON.stringify({ greeting: 'Armaturenbrett' }, null, 2));
-      fs.writeFileSync(path.join(targetDir, 'admin.json'), JSON.stringify({ header: 'Dashboard' }, null, 2));
+      fs.writeFileSync(
+        path.join(targetDir, 'common.json'),
+        JSON.stringify({ greeting: 'Armaturenbrett' }, null, 2)
+      );
+      fs.writeFileSync(
+        path.join(targetDir, 'admin.json'),
+        JSON.stringify({ header: 'Dashboard' }, null, 2)
+      );
 
       fs.writeFileSync(
         path.join(testFiles.path, '.deepl-sync.yaml'),
@@ -1049,7 +1632,7 @@ describe('CLI Sync E2E', () => {
           '    include:',
           '      - "locales/en/*.json"',
           '',
-        ].join('\n'),
+        ].join('\n')
       );
 
       // Pre-seed lockfile with divergent translation hashes (different content hashes
@@ -1065,7 +1648,11 @@ describe('CLI Sync E2E', () => {
               source_hash: 'sh',
               source_text: 'Dashboard',
               translations: {
-                de: { hash: 'de-hash-a', translated_at: '2026-04-19T00:00:00Z', status: 'translated' },
+                de: {
+                  hash: 'de-hash-a',
+                  translated_at: '2026-04-19T00:00:00Z',
+                  status: 'translated',
+                },
               },
             },
           },
@@ -1074,21 +1661,37 @@ describe('CLI Sync E2E', () => {
               source_hash: 'sh',
               source_text: 'Dashboard',
               translations: {
-                de: { hash: 'de-hash-b', translated_at: '2026-04-19T00:00:00Z', status: 'translated' },
+                de: {
+                  hash: 'de-hash-b',
+                  translated_at: '2026-04-19T00:00:00Z',
+                  status: 'translated',
+                },
               },
             },
           },
         },
-        stats: { total_keys: 2, total_translations: 2, last_sync: '2026-04-19T00:00:00Z' },
+        stats: {
+          total_keys: 2,
+          total_translations: 2,
+          last_sync: '2026-04-19T00:00:00Z',
+        },
       };
-      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.lock'), JSON.stringify(lockContent, null, 2));
+      fs.writeFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        JSON.stringify(lockContent, null, 2)
+      );
 
       const output = runSyncAll('audit --format json');
       const jsonMatch = output.match(/\{[\s\S]*\}/);
       expect(jsonMatch).not.toBeNull();
       const parsed = JSON.parse(jsonMatch![0]) as {
         totalTerms: number;
-        inconsistencies: Array<{ sourceText: string; locale: string; translations: string[]; files: string[] }>;
+        inconsistencies: Array<{
+          sourceText: string;
+          locale: string;
+          translations: string[];
+          files: string[];
+        }>;
       };
 
       expect(parsed.totalTerms).toBe(1);
@@ -1097,7 +1700,9 @@ describe('CLI Sync E2E', () => {
       expect(inc.sourceText).toBe('Dashboard');
       expect(inc.locale).toBe('de');
       // Critical: must be real translated strings, not SHA hashes.
-      expect(inc.translations).toEqual(expect.arrayContaining(['Armaturenbrett', 'Dashboard']));
+      expect(inc.translations).toEqual(
+        expect.arrayContaining(['Armaturenbrett', 'Dashboard'])
+      );
       expect(inc.translations).not.toContain('de-hash-a');
       expect(inc.translations).not.toContain('de-hash-b');
 
@@ -1108,13 +1713,22 @@ describe('CLI Sync E2E', () => {
     it('reports a not-yet-created locale file as missing instead of an inconsistency', () => {
       const sourceDir = path.join(testFiles.path, 'locales', 'en');
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(path.join(sourceDir, 'common.json'), JSON.stringify({ greeting: 'Dashboard' }, null, 2));
-      fs.writeFileSync(path.join(sourceDir, 'admin.json'), JSON.stringify({ header: 'Dashboard' }, null, 2));
+      fs.writeFileSync(
+        path.join(sourceDir, 'common.json'),
+        JSON.stringify({ greeting: 'Dashboard' }, null, 2)
+      );
+      fs.writeFileSync(
+        path.join(sourceDir, 'admin.json'),
+        JSON.stringify({ header: 'Dashboard' }, null, 2)
+      );
 
       // Only one of the two German files exists yet.
       const targetDir = path.join(testFiles.path, 'locales', 'de');
       fs.mkdirSync(targetDir, { recursive: true });
-      fs.writeFileSync(path.join(targetDir, 'common.json'), JSON.stringify({ greeting: 'Armaturenbrett' }, null, 2));
+      fs.writeFileSync(
+        path.join(targetDir, 'common.json'),
+        JSON.stringify({ greeting: 'Armaturenbrett' }, null, 2)
+      );
 
       fs.writeFileSync(
         path.join(testFiles.path, '.deepl-sync.yaml'),
@@ -1128,7 +1742,7 @@ describe('CLI Sync E2E', () => {
           '    include:',
           '      - "locales/en/*.json"',
           '',
-        ].join('\n'),
+        ].join('\n')
       );
 
       const lockContent = {
@@ -1142,7 +1756,11 @@ describe('CLI Sync E2E', () => {
               source_hash: 'sh',
               source_text: 'Dashboard',
               translations: {
-                de: { hash: 'de-hash-a', translated_at: '2026-04-19T00:00:00Z', status: 'translated' },
+                de: {
+                  hash: 'de-hash-a',
+                  translated_at: '2026-04-19T00:00:00Z',
+                  status: 'translated',
+                },
               },
             },
           },
@@ -1151,14 +1769,25 @@ describe('CLI Sync E2E', () => {
               source_hash: 'sh',
               source_text: 'Dashboard',
               translations: {
-                de: { hash: 'de-hash-a', translated_at: '2026-04-19T00:00:00Z', status: 'translated' },
+                de: {
+                  hash: 'de-hash-a',
+                  translated_at: '2026-04-19T00:00:00Z',
+                  status: 'translated',
+                },
               },
             },
           },
         },
-        stats: { total_keys: 2, total_translations: 2, last_sync: '2026-04-19T00:00:00Z' },
+        stats: {
+          total_keys: 2,
+          total_translations: 2,
+          last_sync: '2026-04-19T00:00:00Z',
+        },
       };
-      fs.writeFileSync(path.join(testFiles.path, '.deepl-sync.lock'), JSON.stringify(lockContent, null, 2));
+      fs.writeFileSync(
+        path.join(testFiles.path, '.deepl-sync.lock'),
+        JSON.stringify(lockContent, null, 2)
+      );
 
       const output = runSyncAll('audit --format json');
       const jsonMatch = output.match(/\{[\s\S]*\}/);
@@ -1192,17 +1821,27 @@ describe('CLI Sync E2E', () => {
     it('rejects --output paths that escape the project root', () => {
       const result = runSyncExpectError('export --output ../../etc/evil.xlf');
       expect(result.status).not.toBe(0);
-      expect(result.output.toLowerCase()).toMatch(/escapes project root|outside/i);
-      expect(fs.existsSync(path.join(testFiles.path, '..', '..', 'etc', 'evil.xlf'))).toBe(false);
+      expect(result.output.toLowerCase()).toMatch(
+        /escapes project root|outside/i
+      );
+      expect(
+        fs.existsSync(path.join(testFiles.path, '..', '..', 'etc', 'evil.xlf'))
+      ).toBe(false);
     });
 
     it('refuses to overwrite an existing output file without --overwrite', () => {
       const outputPath = path.join(testFiles.path, 'preexisting.xlf');
-      fs.writeFileSync(outputPath, 'existing content — do not clobber', 'utf-8');
+      fs.writeFileSync(
+        outputPath,
+        'existing content — do not clobber',
+        'utf-8'
+      );
 
       const result = runSyncExpectError('export --output preexisting.xlf');
       expect(result.status).not.toBe(0);
-      expect(result.output.toLowerCase()).toMatch(/refusing to overwrite|--overwrite/);
+      expect(result.output.toLowerCase()).toMatch(
+        /refusing to overwrite|--overwrite/
+      );
 
       const preserved = fs.readFileSync(outputPath, 'utf-8');
       expect(preserved).toBe('existing content — do not clobber');
@@ -1234,7 +1873,10 @@ describe('CLI Sync E2E', () => {
       const content = fs.readFileSync(absNested, 'utf-8');
       expect(content.startsWith('<?xml')).toBe(true);
 
-      fs.rmSync(path.join(testFiles.path, 'reports'), { recursive: true, force: true });
+      fs.rmSync(path.join(testFiles.path, 'reports'), {
+        recursive: true,
+        force: true,
+      });
     });
   });
 });

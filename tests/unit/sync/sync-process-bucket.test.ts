@@ -6,10 +6,11 @@ import type { ProcessBucketDeps } from '../../../src/sync/sync-process-bucket';
 import type { ResolvedSyncConfig } from '../../../src/sync/sync-config';
 import type { SyncLockFile } from '../../../src/sync/types';
 import type { WalkedBucketFile } from '../../../src/sync/sync-bucket-walker';
-import type { LocaleTranslator, TranslateLocaleResult } from '../../../src/sync/sync-locale-translator';
-import type { GlossaryService } from '../../../src/services/glossary';
+import type {
+  LocaleTranslator,
+  TranslateLocaleResult,
+} from '../../../src/sync/sync-locale-translator';
 import { ValidationError } from '../../../src/utils/errors';
-import { createMockTranslationService } from '../../helpers/mock-factories';
 
 jest.mock('../../../src/utils/logger', () => ({
   Logger: {
@@ -33,13 +34,19 @@ function makeLockFile(): SyncLockFile {
   };
 }
 
-function makeConfig(projectRoot: string, targetPathPattern: string): ResolvedSyncConfig {
+function makeConfig(
+  projectRoot: string,
+  targetPathPattern: string
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
     target_locales: ['de'],
     buckets: {
-      json: { include: ['locales/en.json'], target_path_pattern: targetPathPattern },
+      json: {
+        include: ['locales/en.json'],
+        target_path_pattern: targetPathPattern,
+      },
     },
     projectRoot,
     configPath: path.join(projectRoot, '.deepl-sync.yaml'),
@@ -49,7 +56,14 @@ function makeConfig(projectRoot: string, targetPathPattern: string): ResolvedSyn
 
 function makeTranslateResult(): TranslateLocaleResult {
   return {
-    fileResult: { file: 'locales/de.json', locale: 'de', translated: 1, skipped: 0, failed: 0, written: true },
+    fileResult: {
+      file: 'locales/de.json',
+      locale: 'de',
+      translated: 1,
+      skipped: 0,
+      failed: 0,
+      written: true,
+    },
     successfulKeys: ['greeting'],
     charactersBilled: 5,
     billedPerKey: new Map(),
@@ -64,7 +78,7 @@ function makeTranslateResult(): TranslateLocaleResult {
 
 function makeDeps(
   config: ResolvedSyncConfig,
-  translate: jest.Mock,
+  translate: jest.Mock
 ): ProcessBucketDeps {
   return {
     config,
@@ -77,9 +91,8 @@ function makeDeps(
     allInstructionGroupTotals: new Map(),
     keyContexts: new Map(),
     localeTranslator: { translate } as unknown as LocaleTranslator,
-    glossaryService: { resolveGlossaryId: jest.fn() } as unknown as GlossaryService,
-    translationService: createMockTranslationService(),
-    tmCache: { has: () => false, get: () => undefined, set: () => undefined },
+    localeGlossaryIds: new Map(),
+    localeTmIds: new Map(),
     currentTotalCharsBilled: 0,
   };
 }
@@ -121,25 +134,32 @@ describe('processBucket', () => {
       const translate = jest.fn().mockResolvedValue(makeTranslateResult());
 
       await expect(
-        processBucket(makeWalked(config), makeDeps(config, translate)),
+        processBucket(makeWalked(config), makeDeps(config, translate))
       ).rejects.toThrow(/escapes project root/);
       expect(translate).not.toHaveBeenCalled();
     });
 
     it('should not read target files outside the project root during the pre-read', async () => {
-      const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-outside-'));
+      const outsideDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'deepl-outside-')
+      );
       try {
         const secret = path.join(outsideDir, 'de.json');
         fs.writeFileSync(secret, '{"secret":"value"}', 'utf-8');
         const relOutside = path.relative(tmpDir, outsideDir);
-        const config = makeConfig(tmpDir, path.posix.join(...relOutside.split(path.sep), '{locale}.json'));
+        const config = makeConfig(
+          tmpDir,
+          path.posix.join(...relOutside.split(path.sep), '{locale}.json')
+        );
         const translate = jest.fn().mockResolvedValue(makeTranslateResult());
         const readSpy = jest.spyOn(fs.promises, 'readFile');
 
         await expect(
-          processBucket(makeWalked(config), makeDeps(config, translate)),
+          processBucket(makeWalked(config), makeDeps(config, translate))
         ).rejects.toThrow(ValidationError);
-        expect(readSpy.mock.calls.map((c) => String(c[0]))).not.toContain(secret);
+        expect(readSpy.mock.calls.map((c) => String(c[0]))).not.toContain(
+          secret
+        );
         readSpy.mockRestore();
       } finally {
         fs.rmSync(outsideDir, { recursive: true, force: true });
@@ -148,20 +168,27 @@ describe('processBucket', () => {
 
     it('should rethrow a containment ValidationError raised inside the locale translator', async () => {
       const config = makeConfig(tmpDir, 'locales/{locale}.json');
-      const translate = jest.fn().mockRejectedValue(
-        new ValidationError('Target path escapes project root: /evil/de.json'),
-      );
+      const translate = jest
+        .fn()
+        .mockRejectedValue(
+          new ValidationError('Target path escapes project root: /evil/de.json')
+        );
 
       await expect(
-        processBucket(makeWalked(config), makeDeps(config, translate)),
+        processBucket(makeWalked(config), makeDeps(config, translate))
       ).rejects.toThrow(/escapes project root/);
     });
 
     it('should still absorb generic per-locale translation failures', async () => {
       const config = makeConfig(tmpDir, 'locales/{locale}.json');
-      const translate = jest.fn().mockRejectedValue(new Error('network hiccup'));
+      const translate = jest
+        .fn()
+        .mockRejectedValue(new Error('network hiccup'));
 
-      const result = await processBucket(makeWalked(config), makeDeps(config, translate));
+      const result = await processBucket(
+        makeWalked(config),
+        makeDeps(config, translate)
+      );
 
       expect(result.fileResults).toHaveLength(1);
       expect(result.fileResults[0]!.written).toBe(false);
@@ -174,7 +201,10 @@ describe('processBucket', () => {
       const config = makeConfig(tmpDir, 'locales/{locale}.json');
       const translate = jest.fn().mockResolvedValue(makeTranslateResult());
 
-      const result = await processBucket(makeWalked(config), makeDeps(config, translate));
+      const result = await processBucket(
+        makeWalked(config),
+        makeDeps(config, translate)
+      );
 
       expect(translate).toHaveBeenCalledTimes(1);
       expect(result.fileResults).toHaveLength(1);

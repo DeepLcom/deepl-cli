@@ -22,53 +22,63 @@ This directory contains practical, real-world examples of using the DeepL CLI.
 
 **Write:**
 - [Writing Enhancement](./13-write.sh) - Using DeepL Write API for grammar, style, and tone improvement
-- [Write — Extended Languages](./36-write-extended-languages.sh) - JA/KO/ZH targets and tone/style on ES/IT/FR/PT variants
-- [Correct](./37-correct.sh) - Spelling and grammar correction without rewording (`deepl correct`, alias `c`)
+- [Write — Extended Languages](./14-write-extended-languages.sh) - JA/KO/ZH targets and tone/style on ES/IT/FR/PT variants
+- [Correct](./15-correct.sh) - Spelling and grammar correction without rewording (`deepl correct`, alias `c`)
 
 **Voice:**
-- [Voice Translation](./14-voice.sh) - Real-time speech translation via the Voice API
+- [Voice Translation](./16-voice.sh) - Real-time speech translation via the Voice API
 
 ### Resources
 
-- [Glossaries](./15-glossaries.sh) - Managing glossaries for consistent terminology
-- [Translation Memory Listing](./33-tm-list.sh) — List translation memories on your account
+- [Glossaries](./17-glossaries.sh) - Managing glossaries for consistent terminology
+- [Translation Memory Listing](./18-tm-list.sh) — List translation memories on your account
 
 ### Workflow
 
-- [Watch Mode](./16-watch-mode.sh) - Real-time file monitoring and auto-translation
-- [Git Hooks Integration](./17-git-hooks.sh) - Automating translation validation in git workflow
-- [CI/CD Integration](./18-cicd-integration.sh) - Using DeepL CLI in automated workflows
-- [Sync — Basic Usage](./30-sync-basic.sh) - Scanning, diffing, and syncing i18n locale files
-- [Sync — CI/CD Integration](./31-sync-ci.sh) - Using deepl sync in automated pipelines
-- [Sync — Live Validation](./32-sync-live-validation.sh) - Comprehensive end-to-end validation of all sync features
-- [Sync — Laravel PHP arrays](./34-sync-laravel-php.sh) - `laravel_php` format parser: AST allowlist, span-surgical reconstruct, pipe-pluralization warning gate, `sync.limits` caps
+- [Watch Mode](./19-watch-mode.sh) - Real-time file monitoring and auto-translation
+- [Git Hooks Integration](./20-git-hooks.sh) - Automating translation validation in git workflow
+- [CI/CD Integration](./21-cicd-integration.sh) - Using DeepL CLI in automated workflows
+- [Sync — Basic Usage](./22-sync-basic.sh) - Scanning, diffing, and syncing i18n locale files
+- [Sync — CI/CD Integration](./23-sync-ci.sh) - Using deepl sync in automated pipelines
+- [Sync — Live Validation](./24-sync-live-validation.sh) - Comprehensive end-to-end validation of all sync features
+- [Sync — Laravel PHP arrays](./25-sync-laravel-php.sh) - `laravel_php` format parser: AST allowlist, span-surgical reconstruct, pipe-pluralization warning gate, `sync.limits` caps
+- [Sync — Resolve Lockfile Conflicts](./26-sync-resolve.sh) - Auto-resolving a `.deepl-sync.lock` left conflicted by `git merge`, and previewing the decisions first
+- [Sync — Audit Translation Consistency](./27-sync-audit.sh) - Finding one source term translated two different ways across a project
+- [Sync — TMS Destination Trust](./40-sync-tms-destination-trust.sh) - Why a repo-supplied `tms.server` cannot redirect an environment-held `TMS_API_KEY`, and how `tms.allowedServers` approves one
+
+`deepl sync push` and `deepl sync pull` have no general example script here. They
+need a reachable TMS endpoint and a `TMS_API_KEY`, so an example could not
+exercise a real workflow unattended as part of `run-all.sh`; see
+[docs/SYNC.md](../docs/SYNC.md) for their reference documentation. The destination-trust
+example above is the exception — it runs its own throwaway TMS on loopback, so it
+needs neither an API key nor a network.
 
 ### Configuration
 
-- [Configuration](./19-configuration.sh) - Setting up and managing configuration
-- [Custom Config Files](./20-custom-config-files.sh) - Using multiple configuration files for different projects
-- [Cache Management](./21-cache.sh) - Working with the translation cache
-- [Style Rules](./22-style-rules.sh) - Listing and using pre-configured style rules for consistent translations
-- [Style Rules — CRUD](./35-style-rules-crud.sh) - End-to-end style-rules lifecycle: create, update rules, manage custom instructions, delete
+- [Configuration](./28-configuration.sh) - Setting up and managing configuration
+- [Custom Config Files](./29-custom-config-files.sh) - Using multiple configuration files for different projects
+- [Cache Management](./30-cache.sh) - Working with the translation cache
+- [Style Rules](./31-style-rules.sh) - Listing and using pre-configured style rules for consistent translations
+- [Style Rules — CRUD](./32-style-rules-crud.sh) - End-to-end style-rules lifecycle: create, update rules, manage custom instructions, delete
 
 ### Information
 
-- [Usage Monitoring](./23-usage-monitoring.sh) - Monitoring API character usage and quota
-- [Supported Languages](./24-languages.sh) - Listing source and target languages supported by DeepL
-- [Language Detection](./25-detect.sh) - Detecting the language of text input
-- [Shell Completions](./26-completion.sh) - Setting up bash, zsh, and fish shell completions
+- [Usage Monitoring](./33-usage-monitoring.sh) - Monitoring API character usage and quota
+- [Supported Languages](./34-languages.sh) - Listing source and target languages supported by DeepL
+- [Language Detection](./35-detect.sh) - Detecting the language of text input
+- [Shell Completions](./36-completion.sh) - Setting up bash, zsh, and fish shell completions
 
 ### Administration
 
-- [Admin API](./27-admin.sh) - Managing API keys and viewing organization usage analytics
+- [Admin API](./37-admin.sh) - Managing API keys and viewing organization usage analytics
 
 ### Getting Started
 
-- [Setup Wizard](./28-init.sh) - Interactive first-time setup with `deepl init`
+- [Setup Wizard](./38-init.sh) - Interactive first-time setup with `deepl init`
 
 ### Advanced
 
-- [Advanced Translation](./29-advanced-translate.sh) - Tag handling versions, beta languages, custom API URLs, and document minification
+- [Advanced Translation](./39-advanced-translate.sh) - Tag handling versions, beta languages, custom API URLs, and document minification
 
 ## Prerequisites
 

@@ -1,4 +1,11 @@
-import type { ExtractedEntry, FormatParser, TranslatedEntry } from './format.js';
+import {
+  FormatDepthExceededError,
+  assertDistinctKeys,
+  describeKeyPath,
+  type ExtractedEntry,
+  type FormatParser,
+  type TranslatedEntry,
+} from './format.js';
 import { detectIndent } from './util/detect-indent.js';
 import { Logger } from '../utils/logger.js';
 
@@ -7,10 +14,42 @@ interface FlatKeyInfo {
   scopes: Map<string, number>;
 }
 
+export interface JsonParserOptions {
+  maxDepth?: number;
+}
+
+/**
+ * Stack-safety ceiling for callers with no configured limit, such as
+ * `deepl translate file.json`. It sits far above any realistic i18n file and
+ * far below the depth at which the recursive walks exhaust the stack (~2,000
+ * levels measured), so its only effect is to turn an opaque
+ * `RangeError: Maximum call stack size exceeded` into a named error. `sync`
+ * narrows it to `sync.limits.max_depth` (32 by default).
+ */
+export const DEFAULT_JSON_MAX_DEPTH = 100;
+
 export class JsonFormatParser implements FormatParser {
   readonly name = 'JSON i18n';
   readonly configKey = 'json';
   readonly extensions = ['.json'];
+
+  private readonly maxDepth: number;
+
+  constructor(options: JsonParserOptions = {}) {
+    this.maxDepth = options.maxDepth ?? DEFAULT_JSON_MAX_DEPTH;
+  }
+
+  withMaxDepth(maxDepth: number): JsonFormatParser {
+    return new JsonFormatParser({ maxDepth });
+  }
+
+  private assertDepth(depth: number, prefix: string): void {
+    if (depth > this.maxDepth) {
+      throw new FormatDepthExceededError(
+        `JSON: max nesting depth ${this.maxDepth} exceeded at '${describeKeyPath(prefix)}'.`
+      );
+    }
+  }
 
   extract(content: string): ExtractedEntry[] {
     const clean = content.replace(/^\uFEFF/, '');
@@ -20,13 +59,14 @@ export class JsonFormatParser implements FormatParser {
     if (duplicates.length > 0) {
       Logger.warn(
         `JSON file contains duplicate keys: ${duplicates.join(', ')}. ` +
-        `Only the last value for each key will be used.`,
+          `Only the last value for each key will be used.`
       );
     }
 
     const data: unknown = JSON.parse(clean);
     const entries: ExtractedEntry[] = [];
     this.walk(data, '', entries);
+    assertDistinctKeys(entries, 'JSON', '.');
     return entries;
   }
 
@@ -69,7 +109,9 @@ export class JsonFormatParser implements FormatParser {
     prefix: string,
     keys: Set<string>,
     scopes: Map<string, number>,
+    depth = 1
   ): void {
+    this.assertDepth(depth, prefix);
     for (const prop of Object.keys(obj)) {
       const dotPath = prefix ? `${prefix}.${prop}` : prop;
       if (prop.includes('.')) {
@@ -79,7 +121,13 @@ export class JsonFormatParser implements FormatParser {
       }
       const val = obj[prop];
       if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-        this.collectFlatKeys(val as Record<string, unknown>, dotPath, keys, scopes);
+        this.collectFlatKeys(
+          val as Record<string, unknown>,
+          dotPath,
+          keys,
+          scopes,
+          depth + 1
+        );
       }
     }
   }
@@ -93,7 +141,10 @@ export class JsonFormatParser implements FormatParser {
         return [flatKey, ...dotPath.slice(flatKey.length + 1).split('.')];
       }
       if (dotPath.endsWith('.' + flatKey)) {
-        return [...dotPath.slice(0, dotPath.length - flatKey.length - 1).split('.'), flatKey];
+        return [
+          ...dotPath.slice(0, dotPath.length - flatKey.length - 1).split('.'),
+          flatKey,
+        ];
       }
     }
 
@@ -123,21 +174,28 @@ export class JsonFormatParser implements FormatParser {
     return standard;
   }
 
-  private walk(obj: unknown, prefix: string, entries: ExtractedEntry[]): void {
+  private walk(
+    obj: unknown,
+    prefix: string,
+    entries: ExtractedEntry[],
+    depth = 1
+  ): void {
     if (Array.isArray(obj)) {
+      this.assertDepth(depth, prefix);
       for (let i = 0; i < obj.length; i++) {
         const item: unknown = obj[i];
         const key = prefix ? `${prefix}.${i}` : String(i);
         if (typeof item === 'string') {
           entries.push({ key, value: item });
         } else if (typeof item === 'object' && item !== null) {
-          this.walk(item, key, entries);
+          this.walk(item, key, entries, depth + 1);
         }
       }
       return;
     }
 
     if (typeof obj === 'object' && obj !== null) {
+      this.assertDepth(depth, prefix);
       const record = obj as Record<string, unknown>;
       for (const prop of Object.keys(record)) {
         const val: unknown = record[prop];
@@ -145,7 +203,7 @@ export class JsonFormatParser implements FormatParser {
         if (typeof val === 'string') {
           entries.push({ key, value: val });
         } else if (typeof val === 'object' && val !== null) {
-          this.walk(val, key, entries);
+          this.walk(val, key, entries, depth + 1);
         }
       }
     }
@@ -156,8 +214,10 @@ export class JsonFormatParser implements FormatParser {
     prefix: string,
     translations: Map<string, string>,
     flatKeyInfo: FlatKeyInfo,
+    depth = 1
   ): void {
     if (Array.isArray(obj)) {
+      this.assertDepth(depth, prefix);
       for (let i = 0; i < obj.length; i++) {
         const key = prefix ? `${prefix}.${i}` : String(i);
         const item: unknown = obj[i];
@@ -167,13 +227,20 @@ export class JsonFormatParser implements FormatParser {
             obj[i] = translation;
           }
         } else if (typeof item === 'object' && item !== null) {
-          this.applyTranslations(item, key, translations, flatKeyInfo);
+          this.applyTranslations(
+            item,
+            key,
+            translations,
+            flatKeyInfo,
+            depth + 1
+          );
         }
       }
       return;
     }
 
     if (typeof obj === 'object' && obj !== null) {
+      this.assertDepth(depth, prefix);
       const record = obj as Record<string, unknown>;
       for (const prop of Object.keys(record)) {
         const key = prefix ? `${prefix}.${prop}` : prop;
@@ -184,13 +251,23 @@ export class JsonFormatParser implements FormatParser {
             record[prop] = translation;
           }
         } else if (typeof val === 'object' && val !== null) {
-          this.applyTranslations(val, key, translations, flatKeyInfo);
+          this.applyTranslations(
+            val,
+            key,
+            translations,
+            flatKeyInfo,
+            depth + 1
+          );
         }
       }
     }
   }
 
-  private insertNewKeys(obj: unknown, translations: Map<string, string>, flatKeyInfo: FlatKeyInfo): void {
+  private insertNewKeys(
+    obj: unknown,
+    translations: Map<string, string>,
+    flatKeyInfo: FlatKeyInfo
+  ): void {
     if (typeof obj !== 'object' || obj === null) return;
     for (const [key, value] of translations) {
       if (!this.hasKey(obj, key, flatKeyInfo)) {
@@ -200,7 +277,11 @@ export class JsonFormatParser implements FormatParser {
     }
   }
 
-  private hasKey(obj: unknown, dotPath: string, flatKeyInfo: FlatKeyInfo): boolean {
+  private hasKey(
+    obj: unknown,
+    dotPath: string,
+    flatKeyInfo: FlatKeyInfo
+  ): boolean {
     const parts = this.splitKeyParts(dotPath, flatKeyInfo);
     let current: unknown = obj;
     for (const part of parts) {
@@ -219,7 +300,11 @@ export class JsonFormatParser implements FormatParser {
    * `obj['__proto__'] = v` invokes the prototype setter instead of creating a
    * property, which both loses the translation and mutates Object.prototype.
    */
-  private setOwn(obj: Record<string, unknown>, key: string, value: unknown): void {
+  private setOwn(
+    obj: Record<string, unknown>,
+    key: string,
+    value: unknown
+  ): void {
     Object.defineProperty(obj, key, {
       value,
       writable: true,
@@ -228,7 +313,11 @@ export class JsonFormatParser implements FormatParser {
     });
   }
 
-  private setKeyWithParts(obj: Record<string, unknown>, parts: string[], value: string): void {
+  private setKeyWithParts(
+    obj: Record<string, unknown>,
+    parts: string[],
+    value: string
+  ): void {
     let current: Record<string, unknown> = obj;
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i]!;
@@ -249,8 +338,10 @@ export class JsonFormatParser implements FormatParser {
     prefix: string,
     translations: Map<string, string>,
     flatKeyInfo: FlatKeyInfo,
+    depth = 1
   ): void {
     if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return;
+    this.assertDepth(depth, prefix);
     const record = obj as Record<string, unknown>;
     for (const prop of Object.keys(record)) {
       const key = prefix ? `${prefix}.${prop}` : prop;
@@ -259,8 +350,12 @@ export class JsonFormatParser implements FormatParser {
         if (!translations.has(key)) {
           delete record[prop];
         }
-      } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-        this.removeDeletedKeys(val, key, translations, flatKeyInfo);
+      } else if (
+        typeof val === 'object' &&
+        val !== null &&
+        !Array.isArray(val)
+      ) {
+        this.removeDeletedKeys(val, key, translations, flatKeyInfo, depth + 1);
         if (Object.keys(val).length === 0) {
           delete record[prop];
         }

@@ -18,7 +18,11 @@ describe('StyleRulesService', () => {
     const service = new StyleRulesService(mockClient);
 
     await service.getStyleRules({ detailed: true, page: 2, pageSize: 10 });
-    expect(mockClient.getStyleRules).toHaveBeenCalledWith({ detailed: true, page: 2, pageSize: 10 });
+    expect(mockClient.getStyleRules).toHaveBeenCalledWith({
+      detailed: true,
+      page: 2,
+      pageSize: 10,
+    });
   });
 
   it('should return rules from client', async () => {
@@ -54,7 +58,10 @@ describe('StyleRulesService', () => {
     const mockClient = createMockDeepLClient();
     const service = new StyleRulesService(mockClient);
     await service.createStyleRule({ name: 'X', language: 'en' });
-    expect(mockClient.createStyleRule).toHaveBeenCalledWith({ name: 'X', language: 'en' });
+    expect(mockClient.createStyleRule).toHaveBeenCalledWith({
+      name: 'X',
+      language: 'en',
+    });
   });
 
   it('should delegate getStyleRule with detailed flag', async () => {
@@ -75,7 +82,9 @@ describe('StyleRulesService', () => {
     const mockClient = createMockDeepLClient();
     const service = new StyleRulesService(mockClient);
     await service.updateStyleRule('sr-1', { name: 'Renamed' });
-    expect(mockClient.updateStyleRule).toHaveBeenCalledWith('sr-1', { name: 'Renamed' });
+    expect(mockClient.updateStyleRule).toHaveBeenCalledWith('sr-1', {
+      name: 'Renamed',
+    });
   });
 
   it('should delegate deleteStyleRule to client', async () => {
@@ -90,34 +99,50 @@ describe('StyleRulesService', () => {
     const service = new StyleRulesService(mockClient);
     const rules = { punctuation: { quotation_mark: 'use_guillemets' } };
     await service.replaceConfiguredRules('sr-1', rules);
-    expect(mockClient.replaceConfiguredRules).toHaveBeenCalledWith('sr-1', rules);
+    expect(mockClient.replaceConfiguredRules).toHaveBeenCalledWith(
+      'sr-1',
+      rules
+    );
   });
 
   it('should delegate createCustomInstruction to client', async () => {
     const mockClient = createMockDeepLClient();
     const service = new StyleRulesService(mockClient);
     await service.createCustomInstruction('sr-1', { label: 'L', prompt: 'P' });
-    expect(mockClient.createCustomInstruction).toHaveBeenCalledWith('sr-1', { label: 'L', prompt: 'P' });
+    expect(mockClient.createCustomInstruction).toHaveBeenCalledWith('sr-1', {
+      label: 'L',
+      prompt: 'P',
+    });
   });
 
   it('should delegate getCustomInstruction to client', async () => {
     const mockClient = createMockDeepLClient();
     const service = new StyleRulesService(mockClient);
     await service.getCustomInstruction('sr-1', 'tone');
-    expect(mockClient.getCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone');
+    expect(mockClient.getCustomInstruction).toHaveBeenCalledWith(
+      'sr-1',
+      'tone'
+    );
   });
 
   it('should delegate updateCustomInstruction to client', async () => {
     const mockClient = createMockDeepLClient();
     const service = new StyleRulesService(mockClient);
     await service.updateCustomInstruction('sr-1', 'tone', { prompt: 'New' });
-    expect(mockClient.updateCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone', { prompt: 'New' });
+    expect(mockClient.updateCustomInstruction).toHaveBeenCalledWith(
+      'sr-1',
+      'tone',
+      { prompt: 'New' }
+    );
   });
 
   it('should delegate deleteCustomInstruction to client', async () => {
     const mockClient = createMockDeepLClient();
     const service = new StyleRulesService(mockClient);
     await service.deleteCustomInstruction('sr-1', 'tone');
-    expect(mockClient.deleteCustomInstruction).toHaveBeenCalledWith('sr-1', 'tone');
+    expect(mockClient.deleteCustomInstruction).toHaveBeenCalledWith(
+      'sr-1',
+      'tone'
+    );
   });
 });

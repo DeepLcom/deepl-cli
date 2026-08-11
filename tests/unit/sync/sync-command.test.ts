@@ -1,5 +1,9 @@
 import { SyncCommand } from '../../../src/cli/commands/sync-command';
-import type { SyncService, SyncResult, SyncFileResult } from '../../../src/sync/sync-service';
+import type {
+  SyncService,
+  SyncResult,
+  SyncFileResult,
+} from '../../../src/sync/sync-service';
 import { Logger } from '../../../src/utils/logger';
 
 const mockExecFile = jest.fn(
@@ -7,13 +11,20 @@ const mockExecFile = jest.fn(
     _cmd: string,
     _args: string[],
     _optsOrCb?: unknown,
-    cbArg?: (err: Error | null, result: { stdout: string; stderr: string }) => void,
+    cbArg?: (
+      err: Error | null,
+      result: { stdout: string; stderr: string }
+    ) => void
   ) => {
-    const cb = typeof _optsOrCb === 'function'
-      ? (_optsOrCb as (err: Error | null, result: { stdout: string; stderr: string }) => void)
-      : cbArg;
+    const cb =
+      typeof _optsOrCb === 'function'
+        ? (_optsOrCb as (
+            err: Error | null,
+            result: { stdout: string; stderr: string }
+          ) => void)
+        : cbArg;
     if (cb) cb(null, { stdout: '', stderr: '' });
-  },
+  }
 );
 
 jest.mock('child_process', () => ({
@@ -49,7 +60,8 @@ jest.mock('../../../src/sync/sync-config', () => ({
   loadSyncConfig: jest.fn(),
 }));
 
-const { loadSyncConfig: mockLoadSyncConfig } = require('../../../src/sync/sync-config') as { loadSyncConfig: jest.Mock };
+const { loadSyncConfig: mockLoadSyncConfig } =
+  require('../../../src/sync/sync-config') as { loadSyncConfig: jest.Mock };
 
 const defaultSyncConfig = {
   version: 1,
@@ -69,6 +81,7 @@ function makeResult(overrides: Partial<SyncResult> = {}): SyncResult {
     staleKeys: 1,
     deletedKeys: 0,
     currentKeys: 7,
+    unwrittenKeys: 0,
     totalCharactersBilled: 100,
     fileResults: [],
     validationWarnings: 0,
@@ -98,7 +111,9 @@ describe('SyncCommand', () => {
     mockLoadSyncConfig.mockResolvedValue({ ...defaultSyncConfig });
     logInfoSpy = jest.spyOn(Logger, 'info').mockImplementation(() => {});
     logWarnSpy = jest.spyOn(Logger, 'warn').mockImplementation(() => {});
-    stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    stdoutWriteSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
   });
 
   afterEach(() => {
@@ -115,7 +130,9 @@ describe('SyncCommand', () => {
 
       await command.run({ dryRun: true });
 
-      const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(infoOutput.toLowerCase()).toContain('dry-run');
     });
 
@@ -126,7 +143,9 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(infoOutput.toLowerCase()).toContain('drift');
     });
 
@@ -143,8 +162,12 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
-      expect(infoOutput).toContain('Sync drift detected: 5 new, 2 deleted keys.');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
+      expect(infoOutput).toContain(
+        'Sync drift detected: 5 new, 2 deleted keys.'
+      );
     });
 
     it('should only mention nonzero categories in drift message', async () => {
@@ -160,14 +183,16 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('Sync drift detected: 3 deleted keys.');
       expect(infoOutput).not.toMatch(/\bnew\b/);
       expect(infoOutput).not.toMatch(/\bstale\b/);
     });
 
     it('should output valid JSON to stdout when format is json', async () => {
-        expect.assertions(4);
+      expect.assertions(4);
       const result = makeResult();
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
@@ -183,7 +208,10 @@ describe('SyncCommand', () => {
         }
       });
       expect(jsonCall).toBeDefined();
-      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<string, unknown>;
+      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<
+        string,
+        unknown
+      >;
       expect(parsed).toHaveProperty('ok');
       expect(parsed).toHaveProperty('totalKeys');
       expect(parsed).not.toHaveProperty('success');
@@ -196,7 +224,9 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('500,000 chars');
       expect(infoOutput).toMatch(/~?\$\d+\.\d+/);
     });
@@ -208,19 +238,69 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('Pro tier estimate');
     });
 
     it('should append Pro tier disclaimer to dry-run estimated cost in text mode', async () => {
-      const result = makeResult({ dryRun: true, estimatedCharacters: 300_000, totalCharactersBilled: 0 });
+      const result = makeResult({
+        dryRun: true,
+        estimatedCharacters: 300_000,
+        totalCharactersBilled: 0,
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({ dryRun: true });
 
-      const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('Pro tier estimate');
+    });
+
+    it('should say why a dry-run estimate covers keys the summary calls current', async () => {
+      const result = makeResult({
+        dryRun: true,
+        estimatedCharacters: 12,
+        unwrittenKeys: 1,
+        currentKeys: 2,
+        totalCharactersBilled: 0,
+      });
+      const mockService = createMockSyncService(result);
+      const command = new SyncCommand(mockService);
+
+      await command.run({ dryRun: true });
+
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
+      expect(infoOutput).toContain(
+        '1 key is recorded as translated in the lock file'
+      );
+      expect(infoOutput).toContain('would translate it again');
+    });
+
+    it('should say nothing about unwritten keys when a dry run finds none', async () => {
+      const result = makeResult({
+        dryRun: true,
+        estimatedCharacters: 12,
+        unwrittenKeys: 0,
+        totalCharactersBilled: 0,
+      });
+      const mockService = createMockSyncService(result);
+      const command = new SyncCommand(mockService);
+
+      await command.run({ dryRun: true });
+
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
+      expect(infoOutput).not.toContain(
+        'recorded as translated in the lock file'
+      );
     });
 
     it('should include estimatedCost in JSON output', async () => {
@@ -231,9 +311,17 @@ describe('SyncCommand', () => {
       await command.run({ format: 'json' });
 
       const jsonCall = stdoutWriteSpy.mock.calls.find((c: unknown[]) => {
-        try { JSON.parse(String(c[0]).trim()); return true; } catch { return false; }
+        try {
+          JSON.parse(String(c[0]).trim());
+          return true;
+        } catch {
+          return false;
+        }
       });
-      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<string, unknown>;
+      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<
+        string,
+        unknown
+      >;
       expect(parsed['estimatedCost']).toBe('~$25.00');
     });
 
@@ -245,9 +333,17 @@ describe('SyncCommand', () => {
       await command.run({ format: 'json' });
 
       const jsonCall = stdoutWriteSpy.mock.calls.find((c: unknown[]) => {
-        try { JSON.parse(String(c[0]).trim()); return true; } catch { return false; }
+        try {
+          JSON.parse(String(c[0]).trim());
+          return true;
+        } catch {
+          return false;
+        }
       });
-      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<string, unknown>;
+      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<
+        string,
+        unknown
+      >;
       expect(parsed['rateAssumption']).toBe('pro');
     });
 
@@ -259,10 +355,20 @@ describe('SyncCommand', () => {
       await command.run({ format: 'json' });
 
       const jsonCall = stdoutWriteSpy.mock.calls.find((c: unknown[]) => {
-        try { JSON.parse(String(c[0]).trim()); return true; } catch { return false; }
+        try {
+          JSON.parse(String(c[0]).trim());
+          return true;
+        } catch {
+          return false;
+        }
       });
-      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<string, unknown>;
-      expect(String(parsed['estimatedCost'])).not.toContain('Pro tier estimate');
+      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<
+        string,
+        unknown
+      >;
+      expect(String(parsed['estimatedCost'])).not.toContain(
+        'Pro tier estimate'
+      );
     });
 
     it('should display validation warnings when present', async () => {
@@ -272,7 +378,9 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const warnOutput = logWarnSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const warnOutput = logWarnSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(warnOutput).toContain('3');
       expect(warnOutput.toLowerCase()).toContain('warning');
     });
@@ -284,7 +392,9 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const warnOutput = logWarnSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const warnOutput = logWarnSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(warnOutput).toContain('5');
       expect(warnOutput.toLowerCase()).toContain('error');
     });
@@ -304,8 +414,16 @@ describe('SyncCommand', () => {
     });
 
     it('should behave identically to --frozen', async () => {
-      const resultFrozen = makeResult({ frozen: true, driftDetected: true, success: false });
-      const resultCi = makeResult({ frozen: true, driftDetected: true, success: false });
+      const resultFrozen = makeResult({
+        frozen: true,
+        driftDetected: true,
+        success: false,
+      });
+      const resultCi = makeResult({
+        frozen: true,
+        driftDetected: true,
+        success: false,
+      });
 
       const mockServiceFrozen = createMockSyncService(resultFrozen);
       const mockServiceCi = createMockSyncService(resultCi);
@@ -330,23 +448,121 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(infoOutput).not.toContain('$');
       expect(infoOutput).not.toContain('chars');
     });
 
     it('should show all key categories in summary', async () => {
-      const result = makeResult({ newKeys: 3, staleKeys: 2, currentKeys: 10, deletedKeys: 1 });
+      const result = makeResult({
+        newKeys: 3,
+        staleKeys: 2,
+        currentKeys: 10,
+        deletedKeys: 1,
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map(c => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('3 new');
       expect(infoOutput).toContain('2 updated');
       expect(infoOutput).toContain('10 current');
       expect(infoOutput).toContain('1 deleted');
+    });
+
+    // The key counts come from the diff, not from what landed, so on a partial
+    // failure "Sync complete: 200 new" reads as if all 200 were translated —
+    // directly contradicting the per-locale line above it.
+    describe('partial translation failure', () => {
+      function failedRun(): SyncResult {
+        return makeResult({
+          newKeys: 200,
+          staleKeys: 0,
+          currentKeys: 0,
+          fileResults: [
+            {
+              file: 'locales/en.json',
+              locale: 'de',
+              translated: 50,
+              skipped: 0,
+              failed: 150,
+              written: true,
+            },
+          ],
+        });
+      }
+
+      async function summaryLine(result: SyncResult): Promise<string> {
+        const command = new SyncCommand(createMockSyncService(result));
+        await command.run({});
+        return (
+          logInfoSpy.mock.calls
+            .map((c) => String(c[0]))
+            .find((line) => line.startsWith('Sync complete:')) ?? ''
+        );
+      }
+
+      it('should report the failure count in the summary', async () => {
+        expect(await summaryLine(failedRun())).toContain(
+          '150 translations failed'
+        );
+      });
+
+      it('should still report the diffed key counts', async () => {
+        expect(await summaryLine(failedRun())).toContain('200 new');
+      });
+
+      it('should say nothing about failures when there were none', async () => {
+        const line = await summaryLine(
+          makeResult({
+            fileResults: [
+              {
+                file: 'locales/en.json',
+                locale: 'de',
+                translated: 50,
+                skipped: 0,
+                failed: 0,
+                written: true,
+              },
+            ],
+          })
+        );
+
+        expect(line).not.toContain('failed');
+      });
+
+      it('should total failures across locales', async () => {
+        const line = await summaryLine(
+          makeResult({
+            fileResults: [
+              {
+                file: 'locales/en.json',
+                locale: 'de',
+                translated: 1,
+                skipped: 0,
+                failed: 4,
+                written: true,
+              },
+              {
+                file: 'locales/en.json',
+                locale: 'fr',
+                translated: 2,
+                skipped: 0,
+                failed: 3,
+                written: true,
+              },
+            ],
+          })
+        );
+
+        expect(line).toContain('7 translations failed');
+      });
     });
 
     it('should pass flagForReview through to sync options', async () => {
@@ -364,62 +580,102 @@ describe('SyncCommand', () => {
 
   describe('dry-run estimation display', () => {
     it('should display estimated characters and cost in dry-run', async () => {
-      const result = makeResult({ dryRun: true, totalCharactersBilled: 0, estimatedCharacters: 4500, targetLocaleCount: 5 });
+      const result = makeResult({
+        dryRun: true,
+        totalCharactersBilled: 0,
+        estimatedCharacters: 4500,
+        targetLocaleCount: 5,
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({ dryRun: true });
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('~4,500 chars');
       expect(infoOutput).toMatch(/~?\$\d+\.\d+/);
     });
 
     it('should not display estimation line when estimatedCharacters is 0', async () => {
-      const result = makeResult({ dryRun: true, totalCharactersBilled: 0, estimatedCharacters: 0 });
+      const result = makeResult({
+        dryRun: true,
+        totalCharactersBilled: 0,
+        estimatedCharacters: 0,
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({ dryRun: true });
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).not.toContain('This sync');
     });
 
     it('should show locale count in dry-run summary', async () => {
-      const result = makeResult({ dryRun: true, totalCharactersBilled: 0, estimatedCharacters: 1000, targetLocaleCount: 3 });
+      const result = makeResult({
+        dryRun: true,
+        totalCharactersBilled: 0,
+        estimatedCharacters: 1000,
+        targetLocaleCount: 3,
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({ dryRun: true });
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('across 3 languages');
     });
 
     it('should use singular "language" when targetLocaleCount is 1', async () => {
-      const result = makeResult({ dryRun: true, totalCharactersBilled: 0, estimatedCharacters: 100, targetLocaleCount: 1 });
+      const result = makeResult({
+        dryRun: true,
+        totalCharactersBilled: 0,
+        estimatedCharacters: 100,
+        targetLocaleCount: 1,
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({ dryRun: true });
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('across 1 language');
       expect(infoOutput).not.toContain('languages');
     });
 
     it('should include estimatedCharacters in JSON dry-run output', async () => {
-      const result = makeResult({ dryRun: true, totalCharactersBilled: 0, estimatedCharacters: 4500, targetLocaleCount: 5 });
+      const result = makeResult({
+        dryRun: true,
+        totalCharactersBilled: 0,
+        estimatedCharacters: 4500,
+        targetLocaleCount: 5,
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({ dryRun: true, format: 'json' });
 
       const jsonCall = stdoutWriteSpy.mock.calls.find((c: unknown[]) => {
-        try { JSON.parse(String(c[0]).trim()); return true; } catch { return false; }
+        try {
+          JSON.parse(String(c[0]).trim());
+          return true;
+        } catch {
+          return false;
+        }
       });
-      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<string, unknown>;
+      const parsed = JSON.parse(String(jsonCall![0]).trim()) as Record<
+        string,
+        unknown
+      >;
       expect(parsed['estimatedCharacters']).toBe(4500);
       expect(parsed['estimatedCost']).toBe('~$0.11');
     });
@@ -430,8 +686,13 @@ describe('SyncCommand', () => {
     // `locale-complete` events; there is no aggregated post-sync summary.
     // These tests exercise onProgress directly to verify the live tick format.
     function mockServiceWithProgress(
-      events: Array<{ locale: string; file: string; translated: number; failed: number }>,
-      result: SyncResult,
+      events: Array<{
+        locale: string;
+        file: string;
+        translated: number;
+        failed: number;
+      }>,
+      result: SyncResult
     ): jest.Mocked<SyncService> {
       return {
         sync: jest.fn().mockImplementation(async (_config, options) => {
@@ -445,59 +706,100 @@ describe('SyncCommand', () => {
 
     it('emits per-locale tick for each completed file', async () => {
       const fileResults: SyncFileResult[] = [
-        { file: 'locales/de.json', locale: 'de', translated: 10, skipped: 0, failed: 0, written: true },
-        { file: 'locales/fr.json', locale: 'fr', translated: 10, skipped: 0, failed: 0, written: true },
+        {
+          file: 'locales/de.json',
+          locale: 'de',
+          translated: 10,
+          skipped: 0,
+          failed: 0,
+          written: true,
+        },
+        {
+          file: 'locales/fr.json',
+          locale: 'fr',
+          translated: 10,
+          skipped: 0,
+          failed: 0,
+          written: true,
+        },
       ];
       const mockService = mockServiceWithProgress(
         [
           { locale: 'de', file: 'locales/de.json', translated: 10, failed: 0 },
           { locale: 'fr', file: 'locales/fr.json', translated: 10, failed: 0 },
         ],
-        makeResult({ fileResults }),
+        makeResult({ fileResults })
       );
       const command = new SyncCommand(mockService);
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('\u2713 de: 10/10');
       expect(infoOutput).toContain('\u2713 fr: 10/10');
     });
 
     it('emits a tick per file for multiple files in the same locale', async () => {
       const fileResults: SyncFileResult[] = [
-        { file: 'locales/de.json', locale: 'de', translated: 5, skipped: 0, failed: 0, written: true },
-        { file: 'messages/de.json', locale: 'de', translated: 3, skipped: 0, failed: 0, written: true },
+        {
+          file: 'locales/de.json',
+          locale: 'de',
+          translated: 5,
+          skipped: 0,
+          failed: 0,
+          written: true,
+        },
+        {
+          file: 'messages/de.json',
+          locale: 'de',
+          translated: 3,
+          skipped: 0,
+          failed: 0,
+          written: true,
+        },
       ];
       const mockService = mockServiceWithProgress(
         [
           { locale: 'de', file: 'locales/de.json', translated: 5, failed: 0 },
           { locale: 'de', file: 'messages/de.json', translated: 3, failed: 0 },
         ],
-        makeResult({ fileResults }),
+        makeResult({ fileResults })
       );
       const command = new SyncCommand(mockService);
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('\u2713 de: 5/5 keys (locales/de.json)');
       expect(infoOutput).toContain('\u2713 de: 3/3 keys (messages/de.json)');
     });
 
     it('shows failure indicator when a locale has failures', async () => {
       const fileResults: SyncFileResult[] = [
-        { file: 'locales/de.json', locale: 'de', translated: 8, skipped: 0, failed: 2, written: true },
+        {
+          file: 'locales/de.json',
+          locale: 'de',
+          translated: 8,
+          skipped: 0,
+          failed: 2,
+          written: true,
+        },
       ];
       const mockService = mockServiceWithProgress(
         [{ locale: 'de', file: 'locales/de.json', translated: 8, failed: 2 }],
-        makeResult({ fileResults }),
+        makeResult({ fileResults })
       );
       const command = new SyncCommand(mockService);
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('\u2717 de: 8/10');
     });
 
@@ -508,7 +810,9 @@ describe('SyncCommand', () => {
 
       await command.run({ dryRun: true });
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).not.toMatch(/[✓✗]/);
       expect(infoOutput).not.toMatch(/\d+\/\d+/);
     });
@@ -520,7 +824,9 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).not.toMatch(/\d+\/\d+/);
     });
 
@@ -552,7 +858,9 @@ describe('SyncCommand', () => {
 
       await command.run({});
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       const tickMatches = infoOutput.match(/\u2713 de:/g) ?? [];
       expect(tickMatches).toHaveLength(1);
     });
@@ -597,13 +905,24 @@ describe('SyncCommand', () => {
           _cmd: string,
           args: string[],
           optsOrCb?: unknown,
-          cbArg?: (err: Error | null, result: { stdout: string; stderr: string }) => void,
+          cbArg?: (
+            err: Error | null,
+            result: { stdout: string; stderr: string }
+          ) => void
         ) => {
-          const cb = typeof optsOrCb === 'function'
-            ? (optsOrCb as (err: Error | null, result: { stdout: string; stderr: string }) => void)
-            : cbArg;
+          const cb =
+            typeof optsOrCb === 'function'
+              ? (optsOrCb as (
+                  err: Error | null,
+                  result: { stdout: string; stderr: string }
+                ) => void)
+              : cbArg;
           let stdout = '';
-          if (Array.isArray(args) && args[0] === 'rev-parse' && args[1] === '--git-dir') {
+          if (
+            Array.isArray(args) &&
+            args[0] === 'rev-parse' &&
+            args[1] === '--git-dir'
+          ) {
             stdout = '.git';
           }
           // Staging follows the dirty set, so a scenario that writes files must
@@ -612,7 +931,7 @@ describe('SyncCommand', () => {
             stdout = mockPorcelain;
           }
           if (cb) cb(null, { stdout, stderr: '' });
-        },
+        }
       );
       // Clean by default; tests expecting a commit declare their own dirt.
       mockPorcelain = '';
@@ -638,13 +957,23 @@ describe('SyncCommand', () => {
       const gitCalls = calls.map((c: unknown[]) => [c[0], c[1]]);
 
       expect(gitCalls).toContainEqual(['git', ['rev-parse', '--git-dir']]);
-      expect(gitCalls).toContainEqual(['git', ['add', 'locales/de.json']]);
-      expect(gitCalls).toContainEqual(['git', ['add', '.deepl-sync.lock']]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', 'locales/de.json'],
+      ]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', '.deepl-sync.lock'],
+      ]);
       expect(gitCalls).toContainEqual(
         expect.arrayContaining([
           'git',
-          expect.arrayContaining(['commit', '-m', expect.stringContaining('de')]),
-        ]),
+          expect.arrayContaining([
+            'commit',
+            '-m',
+            expect.stringContaining('de'),
+          ]),
+        ])
       );
     });
 
@@ -663,20 +992,29 @@ describe('SyncCommand', () => {
       const calls = mockExecFile.mock.calls;
       const gitCalls = calls.map((c: unknown[]) => [c[0], c[1]]);
 
-      expect(gitCalls).toContainEqual(['git', ['add', 'locales/de.json']]);
-      expect(gitCalls).not.toContainEqual(['git', ['add', '.deepl-sync.lock']]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', 'locales/de.json'],
+      ]);
+      expect(gitCalls).not.toContainEqual([
+        'git',
+        ['add', '--', '.deepl-sync.lock'],
+      ]);
     });
 
     it('should pass cwd=config.projectRoot to every git invocation', async () => {
       mockPorcelain = ' M locales/de.json\0 M .deepl-sync.lock\0';
-      const result = makeResult({ fileResults: [writtenFile], lockUpdated: true });
+      const result = makeResult({
+        fileResults: [writtenFile],
+        lockUpdated: true,
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({ autoCommit: true });
 
       const gitInvocations = mockExecFile.mock.calls.filter(
-        (c: unknown[]) => c[0] === 'git',
+        (c: unknown[]) => c[0] === 'git'
       );
       expect(gitInvocations.length).toBeGreaterThan(0);
       for (const call of gitInvocations) {
@@ -687,7 +1025,8 @@ describe('SyncCommand', () => {
     });
 
     it('should stage multiple written files and include all locales in commit message', async () => {
-      mockPorcelain = ' M locales/de.json\0 M locales/fr.json\0 M .deepl-sync.lock\0';
+      mockPorcelain =
+        ' M locales/de.json\0 M locales/fr.json\0 M .deepl-sync.lock\0';
       const writtenFileFr: SyncFileResult = {
         file: 'locales/fr.json',
         locale: 'fr',
@@ -708,17 +1047,74 @@ describe('SyncCommand', () => {
       const calls = mockExecFile.mock.calls;
       const gitCalls = calls.map((c: unknown[]) => [c[0], c[1]]);
 
-      expect(gitCalls).toContainEqual(['git', ['add', 'locales/de.json']]);
-      expect(gitCalls).toContainEqual(['git', ['add', 'locales/fr.json']]);
-      expect(gitCalls).toContainEqual(['git', ['add', '.deepl-sync.lock']]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', 'locales/de.json'],
+      ]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', 'locales/fr.json'],
+      ]);
+      expect(gitCalls).toContainEqual([
+        'git',
+        ['add', '--', '.deepl-sync.lock'],
+      ]);
 
       const commitCall = calls.find(
-        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('commit'),
+        (c: unknown[]) =>
+          Array.isArray(c[1]) && (c[1] as string[]).includes('commit')
       );
       expect(commitCall).toBeDefined();
-      const commitMsg = (commitCall![1])[2];
+      const commitArgs = commitCall![1];
+      const commitMsg = commitArgs[commitArgs.indexOf('-m') + 1];
       expect(commitMsg).toContain('de');
       expect(commitMsg).toContain('fr');
+    });
+
+    it('should pass a dash-leading target path after -- so git cannot read it as an option', async () => {
+      // A target_path_pattern rendering a leading dash reaches git as a pathspec;
+      // without `--`, git parses it as an option and stages unrelated files.
+      mockPorcelain = ' M --pathspec-from-file=de\0';
+      const result = makeResult({
+        fileResults: [{ ...writtenFile, file: '--pathspec-from-file=de' }],
+        lockUpdated: false,
+      });
+      const command = new SyncCommand(createMockSyncService(result));
+
+      await command.run({ autoCommit: true });
+
+      const addCall = mockExecFile.mock.calls.find(
+        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[])[0] === 'add'
+      );
+      expect(addCall).toBeDefined();
+      const addArgs = addCall![1];
+      expect(addArgs.indexOf('--')).toBeLessThan(
+        addArgs.indexOf('--pathspec-from-file=de')
+      );
+    });
+
+    it('should restrict the commit to the staged translation files', async () => {
+      // Without --only plus an explicit pathspec, git commit takes the whole
+      // index, sweeping in anything the user staged separately.
+      mockPorcelain = ' M locales/de.json\0';
+      const result = makeResult({
+        fileResults: [writtenFile],
+        lockUpdated: false,
+      });
+      const command = new SyncCommand(createMockSyncService(result));
+
+      await command.run({ autoCommit: true });
+
+      const commitCall = mockExecFile.mock.calls.find(
+        (c: unknown[]) =>
+          Array.isArray(c[1]) && (c[1] as string[])[0] === 'commit'
+      );
+      expect(commitCall).toBeDefined();
+      const commitArgs = commitCall![1];
+      expect(commitArgs).toContain('--only');
+      expect(commitArgs.slice(commitArgs.indexOf('--') + 1)).toEqual([
+        'locales/de.json',
+      ]);
     });
 
     it('should log warning and skip when not a git repository', async () => {
@@ -727,17 +1123,25 @@ describe('SyncCommand', () => {
           _cmd: string,
           args: string[],
           optsOrCb?: unknown,
-          cbArg?: (err: Error | null, result: { stdout: string; stderr: string }) => void,
+          cbArg?: (
+            err: Error | null,
+            result: { stdout: string; stderr: string }
+          ) => void
         ) => {
-          const cb = typeof optsOrCb === 'function'
-            ? (optsOrCb as (err: Error | null, result: { stdout: string; stderr: string }) => void)
-            : cbArg;
+          const cb =
+            typeof optsOrCb === 'function'
+              ? (optsOrCb as (
+                  err: Error | null,
+                  result: { stdout: string; stderr: string }
+                ) => void)
+              : cbArg;
           if (Array.isArray(args) && args.includes('rev-parse')) {
-            if (cb) cb(new Error('not a git repository'), { stdout: '', stderr: '' });
+            if (cb)
+              cb(new Error('not a git repository'), { stdout: '', stderr: '' });
           } else {
             if (cb) cb(null, { stdout: '', stderr: '' });
           }
-        },
+        }
       );
 
       const result = makeResult({ fileResults: [writtenFile] });
@@ -746,11 +1150,14 @@ describe('SyncCommand', () => {
 
       await command.run({ autoCommit: true });
 
-      const warnOutput = logWarnSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const warnOutput = logWarnSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(warnOutput).toContain('Not a git repository');
 
       const addCalls = mockExecFile.mock.calls.filter(
-        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('add'),
+        (c: unknown[]) =>
+          Array.isArray(c[1]) && (c[1] as string[]).includes('add')
       );
       expect(addCalls).toHaveLength(0);
     });
@@ -764,10 +1171,12 @@ describe('SyncCommand', () => {
 
       const calls = mockExecFile.mock.calls;
       const addCalls = calls.filter(
-        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('add'),
+        (c: unknown[]) =>
+          Array.isArray(c[1]) && (c[1] as string[]).includes('add')
       );
       const commitCalls = calls.filter(
-        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('commit'),
+        (c: unknown[]) =>
+          Array.isArray(c[1]) && (c[1] as string[]).includes('commit')
       );
       expect(addCalls).toHaveLength(0);
       expect(commitCalls).toHaveLength(0);
@@ -799,33 +1208,43 @@ describe('SyncCommand', () => {
       await command.run({ autoCommit: true, dryRun: true });
 
       const addCalls = mockExecFile.mock.calls.filter(
-        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('add'),
+        (c: unknown[]) =>
+          Array.isArray(c[1]) && (c[1] as string[]).includes('add')
       );
       expect(addCalls).toHaveLength(0);
     });
 
     it('should not call git when driftDetected is true', async () => {
-      const result = makeResult({ driftDetected: true, fileResults: [writtenFile] });
+      const result = makeResult({
+        driftDetected: true,
+        fileResults: [writtenFile],
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({ autoCommit: true });
 
       const addCalls = mockExecFile.mock.calls.filter(
-        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('add'),
+        (c: unknown[]) =>
+          Array.isArray(c[1]) && (c[1] as string[]).includes('add')
       );
       expect(addCalls).toHaveLength(0);
     });
 
     it('should log success message after committing', async () => {
       mockPorcelain = ' M locales/de.json\0 M .deepl-sync.lock\0';
-      const result = makeResult({ fileResults: [writtenFile], lockUpdated: true });
+      const result = makeResult({
+        fileResults: [writtenFile],
+        lockUpdated: true,
+      });
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       await command.run({ autoCommit: true });
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('Auto-committed');
       expect(infoOutput).toContain('2 file(s)');
     });
@@ -893,7 +1312,7 @@ describe('SyncCommand', () => {
             `watchAndSync setup did not attach watcher listeners within ${SETUP_READY_MAX_ROUNDS} ` +
               `flush rounds (chokidar.watch calls: ${mockWatch.mock.calls.length}). Either setup ` +
               `is genuinely hung, or this test exercises the early-return path where no watcher ` +
-              `is created and should not call flushWatchSetup.`,
+              `is created and should not call flushWatchSetup.`
           );
         }
         await flushRound();
@@ -905,13 +1324,37 @@ describe('SyncCommand', () => {
       }
     }
 
+    // A watch cycle's observable effect lands several async hops after the
+    // debounce timer fires, and a cycle overlapping an in-flight sync is
+    // coalesced into `pendingRun` — its effect arrives only once the running
+    // sync reaches its `finally` and re-dispatches. Coalescing defers a cycle
+    // and never drops one, so the awaited count is always reached eventually.
+    async function flushUntil(
+      isSettled: () => boolean,
+      what: string
+    ): Promise<void> {
+      let rounds = 0;
+      while (!isSettled()) {
+        if (rounds >= SETUP_READY_MAX_ROUNDS) {
+          throw new Error(
+            `${what} did not settle within ${SETUP_READY_MAX_ROUNDS} flush rounds`
+          );
+        }
+        await flushRound();
+        rounds++;
+      }
+    }
+
     it('should create a chokidar watcher with bucket include patterns', async () => {
       const result = makeResult();
       const mockService = createMockSyncService(result);
       const command = new SyncCommand(mockService);
 
       const sigintListeners: Array<() => void> = [];
-      const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((event: string, listener: () => void) => {
+      const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+        event: string,
+        listener: () => void
+      ) => {
         if (event === 'SIGINT') {
           sigintListeners.push(listener);
         }
@@ -948,7 +1391,9 @@ describe('SyncCommand', () => {
 
       await command.run({ watch: true });
 
-      const warnOutput = logWarnSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const warnOutput = logWarnSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(warnOutput).toContain('No source files to watch');
       expect(mockWatch).not.toHaveBeenCalled();
     });
@@ -960,13 +1405,24 @@ describe('SyncCommand', () => {
           _cmd: string,
           args: string[],
           optsOrCb?: unknown,
-          cbArg?: (err: Error | null, result: { stdout: string; stderr: string }) => void,
+          cbArg?: (
+            err: Error | null,
+            result: { stdout: string; stderr: string }
+          ) => void
         ) => {
-          const cb = typeof optsOrCb === 'function'
-            ? (optsOrCb as (err: Error | null, result: { stdout: string; stderr: string }) => void)
-            : cbArg;
+          const cb =
+            typeof optsOrCb === 'function'
+              ? (optsOrCb as (
+                  err: Error | null,
+                  result: { stdout: string; stderr: string }
+                ) => void)
+              : cbArg;
           let stdout = '';
-          if (Array.isArray(args) && args[0] === 'rev-parse' && args[1] === '--git-dir') {
+          if (
+            Array.isArray(args) &&
+            args[0] === 'rev-parse' &&
+            args[1] === '--git-dir'
+          ) {
             stdout = '.git';
           }
           // Staging follows the dirty set, so a scenario that writes files must
@@ -975,7 +1431,7 @@ describe('SyncCommand', () => {
             stdout = mockPorcelain;
           }
           if (cb) cb(null, { stdout, stderr: '' });
-        },
+        }
       );
       mockExistsSync.mockReset();
       mockExistsSync.mockImplementation((p: string | URL) => {
@@ -985,17 +1441,26 @@ describe('SyncCommand', () => {
       // Capture the debounced 'change'/'add' handlers installed by
       // attachDebouncedWatchLoop so we can drive watch cycles deterministically.
       const registeredHandlers: Array<(p?: string) => void> = [];
-      mockWatcherOn.mockImplementation((event: string, handler: (p?: string) => void) => {
-        if (event === 'change' || event === 'add') {
-          registeredHandlers.push(handler);
+      mockWatcherOn.mockImplementation(
+        (event: string, handler: (p?: string) => void) => {
+          if (event === 'change' || event === 'add') {
+            registeredHandlers.push(handler);
+          }
+          return mockWatcher;
         }
-        return mockWatcher;
-      });
+      );
 
       mockPorcelain = ' M locales/de.json\0 M .deepl-sync.lock\0';
       const result = makeResult({
         fileResults: [
-          { file: 'locales/de.json', locale: 'de', translated: 5, skipped: 0, failed: 0, written: true },
+          {
+            file: 'locales/de.json',
+            locale: 'de',
+            translated: 5,
+            skipped: 0,
+            failed: 0,
+            written: true,
+          },
         ],
         lockUpdated: true,
       });
@@ -1003,47 +1468,114 @@ describe('SyncCommand', () => {
       const command = new SyncCommand(mockService);
 
       const sigintListeners: Array<() => void> = [];
-      const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((event: string, listener: () => void) => {
+      const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+        event: string,
+        listener: () => void
+      ) => {
         if (event === 'SIGINT') sigintListeners.push(listener);
         return process;
       }) as unknown as ProcessOn);
 
-      const runPromise = command.run({ watch: true, debounce: 50, autoCommit: true });
+      const runPromise = command.run({
+        watch: true,
+        debounce: 50,
+        autoCommit: true,
+      });
 
       await flushWatchSetup();
 
+      const commitCount = (): number =>
+        mockExecFile.mock.calls.filter(
+          (c: unknown[]) =>
+            Array.isArray(c[1]) && (c[1] as string[]).includes('commit')
+        ).length;
+
       // Baseline: the pre-watch initial sync should already have committed once.
-      const commitsBefore = mockExecFile.mock.calls.filter(
-        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('commit'),
-      ).length;
+      const commitsBefore = commitCount();
       expect(commitsBefore).toBeGreaterThanOrEqual(1);
 
       // Trigger a watch cycle by firing one of the registered change handlers,
-      // then advance timers past the debounce window and flush microtasks so
-      // the queued sync + autoCommit pipeline runs to completion.
+      // then advance timers past the debounce window and wait for that cycle's
+      // commit before starting the next, so the two cycles cannot coalesce.
       expect(registeredHandlers.length).toBeGreaterThan(0);
       registeredHandlers[0]!();
       await jest.advanceTimersByTimeAsync(60);
-      await flushWatchSetup();
-
-      const commitsAfterFirstCycle = mockExecFile.mock.calls.filter(
-        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('commit'),
-      ).length;
-      expect(commitsAfterFirstCycle).toBe(commitsBefore + 1);
+      await flushUntil(
+        () => commitCount() >= commitsBefore + 1,
+        'first watch cycle commit'
+      );
+      expect(commitCount()).toBe(commitsBefore + 1);
 
       // Second cycle — an independent edit should produce another commit.
       registeredHandlers[0]!();
       await jest.advanceTimersByTimeAsync(60);
-      await flushWatchSetup();
-
-      const commitsAfterSecondCycle = mockExecFile.mock.calls.filter(
-        (c: unknown[]) => Array.isArray(c[1]) && (c[1] as string[]).includes('commit'),
-      ).length;
-      expect(commitsAfterSecondCycle).toBe(commitsBefore + 2);
+      await flushUntil(
+        () => commitCount() >= commitsBefore + 2,
+        'second watch cycle commit'
+      );
+      expect(commitCount()).toBe(commitsBefore + 2);
 
       for (const listener of sigintListeners) listener();
       await runPromise;
 
+      processOnSpy.mockRestore();
+    });
+
+    /**
+     * --break-lock removes a pidfile whose holder looks alive. Repeating it on
+     * every watch cycle would leave the session unable to arbitrate against
+     * another sync in the same directory for as long as it runs.
+     */
+    it('applies --break-lock to the initial sync only, not to later watch cycles', async () => {
+      const registeredHandlers: Array<(p?: string) => void> = [];
+      mockWatcherOn.mockImplementation(
+        (event: string, handler: (p?: string) => void) => {
+          if (event === 'change' || event === 'add') {
+            registeredHandlers.push(handler);
+          }
+          return mockWatcher;
+        }
+      );
+
+      const mockService = createMockSyncService(makeResult());
+      const command = new SyncCommand(mockService);
+
+      const sigintListeners: Array<() => void> = [];
+      const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+        event: string,
+        listener: () => void
+      ) => {
+        if (event === 'SIGINT') sigintListeners.push(listener);
+        return process;
+      }) as unknown as ProcessOn);
+
+      const runPromise = command.run({
+        watch: true,
+        debounce: 50,
+        breakLock: true,
+      });
+
+      await flushWatchSetup();
+
+      expect(mockService.sync).toHaveBeenCalledTimes(1);
+      expect(mockService.sync.mock.calls[0]![1]).toMatchObject({
+        breakLock: true,
+      });
+
+      expect(registeredHandlers.length).toBeGreaterThan(0);
+      registeredHandlers[0]!();
+      await jest.advanceTimersByTimeAsync(60);
+      await flushUntil(
+        () => mockService.sync.mock.calls.length >= 2,
+        'second sync from watch cycle'
+      );
+
+      expect(mockService.sync.mock.calls[1]![1]).toMatchObject({
+        breakLock: false,
+      });
+
+      for (const listener of sigintListeners) listener();
+      await runPromise;
       processOnSpy.mockRestore();
     });
 
@@ -1058,15 +1590,12 @@ describe('SyncCommand', () => {
       // Don't mock process.on — the whole point is to observe real listener
       // churn across repeated invocations. Trigger shutdown by emitting the
       // signal to the real process emitter (listeners only react synchronously).
+      const listenersAttached = (): boolean =>
+        process.listenerCount('SIGINT') > sigintBaseline &&
+        process.listenerCount('SIGTERM') > sigtermBaseline;
+
       const firstRun = command.run({ watch: true, debounce: 50 });
-      await flushWatchSetup();
-      // flushWatchSetup returns as soon as the watcher listeners attach, which
-      // can precede the process.on('SIGINT', ...) call. Retry with a hard
-      // ceiling so a missing listener fails loudly rather than as
-      // "Expected: 1, Received: 0".
-      for (let i = 0; i < 10 && process.listenerCount('SIGINT') === sigintBaseline; i++) {
-        await flushWatchSetup();
-      }
+      await flushUntil(listenersAttached, 'first watch session stop listeners');
       expect(process.listenerCount('SIGINT')).toBe(sigintBaseline + 1);
       expect(process.listenerCount('SIGTERM')).toBe(sigtermBaseline + 1);
 
@@ -1078,10 +1607,10 @@ describe('SyncCommand', () => {
 
       // Second invocation should also add exactly one listener, then remove it.
       const secondRun = command.run({ watch: true, debounce: 50 });
-      await flushWatchSetup();
-      for (let i = 0; i < 10 && process.listenerCount('SIGINT') === sigintBaseline; i++) {
-        await flushWatchSetup();
-      }
+      await flushUntil(
+        listenersAttached,
+        'second watch session stop listeners'
+      );
       expect(process.listenerCount('SIGINT')).toBe(sigintBaseline + 1);
       expect(process.listenerCount('SIGTERM')).toBe(sigtermBaseline + 1);
 
@@ -1098,7 +1627,10 @@ describe('SyncCommand', () => {
       const command = new SyncCommand(mockService);
 
       const sigintListeners: Array<() => void> = [];
-      const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((event: string, listener: () => void) => {
+      const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+        event: string,
+        listener: () => void
+      ) => {
         if (event === 'SIGINT') {
           sigintListeners.push(listener);
         }
@@ -1107,7 +1639,15 @@ describe('SyncCommand', () => {
 
       const runPromise = command.run({ watch: true, debounce: 100 });
 
-      await flushWatchSetup();
+      // The pattern count is logged before chokidar.watch, so the stop listener
+      // is the later of the two things this test needs; wait for both.
+      await flushUntil(
+        () =>
+          logInfoSpy.mock.calls.some((c: unknown[]) =>
+            String(c[0]).includes('pattern(s)')
+          ) && sigintListeners.length > 0,
+        'watched-pattern log line and stop listener'
+      );
 
       for (const listener of sigintListeners) {
         listener();
@@ -1117,7 +1657,9 @@ describe('SyncCommand', () => {
 
       processOnSpy.mockRestore();
 
-      const infoOutput = logInfoSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+      const infoOutput = logInfoSpy.mock.calls
+        .map((c: unknown[]) => String(c[0]))
+        .join('\n');
       expect(infoOutput).toContain('Watching');
       expect(infoOutput).toContain('pattern(s)');
     });
@@ -1129,10 +1671,12 @@ describe('SyncCommand', () => {
     describe('config cache across watch ticks', () => {
       function captureChangeHandlers(): Array<(p?: string) => void> {
         const handlers: Array<(p?: string) => void> = [];
-        mockWatcherOn.mockImplementation((event: string, handler: (p?: string) => void) => {
-          if (event === 'change' || event === 'add') handlers.push(handler);
-          return mockWatcher;
-        });
+        mockWatcherOn.mockImplementation(
+          (event: string, handler: (p?: string) => void) => {
+            if (event === 'change' || event === 'add') handlers.push(handler);
+            return mockWatcher;
+          }
+        );
         return handlers;
       }
 
@@ -1144,7 +1688,10 @@ describe('SyncCommand', () => {
         const handlers = captureChangeHandlers();
 
         const sigintListeners: Array<() => void> = [];
-        const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((event: string, listener: () => void) => {
+        const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+          event: string,
+          listener: () => void
+        ) => {
           if (event === 'SIGINT') sigintListeners.push(listener);
           return process;
         }) as unknown as ProcessOn);
@@ -1186,7 +1733,10 @@ describe('SyncCommand', () => {
         const handlers = captureChangeHandlers();
 
         const signalListeners: Record<string, Array<() => void>> = {};
-        const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((event: string, listener: () => void) => {
+        const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+          event: string,
+          listener: () => void
+        ) => {
           (signalListeners[event] ??= []).push(listener);
           return process;
         }) as unknown as ProcessOn);
@@ -1232,7 +1782,10 @@ describe('SyncCommand', () => {
         const handlers = captureChangeHandlers();
 
         const sigintListeners: Array<() => void> = [];
-        const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((event: string, listener: () => void) => {
+        const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+          event: string,
+          listener: () => void
+        ) => {
           if (event === 'SIGINT') sigintListeners.push(listener);
           return process;
         }) as unknown as ProcessOn);
@@ -1268,7 +1821,10 @@ describe('SyncCommand', () => {
         captureChangeHandlers();
 
         const sigintListeners: Array<() => void> = [];
-        const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((event: string, listener: () => void) => {
+        const processOnSpy = jest.spyOn(process, 'on').mockImplementation(((
+          event: string,
+          listener: () => void
+        ) => {
           if (event === 'SIGINT') sigintListeners.push(listener);
           return process;
         }) as unknown as ProcessOn);

@@ -1,109 +1,170 @@
 /**
  * E2E Tests for Glossary Command
- * Tests the `deepl glossary` command end-to-end
+ *
+ * The subcommand surface is asserted from one table rather than once per
+ * subcommand, so a new subcommand is covered by adding a row. Glossary
+ * behaviour that needs an account -- creating, listing, entry edits -- belongs
+ * to the glossary service and client unit suites; what matters here is that
+ * every subcommand refuses to run when a required argument is missing. The
+ * declared arity itself is asserted centrally in
+ * tests/unit/docs/documented-surface.test.ts.
  */
 
 import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
+/** Every `glossary` subcommand, with the description its help must show. */
+const SUBCOMMANDS: Array<{
+  name: string;
+  description: string;
+}> = [
+  {
+    name: 'create',
+    description: 'Create a glossary from TSV/CSV file',
+  },
+  {
+    name: 'list',
+    description: 'List all glossaries',
+  },
+  {
+    name: 'show',
+    description: 'Show glossary details',
+  },
+  {
+    name: 'entries',
+    description: 'Show glossary entries',
+  },
+  {
+    name: 'delete',
+    description: 'Delete a glossary',
+  },
+  {
+    name: 'languages',
+    description: 'List supported glossary language pairs',
+  },
+  {
+    name: 'add-entry',
+    description: 'Add a new entry to a glossary',
+  },
+  {
+    name: 'update-entry',
+    description: 'Update an existing entry in a glossary',
+  },
+  {
+    name: 'remove-entry',
+    description: 'Remove an entry from a glossary',
+  },
+  {
+    name: 'rename',
+    description: 'Rename a glossary',
+  },
+  {
+    name: 'update',
+    description: 'Update glossary name and/or dictionary entries',
+  },
+  {
+    name: 'replace-dictionary',
+    description: 'Replace all entries in a glossary dictionary',
+  },
+  {
+    name: 'delete-dictionary',
+    description: 'Delete a dictionary from a multilingual glossary',
+  },
+];
+
+/** Invocations one argument short of what the subcommand requires. */
+const TOO_FEW_ARGUMENTS: Array<[string, string]> = [
+  ['create', 'glossary create "Test" en de'],
+  ['show', 'glossary show'],
+  ['entries', 'glossary entries'],
+  ['delete', 'glossary delete'],
+  ['add-entry', 'glossary add-entry "Test" "Hello"'],
+  ['update-entry', 'glossary update-entry "Test" "Hello"'],
+  ['remove-entry', 'glossary remove-entry "Test"'],
+  ['rename', 'glossary rename "Test"'],
+  ['update', 'glossary update'],
+  ['replace-dictionary', 'glossary replace-dictionary "Test" de'],
+  ['delete-dictionary', 'glossary delete-dictionary "Test"'],
+];
+
 describe('Glossary Command E2E', () => {
   const testConfig = createTestConfigDir('e2e-glossary');
-  const { runCLI, runCLIExpectError } = makeNodeRunCLI(testConfig.path);
+  const { runCLI, runCLIAll, runCLIExpectError } = makeNodeRunCLI(
+    testConfig.path,
+    { noColor: true }
+  );
 
   afterAll(() => {
     testConfig.cleanup();
   });
 
   describe('glossary --help', () => {
-    it('should display help text', () => {
+    it('should list every subcommand with its description', () => {
       const output = runCLI('glossary --help');
 
-      expect(output).toContain('Usage:');
-      expect(output).toContain('glossary');
-      expect(output).toContain('Options:');
+      expect(output).toContain('Manage translation glossaries');
+      for (const { name, description } of SUBCOMMANDS) {
+        expect(output).toContain(name);
+        expect(output).toContain(description);
+      }
     });
 
-    it('should describe the command', () => {
-      const output = runCLI('glossary --help');
+    it('should offer --format json on the reading subcommands', () => {
+      for (const subcommand of ['list', 'show', 'entries']) {
+        const output = runCLI(`glossary ${subcommand} --help`);
 
-      expect(output).toMatch(/glossar|manage/i);
-    });
-
-    it('should list subcommands', () => {
-      const output = runCLI('glossary --help');
-
-      expect(output).toContain('Commands:');
-      expect(output).toContain('create');
-      expect(output).toContain('list');
-      expect(output).toContain('show');
-      expect(output).toContain('delete');
+        expect(output).toContain('--format');
+        expect(output).toContain('json');
+      }
     });
   });
 
-  describe('glossary list without API key', () => {
-    it('should require API key', () => {
-      const result = runCLIExpectError('glossary list', { apiKey: '' });
+  describe('required arguments', () => {
+    // Asserting the failure is *not* about credentials is the point: it shows
+    // commander refused on arity before the command could reach the API.
+    it.each(TOO_FEW_ARGUMENTS)(
+      'should refuse %s when an argument is missing',
+      (_name, invocation) => {
+        const result = runCLIExpectError(invocation, { excludeApiKey: true });
 
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/api key/i);
-    });
+        expect(result.status).toBeGreaterThan(0);
+        expect(result.output).toMatch(/missing required argument/i);
+        expect(result.output).not.toMatch(/API key/i);
+      }
+    );
   });
 
-  describe('glossary subcommand help', () => {
-    it('should show help for glossary list', () => {
-      const output = runCLI('glossary list --help');
+  describe('glossary delete confirmation', () => {
+    it('should abort rather than delete when --yes is absent', () => {
+      const output = runCLIAll('glossary delete "My Glossary"');
 
-      expect(output).toContain('list');
-      expect(output).toContain('--format');
+      expect(output).toContain('Aborted');
     });
 
-    it('should show help for glossary create', () => {
-      const output = runCLI('glossary create --help');
-
-      expect(output).toContain('create');
-    });
-
-    it('should show help for glossary delete', () => {
+    it('should document both confirmation flags', () => {
       const output = runCLI('glossary delete --help');
 
-      expect(output).toContain('delete');
       expect(output).toContain('--yes');
+      expect(output).toContain('-y');
     });
   });
 
-  describe('glossary error handling', () => {
-    it('should require arguments for show subcommand', () => {
-      const result = runCLIExpectError('glossary show');
+  describe('credentials', () => {
+    it('should require an API key to reach the glossary API', () => {
+      const result = runCLIExpectError('glossary list', {
+        excludeApiKey: true,
+      });
 
       expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/missing|argument|required/i);
-    });
-
-    it('should require arguments for delete subcommand', () => {
-      const result = runCLIExpectError('glossary delete');
-
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/missing|argument|required/i);
-    });
-
-    it('should require arguments for entries subcommand', () => {
-      const result = runCLIExpectError('glossary entries');
-
-      expect(result.status).toBeGreaterThan(0);
-      expect(result.output).toMatch(/missing|argument|required/i);
+      expect(result.output).toMatch(/API key|auth|not set/i);
     });
   });
 
-  describe('glossary command structure', () => {
-    it('should be registered as a command', () => {
-      const helpOutput = runCLI('--help');
+  describe('command structure', () => {
+    it('should show glossary in main help with its description', () => {
+      const output = runCLI('--help');
 
-      expect(helpOutput).toContain('glossary');
-    });
-
-    it('should show glossary in main help with description', () => {
-      const helpOutput = runCLI('--help');
-
-      expect(helpOutput).toMatch(/glossar/i);
+      expect(output).toContain('glossary');
+      expect(output).toContain('Manage translation glossaries');
     });
   });
 });

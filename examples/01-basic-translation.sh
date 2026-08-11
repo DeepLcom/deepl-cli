@@ -1,10 +1,10 @@
 #!/bin/bash
-# Example 1: Basic Translation
+# Basic Translation
 # Demonstrates simple text translation with various options
 
 set -e  # Exit on error
 
-echo "=== DeepL CLI Example 1: Basic Translation ==="
+echo "=== DeepL CLI: Basic Translation ==="
 echo
 
 # Check if API key is configured

@@ -24,15 +24,28 @@ import { registerUsage } from '../../src/cli/commands/register-usage';
 import { createUsageCommand } from '../../src/cli/commands/service-factory';
 import { Logger } from '../../src/utils/logger';
 
-const mockCreateUsageCommand = createUsageCommand as jest.MockedFunction<typeof createUsageCommand>;
+const mockCreateUsageCommand = createUsageCommand as jest.MockedFunction<
+  typeof createUsageCommand
+>;
 
-async function withTTY<T>(value: boolean, fn: () => Promise<T> | T): Promise<T> {
+async function withTTY<T>(
+  value: boolean,
+  fn: () => Promise<T> | T
+): Promise<T> {
   const original = process.stdout.isTTY;
-  Object.defineProperty(process.stdout, 'isTTY', { value, configurable: true, writable: true });
+  Object.defineProperty(process.stdout, 'isTTY', {
+    value,
+    configurable: true,
+    writable: true,
+  });
   try {
     return await fn();
   } finally {
-    Object.defineProperty(process.stdout, 'isTTY', { value: original, configurable: true, writable: true });
+    Object.defineProperty(process.stdout, 'isTTY', {
+      value: original,
+      configurable: true,
+      writable: true,
+    });
   }
 }
 
@@ -80,10 +93,14 @@ describe('registerUsage', () => {
       await program.parseAsync(['node', 'test', 'usage', '--format', 'table']);
     });
 
-    expect(mockUsageCommandInstance.formatUsageTable).toHaveBeenCalledWith(usage);
+    expect(mockUsageCommandInstance.formatUsageTable).toHaveBeenCalledWith(
+      usage
+    );
     expect(mockUsageCommandInstance.formatUsage).not.toHaveBeenCalled();
     expect(Logger.output).toHaveBeenCalledWith('usage-table');
-    expect(Logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+    expect(Logger.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining('non-TTY')
+    );
   });
 
   it('should fall back to plain text with a warn when --format table in non-TTY', async () => {
@@ -97,7 +114,9 @@ describe('registerUsage', () => {
 
     expect(mockUsageCommandInstance.formatUsageTable).not.toHaveBeenCalled();
     expect(mockUsageCommandInstance.formatUsage).toHaveBeenCalledWith(usage);
-    expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('non-TTY'));
+    expect(Logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('non-TTY')
+    );
     expect(Logger.output).toHaveBeenCalledWith('plain usage');
   });
 
@@ -106,6 +125,8 @@ describe('registerUsage', () => {
 
     await program.parseAsync(['node', 'test', 'usage']);
 
-    expect(handleError).toHaveBeenCalledWith(expect.objectContaining({ message: 'boom' }));
+    expect(handleError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'boom' })
+    );
   });
 });

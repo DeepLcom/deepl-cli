@@ -1,17 +1,32 @@
-import type { Command, Option } from 'commander';
+import type { Argument, Command, Option } from 'commander';
 
 export interface DescribeOption {
   flags: string;
   description: string;
   defaultValue?: unknown;
+  /** Accepted values, when the option constrains its argument to a fixed set. */
+  choices?: string[];
+}
+
+export interface DescribeArgument {
+  name: string;
+  required: boolean;
 }
 
 export interface DescribeCommand {
   name: string;
   description: string;
   aliases: string[];
+  /** Positional arguments, in declaration order. */
+  arguments: DescribeArgument[];
   options: DescribeOption[];
   commands: DescribeCommand[];
+  /**
+   * Omitted from `--help`. Hidden commands are part of the parsed surface but
+   * not the documented one, so a consumer can skip them without knowing their
+   * names.
+   */
+  hidden: boolean;
 }
 
 function describeOption(opt: Option): DescribeOption {
@@ -22,19 +37,45 @@ function describeOption(opt: Option): DescribeOption {
   if (opt.defaultValue !== undefined) {
     out.defaultValue = opt.defaultValue;
   }
+  if (opt.argChoices !== undefined) {
+    out.choices = [...opt.argChoices];
+  }
   return out;
 }
 
-function describeCommand(cmd: Command): DescribeCommand {
+function describeArgument(arg: Argument): DescribeArgument {
+  return { name: arg.name(), required: arg.required };
+}
+
+/**
+ * Names the parent lists in `--help`. Commander adds an implicit `help` entry
+ * that is not among the parent's registered commands, so membership is compared
+ * by name rather than by identity.
+ */
+function visibleChildNames(cmd: Command): Set<string> {
+  return new Set(
+    cmd
+      .createHelp()
+      .visibleCommands(cmd)
+      .map((child) => child.name())
+  );
+}
+
+function describeCommand(cmd: Command, hidden: boolean): DescribeCommand {
+  const visible = visibleChildNames(cmd);
   return {
     name: cmd.name(),
     description: cmd.description(),
     aliases: cmd.aliases(),
+    arguments: cmd.registeredArguments.map(describeArgument),
     options: cmd.options.map(describeOption),
-    commands: cmd.commands.map(describeCommand),
+    commands: cmd.commands.map((child) =>
+      describeCommand(child, !visible.has(child.name()))
+    ),
+    hidden,
   };
 }
 
 export function describeProgram(program: Command): DescribeCommand {
-  return describeCommand(program);
+  return describeCommand(program, false);
 }

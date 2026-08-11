@@ -3,7 +3,10 @@ import type { LocaleTranslatorContext } from '../../../src/sync/sync-locale-tran
 import type { ResolvedSyncConfig } from '../../../src/sync/sync-config';
 import type { SyncDiff } from '../../../src/sync/types';
 import type { KeyContext } from '../../../src/sync/sync-context';
-import type { FormatParser } from '../../../src/formats/format';
+import type {
+  FormatParser,
+  TranslatedEntry,
+} from '../../../src/formats/format';
 import type { TranslationOptions } from '../../../src/types/api';
 import { createMockTranslationService } from '../../helpers/mock-factories';
 
@@ -13,6 +16,9 @@ jest.mock('fs', () => ({
     mkdir: jest.fn(),
     copyFile: jest.fn(),
   },
+  // Real values: the backup copy passes COPYFILE_EXCL, so a mock without
+  // `constants` makes the call throw before it is ever made.
+  constants: jest.requireActual<typeof import('fs')>('fs').constants,
 }));
 
 jest.mock('../../../src/utils/atomic-write', () => ({
@@ -31,6 +37,7 @@ jest.mock('../../../src/utils/logger', () => ({
 }));
 
 jest.mock('../../../src/sync/sync-utils', () => ({
+  ...jest.requireActual('../../../src/sync/sync-utils'),
   resolveTargetPath: jest.fn(),
   assertPathWithinRoot: jest.fn(),
 }));
@@ -41,18 +48,36 @@ jest.mock('../../../src/sync/translation-validator', () => ({
 
 import * as fs from 'fs';
 import { atomicWriteFile } from '../../../src/utils/atomic-write';
-import { resolveTargetPath, assertPathWithinRoot } from '../../../src/sync/sync-utils';
+import {
+  resolveTargetPath,
+  assertPathWithinRoot,
+} from '../../../src/sync/sync-utils';
 import { validateBatch } from '../../../src/sync/translation-validator';
+import { Logger } from '../../../src/utils/logger';
 
-const mockReadFile = fs.promises.readFile as jest.MockedFunction<typeof fs.promises.readFile>;
-const mockMkdir = fs.promises.mkdir as jest.MockedFunction<typeof fs.promises.mkdir>;
-const mockAtomicWriteFile = atomicWriteFile as jest.MockedFunction<typeof atomicWriteFile>;
-const mockResolveTargetPath = resolveTargetPath as jest.MockedFunction<typeof resolveTargetPath>;
-const mockAssertPathWithinRoot = assertPathWithinRoot as jest.MockedFunction<typeof assertPathWithinRoot>;
-const mockValidateBatch = validateBatch as jest.MockedFunction<typeof validateBatch>;
+const mockReadFile = fs.promises.readFile as jest.MockedFunction<
+  typeof fs.promises.readFile
+>;
+const mockMkdir = fs.promises.mkdir as jest.MockedFunction<
+  typeof fs.promises.mkdir
+>;
+const mockAtomicWriteFile = atomicWriteFile as jest.MockedFunction<
+  typeof atomicWriteFile
+>;
+const mockResolveTargetPath = resolveTargetPath as jest.MockedFunction<
+  typeof resolveTargetPath
+>;
+const mockAssertPathWithinRoot = assertPathWithinRoot as jest.MockedFunction<
+  typeof assertPathWithinRoot
+>;
+const mockValidateBatch = validateBatch as jest.MockedFunction<
+  typeof validateBatch
+>;
 
 beforeEach(() => {
-  mockReadFile.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+  mockReadFile.mockRejectedValue(
+    Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+  );
   mockMkdir.mockResolvedValue(undefined);
   mockAtomicWriteFile.mockResolvedValue(undefined);
   mockResolveTargetPath.mockReturnValue('locales/de.json');
@@ -68,11 +93,17 @@ function makeTranslationResult(text: string, billedCharacters = text.length) {
   return { text, billedCharacters, detectedSourceLanguage: 'en' as const };
 }
 
-function makeDiff(key: string, value: string, metadata?: Record<string, unknown>): SyncDiff {
+function makeDiff(
+  key: string,
+  value: string,
+  metadata?: Record<string, unknown>
+): SyncDiff {
   return { key, value, status: 'new' as const, metadata };
 }
 
-function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncConfig {
+function makeConfig(
+  overrides: Partial<ResolvedSyncConfig> = {}
+): ResolvedSyncConfig {
   return {
     version: 1,
     source_locale: 'en',
@@ -87,20 +118,34 @@ function makeConfig(overrides: Partial<ResolvedSyncConfig> = {}): ResolvedSyncCo
   };
 }
 
-function makeParser(): FormatParser {
+/**
+ * A parser that honours `reconstruct`: every entry it is handed is readable
+ * back out, which is what the translator verifies before recording a key as
+ * translated. `overrides` models one that does not.
+ */
+function makeParser(overrides: Partial<FormatParser> = {}): FormatParser {
   return {
     name: 'JSON',
     configKey: 'json',
     extensions: ['.json'],
-    extract: jest.fn().mockReturnValue([]),
-    reconstruct: jest.fn().mockReturnValue('{}'),
+    extract: jest.fn((content: string) =>
+      Object.entries(JSON.parse(content) as Record<string, string>).map(
+        ([key, value]) => ({ key, value })
+      )
+    ),
+    reconstruct: jest.fn((_content: string, entries: TranslatedEntry[]) =>
+      JSON.stringify(
+        Object.fromEntries(entries.map((e) => [e.key, e.translation]))
+      )
+    ),
+    ...overrides,
   };
 }
 
 function makeCtx(
   diffs: SyncDiff[],
   keyContexts: Map<string, KeyContext>,
-  locale = 'de',
+  locale = 'de'
 ): LocaleTranslatorContext {
   return {
     locale,
@@ -108,7 +153,10 @@ function makeCtx(
     content: '{}',
     parser: makeParser(),
     diffs,
-    toTranslate: diffs.filter(d => d.status === 'new'),
+    // The same filter processBucket applies.
+    toTranslate: diffs.filter(
+      (d) => d.status === 'new' || d.status === 'stale'
+    ),
     fileLockEntries: {},
     existingTargetEntries: new Map(),
     keyContexts,
@@ -131,12 +179,20 @@ function captureTranslateBatch(returnTexts: string[]): {
   const calls: CapturedCall[] = [];
   let callIndex = 0;
   const mock = createMockTranslationService({
-    translateBatch: jest.fn().mockImplementation((texts: string[], opts: TranslationOptions) => {
-      calls.push({ texts: [...texts], opts: { ...opts } });
-      const start = callIndex;
-      callIndex += texts.length;
-      return Promise.resolve(texts.map((_, i) => makeTranslationResult(returnTexts[start + i] ?? `translated-${start + i}`)));
-    }),
+    translateBatch: jest
+      .fn()
+      .mockImplementation((texts: string[], opts: TranslationOptions) => {
+        calls.push({ texts: [...texts], opts: { ...opts } });
+        const start = callIndex;
+        callIndex += texts.length;
+        return Promise.resolve(
+          texts.map((_, i) =>
+            makeTranslationResult(
+              returnTexts[start + i] ?? `translated-${start + i}`
+            )
+          )
+        );
+      }),
   });
   return { mock, calls };
 }
@@ -144,7 +200,7 @@ function captureTranslateBatch(returnTexts: string[]): {
 function makeTranslator(
   svc: ReturnType<typeof createMockTranslationService>,
   config: ResolvedSyncConfig,
-  forceBatch?: boolean,
+  forceBatch?: boolean
 ): LocaleTranslator {
   return new LocaleTranslator(
     svc,
@@ -154,6 +210,7 @@ function makeTranslator(
     undefined,
     forceBatch,
     undefined,
+    undefined
   );
 }
 
@@ -164,7 +221,10 @@ describe('LocaleTranslator', () => {
   describe('Path A — plain batch', () => {
     it('should call translateBatch without context or custom_instructions', async () => {
       const config = makeConfig();
-      const diffs = [makeDiff('greeting', 'Hello'), makeDiff('farewell', 'Goodbye')];
+      const diffs = [
+        makeDiff('greeting', 'Hello'),
+        makeDiff('farewell', 'Goodbye'),
+      ];
       const { mock, calls } = captureTranslateBatch(['Hallo', 'Tschüss']);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, new Map()));
@@ -203,20 +263,42 @@ describe('LocaleTranslator', () => {
         makeDiff('other.key', 'Other'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['nav.home', { key: 'nav.home', context: 'Navigation link', occurrences: 1, elementType: null }],
-        ['nav.about', { key: 'nav.about', context: 'Navigation link', occurrences: 1, elementType: null }],
+        [
+          'nav.home',
+          {
+            key: 'nav.home',
+            context: 'Navigation link',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
+        [
+          'nav.about',
+          {
+            key: 'nav.about',
+            context: 'Navigation link',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
       ]);
-      const { mock, calls } = captureTranslateBatch(['Startseite', 'Über uns', 'Andere']);
+      const { mock, calls } = captureTranslateBatch([
+        'Startseite',
+        'Über uns',
+        'Andere',
+      ]);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
 
       // Path A call (other.key)
-      const plainCall = calls.find(c => c.opts.context === undefined);
+      const plainCall = calls.find((c) => c.opts.context === undefined);
       expect(plainCall).toBeDefined();
       expect(plainCall!.opts.customInstructions).toBeUndefined();
 
       // Path B1 call (nav.*)
-      const contextCall = calls.find(c => c.opts.context !== undefined && c.opts.context !== '');
+      const contextCall = calls.find(
+        (c) => c.opts.context !== undefined && c.opts.context !== ''
+      );
       expect(contextCall).toBeDefined();
       expect(contextCall!.opts.context).toMatch(/nav/i);
       expect(contextCall!.opts.customInstructions).toBeUndefined();
@@ -234,15 +316,35 @@ describe('LocaleTranslator', () => {
         makeDiff('btn.cancel', 'Cancel'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['btn.save', { key: 'btn.save', context: 'Save button label', occurrences: 1, elementType: null }],
-        ['btn.cancel', { key: 'btn.cancel', context: 'Cancel button label', occurrences: 1, elementType: null }],
+        [
+          'btn.save',
+          {
+            key: 'btn.save',
+            context: 'Save button label',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
+        [
+          'btn.cancel',
+          {
+            key: 'btn.cancel',
+            context: 'Cancel button label',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
       ]);
       const { mock, calls } = captureTranslateBatch(['Speichern', 'Abbrechen']);
       // forceBatch=false → per-key (--no-batch mode)
-      await makeTranslator(mock, config, false).translate(makeCtx(diffs, keyContexts));
+      await makeTranslator(mock, config, false).translate(
+        makeCtx(diffs, keyContexts)
+      );
 
       // Each context key gets its own call
-      const contextCalls = calls.filter(c => c.opts.context && c.opts.context !== '');
+      const contextCalls = calls.filter(
+        (c) => c.opts.context && c.opts.context !== ''
+      );
       expect(contextCalls).toHaveLength(2);
       for (const call of contextCalls) {
         expect(call.opts.context).toBeTruthy();
@@ -257,20 +359,35 @@ describe('LocaleTranslator', () => {
   describe('Path C — element instruction batch', () => {
     it('should send custom_instructions containing element-specific text for button keys', async () => {
       const config = makeConfig();
-      const diffs = [makeDiff('cta.submit', 'Submit'), makeDiff('nav.home', 'Home')];
+      const diffs = [
+        makeDiff('cta.submit', 'Submit'),
+        makeDiff('nav.home', 'Home'),
+      ];
       const keyContexts = new Map<string, KeyContext>([
-        ['cta.submit', { key: 'cta.submit', context: '', occurrences: 1, elementType: 'button' }],
+        [
+          'cta.submit',
+          {
+            key: 'cta.submit',
+            context: '',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
       ]);
       const { mock, calls } = captureTranslateBatch(['Absenden', 'Startseite']);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
 
-      const instructionCall = calls.find(c =>
-        Array.isArray(c.opts.customInstructions) && c.opts.customInstructions.length > 0,
+      const instructionCall = calls.find(
+        (c) =>
+          Array.isArray(c.opts.customInstructions) &&
+          c.opts.customInstructions.length > 0
       );
       expect(instructionCall).toBeDefined();
       expect(instructionCall!.opts.customInstructions).toEqual(
-        expect.arrayContaining([expect.stringMatching(/concise|maximum 3 words/i)]),
+        expect.arrayContaining([
+          expect.stringMatching(/concise|maximum 3 words/i),
+        ])
       );
       expect(instructionCall!.opts.context).toBeUndefined();
     });
@@ -278,20 +395,33 @@ describe('LocaleTranslator', () => {
     it('should send element-type-specific instructions for anchor (a) elements', async () => {
       const config = makeConfig();
       // Need 2+ keys to trigger the three-way partition (single key uses fast path)
-      const diffs = [makeDiff('link.read_more', 'Read more'), makeDiff('plain.key', 'Plain')];
+      const diffs = [
+        makeDiff('link.read_more', 'Read more'),
+        makeDiff('plain.key', 'Plain'),
+      ];
       const keyContexts = new Map<string, KeyContext>([
-        ['link.read_more', { key: 'link.read_more', context: '', occurrences: 1, elementType: 'a' }],
+        [
+          'link.read_more',
+          {
+            key: 'link.read_more',
+            context: '',
+            occurrences: 1,
+            elementType: 'a',
+          },
+        ],
       ]);
       const { mock, calls } = captureTranslateBatch(['Mehr lesen', 'Schlicht']);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
 
-      const instructionCall = calls.find(c =>
-        Array.isArray(c.opts.customInstructions) && c.opts.customInstructions.length > 0,
+      const instructionCall = calls.find(
+        (c) =>
+          Array.isArray(c.opts.customInstructions) &&
+          c.opts.customInstructions.length > 0
       );
       expect(instructionCall).toBeDefined();
       expect(instructionCall!.opts.customInstructions).toEqual(
-        expect.arrayContaining([expect.stringMatching(/link text|concise/i)]),
+        expect.arrayContaining([expect.stringMatching(/link text|concise/i)])
       );
     });
   });
@@ -308,16 +438,46 @@ describe('LocaleTranslator', () => {
         makeDiff('cta.submit', 'Submit'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['cta.save', { key: 'cta.save', context: '', occurrences: 1, elementType: 'button' }],
-        ['cta.delete', { key: 'cta.delete', context: '', occurrences: 1, elementType: 'button' }],
-        ['cta.submit', { key: 'cta.submit', context: '', occurrences: 1, elementType: 'button' }],
+        [
+          'cta.save',
+          {
+            key: 'cta.save',
+            context: '',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
+        [
+          'cta.delete',
+          {
+            key: 'cta.delete',
+            context: '',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
+        [
+          'cta.submit',
+          {
+            key: 'cta.submit',
+            context: '',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
       ]);
-      const { mock, calls } = captureTranslateBatch(['Speichern', 'Löschen', 'Absenden']);
+      const { mock, calls } = captureTranslateBatch([
+        'Speichern',
+        'Löschen',
+        'Absenden',
+      ]);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
 
-      const instructionCalls = calls.filter(c =>
-        Array.isArray(c.opts.customInstructions) && c.opts.customInstructions.length > 0,
+      const instructionCalls = calls.filter(
+        (c) =>
+          Array.isArray(c.opts.customInstructions) &&
+          c.opts.customInstructions.length > 0
       );
       expect(instructionCalls).toHaveLength(1);
       expect(instructionCalls[0]!.texts).toHaveLength(3);
@@ -330,20 +490,43 @@ describe('LocaleTranslator', () => {
         makeDiff('heading.title', 'Welcome'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['cta.save', { key: 'cta.save', context: '', occurrences: 1, elementType: 'button' }],
-        ['heading.title', { key: 'heading.title', context: '', occurrences: 1, elementType: 'h1' }],
+        [
+          'cta.save',
+          {
+            key: 'cta.save',
+            context: '',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
+        [
+          'heading.title',
+          {
+            key: 'heading.title',
+            context: '',
+            occurrences: 1,
+            elementType: 'h1',
+          },
+        ],
       ]);
-      const { mock, calls } = captureTranslateBatch(['Speichern', 'Willkommen']);
+      const { mock, calls } = captureTranslateBatch([
+        'Speichern',
+        'Willkommen',
+      ]);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
 
-      const instructionCalls = calls.filter(c =>
-        Array.isArray(c.opts.customInstructions) && c.opts.customInstructions.length > 0,
+      const instructionCalls = calls.filter(
+        (c) =>
+          Array.isArray(c.opts.customInstructions) &&
+          c.opts.customInstructions.length > 0
       );
       expect(instructionCalls).toHaveLength(2);
-      const instructions = instructionCalls.map(c => c.opts.customInstructions!.join(' '));
-      expect(instructions.some(i => /3 words/i.test(i))).toBe(true); // button
-      expect(instructions.some(i => /heading|impactful/i.test(i))).toBe(true); // h1
+      const instructions = instructionCalls.map((c) =>
+        c.opts.customInstructions!.join(' ')
+      );
+      expect(instructions.some((i) => /3 words/i.test(i))).toBe(true); // button
+      expect(instructions.some((i) => /heading|impactful/i.test(i))).toBe(true); // h1
     });
   });
 
@@ -358,14 +541,17 @@ describe('LocaleTranslator', () => {
           msgid_plural: '%d items',
         }),
       ];
-      const { mock, calls } = captureTranslateBatch(['1 Element', '%d Elemente']);
+      const { mock, calls } = captureTranslateBatch([
+        '1 Element',
+        '%d Elemente',
+      ]);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, new Map()));
 
       // The plain batch call should contain both the singular and plural text.
       // %d is preserved as a placeholder token by preserveVariables, so we
       // only assert on length and a substring that survives preservation.
-      const batchCall = calls.find(c => c.opts.context === undefined);
+      const batchCall = calls.find((c) => c.opts.context === undefined);
       expect(batchCall).toBeDefined();
       expect(batchCall!.texts).toHaveLength(2);
       expect(batchCall!.texts[0]).toContain('item');
@@ -380,14 +566,28 @@ describe('LocaleTranslator', () => {
         makeDiff('plain.other', 'Other text'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['btn.count', { key: 'btn.count', context: '', occurrences: 1, elementType: 'button' }],
+        [
+          'btn.count',
+          {
+            key: 'btn.count',
+            context: '',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
       ]);
-      const { mock, calls } = captureTranslateBatch(['1 Klick', '%d Klicks', 'Anderer Text']);
+      const { mock, calls } = captureTranslateBatch([
+        '1 Klick',
+        '%d Klicks',
+        'Anderer Text',
+      ]);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
 
-      const instructionCall = calls.find(c =>
-        Array.isArray(c.opts.customInstructions) && c.opts.customInstructions.length > 0,
+      const instructionCall = calls.find(
+        (c) =>
+          Array.isArray(c.opts.customInstructions) &&
+          c.opts.customInstructions.length > 0
       );
       expect(instructionCall).toBeDefined();
       // Both plural forms (singular + plural slot) should be in the instruction batch
@@ -412,7 +612,10 @@ describe('LocaleTranslator', () => {
         makeDiff('plain.text', 'Some text'), // ensures three-way partition activates
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['cta.ok', { key: 'cta.ok', context: '', occurrences: 1, elementType: 'button' }],
+        [
+          'cta.ok',
+          { key: 'cta.ok', context: '', occurrences: 1, elementType: 'button' },
+        ],
       ]);
       const { mock, calls } = captureTranslateBatch(['OK', 'Irgendein Text']);
 
@@ -421,12 +624,14 @@ describe('LocaleTranslator', () => {
       // The button key must have been translated with custom_instructions (Path C).
       // If generateElementInstruction returns undefined the key falls to Path A and
       // both keys are batched together WITHOUT custom_instructions — canary fires.
-      const instructionCall = calls.find(c =>
-        Array.isArray(c.opts.customInstructions) && c.opts.customInstructions.length > 0,
+      const instructionCall = calls.find(
+        (c) =>
+          Array.isArray(c.opts.customInstructions) &&
+          c.opts.customInstructions.length > 0
       );
       expect(instructionCall).toBeDefined();
       expect(instructionCall!.opts.customInstructions).toEqual(
-        expect.arrayContaining([expect.stringMatching(/concise|3 words/i)]),
+        expect.arrayContaining([expect.stringMatching(/concise|3 words/i)])
       );
     });
   });
@@ -438,7 +643,10 @@ describe('LocaleTranslator', () => {
     it('should propagate translationMemoryId to every translateBatch call', async () => {
       const TM_ID = 'tm-abc-123';
       const config = makeConfig();
-      const diffs = [makeDiff('greeting', 'Hello'), makeDiff('farewell', 'Goodbye')];
+      const diffs = [
+        makeDiff('greeting', 'Hello'),
+        makeDiff('farewell', 'Goodbye'),
+      ];
       const { mock, calls } = captureTranslateBatch(['Hallo', 'Tschüss']);
       const translator = new LocaleTranslator(
         mock,
@@ -448,6 +656,7 @@ describe('LocaleTranslator', () => {
         TM_ID,
         undefined,
         undefined,
+        undefined
       );
 
       await translator.translate(makeCtx(diffs, new Map()));
@@ -471,6 +680,7 @@ describe('LocaleTranslator', () => {
         undefined,
         undefined,
         undefined,
+        undefined
       );
 
       await translator.translate(makeCtx(diffs, new Map()));
@@ -490,11 +700,21 @@ describe('LocaleTranslator', () => {
       const config = makeConfig();
       const diffs = [makeDiff('greeting', 'Hello')];
       const keyContexts = new Map<string, KeyContext>([
-        ['greeting', { key: 'greeting', context: 'Homepage hero line', occurrences: 1, elementType: null }],
+        [
+          'greeting',
+          {
+            key: 'greeting',
+            context: 'Homepage hero line',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
       ]);
       const { mock, calls } = captureTranslateBatch(['Hallo']);
 
-      const result = await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
+      const result = await makeTranslator(mock, config).translate(
+        makeCtx(diffs, keyContexts)
+      );
 
       expect(calls).toHaveLength(1);
       expect(calls[0]!.opts.context).toBe('Homepage hero line');
@@ -505,11 +725,21 @@ describe('LocaleTranslator', () => {
       const config = makeConfig();
       const diffs = [makeDiff('greeting', 'Hello')];
       const keyContexts = new Map<string, KeyContext>([
-        ['greeting', { key: 'greeting', context: 'Irrelevant in force-batch mode', occurrences: 1, elementType: null }],
+        [
+          'greeting',
+          {
+            key: 'greeting',
+            context: 'Irrelevant in force-batch mode',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
       ]);
       const { mock } = captureTranslateBatch(['Hallo']);
 
-      const result = await makeTranslator(mock, config, true).translate(makeCtx(diffs, keyContexts));
+      const result = await makeTranslator(mock, config, true).translate(
+        makeCtx(diffs, keyContexts)
+      );
 
       expect(result.contextSentKeys.has('greeting')).toBe(false);
     });
@@ -522,11 +752,19 @@ describe('LocaleTranslator', () => {
     it('should tally warnings and errors from validateBatch when validation is enabled', async () => {
       mockValidateBatch.mockReturnValueOnce([
         {
-          key: 'a', source: 'Alpha', translation: 'A', severity: 'warn',
-          issues: [{ check: 'placeholder', severity: 'warn', message: 'warning' }],
+          key: 'a',
+          source: 'Alpha',
+          translation: 'A',
+          severity: 'warn',
+          issues: [
+            { check: 'placeholder', severity: 'warn', message: 'warning' },
+          ],
         },
         {
-          key: 'b', source: 'Beta', translation: 'B', severity: 'error',
+          key: 'b',
+          source: 'Beta',
+          translation: 'B',
+          severity: 'error',
           issues: [
             { check: 'placeholder', severity: 'error', message: 'error1' },
             { check: 'placeholder', severity: 'error', message: 'error2' },
@@ -540,7 +778,9 @@ describe('LocaleTranslator', () => {
       const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta')];
       const { mock } = captureTranslateBatch(['A', 'B']);
 
-      const result = await makeTranslator(mock, config).translate(makeCtx(diffs, new Map()));
+      const result = await makeTranslator(mock, config).translate(
+        makeCtx(diffs, new Map())
+      );
 
       expect(result.validationWarnings).toBe(1);
       expect(result.validationErrors).toBe(2);
@@ -553,7 +793,9 @@ describe('LocaleTranslator', () => {
       const diffs = [makeDiff('a', 'Alpha')];
       const { mock } = captureTranslateBatch(['A']);
 
-      const result = await makeTranslator(mock, config).translate(makeCtx(diffs, new Map()));
+      const result = await makeTranslator(mock, config).translate(
+        makeCtx(diffs, new Map())
+      );
 
       expect(mockValidateBatch).not.toHaveBeenCalled();
       expect(result.validationWarnings).toBe(0);
@@ -570,13 +812,14 @@ describe('LocaleTranslator', () => {
       const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta')];
       // translateBatch returns null for the second entry
       const mock = createMockTranslationService({
-        translateBatch: jest.fn().mockResolvedValue([
-          makeTranslationResult('A'),
-          null,
-        ]),
+        translateBatch: jest
+          .fn()
+          .mockResolvedValue([makeTranslationResult('A'), null]),
       });
 
-      const result = await makeTranslator(mock, config).translate(makeCtx(diffs, new Map()));
+      const result = await makeTranslator(mock, config).translate(
+        makeCtx(diffs, new Map())
+      );
 
       expect(result.fileResult.translated).toBe(1);
       expect(result.fileResult.failed).toBe(1);
@@ -604,7 +847,9 @@ describe('LocaleTranslator', () => {
 
       const result = await makeTranslator(mock, config).translate(ctx);
 
-      expect(result.targetEntries.get('existing_key')).toBe('Alter Wert (prior translation)');
+      expect(result.targetEntries.get('existing_key')).toBe(
+        'Alter Wert (prior translation)'
+      );
       expect(result.targetEntries.get('new_key')).toBe('Neuer Wert');
     });
 
@@ -626,7 +871,13 @@ describe('LocaleTranslator', () => {
           b: {
             source_hash: 'h',
             source_text: 'Beta',
-            translations: { de: { hash: 'th', translated_at: '2026-04-23T00:00:00Z', status: 'translated' } },
+            translations: {
+              de: {
+                hash: 'th',
+                translated_at: '2026-04-23T00:00:00Z',
+                status: 'translated',
+              },
+            },
           },
         },
       };
@@ -659,9 +910,13 @@ describe('LocaleTranslator', () => {
       const result = await makeTranslator(mock, config).translate(ctx);
 
       // New-locale branch translates the untranslatedCurrentKeys set.
-      const newLocaleCall = calls.find(c => c.texts.includes('Existing value'));
+      const newLocaleCall = calls.find((c) =>
+        c.texts.includes('Existing value')
+      );
       expect(newLocaleCall).toBeDefined();
-      expect(result.targetEntries.get('existing_key')).toBe('Existierender Wert');
+      expect(result.targetEntries.get('existing_key')).toBe(
+        'Existierender Wert'
+      );
       expect(result.successfulKeys).toContain('existing_key');
       expect(result.fileResult.translated).toBe(1);
     });
@@ -680,7 +935,9 @@ describe('LocaleTranslator', () => {
           callIdx++;
           if (callIdx === 1) return Promise.resolve([]);
           return Promise.resolve(
-            texts.map((t) => makeTranslationResult(t.replace(/Hello/i, 'Hallo'))),
+            texts.map((t) =>
+              makeTranslationResult(t.replace(/Hello/i, 'Hallo'))
+            )
           );
         }),
       });
@@ -699,7 +956,11 @@ describe('LocaleTranslator', () => {
       expect(result.targetEntries.get('welcome')).toMatch(/Hallo/);
     });
 
-    it('should fall back to source text when the new-locale translateBatch returns null', async () => {
+    it('should omit the key when the new-locale translateBatch returns null', async () => {
+      // Writing the source value would record untranslated text as a
+      // translation: the next run reads it back as an existing translation and
+      // skips the key, so the source language is frozen into the locale file
+      // permanently. Leaving the key out keeps it retryable.
       const config = makeConfig();
       const diffs: SyncDiff[] = [
         { key: 'existing_key', value: 'Existing value', status: 'current' },
@@ -717,8 +978,46 @@ describe('LocaleTranslator', () => {
 
       const result = await makeTranslator(mock, config).translate(ctx);
 
-      expect(result.targetEntries.get('existing_key')).toBe('Existing value');
+      expect(result.targetEntries.has('existing_key')).toBe(false);
+      expect(result.successfulKeys).not.toContain('existing_key');
       expect(result.fileResult.failed).toBe(1);
+    });
+
+    it('should keep a failed backfill key retryable on the next run', async () => {
+      // The next run must see the key as untranslated. That is decided by the
+      // target file, so a key the failed run left out is picked up again even
+      // though nothing recorded the failure.
+      const config = makeConfig();
+      const diffs: SyncDiff[] = [
+        { key: 'existing_key', value: 'Existing value', status: 'current' },
+      ];
+      const failing = createMockTranslationService({
+        translateBatch: jest.fn().mockResolvedValue([null]),
+      });
+
+      const firstCtx: LocaleTranslatorContext = {
+        ...makeCtx(diffs, new Map()),
+        existingTargetEntries: new Map(),
+        fileLockEntries: {},
+      };
+      firstCtx.toTranslate = [];
+      const first = await makeTranslator(failing, config).translate(firstCtx);
+
+      const { mock, calls } = captureTranslateBatch(['Existierender Wert']);
+      const secondCtx: LocaleTranslatorContext = {
+        ...makeCtx(diffs, new Map()),
+        // What the failed run left behind is what the second run reads back.
+        existingTargetEntries: new Map([['de', first.targetEntries]]),
+        fileLockEntries: {},
+      };
+      secondCtx.toTranslate = [];
+      const second = await makeTranslator(mock, config).translate(secondCtx);
+
+      expect(calls.some((c) => c.texts.includes('Existing value'))).toBe(true);
+      expect(second.targetEntries.get('existing_key')).toBe(
+        'Existierender Wert'
+      );
+      expect(second.fileResult.failed).toBe(0);
     });
   });
 
@@ -744,12 +1043,17 @@ describe('LocaleTranslator', () => {
       await makeTranslator(mock, config).translate(ctx);
 
       // reconstruct should have been called with the existing target content as the template
-      expect(parser.reconstruct).toHaveBeenCalledWith(existingTarget, expect.any(Array));
+      expect(parser.reconstruct).toHaveBeenCalledWith(
+        existingTarget,
+        expect.any(Array)
+      );
     });
 
     it('should create a .deepl.bak copy of the existing target when the target exists and backup is not disabled', async () => {
       mockReadFile.mockResolvedValueOnce('{"prior":"X"}');
-      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<typeof fs.promises.copyFile>;
+      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<
+        typeof fs.promises.copyFile
+      >;
       copyFileSpy.mockResolvedValueOnce(undefined);
 
       const config = makeConfig();
@@ -765,7 +1069,9 @@ describe('LocaleTranslator', () => {
 
     it('should skip the backup when sync.backup is explicitly false', async () => {
       mockReadFile.mockResolvedValueOnce('{"prior":"X"}');
-      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<typeof fs.promises.copyFile>;
+      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<
+        typeof fs.promises.copyFile
+      >;
       copyFileSpy.mockResolvedValueOnce(undefined);
 
       const config = makeConfig({
@@ -790,13 +1096,17 @@ describe('LocaleTranslator', () => {
         makeDiff('item_count', '1 item', { msgid_plural: '%d items' }),
         makeDiff('greeting', 'Hello'),
       ];
-      const { mock, calls } = captureTranslateBatch(['1 Element', '%d Elemente', 'Hallo']);
+      const { mock, calls } = captureTranslateBatch([
+        '1 Element',
+        '%d Elemente',
+        'Hallo',
+      ]);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, new Map()));
 
       // The three-way-partition batch should contain the singular text, the plural
       // text (slot), and the second plain key. Single plain batch call.
-      const batchCall = calls.find(c => c.opts.context === undefined);
+      const batchCall = calls.find((c) => c.opts.context === undefined);
       expect(batchCall).toBeDefined();
       expect(batchCall!.texts.length).toBeGreaterThanOrEqual(3);
     });
@@ -809,14 +1119,36 @@ describe('LocaleTranslator', () => {
         makeDiff('nav.home', 'Home'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['nav.count', { key: 'nav.count', context: 'Navigation count', occurrences: 1, elementType: null }],
-        ['nav.home', { key: 'nav.home', context: 'Navigation link', occurrences: 1, elementType: null }],
+        [
+          'nav.count',
+          {
+            key: 'nav.count',
+            context: 'Navigation count',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
+        [
+          'nav.home',
+          {
+            key: 'nav.home',
+            context: 'Navigation link',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
       ]);
-      const { mock, calls } = captureTranslateBatch(['1 Link', '%d Links', 'Startseite']);
+      const { mock, calls } = captureTranslateBatch([
+        '1 Link',
+        '%d Links',
+        'Startseite',
+      ]);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
 
-      const sectionCall = calls.find(c => c.opts.context !== undefined && c.opts.context !== '');
+      const sectionCall = calls.find(
+        (c) => c.opts.context !== undefined && c.opts.context !== ''
+      );
       expect(sectionCall).toBeDefined();
       expect(sectionCall!.texts.length).toBeGreaterThanOrEqual(3);
     });
@@ -830,12 +1162,30 @@ describe('LocaleTranslator', () => {
       // Context AND elementType on the same keys — both get section-batched AND
       // contribute to instructionGroupCounts.
       const keyContexts = new Map<string, KeyContext>([
-        ['cta.save', { key: 'cta.save', context: 'Call-to-action row', occurrences: 1, elementType: 'button' }],
-        ['cta.cancel', { key: 'cta.cancel', context: 'Call-to-action row', occurrences: 1, elementType: 'button' }],
+        [
+          'cta.save',
+          {
+            key: 'cta.save',
+            context: 'Call-to-action row',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
+        [
+          'cta.cancel',
+          {
+            key: 'cta.cancel',
+            context: 'Call-to-action row',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
       ]);
       const { mock } = captureTranslateBatch(['Speichern', 'Abbrechen']);
 
-      const result = await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
+      const result = await makeTranslator(mock, config).translate(
+        makeCtx(diffs, keyContexts)
+      );
 
       expect(result.instructionSentKeys.has('cta.save')).toBe(true);
       expect(result.instructionSentKeys.has('cta.cancel')).toBe(true);
@@ -849,13 +1199,31 @@ describe('LocaleTranslator', () => {
         makeDiff('btn.cancel', 'Cancel'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['btn.save', { key: 'btn.save', context: 'Save button label', occurrences: 1, elementType: 'button' }],
-        ['btn.cancel', { key: 'btn.cancel', context: 'Cancel button label', occurrences: 1, elementType: 'button' }],
+        [
+          'btn.save',
+          {
+            key: 'btn.save',
+            context: 'Save button label',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
+        [
+          'btn.cancel',
+          {
+            key: 'btn.cancel',
+            context: 'Cancel button label',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
       ]);
       const { mock } = captureTranslateBatch(['Speichern', 'Abbrechen']);
 
       // forceBatch=false → Path B2
-      const result = await makeTranslator(mock, config, false).translate(makeCtx(diffs, keyContexts));
+      const result = await makeTranslator(mock, config, false).translate(
+        makeCtx(diffs, keyContexts)
+      );
 
       expect(result.instructionSentKeys.has('btn.save')).toBe(true);
       expect(result.instructionSentKeys.has('btn.cancel')).toBe(true);
@@ -869,16 +1237,38 @@ describe('LocaleTranslator', () => {
         makeDiff('btn.cancel', 'Cancel'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['btn.count', { key: 'btn.count', context: 'Click counter label', occurrences: 1, elementType: null }],
-        ['btn.cancel', { key: 'btn.cancel', context: 'Cancel button label', occurrences: 1, elementType: null }],
+        [
+          'btn.count',
+          {
+            key: 'btn.count',
+            context: 'Click counter label',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
+        [
+          'btn.cancel',
+          {
+            key: 'btn.cancel',
+            context: 'Cancel button label',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
       ]);
-      const { mock, calls } = captureTranslateBatch(['1 Klick', '%d Klicks', 'Abbrechen']);
+      const { mock, calls } = captureTranslateBatch([
+        '1 Klick',
+        '%d Klicks',
+        'Abbrechen',
+      ]);
 
-      await makeTranslator(mock, config, false).translate(makeCtx(diffs, keyContexts));
+      await makeTranslator(mock, config, false).translate(
+        makeCtx(diffs, keyContexts)
+      );
 
       // The per-key call for btn.count should include both singular and plural.
-      const pluralKeyCall = calls.find(c =>
-        c.opts.context === 'Click counter label' && c.texts.length === 2,
+      const pluralKeyCall = calls.find(
+        (c) => c.opts.context === 'Click counter label' && c.texts.length === 2
       );
       expect(pluralKeyCall).toBeDefined();
     });
@@ -895,7 +1285,15 @@ describe('LocaleTranslator', () => {
       const diffs = [makeDiff('greeting', 'Hello')];
       // keyContexts has a different context — the override should win.
       const keyContexts = new Map<string, KeyContext>([
-        ['greeting', { key: 'greeting', context: 'Auto-extracted context', occurrences: 1, elementType: null }],
+        [
+          'greeting',
+          {
+            key: 'greeting',
+            context: 'Auto-extracted context',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
       ]);
       const { mock, calls } = captureTranslateBatch(['Hallo']);
 
@@ -913,15 +1311,33 @@ describe('LocaleTranslator', () => {
         makeDiff('nav.about', 'About'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['nav.home', { key: 'nav.home', context: 'Auto context', occurrences: 1, elementType: null }],
-        ['nav.about', { key: 'nav.about', context: 'Auto context', occurrences: 1, elementType: null }],
+        [
+          'nav.home',
+          {
+            key: 'nav.home',
+            context: 'Auto context',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
+        [
+          'nav.about',
+          {
+            key: 'nav.about',
+            context: 'Auto context',
+            occurrences: 1,
+            elementType: null,
+          },
+        ],
       ]);
       const { mock, calls } = captureTranslateBatch(['Startseite', 'Über uns']);
 
       await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts));
 
       // Override key goes through per-key batch with its specific context.
-      const overrideCall = calls.find(c => c.opts.context === 'Override for home link');
+      const overrideCall = calls.find(
+        (c) => c.opts.context === 'Override for home link'
+      );
       expect(overrideCall).toBeDefined();
       expect(overrideCall!.texts).toHaveLength(1);
     });
@@ -948,7 +1364,9 @@ describe('LocaleTranslator', () => {
       ];
       const { mock } = captureTranslateBatch(['Original-DE', 'A-DE', 'B-DE']);
 
-      const result = await makeTranslator(mock, config).translate(makeCtx(diffs, new Map()));
+      const result = await makeTranslator(mock, config).translate(
+        makeCtx(diffs, new Map())
+      );
 
       // Sync proceeds — primary entry translated, no crash on the missing-primary branch.
       expect(result.targetEntries.get('items')).toBe('Original-DE');
@@ -966,12 +1384,30 @@ describe('LocaleTranslator', () => {
         makeDiff('cta.cancel', 'Cancel'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['cta.save', { key: 'cta.save', context: 'Call-to-action row', occurrences: 1, elementType: 'button' }],
-        ['cta.cancel', { key: 'cta.cancel', context: 'Call-to-action row', occurrences: 1, elementType: 'button' }],
+        [
+          'cta.save',
+          {
+            key: 'cta.save',
+            context: 'Call-to-action row',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
+        [
+          'cta.cancel',
+          {
+            key: 'cta.cancel',
+            context: 'Call-to-action row',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
       ]);
       const { mock } = captureTranslateBatch(['Opslaan', 'Annuleren']);
 
-      const result = await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts, 'nl'));
+      const result = await makeTranslator(mock, config).translate(
+        makeCtx(diffs, keyContexts, 'nl')
+      );
 
       // 'nl' does not support custom instructions, so even though elementType is
       // present, instructionSentKeys stays empty in Path B1.
@@ -986,12 +1422,30 @@ describe('LocaleTranslator', () => {
         makeDiff('btn.cancel', 'Cancel'),
       ];
       const keyContexts = new Map<string, KeyContext>([
-        ['btn.save', { key: 'btn.save', context: 'Save button label', occurrences: 1, elementType: 'button' }],
-        ['btn.cancel', { key: 'btn.cancel', context: 'Cancel button label', occurrences: 1, elementType: 'button' }],
+        [
+          'btn.save',
+          {
+            key: 'btn.save',
+            context: 'Save button label',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
+        [
+          'btn.cancel',
+          {
+            key: 'btn.cancel',
+            context: 'Cancel button label',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
       ]);
       const { mock } = captureTranslateBatch(['Opslaan', 'Annuleren']);
 
-      const result = await makeTranslator(mock, config, false).translate(makeCtx(diffs, keyContexts, 'nl'));
+      const result = await makeTranslator(mock, config, false).translate(
+        makeCtx(diffs, keyContexts, 'nl')
+      );
 
       expect(result.instructionSentKeys.size).toBe(0);
       expect(result.instructionGroupCounts.size).toBe(0);
@@ -1012,7 +1466,9 @@ describe('LocaleTranslator', () => {
         ]),
       });
 
-      const result = await makeTranslator(mock, config).translate(makeCtx(diffs, new Map()));
+      const result = await makeTranslator(mock, config).translate(
+        makeCtx(diffs, new Map())
+      );
 
       expect(result.charactersBilled).toBe(0);
       expect(result.billedPerKey.size).toBe(0);
@@ -1052,10 +1508,20 @@ describe('LocaleTranslator', () => {
   describe('target-file handling — containment ordering', () => {
     it('should assert containment before reading the target or writing the backup', async () => {
       const order: string[] = [];
-      mockAssertPathWithinRoot.mockImplementation(() => { order.push('assert'); });
-      mockReadFile.mockImplementation(() => { order.push('read'); return Promise.resolve('{"prior":"X"}'); });
-      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<typeof fs.promises.copyFile>;
-      copyFileSpy.mockImplementation(() => { order.push('copy'); return Promise.resolve(); });
+      mockAssertPathWithinRoot.mockImplementation(() => {
+        order.push('assert');
+      });
+      mockReadFile.mockImplementation(() => {
+        order.push('read');
+        return Promise.resolve('{"prior":"X"}');
+      });
+      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<
+        typeof fs.promises.copyFile
+      >;
+      copyFileSpy.mockImplementation(() => {
+        order.push('copy');
+        return Promise.resolve();
+      });
 
       const config = makeConfig();
       const diffs = [makeDiff('greeting', 'Hello')];
@@ -1074,14 +1540,16 @@ describe('LocaleTranslator', () => {
       mockAssertPathWithinRoot.mockImplementation(() => {
         throw new Error('Target path escapes project root: /evil/de.json');
       });
-      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<typeof fs.promises.copyFile>;
+      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<
+        typeof fs.promises.copyFile
+      >;
 
       const config = makeConfig();
       const diffs = [makeDiff('greeting', 'Hello')];
       const { mock } = captureTranslateBatch(['Hallo']);
 
       await expect(
-        makeTranslator(mock, config).translate(makeCtx(diffs, new Map())),
+        makeTranslator(mock, config).translate(makeCtx(diffs, new Map()))
       ).rejects.toThrow(/escapes project root/);
       expect(mockReadFile).not.toHaveBeenCalled();
       expect(copyFileSpy).not.toHaveBeenCalled();
@@ -1095,7 +1563,9 @@ describe('LocaleTranslator', () => {
   describe('target-file handling — backup failure', () => {
     it('should warn and continue when .bak copyFile rejects', async () => {
       mockReadFile.mockResolvedValueOnce('{"prior":"X"}');
-      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<typeof fs.promises.copyFile>;
+      const copyFileSpy = fs.promises.copyFile as jest.MockedFunction<
+        typeof fs.promises.copyFile
+      >;
       copyFileSpy.mockRejectedValueOnce(new Error('EACCES: permission denied'));
 
       const config = makeConfig();
@@ -1104,7 +1574,7 @@ describe('LocaleTranslator', () => {
 
       // Should not throw; backup failure is logged, sync proceeds.
       await expect(
-        makeTranslator(mock, config).translate(makeCtx(diffs, new Map())),
+        makeTranslator(mock, config).translate(makeCtx(diffs, new Map()))
       ).resolves.toBeDefined();
       expect(copyFileSpy).toHaveBeenCalled();
     });
@@ -1122,15 +1592,27 @@ describe('LocaleTranslator', () => {
       ];
       const keyContexts = new Map<string, KeyContext>([
         // cta.save has elementType but 'nl' does not support instructions
-        ['cta.save', { key: 'cta.save', context: '', occurrences: 1, elementType: 'button' }],
+        [
+          'cta.save',
+          {
+            key: 'cta.save',
+            context: '',
+            occurrences: 1,
+            elementType: 'button',
+          },
+        ],
       ]);
       const { mock, calls } = captureTranslateBatch(['Opslaan', 'Eenvoudig']);
 
-      await makeTranslator(mock, config).translate(makeCtx(diffs, keyContexts, 'nl'));
+      await makeTranslator(mock, config).translate(
+        makeCtx(diffs, keyContexts, 'nl')
+      );
 
       // No call should carry customInstructions because 'nl' is unsupported.
-      const instructionCall = calls.find(c =>
-        Array.isArray(c.opts.customInstructions) && c.opts.customInstructions.length > 0,
+      const instructionCall = calls.find(
+        (c) =>
+          Array.isArray(c.opts.customInstructions) &&
+          c.opts.customInstructions.length > 0
       );
       expect(instructionCall).toBeUndefined();
       // Both keys land in a single plain batch.
@@ -1160,7 +1642,9 @@ describe('LocaleTranslator', () => {
       ];
       const { mock } = captureTranslateBatch(['1 Element']);
 
-      const result = await makeTranslator(mock, config).translate(makeCtx(diffs, new Map()));
+      const result = await makeTranslator(mock, config).translate(
+        makeCtx(diffs, new Map())
+      );
 
       // targetEntries reflects the translation for the primary key
       expect(result.targetEntries.get('items')).toBe('1 Element');
@@ -1185,7 +1669,430 @@ describe('LocaleTranslator', () => {
 
       await makeTranslator(mock, config).translate(ctx);
 
-      expect(parser.reconstruct).toHaveBeenCalledWith(expect.any(String), expect.any(Array), 'de');
+      expect(parser.reconstruct).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        'de'
+      );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 16. Validation gate — error-severity translations are withheld
+  // ---------------------------------------------------------------------------
+  describe('validation gate', () => {
+    function writtenKeys(parser: FormatParser): string[] {
+      const call = (parser.reconstruct as jest.Mock).mock.calls[0];
+      const entries = call?.[1] as Array<{ key: string }> | undefined;
+      return (entries ?? []).map((e) => e.key);
+    }
+
+    function validatingConfig(): ResolvedSyncConfig {
+      return makeConfig({
+        validation: { validate_after_sync: true, check_placeholders: true },
+      });
+    }
+
+    it('should keep an error-severity translation out of the written file', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'a',
+          source: 'Alpha',
+          translation: 'A',
+          severity: 'pass',
+          issues: [],
+        },
+        {
+          key: 'b',
+          source: 'Beta {name}',
+          translation: 'B',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {name}',
+            },
+          ],
+        },
+      ]);
+
+      const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta {name}')];
+      const { mock } = captureTranslateBatch(['A', 'B']);
+      const parser = makeParser();
+
+      const result = await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+      });
+
+      expect(writtenKeys(parser)).toEqual(['a']);
+      expect(result.targetEntries.has('b')).toBe(false);
+    });
+
+    it('should record an error-severity key as failed rather than translated', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'a',
+          source: 'Alpha',
+          translation: 'A',
+          severity: 'pass',
+          issues: [],
+        },
+        {
+          key: 'b',
+          source: 'Beta {name}',
+          translation: 'B',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {name}',
+            },
+          ],
+        },
+      ]);
+
+      const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta {name}')];
+      const { mock } = captureTranslateBatch(['A', 'B']);
+
+      const result = await makeTranslator(mock, validatingConfig()).translate(
+        makeCtx(diffs, new Map())
+      );
+
+      expect(result.successfulKeys).toEqual(['a']);
+      expect(result.fileResult.translated).toBe(1);
+      expect(result.fileResult.failed).toBe(1);
+    });
+
+    it('should keep the previous target translation for a withheld key', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'b',
+          source: 'Beta {name}',
+          translation: 'B',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {name}',
+            },
+          ],
+        },
+      ]);
+
+      // Stale, not new: a key the target already has a translation for is only
+      // re-translated when its source changed, so that is the status from which
+      // a withholding is reachable.
+      const diffs: SyncDiff[] = [
+        { key: 'b', value: 'Beta {name}', status: 'stale' },
+      ];
+      const { mock } = captureTranslateBatch(['B']);
+      const parser = makeParser();
+
+      const result = await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+        existingTargetEntries: new Map([
+          ['de', new Map([['b', 'Beta {name} auf Deutsch']])],
+        ]),
+      });
+
+      const entries = (parser.reconstruct as jest.Mock).mock
+        .calls[0]![1] as Array<{ key: string; translation: string }>;
+      expect(entries).toEqual([
+        expect.objectContaining({
+          key: 'b',
+          translation: 'Beta {name} auf Deutsch',
+        }),
+      ]);
+      // Preserved for the file, but not a success: the lock must retry it.
+      expect(result.successfulKeys).toEqual([]);
+      expect(result.fileResult.failed).toBe(1);
+    });
+
+    it('should still write a warn-severity translation', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'a',
+          source: 'Alpha <b>bold</b>',
+          translation: 'A',
+          severity: 'warn',
+          issues: [
+            {
+              check: 'html-tags',
+              severity: 'warn',
+              message: 'Missing HTML tags in translation: <b>',
+            },
+          ],
+        },
+      ]);
+
+      const diffs = [makeDiff('a', 'Alpha <b>bold</b>')];
+      const { mock } = captureTranslateBatch(['A']);
+      const parser = makeParser();
+
+      const result = await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+      });
+
+      expect(writtenKeys(parser)).toEqual(['a']);
+      expect(result.successfulKeys).toEqual(['a']);
+      expect(result.fileResult.failed).toBe(0);
+    });
+
+    it('should name the withheld keys in a warning', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'b',
+          source: 'Beta {name}',
+          translation: 'B',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {name}',
+            },
+          ],
+        },
+      ]);
+
+      const diffs = [makeDiff('b', 'Beta {name}')];
+      const { mock } = captureTranslateBatch(['B']);
+
+      await makeTranslator(mock, validatingConfig()).translate(
+        makeCtx(diffs, new Map())
+      );
+
+      const warnings = (Logger.warn as jest.Mock).mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
+      expect(warnings).toContain('"b"');
+      expect(warnings).toContain('Missing placeholders in translation: {name}');
+      expect(warnings).toContain('check_placeholders');
+    });
+
+    it('should hand a withheld entry over without plural forms so the target keeps its own', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'items',
+          source: '1 item',
+          translation: '1 Element',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: %d',
+            },
+          ],
+        },
+      ]);
+
+      const diffs: SyncDiff[] = [
+        {
+          key: 'items',
+          value: '1 item',
+          status: 'new',
+          metadata: {
+            plurals: [
+              { quantity: 'one', value: '1 item' },
+              { quantity: 'other', value: '%d items' },
+            ],
+          },
+        },
+      ];
+      const { mock } = captureTranslateBatch(['1 Element', '%d Elemente']);
+      const parser = makeParser();
+
+      await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+        existingTargetEntries: new Map([
+          ['de', new Map([['items', '1 Element (vorher)']])],
+        ]),
+      });
+
+      const entries = (parser.reconstruct as jest.Mock).mock
+        .calls[0]![1] as Array<{
+        key: string;
+        translation: string;
+        metadata?: Record<string, unknown>;
+      }>;
+      expect(entries).toHaveLength(1);
+      // The extracted payload holds the source-language items, and the fresh
+      // translation was withheld — handing either over would replace the
+      // target's own forms. Without the payload the parser keeps them.
+      expect(entries[0]!.metadata?.['plurals']).toBeUndefined();
+      expect(entries[0]!.translation).toBe('1 Element (vorher)');
+    });
+
+    it('should validate the new-locale backfill batch and withhold its errors', async () => {
+      mockValidateBatch.mockReturnValueOnce([
+        {
+          key: 'c',
+          source: 'Gamma {count}',
+          translation: 'C',
+          severity: 'error',
+          issues: [
+            {
+              check: 'placeholders',
+              severity: 'error',
+              message: 'Missing placeholders in translation: {count}',
+            },
+          ],
+        },
+      ]);
+
+      const diffs: SyncDiff[] = [
+        { key: 'c', value: 'Gamma {count}', status: 'current' },
+      ];
+      const { mock } = captureTranslateBatch(['C']);
+      const parser = makeParser();
+
+      const result = await makeTranslator(mock, validatingConfig()).translate({
+        ...makeCtx(diffs, new Map()),
+        parser,
+      });
+
+      expect(mockValidateBatch).toHaveBeenCalledTimes(1);
+      expect(writtenKeys(parser)).toEqual([]);
+      expect(result.successfulKeys).toEqual([]);
+      expect(result.validationErrors).toBe(1);
+      expect(result.fileResult.failed).toBe(1);
+    });
+  });
+
+  describe('ICU messages', () => {
+    it('should not submit an internal ICU marker as a translatable text', async () => {
+      const diffs = [
+        makeDiff('greeting', 'Hello'),
+        makeDiff('items', '{n, plural, one {# item} other {# items}}'),
+      ];
+      const { mock, calls } = captureTranslateBatch([]);
+
+      await makeTranslator(mock, makeConfig(), true).translate(
+        makeCtx(diffs, new Map())
+      );
+
+      const sent = calls.flatMap((c) => c.texts);
+      expect(sent.some((t) => t.includes('__ICU_PLACEHOLDER_'))).toBe(false);
+      // The branches still go out, one segment each.
+      expect(sent).toContain('__VAR_HASH_0__ item');
+      expect(sent).toContain('__VAR_HASH_0__ items');
+    });
+
+    it('should protect every ICU block in a message, not only the first', async () => {
+      const diffs = [
+        makeDiff(
+          'both',
+          'You have {n, plural, one {# item} other {# items}} and ' +
+            '{m, plural, one {# gift} other {# gifts}} waiting.'
+        ),
+      ];
+      const { mock, calls } = captureTranslateBatch([]);
+
+      await makeTranslator(mock, makeConfig(), true).translate(
+        makeCtx(diffs, new Map())
+      );
+
+      const sent = calls.flatMap((c) => c.texts);
+      expect(sent.some((t) => t.includes('plural'))).toBe(false);
+      expect(sent.some((t) => t.includes('other {'))).toBe(false);
+    });
+  });
+  // -------------------------------------------------------------------------
+  // 16. A key the write did not land
+  // -------------------------------------------------------------------------
+
+  describe('a key reconstruct did not write', () => {
+    /** A parser that writes every entry except the ones named. */
+    function droppingParser(...dropped: string[]): FormatParser {
+      return makeParser({
+        reconstruct: jest.fn((_content: string, entries: TranslatedEntry[]) =>
+          JSON.stringify(
+            Object.fromEntries(
+              entries
+                .filter((e) => !dropped.includes(e.key))
+                .map((e) => [e.key, e.translation])
+            )
+          )
+        ),
+      });
+    }
+
+    it('should not report a dropped key as translated', async () => {
+      const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta')];
+      const { mock } = captureTranslateBatch(['A', 'B']);
+      const ctx = { ...makeCtx(diffs, new Map()), parser: droppingParser('b') };
+
+      const result = await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      expect(result.successfulKeys).toEqual(['a']);
+      expect(result.fileResult.translated).toBe(1);
+      expect(result.fileResult.failed).toBe(1);
+      expect(result.targetEntries.has('b')).toBe(false);
+    });
+
+    it('should warn naming the file, the locale and the key', async () => {
+      const diffs = [makeDiff('a', 'Alpha'), makeDiff('b', 'Beta')];
+      const { mock } = captureTranslateBatch(['A', 'B']);
+      const ctx = { ...makeCtx(diffs, new Map()), parser: droppingParser('b') };
+
+      await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      const warning = (Logger.warn as jest.Mock).mock.calls
+        .map((c) => String(c[0]))
+        .find((m) => m.includes('"b"'));
+      expect(warning).toContain('de');
+      expect(warning).toContain('locales/de.json');
+    });
+
+    it('should still record the keys that were written', async () => {
+      const diffs = [
+        makeDiff('a', 'Alpha'),
+        makeDiff('b', 'Beta'),
+        makeDiff('c', 'Gamma'),
+      ];
+      const { mock } = captureTranslateBatch(['A', 'B', 'C']);
+      const ctx = { ...makeCtx(diffs, new Map()), parser: droppingParser('b') };
+
+      const result = await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      expect(result.successfulKeys.sort()).toEqual(['a', 'c']);
+      expect(result.targetEntries.get('a')).toBe('A');
+      expect(result.targetEntries.get('c')).toBe('C');
+    });
+
+    it('should report every key unwritten when the file it wrote cannot be read back', async () => {
+      const diffs = [makeDiff('a', 'Alpha')];
+      const { mock } = captureTranslateBatch(['A']);
+      const ctx = {
+        ...makeCtx(diffs, new Map()),
+        parser: makeParser({
+          reconstruct: jest.fn().mockReturnValue('not json at all'),
+        }),
+      };
+
+      const result = await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      expect(result.successfulKeys).toEqual([]);
+      expect(result.fileResult.failed).toBe(1);
+    });
+
+    it('should record a key whose translation is deliberately empty', async () => {
+      const diffs = [makeDiff('a', 'Alpha')];
+      const { mock } = captureTranslateBatch(['']);
+      const ctx = makeCtx(diffs, new Map());
+
+      const result = await makeTranslator(mock, makeConfig()).translate(ctx);
+
+      expect(result.successfulKeys).toEqual(['a']);
+      expect(result.fileResult.failed).toBe(0);
     });
   });
 });

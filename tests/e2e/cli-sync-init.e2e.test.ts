@@ -4,16 +4,21 @@
  * When the detector finds zero i18n files the command must:
  *   - exit 7 (ConfigError) — not 0
  *   - print a remediation hint naming all four required flags
- *   - in --format json mode emit the canonical error envelope to stderr
+ *   - in --format json mode emit the canonical error envelope to stdout, the
+ *     one stream a consumer can parse whole
  *
- * Regression guard: successful interactive-equivalent path (all four flags
- * supplied, stdin not a TTY) must still exit 0.
+ * The successful interactive-equivalent path (all four flags supplied, stdin
+ * not a TTY) must still exit 0.
  */
 
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { assertErrorEnvelope, createTestConfigDir, createTestDir } from '../helpers';
+import {
+  assertErrorEnvelope,
+  createTestConfigDir,
+  createTestDir,
+} from '../helpers';
 
 const CLI_PATH = path.join(process.cwd(), 'dist/cli/index.js');
 
@@ -34,10 +39,15 @@ describe('deepl sync init — no i18n files detected', () => {
       output: { format: 'text', verbose: false, color: false },
       watch: { debounceMs: 500, autoCommit: false, pattern: '*.md' },
     };
-    fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify(config, null, 2));
+    fs.writeFileSync(
+      path.join(configDir, 'config.json'),
+      JSON.stringify(config, null, 2)
+    );
   }
 
-  function buildEnv(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+  function buildEnv(
+    extra: Record<string, string | undefined> = {}
+  ): NodeJS.ProcessEnv {
     return {
       ...process.env,
       DEEPL_CONFIG_DIR: testConfig.path,
@@ -101,7 +111,7 @@ describe('deepl sync init — no i18n files detected', () => {
     const run = runCli(['sync', 'init', '--format', 'json']);
 
     expect(run.status).toBe(7);
-    const envelope = assertErrorEnvelope(run.stderr, 'ConfigError', 7);
+    const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
     expect(envelope.error.message).toMatch(/No i18n files detected/);
 
     const configPath = path.join(testFiles.path, '.deepl-sync.yaml');
@@ -113,15 +123,20 @@ describe('deepl sync init — no i18n files detected', () => {
     fs.mkdirSync(localesDir, { recursive: true });
     fs.writeFileSync(
       path.join(localesDir, 'en.json'),
-      JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n',
+      JSON.stringify({ greeting: 'Hello' }, null, 2) + '\n'
     );
 
     const run = runCli([
-      'sync', 'init',
-      '--source-locale', 'en',
-      '--target-locales', 'de',
-      '--file-format', 'json',
-      '--path', 'locales/en.json',
+      'sync',
+      'init',
+      '--source-locale',
+      'en',
+      '--target-locales',
+      'de',
+      '--file-format',
+      'json',
+      '--path',
+      'locales/en.json',
     ]);
 
     expect(run.status).toBe(0);

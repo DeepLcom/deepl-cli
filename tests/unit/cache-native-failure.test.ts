@@ -50,7 +50,9 @@ describe('CacheService native-module load failure', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    testCacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-cli-native-fail-'));
+    testCacheDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'deepl-cli-native-fail-')
+    );
     testCachePath = path.join(testCacheDir, 'cache.db');
     fs.writeFileSync(testCachePath, dbContent);
     fs.writeFileSync(testCachePath + '-wal', walContent);
@@ -70,16 +72,21 @@ describe('CacheService native-module load failure', () => {
       'ERR_DLOPEN_FAILED (ABI mismatch)',
       makeError(
         "The module '/x/better_sqlite3.node' was compiled against a different Node.js version using NODE_MODULE_VERSION 137. This version of Node.js requires NODE_MODULE_VERSION 127.",
-        'ERR_DLOPEN_FAILED',
+        'ERR_DLOPEN_FAILED'
       ),
     ],
     [
       'ERR_UNKNOWN_BUILTIN_MODULE (missing node:sqlite)',
-      makeError("No such built-in module: node:sqlite", 'ERR_UNKNOWN_BUILTIN_MODULE'),
+      makeError(
+        'No such built-in module: node:sqlite',
+        'ERR_UNKNOWN_BUILTIN_MODULE'
+      ),
     ],
     [
       'NODE_MODULE_VERSION message without a code',
-      makeError('was compiled against a different Node.js version using NODE_MODULE_VERSION 137'),
+      makeError(
+        'was compiled against a different Node.js version using NODE_MODULE_VERSION 137'
+      ),
     ],
     [
       'MODULE_NOT_FOUND (binding removed)',
@@ -89,7 +96,9 @@ describe('CacheService native-module load failure', () => {
     it('rethrows without renaming the database or its sidecars', () => {
       mockConstructorError = error;
 
-      expect(() => new CacheService({ dbPath: testCachePath })).toThrow(error.message);
+      expect(() => new CacheService({ dbPath: testCachePath })).toThrow(
+        error.message
+      );
 
       expect(fs.readFileSync(testCachePath, 'utf-8')).toBe(dbContent);
       expect(fs.readFileSync(testCachePath + '-wal', 'utf-8')).toBe(walContent);
@@ -103,23 +112,30 @@ describe('CacheService native-module load failure', () => {
       expect(() => new CacheService({ dbPath: testCachePath })).toThrow();
 
       expect(Logger.warn).not.toHaveBeenCalledWith(
-        expect.stringContaining('corrupted'),
+        expect.stringContaining('corrupted')
       );
     });
   });
 
   describe('genuine open failure (not a load failure)', () => {
     it('still renames the database aside', () => {
-      mockConstructorError = makeError('file is not a database', 'SQLITE_NOTADB');
+      mockConstructorError = makeError(
+        'file is not a database',
+        'SQLITE_NOTADB'
+      );
 
       // Recreation also fails (the mock always throws), so the constructor
       // rethrows — but the rename-aside must have happened first.
-      expect(() => new CacheService({ dbPath: testCachePath })).toThrow('file is not a database');
+      expect(() => new CacheService({ dbPath: testCachePath })).toThrow(
+        'file is not a database'
+      );
 
       expect(fs.existsSync(testCachePath)).toBe(false);
       const backups = listCorruptBackups();
       expect(backups.some((f) => f.startsWith('cache.db.corrupt-'))).toBe(true);
-      expect(Logger.warn).toHaveBeenCalledWith(expect.stringContaining('Cache database corrupted'));
+      expect(Logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Cache database corrupted')
+      );
     });
   });
 });

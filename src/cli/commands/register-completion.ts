@@ -9,7 +9,7 @@ export function registerCompletion(
   program: Command,
   _deps: {
     handleError: (error: unknown) => never;
-  },
+  }
 ): void {
   const { handleError } = _deps;
 
@@ -17,7 +17,9 @@ export function registerCompletion(
     .command('completion')
     .description('Generate shell completion scripts')
     .argument('<shell>', `Shell type (${SUPPORTED_SHELLS.join(', ')})`)
-    .addHelpText('after', `
+    .addHelpText(
+      'after',
+      `
 Examples:
   $ deepl completion bash > /etc/bash_completion.d/deepl
   $ deepl completion zsh > "\${fpath[1]}/_deepl"
@@ -27,19 +29,22 @@ Examples:
   $ source <(deepl completion bash)
   $ eval "$(deepl completion zsh)"
   $ deepl completion fish | source
-`)
+`
+    )
     .action(async (shell: string) => {
       try {
         const normalized = shell.toLowerCase().trim();
 
         if (!SUPPORTED_SHELLS.includes(normalized as ShellType)) {
           throw new ValidationError(
-            `Unsupported shell: "${shell}". Supported shells: ${SUPPORTED_SHELLS.join(', ')}`,
+            `Unsupported shell: "${shell}". Supported shells: ${SUPPORTED_SHELLS.join(', ')}`
           );
         }
 
         const { CompletionCommand } = await import('./completion.js');
-        const completionCommand = new CompletionCommand(program.parent ?? program);
+        const completionCommand = new CompletionCommand(
+          program.parent ?? program
+        );
         const script = completionCommand.generate(normalized as ShellType);
         Logger.output(script);
       } catch (error) {
