@@ -45,7 +45,7 @@ export class TextTranslationHandler {
     const envKey = process.env['DEEPL_API_KEY'];
     if (!apiKey && !envKey) {
       throw new AuthError(
-        'API key not set. Run: deepl auth set-key <your-api-key>'
+        'API key not set. Run: deepl init, or deepl auth set-key --from-stdin < keyfile'
       );
     }
 

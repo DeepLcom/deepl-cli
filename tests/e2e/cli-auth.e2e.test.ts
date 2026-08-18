@@ -7,10 +7,8 @@ import { createTestConfigDir, makeNodeRunCLI } from '../helpers';
 
 describe('Auth Command E2E', () => {
   const testConfig = createTestConfigDir('e2e-auth');
-  const { runCLI, runCLIAll, runCLIExpectError } = makeNodeRunCLI(
-    testConfig.path,
-    { excludeApiKey: true }
-  );
+  const { runCLI, runCLIAll, runCLIExpectError, runCLIWithStdin } =
+    makeNodeRunCLI(testConfig.path, { excludeApiKey: true });
 
   afterAll(() => {
     testConfig.cleanup();
@@ -67,7 +65,7 @@ describe('Auth Command E2E', () => {
 
   describe('auth set-key', () => {
     it('should reject empty API key', () => {
-      const result = runCLIExpectError('auth set-key ""');
+      const result = runCLIWithStdin('auth set-key --from-stdin', '\n');
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toContain('API key cannot be empty');
@@ -76,10 +74,22 @@ describe('Auth Command E2E', () => {
     // set-key validates against the API before persisting, so a
     // well-formed-but-wrong key is refused by the service rather than locally.
     it('should reject a key the API does not accept', () => {
-      const result = runCLIExpectError('auth set-key invalid-key-123');
+      const result = runCLIWithStdin(
+        'auth set-key --from-stdin',
+        'invalid-key-123\n'
+      );
 
       expect(result.status).toBeGreaterThan(0);
       expect(result.output).toContain('Authentication failed');
+    });
+
+    it('refuses a key passed as an argument without echoing it', () => {
+      const result = runCLIExpectError('auth set-key invalid-key-123');
+
+      expect(result.status).toBe(6);
+      expect(result.output).toContain('no longer be passed as an argument');
+      expect(result.output).toContain('--from-stdin');
+      expect(result.output).not.toContain('invalid-key-123');
     });
   });
 

@@ -24,7 +24,7 @@ export class AuthError extends DeepLCLIError {
     super(
       message,
       suggestion ??
-        'Run: deepl init (setup wizard) or deepl auth set-key <your-api-key>'
+        'Run: deepl init (setup wizard), or pipe a key: deepl auth set-key --from-stdin < keyfile'
     );
   }
 }

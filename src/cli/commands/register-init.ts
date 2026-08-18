@@ -28,7 +28,7 @@ Examples:
       try {
         if (isNoInput() || !process.stdin.isTTY) {
           throw new ValidationError(
-            'init is not supported in non-interactive mode. Use deepl auth set-key <your-api-key> to configure authentication.'
+            'init is not supported in non-interactive mode. Use deepl auth set-key --from-stdin to configure authentication.'
           );
         }
         const { InitCommand } = await import('./init.js');

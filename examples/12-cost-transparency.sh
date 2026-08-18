@@ -10,7 +10,7 @@ echo
 # Check if API key is configured
 if ! deepl auth show &>/dev/null; then
   echo "❌ Error: API key not configured"
-  echo "Run: deepl auth set-key YOUR_API_KEY"
+  echo "Run: deepl init, or: deepl auth set-key --from-stdin < keyfile"
   exit 1
 fi
 
@@ -92,7 +92,7 @@ Run the following command:
 npm install -g @deepl/cli
 ```
 
-Then configure your API key: `deepl auth set-key YOUR_KEY`
+Then configure your API key: `deepl init`
 EOF
 
 echo "   Translating with code preservation..."

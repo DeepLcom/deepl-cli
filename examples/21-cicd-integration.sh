@@ -10,7 +10,7 @@ echo
 # Check if API key is configured
 if ! deepl auth show &>/dev/null; then
   echo "❌ Error: API key not configured"
-  echo "Run: deepl auth set-key YOUR_API_KEY"
+  echo "Run: deepl init, or: deepl auth set-key --from-stdin < keyfile"
   exit 1
 fi
 
@@ -144,7 +144,7 @@ jobs:
       - name: Configure API Key
         env:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
-        run: deepl auth set-key "$DEEPL_API_KEY"
+        run: echo "$DEEPL_API_KEY" | deepl auth set-key --from-stdin
 
       - name: Translate Documentation
         run: |

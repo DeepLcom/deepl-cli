@@ -62,11 +62,11 @@ echo
 echo "The init wizard requires a terminal. For scripts and CI/CD,"
 echo "use individual commands instead:"
 echo
-echo "  # Set API key directly"
-echo "  deepl auth set-key YOUR_API_KEY"
-echo
-echo "  # Or from stdin (for CI/CD pipelines)"
+echo "  # Set API key from stdin"
 echo '  echo "$DEEPL_API_KEY" | deepl auth set-key --from-stdin'
+echo
+echo "  # Or from a file, keeping the key out of shell history"
+echo "  deepl auth set-key --from-stdin < keyfile"
 echo
 echo "  # Set default target language"
 echo "  deepl config set defaults.targetLangs es"

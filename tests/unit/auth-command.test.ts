@@ -7,7 +7,8 @@ import { AuthCommand } from '../../src/cli/commands/auth';
 import { ConfigService } from '../../src/storage/config';
 import { DeepLClient } from '../../src/api/deepl-client';
 import { createMockConfigService } from '../helpers/mock-factories';
-import { NetworkError } from '../../src/utils/errors';
+import { NetworkError, ValidationError } from '../../src/utils/errors';
+import { Readable } from 'stream';
 
 // Mock chalk (ESM-only)
 jest.mock('chalk', () => {
@@ -24,7 +25,7 @@ jest.mock('chalk', () => {
   return { __esModule: true, default: obj };
 });
 
-// Mock Logger for registerAuth deprecation tests
+// Mock Logger for the registerAuth tests
 jest.mock('../../src/utils/logger', () => ({
   Logger: {
     info: jest.fn(),
@@ -296,7 +297,23 @@ describe('AuthCommand', () => {
   });
 });
 
-describe('registerAuth - deprecation warning', () => {
+/**
+ * Feeds `content` to the action's stdin read and reports non-TTY, so the
+ * set-key path under test behaves as it does behind a pipe.
+ */
+function withStdin(content: string): () => void {
+  const original = Object.getOwnPropertyDescriptor(process, 'stdin');
+  const stream = Readable.from([Buffer.from(content)]);
+  Object.defineProperty(process, 'stdin', {
+    value: stream,
+    configurable: true,
+  });
+  return () => {
+    if (original) Object.defineProperty(process, 'stdin', original);
+  };
+}
+
+describe('registerAuth - set-key', () => {
   // Dynamic import to avoid hoisting issues with chalk mock
   let registerAuth: typeof import('../../src/cli/commands/register-auth').registerAuth;
 
@@ -309,7 +326,39 @@ describe('registerAuth - deprecation warning', () => {
     jest.clearAllMocks();
   });
 
-  it('should warn when positional API key is passed without --from-stdin', async () => {
+  it('rejects an API key passed as an argument without echoing it', async () => {
+    const mockConfigService = createMockConfigService();
+    const program = new Command();
+    program.exitOverride();
+    registerAuth(program, {
+      getConfigService: () => mockConfigService,
+      handleError: (error: unknown) => {
+        throw error;
+      },
+    });
+
+    expect.assertions(5);
+    try {
+      await program.parseAsync([
+        'node',
+        'deepl',
+        'auth',
+        'set-key',
+        'test-key-123',
+      ]);
+    } catch (error) {
+      expect(error).toBeInstanceOf(ValidationError);
+      const err = error as ValidationError;
+      expect(err.exitCode).toBe(6);
+      // The whole point of rejecting by name rather than letting commander
+      // report an excess argument: commander's message quotes the value.
+      expect(err.message).not.toContain('test-key-123');
+      expect(err.suggestion ?? '').not.toContain('test-key-123');
+      expect(mockConfigService.set).not.toHaveBeenCalled();
+    }
+  });
+
+  it('reads the key from stdin behind a pipe', async () => {
     const mockConfigService = createMockConfigService();
     const mockGetUsage = jest
       .fn()
@@ -330,18 +379,44 @@ describe('registerAuth - deprecation warning', () => {
       },
     });
 
-    await program.parseAsync([
-      'node',
-      'deepl',
-      'auth',
-      'set-key',
-      'test-key-123',
-    ]);
+    const restore = withStdin('test-key-123\n');
+    try {
+      await program.parseAsync(['node', 'deepl', 'auth', 'set-key']);
+    } finally {
+      restore();
+    }
 
-    const { Logger } = await import('../../src/utils/logger');
-    expect(Logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('deprecated')
-    );
+    expect(DeepLClient).toHaveBeenCalledWith('test-key-123', expect.anything());
+  });
+
+  it('refuses on a terminal, naming the two supported paths', async () => {
+    const mockConfigService = createMockConfigService();
+    const program = new Command();
+    program.exitOverride();
+    registerAuth(program, {
+      getConfigService: () => mockConfigService,
+      handleError: (error: unknown) => {
+        throw error;
+      },
+    });
+
+    const original = Object.getOwnPropertyDescriptor(process, 'stdin');
+    Object.defineProperty(process, 'stdin', {
+      value: { isTTY: true },
+      configurable: true,
+    });
+
+    expect.assertions(3);
+    try {
+      await program.parseAsync(['node', 'deepl', 'auth', 'set-key']);
+    } catch (error) {
+      const err = error as ValidationError;
+      expect(err).toBeInstanceOf(ValidationError);
+      expect(err.suggestion ?? '').toContain('--from-stdin');
+      expect(err.suggestion ?? '').toContain('deepl init');
+    } finally {
+      if (original) Object.defineProperty(process, 'stdin', original);
+    }
   });
 
   it('should thread getHttpOptions into the key-validation client', async () => {
@@ -366,13 +441,12 @@ describe('registerAuth - deprecation warning', () => {
       },
     });
 
-    await program.parseAsync([
-      'node',
-      'deepl',
-      'auth',
-      'set-key',
-      'test-key-123',
-    ]);
+    const restore = withStdin('test-key-123\n');
+    try {
+      await program.parseAsync(['node', 'deepl', 'auth', 'set-key']);
+    } finally {
+      restore();
+    }
 
     expect(DeepLClient).toHaveBeenCalledWith(
       'test-key-123',

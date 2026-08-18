@@ -498,15 +498,34 @@ describe('registerAuth', () => {
     );
   });
 
+  /** Swap process.stdin for a readable carrying `chunks`. */
+  async function withStdin(
+    chunks: Buffer[],
+    isTTY: boolean,
+    run: () => Promise<void>
+  ): Promise<void> {
+    const original = Object.getOwnPropertyDescriptor(process, 'stdin')!;
+    const replacement = Readable.from(chunks);
+    Object.defineProperty(replacement, 'isTTY', {
+      value: isTTY,
+      configurable: true,
+    });
+    Object.defineProperty(process, 'stdin', {
+      value: replacement,
+      configurable: true,
+    });
+    try {
+      await run();
+    } finally {
+      Object.defineProperty(process, 'stdin', original);
+    }
+  }
+
   it('auth set-key should save and report success', async () => {
     await loadAndRegister();
-    await program.parseAsync([
-      'node',
-      'test',
-      'auth',
-      'set-key',
-      'my-api-key-12345',
-    ]);
+    await withStdin([Buffer.from('my-api-key-12345\n')], false, async () => {
+      await program.parseAsync(['node', 'test', 'auth', 'set-key']);
+    });
 
     expect(mockSetKey).toHaveBeenCalledWith('my-api-key-12345', {
       verify: true,
@@ -521,23 +540,26 @@ describe('registerAuth', () => {
     mockSetKey.mockRejectedValue(setKeyError);
 
     await loadAndRegister();
-    await expect(
-      program.parseAsync(['node', 'test', 'auth', 'set-key', 'bad-key'])
-    ).rejects.toThrow('Validation failed');
+    await withStdin([Buffer.from('bad-key\n')], false, async () => {
+      await expect(
+        program.parseAsync(['node', 'test', 'auth', 'set-key'])
+      ).rejects.toThrow('Validation failed');
+    });
 
     expect(handleError).toHaveBeenCalledWith(setKeyError);
   });
 
   it('auth set-key --no-verify should save without contacting the API', async () => {
     await loadAndRegister();
-    await program.parseAsync([
-      'node',
-      'test',
-      'auth',
-      'set-key',
-      'my-api-key-12345',
-      '--no-verify',
-    ]);
+    await withStdin([Buffer.from('my-api-key-12345\n')], false, async () => {
+      await program.parseAsync([
+        'node',
+        'test',
+        'auth',
+        'set-key',
+        '--no-verify',
+      ]);
+    });
 
     expect(mockSetKey).toHaveBeenCalledWith('my-api-key-12345', {
       verify: false,
@@ -548,29 +570,6 @@ describe('registerAuth', () => {
   });
 
   describe('auth set-key reading from stdin', () => {
-    /** Swap process.stdin for a readable carrying `chunks`. */
-    async function withStdin(
-      chunks: Buffer[],
-      isTTY: boolean,
-      run: () => Promise<void>
-    ): Promise<void> {
-      const original = Object.getOwnPropertyDescriptor(process, 'stdin')!;
-      const replacement = Readable.from(chunks);
-      Object.defineProperty(replacement, 'isTTY', {
-        value: isTTY,
-        configurable: true,
-      });
-      Object.defineProperty(process, 'stdin', {
-        value: replacement,
-        configurable: true,
-      });
-      try {
-        await run();
-      } finally {
-        Object.defineProperty(process, 'stdin', original);
-      }
-    }
-
     it('should read the key from stdin and trim it', async () => {
       await loadAndRegister();
 
