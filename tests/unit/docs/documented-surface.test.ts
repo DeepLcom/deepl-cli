@@ -209,12 +209,20 @@ describe('documented CLI surface', () => {
     return tokens;
   }
 
+  /**
+   * Every `deepl …` run a reader could copy: whole lines in fenced blocks, and
+   * inline-code spans in prose, which a line-start test never sees.
+   */
   function invocations(markdown: string): string[] {
-    return markdown
+    const wholeLines = markdown
       .split('\n')
       .map((line) => line.replace(/^\s*[$>]\s*/, '').trim())
       .filter((line) => line.startsWith('deepl '))
       .map((line) => line.slice('deepl '.length));
+    const inlineCode = [...markdown.matchAll(/`deepl\s+([^`\n]+)`/g)].map(
+      (match) => match[1]!.trim()
+    );
+    return [...wholeLines, ...inlineCode];
   }
 
   describe.each(DOCS)('%s', (docPath) => {

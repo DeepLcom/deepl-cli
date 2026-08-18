@@ -1374,7 +1374,7 @@ Interactive setup wizard that creates `.deepl-sync.yaml` by scanning the project
 - `--format FORMAT` - Output format: `text` (default), `json`. Under `json`, success emits the envelope described below and failure emits the shared error envelope, both on stdout
 - `--sync-config PATH` - Path to `.deepl-sync.yaml`
 
-`--source-lang` and `--target-langs` were accepted as deprecated aliases during `1.x` and were removed in `2.0.0`; use `--source-locale` / `--target-locales`. `deepl translate --target-lang` is unchanged — it operates on strings and stays aligned with the DeepL API's wire name.
+`--source-lang` and `--target-langs` were accepted as deprecated aliases during `1.x` and were removed in `2.0.0`; use `--source-locale` / `--target-locales`. `deepl translate` is unaffected — it selects its target with `-t` / `--to` and operates on strings rather than locale files.
 
 **Examples:**
 

@@ -758,7 +758,7 @@ deepl sync init [OPTIONS]
 | `--path <pattern>` | Source file path or glob pattern |
 | `--sync-config <path>` | Path to `.deepl-sync.yaml` (default: auto-detect) |
 
-`--source-lang` and `--target-langs` were accepted as deprecated aliases during `1.x` and were removed in `2.0.0`; use `--source-locale` and `--target-locales`. The `--locale` filter on `sync push` / `pull` / `status` / `export` is unchanged. `deepl translate --target-lang` is unchanged — it operates on strings and stays aligned with the DeepL API's wire name.
+`--source-lang` and `--target-langs` were accepted as deprecated aliases during `1.x` and were removed in `2.0.0`; use `--source-locale` and `--target-locales`. The `--locale` filter on `sync push` / `pull` / `status` / `export` is unchanged. `deepl translate` is unaffected — it selects its target with `-t` / `--to` and operates on strings rather than locale files.
 
 **Examples:**
 
