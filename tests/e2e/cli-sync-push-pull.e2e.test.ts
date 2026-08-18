@@ -373,7 +373,7 @@ describe('CLI sync push/pull dispatch E2E', () => {
       );
     });
 
-    it('push: a credential inlined in the repo YAML is not gated', async () => {
+    it('push: a credential inlined in the repo YAML is refused at config load', async () => {
       const yaml = buildSyncConfigYaml({
         targetLocales: ['de'],
         buckets: { json: { include: ['locales/en.json'] } },
@@ -389,12 +389,17 @@ describe('CLI sync push/pull dispatch E2E', () => {
       writeTarget('de', { greeting: 'Hallo' });
       await configureMockServer({});
 
-      const run = runCli(['sync', 'push']);
+      const run = runCli(['sync', 'push', '--format', 'json']);
 
-      expect(run.status).toBe(0);
+      expect(run.status).toBe(7);
+      const envelope = assertErrorEnvelope(run.stdout, 'ConfigError', 7);
+      expect(envelope.error.message).toContain('tms.api_key');
+      expect(envelope.error.suggestion).toContain('TMS_API_KEY');
+      expect(
+        `${envelope.error.message} ${envelope.error.suggestion ?? ''}`
+      ).not.toContain('inlined-in-repo');
       const state = await inspectMockServer();
-      expect(state.requests.length).toBeGreaterThan(0);
-      expect(state.requests[0]!.authHeader).toBe('ApiKey inlined-in-repo');
+      expect(state.requests.length).toBe(0);
     });
   });
 

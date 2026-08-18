@@ -31,15 +31,6 @@ function harness(overrides: Partial<Harness> = {}): Harness {
 
 describe('ensureTmsServerApproved', () => {
   describe('credential provenance', () => {
-    it('does not gate a credential inlined in the repo YAML (nothing of the user’s leaks)', async () => {
-      const deps = harness();
-      await expect(
-        ensureTmsServerApproved('https://tms.evil.test', 'config', deps)
-      ).resolves.toBeUndefined();
-      expect(deps.promptForApproval).not.toHaveBeenCalled();
-      expect(deps.readAllowedServers).not.toHaveBeenCalled();
-    });
-
     it('does not gate when there is no credential at all', async () => {
       const deps = harness();
       await expect(

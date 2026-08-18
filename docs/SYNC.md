@@ -24,7 +24,7 @@
 
 ### Prerequisites
 
-- DeepL API key (`deepl auth set-key YOUR_KEY` or `DEEPL_API_KEY` env var)
+- DeepL API key (`deepl init` or `DEEPL_API_KEY` env var)
 - Project with i18n resource files (JSON, YAML, TOML, PO, Android XML, iOS Strings, ARB, XLIFF, Java Properties, Xcode String Catalog, or Laravel PHP arrays)
 
 ### First Sync in 30 Seconds
@@ -502,16 +502,16 @@ Optional integration with a translation management system (TMS) for collaborativ
 | `enabled` | `boolean` | Yes | -- | Enable TMS integration |
 | `server` | `string` | Yes | -- | TMS server URL. HTTPS required, waived only for `http://localhost` and `http://127.0.0.1` -- write a local TMS as `http://localhost`, which reaches it whether it is bound to `127.0.0.1`, to `::1` or to every interface; `http://[::1]` and other loopback spellings are refused. When the credential comes from the environment, the hostname must also be approved -- see [TMS destination trust](#tms-destination-trust) |
 | `project_id` | `string` | Yes | -- | TMS project identifier |
-| `api_key` | `string` | No | -- | API key for TMS authentication (prefer `TMS_API_KEY` env var) |
-| `token` | `string` | No | -- | Bearer token for TMS authentication (prefer `TMS_TOKEN` env var) |
 | `timeout_ms` | `number` | No | `30000` | Per-request timeout in milliseconds for TMS HTTP calls (positive integer). Aborts the request via `AbortController` when exceeded. |
 | `push_concurrency` | `number` | No | `10` | Maximum number of in-flight `PUT /keys/{keyPath}` requests during `deepl sync push`. Positive integer. Applied per (file, locale) batch of entries; aborts remaining pushes on first failure. |
+
+**Credentials are not configurable here.** `TMS_API_KEY` and `TMS_TOKEN` are the only source. This file is committed, so a credential written into it is a secret in version control -- present in every clone and fork, and surviving its own deletion in git history. `tms.api_key` and `tms.token` were accepted through `2.0.0`'s predecessors with a warning; they now fail config load with a `ConfigError` (exit 7) that names the environment variable to use instead. The message never quotes the value. If a credential was ever committed, rotate it: removing it from the file does not remove it from history.
 
 **Removed fields.** `auto_push`, `auto_pull` and `require_review` were accepted by the schema through `1.x`, and no code ever read any of them -- a `require_review` a user configured expecting a human gate before pull got no gate and no warning. All three now fail config load with a `ConfigError` (exit 7) naming them, rather than being silently tolerated. Push and pull after or before a sync by running `deepl sync push` / `deepl sync pull` explicitly, which also keeps the credential and destination decision on a command you typed. A review gate cannot be enforced from the CLI side because the export contract below carries no per-entry review flag; use [`deepl sync pull --dry-run`](#deepl-sync-pull) to preview a pull and review the result before committing it.
 
 ##### TMS destination trust
 
-`server` is chosen by this file, which lives in the checkout, while `TMS_API_KEY` / `TMS_TOKEN` come from the operator's environment. A checkout you do not control could therefore name the host that receives your credential and every translated string. Before an **environment-supplied** credential is attached to a request, the destination hostname must be approved in the operator's own configuration:
+`server` is chosen by this file, which lives in the checkout, while `TMS_API_KEY` / `TMS_TOKEN` come from the operator's environment. A checkout you do not control could therefore name the host that receives your credential and every translated string. Before a credential is attached to a request, the destination hostname must be approved in the operator's own configuration:
 
 ```bash
 # Approve a destination up front (comma-separate several hosts)
@@ -524,7 +524,7 @@ deepl config set tms.allowedServers tms.example.com
 
 Matching is against a parsed URL hostname: exact and case-insensitive, ignoring scheme, port and path. A listed `example.com` does **not** approve `tms.example.com`, and there are no wildcards. `localhost` and `127.0.0.1` are **not** exempt — a co-tenant process listening on loopback is still an exfiltration sink, even though `buildUrl` waives the HTTPS requirement for them.
 
-The gate does not apply to a credential inlined as `api_key` / `token` in this file: it belongs to the same file that chose the destination, so nothing of the operator's leaks. Inlining a credential is still discouraged (it commits a secret), and the CLI warns about it separately.
+The gate has no bypass: every credential now comes from the environment, so every destination is checked.
 
 `deepl sync push` and `deepl sync pull` print the resolved destination origin on success in both text and JSON output, so a redirected destination is visible in logs even for an already-approved host.
 
@@ -548,7 +548,7 @@ The built-in `push`/`pull` client expects the TMS server to implement these endp
 | `GET` | `{server}/api/projects/{projectId}/keys/export?format=json&locale={locale}` | Pull approved translations. Response: `{ "key": "translated value", ... }` |
 | `GET` | `{server}/api/projects/{projectId}` | Project status (reserved; not currently consumed by the CLI) |
 
-Authentication is sent as an `Authorization` header. When `api_key` is configured the header is `ApiKey {api_key}`; when `token` is configured it is `Bearer {token}`. Any TMS implementing this contract — DeepL's own, or a self-hosted bridge in front of Crowdin/Lokalise/Phrase/etc. — can be used.
+Authentication is sent as an `Authorization` header. When `TMS_API_KEY` is set the header is `ApiKey {TMS_API_KEY}`; when `TMS_TOKEN` is set it is `Bearer {TMS_TOKEN}`. Any TMS implementing this contract — DeepL's own, or a self-hosted bridge in front of Crowdin/Lokalise/Phrase/etc. — can be used.
 
 #### `ignore`
 

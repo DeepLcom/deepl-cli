@@ -1169,7 +1169,7 @@ describe('sync-config', () => {
         expect(() => validateSyncConfig(raw)).toThrow(/translation/);
       });
 
-      it('should reject unknown tms field and suggest api_key for apikey typo', () => {
+      it('should reject an apikey typo as an unknown tms field', () => {
         const raw = {
           ...baseConfig,
           tms: {
@@ -1188,7 +1188,7 @@ describe('sync-config', () => {
             /Unknown field "apikey"/
           );
           expect((err as ConfigError).message).toMatch(/tms/);
-          expect((err as ConfigError).suggestion).toMatch(/api_key/);
+          expect((err as ConfigError).suggestion).toMatch(/Remove "apikey"/);
         }
       });
 
@@ -1302,8 +1302,6 @@ describe('sync-config', () => {
             enabled: true,
             server: 'https://example.com',
             project_id: 'test',
-            api_key: 'secret',
-            token: 'bearer',
             timeout_ms: 30000,
           },
         };
@@ -1884,35 +1882,26 @@ translation:
     });
   });
 
-  describe('inline TMS credential warning', () => {
+  describe('inline TMS credential rejection', () => {
     let tmpDir: string;
-    let originalIsTTY: boolean | undefined;
     let originalApiKey: string | undefined;
     let originalToken: string | undefined;
-    let stderrSpy: jest.SpyInstance;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-tms-warn-'));
-      originalIsTTY = process.stderr.isTTY;
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-sync-tms-cred-'));
       originalApiKey = process.env['TMS_API_KEY'];
       originalToken = process.env['TMS_TOKEN'];
       delete process.env['TMS_API_KEY'];
       delete process.env['TMS_TOKEN'];
-      stderrSpy = jest
-        .spyOn(process.stderr, 'write')
-        .mockImplementation(() => true);
     });
 
     afterEach(() => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
-      Object.defineProperty(process.stderr, 'isTTY', {
-        value: originalIsTTY,
-        configurable: true,
-      });
       if (originalApiKey !== undefined)
         process.env['TMS_API_KEY'] = originalApiKey;
+      else delete process.env['TMS_API_KEY'];
       if (originalToken !== undefined) process.env['TMS_TOKEN'] = originalToken;
-      stderrSpy.mockRestore();
+      else delete process.env['TMS_TOKEN'];
     });
 
     const writeConfig = (extra: string): string => {
@@ -1932,72 +1921,52 @@ ${extra}
       return configPath;
     };
 
-    it('emits a stderr warning when tms.api_key is inlined and stderr is not a TTY', async () => {
-      Object.defineProperty(process.stderr, 'isTTY', {
-        value: false,
-        configurable: true,
-      });
+    it('rejects tms.api_key without echoing the credential', async () => {
       writeConfig('  api_key: secret-key');
 
-      await loadSyncConfig(tmpDir);
-
-      const writes = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
-      expect(writes).toMatch(/TMS_API_KEY/);
-      expect(writes).toMatch(/\.deepl-sync\.yaml/);
+      expect.assertions(5);
+      try {
+        await loadSyncConfig(tmpDir);
+      } catch (error) {
+        const err = error as ConfigError;
+        expect(err).toBeInstanceOf(ConfigError);
+        expect(err.exitCode).toBe(7);
+        expect(err.message).toMatch(/tms\.api_key/);
+        expect(err.suggestion).toMatch(/TMS_API_KEY/);
+        expect(`${err.message} ${err.suggestion ?? ''}`).not.toContain(
+          'secret-key'
+        );
+      }
     });
 
-    it('emits a stderr warning when tms.token is inlined and stderr is not a TTY', async () => {
-      Object.defineProperty(process.stderr, 'isTTY', {
-        value: false,
-        configurable: true,
-      });
+    it('rejects tms.token without echoing the credential', async () => {
       writeConfig('  token: secret-token');
 
-      await loadSyncConfig(tmpDir);
-
-      const writes = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
-      expect(writes).toMatch(/TMS_TOKEN/);
+      expect.assertions(4);
+      try {
+        await loadSyncConfig(tmpDir);
+      } catch (error) {
+        const err = error as ConfigError;
+        expect(err).toBeInstanceOf(ConfigError);
+        expect(err.message).toMatch(/tms\.token/);
+        expect(err.suggestion).toMatch(/TMS_TOKEN/);
+        expect(`${err.message} ${err.suggestion ?? ''}`).not.toContain(
+          'secret-token'
+        );
+      }
     });
 
-    it('still emits the warning when stderr is a TTY', async () => {
-      Object.defineProperty(process.stderr, 'isTTY', {
-        value: true,
-        configurable: true,
-      });
-      writeConfig('  api_key: secret-key');
-
-      await loadSyncConfig(tmpDir);
-
-      const writes = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
-      expect(writes).toMatch(/TMS_API_KEY/);
-    });
-
-    it('does not emit the warning when tms.api_key is absent', async () => {
-      Object.defineProperty(process.stderr, 'isTTY', {
-        value: false,
-        configurable: true,
-      });
-      writeConfig('  enabled: false');
-
-      await loadSyncConfig(tmpDir);
-
-      const writes = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
-      expect(writes).not.toMatch(/TMS_API_KEY/);
-      expect(writes).not.toMatch(/TMS_TOKEN/);
-    });
-
-    it('does not emit the warning when TMS_API_KEY env var is already set', async () => {
-      Object.defineProperty(process.stderr, 'isTTY', {
-        value: false,
-        configurable: true,
-      });
+    it('rejects tms.api_key even when TMS_API_KEY is set', async () => {
       process.env['TMS_API_KEY'] = 'env-key';
       writeConfig('  api_key: secret-key');
 
-      await loadSyncConfig(tmpDir);
+      await expect(loadSyncConfig(tmpDir)).rejects.toThrow(/tms\.api_key/);
+    });
 
-      const writes = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
-      expect(writes).not.toMatch(/TMS_API_KEY/);
+    it('accepts a tms block that carries no credential', async () => {
+      writeConfig('  enabled: false');
+
+      await expect(loadSyncConfig(tmpDir)).resolves.toBeDefined();
     });
   });
 

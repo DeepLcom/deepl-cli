@@ -798,19 +798,18 @@ describe('resolveTmsCredentials', () => {
     process.env = envSnapshot;
   });
 
-  it('should prefer env var over config api_key', () => {
+  it('reads the api key from TMS_API_KEY', () => {
     process.env['TMS_API_KEY'] = 'env-key';
-    const result = resolveTmsCredentials({ api_key: 'config-key' });
-    expect(result.apiKey).toBe('env-key');
+    expect(resolveTmsCredentials().apiKey).toBe('env-key');
   });
 
-  it('should fall back to config api_key when env var not set', () => {
-    const result = resolveTmsCredentials({ api_key: 'config-key' });
-    expect(result.apiKey).toBe('config-key');
+  it('reads the token from TMS_TOKEN', () => {
+    process.env['TMS_TOKEN'] = 'env-token';
+    expect(resolveTmsCredentials().token).toBe('env-token');
   });
 
   it('should return undefined when neither set', () => {
-    const result = resolveTmsCredentials({});
+    const result = resolveTmsCredentials();
     expect(result.apiKey).toBeUndefined();
     expect(result.token).toBeUndefined();
   });
@@ -818,44 +817,27 @@ describe('resolveTmsCredentials', () => {
   describe('credential provenance', () => {
     it('reports env when TMS_API_KEY supplied the key', () => {
       process.env['TMS_API_KEY'] = 'env-key';
-      expect(resolveTmsCredentials({ api_key: 'config-key' }).source).toBe(
-        'env'
-      );
+      expect(resolveTmsCredentials().source).toBe('env');
     });
 
     it('reports env when TMS_TOKEN supplied the only credential', () => {
       process.env['TMS_TOKEN'] = 'env-token';
-      expect(resolveTmsCredentials({}).source).toBe('env');
-    });
-
-    it('reports config when the credential was inlined in the repo YAML', () => {
-      expect(resolveTmsCredentials({ api_key: 'config-key' }).source).toBe(
-        'config'
-      );
-    });
-
-    it('reports config for an inlined token', () => {
-      expect(resolveTmsCredentials({ token: 'config-token' }).source).toBe(
-        'config'
-      );
+      expect(resolveTmsCredentials().source).toBe('env');
     });
 
     it('reports none when there is no credential', () => {
-      expect(resolveTmsCredentials({}).source).toBe('none');
-    });
-
-    it('reports config when the api_key that will actually be sent came from config', () => {
-      // getAuthHeader prefers apiKey, so an env token is never attached here.
-      process.env['TMS_TOKEN'] = 'env-token';
-      expect(resolveTmsCredentials({ api_key: 'config-key' }).source).toBe(
-        'config'
-      );
+      expect(resolveTmsCredentials().source).toBe('none');
     });
 
     it('reports env when an empty TMS_API_KEY falls through to an env token', () => {
       process.env['TMS_API_KEY'] = '';
       process.env['TMS_TOKEN'] = 'env-token';
-      expect(resolveTmsCredentials({}).source).toBe('env');
+      expect(resolveTmsCredentials().source).toBe('env');
+    });
+
+    it('reports none for an empty TMS_API_KEY with no token', () => {
+      process.env['TMS_API_KEY'] = '';
+      expect(resolveTmsCredentials().source).toBe('none');
     });
   });
 });
@@ -911,15 +893,26 @@ describe('createTmsClient destination trust', () => {
     expect(mockFetch).toHaveBeenCalled();
   });
 
-  it('builds a client without gating when the credential is inlined in the repo YAML', async () => {
+  it('builds a client without gating when there is no credential to leak', async () => {
     const promptForApproval = jest.fn(async () => true);
-    const client = await createTmsClient(
-      { ...baseConfig, api_key: 'config-key' },
-      { promptForApproval, canPrompt: () => true }
-    );
+    const client = await createTmsClient(baseConfig, {
+      promptForApproval,
+      canPrompt: () => true,
+    });
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await client.pushKey('k', 'de', 'v');
     expect(promptForApproval).not.toHaveBeenCalled();
+  });
+
+  it('gates every credential, since all of them now come from the environment', async () => {
+    process.env['TMS_API_KEY'] = 'env-key';
+    const promptForApproval = jest.fn(async () => true);
+    await createTmsClient(baseConfig, {
+      readAllowedServers: () => [],
+      canPrompt: () => true,
+      promptForApproval,
+    });
+    expect(promptForApproval).toHaveBeenCalled();
   });
 
   it('records the approval when the user accepts at the prompt', async () => {
@@ -961,12 +954,9 @@ describe('createTmsClient', () => {
     project_id: 'proj-1',
   };
 
-  it('should read TMS_API_KEY env var when building the client (in preference to config.api_key)', async () => {
+  it('should read TMS_API_KEY env var when building the client', async () => {
     process.env['TMS_API_KEY'] = 'env-key';
-    const client = await createTmsClient(
-      { ...baseConfig, api_key: 'config-key' },
-      approved
-    );
+    const client = await createTmsClient(baseConfig, approved);
 
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await client.pushKey('k', 'de', 'v');
@@ -990,11 +980,8 @@ describe('createTmsClient', () => {
     expect(headers?.['Authorization']).toBe('Bearer env-token');
   });
 
-  it('should fall back to config credentials when no env vars set', async () => {
-    const client = await createTmsClient(
-      { ...baseConfig, api_key: 'config-key' },
-      approved
-    );
+  it('attaches no Authorization header when no env credential is set', async () => {
+    const client = await createTmsClient(baseConfig, approved);
 
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
     await client.pushKey('k', 'de', 'v');
@@ -1002,7 +989,7 @@ describe('createTmsClient', () => {
       string,
       string
     >;
-    expect(headers?.['Authorization']).toBe('ApiKey config-key');
+    expect(headers?.['Authorization']).toBeUndefined();
   });
 
   it('should pass server URL and project_id to the constructed client', async () => {
