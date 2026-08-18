@@ -103,7 +103,7 @@ Examples:
             );
             Logger.warn(
               chalk.yellow(
-                'Run: deepl auth set-key <your-api-key> for API-verified names.\n'
+                'Run: deepl init, or deepl auth set-key --from-stdin < keyfile, for API-verified names.\n'
               )
             );
             if (showFeatures) {

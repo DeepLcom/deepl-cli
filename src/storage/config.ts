@@ -333,7 +333,7 @@ export class ConfigService {
       repairPrivateFileMode(
         this.configPath,
         0o600,
-        'Your API key may already have been read; consider rotating it with: deepl auth set-key'
+        'Your API key may already have been read; consider rotating it with: deepl auth set-key --from-stdin'
       );
       warnOnWritableDirectory(path.dirname(this.configPath));
     } catch {

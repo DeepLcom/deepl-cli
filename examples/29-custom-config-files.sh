@@ -10,7 +10,7 @@ echo
 # Check if API key is configured
 if ! deepl auth show &>/dev/null; then
   echo "❌ Error: API key not configured"
-  echo "Run: deepl auth set-key YOUR_API_KEY"
+  echo "Run: deepl init, or: deepl auth set-key --from-stdin < keyfile"
   exit 1
 fi
 
@@ -125,8 +125,8 @@ echo
 # Note: In a real scenario, you would set the API key in each config file
 # For this example, we'll just demonstrate the config switching mechanism
 echo "💡 Tip: In practice, each config file would have its own API key:"
-echo "   deepl --config work-config.json auth set-key WORK_API_KEY"
-echo "   deepl --config personal-config.json auth set-key PERSONAL_API_KEY"
+echo "   deepl --config work-config.json auth set-key --from-stdin < work-key.txt"
+echo "   deepl --config personal-config.json auth set-key --from-stdin < personal-key.txt"
 echo
 
 echo "=== 3. Setting Values in Specific Config Files ==="

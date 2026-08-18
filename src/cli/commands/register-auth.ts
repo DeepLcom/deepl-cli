@@ -24,59 +24,64 @@ export function registerAuth(
 Examples:
   $ echo "YOUR_API_KEY" | deepl auth set-key --from-stdin
   $ deepl auth set-key --from-stdin < ~/.deepl-api-key
-  $ deepl auth set-key YOUR_API_KEY
   $ deepl auth show
   $ deepl auth clear
 
-Note: Prefer --from-stdin over passing the key as an argument.
-Command arguments are visible to other users via process listings.
+Note: The key is read from stdin only. A command-line argument would be visible
+to other users via process listings and recorded in shell history. Run deepl init
+to be prompted for it instead.
 `
     )
     .addCommand(
       new Command('set-key')
-        .description('Set your DeepL API key')
-        .argument('[api-key]', 'Your DeepL API key (or pipe via stdin)')
-        .option('--from-stdin', 'Read API key from stdin')
+        .description('Set your DeepL API key (read from stdin)')
+        // Excess arguments are accepted by the parser so that a key passed as
+        // one can be refused by name here. Commander's own excess-argument
+        // error quotes the offending value, which would print the key.
+        .allowExcessArguments(true)
+        .option('--from-stdin', 'Read API key from stdin (the only source)')
         .option(
           '--no-verify',
           'Store the key without validating it against the API (for offline or proxied networks)'
         )
         .action(
           async (
-            apiKey: string | undefined,
-            opts: { fromStdin?: boolean; verify?: boolean }
+            opts: { fromStdin?: boolean; verify?: boolean },
+            command: Command
           ) => {
             try {
-              let key = apiKey;
-              if (apiKey && !opts.fromStdin) {
-                Logger.warn(
-                  'Passing API key as argument is deprecated (visible in ps). Use --from-stdin instead.'
+              if (command.args.length > 0) {
+                handleError(
+                  new ValidationError(
+                    'The API key can no longer be passed as an argument.',
+                    'Pipe it in instead: deepl auth set-key --from-stdin < keyfile, or run deepl init to be prompted for it.'
+                  )
                 );
+                return;
               }
-              if (opts.fromStdin === true || !key) {
-                if (process.stdin.isTTY && !key) {
-                  handleError(
-                    new ValidationError(
-                      'API key required: provide as argument or use --from-stdin'
-                    )
+              if (process.stdin.isTTY) {
+                handleError(
+                  new ValidationError(
+                    'API key required on stdin.',
+                    'Pipe it in: echo "YOUR_API_KEY" | deepl auth set-key --from-stdin, or run deepl init to be prompted for it.'
+                  )
+                );
+                return;
+              }
+              const MAX_STDIN_BYTES = 131072; // 128KB
+              const chunks: Buffer[] = [];
+              let totalBytes = 0;
+              for await (const chunk of process.stdin) {
+                const buf = chunk as Buffer;
+                totalBytes += buf.length;
+                if (totalBytes > MAX_STDIN_BYTES) {
+                  throw new ValidationError(
+                    'Input exceeds maximum size of 128KB'
                   );
-                  return;
                 }
-                const MAX_STDIN_BYTES = 131072; // 128KB
-                const chunks: Buffer[] = [];
-                let totalBytes = 0;
-                for await (const chunk of process.stdin) {
-                  const buf = chunk as Buffer;
-                  totalBytes += buf.length;
-                  if (totalBytes > MAX_STDIN_BYTES) {
-                    throw new ValidationError(
-                      'Input exceeds maximum size of 128KB'
-                    );
-                  }
-                  chunks.push(buf);
-                }
-                key = Buffer.concat(chunks).toString('utf-8').trim();
+                chunks.push(buf);
               }
+              const key = Buffer.concat(chunks).toString('utf-8').trim();
               const { AuthCommand } = await import('./auth.js');
               const authCommand = new AuthCommand(
                 getConfigService(),

@@ -85,7 +85,7 @@ needs neither an API key nor a network.
 All examples assume you have:
 
 1. Installed DeepL CLI (`npm install -g @deepl/cli` or `npm link`)
-2. A DeepL API key configured (`deepl auth set-key YOUR_API_KEY`)
+2. A DeepL API key configured (`deepl init`)
 
 ## Running Examples
 

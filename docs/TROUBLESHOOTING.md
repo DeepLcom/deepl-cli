@@ -45,7 +45,7 @@ Common issues and solutions when using the DeepL CLI.
 2. Set or update your key:
 
    ```bash
-   deepl auth set-key YOUR_API_KEY
+   echo "YOUR_API_KEY" | deepl auth set-key --from-stdin
    ```
 
 3. Alternatively, use the environment variable:
@@ -97,9 +97,9 @@ Common issues and solutions when using the DeepL CLI.
 
 2. Ensure you're copying the full key, including the `:fx` suffix for free-tier keys.
 
-3. As a manual fallback, skip the wizard and set the key directly:
+3. As a manual fallback, skip the wizard and pipe the key in:
    ```bash
-   deepl auth set-key YOUR_API_KEY
+   echo "YOUR_API_KEY" | deepl auth set-key --from-stdin
    ```
 
 ---
@@ -354,7 +354,7 @@ The config file location depends on your setup (see [Configuration Paths](../REA
 
    ```bash
    rm ~/.config/deepl-cli/config.json   # or ~/.deepl-cli/config.json
-   deepl auth set-key YOUR_API_KEY
+   echo "YOUR_API_KEY" | deepl auth set-key --from-stdin
    ```
 
 4. Use a custom config directory:

@@ -12,7 +12,7 @@ echo
 # Check API key
 if ! deepl auth show &>/dev/null; then
   echo "Error: API key not configured"
-  echo "Run: deepl auth set-key YOUR_API_KEY"
+  echo "Run: deepl init, or: deepl auth set-key --from-stdin < keyfile"
   exit 1
 fi
 

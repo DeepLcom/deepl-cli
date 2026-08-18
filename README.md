@@ -127,9 +127,8 @@ Or set your API key directly:
 # Piping from stdin keeps the key out of process listings and shell history
 echo "YOUR_API_KEY" | deepl auth set-key --from-stdin
 
-# Passing it as an argument also works, but is deprecated and warns:
-# other users can read it via `ps`
-deepl auth set-key YOUR_API_KEY
+# Or from a file, keeping the key out of shell history
+deepl auth set-key --from-stdin < ~/.deepl-api-key
 ```
 
 Or use an environment variable:
@@ -1006,10 +1005,6 @@ echo "YOUR_API_KEY" | deepl auth set-key --from-stdin
 # Store it without validating against the API (offline or proxied networks)
 echo "YOUR_API_KEY" | deepl auth set-key --from-stdin --no-verify
 # ✓ API key saved without validation
-
-# Passing the key as an argument still works, but is deprecated and warns —
-# other users can read it via `ps`
-deepl auth set-key YOUR_API_KEY
 
 # Show the stored key, masked (does not contact the API)
 deepl auth show
