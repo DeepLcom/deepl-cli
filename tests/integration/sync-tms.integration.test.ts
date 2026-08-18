@@ -335,8 +335,8 @@ describe('sync push/pull (TMS integration)', () => {
   );
 
   // ---- Case 3: TMS_API_KEY env var precedence over config ----
-  it('credential resolution: TMS_API_KEY env var overrides config.api_key', async () => {
-    writeSyncConfig(tmpDir, { tms: tmsConfig({ api_key: 'from-config' }) });
+  it('credential resolution: TMS_API_KEY env var supplies the api key', async () => {
+    writeSyncConfig(tmpDir, { tms: tmsConfig() });
     writeJson(tmpDir, 'locales/en.json', { k: 'Hello' });
     writeJson(tmpDir, 'locales/de.json', { k: 'Hallo' });
 
@@ -373,20 +373,19 @@ describe('sync push/pull (TMS integration)', () => {
   });
 
   // ---- Case 5: secret-in-config warning ----
-  it('credential resolution: emits a stderr warning when api_key is sourced from .deepl-sync.yaml', async () => {
+  it('credential resolution: refuses an api_key written into .deepl-sync.yaml', async () => {
     writeSyncConfig(tmpDir, { tms: tmsConfig({ api_key: 'in-config' }) });
 
-    const warn = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
+    expect.assertions(3);
     try {
-      const config = await loadSyncConfig(tmpDir);
-      await createTmsClient(config.tms!, approvedTmsTrust);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringMatching(/TMS API key found in config file.*TMS_API_KEY/)
+      await loadSyncConfig(tmpDir);
+    } catch (error) {
+      const err = error as ConfigError;
+      expect(err).toBeInstanceOf(ConfigError);
+      expect(err.suggestion).toMatch(/TMS_API_KEY/);
+      expect(`${err.message} ${err.suggestion ?? ''}`).not.toContain(
+        'in-config'
       );
-    } finally {
-      warn.mockRestore();
     }
   });
 

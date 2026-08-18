@@ -17,7 +17,7 @@ import { ConfigService } from '../storage/config.js';
 
 export const ALLOWED_SERVERS_CONFIG_KEY = 'tms.allowedServers';
 
-export type TmsCredentialSource = 'env' | 'config' | 'none';
+export type TmsCredentialSource = 'env' | 'none';
 
 export interface TmsServerTrustDeps {
   readAllowedServers?: () => string[];

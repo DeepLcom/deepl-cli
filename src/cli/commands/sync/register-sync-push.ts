@@ -40,9 +40,9 @@ Requires TMS integration. Add a tms: block to .deepl-sync.yaml:
     server: https://tms.example.com
     project_id: my-project
 
-Credentials: prefer the TMS_API_KEY (or TMS_TOKEN) env var over inlining
-'api_key'/'token' in the YAML. See docs/SYNC.md#tms-rest-contract for the
-full field list and REST contract.
+Credentials come from the TMS_API_KEY (or TMS_TOKEN) env var. They cannot be
+set in the YAML, which is a committed file. See docs/SYNC.md#tms-rest-contract
+for the full field list and REST contract.
 `
     )
     .action((options: PushOptions, command: Command) =>

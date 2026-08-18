@@ -166,11 +166,21 @@ const KNOWN_TMS_KEYS: readonly string[] = [
   'enabled',
   'server',
   'project_id',
-  'api_key',
-  'token',
   'timeout_ms',
   'push_concurrency',
 ];
+
+/**
+ * `tms:` credential fields that were implemented and are no longer read.
+ * `.deepl-sync.yaml` is a committed file, so a credential inlined in it is a
+ * secret in version control; the environment variables are the only source.
+ * Rejected by name so the message can say where the value belongs instead,
+ * and without quoting the value, which would print the credential.
+ */
+const REMOVED_TMS_CREDENTIAL_KEYS: Readonly<Record<string, string>> = {
+  api_key: 'TMS_API_KEY',
+  token: 'TMS_TOKEN',
+};
 
 /**
  * `tms:` fields the schema once accepted, and documented, without any code
@@ -602,6 +612,13 @@ export function validateSyncConfig(raw: unknown): SyncConfig {
   }
   if (obj['tms'] !== undefined) {
     const tmsBlock = obj['tms'] as Record<string, unknown>;
+    for (const [key, envVar] of Object.entries(REMOVED_TMS_CREDENTIAL_KEYS)) {
+      if (tmsBlock[key] === undefined) continue;
+      throw new ConfigError(
+        `tms.${key} is no longer read from .deepl-sync.yaml`,
+        `Remove it and set the ${envVar} environment variable instead. This file is committed, so rotate the credential if it has ever been pushed.`
+      );
+    }
     for (const [key, alternative] of Object.entries(RETIRED_TMS_KEYS)) {
       if (tmsBlock[key] === undefined) continue;
       throw new ConfigError(
@@ -810,7 +827,6 @@ export async function loadSyncConfig(
   }
 
   const config = applyCliOverrides(validateSyncConfig(parsed), overrides);
-  warnOnInlineTmsCredentials(config.tms);
 
   return {
     ...config,
@@ -818,23 +834,4 @@ export async function loadSyncConfig(
     projectRoot: path.dirname(configPath),
     overrides,
   };
-}
-
-// Emit a security warning whenever a user has put TMS credentials directly
-// in .deepl-sync.yaml instead of the recommended env vars. Writes directly
-// to stderr (no TTY gate) so the warning survives on CI and piped contexts.
-// Runs at config load so every sync subcommand warns, not just the ones
-// that resolve TMS credentials in tms-client.ts.
-function warnOnInlineTmsCredentials(tms: SyncTmsConfig | undefined): void {
-  if (!tms) return;
-  if (tms.api_key && !process.env['TMS_API_KEY']) {
-    process.stderr.write(
-      'Warning: TMS api_key is set in .deepl-sync.yaml. Use the TMS_API_KEY env var instead to avoid committing secrets.\n'
-    );
-  }
-  if (tms.token && !process.env['TMS_TOKEN']) {
-    process.stderr.write(
-      'Warning: TMS token is set in .deepl-sync.yaml. Use the TMS_TOKEN env var instead to avoid committing secrets.\n'
-    );
-  }
 }

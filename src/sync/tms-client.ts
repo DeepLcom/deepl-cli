@@ -471,49 +471,23 @@ export class TmsClient {
   }
 }
 
-export function resolveTmsCredentials(config: {
-  api_key?: string;
+export function resolveTmsCredentials(): {
+  apiKey?: string;
   token?: string;
-}): { apiKey?: string; token?: string; source: TmsCredentialSource } {
-  const apiKey = process.env['TMS_API_KEY'] ?? config.api_key;
-  const token = process.env['TMS_TOKEN'] ?? config.token;
-
-  if (!process.env['TMS_API_KEY'] && config.api_key) {
-    Logger.warn(
-      'Warning: TMS API key found in config file. Use TMS_API_KEY env var instead to avoid committing secrets.'
-    );
-  }
-  if (!process.env['TMS_TOKEN'] && config.token) {
-    Logger.warn(
-      'Warning: TMS token found in config file. Use TMS_TOKEN env var instead to avoid committing secrets.'
-    );
-  }
-
-  return { apiKey, token, source: credentialSource(apiKey, token) };
-}
-
-/**
- * Where the credential that `getAuthHeader` will actually attach came from.
- * It prefers apiKey, so an env-held token behind a config-held api_key is
- * never sent and does not make the destination a leak.
- */
-function credentialSource(
-  apiKey: string | undefined,
-  token: string | undefined
-): TmsCredentialSource {
-  if (apiKey) return process.env['TMS_API_KEY'] ? 'env' : 'config';
-  if (token) return process.env['TMS_TOKEN'] ? 'env' : 'config';
-  return 'none';
+  source: TmsCredentialSource;
+} {
+  const apiKey = process.env['TMS_API_KEY'];
+  const token = process.env['TMS_TOKEN'];
+  const source: TmsCredentialSource =
+    Boolean(apiKey) || Boolean(token) ? 'env' : 'none';
+  return { apiKey, token, source };
 }
 
 export async function createTmsClient(
   config: SyncTmsConfig,
   trustDeps: TmsServerTrustDeps = {}
 ): Promise<TmsClient> {
-  const { apiKey, token, source } = resolveTmsCredentials({
-    api_key: config.api_key,
-    token: config.token,
-  });
+  const { apiKey, token, source } = resolveTmsCredentials();
   await ensureTmsServerApproved(config.server, source, trustDeps);
   return new TmsClient({
     serverUrl: config.server,

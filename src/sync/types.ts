@@ -100,8 +100,6 @@ export interface SyncTmsConfig {
   enabled: boolean;
   server: string;
   project_id: string;
-  api_key?: string;
-  token?: string;
   timeout_ms?: number;
   push_concurrency?: number;
 }
