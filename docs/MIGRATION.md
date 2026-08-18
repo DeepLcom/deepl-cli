@@ -57,6 +57,9 @@ All of these fail immediately, so nothing here can pass silently.
 | `tms.auto_push` | Run `deepl sync push` after `deepl sync` | `ConfigError`, exit 7 |
 | `tms.auto_pull` | Run `deepl sync pull` before `deepl sync` | `ConfigError`, exit 7 |
 | `tms.require_review` | Preview with `deepl sync pull --dry-run` | `ConfigError`, exit 7 |
+| `tms.api_key` | `TMS_API_KEY` environment variable | `ConfigError`, exit 7 |
+| `tms.token` | `TMS_TOKEN` environment variable | `ConfigError`, exit 7 |
+| `auth set-key <KEY>` (the key as an argument) | `auth set-key --from-stdin`, or `deepl init` | `ValidationError`, exit 6 |
 
 ```bash
 # 1.x
@@ -85,6 +88,80 @@ tms:
   enabled: true
   server: https://tms.example.com
 ```
+
+### The API key is no longer passed as an argument
+
+`deepl auth set-key <KEY>` warned as deprecated on every use since 1.0.0 and now
+exits 6. A command line is readable by other users through process listings and is
+recorded in shell history, where it outlives the process indefinitely.
+
+```bash
+# 1.x — worked, with a warning on stderr
+deepl auth set-key YOUR_API_KEY
+
+# 2.0.0 — pipe it in
+echo "YOUR_API_KEY" | deepl auth set-key --from-stdin
+
+# 2.0.0 — or from a file, which also keeps it out of shell history
+deepl auth set-key --from-stdin < ~/.deepl-api-key
+
+# 2.0.0 — or be prompted, with masked input
+deepl init
+```
+
+In CI, replace the argument with a pipe from the secret, or skip the command and
+export `DEEPL_API_KEY` instead:
+
+```yaml
+# 1.x
+- run: deepl auth set-key "$DEEPL_API_KEY"
+
+# 2.0.0
+- run: echo "$DEEPL_API_KEY" | deepl auth set-key --from-stdin
+```
+
+Redirected stdin without the flag is unchanged, so `deepl auth set-key < keyfile`
+still works. The rejection message never quotes the value you passed, so a broken
+CI job does not print your key into its log.
+
+### TMS credentials come only from the environment
+
+`tms.api_key` and `tms.token` were accepted in `.deepl-sync.yaml` with a warning
+through 1.x, and are now refused at config load, which fails every `sync`
+subcommand rather than one run.
+
+```yaml
+# 1.x — accepted, with a warning on stderr
+tms:
+  enabled: true
+  server: https://tms.example.com
+  project_id: my-project
+  api_key: sk-abc123
+
+# 2.0.0 — remove it; set TMS_API_KEY in the environment instead
+tms:
+  enabled: true
+  server: https://tms.example.com
+  project_id: my-project
+```
+
+```bash
+export TMS_API_KEY=sk-abc123    # or TMS_TOKEN for bearer auth
+```
+
+**Rotate any credential you have committed.** `.deepl-sync.yaml` is a committed
+file, so a credential that was ever pushed is in every clone and fork of the
+repository and survives its own deletion from the file — deleting the line does not
+remove it from git history. The environment variable already took precedence
+wherever both were set, so nothing that worked before depends on the file.
+
+One behavioural consequence: the [TMS destination-trust prompt](SYNC.md#tms-destination-trust)
+previously applied only to environment-supplied credentials, on the reasoning that a
+credential inlined in the same file that chose the destination leaked nothing of
+yours. Now that every credential comes from the environment, **every** destination is
+checked, so a `tms.server` host you have not approved will prompt (or exit 7 where
+there is no terminal) on a project that previously ran unprompted with an inlined
+key. Approve it once with `deepl config set tms.allowedServers <host>`.
 
 Also gone: the `usage` command's "Speech-to-Text Usage" section and
 `speechToTextMilliseconds*` fields, following the API's deprecation of
@@ -342,17 +419,24 @@ assigned it *to* a `WriteLanguage` variable needs a check or a cast.
 1. Move to Node 24.15.0 or later and reinstall from `@deepl/cli` (or `brew install deepl/tap/deepl`).
 2. Remove `--enable-beta-languages`; rename `sync init --source-lang`/`--target-langs`.
 3. Delete `tms.auto_push`, `tms.auto_pull` and `tms.require_review` from `.deepl-sync.yaml`.
-4. Add `--yes` to any non-interactive `deepl sync --force`.
-5. Re-check every exit-code branch in CI against the table above — especially any
+4. Move `tms.api_key` / `tms.token` out of `.deepl-sync.yaml` into `TMS_API_KEY` /
+   `TMS_TOKEN`, and **rotate any credential that was ever committed** — deleting the
+   line does not remove it from git history. Approve your `tms.server` host with
+   `deepl config set tms.allowedServers <host>`, which is now checked for every
+   credential.
+5. Replace `auth set-key <KEY>` with `auth set-key --from-stdin` (or `deepl init`)
+   everywhere it appears — scripts, CI steps, Dockerfiles, runbooks.
+6. Add `--yes` to any non-interactive `deepl sync --force`.
+7. Re-check every exit-code branch in CI against the table above — especially any
    step treating `sync` or `watch` exit 0 as "complete".
-6. Point JSON error parsing at stdout instead of stderr.
-7. Fold case when comparing language codes from output; replace
+8. Point JSON error parsing at stdout instead of stderr.
+9. Fold case when comparing language codes from output; replace
    `hook.installed` with `hook.state === 'installed'`.
-8. Expect lower `sync status` coverage for PO and XLIFF projects, and re-tune
-   `sync.max_characters` against the new `--dry-run` estimate.
-9. Follow `watch --output` into its new nested layout, and clean up leftover
-   `.bak` files.
-10. If you import the types, lowercase your `WriteLanguage` literals.
+10. Expect lower `sync status` coverage for PO and XLIFF projects, and re-tune
+    `sync.max_characters` against the new `--dry-run` estimate.
+11. Follow `watch --output` into its new nested layout, and clean up leftover
+    `.bak` files.
+12. If you import the types, lowercase your `WriteLanguage` literals.
 
 The complete list of changes, including everything fixed that does not require
 action, is in

@@ -167,7 +167,7 @@ deepl --config /path/to/test-config.json usage
 - **Environment separation**: Separate configs for dev/staging/production
 - **Testing**: Use test configurations without affecting default settings
 
-**Precedence:** `--config` replaces the config _file_ only, overriding `DEEPL_CONFIG_DIR` for configuration. The cache location is unaffected — it still follows `DEEPL_CONFIG_DIR` > legacy `~/.deepl-cli/` > XDG resolution.
+**Precedence:** `--config` replaces the config _file_ only, overriding `DEEPL_CONFIG_DIR` for configuration. The cache location is unaffected — it still follows `DEEPL_CONFIG_DIR` > legacy `~/.deepl-cli/` (when it holds `config.json` or `cache.db`) > XDG resolution.
 
 **Command Suggestions:**
 
@@ -2798,17 +2798,14 @@ deepl auth <SUBCOMMAND>
 
 #### Subcommands
 
-##### `set-key [api-key]`
+##### `set-key`
 
-Set your DeepL API key and validate it with the DeepL API.
-
-**Arguments:**
-
-- `api-key` (optional) - Your DeepL API authentication key. If omitted, reads from stdin.
+Set your DeepL API key and validate it with the DeepL API. The key is read from
+stdin; there is no argument form.
 
 **Options:**
 
-- `--from-stdin` - Read API key from stdin
+- `--from-stdin` - Read API key from stdin. Stdin is the only source, so this flag is explicit rather than required.
 - `--no-verify` - Store the key without validating it against the API. Use on offline or proxied networks, where validation cannot reach the API and the key would otherwise be discarded. Exports of `DEEPL_API_KEY` also bypass validation entirely.
 
 **Examples:**
@@ -2816,22 +2813,19 @@ Set your DeepL API key and validate it with the DeepL API.
 ```bash
 # Pipe key from stdin (recommended - avoids exposing key in process listings)
 echo "YOUR-API-KEY" | deepl auth set-key --from-stdin
-
-# Read from file
-deepl auth set-key --from-stdin < ~/.deepl-api-key
-
-# Provide key as argument
-deepl auth set-key YOUR-API-KEY-HERE
 # ✓ API key saved and validated successfully
+
+# Read from file, keeping the key out of shell history
+deepl auth set-key --from-stdin < ~/.deepl-api-key
 
 # Store without a network round-trip (offline, or behind an unconfigured proxy)
 echo "YOUR-API-KEY" | deepl auth set-key --from-stdin --no-verify
 # ✓ API key saved without validation
 ```
 
-**Security Note:** Prefer `--from-stdin` over passing the key as a command argument. Command arguments are visible to other users via process listings (`ps aux`).
+**Security Note:** The key is never taken from the command line. Command arguments are visible to other users via process listings (`ps aux`) and are recorded in shell history, so `set-key` reads stdin only. Run `deepl init` to be prompted for the key with masked input instead.
 
-> **Deprecation:** Passing the API key as a positional argument is deprecated and will emit a warning. Use `--from-stdin` instead for secure key input.
+> **Removed in 2.0.0:** Passing the API key as a positional argument (`deepl auth set-key YOUR_KEY`) warned as deprecated in 1.x and now exits 6. Use `--from-stdin`, or `deepl init`.
 
 ##### `show`
 
@@ -3276,11 +3270,14 @@ The CLI resolves configuration and cache paths using the following priority orde
 | Priority | Condition              | Config path                              | Cache path                           |
 | -------- | ---------------------- | ---------------------------------------- | ------------------------------------ |
 | 1        | `DEEPL_CONFIG_DIR` set | `$DEEPL_CONFIG_DIR/config.json`          | `$DEEPL_CONFIG_DIR/cache.db`         |
-| 2        | `~/.deepl-cli/` exists | `~/.deepl-cli/config.json`               | `~/.deepl-cli/cache.db`              |
+| 2        | `~/.deepl-cli/config.json` or `~/.deepl-cli/cache.db` exists | `~/.deepl-cli/config.json`               | `~/.deepl-cli/cache.db`              |
 | 3        | XDG env vars set       | `$XDG_CONFIG_HOME/deepl-cli/config.json` | `$XDG_CACHE_HOME/deepl-cli/cache.db` |
 | 4        | Default                | `~/.config/deepl-cli/config.json`        | `~/.cache/deepl-cli/cache.db`        |
 
-Existing `~/.deepl-cli/` installations continue to work with no changes needed.
+Existing `~/.deepl-cli/` installations continue to work with no changes needed. An
+empty `~/.deepl-cli/` directory is ignored — the legacy layout applies only when it
+holds `config.json` or `cache.db`, so a directory left behind after deleting those
+files does not shadow an explicitly set `XDG_CONFIG_HOME` or `XDG_CACHE_HOME`.
 
 ### Configuration Schema
 
@@ -3366,7 +3363,7 @@ export DEEPL_CONFIG_DIR="/custom/path"
 
 ### `XDG_CONFIG_HOME`
 
-Override XDG config base directory (default: `~/.config`). Config is stored at `$XDG_CONFIG_HOME/deepl-cli/config.json`. Only used when `DEEPL_CONFIG_DIR` is unset and legacy `~/.deepl-cli/` does not exist.
+Override XDG config base directory (default: `~/.config`). Config is stored at `$XDG_CONFIG_HOME/deepl-cli/config.json`. Only used when `DEEPL_CONFIG_DIR` is unset and legacy `~/.deepl-cli/` holds neither `config.json` nor `cache.db`.
 
 ```bash
 export XDG_CONFIG_HOME="$HOME/.config"
@@ -3374,7 +3371,7 @@ export XDG_CONFIG_HOME="$HOME/.config"
 
 ### `XDG_CACHE_HOME`
 
-Override XDG cache base directory (default: `~/.cache`). Cache is stored at `$XDG_CACHE_HOME/deepl-cli/cache.db`. Only used when `DEEPL_CONFIG_DIR` is unset and legacy `~/.deepl-cli/` does not exist.
+Override XDG cache base directory (default: `~/.cache`). Cache is stored at `$XDG_CACHE_HOME/deepl-cli/cache.db`. Only used when `DEEPL_CONFIG_DIR` is unset and legacy `~/.deepl-cli/` holds neither `config.json` nor `cache.db`.
 
 ```bash
 export XDG_CACHE_HOME="$HOME/.cache"
@@ -3496,7 +3493,7 @@ Authentication failed or no API key is available. Emitted by:
 - Every command that touches the API (`translate`, `write`, `voice`, `glossary`, `usage`, `sync`, `tm list`, `admin`, etc.) when `DEEPL_API_KEY` is unset and no key is in the config file
 - HTTP 401/403 responses from the DeepL API
 
-Remediation: run `deepl init` or `deepl auth set-key <your-api-key>`, or export `DEEPL_API_KEY`.
+Remediation: run `deepl init` or `deepl auth set-key --from-stdin < keyfile`, or export `DEEPL_API_KEY`.
 
 #### 3 — RateLimitError
 
