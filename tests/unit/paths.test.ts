@@ -45,9 +45,11 @@ describe('resolvePaths', () => {
     expect(paths.configDir).toBe(path.join(HOME, '.config', 'deepl-cli'));
   });
 
-  it('uses legacy ~/.deepl-cli/ when it exists', () => {
+  it('uses legacy ~/.deepl-cli/ when it holds a config file', () => {
     const legacyDir = path.join(HOME, '.deepl-cli');
-    mockExistsSync.mockImplementation((p) => p === legacyDir);
+    mockExistsSync.mockImplementation(
+      (p) => p === path.join(legacyDir, 'config.json')
+    );
 
     const paths = resolvePaths();
 
@@ -112,7 +114,9 @@ describe('resolvePaths', () => {
 
   it('prefers legacy dir over XDG vars', () => {
     const legacyDir = path.join(HOME, '.deepl-cli');
-    mockExistsSync.mockImplementation((p) => p === legacyDir);
+    mockExistsSync.mockImplementation(
+      (p) => p === path.join(legacyDir, 'config.json')
+    );
     process.env['XDG_CONFIG_HOME'] = '/xdg/config';
     process.env['XDG_CACHE_HOME'] = '/xdg/cache';
 
@@ -124,12 +128,49 @@ describe('resolvePaths', () => {
 
   it('prefers DEEPL_CONFIG_DIR over legacy dir', () => {
     const legacyDir = path.join(HOME, '.deepl-cli');
-    mockExistsSync.mockImplementation((p) => p === legacyDir);
+    mockExistsSync.mockImplementation(
+      (p) => p === path.join(legacyDir, 'config.json')
+    );
     process.env['DEEPL_CONFIG_DIR'] = '/override';
 
     const paths = resolvePaths();
 
     expect(paths.configDir).toBe('/override');
     expect(paths.cacheDir).toBe('/override');
+  });
+  it('ignores an empty legacy dir and honours explicit XDG vars', () => {
+    const legacyDir = path.join(HOME, '.deepl-cli');
+    mockExistsSync.mockImplementation((p) => p === legacyDir);
+    process.env['XDG_CONFIG_HOME'] = '/xdg/config';
+    process.env['XDG_CACHE_HOME'] = '/xdg/cache';
+
+    const paths = resolvePaths();
+
+    expect(paths.configDir).toBe('/xdg/config/deepl-cli');
+    expect(paths.cacheDir).toBe('/xdg/cache/deepl-cli');
+  });
+
+  it('ignores an empty legacy dir and falls back to XDG defaults', () => {
+    const legacyDir = path.join(HOME, '.deepl-cli');
+    mockExistsSync.mockImplementation((p) => p === legacyDir);
+
+    const paths = resolvePaths();
+
+    expect(paths.configDir).toBe(path.join(HOME, '.config', 'deepl-cli'));
+    expect(paths.cacheDir).toBe(path.join(HOME, '.cache', 'deepl-cli'));
+  });
+
+  it('uses legacy ~/.deepl-cli/ when it holds only a cache file', () => {
+    const legacyDir = path.join(HOME, '.deepl-cli');
+    mockExistsSync.mockImplementation(
+      (p) => p === path.join(legacyDir, 'cache.db')
+    );
+    process.env['XDG_CONFIG_HOME'] = '/xdg/config';
+
+    const paths = resolvePaths();
+
+    expect(paths.configDir).toBe(legacyDir);
+    expect(paths.configFile).toBe(path.join(legacyDir, 'config.json'));
+    expect(paths.cacheFile).toBe(path.join(legacyDir, 'cache.db'));
   });
 });

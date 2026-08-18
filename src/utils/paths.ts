@@ -105,14 +105,18 @@ export function resolvePaths(): ResolvedPaths {
     };
   }
 
-  // 2. Legacy ~/.deepl-cli/ exists on disk
+  // 2. Legacy ~/.deepl-cli/, when it actually holds a config or cache file.
+  //    A bare directory does not count: an empty one would otherwise capture
+  //    resolution and make an explicitly set XDG_CONFIG_HOME inert.
   const legacyDir = path.join(home, '.deepl-cli');
-  if (fs.existsSync(legacyDir)) {
+  const legacyConfigFile = path.join(legacyDir, 'config.json');
+  const legacyCacheFile = path.join(legacyDir, 'cache.db');
+  if (fs.existsSync(legacyConfigFile) || fs.existsSync(legacyCacheFile)) {
     return {
       configDir: legacyDir,
-      configFile: path.join(legacyDir, 'config.json'),
+      configFile: legacyConfigFile,
       cacheDir: legacyDir,
-      cacheFile: path.join(legacyDir, 'cache.db'),
+      cacheFile: legacyCacheFile,
     };
   }
 
